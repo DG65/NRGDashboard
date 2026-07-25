@@ -1,0 +1,38 @@
+<!--
+  Phase 1: reiner Nachweis, dass die Discovery funktioniert. Zeigt die
+  gefundenen Geraete als einfache, nach Kategorie gruppierte Liste. Das
+  eigentliche Energiefluss-Diagramm (Icon-Katalog, Anordnung, Flusslinien -
+  Muster: InverterHubTile/module.html) ersetzt render() in Phase 2.
+  handleMessage() ist der von der WebFront-Kachel erwartete Einstiegspunkt
+  (siehe GetVisualizationTile()/UpdateVisualizationValue() in module.php).
+-->
+<div id="nrgdash-root" style="font-family: sans-serif; font-size: 13px;">
+  <div id="nrgdash-list">Warte auf Daten...</div>
+</div>
+<script>
+function handleMessage(raw) {
+  var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  var root = document.getElementById('nrgdash-list');
+  if (!d || !d.ok || !Array.isArray(d.devices) || d.devices.length === 0) {
+    root.textContent = 'Keine Geraete gefunden - NRGDASH_Discover() ausfuehren.';
+    return;
+  }
+  var order = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
+  var byCategory = {};
+  d.devices.forEach(function (dev) {
+    var cat = dev.category || 'verbraucher';
+    (byCategory[cat] = byCategory[cat] || []).push(dev);
+  });
+  var html = '';
+  order.forEach(function (cat) {
+    if (!byCategory[cat]) { return; }
+    html += '<div style="margin-bottom:8px;"><b>' + cat + '</b><ul style="margin:2px 0 0 16px; padding:0;">';
+    byCategory[cat].forEach(function (dev) {
+      html += '<li>' + (dev.label || dev.function) +
+        ' <span style="opacity:.6;">(' + dev.function + ' / ' + dev.source + ')</span></li>';
+    });
+    html += '</ul></div>';
+  });
+  root.innerHTML = html;
+}
+</script>

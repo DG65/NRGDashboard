@@ -1,0 +1,24 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "Dokumentation & Hilfe",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "NRG Dashboard erkennt automatisch alle installierten NRG-Stack-Partnermodule (InverterHub, MeterHub, ChargerHub, HeishaMon, Tessie) ueber deren Vertraege - keine manuelle Verknuepfung von Variablen-IDs noetig."
+        },
+        {
+          "type": "Label",
+          "caption": "Version 0.1.0-beta.1"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Geraete jetzt suchen",
+      "onClick": "NRGDASH_Discover($id);"
+    }
+  ]
+}

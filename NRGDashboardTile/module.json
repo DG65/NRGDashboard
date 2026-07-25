@@ -1,0 +1,15 @@
+{
+  "id": "{6B2F8C41-9E3A-4D6B-8F1C-5A7D9E2B4C61}",
+  "name": "NRGDashboardTile",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG Dashboard",
+    "Energiefluss-Kachel"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASH"
+}
