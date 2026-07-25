@@ -12,6 +12,21 @@ bisher genutzten Drittanbieter-App ("IPS View"), deren Widget-Verknüpfungen
 auf festen Variablen-IDs beruhen und beim Löschen der referenzierten Instanz
 kommentarlos brechen.
 
+**Zielrolle (Architekturentscheidung Dietmar, 25.07.2026):** NRGDashboard wird
+langfristig die **einzige Darstellungsfläche** im Verbund — nicht nur für die
+Anlagenübersicht, sondern auch für gerätespezifische Diagnose, die heute noch
+in modul-eigenen Kacheln lebt (z. B. `InverterHubMonitor`: PV-Soll/Ist-
+Vergleich, MPPT-Strangvergleich, Isolationswiderstand-Diagnose). Die
+**Diagnoselogik** (Berechnung, Schwellenwerte, Gerätewissen) bleibt beim
+jeweiligen Partnermodul; NRGDashboard übernimmt nur die **Darstellung**.
+Konsequenz fürs Rendering: es muss generisch genug sein, um neben rohen
+`*_GetFunctions`-Live-Werten auch vorberechnete Diagnose-/Vergleichsdaten
+(Soll vs. Ist, Schwellenwert-Warnungen) aus einem künftigen Diagnostik-
+Vertrag (z. B. `IHUB_GetDiagnostics($id)`, mit InverterHub abzustimmen)
+darzustellen — kein reines Fluss-Icon-plus-Zeitreihen-Layout. Betrifft vor
+allem Phase 2/3-Design: Panel-Typen generisch halten (Wert, Vergleich,
+Warnung), nicht an ein Icon-Set gebunden.
+
 **Kernprinzip:** keine manuell verknüpften Variablen-IDs. Alle Geräte werden
 über die bestehenden `*_GetFunctions`-Verträge des Verbunds gefunden (analog
 `EMS_Discover()` im EMS-Repo) — fällt eine Instanz weg oder kommt neu dazu,
