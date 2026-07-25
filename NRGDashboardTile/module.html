@@ -8,18 +8,24 @@
 -->
 <div id="nrgdash-root" style="font-family: sans-serif; font-size: 13px;">
   <div id="nrgdash-list">Warte auf Daten...</div>
+  <div id="nrgdash-diagnostics"></div>
 </div>
 <script>
-function handleMessage(raw) {
-  var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+// Bewertungs-Badges type-neutral - jeder kuenftige Diagnostik-Anbieter
+// (siehe README "Diagnostik-Vertrag") nutzt dasselbe level-Vokabular und
+// braucht deshalb hier keine eigene Fallunterscheidung.
+var LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
+var LEVEL_LABEL = { normal: 'unauffaellig', 'auffaellig': 'auffaellig', 'kritisch': 'kritisch' };
+
+function renderDevices(devices) {
   var root = document.getElementById('nrgdash-list');
-  if (!d || !d.ok || !Array.isArray(d.devices) || d.devices.length === 0) {
+  if (!Array.isArray(devices) || devices.length === 0) {
     root.textContent = 'Keine Geraete gefunden - NRGDASH_Discover() ausfuehren.';
     return;
   }
   var order = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
   var byCategory = {};
-  d.devices.forEach(function (dev) {
+  devices.forEach(function (dev) {
     var cat = dev.category || 'verbraucher';
     (byCategory[cat] = byCategory[cat] || []).push(dev);
   });
@@ -34,5 +40,46 @@ function handleMessage(raw) {
     html += '</ul></div>';
   });
   root.innerHTML = html;
+}
+
+// Generisches Diagnose-Panel: kennt keine der konkreten `type`-Werte
+// (yield_vs_forecast/mppt_string_compare/riso/...), sondern liest nur das
+// gemeinsame Grundschema (label/level/threshold/reason) plus, sofern
+// vorhanden, einen einzelnen Wert (`expected`+`unit`) oder die Anzahl
+// referenzierter Kanaele (Felder, die auf ID/IDs enden). Ein neuer
+// Diagnose-Typ eines beliebigen Partnermoduls braucht dafuer KEINE
+// Aenderung an diesem Renderer, solange er dem README-Schema folgt.
+function renderDiagnostics(entries) {
+  var root = document.getElementById('nrgdash-diagnostics');
+  if (!Array.isArray(entries) || entries.length === 0) {
+    root.innerHTML = '';
+    return;
+  }
+  var html = '<div style="margin-top:12px;"><b>Diagnose</b><ul style="margin:2px 0 0 16px; padding:0;">';
+  entries.forEach(function (e) {
+    var color = LEVEL_COLOR[e.level] || '#999';
+    var levelText = e.level ? (LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
+    var refCount = Object.keys(e).filter(function (k) { return /ID$|IDs$/.test(k); }).length;
+    var valueText = (e.expected !== undefined && e.expected !== null)
+      ? (e.expected + (e.unit ? ' ' + e.unit : ''))
+      : (refCount + ' Referenz(en)');
+    html += '<li><b>' + (e.label || e.type) + '</b>: ' + valueText +
+      ' — <span style="color:' + color + ';">' + levelText + '</span>' +
+      (e.reason ? ' <span style="opacity:.7;">(' + e.reason + ')</span>' : '') +
+      '</li>';
+  });
+  html += '</ul></div>';
+  root.innerHTML = html;
+}
+
+function handleMessage(raw) {
+  var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!d || !d.ok) {
+    renderDevices([]);
+    renderDiagnostics([]);
+    return;
+  }
+  renderDevices(d.devices);
+  renderDiagnostics(d.diagnostics);
 }
 </script>

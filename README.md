@@ -27,10 +27,30 @@ darzustellen — kein reines Fluss-Icon-plus-Zeitreihen-Layout. Betrifft vor
 allem Phase 2/3-Design: Panel-Typen generisch halten (Wert, Vergleich,
 Warnung), nicht an ein Icon-Set gebunden.
 
-## Diagnostik-Vertrag (Abstimmung mit InverterHub, in Arbeit)
+## Diagnostik-Vertrag
 
-Empfehlung an InverterHub für `IHUB_GetDiagnostics($id)` (noch nicht gebaut,
-Antwort auf deren Anfrage vom 25.07.2026): dem bestehenden `*ID`-Suffix-Muster
+**Umgesetzt:** `IHUBMON_GetDiagnostics($id)` (InverterHubMonitor, ab
+0.74.0-beta.1, Build 191) ist der erste Anbieter dieses Vertragsmusters —
+konsumiert in `NRGDashboardTile::discoverDiagnostics()`. Erste drei Typen:
+`yield_vs_forecast` (Ertrag vs. PV-Prognose, `measuredPowerID` als Referenz +
+`expected` als Wert), `mppt_string_compare` (`stringPowerIDs` als Referenzen
+je Strang), `riso` (Isolationswiderstand, `measuredID` + konfigurierbare
+Schwelle `RisoWarnKOhm`, Default aus/0). Jeder Eintrag trägt `level`
+(`normal`/`auffaellig`/`kritisch`/`null` — `null` heißt: noch keine
+Bewertung möglich, z. B. fehlende Kopplung oder unkonfigurierte Schwelle),
+`threshold`, `reason` sowie `contractVersion` (`'1.0'`) auf Instanz-Ebene.
+Fehlende Voraussetzungen (keine Einstrahlung, <2 Stränge, kein Riso-Wert)
+lassen den jeweiligen Eintrag einfach weg, kein Fehler.
+
+**Rendering bewusst type-neutral** (`module.html`, `renderDiagnostics()`):
+kennt keinen der konkreten `type`-Werte, liest nur `label`/`level`/`reason`
+sowie optional `expected`+`unit` oder zählt Referenzfelder (Muster `*ID`/
+`*IDs`). Ein künftiger zweiter Anbieter (MeterHub, HeishaMon, ChargerHub)
+braucht dafür keine Änderung am Renderer, solange er demselben Grundschema
+folgt.
+
+Ursprüngliche Empfehlung an InverterHub (25.07.2026, vor der Umsetzung), zur
+Nachvollziehbarkeit stehen gelassen: dem bestehenden `*ID`-Suffix-Muster
 folgen (SUITE.md/MeterHub-Konvention: ein Feld mit `ID`-Suffix ist eine
 **Referenz**, die der Konsument selbst auflöst/aggregiert; ein Feld ohne
 `ID`-Suffix ist ein bereits interpretierter **Wert**). Konkret:

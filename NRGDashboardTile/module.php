@@ -14,6 +14,7 @@ declare(strict_types=1);
 // Partnermodul-GUIDs (fuer automatische Discovery). Kein Modul setzt ein
 // anderes voraus - jeder Aufruf steht hinter function_exists().
 define('NRGDASH_GUID_INVERTERHUB',    '{BBE2C593-1A91-426D-A714-29A9C7E87589}');
+define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
@@ -36,6 +37,7 @@ class NRGDashboardTile extends IPSModule
         parent::Create();
 
         $this->RegisterAttributeString('DeviceCache', '[]');
+        $this->RegisterAttributeString('DiagnosticsCache', '[]');
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
     }
 
@@ -70,13 +72,16 @@ class NRGDashboardTile extends IPSModule
         $devices = array_merge($devices, $this->discoverHeishaMon());
         $devices = array_merge($devices, $this->discoverTessie());
 
+        $diagnostics = $this->discoverDiagnostics();
+
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
+        $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
         $this->SetStatus(102);
         $this->LogMessage(
-            sprintf('NRG Dashboard: %d Geraete gefunden', count($devices)),
+            sprintf('NRG Dashboard: %d Geraete, %d Diagnose-Eintraege gefunden', count($devices), count($diagnostics)),
             KL_MESSAGE
         );
-        $this->UpdateVisualizationValue(json_encode(['ok' => true, 'devices' => $devices]));
+        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
 
         return $devices;
     }
@@ -84,8 +89,17 @@ class NRGDashboardTile extends IPSModule
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
-        $html .= '<script>handleMessage(' . json_encode(['ok' => true, 'devices' => $this->GetDevices()]) . ');</script>';
+        $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
         return $html;
+    }
+
+    private function buildPayload(): array
+    {
+        return [
+            'ok'          => true,
+            'devices'     => $this->GetDevices(),
+            'diagnostics' => $this->GetDiagnostics(),
+        ];
     }
 
     /**
@@ -97,6 +111,48 @@ class NRGDashboardTile extends IPSModule
         $json = $this->ReadAttributeString('DeviceCache');
         $data = json_decode($json, true);
         return is_array($data) ? $data : [];
+    }
+
+    public function GetDiagnostics(): array
+    {
+        $json = $this->ReadAttributeString('DiagnosticsCache');
+        $data = json_decode($json, true);
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Diagnose-Vertraege sind bewusst NICHT ins gemeinsame Geraete-Schema
+     * gemischt (normalizeEntry()/functionCategory()) - sie tragen keinen
+     * function-Wert und gehoeren fachlich zu einer eigenen Instanz statt
+     * einem Fluss-Icon. Erster Anbieter: IHUBMON_GetDiagnostics
+     * (InverterHubMonitor, ab 0.74.0-beta.1). Jeder Eintrag ist bereits
+     * generisch (type/label/level/threshold/reason + Referenzen/Werte je
+     * Typ) - das Rendering in module.html iteriert type-neutral, damit ein
+     * kuenftiger zweiter Anbieter (MeterHub, HeishaMon, ...) ohne
+     * Aenderungen an dieser Stelle reinpasst, solange er demselben
+     * Grundschema folgt (siehe README, Abschnitt "Diagnostik-Vertrag").
+     */
+    private function discoverDiagnostics(): array
+    {
+        $results = [];
+        if (!function_exists('IHUBMON_GetDiagnostics')) {
+            return $results;
+        }
+        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBMON) as $id) {
+            $data = IHUBMON_GetDiagnostics($id);
+            if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
+                continue;
+            }
+            foreach ($data['entries'] as $entry) {
+                if (!is_array($entry) || !isset($entry['type'])) {
+                    continue;
+                }
+                $entry['source']     = 'inverterhubmonitor';
+                $entry['instanceID'] = $data['instanceID'] ?? $id;
+                $results[] = $entry;
+            }
+        }
+        return $results;
     }
 
     /**
