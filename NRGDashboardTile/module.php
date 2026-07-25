@@ -93,13 +93,42 @@ class NRGDashboardTile extends IPSModule
         return $html;
     }
 
+    /**
+     * Baut die Nutzlast fuer die Kachel (Phase 2: Energiefluss-Diagramm).
+     * Ergaenzt jedes Geraet um seinen aktuellen Leistungswert (aufgeloest
+     * aus powerID) - der Discovery-Cache selbst speichert nur die Referenz,
+     * damit ein Cache-Alter die Werte nie veralten laesst (Discover() laeuft
+     * nur alle 5 Minuten, Werte werden bei jedem Rendern/UpdateVisualizationValue
+     * frisch gelesen).
+     */
     private function buildPayload(): array
     {
+        $devices = array_map(function (array $d) {
+            $d['value'] = $this->resolvePowerValue($d);
+            return $d;
+        }, $this->GetDevices());
+
         return [
             'ok'          => true,
-            'devices'     => $this->GetDevices(),
+            'devices'     => $devices,
             'diagnostics' => $this->GetDiagnostics(),
         ];
+    }
+
+    /**
+     * Liest den aktuellen Leistungswert eines Geraete-Eintrags aus seiner
+     * powerID (Referenz, kein gecachter Wert - siehe *_GetFunctions-
+     * Konvention). null, wenn keine powerID vorhanden oder die Variable
+     * zwischenzeitlich geloescht wurde (genau der Fall, den dieses Modul
+     * gegenueber IPS View robust machen soll).
+     */
+    private function resolvePowerValue(array $device): ?float
+    {
+        $id = $device['powerID'] ?? 0;
+        if ($id > 0 && IPS_VariableExists($id)) {
+            return (float) GetValue($id);
+        }
+        return null;
     }
 
     /**

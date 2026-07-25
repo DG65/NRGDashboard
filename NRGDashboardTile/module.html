@@ -1,16 +1,221 @@
 <!--
-  Phase 1: reiner Nachweis, dass die Discovery funktioniert. Zeigt die
-  gefundenen Geräte als einfache, nach Kategorie gruppierte Liste. Das
-  eigentliche Energiefluss-Diagramm (Icon-Katalog, Anordnung, Flusslinien -
-  Muster: InverterHubTile/module.html) ersetzt render() in Phase 2.
+  Phase 2: Energiefluss-Diagramm. Zentrum = Hauslast, vier Kategorie-Anker
+  darum (Erzeugung oben, Speicher rechts, Verteilung/Netz links, Verbraucher
+  unten - feste, logische Anordnung, siehe README "Aufbau"). Je Kategorie
+  können mehrere Einzelgeräte als kleinere Knoten um den Anker verteilt sein
+  (z.B. mehrere Wallboxen unter Verbraucher). Browser-Eigenheiten (Safari-
+  Blur/Radialverlauf-Fallen) laut InverterHubTile/CLAUDE.md bewusst vermieden:
+  keine filter:blur(), Verläufe als Kreis+scale statt Ellipse.
+
   handleMessage() ist der von der WebFront-Kachel erwartete Einstiegspunkt
   (siehe GetVisualizationTile()/UpdateVisualizationValue() in module.php).
 -->
-<div id="nrgdash-root" style="font-family: sans-serif; font-size: 13px;">
-  <div id="nrgdash-list">Warte auf Daten...</div>
-  <div id="nrgdash-diagnostics"></div>
-</div>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; background: transparent; user-select: none; overflow: hidden; }
+  html, body { height: 100vh; }
+  html, body { height: 100dvh; }
+  body { max-height: 100dvh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .flow-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  text { fill: var(--text, #444); }
+  .cat-label { font-size: 11px; font-weight: 600; text-anchor: middle; opacity: .75; }
+  .val-label { font-size: 12px; font-weight: 700; text-anchor: middle; }
+  .dev-label { font-size: 8px; text-anchor: middle; opacity: .7; }
+
+  .wire { stroke: rgba(150,150,150,0.45); stroke-width: 2; fill: none; transition: stroke 600ms ease, stroke-width 600ms ease; }
+  .wire.active-in  { stroke: #3a3; stroke-width: 3; }
+  .wire.active-out { stroke: #c33; stroke-width: 3; }
+
+  .node-icon, .node-icon * { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .node-icon [data-fill] { fill: currentColor; stroke: none; }
+
+  .node-circle { fill: #eee; stroke: rgba(150,150,150,0.5); stroke-width: 1.5; transition: fill 600ms ease, color 600ms ease; }
+  .node.active .node-circle { fill: #fff; }
+  .node.active.pv       { color: #d99200; }
+  .node.active.battery  { color: #2e7d32; }
+  .node.active.grid     { color: #1565c0; }
+  .node.active.verbraucher { color: #8a3ea1; }
+  .node:not(.active) { color: #999; }
+
+  #nrgdash-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
+
+  #nrgdash-diagnostics { position: absolute; left: 4px; right: 4px; bottom: 4px; font-size: 11px; max-height: 22%; overflow-y: auto; }
+  #nrgdash-diagnostics ul { list-style: none; }
+  #nrgdash-diagnostics li { padding: 1px 0; }
+</style>
+
+<svg class="flow-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+  <g id="wires-layer"></g>
+  <g id="nodes-layer"></g>
+</svg>
+<div id="nrgdash-empty" style="display:none;">Keine Geräte gefunden - NRGDASH_Discover() ausführen.</div>
+<div id="nrgdash-diagnostics"></div>
+
 <script>
+var CX = 200, CY = 200;
+
+// Kategorie-Anker: feste Positionen, feste Bedeutung - keine
+// kreuz-und-quer-Anordnung. Winkel in Grad, 0=rechts, 90=unten (SVG-Konvention).
+var CATEGORIES = {
+  erzeugung:   { angle: -90, label: 'Erzeugung',  rAnchor: 110 },
+  speicher:    { angle: 0,   label: 'Speicher',   rAnchor: 110 },
+  verteilung:  { angle: 180, label: 'Netz',       rAnchor: 110 },
+  verbraucher: { angle: 90,  label: 'Verbraucher', rAnchor: 110 }
+};
+var R_DEV = 165; // Radius der Einzelgeräte-Knoten (weiter außen als der Kategorie-Anker)
+
+// Icon-Katalog je function-Typ (Muster: InverterHubTile ICONS-Objekt) -
+// jede Zeichenfunktion arbeitet in einem 20x20-Raster zentriert auf (0,0).
+var ICONS = {
+  pv(g) {
+    g.appendChild(el('circle', { r: 5, 'data-fill': '1' }));
+    [[0,-9,0,-6],[0,6,0,9],[-9,0,-6,0],[9,0,6,0],[-6.4,-6.4,-4.2,-4.2],[4.2,4.2,6.4,6.4],[-6.4,6.4,-4.2,4.2],[4.2,-4.2,6.4,-6.4]]
+      .forEach(([x1,y1,x2,y2]) => g.appendChild(el('line', { x1,y1,x2,y2 })));
+  },
+  battery(g, socPct) {
+    g.appendChild(el('rect', { x: -9, y: -6, width: 16, height: 12, rx: 2 }));
+    g.appendChild(el('rect', { x: 7, y: -3, width: 2.5, height: 6, rx: .6, 'data-fill': '1' }));
+    if (socPct != null) {
+      var pct = Math.max(0, Math.min(100, socPct)) / 100;
+      g.appendChild(el('rect', { x: -7.5, y: -4.5, width: 13 * pct, height: 9, rx: 1, opacity: .5, 'data-fill': '1' }));
+    }
+  },
+  grid(g) {
+    g.appendChild(el('polygon', { points: '1,-9 -5,1.5 -1,1.5 -2,9 5,-1.5 1,-1.5', 'data-fill': '1' }));
+  },
+  house(g) {
+    g.appendChild(el('polygon', { points: '0,-9 10,0 10,9 -10,9 -10,0' }));
+  },
+  charger(g, socPct) {
+    var inner = el('g', { transform: 'translate(0,-2)' });
+    ICONS.battery(inner, socPct);
+    [-6,6].forEach(x => inner.appendChild(el('circle', { cx: x, cy: 8, r: 2.2, 'data-fill': '1' })));
+    g.appendChild(inner);
+  },
+  heatpump(g) {
+    g.appendChild(el('rect', { x: -8, y: -7, width: 16, height: 14, rx: 2 }));
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 4 }));
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: .8, 'data-fill': '1' }));
+  },
+  vehicle(g, socPct) { ICONS.charger(g, socPct); },
+  default(g) {
+    g.appendChild(el('circle', { r: 4, 'data-fill': '1' }));
+  }
+};
+
+function el(tag, attrs) {
+  var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function polar(cx, cy, r, angleDeg) {
+  var rad = angleDeg * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function fmtW(w) {
+  if (w == null) return '–';
+  var abs = Math.abs(w);
+  return (abs >= 1000 ? (w / 1000).toFixed(2) + ' kW' : Math.round(w) + ' W');
+}
+
+function makeNode(g, id, x, y, r, iconFn, label, socPct) {
+  var node = el('g', { class: 'node', transform: 'translate(' + x + ',' + y + ')' });
+  node.appendChild(el('circle', { class: 'node-circle', r: r }));
+  var iconG = el('g', { class: 'node-icon' });
+  (ICONS[iconFn] || ICONS.default)(iconG, socPct);
+  node.appendChild(iconG);
+  if (label) {
+    var t = el('text', { class: 'dev-label', y: r + 10 });
+    t.textContent = label;
+    node.appendChild(t);
+  }
+  g.appendChild(node);
+  return node;
+}
+
+function drawWire(g, x1, y1, x2, y2) {
+  return g.appendChild(el('path', { class: 'wire', d: 'M' + x1 + ',' + y1 + ' L' + x2 + ',' + y2 }));
+}
+
+function renderDiagram(devices) {
+  var wiresLayer = document.getElementById('wires-layer');
+  var nodesLayer = document.getElementById('nodes-layer');
+  wiresLayer.innerHTML = '';
+  nodesLayer.innerHTML = '';
+
+  var byCategory = {};
+  devices.forEach(function (d) {
+    var cat = d.category || 'verbraucher';
+    (byCategory[cat] = byCategory[cat] || []).push(d);
+  });
+
+  // Zentrum: Hauslast. Bevorzugt das explizite 'house'-Gerät (z.B. MeterHub-
+  // Gesamtzähler); ohne das summieren sich die Verbraucher-Einzelwerte als
+  // Näherung - besser eine grobe Summe zeigen als ein leeres Zentrum.
+  var houseDevice = devices.find(function (d) { return d.function === 'house'; });
+  var houseValue = houseDevice ? houseDevice.value
+    : (byCategory.verbraucher || []).reduce(function (s, d) { return s + (d.value || 0); }, 0);
+
+  var centerNode = makeNode(nodesLayer, 'center', CX, CY, 34, 'house', null);
+  if (houseValue != null) {
+    centerNode.classList.add('active');
+    var vt = el('text', { class: 'val-label', y: 5 });
+    vt.textContent = fmtW(houseValue);
+    centerNode.appendChild(vt);
+  }
+  var lbl = el('text', { class: 'val-label', y: -44, x: CX });
+  lbl.textContent = 'Haus';
+  lbl.style.opacity = .75;
+  lbl.style.fontSize = '11px';
+  wiresLayer.parentNode.insertBefore(lbl, wiresLayer.nextSibling);
+
+  Object.keys(CATEGORIES).forEach(function (cat) {
+    var conf = CATEGORIES[cat];
+    var items = byCategory[cat] || [];
+    var [ax, ay] = polar(CX, CY, conf.rAnchor, conf.angle);
+
+    // Kategorie-Beschriftung immer sichtbar - auch ohne Geräte, damit die
+    // Anordnung stabil und nachvollziehbar bleibt (keine springenden Anker).
+    var [lx, ly] = polar(CX, CY, conf.rAnchor + 34, conf.angle);
+    var catLabel = el('text', { class: 'cat-label', x: lx, y: ly });
+    catLabel.textContent = conf.label;
+    nodesLayer.appendChild(catLabel);
+
+    if (items.length === 0) { return; }
+
+    var anchorValue = items.reduce(function (s, d) { return s + (d.value || 0); }, 0);
+    var anchorActive = items.some(function (d) { return Math.abs(d.value || 0) > 5; });
+    var anchorNode = makeNode(nodesLayer, cat, ax, ay, 26,
+      items.length === 1 ? items[0].function : 'default', null);
+    if (anchorActive) { anchorNode.classList.add('active', cat); }
+
+    var wire = drawWire(wiresLayer, CX, CY, ax, ay);
+    if (anchorActive) {
+      wire.classList.add(anchorValue >= 0 ? 'active-in' : 'active-out');
+    }
+
+    // Mehrere Geräte derselben Kategorie: als kleinere Knoten auf einem
+    // Bogen um den Kategorie-Anker verteilt (±28°), damit sie nicht
+    // übereinanderliegen und die Reihenfolge stabil bleibt.
+    var spread = 28;
+    items.forEach(function (d, i) {
+      var devAngle = conf.angle;
+      if (items.length > 1) {
+        devAngle = conf.angle - spread + (2 * spread * i / (items.length - 1));
+      }
+      var [dx, dy] = polar(CX, CY, R_DEV, devAngle);
+      var active = Math.abs(d.value || 0) > 5;
+      var devNode = makeNode(nodesLayer, 'dev-' + i, dx, dy, 18, d.function, d.label, d.socPct);
+      if (active) { devNode.classList.add('active', cat); }
+      var devWire = drawWire(wiresLayer, ax, ay, dx, dy);
+      if (active) { devWire.classList.add(anchorValue >= 0 ? 'active-in' : 'active-out'); }
+    });
+  });
+}
+
 // Bewertungs-Badges type-neutral - jeder künftige Diagnostik-Anbieter
 // (siehe README "Diagnostik-Vertrag") nutzt dasselbe level-Vokabular und
 // braucht deshalb hier keine eigene Fallunterscheidung.
@@ -20,45 +225,20 @@ var LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
 // (Werte dieser Map) tragen die korrekte deutsche Schreibweise mit Umlaut.
 var LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
 
-function renderDevices(devices) {
-  var root = document.getElementById('nrgdash-list');
-  if (!Array.isArray(devices) || devices.length === 0) {
-    root.textContent = 'Keine Geräte gefunden - NRGDASH_Discover() ausführen.';
-    return;
-  }
-  var order = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
-  var byCategory = {};
-  devices.forEach(function (dev) {
-    var cat = dev.category || 'verbraucher';
-    (byCategory[cat] = byCategory[cat] || []).push(dev);
-  });
-  var html = '';
-  order.forEach(function (cat) {
-    if (!byCategory[cat]) { return; }
-    html += '<div style="margin-bottom:8px;"><b>' + cat + '</b><ul style="margin:2px 0 0 16px; padding:0;">';
-    byCategory[cat].forEach(function (dev) {
-      html += '<li>' + (dev.label || dev.function) +
-        ' <span style="opacity:.6;">(' + dev.function + ' / ' + dev.source + ')</span></li>';
-    });
-    html += '</ul></div>';
-  });
-  root.innerHTML = html;
-}
-
-// Generisches Diagnose-Panel: kennt keine der konkreten `type`-Werte
+// Generisches Diagnose-Panel: kennt keinen der konkreten `type`-Werte
 // (yield_vs_forecast/mppt_string_compare/riso/...), sondern liest nur das
 // gemeinsame Grundschema (label/level/threshold/reason) plus, sofern
 // vorhanden, einen einzelnen Wert (`expected`+`unit`) oder die Anzahl
 // referenzierter Kanäle (Felder, die auf ID/IDs enden). Ein neuer
-// Diagnose-Typ eines beliebigen Partnermoduls braucht dafür KEINE
-// Aenderung an diesem Renderer, solange er dem README-Schema folgt.
+// Diagnose-Typ eines beliebigen Partnermoduls braucht dafür KEINE Änderung
+// an diesem Renderer, solange er dem README-Schema folgt.
 function renderDiagnostics(entries) {
   var root = document.getElementById('nrgdash-diagnostics');
   if (!Array.isArray(entries) || entries.length === 0) {
     root.innerHTML = '';
     return;
   }
-  var html = '<div style="margin-top:12px;"><b>Diagnose</b><ul style="margin:2px 0 0 16px; padding:0;">';
+  var html = '<ul>';
   entries.forEach(function (e) {
     var color = LEVEL_COLOR[e.level] || '#999';
     var levelText = e.level ? (LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
@@ -71,18 +251,22 @@ function renderDiagnostics(entries) {
       (e.reason ? ' <span style="opacity:.7;">(' + e.reason + ')</span>' : '') +
       '</li>';
   });
-  html += '</ul></div>';
+  html += '</ul>';
   root.innerHTML = html;
 }
 
 function handleMessage(raw) {
   var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  if (!d || !d.ok) {
-    renderDevices([]);
-    renderDiagnostics([]);
+  var empty = document.getElementById('nrgdash-empty');
+  if (!d || !d.ok || !Array.isArray(d.devices) || d.devices.length === 0) {
+    empty.style.display = 'flex';
+    document.getElementById('wires-layer').innerHTML = '';
+    document.getElementById('nodes-layer').innerHTML = '';
+    renderDiagnostics(d ? d.diagnostics : []);
     return;
   }
-  renderDevices(d.devices);
+  empty.style.display = 'none';
+  renderDiagram(d.devices);
   renderDiagnostics(d.diagnostics);
 }
 </script>

@@ -145,15 +145,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   installierten Partnerinstanzen (InverterHub, MeterHub/MeterHubVirtual,
   ChargerHub, HeishaMon, Tessie), normalisiert deren Verträge auf ein
   gemeinsames Geräte-Schema (`function`/`label`/`powerID`/…/`source`/
-  `category`) und cacht das Ergebnis in `DeviceCache`. `module.html` zeigt in
-  dieser Phase nur eine nach Kategorie gruppierte Liste — kein Diagramm.
-  Jeder Partnerzugriff steht hinter `function_exists()`; fehlt ein Modul,
-  bleibt dessen Anteil einfach leer (Verbund-Grundregel).
-- ⏳ **Phase 2 — Energiefluss-Diagramm.** Icon-Katalog je `function`-Typ
-  (Referenzmuster: `InverterHubTile/module.html`, Objekt `ICONS`),
-  automatische Anordnung in vier Kategorien (Erzeugung → Speicher →
-  Verteilung → Verbraucher — bereits in `functionCategory()` vorbereitet),
-  Live-Update über `UpdateVisualizationValue()`.
+  `category`) und cacht das Ergebnis in `DeviceCache`. Jeder Partnerzugriff
+  steht hinter `function_exists()`; fehlt ein Modul, bleibt dessen Anteil
+  einfach leer (Verbund-Grundregel).
+- ✅ **Phase 2 — Energiefluss-Diagramm.** Zentrum = Hauslast (bevorzugt ein
+  explizites `house`-Gerät, sonst Näherung aus der Summe der
+  Verbraucher-Kategorie), vier feste Kategorie-Anker darum (Erzeugung oben,
+  Speicher rechts, Netz links, Verbraucher unten — feste, logische
+  Anordnung, keine kreuz-und-quer-Platzierung). Mehrere Geräte derselben
+  Kategorie (z. B. mehrere Wallboxen) verteilen sich als kleinere Knoten auf
+  einem Bogen um ihren Kategorie-Anker. Icon-Katalog (`ICONS`-Objekt,
+  Muster: `InverterHubTile/module.html`) für `pv`/`battery`/`grid`/`house`/
+  `charger`/`heatpump`/`vehicle`. Werte werden bei jedem Rendern frisch aus
+  der `powerID`-Referenz gelesen (`resolvePowerValue()` in `module.php`),
+  nie gecacht — der Discovery-Cache hält nur die Struktur, keine Werte.
+  Live-Update über `UpdateVisualizationValue()`. Bewusst zurückgestellt:
+  Übergangsanimationen/Glow-Effekte (InverterHubTile-Feinschliff), da hier
+  Funktion vor Politur ging.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
