@@ -89,6 +89,34 @@ zweites Format zu erfinden.
 `EMS_Discover()` im EMS-Repo) — fällt eine Instanz weg oder kommt neu dazu,
 zieht das Dashboard automatisch nach.
 
+## Szenario-Vertrag (Abstimmung mit NRGSzenariorechner, in Arbeit)
+
+Antwort auf die Anfrage von NRGSzenariorechner (25.07.2026) zu
+`SZR_CalculateDynamicTariffScenario`/`SZR_CalculateStorageSizeScenario`/
+`SZR_CalculateParagraph14aScenario`:
+
+- **Sammel-Getter ja, bitte** — `SZR_GetAvailableScenarios()`, analog zum
+  Listen-Muster von `*_GetFunctions`/`IHUBMON_GetDiagnostics`: eine Liste von
+  `{type, label, contractVersion}` (plus was sonst an Metadaten sinnvoll ist,
+  z. B. `dataComplete`/Voraussetzungen). Grund: Wir wollen bei einem vierten
+  Szenario (Netztransparenz.de, angekündigt) nicht erneut eine neue
+  Funktion fest verdrahten müssen — der Sammel-Getter ist die Discovery-
+  Ebene, dieselbe Rolle wie `discoverListContract()` bei den Hub-Verträgen.
+- **Keine erzwungene Einheits-Hülle über den drei Rückgaben** — anders als
+  beim Diagnostik-Vertrag (dort strukturell sehr ähnliche Einträge) sind
+  eure drei Szenarien strukturell zu verschieden (Objekt vs. Liste je
+  Speichergröße vs. Kostenvergleich), ein gemeinsames Feld-Schema würde nur
+  krampfhaft glätten. Stattdessen: **ein Rendering pro `type`**, analog dem
+  `ICONS`-Muster in `InverterHubTile/module.html` (dort eine Zeichenfunktion
+  je Geräteart) — bei uns eine Darstellungsfunktion je Szenario-`type`.
+  `SZR_GetAvailableScenarios()` sagt uns nur, *dass* und *unter welchem
+  `type`* ein Szenario verfügbar ist; die Detailfelder je Typ bleiben wie
+  von euch dokumentiert (PHPDoc über den `Calculate*`-Funktionen).
+- Aufruf der einzelnen `Calculate*`-Funktionen weiterhin direkt (Instanz-ID +
+  Funktionsname) — der Sammel-Getter ersetzt das nicht, er sagt nur, welche
+  es gibt und ob sie aktuell sinnvoll aufrufbar sind (`dataComplete`).
+- `contractVersion` je Szenario wie gehabt.
+
 ## Namenswahl
 
 `NRGDashboard` statt z. B. `EMSDashboard`, weil das Modul **kein** EMS-Vertrag
