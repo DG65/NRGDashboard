@@ -1,6 +1,6 @@
 <!--
   Phase 1: reiner Nachweis, dass die Discovery funktioniert. Zeigt die
-  gefundenen Geraete als einfache, nach Kategorie gruppierte Liste. Das
+  gefundenen Geräte als einfache, nach Kategorie gruppierte Liste. Das
   eigentliche Energiefluss-Diagramm (Icon-Katalog, Anordnung, Flusslinien -
   Muster: InverterHubTile/module.html) ersetzt render() in Phase 2.
   handleMessage() ist der von der WebFront-Kachel erwartete Einstiegspunkt
@@ -11,16 +11,19 @@
   <div id="nrgdash-diagnostics"></div>
 </div>
 <script>
-// Bewertungs-Badges type-neutral - jeder kuenftige Diagnostik-Anbieter
+// Bewertungs-Badges type-neutral - jeder künftige Diagnostik-Anbieter
 // (siehe README "Diagnostik-Vertrag") nutzt dasselbe level-Vokabular und
 // braucht deshalb hier keine eigene Fallunterscheidung.
 var LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
-var LEVEL_LABEL = { normal: 'unauffaellig', 'auffaellig': 'auffaellig', 'kritisch': 'kritisch' };
+// Die Objekt-Schlüssel 'auffaellig' entsprechen wörtlich dem Enum-Wert aus
+// IHUBMON_GetDiagnostics (level) - nicht umbenennen. Nur die Anzeigetexte
+// (Werte dieser Map) tragen die korrekte deutsche Schreibweise mit Umlaut.
+var LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
 
 function renderDevices(devices) {
   var root = document.getElementById('nrgdash-list');
   if (!Array.isArray(devices) || devices.length === 0) {
-    root.textContent = 'Keine Geraete gefunden - NRGDASH_Discover() ausfuehren.';
+    root.textContent = 'Keine Geräte gefunden - NRGDASH_Discover() ausführen.';
     return;
   }
   var order = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
@@ -46,8 +49,8 @@ function renderDevices(devices) {
 // (yield_vs_forecast/mppt_string_compare/riso/...), sondern liest nur das
 // gemeinsame Grundschema (label/level/threshold/reason) plus, sofern
 // vorhanden, einen einzelnen Wert (`expected`+`unit`) oder die Anzahl
-// referenzierter Kanaele (Felder, die auf ID/IDs enden). Ein neuer
-// Diagnose-Typ eines beliebigen Partnermoduls braucht dafuer KEINE
+// referenzierter Kanäle (Felder, die auf ID/IDs enden). Ein neuer
+// Diagnose-Typ eines beliebigen Partnermoduls braucht dafür KEINE
 // Aenderung an diesem Renderer, solange er dem README-Schema folgt.
 function renderDiagnostics(entries) {
   var root = document.getElementById('nrgdash-diagnostics');

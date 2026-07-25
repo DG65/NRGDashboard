@@ -7,7 +7,7 @@
       "items": [
         {
           "type": "Label",
-          "caption": "NRG Dashboard erkennt automatisch alle installierten NRG-Stack-Partnermodule (InverterHub, MeterHub, ChargerHub, HeishaMon, Tessie) ueber deren Vertraege - keine manuelle Verknuepfung von Variablen-IDs noetig."
+          "caption": "NRG Dashboard erkennt automatisch alle installierten NRG-Stack-Partnermodule (InverterHub, MeterHub, ChargerHub, HeishaMon, Tessie) über deren Verträge - keine manuelle Verknüpfung von Variablen-IDs nötig."
         },
         {
           "type": "Label",
@@ -17,7 +17,7 @@
     },
     {
       "type": "Button",
-      "caption": "Geraete jetzt suchen",
+      "caption": "Geräte jetzt suchen",
       "onClick": "NRGDASH_Discover($id);"
     }
   ]

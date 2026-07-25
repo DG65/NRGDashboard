@@ -5,13 +5,13 @@ declare(strict_types=1);
 // GUID    : {6B2F8C41-9E3A-4D6B-8F1C-5A7D9E2B4C61}
 // Verbund : NRG-Stack (DG65) - siehe https://github.com/DG65/EMS/blob/main/SUITE.md
 //
-// Phase 1: automatische Geraete-Discovery ueber die *_GetFunctions-Vertraege
+// Phase 1: automatische Geräte-Discovery über die *_GetFunctions-Verträge
 // des Verbunds. Kein Hardcoding von Variablen-IDs - genau das Problem, das
-// dieses Modul loesen soll (feste IPS View-Verknuepfungen brechen beim
-// Loeschen der referenzierten Instanz). Keine Darstellung in dieser Phase,
-// nur die Erfassung und Normalisierung der Geraeteliste.
+// dieses Modul lösen soll (feste IPS View-Verknüpfungen brechen beim
+// Löschen der referenzierten Instanz). Keine Darstellung in dieser Phase,
+// nur die Erfassung und Normalisierung der Geräteliste.
 
-// Partnermodul-GUIDs (fuer automatische Discovery). Kein Modul setzt ein
+// Partnermodul-GUIDs (für automatische Discovery). Kein Modul setzt ein
 // anderes voraus - jeder Aufruf steht hinter function_exists().
 define('NRGDASH_GUID_INVERTERHUB',    '{BBE2C593-1A91-426D-A714-29A9C7E87589}');
 define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
@@ -27,7 +27,7 @@ define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
 
 class NRGDashboardTile extends IPSModule
 {
-    // Kategorien fuer die spaetere Anordnung (Erzeugung -> Speicher ->
+    // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
     // Verteilung -> Verbraucher), siehe Phase 2. functionCategory() ordnet
     // jeden gefundenen function-Wert einer dieser vier Kategorien zu.
     private const CATEGORY_ORDER = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
@@ -49,7 +49,7 @@ class NRGDashboardTile extends IPSModule
 
     /**
      * Durchsucht alle installierten Partnerinstanzen und normalisiert deren
-     * *_GetFunctions-Vertraege auf ein gemeinsames Geraete-Schema. Ergebnis
+     * *_GetFunctions-Verträge auf ein gemeinsames Geräte-Schema. Ergebnis
      * wird gecacht (Attribut DeviceCache), damit die Kachel nicht bei jedem
      * Rendern erneut alle Instanzen abfragen muss.
      */
@@ -78,7 +78,7 @@ class NRGDashboardTile extends IPSModule
         $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
         $this->SetStatus(102);
         $this->LogMessage(
-            sprintf('NRG Dashboard: %d Geraete, %d Diagnose-Eintraege gefunden', count($devices), count($diagnostics)),
+            sprintf('NRG Dashboard: %d Geräte, %d Diagnose-Einträge gefunden', count($devices), count($diagnostics)),
             KL_MESSAGE
         );
         $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
@@ -103,7 +103,7 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Zuletzt bekannter Discovery-Stand, ohne erneut abzufragen - fuer den
+     * Zuletzt bekannter Discovery-Stand, ohne erneut abzufragen - für den
      * Konsum durch die HTML-Kachel (Phase 2).
      */
     public function GetDevices(): array
@@ -121,14 +121,14 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Diagnose-Vertraege sind bewusst NICHT ins gemeinsame Geraete-Schema
+     * Diagnose-Verträge sind bewusst NICHT ins gemeinsame Geräte-Schema
      * gemischt (normalizeEntry()/functionCategory()) - sie tragen keinen
-     * function-Wert und gehoeren fachlich zu einer eigenen Instanz statt
+     * function-Wert und gehören fachlich zu einer eigenen Instanz statt
      * einem Fluss-Icon. Erster Anbieter: IHUBMON_GetDiagnostics
      * (InverterHubMonitor, ab 0.74.0-beta.1). Jeder Eintrag ist bereits
      * generisch (type/label/level/threshold/reason + Referenzen/Werte je
      * Typ) - das Rendering in module.html iteriert type-neutral, damit ein
-     * kuenftiger zweiter Anbieter (MeterHub, HeishaMon, ...) ohne
+     * künftiger zweiter Anbieter (MeterHub, HeishaMon, ...) ohne
      * Aenderungen an dieser Stelle reinpasst, solange er demselben
      * Grundschema folgt (siehe README, Abschnitt "Diagnostik-Vertrag").
      */
@@ -156,10 +156,10 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Gemeinsamer Pfad fuer alle Partner, die dem MHUB_GetFunctions-Muster
-     * folgen (Liste von Eintraegen mit function/label/powerID/...): Instanzen
+     * Gemeinsamer Pfad für alle Partner, die dem MHUB_GetFunctions-Muster
+     * folgen (Liste von Einträgen mit function/label/powerID/...): Instanzen
      * suchen, Vertrag abrufen, jeden Eintrag um Quelle und Kategorie
-     * ergaenzen. Ohne installiertes Partnermodul bleibt die Liste leer -
+     * ergänzen. Ohne installiertes Partnermodul bleibt die Liste leer -
      * Verbund-Grundregel, kein Modul setzt ein anderes voraus.
      */
     private function discoverListContract(string $moduleGUID, string $function, string $source): array
@@ -186,7 +186,7 @@ class NRGDashboardTile extends IPSModule
     /**
      * HeishaMon weicht bewusst vom function/label-Vokabular ab
      * (Type/Caption/PowerID/EnergyID/Measured, vor der Verbund-Konvention
-     * veroeffentlicht - ein publizierter Vertrag wird nicht umbenannt). Die
+     * veröffentlicht - ein publizierter Vertrag wird nicht umbenannt). Die
      * Uebersetzung liegt auf der Konsumentenseite, hier.
      */
     private function discoverHeishaMon(): array
@@ -218,7 +218,7 @@ class NRGDashboardTile extends IPSModule
 
     /**
      * Tessie liefert ein Objekt-Vertrag (kein GetFunctions), daher eigene
-     * Uebersetzung: ein Fahrzeug wird als Geraet vom Typ 'vehicle' gefuehrt.
+     * Uebersetzung: ein Fahrzeug wird als Gerät vom Typ 'vehicle' geführt.
      */
     private function discoverTessie(): array
     {
@@ -241,11 +241,11 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Ein Eintrag im gemeinsamen Geraete-Schema der Kachel: function/label
-     * wie im Verbund ueblich, dazu Herkunft (Quellmodul) und instanceID
-     * (welche Partnerinstanz das geliefert hat - fuer Nachverfolgung bei
-     * mehreren gleichartigen Instanzen) sowie die vorlaeufige Kategorie
-     * fuer die Anordnung in Phase 2.
+     * Ein Eintrag im gemeinsamen Geräte-Schema der Kachel: function/label
+     * wie im Verbund üblich, dazu Herkunft (Quellmodul) und instanceID
+     * (welche Partnerinstanz das geliefert hat - für Nachverfolgung bei
+     * mehreren gleichartigen Instanzen) sowie die vorläufige Kategorie
+     * für die Anordnung in Phase 2.
      */
     private function normalizeEntry(array $entry, string $source, int $instanceID): array
     {
@@ -259,7 +259,7 @@ class NRGDashboardTile extends IPSModule
      * Ordnet einen function-Wert des Verbund-Vokabulars einer der vier
      * Anzeigekategorien zu (Erzeugung -> Speicher -> Verteilung ->
      * Verbraucher, siehe SUITE.md-Formular-Konvention). Unbekannte Werte
-     * fallen auf 'verbraucher' zurueck, statt zu verschwinden - lieber
+     * fallen auf 'verbraucher' zurück, statt zu verschwinden - lieber
      * falsch einsortiert als unsichtbar.
      */
     private function functionCategory(string $function): string
@@ -276,8 +276,8 @@ class NRGDashboardTile extends IPSModule
         if (isset($map[$function])) {
             return $map[$function];
         }
-        // Wallbox-Kanaele aus MeterHub (wallbox1..5) und aehnlich
-        // praefixierte Verbraucherkanaele fallen ebenfalls auf Verbraucher.
+        // Wallbox-Kanäle aus MeterHub (wallbox1..5) und ähnlich
+        // präfixierte Verbraucherkanäle fallen ebenfalls auf Verbraucher.
         return 'verbraucher';
     }
 }
