@@ -27,6 +27,43 @@ darzustellen — kein reines Fluss-Icon-plus-Zeitreihen-Layout. Betrifft vor
 allem Phase 2/3-Design: Panel-Typen generisch halten (Wert, Vergleich,
 Warnung), nicht an ein Icon-Set gebunden.
 
+## Diagnostik-Vertrag (Abstimmung mit InverterHub, in Arbeit)
+
+Empfehlung an InverterHub für `IHUB_GetDiagnostics($id)` (noch nicht gebaut,
+Antwort auf deren Anfrage vom 25.07.2026): dem bestehenden `*ID`-Suffix-Muster
+folgen (SUITE.md/MeterHub-Konvention: ein Feld mit `ID`-Suffix ist eine
+**Referenz**, die der Konsument selbst auflöst/aggregiert; ein Feld ohne
+`ID`-Suffix ist ein bereits interpretierter **Wert**). Konkret:
+
+- **Gemessene Größen als Referenz** (`powerID`/`energyImportID` o. ä.) —
+  NRGDashboard zeichnet Zeitreihen ohnehin selbst über
+  `AC_GetAggregatedValues`/`AC_GetLoggedValues` (Phase 3), ein zweiter Weg für
+  dieselben Rohdaten wäre nur ein doppelter Pfad für dasselbe Ergebnis.
+- **Berechnete Vergleichs-/Erwartungswerte als Wert, nicht als Referenz** —
+  z. B. der erwartete Ertrag aus PVF-Generatorparametern × gemessener
+  Einstrahlung ist InverterHub-Domänenwissen (`PvfModel()`), nicht aus dem
+  Archiv ableitbar; hier macht ein Nachbau bei uns keinen Sinn, das gehört in
+  den Vertrag als Wert (ggf. als kleine Zeitreihe, wenn der Verlauf und nicht
+  nur der aktuelle Stand gebraucht wird).
+- **Bewertung als Metadaten-Feld** je Diagnose-Eintrag: `level`
+  (`normal`/`auffaellig`/`kritisch`), `threshold` (Wert + Einheit, z. B. Riso
+  in kΩ), `reason` (kurzer, deutscher Text) — analog zum bereits verbund-
+  weiten Muster „Bewertung trifft der Anbieter, nie das Dashboard" (siehe
+  `level`-Diskussion bei `TIBBERGR_GetPriceCurve`, wo bewusst NICHT das
+  Dashboard/EMS die Einstufung übernimmt, sondern die Quelle mit
+  Detailwissen).
+- **Liste von Einträgen** (wie `*_GetFunctions`), auch bei nur einem Typ —
+  gleicher Grund wie überall im Verbund: spätere Aufteilung bricht die
+  Signatur nicht.
+- `contractVersion` von Anfang an, Start `'1.0'`.
+
+Kein eigenes Muster von anderen Hubs übernehmbar — MeterHub/HeishaMon liefern
+bislang nur Rohwert-Verträge, kein Diagnose-Vertrag existiert im Verbund
+bereits. `IHUB_GetDiagnostics` wäre der erste seiner Art; das Muster sollte
+dokumentiert werden (README hier + InverterHub-README), damit MeterHub/
+HeishaMon/ChargerHub sich später daran orientieren können, statt ein
+zweites Format zu erfinden.
+
 **Kernprinzip:** keine manuell verknüpften Variablen-IDs. Alle Geräte werden
 über die bestehenden `*_GetFunctions`-Verträge des Verbunds gefunden (analog
 `EMS_Discover()` im EMS-Repo) — fällt eine Instanz weg oder kommt neu dazu,
