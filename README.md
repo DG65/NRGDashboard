@@ -89,9 +89,18 @@ zweites Format zu erfinden.
 `EMS_Discover()` im EMS-Repo) — fällt eine Instanz weg oder kommt neu dazu,
 zieht das Dashboard automatisch nach.
 
-## Szenario-Vertrag (Abstimmung mit NRGSzenariorechner, in Arbeit)
+## Szenario-Vertrag (Abstimmung mit NRGSzenariorechner)
 
-Antwort auf die Anfrage von NRGSzenariorechner (25.07.2026) zu
+**Umgesetzt:** `SZR_GetAvailableScenarios()` steht (NRGSzenariorechner
+0.3.1-beta.1, `ems-integration`) — liefert je Typ `type`/`label`/`function`
+(Funktionsname ohne `SZR_`-Präfix)/`contractVersion`/`available`/`reason`.
+Ein viertes Szenario (Förderende/Solarspitzengesetz, pausiert bis zur
+Netztransparenz.de-Registrierung) erscheint hier automatisch, sobald es
+steht — kein Anpassungsbedarf bei uns. Konsum und Renderer je `type`
+(Phase 3, noch nicht gebaut — Priorität liegt aktuell auf Phase 2).
+
+Ursprüngliche Anfrage von NRGSzenariorechner (25.07.2026), zur
+Nachvollziehbarkeit stehen gelassen, zu
 `SZR_CalculateDynamicTariffScenario`/`SZR_CalculateStorageSizeScenario`/
 `SZR_CalculateParagraph14aScenario`:
 
