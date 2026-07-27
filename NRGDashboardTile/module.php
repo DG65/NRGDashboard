@@ -33,6 +33,16 @@ class NRGDashboardTile extends IPSModule
     // jeden gefundenen function-Wert einer dieser vier Kategorien zu.
     private const CATEGORY_ORDER = ['erzeugung', 'speicher', 'verteilung', 'verbraucher'];
 
+    // Darstellungs-Einstellungen 1:1 aus InverterHubTile übernommen (gleiche
+    // Namen/Defaults/Wertebereiche - Dietmars Anspruch war volle Parität zur
+    // InverterHub-Konfiguration, nicht eine reduzierte Fassung). Die
+    // Renderings-Engine in module.html ist dieselbe, diese Einstellungen
+    // greifen dort identisch (--font/--trans CSS-Variablen, FLOW_REF_W).
+    private const DEF_BACKGROUND = -1;
+    private const DEF_FONT       = 'system';
+    private const DEF_TRANSITION = 800;
+    private const DEF_FLOWREF    = 10000;
+
     public function Create()
     {
         parent::Create();
@@ -40,6 +50,10 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeString('DeviceCache', '[]');
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
+        $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
+        $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
+        $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
+        $this->RegisterPropertyInteger('FlowRefW', self::DEF_FLOWREF);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -57,6 +71,21 @@ class NRGDashboardTile extends IPSModule
         // sonst zeigt die Instanz bis zum ersten Timer-Tick keinen definierten
         // Zustand (Verbund-Konvention: Zustand sichtbar melden, nicht nur im Log).
         $this->SetStatus(102);
+    }
+
+    /**
+     * "Stil zurücksetzen" (Muster: InverterHubTile::ResetStyle()). Setzt NUR
+     * die Feldwerte der geöffneten Maske zurück, kein IPS_SetProperty +
+     * IPS_ApplyChanges - Store-Review-Regel: ein Formular-Button darf nie
+     * selbst persistieren, sonst hätte ein Fehlklick sofortige Wirkung statt
+     * erst mit "Übernehmen" bestätigt zu werden.
+     */
+    public function ResetStyle(): void
+    {
+        $this->UpdateFormField('ColorBackground', 'value', self::DEF_BACKGROUND);
+        $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
+        $this->UpdateFormField('TransitionMs', 'value', self::DEF_TRANSITION);
+        $this->UpdateFormField('FlowRefW', 'value', self::DEF_FLOWREF);
     }
 
     /**
@@ -232,7 +261,38 @@ class NRGDashboardTile extends IPSModule
             // (Verbund-Konvention: Zustand sichtbar melden). Zeitpunkt des
             // letzten erfolgreichen Discover()-Laufs, nicht des Renderns.
             'updatedAt'   => $this->ReadAttributeInteger('LastDiscoveryTs'),
+            // Darstellungs-Einstellungen (1:1 InverterHubTile-Feldnamen,
+            // module.html liest dieselben Schluessel).
+            'bg'          => $this->ColorOrEmpty($this->ReadPropertyInteger('ColorBackground')),
+            'font'        => $this->FontStack($this->ReadPropertyString('FontFamily')),
+            'transMs'     => $this->TransitionValue(),
+            'flowRefW'    => $this->FlowRefValue(),
         ];
+    }
+
+    private function ColorOrEmpty(int $color): string
+    {
+        return $color < 0 ? '' : sprintf('#%06x', $color);
+    }
+
+    private function FontStack(string $family): string
+    {
+        if ($family === 'system' || $family === '') {
+            return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        }
+        return $family;
+    }
+
+    private function FlowRefValue(): int
+    {
+        $v = (int) $this->ReadPropertyInteger('FlowRefW');
+        return ($v >= 500 && $v <= 100000) ? $v : self::DEF_FLOWREF;
+    }
+
+    private function TransitionValue(): int
+    {
+        $v = (int) $this->ReadPropertyInteger('TransitionMs');
+        return ($v >= 0 && $v <= 5000) ? $v : self::DEF_TRANSITION;
     }
 
     /**

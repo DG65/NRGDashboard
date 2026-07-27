@@ -908,6 +908,16 @@ function handleMessage(raw) {
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.updatedAt : 0);
 
+  // Darstellungs-Einstellungen (1:1 InverterHubTile-Muster, module.html:1224-1229)
+  if (d) {
+    if (d.font) document.documentElement.style.setProperty('--font', d.font);
+    if (d.bg)   document.body.style.background = d.bg;
+    if (d.transMs !== undefined && d.transMs !== null) {
+      document.documentElement.style.setProperty('--trans', (+d.transMs || 0) + 'ms');
+    }
+    if (d.flowRefW) { FLOW_REF_W = Math.max(500, +d.flowRefW); }
+  }
+
   const empty = document.getElementById('nrgdash-empty');
   const devices = (d && Array.isArray(d.devices)) ? d.devices : [];
   if (devices.length === 0) {

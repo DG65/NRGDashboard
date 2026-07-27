@@ -337,6 +337,30 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Node-Reihenfolge/-Winkel, Interaktionslosigkeit (keine Klicks/Tooltips)
   und die Inaktiv-Skalierung (Scale 44/56) waren bei uns bereits identisch
   zur Referenz — keine Änderung nötig, nur bestätigt.
+
+  **Siebte Runde (27.07.2026): Konfigurationsformular auf volle Parität
+  gebracht.** Klarstellung Dietmars: "Bewusst schlicht gehalten" war keine
+  Vorgabe, der Anspruch ist "so wie in InverterHub". Übernommen: die
+  komplette "Darstellung"-Sektion aus `InverterHubTile/form.json` 1:1 —
+  `ColorBackground` (SelectColor, −1 = Systemstandard), `FontFamily`
+  (ValidationTextBox), `TransitionMs` (NumberSpinner 0–5000ms),
+  `FlowRefW` (NumberSpinner 500–100000W) plus der Button
+  "Stil zurücksetzen" (`ResetStyle()`, nur `UpdateFormField` — Store-Review-
+  Regel, kein `IPS_SetProperty`+`ApplyChanges` im Button). `buildPayload()`
+  liefert `bg`/`font`/`transMs`/`flowRefW` jetzt genauso wie InverterHubTile,
+  `handleMessage()` wendet sie identisch an (`--font`/`--trans`-CSS-
+  Variablen, `FLOW_REF_W`-Override) — dieselbe Rendering-Engine, dieselben
+  Stellschrauben.
+  **Bewusst nicht übernommen, mit Begründung statt Auslassung:** die
+  Panels "Datenquelle"/"Manuelle Datenpunkte"/"Weitere Verbraucher" (feste
+  `SourceInstance`-Wahl, `ManualPvID`/`ManualGridID`/etc., `Consumers`-
+  Listeneditor) — das ist InverterHubTiles Bindungsmodell für GENAU EINEN
+  Wechselrichter mit optional manuell zugewiesenen Variablen. Unser Modell
+  ist strukturell ein anderes: automatische Discovery über ALLE
+  installierten Partnermodule gleichzeitig (das war der ursprüngliche
+  Auftrag — feste IPS-View-Variablen-IDs sollten genau NICHT wiederkommen).
+  Ein Pendant dazu wäre kein Darstellungs-Parität-Thema mehr, sondern eine
+  zweite, konkurrierende Konfigurationsebene zum Discovery-Mechanismus.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
