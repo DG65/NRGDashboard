@@ -190,6 +190,25 @@ class NRGDashboardTile extends IPSModule
      * eingestellt"). Bewusst NICHT die powerID - die kann sich bei manchen
      * Quellen aendern, Quelle+Instanz+Rolle+Bezeichnung ist stabiler.
      */
+    /**
+     * Normalisiert unterschiedliche function-Bezeichnungen fuer dieselbe
+     * Geraeteart auf einen gemeinsamen Schluessel (Muster: CONSUMER_TYPE_MAP
+     * in module.html, hier fuer die Dubletten-Erkennung zwischen Hub-Quellen
+     * und InverterHubTiles Uebergangs-Consumers gebraucht). ChargerHub liefert
+     * z.B. 'charger', ein manueller Tile-Eintrag 'wallbox' - beides dieselbe
+     * Kategorie.
+     */
+    private function normalizeDeviceCategory(string $function): string
+    {
+        $map = [
+            'charger' => 'wallbox', 'vehicle' => 'wallbox',
+            'wallbox1' => 'wallbox', 'wallbox2' => 'wallbox', 'wallbox3' => 'wallbox',
+            'wallbox4' => 'wallbox', 'wallbox5' => 'wallbox',
+            'hotwater' => 'boiler', 'aircon' => 'ac', 'ventilation' => 'vent', 'pool' => 'poolpump',
+        ];
+        return $map[$function] ?? $function;
+    }
+
     private function deviceKey(array $d): string
     {
         return ($d['source'] ?? '') . '|' . ($d['instanceID'] ?? 0) . '|' . ($d['function'] ?? '') . '|' . ($d['label'] ?? '');
@@ -330,17 +349,26 @@ class NRGDashboardTile extends IPSModule
 
         // IHUBTILE_GetConsumers NUR noch fuer Eintraege, die durch KEINE der
         // permanenten Quellen oben abgedeckt sind (z.B. eine manuell in der
-        // Kachel eingetragene Klimaanlage ohne eigenes Hub-Modul) - Abgleich
-        // per Label, da es keinen gemeinsamen Schluessel gibt (unterschiedliche
-        // powerIDs je Quelle). Wer sowas findet, sollte es beizeiten in die
-        // eigene "Weitere Verbraucher"-Liste dieses Moduls uebertragen, damit
-        // beim Loeschen von InverterHubTile nichts verloren geht.
+        // Kachel eingetragene Klimaanlage ohne eigenes Hub-Modul). Abgleich
+        // NICHT per Label (unzuverlaessig - z.B. traegt HeishaMon selbst
+        // "HeishaMon" als Label ein, waehrend Dietmars manueller Eintrag in
+        // InverterHubTile "Wärmepumpe" heisst - beide function=heatpump,
+        // unterschiedliches Label, live als Dublette aufgefallen). Stattdessen:
+        // ein Tile-Eintrag gilt als bereits abgedeckt, wenn ein Geraet
+        // DERSELBEN normalisierten Kategorie schon von einer echten Hub-Quelle
+        // (MeterHub/ChargerHub/HeishaMon) kommt - unabhaengig vom Label und
+        // unabhaengig davon, ob der function-Wert wortgleich ist (charger vs.
+        // wallbox meinen dieselbe Geraeteart).
         $tileConsumers = $this->discoverInverterHubTileConsumers();
-        $existingLabels = array_map(function (array $d) {
-            return mb_strtolower(trim($d['label'] ?? ''));
-        }, $devices);
+        $realHubSources = ['meterhub', 'heishamon', 'chargerhub'];
+        $coveredCategories = [];
+        foreach ($devices as $d) {
+            if (in_array($d['source'] ?? '', $realHubSources, true)) {
+                $coveredCategories[] = $this->normalizeDeviceCategory($d['function'] ?? '');
+            }
+        }
         foreach ($tileConsumers as $entry) {
-            if (!in_array(mb_strtolower(trim($entry['label'] ?? '')), $existingLabels, true)) {
+            if (!in_array($this->normalizeDeviceCategory($entry['function'] ?? ''), $coveredCategories, true)) {
                 $devices[] = $entry;
             }
         }
