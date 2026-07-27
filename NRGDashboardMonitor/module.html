@@ -204,7 +204,13 @@
             return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
           });
       chart = Highcharts.chart(el, {
-        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // alignTicks (Highcharts-Standard: true) synchronisiert die
+        // Anzahl der Gitterlinien zwischen linker und rechter Achse - dabei
+        // wird ein explizites tickInterval auf einer Achse stillschweigend
+        // ueberschrieben, damit beide Achsen gleich viele Teilstriche haben.
+        // Deshalb hier deaktiviert, sonst wirkt "1-kW-Schritte" nur, wenn es
+        // zufaellig zur rechten Achse (W/m^2) passt.
+        chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: (tab === 'solar' && d && d.sunStart)
           ? { type: 'datetime', min: d.sunStart, max: d.sunEnd }

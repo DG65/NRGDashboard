@@ -688,6 +688,15 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   **Feinschliff (27.07.2026):** linke Achse in "PV & Einstrahlung" fest auf
   1-kW-Schritte (`interval`/`tickInterval`), Liniendicke aller Kurven auf
   0,7px (statt zuvor 1px) reduziert.
+  **Echter Bug gefunden (27.07.2026):** `tickInterval: 1` griff bei
+  Highcharts trotzdem nicht (live: 1,2-kW-Schritte statt 1). Ursache:
+  Highcharts' Standardeinstellung `alignTicks` (Default `true`)
+  synchronisiert die Anzahl der Gitterlinien zwischen linker und rechter
+  Achse - dabei wird ein explizites `tickInterval` auf einer Achse
+  stillschweigend überschrieben, damit beide Achsen gleich viele
+  Teilstriche bekommen. Live in einem lokalen Testaufbau reproduziert und
+  nach dem Fix (`alignTicks: false` im Chart-Objekt) verifiziert (glatte
+  0-11-kW-Schritte, unabhängig von der rechten W/m²-Achse).
 
 ## Verwendete Verträge
 
