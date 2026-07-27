@@ -601,13 +601,25 @@ function resolveStyle(fn) {
 
 // Baut die Knotenliste aus den Geräten (das explizite 'house'-Gerät wird nie
 // als Außenknoten gezeichnet, es speist nur das Zentrum - siehe handleMessage).
+// Feste Reihenfolge wie InverterHubTiles NODE_DEFS_LEAD/NODE_DEFS_TAIL
+// (per send_message von InverterHub bestätigt, 27.07.2026): Solar, Batterie
+// zuerst, dann alle Verbraucher in ihrer Zuordnungsreihenfolge, Netz zuletzt
+// (vor einem 'Verluste'-Knoten, den wir mangels Datenquelle noch nicht
+// abbilden - siehe README). Die radiale Verteilung (ensureNodes) hängt
+// direkt von dieser Reihenfolge ab; wurde sie ignoriert, landete Netz an
+// einer völlig anderen Position als bei InverterHub (genau der gemeldete
+// Unterschied "Netz unten-rechts statt links").
+const LEAD_ORDER = ['pv', 'battery'];
+const TAIL_ORDER = ['grid'];
+
 function buildItems(devices) {
-  return devices
+  const items = devices
     .filter(d => d.function !== 'house')
     .map(d => {
       const style = resolveStyle(d.function);
       return {
         key: 'dev' + d.instanceID + '_' + d.function + '_' + (d.label || ''),
+        function: d.function,
         label: d.label || d.function,
         icon: style.icon,
         value: d.value ?? 0,
@@ -620,6 +632,11 @@ function buildItems(devices) {
         battery: !!style.battery,
       };
     });
+
+  const lead = LEAD_ORDER.map(fn => items.filter(i => i.function === fn)).flat();
+  const tail = TAIL_ORDER.map(fn => items.filter(i => i.function === fn)).flat();
+  const middle = items.filter(i => !LEAD_ORDER.includes(i.function) && !TAIL_ORDER.includes(i.function));
+  return [...lead, ...middle, ...tail];
 }
 
 function setValueText(textEl, watts, measured) {
