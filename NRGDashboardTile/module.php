@@ -40,12 +40,18 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
+        // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
+        // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
+        // Visualisierung nicht - die Kachel bleibt leer, unabhaengig von
+        // Browser/Cache (Muster: InverterHubTile::Create()/ApplyChanges()).
+        $this->SetVisualizationType(1);
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
         $this->SetTimerInterval('NRGDASH_Refresh', 5 * 60 * 1000);
+        $this->SetVisualizationType(1);
         // Baseline-Status auch VOR dem ersten Discover()-Lauf sichtbar setzen -
         // sonst zeigt die Instanz bis zum ersten Timer-Tick keinen definierten
         // Zustand (Verbund-Konvention: Zustand sichtbar melden, nicht nur im Log).
