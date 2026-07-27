@@ -431,6 +431,19 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   sollte das bei Gelegenheit in NRGDashboards eigene "Weitere Verbraucher"/
   "Manuelle Datenpunkte" übertragen, bevor InverterHubTile gelöscht wird —
   sonst verschwindet der Eintrag mit der Instanz.
+
+  **MeterHub-Bug gefunden, noch selber Tag:** Dietmar fragte, warum 5 echte
+  Zähler (4× Shelly Pro 3EM, 1× Siemens PAC2200) nicht auftauchten. Live
+  geprüft: `MHUB_GetFunctions($id)` direkt aufgerufen lieferte pro Instanz
+  anstandslos 8 Einträge — der Vertrag selbst funktioniert. Der Fehler lag
+  bei uns: `MHUB_GetFunctions` ist als `: string` deklariert und liefert ein
+  JSON-**kodiertes** Array, während z. B. `CHUB_GetFunctions` `: array`
+  direkt zurückgibt. `discoverListContract()` prüfte nur `is_array($entries)`
+  und verwarf dadurch **jedes** MeterHub-Ergebnis stillschweigend — die
+  Log-Meldung "liefert aber keine auswertbaren Geräte" war technisch korrekt,
+  aber irreführend (klang nach einem MeterHub-seitigen Problem, war aber
+  unser eigener Parsing-Fehler). Behoben: `is_string($entries)` prüfen und
+  bei Bedarf `json_decode()` anwenden, bevor der Array-Check greift.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

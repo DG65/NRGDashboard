@@ -983,6 +983,16 @@ class NRGDashboardTile extends IPSModule
         }
         foreach (IPS_GetInstanceListByModuleID($moduleGUID) as $id) {
             $entries = call_user_func($function, $id);
+            // Real gefundener Bug (27.07.2026): MHUB_GetFunctions() ist als
+            // `: string` deklariert und liefert ein JSON-kodiertes Array,
+            // waehrend z.B. CHUB_GetFunctions() `: array` direkt zurueckgibt.
+            // Der reine is_array()-Check hat dadurch JEDES MeterHub-Ergebnis
+            // stillschweigend verworfen - 5 echte Zaehler (4x Shelly Pro 3EM,
+            // 1x Siemens PAC2200) fielen komplett aus der Discovery, obwohl
+            // der Vertragsaufruf selbst einwandfrei funktionierte.
+            if (is_string($entries)) {
+                $entries = json_decode($entries, true);
+            }
             if (!is_array($entries)) {
                 continue;
             }
