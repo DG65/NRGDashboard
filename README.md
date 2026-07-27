@@ -481,6 +481,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     Einstellung beim nächsten Rendern sofort wieder verloren). Erst danach
     wird `label` durch die Nutzer-Bezeichnung ersetzt (falls gesetzt) und die
     Sichtbarkeit gefiltert.
+  **Direkt im Anschluss gefunden, echter Bug:** Live-Test des Umbenennens
+  zeigte `IPS_SetProperty(...,'DeviceVisibility',...)` scheitert mit
+  „Eigenschaft nicht gefunden". Ursache: das Formularelement hieß
+  `DeviceToggles`, registriert war aber nur die Property `DeviceVisibility`
+  (`RegisterPropertyString`) — bei einer `List` muss der Formular-`name`
+  exakt der gespeicherten Property entsprechen, sonst landen Bearbeitungen
+  (Enabled/Name) beim Speichern nirgends. Behoben: Liste in `form.json` auf
+  `"name": "DeviceVisibility"` umbenannt, Treffer-Check in
+  `injectDeviceToggleValues()` entsprechend angepasst. **Nebenbefund:**
+  Diese schon länger existierende Instanz hatte die Property
+  `DeviceVisibility` selbst noch nie registriert bekommen (bekannte
+  Symcon-Einschränkung: `RegisterPropertyX` in `Create()` wirkt bei
+  Bestandsinstanzen erst nach einem Symcon-Neustart, nicht schon durch
+  `ApplyChanges()`) — bis zum nächsten Neustart blieb das Ein-/Ausblenden
+  und Umbenennen dadurch wirkungslos (Lesezugriff über
+  `readStringProperty()` fing das ab, der Schreibzugriff beim Formular-
+  Speichern aber nicht).
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

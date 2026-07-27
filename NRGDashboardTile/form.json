@@ -36,7 +36,7 @@
         },
         {
           "type": "List",
-          "name": "DeviceToggles",
+          "name": "DeviceVisibility",
           "caption": "Geräte",
           "rowCount": 8,
           "add": false,

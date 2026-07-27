@@ -279,7 +279,7 @@ class NRGDashboardTile extends IPSModule
                 if (!is_array($el)) {
                     continue;
                 }
-                if (($el['name'] ?? '') === 'DeviceToggles') {
+                if (($el['name'] ?? '') === 'DeviceVisibility') {
                     $el['values'] = $rows;
                 }
                 if (isset($el['items']) && is_array($el['items'])) {
