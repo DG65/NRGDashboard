@@ -18,10 +18,13 @@ declare(strict_types=1);
  */
 class NRGDashboardMonitor extends IPSModule
 {
-    private const ARCHIVE_GUID    = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
-    private const PVF_GUID        = '{257DD4E8-9705-462E-89FC-56D0A1038353}';
-    private const AGG_5MIN        = 5;
-    private const WINDOW_DAYS     = 8;
+    private const ARCHIVE_GUID     = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
+    private const PVF_GUID         = '{257DD4E8-9705-462E-89FC-56D0A1038353}';
+    private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
+    private const IHUBMON_GUID     = '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}';
+    private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
+    private const AGG_5MIN         = 5;
+    private const WINDOW_DAYS      = 8;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
@@ -36,6 +39,9 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyInteger('PvPowerID', 0);
         $this->RegisterPropertyInteger('IrradianceID', 0);
         $this->RegisterPropertyInteger('PvfInstance', 0);
+        $this->RegisterPropertyInteger('BatPowerID', 0);
+        $this->RegisterPropertyInteger('SocID', 0);
+        $this->RegisterPropertyInteger('TibberInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
@@ -123,6 +129,125 @@ class NRGDashboardMonitor extends IPSModule
         $data = @IHUB_GetFunctions((int) $ids[0]);
         $pv = (int) ($data['pvPowerID'] ?? 0);
         return ($pv > 0 && IPS_VariableExists($pv)) ? $pv : 0;
+    }
+
+    /**
+     * Liefert die InverterHub-Instanz, sofern genau eine installiert ist -
+     * gemeinsame Grundlage fuer alle IHUB_GetFunctions()-basierten Zugriffe
+     * (PV/Batterie/SOC), damit die "kein Raten bei mehreren WR"-Regel an
+     * einer Stelle gilt.
+     */
+    private function singleInverterHubID(): int
+    {
+        if (!function_exists('IHUB_GetFunctions')) {
+            return 0;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(self::INVERTERHUB_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    private function BatPowerID(): int
+    {
+        $explicit = $this->readIntProperty('BatPowerID', 0);
+        if ($explicit > 0 && IPS_VariableExists($explicit)) {
+            return $explicit;
+        }
+        $ihub = $this->singleInverterHubID();
+        if ($ihub <= 0) {
+            return 0;
+        }
+        $data = @IHUB_GetFunctions($ihub);
+        $bat = (int) ($data['batPowerID'] ?? 0);
+        return ($bat > 0 && IPS_VariableExists($bat)) ? $bat : 0;
+    }
+
+    private function SocID(): int
+    {
+        $explicit = $this->readIntProperty('SocID', 0);
+        if ($explicit > 0 && IPS_VariableExists($explicit)) {
+            return $explicit;
+        }
+        $ihub = $this->singleInverterHubID();
+        if ($ihub <= 0) {
+            return 0;
+        }
+        $data = @IHUB_GetFunctions($ihub);
+        $soc = (int) ($data['socID'] ?? 0);
+        return ($soc > 0 && IPS_VariableExists($soc)) ? $soc : 0;
+    }
+
+    /**
+     * MPPT-Strang-Referenzen ueber den bereits bestehenden Diagnostik-
+     * Vertrag IHUBMON_GetDiagnostics() (Eintrag mppt_string_compare,
+     * stringPowerIDs) - kein eigener, neuer Vertrag noetig, InverterHub
+     * pflegt diese Zuordnung bereits selbst. Nur bei genau einer
+     * InverterHubMonitor-Instanz automatisch, sonst leer (kein Raten).
+     */
+    private function MpptPowerIDs(): array
+    {
+        if (!function_exists('IHUBMON_GetDiagnostics')) {
+            return [];
+        }
+        $ids = @IPS_GetInstanceListByModuleID(self::IHUBMON_GUID);
+        if (!is_array($ids) || count($ids) !== 1) {
+            return [];
+        }
+        $data = @IHUBMON_GetDiagnostics((int) $ids[0]);
+        if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
+            return [];
+        }
+        foreach ($data['entries'] as $entry) {
+            if (($entry['type'] ?? '') === 'mppt_string_compare' && isset($entry['stringPowerIDs'])) {
+                $out = [];
+                foreach ($entry['stringPowerIDs'] as $n => $vid) {
+                    if ((int) $vid > 0 && IPS_VariableExists((int) $vid)) {
+                        $out[(string) $n] = (int) $vid;
+                    }
+                }
+                return $out;
+            }
+        }
+        return [];
+    }
+
+    private function TibberInstanceID(): int
+    {
+        $cfg = $this->readIntProperty('TibberInstance', 0);
+        if ($cfg > 0 && IPS_InstanceExists($cfg)
+            && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::TIBBER_GUID) {
+            return $cfg;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(self::TIBBER_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Aktuelle Strompreiskurve (TIBBERGR_GetPriceCurve, Verbund-Vertrag) -
+     * bewusst NICHT Teil des navigierbaren Tage-Fensters: der Vertrag ist
+     * ein VORWAERTS gerichteter Verlauf (jetzt + kommende Slots), keine
+     * archivierte Zeitreihe vergangener Tage. Der Strompreis-Reiter zeigt
+     * deshalb immer die aktuelle Kurve, unabhaengig vom gewaehlten Tag im
+     * Navigations-Fenster (Verbund-Konvention: "Strompreis nur in der
+     * Tagesansicht sinnvoll").
+     */
+    private function PriceCurve(): array
+    {
+        $id = $this->TibberInstanceID();
+        if ($id <= 0 || !function_exists('TIBBERGR_GetPriceCurve')) {
+            return [];
+        }
+        $curve = @TIBBERGR_GetPriceCurve($id);
+        if (!is_array($curve)) {
+            return [];
+        }
+        $out = [];
+        foreach ($curve as $slot) {
+            if (!isset($slot['start'], $slot['end'], $slot['price'])) {
+                continue;
+            }
+            $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000, round((float) $slot['price'], 2)];
+        }
+        return $out;
     }
 
     private function PvfInstanceID(): int
@@ -264,6 +389,9 @@ class NRGDashboardMonitor extends IPSModule
         $aid = $this->ArchiveID();
         $pvID = $this->PvPowerID();
         $irrID = $this->readIntProperty('IrradianceID', 0);
+        $batID = $this->BatPowerID();
+        $socID = $this->SocID();
+        $mppt = $this->MpptPowerIDs();
         $model = $this->PvfModel();
 
         $days = [];
@@ -273,6 +401,15 @@ class NRGDashboardMonitor extends IPSModule
 
             $pv  = $aid > 0 ? $this->DaySeries($aid, $pvID, $start, $end) : [];
             $irr = $aid > 0 ? $this->DaySeries($aid, $irrID, $start, $end) : [];
+            $bat = $aid > 0 ? $this->DaySeries($aid, $batID, $start, $end) : [];
+            // SOC-Rauschen glaetten (Muster: InverterHubMonitor::SmoothPoints,
+            // Fenster 15) - nur fuer die eigene Anzeige, kein Diagnostik-Wert.
+            $soc = $aid > 0 ? $this->SmoothPoints($this->DaySeries($aid, $socID, $start, $end), 15) : [];
+
+            $mpptSeries = [];
+            foreach ($mppt as $n => $vid) {
+                $mpptSeries[$n] = $aid > 0 ? $this->DaySeries($aid, $vid, $start, $end) : [];
+            }
 
             $expected = [];
             if ($model !== null && count($irr) > 0) {
@@ -286,13 +423,21 @@ class NRGDashboardMonitor extends IPSModule
                 }
             }
 
+            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0;
+            foreach ($mpptSeries as $s) {
+                $hasData = $hasData || count($s) > 0;
+            }
+
             $days[] = [
                 'id'       => date('Y-m-d', $start),
                 'label'    => date('d.m.Y', $start),
-                'hasData'  => count($pv) > 0 || count($irr) > 0,
+                'hasData'  => $hasData,
                 'pv'       => $pv,
                 'irr'      => $irr,
                 'expected' => $expected,
+                'bat'      => $bat,
+                'soc'      => $soc,
+                'mppt'     => $mpptSeries,
             ];
         }
 
@@ -301,10 +446,41 @@ class NRGDashboardMonitor extends IPSModule
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
+            'hasBat'   => $batID > 0,
+            'hasSoc'   => $socID > 0,
+            'mpptKeys' => array_keys($mppt),
+            'price'    => $this->PriceCurve(),
             'days'     => $days,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
         ];
+    }
+
+    /**
+     * Zentrierter gleitender Mittelwert ueber $win Punkte - Muster:
+     * InverterHubMonitor::SmoothPoints() (glaettet BMS-Rauschen, z.B. SOC).
+     * Zeitstempel bleiben erhalten.
+     */
+    private function SmoothPoints(array $pts, int $win): array
+    {
+        $n = count($pts);
+        if ($n < 3 || $win < 2) {
+            return $pts;
+        }
+        $half = intdiv($win, 2);
+        $out = [];
+        for ($i = 0; $i < $n; $i++) {
+            $lo = max(0, $i - $half);
+            $hi = min($n - 1, $i + $half);
+            $sum = 0.0;
+            $c = 0;
+            for ($j = $lo; $j <= $hi; $j++) {
+                $sum += $pts[$j][1];
+                $c++;
+            }
+            $out[] = [$pts[$i][0], round($sum / $c, 1)];
+        }
+        return $out;
     }
 }

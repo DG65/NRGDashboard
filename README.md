@@ -623,10 +623,34 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   - Datumssteuerung/Optik folgt der Verbund-Konvention aus InverterHubs
     `CLAUDE.md` ("Kacheln mit Datumssteuerung bedienen sich identisch"):
     Ansicht-Auswahl · ◀ · Datumsfeld · ▶ · Schnellwahl, gleiche CSS-Klassen.
-  - Restliches Konzept (Strompreis-Reiter nur Tagesansicht, Counter-
-    Erkennung lifetime/dayReset, Vorzeichen-Konventionen `meter_total`)
-    bleibt für die nächsten Ausbaustufen dokumentiert, siehe Übergabe-
-    Nachricht von InverterHub (27.07.2026) - noch nicht umgesetzt.
+  **Alle vier Reiter fertiggestellt, noch selber Tag (Dietmars Wunsch: „alles
+  auf einen Rutsch" statt Runde für Runde):**
+  - **MPP-Tracker:** Stränge über den bereits bestehenden Diagnostik-Vertrag
+    `IHUBMON_GetDiagnostics()` (Eintrag `mppt_string_compare`,
+    `stringPowerIDs`) - bewusst KEIN neuer Vertrag, InverterHub pflegt diese
+    Zuordnung schon selbst. Nur bei genau einer InverterHubMonitor-Instanz
+    automatisch (kein Raten bei mehreren).
+  - **Batterie:** Leistung + SOC über `IHUB_GetFunctions()`
+    (`batPowerID`/`socID`), gleiches Ein-Instanz-Muster wie bei PV. SOC
+    geglättet über einen zentrierten gleitenden Mittelwert (Fenster 15,
+    Muster `InverterHubMonitor::SmoothPoints()`) - reine Anzeigeglättung,
+    kein Diagnostik-Wert.
+  - **Strompreis:** `TIBBERGR_GetPriceCurve()` (Verbund-Vertrag, optionale
+    Instanzwahl analog `PvfInstanceID()`). Bewusst NICHT Teil des
+    navigierbaren Tage-Fensters - der Vertrag ist ein VORWÄRTS gerichteter
+    Verlauf (jetzt + kommende Slots), keine archivierte Zeitreihe
+    vergangener Tage. Die Tagesnavigation wird auf diesem Reiter daher ganz
+    ausgeblendet (nicht nur inaktiv) statt einen wirkungslosen Tages-Regler
+    zu zeigen; die Kurve wird als Treppenlinie dargestellt (`step`), da sie
+    aus Intervallen (`start`/`end`/`price`) statt gleichmäßigen Messpunkten
+    besteht.
+  - **Bewusst zurückgestellt** (nicht Teil dieser Runde, siehe Übergabe-
+    Nachricht von InverterHub 27.07.2026): die Ansichten Woche/Monat/Jahr/
+    Gesamt (Energie-Balken statt Leistungslinie, Counter-Erkennung
+    lifetime/dayReset, `SlotEnergyBars` für Netzbezug-Balken) - deutlich
+    größerer eigener Baustein (5-Jahres-Archivdurchlauf je Serie,
+    Zählertyp-Erkennung), der eine eigene Runde verdient statt in dieser
+    mitzulaufen.
 
 ## Verwendete Verträge
 

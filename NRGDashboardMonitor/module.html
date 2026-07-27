@@ -45,9 +45,9 @@
     <div id="body">
       <div id="tabs">
         <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
-        <button class="tab" disabled title="Folgt in einer späteren Runde">MPP-Tracker</button>
-        <button class="tab" disabled title="Folgt in einer späteren Runde">Batterie</button>
-        <button class="tab" disabled title="Folgt in einer späteren Runde">Strompreis</button>
+        <button class="tab" data-tab="mpp">MPP-Tracker</button>
+        <button class="tab" data-tab="battery">Batterie</button>
+        <button class="tab" data-tab="price">Strompreis</button>
       </div>
       <div id="chartcol"><div id="chart"></div></div>
     </div>
@@ -55,8 +55,9 @@
 
   <script>/*__ECHARTS_JS__*/</script>
   <script>
-    var lastData = null, chart = null, chartEngine = null, idx = 0;
+    var lastData = null, chart = null, chartEngine = null, idx = 0, curTab = 'solar';
     var libs = { hc: 0 };
+    var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
 
     // Highcharts wird bewusst wie in der aktuell installierten InverterHub-
     // Kachel behandelt: vom CDN nachgeladen, NICHT eingebettet (Lizenz - eine
@@ -78,6 +79,14 @@
 
     function syncNav() {
       var days = (lastData && lastData.days) || [];
+      // Strompreis ist ein VORWAERTS gerichteter Vertrag (TIBBERGR_GetPriceCurve),
+      // keine archivierte Tages-Zeitreihe - die Tagesnavigation ist dort
+      // sinnlos (Verbund-Konvention: "Strompreis nur in der Tagesansicht
+      // sinnvoll", hier zusaetzlich ganz ausgeblendet statt nur inaktiv).
+      var isPrice = (curTab === 'price');
+      document.getElementById('bar').style.visibility = isPrice ? 'hidden' : 'visible';
+      if (isPrice) { return; }
+
       document.getElementById('prev').disabled = (idx >= days.length - 1);
       document.getElementById('next').disabled = (idx <= 0);
       var d = days[idx];
@@ -108,10 +117,24 @@
       var el = document.getElementById('chart'); if (el) { el.innerHTML = ''; }
     }
 
-    function buildSeries(d) {
-      var series = [
-        { name: 'PV-Erzeugung', data: d.pv, axis: 0, color: '#e53935', dashed: false },
-      ];
+    // Je Reiter: Serien + Achsenbeschriftungen. "right"=true nutzt die rechte
+    // Achse (nur bei zwei verschiedenen Einheiten in einem Reiter noetig).
+    function buildSeries(tab, d) {
+      if (tab === 'mpp') {
+        var keys = lastData.mpptKeys || [];
+        return keys.map(function (k, i) {
+          return { name: 'MPPT ' + k, data: (d.mppt && d.mppt[k]) || [], axis: 0, color: MPPT_COLORS[i % MPPT_COLORS.length], dashed: false };
+        });
+      }
+      if (tab === 'battery') {
+        var series = [{ name: 'Batterie-Leistung', data: d.bat, axis: 0, color: '#43a047', dashed: false }];
+        if (lastData.hasSoc) {
+          series.push({ name: 'Batterie-SOC', data: d.soc, axis: 1, color: '#9575cd', dashed: false });
+        }
+        return series;
+      }
+      // solar (Standard)
+      var series = [{ name: 'PV-Erzeugung', data: d.pv, axis: 0, color: '#e53935', dashed: false }];
       if (lastData.hasIrr) {
         series.push({ name: 'Einstrahlung', data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
       }
@@ -121,40 +144,68 @@
       return series;
     }
 
-    function renderECharts(el, d) {
+    function axisConfig(tab) {
+      if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false }; }
+      if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc }; }
+      return { leftName: 'W', rightName: 'W/m²', showRight: !!lastData.hasIrr };
+    }
+
+    // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
+    // Punkte wie die anderen Reiter) als Treppenlinie: je Intervall Start-
+    // und End-Zeitpunkt mit demselben Preis, damit die Stufe sichtbar wird.
+    function priceStepPoints() {
+      var out = [];
+      (lastData.price || []).forEach(function (slot) {
+        out.push([slot[0], slot[2]]);
+        out.push([slot[1], slot[2]]);
+      });
+      return out;
+    }
+
+    function renderECharts(el, tab, d) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
-      var series = buildSeries(d).map(function (s) {
-        return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: s.dashed ? { type: 'dashed' } : {} };
-      });
+      var ax = axisConfig(tab);
+      var series = (tab === 'price')
+        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300' }]
+        : buildSeries(tab, d).map(function (s) {
+            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: s.dashed ? { type: 'dashed' } : {} };
+          });
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: lastData.hasIrr ? 46 : 12, top: 28, bottom: 28 },
+        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 28 },
         legend: { bottom: 0, textStyle: { color: '#9aa4b0' } },
         tooltip: { trigger: 'axis' },
         xAxis: { type: 'time' },
-        yAxis: [
-          { type: 'value', name: 'W', position: 'left' },
-          { type: 'value', name: 'W/m²', position: 'right', show: !!lastData.hasIrr }
-        ],
+        yAxis: (tab === 'price')
+          ? [{ type: 'value', name: 'ct/kWh' }]
+          : [
+              { type: 'value', name: ax.leftName, position: 'left' },
+              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight }
+            ],
         series: series
-      });
+      }, true);
     }
 
-    function renderHighcharts(el, d) {
+    function renderHighcharts(el, tab, d) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
-      var series = buildSeries(d).map(function (s) {
-        return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
-      });
+      var ax = axisConfig(tab);
+      var series = (tab === 'price')
+        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', marker: { enabled: false } }]
+        : buildSeries(tab, d).map(function (s) {
+            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+          });
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: { type: 'datetime' },
-        yAxis: [
-          { title: { text: 'W' } },
-          { title: { text: 'W/m²' }, opposite: true, visible: !!lastData.hasIrr }
-        ],
+        yAxis: (tab === 'price')
+          ? [{ title: { text: 'ct/kWh' } }]
+          : [
+              { title: { text: ax.leftName } },
+              { title: { text: ax.rightName }, opposite: true, visible: ax.showRight }
+            ],
         legend: { enabled: true },
         credits: { enabled: false },
         series: series
@@ -164,9 +215,38 @@
 
     function render() {
       syncNav();
+      var el = document.getElementById('chart');
+
+      if (curTab === 'price') {
+        if (!lastData.price || !lastData.price.length) {
+          destroyChart();
+          el.innerHTML = '<div class="empty">Keine Preiskurve verfügbar - Tibber Grid Rewards-Instanz wählen oder installieren</div>';
+          return;
+        }
+        var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+        if (wantEngine === 'highcharts') {
+          ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, 'price', null); });
+        } else {
+          el.innerHTML = '';
+          renderECharts(el, 'price', null);
+          setTimeout(sizeChart, 60);
+        }
+        return;
+      }
+
+      if (curTab === 'mpp' && (!lastData.mpptKeys || !lastData.mpptKeys.length)) {
+        destroyChart();
+        el.innerHTML = '<div class="empty">Keine MPPT-Stränge gefunden - InverterHubMonitor-Instanz mit Diagnose-Daten installieren</div>';
+        return;
+      }
+      if (curTab === 'battery' && !lastData.hasBat && !lastData.hasSoc) {
+        destroyChart();
+        el.innerHTML = '<div class="empty">Keine Batterie-Variable gefunden - im Formular „Datenquelle“ wählen oder InverterHub installieren</div>';
+        return;
+      }
+
       var days = (lastData && lastData.days) || [];
       var d = days[idx];
-      var el = document.getElementById('chart');
       if (!d || !d.hasData) {
         destroyChart();
         el.innerHTML = '<div class="empty">Keine Archivdaten für diesen Tag</div>';
@@ -174,10 +254,10 @@
       }
       var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
       if (wantEngine === 'highcharts') {
-        ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, d); });
+        ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, curTab, d); });
       } else {
         el.innerHTML = '';
-        renderECharts(el, d);
+        renderECharts(el, curTab, d);
         setTimeout(sizeChart, 60);
       }
     }
@@ -202,6 +282,14 @@
       var i = days.findIndex(function (d) { return d.id === e.target.value; });
       if (i >= 0) { idx = i; render(); }
     };
+    Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
+      btn.onclick = function () {
+        if (btn.disabled) { return; }
+        curTab = btn.getAttribute('data-tab');
+        Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) { b.classList.toggle('active', b === btn); });
+        render();
+      };
+    });
     window.addEventListener('resize', function () { if (chart) { setTimeout(sizeChart, 60); } });
   </script>
 </body>
