@@ -62,10 +62,13 @@
      zeigt die Details erst bei Klick/Hover, um in der engen Kachel keinen
      Platz zu verbrauchen, solange alles unauffaellig ist. */
   .diag-badge {
-    position: absolute; right: 4px; top: 4px; z-index: 3;
+    /* Rechts UNTEN statt oben (Dietmar, 27.07.2026) - oben rechts lag das
+       Badge direkt unter dem WebFront-Doppelpfeil zum Vollbild-Umschalten
+       und war dadurch nicht klickbar. */
+    position: absolute; right: 4px; bottom: 4px; z-index: 3;
     display: none; align-items: center; gap: 6px;
-    height: 24px; padding: 0 10px;
-    border-radius: 12px; cursor: pointer;
+    height: 26px; padding: 0 10px;
+    border-radius: 13px; cursor: pointer;
     background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
     border: 1px solid rgba(255,255,255,0.10);
     font-family: var(--font); font-size: 12px; font-weight: 600;
@@ -76,7 +79,9 @@
   .diag-badge.level-auffaellig .diag-dot { background: #c9a227; }
   .diag-badge.level-kritisch .diag-dot { background: #c33; }
   .diag-panel {
-    position: absolute; right: 4px; top: 32px; z-index: 3;
+    /* Oeffnet nach OBEN vom Badge aus (bottom statt top), da das Badge
+       jetzt selbst unten sitzt. */
+    position: absolute; right: 4px; bottom: 34px; z-index: 3;
     display: none; min-width: 220px; max-width: 280px;
     padding: 8px 10px; border-radius: 10px;
     background: linear-gradient(180deg, rgba(60,64,72,0.96), rgba(28,30,36,0.96));

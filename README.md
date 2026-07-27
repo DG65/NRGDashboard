@@ -555,6 +555,11 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   beim Speichern fiel der Schlüssel weg, `deviceOverrideMap()` konnte die
   gespeicherte Bezeichnung keiner Zeile mehr zuordnen und verwarf sie
   beim nächsten Formular-Öffnen. Behoben: `"save": true` bei `Key` ergänzt.
+  **Sechzehnte Runde (27.07.2026): Diagnose-Badge unklickbar.** Das Badge
+  oben rechts lag exakt unter dem WebFront-Doppelpfeil zum Vollbild-
+  Umschalten und war dadurch nicht anklickbar. Verschoben nach rechts
+  unten (analog zum Status-Overlay links unten), Detail-Panel öffnet jetzt
+  nach oben statt nach unten.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
