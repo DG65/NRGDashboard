@@ -283,6 +283,20 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   InverterHub-Property, kein Vertragsfeld, daher fragil. Rückmeldung mit
   Beweis an InverterHub raus; Zielzustand bleibt ein bereits korrigierter
   `gridPowerID`, dann entfällt der Workaround wieder.
+
+  **Workaround wieder entfernt (27.07.2026, noch selber Tag):** InverterHub
+  fand den eigentlichen Bug (Commit `96349f1`) — `MeterInvert` wird bereits
+  beim SCHREIBEN von `gridPowerID` angewendet (kanonisch, wie ursprünglich
+  zugesichert); ihre eigene Kachel hatte einen Doppel-Invert-Bug (Property
+  zusätzlich beim Lesen nochmal angewendet), der sich durch die zweite
+  Inversion "zufällig" richtig anfühlte. Unser `MeterInvert`-Workaround
+  hätte auf dem jetzt korrigierten Stand GENAU DENSELBEN Doppel-Invert-Fehler
+  bei uns reproduziert — eine zweite Korrektur auf einem bereits korrigierten
+  Wert. Deshalb sofort wieder entfernt, `gridPowerID` wird jetzt unverändert
+  gelesen. Bleibt eine Restdiskrepanz an Dietmars konkreter Instanz (#52838):
+  dort steht `MeterInvert` laut InverterHub inhaltlich falsch — ein
+  Konfigurationsfehler auf ihrer Seite, kein erneuter Vertragsbruch; liegt
+  außerhalb unserer Zuständigkeit.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

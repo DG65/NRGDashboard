@@ -219,16 +219,7 @@ class NRGDashboardTile extends IPSModule
     private function resolvePowerValue(array $device): ?float
     {
         $id = $device['powerID'] ?? 0;
-        if ($id <= 0) {
-            return null;
-        }
-        $value = $this->resolveVariableValue($id);
-        if ($value === null) {
-            return null;
-        }
-        // Provisorischer Vorzeichen-Ausgleich (siehe discoverInverterHub) -
-        // bei allen anderen Quellen ist 'sign' nicht gesetzt und wirkt als 1.
-        return $value * ($device['sign'] ?? 1);
+        return $id > 0 ? $this->resolveVariableValue($id) : null;
     }
 
     private function resolveVariableValue(int $id): ?float
@@ -352,26 +343,26 @@ class NRGDashboardTile extends IPSModule
             // Knoten denselben Instanznamen ("InverterHub WR1 (GoodWe)") trug
             // statt seiner Rolle.
             //
-            // PROVISORISCHER Workaround (27.07.2026, live belegt): InverterHub
-            // hatte zugesichert, gridPowerID sei IMMER bereits kanonisch
-            // (+Einspeisung/-Bezug), unabhaengig von der Instanz-Property
-            // MeterInvert (die nur die physische Verkabelung korrigiere). Live
-            // an Dietmars WR1-Instanz widerlegt: MeterInvert=true, aber der
-            // rohe gridPowerID-Wert war trotzdem NICHT korrigiert (-5636 W
-            // bei tatsaechlichem Export, waehrend InverterHubTile fuer
-            // dieselbe Anlage zeitgleich gruen/Export zeigte). Bis das auf
-            // InverterHub-Seite geklaert/gefixt ist, gleichen wir selbst aus -
-            // Property-Name ist Interna, kein Vertragsfeld, daher nur mit
-            // defensivem Rueckfall (Property fehlt -> keine Korrektur).
-            $config = json_decode(IPS_GetConfiguration($id), true);
-            $gridSign = (is_array($config) && !empty($config['MeterInvert'])) ? -1 : 1;
-
+            // Workaround vom 27.07.2026 wieder ENTFERNT (nicht nur zurueckgesetzt -
+            // siehe Git-Historie fuer den Code): InverterHub hat den eigentlichen
+            // Bug gefunden (Commit 96349f1) - MeterInvert wird bereits beim
+            // SCHREIBEN von gridPowerID angewendet (kanonisch, wie urspruenglich
+            // zugesichert); ihre eigene Kachel hatte einen Doppel-Invert-Bug
+            // (Property zusaetzlich beim Lesen nochmal angewendet), der sich
+            // durch die zweite Inversion "zufaellig" richtig anfuehlte. Unser
+            // MeterInvert-Workaround haette auf dem jetzt korrigierten Stand
+            // GENAU DENSELBEN Doppel-Invert-Fehler bei uns reproduziert - eine
+            // zweite Korrektur auf einem bereits korrigierten Wert. Bleibt eine
+            // Diskrepanz an Dietmars konkreter Instanz (#52838): dort steht
+            // MeterInvert laut InverterHub inhaltlich falsch (Konfigurationsfehler,
+            // kein Vertragsbruch) - das faellt in deren Zustaendigkeit, nicht
+            // unsere; wir lesen gridPowerID ab jetzt wieder unveraendert.
             $map = [
-                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0, 1],
-                'battery' => ['Batterie', $data['batPowerID']  ?? 0, 1],
-                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0, $gridSign],
+                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0],
+                'battery' => ['Batterie', $data['batPowerID']  ?? 0],
+                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0],
             ];
-            foreach ($map as $function => [$label, $powerID, $sign]) {
+            foreach ($map as $function => [$label, $powerID]) {
                 if (!$powerID) {
                     continue;
                 }
@@ -380,7 +371,6 @@ class NRGDashboardTile extends IPSModule
                     'label'    => $label,
                     'powerID'  => $powerID,
                     'measured' => $measured,
-                    'sign'     => $sign,
                 ];
                 if ($function === 'battery' && !empty($data['socID'])) {
                     $entry['socID'] = $data['socID'];
