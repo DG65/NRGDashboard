@@ -996,6 +996,17 @@ class NRGDashboardTile extends IPSModule
             if (!is_array($entries)) {
                 continue;
             }
+            // Zweiter Struktur-Unterschied, direkt danach live entdeckt:
+            // MHUB_GetFunctions ist ein OBJEKT-Vertrag (Instanz-Metadaten wie
+            // 'meter'/'measureMode' plus ein 'assignments'-Array mit den
+            // eigentlichen Eintraegen), waehrend z.B. CHUB_GetFunctions eine
+            // FLACHE Liste direkt zurueckgibt. Ein reiner is_array()-Check
+            // reicht nicht - ohne diesen Zweig waeren alle 'meter'/'measureMode'-
+            // Metadatenfelder faelschlich als Eintraege durchgereicht worden
+            // (und htten kein 'function'-Feld, wie unten geprueft).
+            if (isset($entries['assignments']) && is_array($entries['assignments'])) {
+                $entries = $entries['assignments'];
+            }
             foreach ($entries as $entry) {
                 if (!is_array($entry) || !isset($entry['function'])) {
                     continue;

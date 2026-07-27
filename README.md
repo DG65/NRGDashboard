@@ -444,6 +444,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   aber irreführend (klang nach einem MeterHub-seitigen Problem, war aber
   unser eigener Parsing-Fehler). Behoben: `is_string($entries)` prüfen und
   bei Bedarf `json_decode()` anwenden, bevor der Array-Check greift.
+
+  **Zweiter Strukturfehler, direkt im Anschluss gefunden:** Selbst nach dem
+  JSON-Fix blieb die Meldung bestehen. Live-Vergleich aller 6 MeterHub-
+  Instanzen zeigte: `MHUB_GetFunctions` ist ein **Objekt**-Vertrag
+  (Instanz-Metadaten wie `meter`/`measureMode`/`latency`/`authority` PLUS ein
+  `assignments`-Array mit den eigentlichen Zuordnungen), kein flacher
+  Listen-Vertrag wie `CHUB_GetFunctions`. `discoverListContract()` behandelte
+  bisher das ganze Objekt faelschlich als Liste. Behoben: `assignments`
+  gezielt herausziehen, wenn vorhanden. **Wichtige Nebenerkenntnis dabei:**
+  von den 6 MeterHub-Instanzen hat nur "Netzanschluß - Inexogy" tatsächlich
+  eine konfigurierte Funktionszuordnung (1 Eintrag) — die 4 Shelly Pro 3EM
+  und der Siemens PAC2200 haben `assignments: []` (leer). Das ist eine
+  **echte Konfigurationslücke bei MeterHub selbst** (dort muss je Zähler
+  eine Funktion wie `grid`/`house`/`wallboxN` zugeordnet werden, bevor er in
+  `GetFunctions()` erscheint), keine Lücke bei uns — unser Fix behebt nur,
+  dass eine VORHANDENE Zuordnung (wie bei Inexogy) jetzt tatsächlich
+  ankommt.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
