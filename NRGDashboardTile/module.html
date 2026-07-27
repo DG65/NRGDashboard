@@ -40,9 +40,18 @@
 
   #nrgdash-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
-  #nrgdash-diagnostics { position: absolute; left: 4px; right: 4px; bottom: 4px; font-size: 11px; max-height: 22%; overflow-y: auto; }
+  #nrgdash-diagnostics { position: absolute; left: 4px; right: 4px; bottom: 20px; font-size: 11px; max-height: 22%; overflow-y: auto; }
   #nrgdash-diagnostics ul { list-style: none; }
   #nrgdash-diagnostics li { padding: 1px 0; }
+
+  /* Sichtbarer Aktualisierungsstand (Ampel + Zeitstempel) - Verbund-
+     Konvention "Zustand sichtbar melden, nicht nur im Log". Grau/veraltet,
+     wenn der letzte Discover()-Lauf länger als zwei Aktualisierungsintervalle
+     zurückliegt (Timer steht bei 5 Minuten, siehe module.php). */
+  #nrgdash-status { position: absolute; left: 4px; bottom: 2px; font-size: 10px; opacity: .65; display: flex; align-items: center; gap: 4px; }
+  #nrgdash-status .dot { width: 6px; height: 6px; border-radius: 50%; background: #999; }
+  #nrgdash-status.fresh .dot { background: #3a3; }
+  #nrgdash-status.stale .dot { background: #c90; }
 </style>
 
 <svg class="flow-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
@@ -51,6 +60,7 @@
 </svg>
 <div id="nrgdash-empty" style="display:none;">Keine Geräte gefunden - NRGDASH_Discover() ausführen.</div>
 <div id="nrgdash-diagnostics"></div>
+<div id="nrgdash-status"><span class="dot"></span><span id="nrgdash-status-text">–</span></div>
 
 <script>
 var CX = 200, CY = 200;
@@ -255,8 +265,28 @@ function renderDiagnostics(entries) {
   root.innerHTML = html;
 }
 
+// Aktualisierungsstand: 'fresh' innerhalb von zwei Timer-Intervallen
+// (Timer = 5 Minuten, siehe ApplyChanges() in module.php), sonst 'stale' -
+// erkennt sowohl einen inaktiven Timer als auch eine hängende Instanz,
+// ohne dass der Nutzer ins Log schauen muss.
+function renderStatus(updatedAtSec) {
+  var el = document.getElementById('nrgdash-status');
+  var text = document.getElementById('nrgdash-status-text');
+  if (!updatedAtSec) {
+    el.className = '';
+    text.textContent = 'noch nicht aktualisiert';
+    return;
+  }
+  var ageSec = (Date.now() / 1000) - updatedAtSec;
+  el.className = ageSec < 2 * 5 * 60 ? 'fresh' : 'stale';
+  var d = new Date(updatedAtSec * 1000);
+  var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+  text.textContent = 'aktualisiert ' + hh + ':' + mm + (el.className === 'stale' ? ' (veraltet)' : '');
+}
+
 function handleMessage(raw) {
   var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  renderStatus(d ? d.updatedAt : 0);
   var empty = document.getElementById('nrgdash-empty');
   if (!d || !d.ok || !Array.isArray(d.devices) || d.devices.length === 0) {
     empty.style.display = 'flex';

@@ -38,6 +38,7 @@ class NRGDashboardTile extends IPSModule
 
         $this->RegisterAttributeString('DeviceCache', '[]');
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
+        $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
     }
 
@@ -45,6 +46,10 @@ class NRGDashboardTile extends IPSModule
     {
         parent::ApplyChanges();
         $this->SetTimerInterval('NRGDASH_Refresh', 5 * 60 * 1000);
+        // Baseline-Status auch VOR dem ersten Discover()-Lauf sichtbar setzen -
+        // sonst zeigt die Instanz bis zum ersten Timer-Tick keinen definierten
+        // Zustand (Verbund-Konvention: Zustand sichtbar melden, nicht nur im Log).
+        $this->SetStatus(102);
     }
 
     /**
@@ -76,6 +81,7 @@ class NRGDashboardTile extends IPSModule
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
         $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
+        $this->WriteAttributeInteger('LastDiscoveryTs', time());
         $this->SetStatus(102);
         $this->LogMessage(
             sprintf('NRG Dashboard: %d Geräte, %d Diagnose-Einträge gefunden', count($devices), count($diagnostics)),
@@ -112,6 +118,10 @@ class NRGDashboardTile extends IPSModule
             'ok'          => true,
             'devices'     => $devices,
             'diagnostics' => $this->GetDiagnostics(),
+            // Sichtbarer Aktualisierungsstand fuer den Nutzer, ohne Log-Zugriff
+            // (Verbund-Konvention: Zustand sichtbar melden). Zeitpunkt des
+            // letzten erfolgreichen Discover()-Laufs, nicht des Renderns.
+            'updatedAt'   => $this->ReadAttributeInteger('LastDiscoveryTs'),
         ];
     }
 
