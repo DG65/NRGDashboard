@@ -352,6 +352,12 @@ class NRGDashboardTile extends IPSModule
         return is_string($v) ? $v : $default;
     }
 
+    private function readBoolProperty(string $name, bool $default = false): bool
+    {
+        $v = @$this->ReadPropertyBoolean($name);
+        return is_bool($v) ? $v : $default;
+    }
+
     private function ColorOrEmpty(int $color): string
     {
         return $color < 0 ? '' : sprintf('#%06x', $color);
@@ -681,33 +687,33 @@ class NRGDashboardTile extends IPSModule
     private function discoverManualCore(): array
     {
         $results = [];
-        $pv = $this->ReadPropertyInteger('ManualPvID');
+        $pv = $this->readIntProperty('ManualPvID', 0);
         if ($pv > 0) {
             $results[] = $this->normalizeEntry([
                 'function' => 'pv', 'label' => 'Solar', 'powerID' => $pv, 'measured' => true,
             ], 'manual', 0);
         }
-        $grid = $this->ReadPropertyInteger('ManualGridID');
+        $grid = $this->readIntProperty('ManualGridID', 0);
         if ($grid > 0) {
             $entry = [
                 'function' => 'grid', 'label' => 'Netz', 'powerID' => $grid, 'measured' => true,
-                'invert'   => $this->ReadPropertyBoolean('ManualGridInvert'),
+                'invert'   => $this->readBoolProperty('ManualGridInvert'),
             ];
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
-        $bat = $this->ReadPropertyInteger('ManualBatID');
+        $bat = $this->readIntProperty('ManualBatID', 0);
         if ($bat > 0) {
             $entry = [
                 'function' => 'battery', 'label' => 'Batterie', 'powerID' => $bat, 'measured' => true,
-                'invert'   => $this->ReadPropertyBoolean('ManualBatInvert'),
+                'invert'   => $this->readBoolProperty('ManualBatInvert'),
             ];
-            $soc = $this->ReadPropertyInteger('ManualSocID');
+            $soc = $this->readIntProperty('ManualSocID', 0);
             if ($soc > 0) {
                 $entry['socID'] = $soc;
             }
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
-        $house = $this->ReadPropertyInteger('ManualHouseID');
+        $house = $this->readIntProperty('ManualHouseID', 0);
         if ($house > 0) {
             $results[] = $this->normalizeEntry([
                 'function' => 'house', 'label' => 'Haus', 'powerID' => $house, 'measured' => true,
@@ -727,7 +733,7 @@ class NRGDashboardTile extends IPSModule
     private function discoverManualConsumers(): array
     {
         $results = [];
-        $rows = json_decode($this->ReadPropertyString('Consumers'), true);
+        $rows = json_decode($this->readStringProperty('Consumers', '[]'), true);
         if (!is_array($rows)) {
             return $results;
         }
