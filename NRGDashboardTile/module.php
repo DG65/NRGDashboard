@@ -215,6 +215,13 @@ class NRGDashboardTile extends IPSModule
             if (!empty($d['socID'])) {
                 $d['soc'] = $this->resolveVariableValue((int) $d['socID']);
             }
+            // Wallbox-Sonderfall (InverterHub, 27.07.2026): "eingesteckt aber
+            // nicht ladend" (0 W) gilt trotzdem als aktiv/volle Farbe, nicht
+            // ausgegraut. plugStateID kommt unveraendert aus CHUB_GetFunctions
+            // durch (normalizeEntry() entfernt keine Felder).
+            if (!empty($d['plugStateID'])) {
+                $d['plugged'] = (bool) $this->resolveVariableValue((int) $d['plugStateID']);
+            }
             return $d;
         }, $this->GetDevices());
 

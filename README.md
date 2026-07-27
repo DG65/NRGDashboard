@@ -314,6 +314,29 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   vorhandenes `'house'`-Gerät gegenüber der `pv−grid+bat`-Näherung ohnehin
   bereits (siehe Phase-2-Eintrag oben), keine weitere Änderung an der
   Darstellung nötig.
+
+  **Sechste Runde (27.07.2026): Doppel-Präfix-Bug, Konstanten, plugged-Fall.**
+  1) `IHUBTILE_GetConsumers`/`GetHouseLoad` liefen bei InverterHub bisher
+  unter dem falschen Namen `IHUBTILE_IHUBTILE_Get*` (Praefix versehentlich
+  doppelt vergeben) — bei uns lief das dadurch bisher immer auf den
+  MeterHub/HeishaMon-Fallback bzw. gar keine Hauslast-Quelle. Von
+  InverterHub gefixt (Commit `6377ed5`), keine Änderung auf unserer Seite
+  nötig (Funktionsnamen waren bei uns schon korrekt).
+  2) `GLOW_MAX_W`/`AURA_REACH_W`/`FLOW_REF_W` exakt auf InverterHubTiles
+  Originalwerte umgestellt (40000/25000/10000 statt unserer vorherigen
+  Hausanlagen-Anpassung 12000/8000/6000) — laut InverterHub fest
+  einprogrammiert und rein empirisch, keine bewusste Differenzierung
+  nötig; für optische Konsistenz zwischen beiden Kacheln übernommen.
+  3) **Wallbox-Sonderfall nachgezogen:** "eingesteckt, aber nicht ladend"
+  (0 W) gilt als aktiv (volle Farbe), nicht ausgegraut. `plugStateID` kam
+  aus `CHUB_GetFunctions` unverändert durch (`normalizeEntry()` entfernt
+  keine Felder), wurde aber nie aufgelöst — `buildPayload()` liest jetzt
+  `plugStateID` zu `plugged` auf, `buildItems()` übernimmt es (der
+  Renderer selbst prüfte `item.plugged` schon vorher korrekt, nur das
+  Datenfeld fehlte).
+  Node-Reihenfolge/-Winkel, Interaktionslosigkeit (keine Klicks/Tooltips)
+  und die Inaktiv-Skalierung (Scale 44/56) waren bei uns bereits identisch
+  zur Referenz — keine Änderung nötig, nur bestätigt.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

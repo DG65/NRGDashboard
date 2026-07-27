@@ -278,7 +278,10 @@ function fmtPower(w, measured) {
   return { value: num(est ? Math.round(v / 10) * 10 : v, 0), unit: 'W' };
 }
 
-const GLOW_MAX_W = 12000; // Hausanlagen-Maßstab statt WR-Nennleistung (40 kW)
+// Exakt InverterHubTiles Originalwerte übernommen (bestätigt 27.07.2026: fest
+// einprogrammiert, nicht konfigurierbar, rein empirisch gewählt - unsere
+// vorherige Abweichung war keine bewusste Anpassung, nur andere Zahlen).
+const GLOW_MAX_W = 40000;
 let glowGradSeq = 0;
 function attachGlow(glowEl) {
   const defs = document.getElementById('markerDefs');
@@ -626,7 +629,7 @@ function buildItems(devices) {
         soc: (d.soc !== undefined && d.soc !== null) ? d.soc : null,
         sub: '',
         measured: d.measured ?? true,
-        plugged: false,
+        plugged: !!d.plugged,
         color: style.color,
         dir: style.dir,
         battery: !!style.battery,
@@ -760,8 +763,8 @@ function createSpoke(angleDeg, layout, layer) {
   };
 }
 
-let FLOW_REF_W = 6000; // Hausanlagen-Maßstab (vgl. GLOW_MAX_W)
-const AURA_REACH_W = 8000;
+let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
+const AURA_REACH_W = 25000;
 
 function boltBrightness(magnitude, active) {
   if (!active) { return 0; }
