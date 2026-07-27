@@ -651,6 +651,22 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     größerer eigener Baustein (5-Jahres-Archivdurchlauf je Serie,
     Zählertyp-Erkennung), der eine eigene Runde verdient statt in dieser
     mitzulaufen.
+  **Live-Feedback direkt nach Freigabe (27.07.2026):** 1) Eigenes
+  "Monitoring"-Titelfeld überlappte mit dem von IPS selbst gesetzten
+  Kachel-Titel ("NRG Dashboard Monitoring") - InverterHubMonitor hat gar
+  kein eigenes Titelfeld, verlässt sich vollständig auf den IPS-Titel.
+  Entfernt. 2) ECharts zeigte beim allerersten Laden der Kachel nichts an
+  (Highcharts war sofort in Ordnung) - der erste `handleMessage()`-Aufruf
+  kommt aus einem `<script>`-Block direkt beim Laden, bevor das WebFront-
+  Layout sicher fertig vermessen ist; `echarts.init()` auf einem noch
+  0×0 großen Container liefert eine leere Zeichenfläche, die ein
+  `resize()` 60 ms später nicht zuverlässig repariert. Behoben: der
+  allererste Render-Aufruf wird einen `requestAnimationFrame`-Tick
+  verzögert. 3) Einstrahlung/PV erwartet fehlten auf der Testinstanz -
+  kein Bug, sondern schlicht keine Einstrahlungs-Variable im Formular
+  gewählt (`IrradianceID=0`); ohne Einstrahlung kann auch kein
+  Erwartungswert berechnet werden, beide Linien hängen an derselben
+  fehlenden Einstellung.
 
 ## Verwendete Verträge
 

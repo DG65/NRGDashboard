@@ -27,12 +27,10 @@
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; }
   .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
-  .titlebar { position: absolute; top: 12px; left: 12px; font-size: 18px; font-weight: 600; }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="titlebar">Monitoring</div>
     <div id="bar">
       <select id="type" class="sel">
         <option value="day">Tag (Verlauf)</option>
@@ -267,7 +265,13 @@
       if (!d || !d.ok) { return; }
       lastData = d;
       if (d.bg) { document.body.style.background = d.bg; }
-      render();
+      // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
+      // Kachel, bevor das Layout sicher fertig ist (WebFront-Rahmen/Flex-
+      // Boxen noch nicht final vermessen) - echarts.init() auf einem noch
+      // 0x0 grossen Container liefert eine leere Zeichenflaeche, die ein
+      // spaeteres resize() nicht zuverlaessig repariert. Deshalb den ersten
+      // Render-Aufruf einen Frame verzoegern.
+      requestAnimationFrame(function () { render(); });
     }
 
     document.getElementById('prev').onclick = function () {
