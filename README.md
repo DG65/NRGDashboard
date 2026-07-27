@@ -382,6 +382,26 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   gewinnt (das ist die bereits von Dietmar sichtgeprüfte Referenz-Kachel).
   Nach beiden Fixes: `house`-Gerät korrekt mit dem echten Zähler
   (`powerID=33142`) gefunden, keine Dubletten mehr, kein Absturz.
+  **Neunte Runde (27.07.2026): manuelle Konfiguration als Ergänzung.**
+  Dietmar: "Da man diese Kachel auch ohne InverterHub-Instanz laufen lassen
+  können sollte" (InverterHubTiles Grundprinzip) — 1:1 übernommen als
+  ZUSÄTZLICHE Quelle, nicht als Ersatz der automatischen Discovery:
+  - "Manuelle Datenpunkte": `ManualPvID`/`ManualGridID`/`ManualBatID`/
+    `ManualSocID`/`ManualHouseID` + Invert-Schalter für Netz/Batterie
+    (`discoverManualCore()`).
+  - "Weitere Verbraucher": frei editierbare `Consumers`-Liste (alle 21
+    `CONSUMER_TYPES`-Arten, Leistungs-Variable, optional Wallbox-
+    "eingesteckt"-Erkennung über Verbunden-Variable+Bedingung+Vergleichswert
+    — `resolvePluggedCondition()` deckt `truthy`/`eq`/`ne` ab).
+  Bewusst NICHT übernommen (Umfang begrenzt): Einheit-Auswahl je Feld
+  (Automatisch/W/kW/MW — wir erwarten Watt direkt) und die Fahrzeug-Zuordnungs-
+  tabelle für Wallbox-SOC-Anzeige (Zeit-Korrelations-Algorithmus). Beides bei
+  Bedarf nachrüstbar.
+  **Offener Punkt, von Dietmar direkt vorgeschlagen:** statt Geräte erneut
+  manuell einzutragen, könnte eine Liste bereits automatisch gefundener
+  Geräte mit Ein-/Ausschalten pro Zeile angeboten werden — passt besser zu
+  unserem Discovery-Modell als InverterHubTiles Eintrage-Schema. Noch nicht
+  umgesetzt, siehe Diskussion.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

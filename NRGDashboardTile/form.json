@@ -27,6 +27,119 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Manuelle Datenpunkte (optional, ohne installiertes Partnermodul)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Nur nötig, wenn kein NRG-Stack-Partnermodul (InverterHub, MeterHub, ChargerHub, HeishaMon) installiert ist oder ein Wert von dort fehlt. Ergänzt die automatische Suche, ersetzt sie nicht - beide wirken gleichzeitig. Vorzeichen-Konvention: Netz + = Einspeisung, Batterie + = Entladen - stimmt die Richtung nicht, den passenden Schalter setzen."
+        },
+        { "type": "SelectVariable", "name": "ManualPvID", "caption": "Solar-Leistung" },
+        { "type": "SelectVariable", "name": "ManualGridID", "caption": "Netz-/Zählerleistung (+ Einspeisung / − Bezug)" },
+        { "type": "CheckBox", "name": "ManualGridInvert", "caption": "Netz-Leistung invertieren" },
+        { "type": "SelectVariable", "name": "ManualBatID", "caption": "Batterie-Leistung (+ Entladen / − Laden)" },
+        { "type": "CheckBox", "name": "ManualBatInvert", "caption": "Batterie-Leistung invertieren" },
+        { "type": "SelectVariable", "name": "ManualSocID", "caption": "Batterie-Ladestand (SOC, %)" },
+        { "type": "SelectVariable", "name": "ManualHouseID", "caption": "Echter Hauslastzähler (optional, ersetzt die berechnete Näherung)" }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Weitere Verbraucher (optional)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Beliebig viele zusätzliche Verbraucher, die als eigene Kreise dargestellt werden - unabhängig davon, ob sie über ein Hub-Modul erkannt wurden. Nicht jeder Haushalt hat dieselben Geräte; die Art bestimmt das Icon, die Bezeichnung den Text unter dem Kreis (leer = Vorgabe der Art). Die letzten drei Spalten gelten nur für die Art „Wallbox“ und dürfen sonst leer bleiben - sie beschreiben, woran die Wallbox erkennt, dass ein Fahrzeug eingesteckt ist."
+        },
+        {
+          "type": "List",
+          "name": "Consumers",
+          "caption": "Verbraucher",
+          "rowCount": 6,
+          "add": true,
+          "delete": true,
+          "columns": [
+            {
+              "caption": "Art",
+              "name": "Type",
+              "width": "200px",
+              "add": "wallbox",
+              "edit": {
+                "type": "Select",
+                "options": [
+                  { "caption": "Wallbox",             "value": "wallbox" },
+                  { "caption": "Wärmepumpe",          "value": "heatpump" },
+                  { "caption": "Klimaanlage",         "value": "ac" },
+                  { "caption": "Pool-Wärmepumpe",     "value": "poolheat" },
+                  { "caption": "Pool-Pumpe",          "value": "poolpump" },
+                  { "caption": "Sauna",               "value": "sauna" },
+                  { "caption": "Warmwasser",          "value": "boiler" },
+                  { "caption": "Trockner",            "value": "dryer" },
+                  { "caption": "Waschmaschine",       "value": "washer" },
+                  { "caption": "Spülmaschine",        "value": "dishwasher" },
+                  { "caption": "Backofen",            "value": "oven" },
+                  { "caption": "Herd",                "value": "stove" },
+                  { "caption": "Kühl-/Gefriergerät",  "value": "fridge" },
+                  { "caption": "Küche",               "value": "kitchen" },
+                  { "caption": "Heizung",             "value": "heater" },
+                  { "caption": "Lüftung",             "value": "vent" },
+                  { "caption": "Beleuchtung",         "value": "light" },
+                  { "caption": "Server / Netzwerk",   "value": "it" },
+                  { "caption": "Werkstatt",           "value": "workshop" },
+                  { "caption": "Garage",              "value": "garage" },
+                  { "caption": "Sonstiger Verbraucher", "value": "other" }
+                ]
+              }
+            },
+            {
+              "caption": "Bezeichnung (leer = Vorgabe der Art)",
+              "name": "Name",
+              "width": "220px",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            },
+            {
+              "caption": "Leistungs-Variable",
+              "name": "VariableID",
+              "width": "240px",
+              "add": 0,
+              "edit": { "type": "SelectVariable" }
+            },
+            {
+              "caption": "Nur Wallbox: Verbunden-Variable",
+              "name": "PlugID",
+              "width": "240px",
+              "add": 0,
+              "edit": { "type": "SelectVariable" }
+            },
+            {
+              "caption": "Bedingung",
+              "name": "PlugOp",
+              "width": "230px",
+              "add": "truthy",
+              "edit": {
+                "type": "Select",
+                "options": [
+                  { "caption": "ist gesetzt (wahr / ≠ 0 / nicht leer)", "value": "truthy" },
+                  { "caption": "gleich Wert",   "value": "eq" },
+                  { "caption": "ungleich Wert", "value": "ne" }
+                ]
+              }
+            },
+            {
+              "caption": "Vergleichswert",
+              "name": "PlugVal",
+              "width": "auto",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [

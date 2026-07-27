@@ -54,6 +54,22 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
         $this->RegisterPropertyInteger('FlowRefW', self::DEF_FLOWREF);
+        // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
+        // InverterHubTile - die Kachel muss auch OHNE jedes installierte
+        // Partnermodul laufen können, rein über manuell zugewiesene
+        // Variablen). Wird zusätzlich zur automatischen Discovery ausgewertet,
+        // nicht als Ersatz dafür - wer nichts eintraegt, merkt nichts davon.
+        $this->RegisterPropertyInteger('ManualPvID', 0);
+        $this->RegisterPropertyInteger('ManualGridID', 0);
+        $this->RegisterPropertyBoolean('ManualGridInvert', false);
+        $this->RegisterPropertyInteger('ManualBatID', 0);
+        $this->RegisterPropertyBoolean('ManualBatInvert', false);
+        $this->RegisterPropertyInteger('ManualSocID', 0);
+        $this->RegisterPropertyInteger('ManualHouseID', 0);
+        // Weitere Verbraucher (Dietmar, 27.07.2026: "nicht jeder Haushalt hat
+        // dieselben Geräte" - frei editierbare Liste, unabhängig von jedem
+        // Hub-Modul, analog InverterHubTiles Consumers-Property).
+        $this->RegisterPropertyString('Consumers', '[]');
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -169,6 +185,11 @@ class NRGDashboardTile extends IPSModule
         // bevorzugt ein 'house'-Geraet ohnehin schon vor der Bilanzformel.
         $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
 
+        // Manuelle Konfiguration IMMER zusaetzlich auswerten (kein Hub-Modul
+        // vorausgesetzt) - fuer Haushalte ganz ohne InverterHub/MeterHub/etc.
+        $devices = array_merge($devices, $this->discoverManualCore());
+        $devices = array_merge($devices, $this->discoverManualConsumers());
+
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
@@ -259,15 +280,21 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = array_map(function (array $d) {
             $d['value'] = $this->resolvePowerValue($d);
+            // Manueller Invert-Schalter (Netz/Batterie) - nur bei manuell
+            // konfigurierten Geraeten gesetzt (discoverManualCore()).
+            if (!empty($d['invert']) && $d['value'] !== null) {
+                $d['value'] = -$d['value'];
+            }
             if (!empty($d['socID'])) {
                 $d['soc'] = $this->resolveVariableValue((int) $d['socID']);
             }
             // Wallbox-Sonderfall (InverterHub, 27.07.2026): "eingesteckt aber
             // nicht ladend" (0 W) gilt trotzdem als aktiv/volle Farbe, nicht
-            // ausgegraut. plugStateID kommt unveraendert aus CHUB_GetFunctions
-            // durch (normalizeEntry() entfernt keine Felder).
+            // ausgegraut. plugStateID kommt entweder unveraendert aus
+            // CHUB_GetFunctions durch (normalizeEntry() entfernt keine Felder)
+            // oder aus der manuellen Verbraucherliste samt plugOp/plugVal.
             if (!empty($d['plugStateID'])) {
-                $d['plugged'] = (bool) $this->resolveVariableValue((int) $d['plugStateID']);
+                $d['plugged'] = $this->resolvePluggedCondition($d);
             }
             return $d;
         }, $this->GetDevices());
@@ -369,6 +396,32 @@ class NRGDashboardTile extends IPSModule
             return (float) GetValue($id);
         }
         return null;
+    }
+
+    /**
+     * Wertet die "eingesteckt"-Bedingung einer Wallbox aus (Muster:
+     * InverterHubTile "Verbunden-Variable" + Bedingung + Vergleichswert).
+     * Nur die beiden in unserer form.json angebotenen Bedingungen: 'truthy'
+     * (ist gesetzt: wahr/≠0/nicht leer) und 'ne' (ungleich Vergleichswert -
+     * z.B. go-e-Kabeltyp 0="kein Kabel"). ChargerHub-Eintraege haben kein
+     * plugOp (kommen direkt aus CHUB_GetFunctions als reiner Bool-Wert) -
+     * dafuer bleibt 'truthy' der Rückfall.
+     */
+    private function resolvePluggedCondition(array $d): bool
+    {
+        $id = (int) ($d['plugStateID'] ?? 0);
+        if ($id <= 0 || !IPS_VariableExists($id)) {
+            return false;
+        }
+        $value = GetValue($id);
+        $op = $d['plugOp'] ?? 'truthy';
+        if ($op === 'ne') {
+            return (string) $value !== (string) ($d['plugVal'] ?? '');
+        }
+        if ($op === 'eq') {
+            return (string) $value === (string) ($d['plugVal'] ?? '');
+        }
+        return !empty($value);
     }
 
     /**
@@ -609,6 +662,91 @@ class NRGDashboardTile extends IPSModule
                 'powerID'  => $data['houseLoadID'],
                 'measured' => true,
             ], 'inverterhubtile', $id);
+        }
+        return $results;
+    }
+
+    /**
+     * Manuelle Kernwerte (Muster: InverterHubTile "Manuelle Datenpunkte") -
+     * fuer Haushalte ganz ohne InverterHub-Instanz. Jedes Feld ist optional;
+     * nur belegte IDs werden zu einem Geraet. Invert-Schalter analog
+     * InverterHubTile: Netz +=Einspeisung/-=Bezug, Batterie +=Entladen/
+     * -=Laden - stimmt die Richtung nicht, hier umschalten.
+     *
+     * Bewusst NICHT uebernommen (Umfang begrenzt fuer diese Runde): die
+     * Einheit-Auswahl (Automatisch/W/kW/MW) je Feld - Werte werden bei uns
+     * unveraendert in der gelieferten Einheit (Watt) erwartet. Bei Bedarf
+     * nachruestbar, sobald es einen konkreten Anwendungsfall gibt.
+     */
+    private function discoverManualCore(): array
+    {
+        $results = [];
+        $pv = $this->ReadPropertyInteger('ManualPvID');
+        if ($pv > 0) {
+            $results[] = $this->normalizeEntry([
+                'function' => 'pv', 'label' => 'Solar', 'powerID' => $pv, 'measured' => true,
+            ], 'manual', 0);
+        }
+        $grid = $this->ReadPropertyInteger('ManualGridID');
+        if ($grid > 0) {
+            $entry = [
+                'function' => 'grid', 'label' => 'Netz', 'powerID' => $grid, 'measured' => true,
+                'invert'   => $this->ReadPropertyBoolean('ManualGridInvert'),
+            ];
+            $results[] = $this->normalizeEntry($entry, 'manual', 0);
+        }
+        $bat = $this->ReadPropertyInteger('ManualBatID');
+        if ($bat > 0) {
+            $entry = [
+                'function' => 'battery', 'label' => 'Batterie', 'powerID' => $bat, 'measured' => true,
+                'invert'   => $this->ReadPropertyBoolean('ManualBatInvert'),
+            ];
+            $soc = $this->ReadPropertyInteger('ManualSocID');
+            if ($soc > 0) {
+                $entry['socID'] = $soc;
+            }
+            $results[] = $this->normalizeEntry($entry, 'manual', 0);
+        }
+        $house = $this->ReadPropertyInteger('ManualHouseID');
+        if ($house > 0) {
+            $results[] = $this->normalizeEntry([
+                'function' => 'house', 'label' => 'Haus', 'powerID' => $house, 'measured' => true,
+            ], 'manual', 0);
+        }
+        return $results;
+    }
+
+    /**
+     * Frei editierbare Verbraucherliste (Muster: InverterHubTile "Weitere
+     * Verbraucher") - unabhaengig von jedem Hub-Modul, weil nicht jeder
+     * Haushalt dieselben Geraete hat (Dietmar, 27.07.2026). Jede Zeile:
+     * Type (Schluessel aus CONSUMER_TYPES in module.html), Name, VariableID,
+     * optional PlugID/PlugOp/PlugVal fuer den "eingesteckt"-Sonderfall
+     * (siehe resolvePluggedCondition()).
+     */
+    private function discoverManualConsumers(): array
+    {
+        $results = [];
+        $rows = json_decode($this->ReadPropertyString('Consumers'), true);
+        if (!is_array($rows)) {
+            return $results;
+        }
+        foreach ($rows as $row) {
+            if (!is_array($row) || empty($row['Type']) || empty($row['VariableID'])) {
+                continue;
+            }
+            $entry = [
+                'function' => $row['Type'],
+                'label'    => $row['Name'] ?? $row['Type'],
+                'powerID'  => (int) $row['VariableID'],
+                'measured' => true,
+            ];
+            if (!empty($row['PlugID'])) {
+                $entry['plugStateID'] = (int) $row['PlugID'];
+                $entry['plugOp']      = $row['PlugOp']  ?? 'truthy';
+                $entry['plugVal']     = $row['PlugVal'] ?? '';
+            }
+            $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
         return $results;
     }
