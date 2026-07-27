@@ -186,6 +186,28 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   dort nicht existieren — "gehört wahrscheinlich woanders hin"). Das
   Backend (`GetDiagnostics()`/`discoverDiagnostics()`) bleibt bestehen für
   einen künftigen, noch zu bestimmenden Konsumenten.
+  3) Feste Node-Labels korrigiert — `discoverInverterHub()` hatte für
+  PV/Batterie/Netz überall `IPS_GetName($id)` (den Instanznamen) statt
+  fester Rollen-Labels verwendet. Jetzt: `Solar`/`Batterie`/`Netz`, exakt
+  wie InverterHubTiles eigene `NODE_DEFS_LEAD`/`TAIL`-Labels — bewusst KEIN
+  Instanzname bei diesen drei festen Kernknoten.
+  4) **Vollständige `CONSUMER_TYPES`-Tabelle von InverterHub übernommen**
+  (auf deren ausdrücklichen Wunsch, 1:1, nicht neu interpretiert — Details
+  per `send_message` mit Code-Zeilenangaben aus `InverterHubTile/module.php`
+  geliefert): alle 20 Verbraucherarten (`wallbox`/`heatpump`/`ac`/`poolheat`/
+  `poolpump`/`sauna`/`boiler`/`dryer`/`washer`/`dishwasher`/`oven`/`stove`/
+  `fridge`/`kitchen`/`heater`/`vent`/`light`/`it`/`workshop`/`garage`/
+  `other`) mit exakt denselben Icons, Farben und deutschen Labels als
+  `CONSUMER_TYPES`-Konstante in `module.html`. `CONSUMER_TYPE_MAP` übersetzt
+  die bei uns tatsächlich vorkommenden `function`-Werte dorthin (ChargerHub
+  `charger`→`wallbox`, Tessie `vehicle`→`wallbox`, MeterHub `wallbox1..5`/
+  `hotwater`/`aircon`/`ventilation`/`pool` → jeweilige Kategorie) — analog zu
+  `MHUB_TYPE_MAP` bei InverterHub. `resolveStyle()` prüft zuerst die drei
+  festen Kernknoten (`FUNCTION_STYLE`), dann `CONSUMER_TYPE_MAP`/
+  `CONSUMER_TYPES`, sonst `DEFAULT_STYLE` (grau, Stecker-Icon).
+  Netz-Knoten-Farbe war entgegen der ersten Fehlvermutung bereits korrekt
+  bedingt (grün bei Einspeisung, rot bei Bezug) — das gemeldete Fehlen war
+  ein alter Browser-Stand, kein Farb-Bug.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

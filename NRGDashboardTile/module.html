@@ -260,8 +260,6 @@ const C_BAT    = [33, 150, 243];
 const C_GREEN  = [67, 160, 71];
 const C_RED    = [229, 57, 53];
 const C_GREY   = [158, 158, 158];
-const C_PURPLE = [142, 36, 170];
-const C_ORANGE = [251, 140, 0];
 
 function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
 function lerp(a, b, t) {
@@ -385,20 +383,221 @@ const ICONS = {
     [-3.8, 3.8].forEach(x => g.appendChild(el('line', { x1: x, y1: -14, x2: x, y2: -8, 'stroke-linecap': 'round' })));
     g.appendChild(el('line', { x1: 0, y1: 5, x2: 0, y2: 13.5, 'stroke-linecap': 'round' }));
   },
+  // -- Ab hier 1:1 aus InverterHubTile/module.html uebernommen (Zeichner
+  //    fuer die vollstaendige CONSUMER_TYPES-Tabelle, siehe README) --
+  ac(g) {
+    g.appendChild(el('rect', { x: -15, y: -12, width: 30, height: 13, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -11, y1: -6, x2: 11, y2: -6 }));
+    [-7.5, 0, 7.5].forEach(x => g.appendChild(el('path', {
+      d: `M${x},4 q3.2,4 0,8.5`, 'data-hollow': '1', 'stroke-linecap': 'round',
+    })));
+  },
+  poolheat(g) {
+    g.appendChild(el('path', {
+      d: 'M0,-14 C3.8,-9 3.8,-5.6 0,-2.8 C1.1,-5.6 -1.1,-6.4 -1.1,-4.5 C-2.2,-6.8 -3.3,-9.5 0,-14 Z',
+      'stroke-linejoin': 'round',
+    }));
+    [2.5, 9].forEach(y => g.appendChild(el('path', {
+      d: `M-13,${y} q4.3,-4 8.7,0 q4.3,4 8.7,0`,
+      'data-hollow': '1', 'stroke-linecap': 'round',
+    })));
+  },
+  poolpump(g) {
+    g.appendChild(el('circle', { cx: -1, cy: -1, r: 8.5, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: -1, cy: -1, r: 2.2, stroke: 'none' }));
+    g.appendChild(el('path', {
+      d: 'M-1,-9.5 L-1,-13.5 L6.5,-13.5',
+      'data-hollow': '1', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }));
+    g.appendChild(el('rect', { x: -13, y: 8, width: 24, height: 4.5, rx: 1.5, stroke: 'none' }));
+  },
+  sauna(g) {
+    g.appendChild(el('rect', { x: -10, y: -2.5, width: 20, height: 15, rx: 2, 'data-hollow': '1' }));
+    [[-5, -4.2], [0, -5.2], [5, -4.2]].forEach(([x, y]) =>
+      g.appendChild(el('circle', { cx: x, cy: y, r: 2.2, stroke: 'none' })));
+    [-6, 0, 6].forEach(x => g.appendChild(el('path', {
+      d: `M${x},-13.5 q2.6,3 0,6`, 'data-hollow': '1', 'stroke-linecap': 'round',
+    })));
+  },
+  boiler(g) {
+    g.appendChild(el('rect', { x: -8.5, y: -13, width: 17, height: 22, rx: 4, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -8.5, y1: -6.5, x2: 8.5, y2: -6.5 }));
+    g.appendChild(el('path', {
+      d: 'M0,-3 C3.2,0.8 3.2,3.4 0,5.2 C-3.2,3.4 -3.2,0.8 0,-3 Z',
+      'stroke-linejoin': 'round',
+    }));
+    [-4.5, 4.5].forEach(x => g.appendChild(el('line', {
+      x1: x, y1: 9, x2: x, y2: 13.5, 'stroke-linecap': 'round',
+    })));
+  },
+  dryer(g) {
+    g.appendChild(el('rect', { x: -12, y: -13, width: 24, height: 26, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -12, y1: -7, x2: 12, y2: -7 }));
+    g.appendChild(el('circle', { cx: 0, cy: 3.5, r: 7, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: -8, cy: -10, r: 1.4, stroke: 'none' }));
+  },
+  washer(g) {
+    g.appendChild(el('rect', { x: -12, y: -13, width: 24, height: 26, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -12, y1: -7, x2: 12, y2: -7 }));
+    g.appendChild(el('circle', { cx: 0, cy: 3.5, r: 7, 'data-hollow': '1' }));
+    g.appendChild(el('path', {
+      d: 'M-4.6,3.2 q2.3,-2.4 4.6,0 q2.3,2.4 4.6,0',
+      'data-hollow': '1', 'stroke-linecap': 'round',
+    }));
+    g.appendChild(el('circle', { cx: -8, cy: -10, r: 1.4, stroke: 'none' }));
+  },
+  dishwasher(g) {
+    g.appendChild(el('rect', { x: -12, y: -13, width: 24, height: 26, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -12, y1: -7, x2: 12, y2: -7 }));
+    g.appendChild(el('circle', { cx: 0, cy: 3.5, r: 6.8, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: 0, cy: 3.5, r: 2.6, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: 8, cy: -10, r: 1.4, stroke: 'none' }));
+  },
+  oven(g) {
+    g.appendChild(el('rect', { x: -12, y: -13, width: 24, height: 26, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -12, y1: -6, x2: 12, y2: -6 }));
+    g.appendChild(el('rect', { x: -8, y: -1.5, width: 16, height: 11, rx: 1.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -8.5, y1: -9.5, x2: 8.5, y2: -9.5, 'stroke-linecap': 'round' }));
+    g.appendChild(el('circle', { cx: 8.4, cy: -9.5, r: 1.3, stroke: 'none' }));
+  },
+  stove(g) {
+    g.appendChild(el('rect', { x: -12, y: -9, width: 24, height: 20, rx: 3, 'data-hollow': '1' }));
+    [[-5.5, -3.5], [5.5, -3.5], [-5.5, 5], [5.5, 5]].forEach(([x, y]) =>
+      g.appendChild(el('circle', { cx: x, cy: y, r: 3.4, 'data-hollow': '1' })));
+    g.appendChild(el('line', { x1: -7, y1: -12.5, x2: 7, y2: -12.5, 'stroke-linecap': 'round' }));
+  },
+  fridge(g) {
+    g.appendChild(el('rect', { x: -9, y: -13.5, width: 18, height: 27, rx: 2.5, 'data-hollow': '1' }));
+    g.appendChild(el('line', { x1: -9, y1: -3.5, x2: 9, y2: -3.5 }));
+    g.appendChild(el('line', { x1: 5, y1: -10.5, x2: 5, y2: -6.5, 'stroke-linecap': 'round' }));
+    g.appendChild(el('line', { x1: 5, y1: -0.5, x2: 5, y2: 4.5, 'stroke-linecap': 'round' }));
+  },
+  kitchen(g) {
+    g.appendChild(el('path', {
+      d: 'M-10,-3 L-10,6 q0,5 5,5 L5,11 q5,0 5,-5 L10,-3 Z',
+      'data-hollow': '1', 'stroke-linejoin': 'round',
+    }));
+    g.appendChild(el('line', { x1: -12, y1: -3, x2: 12, y2: -3, 'stroke-linecap': 'round' }));
+    g.appendChild(el('line', { x1: 0, y1: -3, x2: 0, y2: -7, 'stroke-linecap': 'round' }));
+    g.appendChild(el('circle', { cx: 0, cy: -8.5, r: 1.6, stroke: 'none' }));
+  },
+  heater(g) {
+    g.appendChild(el('rect', { x: -11, y: -8, width: 22, height: 16, rx: 2, 'data-hollow': '1' }));
+    [-5.5, 0, 5.5].forEach(x => g.appendChild(el('line', { x1: x, y1: -8, x2: x, y2: 8 })));
+    [-7.5, 7.5].forEach(x => g.appendChild(el('line', {
+      x1: x, y1: 8, x2: x, y2: 12.5, 'stroke-linecap': 'round',
+    })));
+  },
+  vent(g) {
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 12, 'data-hollow': '1' }));
+    [0, 120, 240].forEach(a => g.appendChild(el('path', {
+      d: 'M0,-1.8 q7,-4 8.6,-0.6 q1.4,3.2 -8.6,2.4 Z',
+      transform: `rotate(${a})`, 'stroke-linejoin': 'round',
+    })));
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 2.1, stroke: 'none' }));
+  },
+  light(g) {
+    g.appendChild(el('path', {
+      d: 'M0,-11 C-4.6,-11 -7.6,-7.6 -7.6,-3.6 C-7.6,-0.4 -5.4,1.6 -4.2,3.6 L4.2,3.6 C5.4,1.6 7.6,-0.4 7.6,-3.6 C7.6,-7.6 4.6,-11 0,-11 Z',
+      'data-hollow': '1', 'stroke-linejoin': 'round',
+    }));
+    [6.4, 9.4].forEach(y => g.appendChild(el('line', { x1: -3.8, y1: y, x2: 3.8, y2: y, 'stroke-linecap': 'round' })));
+    g.appendChild(el('line', { x1: -2, y1: 12.4, x2: 2, y2: 12.4, 'stroke-linecap': 'round' }));
+  },
+  it(g) {
+    [-9.5, 1.5].forEach(y => {
+      g.appendChild(el('rect', { x: -12, y, width: 24, height: 9, rx: 1.8, 'data-hollow': '1' }));
+      g.appendChild(el('circle', { cx: -7.5, cy: y + 4.5, r: 1.3, stroke: 'none' }));
+      g.appendChild(el('line', {
+        x1: 1, y1: y + 4.5, x2: 8.5, y2: y + 4.5, 'stroke-linecap': 'round',
+      }));
+    });
+  },
+  workshop(g) {
+    g.appendChild(el('path', {
+      d: 'M6.5,-12 a6.4,6.4 0 1 0 4.2,8.4 L-6.5,10.6 a3.4,3.4 0 0 1-4.8,-4.8 L4.4,-7.2 Z',
+      'data-hollow': '1', 'stroke-linejoin': 'round',
+    }));
+  },
+  garage(g) {
+    g.appendChild(el('path', {
+      d: 'M-12,-1.5 L0,-11.5 L12,-1.5 L12,12 L-12,12 Z',
+      'data-hollow': '1', 'stroke-linejoin': 'round',
+    }));
+    [2.5, 6, 9.5].forEach(y => g.appendChild(el('line', { x1: -7, y1: y, x2: 7, y2: y })));
+    g.appendChild(el('line', { x1: -7, y1: -0.5, x2: 7, y2: -0.5 }));
+  },
 };
 
-// Farbe/Richtung je function-Typ. Fehlt ein Eintrag, greift DEFAULT_STYLE
+// "#rrggbb" -> [r,g,b], von InverterHubTile uebernommen.
+function hexToRgb(h) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(h || ''));
+  if (!m) { return null; }
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// Vollstaendige CONSUMER_TYPES-Tabelle 1:1 von InverterHub uebernommen
+// (InverterHubTile/module.php CONSUMER_TYPES, Farben/Icons abgestimmt mit
+// der MeterHub-Seite: Waerme in Feuertoenen, Kuehlung/Wasser in Tuerkis,
+// Fahrzeuge in Violett, bewusst abgesetzt von der blauen Hausbatterie).
+const CONSUMER_TYPES = {
+  wallbox:    { label: 'Wallbox',            icon: 'car',        color: hexToRgb('#9575CD') },
+  heatpump:   { label: 'Wärmepumpe',         icon: 'heatpump',   color: hexToRgb('#FF7A18') },
+  ac:         { label: 'Klimaanlage',        icon: 'ac',         color: hexToRgb('#26C6DA') },
+  poolheat:   { label: 'Pool-Wärmepumpe',    icon: 'poolheat',   color: hexToRgb('#FF8A50') },
+  poolpump:   { label: 'Pool-Pumpe',         icon: 'poolpump',   color: hexToRgb('#26A69A') },
+  sauna:      { label: 'Sauna',              icon: 'sauna',      color: hexToRgb('#F4511E') },
+  boiler:     { label: 'Warmwasser',         icon: 'boiler',     color: hexToRgb('#FFA726') },
+  dryer:      { label: 'Trockner',           icon: 'dryer',      color: hexToRgb('#78909C') },
+  washer:     { label: 'Waschmaschine',      icon: 'washer',     color: hexToRgb('#4DD0E1') },
+  dishwasher: { label: 'Spülmaschine',       icon: 'dishwasher', color: hexToRgb('#4DB6AC') },
+  oven:       { label: 'Backofen',           icon: 'oven',       color: hexToRgb('#EF6C00') },
+  stove:      { label: 'Herd',               icon: 'stove',      color: hexToRgb('#E64A19') },
+  fridge:     { label: 'Kühl-/Gefriergerät', icon: 'fridge',     color: hexToRgb('#4FC3F7') },
+  kitchen:    { label: 'Küche',              icon: 'kitchen',    color: hexToRgb('#FFB74D') },
+  heater:     { label: 'Heizung',            icon: 'heater',     color: hexToRgb('#FF7043') },
+  vent:       { label: 'Lüftung',            icon: 'vent',       color: hexToRgb('#80DEEA') },
+  light:      { label: 'Beleuchtung',        icon: 'light',      color: hexToRgb('#FFD54F') },
+  it:         { label: 'Server / Netzwerk',  icon: 'it',         color: hexToRgb('#7986CB') },
+  workshop:   { label: 'Werkstatt',          icon: 'workshop',   color: hexToRgb('#8D6E63') },
+  garage:     { label: 'Garage',             icon: 'garage',     color: hexToRgb('#B39DDB') },
+  other:      { label: 'Verbraucher',        icon: 'other',      color: hexToRgb('#90A4AE') },
+};
+
+// Uebersetzt die im NRG-Stack tatsaechlich vorkommenden function-Werte auf
+// einen CONSUMER_TYPES-Schluessel (Muster: InverterHubTile MHUB_TYPE_MAP).
+// ChargerHub liefert 'charger', Tessie 'vehicle', MeterHub kann
+// 'wallbox1'..'wallbox5'/'hotwater'/'aircon'/'ventilation'/'pool' melden -
+// alles auf dieselbe Kategorie wie bei InverterHub abgebildet.
+const CONSUMER_TYPE_MAP = {
+  charger: 'wallbox', vehicle: 'wallbox',
+  wallbox1: 'wallbox', wallbox2: 'wallbox', wallbox3: 'wallbox', wallbox4: 'wallbox', wallbox5: 'wallbox',
+  hotwater: 'boiler', aircon: 'ac', ventilation: 'vent', pool: 'poolpump',
+};
+
+// Farbe/Richtung je function-Typ. pv/battery/grid sind feste Kernknoten
+// (siehe InverterHubTile NODE_DEFS_LEAD/TAIL); alles andere sind
+// Verbraucher aus CONSUMER_TYPES. Fehlt ein Eintrag, greift DEFAULT_STYLE
 // (grau, "other"-Icon) - lieber unauffällig als unsichtbar (vgl.
 // functionCategory() in module.php, gleiches Rückfall-Prinzip).
 const FUNCTION_STYLE = {
-  pv:       { icon: 'sun',      color: () => C_SOLAR,                          dir: () => 'in' },
-  battery:  { icon: 'battery',  color: () => C_BAT,                            dir: (w) => w >= 0 ? 'in' : 'out', battery: true },
-  grid:     { icon: 'bolt',     color: (w) => w >= 0 ? C_GREEN : C_RED,        dir: (w) => w >= 0 ? 'out' : 'in' },
-  charger:  { icon: 'car',      color: () => C_PURPLE,                         dir: () => 'out' },
-  vehicle:  { icon: 'car',      color: () => C_PURPLE,                         dir: () => 'out' },
-  heatpump: { icon: 'heatpump', color: () => C_ORANGE,                         dir: () => 'out' },
+  pv:       { icon: 'sun',     color: () => C_SOLAR,                   dir: () => 'in' },
+  battery:  { icon: 'battery', color: () => C_BAT,                     dir: (w) => w >= 0 ? 'in' : 'out', battery: true },
+  grid:     { icon: 'bolt',    color: (w) => w >= 0 ? C_GREEN : C_RED, dir: (w) => w >= 0 ? 'out' : 'in' },
 };
 const DEFAULT_STYLE = { icon: 'other', color: () => C_GREY, dir: () => 'out' };
+
+// Loest die Darstellung (Icon+Farbe) fuer einen beliebigen function-Wert
+// auf: feste Kernknoten zuerst, sonst über CONSUMER_TYPE_MAP/CONSUMER_TYPES,
+// sonst DEFAULT_STYLE.
+function resolveStyle(fn) {
+  if (FUNCTION_STYLE[fn]) { return FUNCTION_STYLE[fn]; }
+  const typeKey = CONSUMER_TYPE_MAP[fn] || fn;
+  const ct = CONSUMER_TYPES[typeKey];
+  if (ct) { return { icon: ct.icon, color: () => ct.color, dir: () => 'out' }; }
+  return DEFAULT_STYLE;
+}
 
 // Baut die Knotenliste aus den Geräten (das explizite 'house'-Gerät wird nie
 // als Außenknoten gezeichnet, es speist nur das Zentrum - siehe handleMessage).
@@ -406,7 +605,7 @@ function buildItems(devices) {
   return devices
     .filter(d => d.function !== 'house')
     .map(d => {
-      const style = FUNCTION_STYLE[d.function] || DEFAULT_STYLE;
+      const style = resolveStyle(d.function);
       return {
         key: 'dev' + d.instanceID + '_' + d.function + '_' + (d.label || ''),
         label: d.label || d.function,
