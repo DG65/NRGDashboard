@@ -576,15 +576,29 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     dieser Datei ursprünglich formulierten Prinzip "kein externer
     CDN-Zugriff, WebFront-Kacheln müssen offline funktionieren". Nach
     Abstimmung mit Dietmar: **ECharts (Apache-2.0) wird lokal eingebettet**
-    (`echarts.min.js`, ~1 MB, direkt in `GetVisualizationTile()` inline
-    eingefügt statt vom CDN geladen - Standard-Engine, kein Internetzugriff
-    nötig). **Highcharts bleibt wie in der aktuell installierten
-    InverterHub-Kachel vom CDN nachgeladen** (`code.highcharts.com`) - eine
-    Einbettung wäre bei Highcharts' proprietärer Lizenz für redistribuierte
-    Software (ein Modul, das andere Nutzer installieren) nicht abgedeckt,
-    anders als bei Apache-2.0-lizenziertem ECharts. Nutzer, die Highcharts
-    wählen, brauchen dafür Internetzugriff und eine eigene gültige Lizenz -
-    das ist in der Formularbeschriftung vermerkt.
+    statt vom CDN geladen (Standard-Engine, kein Internetzugriff nötig).
+    **Highcharts bleibt wie in der aktuell installierten InverterHub-Kachel
+    vom CDN nachgeladen** (`code.highcharts.com`) - eine Einbettung wäre bei
+    Highcharts' proprietärer Lizenz für redistribuierte Software (ein
+    Modul, das andere Nutzer installieren) nicht abgedeckt, anders als bei
+    Apache-2.0-lizenziertem ECharts. Nutzer, die Highcharts wählen,
+    brauchen dafür Internetzugriff und eine eigene gültige Lizenz - das ist
+    in der Formularbeschriftung vermerkt.
+  - **Zwei Bugs direkt beim ersten Live-Test gefunden, noch selber Tag:**
+    1) Der volle ECharts-Bundle (`dist/echarts.min.js`, ~1 MB) sprengte
+    allein schon IP-Symcons 1-MB-Ausgabepuffer für Kacheln (Fehlermeldung
+    live: "Output-Buffer exceeds Limit (1048576 bytes)") - egal welche
+    Engine gewählt war. Behoben mit einem eigenen, auf das Nötigste
+    zugeschnittenen Bundle (`esbuild` über `echarts/core` +
+    `LineChart`/`GridComponent`/`TooltipComponent`/`LegendComponent`/
+    `CanvasRenderer`, keine Balken-/Kreisdiagramme, kein SVG-Renderer),
+    das auf **~510 KB** schrumpft - lässt zusammen mit `module.html` und
+    der Nutzlast reichlich Luft unter dem 1-MB-Limit. 2) Der Platzhalter
+    für den eingebetteten Code wurde bislang UNABHÄNGIG von der gewählten
+    Engine ersetzt - auch bei gewähltem Highcharts wurde der komplette
+    ECharts-Bundle mitgeschickt und obendrauf geladen. Behoben:
+    `GetVisualizationTile()` bettet ECharts nur ein, wenn diese Engine
+    tatsächlich aktiv ist.
   - **Archiv-Muster 1:1 von InverterHubMonitor übernommen:** `AC_GetAggregatedValues`
     immer mit 6 Argumenten (Limit=0), Aggregationstyp 5=5-Minuten-Werte.
     Rollierendes 8-Tage-Fenster (`WINDOW_DAYS`) wird in EINEM Archivdurchlauf
