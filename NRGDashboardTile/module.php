@@ -68,17 +68,34 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = [];
 
-        $devices = array_merge($devices, $this->discoverInverterHub());
-        $devices = array_merge($devices, $this->discoverListContract(
-            NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub'
-        ));
+        // Jede Quelle einzeln einsammeln UND sofort auf stille Vertragsbrueche
+        // pruefen (checkSourceCoverage) - Verbund-Zielbild "Zuverlaessigkeit
+        // ohne KI-Krücke" (SUITE.md, 27.07.2026): genau das haette den realen
+        // Fall vom 27.07.2026 (IHUB_GetFunctions liefert ein Objekt statt der
+        // erwarteten Liste, PV/Batterie/Netz fielen dadurch still raus)
+        // automatisch im Log gemeldet, statt erst durch eine Live-Sitzung beim
+        // Nutzer aufzufallen. Ein Endnutzer hat keine Sitzung, die das nachtraeglich
+        // repariert.
+        $inverterHub = $this->discoverInverterHub();
+        $this->checkSourceCoverage('InverterHub', NRGDASH_GUID_INVERTERHUB, count($inverterHub));
+        $devices = array_merge($devices, $inverterHub);
+
+        $meterHub = $this->discoverListContract(NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub');
+        $this->checkSourceCoverage('MeterHub', NRGDASH_GUID_METERHUB, count($meterHub));
+        $devices = array_merge($devices, $meterHub);
+
         $devices = array_merge($devices, $this->discoverListContract(
             NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
         ));
-        $devices = array_merge($devices, $this->discoverListContract(
-            NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub'
-        ));
-        $devices = array_merge($devices, $this->discoverHeishaMon());
+
+        $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
+        $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
+        $devices = array_merge($devices, $chargerHub);
+
+        $heishaMon = $this->discoverHeishaMon();
+        $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
+        $devices = array_merge($devices, $heishaMon);
+
         $devices = array_merge($devices, $this->discoverTessie());
 
         $diagnostics = $this->discoverDiagnostics();
@@ -217,6 +234,31 @@ class NRGDashboardTile extends IPSModule
      * eigenen Geräte-Eintrag (pv/battery/grid), analog zu einer Zuordnung bei
      * MeterHub. Batterie bekommt zusätzlich socID fürs Ladestands-Icon.
      */
+    /**
+     * Meldet sichtbar (Log + Instanzstatus), wenn ein installiertes
+     * Partnermodul ZWAR Instanzen hat, aber keinen einzigen auswertbaren
+     * Geraete-Eintrag geliefert hat - typisches Symptom eines Vertrags, der
+     * sich in Form/Feldern geaendert hat (unser eigener discoverInverterHub-
+     * Fehler vom 27.07.2026 waere so sofort im Log aufgefallen, statt erst
+     * durch eine manuelle Live-Pruefung). Kein Fehler, wenn schlicht keine
+     * Instanz installiert ist - das ist der normale, unterstuetzte Fall.
+     */
+    private function checkSourceCoverage(string $label, string $moduleGUID, int $foundCount): void
+    {
+        $instanceCount = count(IPS_GetInstanceListByModuleID($moduleGUID));
+        if ($instanceCount > 0 && $foundCount === 0) {
+            $this->LogMessage(
+                sprintf(
+                    '⚠️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
+                    'möglicherweise hat sich der Datenvertrag geändert. Bitte NRGDashboard-Repo prüfen.',
+                    $label,
+                    $instanceCount
+                ),
+                KL_WARNING
+            );
+        }
+    }
+
     private function discoverInverterHub(): array
     {
         $results = [];

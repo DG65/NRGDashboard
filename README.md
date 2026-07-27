@@ -236,6 +236,37 @@ verwendet abweichende Feldnamen (`Type`/`Caption`/`PowerID`/`EnergyID`/
 `energyImportID`/`measured` liegt bewusst auf der Konsumentenseite
 (`discoverHeishaMon()`), der veröffentlichte Vertrag wird nicht umbenannt.
 
+## Beitrag zum gemeinsamen Zielbild (SUITE.md, 27.07.2026)
+
+Reflexion, nicht nur Beantwortung der Anfrage — die vier Verbund-Ziele
+(Wirtschaftlichkeit, Netzdienlichkeit, Zuverlässigkeit ohne KI-Krücke,
+Einfachheit für den Nutzer) angewandt auf NRGDashboard:
+
+- **Zuverlässigkeit ohne KI-Krücke — bereits umgesetzt.** Der reale Vorfall
+  vom selben Tag (IHUB_GetFunctions liefert ein Objekt, kein Listen-Vertrag —
+  PV/Batterie/Netz fielen dadurch still aus der Anzeige) wäre einem
+  Endnutzer ohne Live-Debugging gar nicht aufgefallen, nur als "Kachel zeigt
+  weniger als erwartet". `checkSourceCoverage()` in `Discover()` meldet jetzt
+  automatisch (Log + sichtbar), wenn ein installiertes Partnermodul
+  Instanzen hat, aber keinen einzigen auswertbaren Geräte-Eintrag liefert —
+  genau das Symptom eines sich geänderten Vertrags. Kein Ersatz für einen
+  echten Testrahmen (wie `MeterHub/.tools/test-virtual.php`), aber eine
+  billige erste Verteidigungslinie.
+- **Einfachheit für den Nutzer.** Die Status-Ampel/Zeitstempel (siehe oben)
+  dient demselben Ziel: der Nutzer sieht auf einen Blick, ob die Anzeige
+  aktuell ist, ohne ins Log schauen zu müssen.
+- **Netzdienlichkeit — Vorschlag, noch nicht umgesetzt.** Sobald Phase 3
+  ansteht, läge es nahe, den StromGedacht-Ampelstatus (`SGW_GetState`) als
+  kleines Badge direkt am Netz-Knoten zu zeigen, nicht nur als separate
+  Zeitreihe — der Nutzer sieht dann am Energiefluss-Diagramm selbst, ob
+  gerade eine netzdienliche Einschränkung greift, statt es aus einem
+  separaten Chart erschließen zu müssen.
+- **Wirtschaftlichkeit — Vorschlag, noch nicht umgesetzt.** Ebenso ließe sich
+  der aktuelle Tibber-Preis (`TIBBERGR_GetPriceCurve`) als kleiner Wert am
+  Netz-Knoten einblenden (nicht erst das volle Zeitreihen-Chart aus Phase 3)
+  — würde die "lohnt sich Bezug/Einspeisung gerade"-Frage schon in der
+  Grundansicht beantworten, nicht erst mit einem zusätzlichen Reiter.
+
 ## Store-Review-Checkliste
 
 Wie alle NRG-Stack-Module: keine Selbstpersistenz in Formular-Buttons, kein
