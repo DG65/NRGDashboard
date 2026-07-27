@@ -361,6 +361,27 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Auftrag — feste IPS-View-Variablen-IDs sollten genau NICHT wiederkommen).
   Ein Pendant dazu wäre kein Darstellungs-Parität-Thema mehr, sondern eine
   zweite, konkurrierende Konfigurationsebene zum Discovery-Mechanismus.
+
+  **Achte Runde (27.07.2026): IHUBTILE-Signaturbruch + Dubletten-Fix.**
+  1) `IHUBTILE_GetConsumers`/`GetHouseLoad` verlangten nach einem
+  Modul-Reload plötzlich 2 Parameter statt 1 (InverterHub hatte einen
+  überflüssigen `$id`-Parameter in der Methode selbst deklariert, obwohl die
+  Instanz schon über `$this` gebunden ist) — das ließ `Discover()` bei
+  jedem Timer-Tick und Button-Klick mit einem Fatal Error abstürzen. Sofort
+  mit `try`/`catch` defensiv abgefangen (sauberer Fallback + Log-Warnung
+  statt Absturz), InverterHub hat die Signatur danach korrigiert (Commit
+  `644bb16`).
+  2) **Echte Dublette gefunden:** Dietmar hat dieselben zwei Wallboxen
+  sowohl manuell in InverterHubTiles `Consumers`-Property eingetragen
+  (eigene Variablen-IDs) als auch über ChargerHub direkt verfügbar — ohne
+  Entdopplung erschienen "WB 1"/"WB 2" zweimal als getrennte Knoten. Kein
+  gemeinsamer Schlüssel vorhanden (unterschiedliche `powerID`s je Quelle),
+  daher Entdopplung per Label-Abgleich (klein geschrieben, getrimmt):
+  ein ChargerHub-Eintrag entfällt, wenn `IHUBTILE_GetConsumers` bereits
+  einen Eintrag mit demselben Label geliefert hat — die Tile-Quelle
+  gewinnt (das ist die bereits von Dietmar sichtgeprüfte Referenz-Kachel).
+  Nach beiden Fixes: `house`-Gerät korrekt mit dem echten Zähler
+  (`powerID=33142`) gefunden, keine Dubletten mehr, kein Absturz.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

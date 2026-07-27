@@ -137,9 +137,27 @@ class NRGDashboardTile extends IPSModule
             $devices = array_merge($devices, $heishaMon);
         }
 
+        // Reale Lücke, live entdeckt (27.07.2026): InverterHub sagt, ChargerHub
+        // sei NIE Teil von IHUBTILE_GetConsumers - trotzdem hat Dietmar dieselben
+        // physischen Wallboxen zusaetzlich manuell in die Consumers-Property der
+        // Kachel eingetragen (andere Variablen-ID als der ChargerHub-eigene
+        // Leistungswert). Ohne Entdopplung erschien "WB 1"/"WB 2" zweimal als
+        // getrennter Knoten. Es gibt keinen gemeinsamen Schluessel (unterschiedliche
+        // powerIDs) - Label-Abgleich ist der einzige verfuegbare Anhaltspunkt.
+        // Bevorzugt wird der InverterHubTile-Eintrag (das ist die bereits von
+        // Dietmar sichtgeprüfte Referenzkachel).
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
-        $devices = array_merge($devices, $chargerHub);
+        $tileLabels = array_map(function (array $d) {
+            return mb_strtolower(trim($d['label'] ?? ''));
+        }, array_filter($devices, function (array $d) {
+            return ($d['source'] ?? '') === 'inverterhubtile';
+        }));
+        foreach ($chargerHub as $entry) {
+            if (!in_array(mb_strtolower(trim($entry['label'] ?? '')), $tileLabels, true)) {
+                $devices[] = $entry;
+            }
+        }
 
         $devices = array_merge($devices, $this->discoverTessie());
 
