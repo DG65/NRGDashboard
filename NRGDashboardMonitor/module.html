@@ -145,9 +145,10 @@
     }
 
     function axisConfig(tab) {
-      if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false }; }
-      if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc }; }
-      return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr };
+      if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false, leftInterval: null }; }
+      if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc, leftInterval: null }; }
+      // Linke Achse (kW) in 1-kW-Schritten (Dietmars Wunsch, 27.07.2026).
+      return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr, leftInterval: 1 };
     }
 
     // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
@@ -167,9 +168,9 @@
       if (!chart) { chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
       var ax = axisConfig(tab);
       var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300', lineStyle: { width: 1 } }]
+        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300', lineStyle: { width: 0.7 } }]
         : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1 }, s.dashed ? { type: 'dashed' } : {}) };
+            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
           });
       chart.setOption({
         backgroundColor: 'transparent',
@@ -187,7 +188,7 @@
         yAxis: (tab === 'price')
           ? [{ type: 'value', name: 'ct/kWh' }]
           : [
-              { type: 'value', name: ax.leftName, position: 'left' },
+              { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null },
               { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight }
             ],
         series: series
@@ -198,9 +199,9 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
       var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 1, marker: { enabled: false } }]
+        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 0.7, marker: { enabled: false } }]
         : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 1, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
           });
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
@@ -211,7 +212,7 @@
         yAxis: (tab === 'price')
           ? [{ title: { text: 'ct/kWh' } }]
           : [
-              { title: { text: ax.leftName } },
+              { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined },
               { title: { text: ax.rightName }, opposite: true, visible: ax.showRight }
             ],
         legend: { enabled: true },

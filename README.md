@@ -685,6 +685,9 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Einstrahlung" - PV-Erzeugung und PV erwartet werden im Frontend durch
   1000 geteilt, Einstrahlung (rechte Achse, W/m²) bleibt unverändert.
   MPP-Tracker/Batterie zeigen weiterhin W auf der linken Achse.
+  **Feinschliff (27.07.2026):** linke Achse in "PV & Einstrahlung" fest auf
+  1-kW-Schritte (`interval`/`tickInterval`), Liniendicke aller Kurven auf
+  0,7px (statt zuvor 1px) reduziert.
 
 ## Verwendete Verträge
 
