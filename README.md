@@ -681,6 +681,10 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   **Liniendicke halbiert (27.07.2026):** alle Kurven jetzt mit
   `lineWidth`/`lineStyle.width: 1` statt der Standarddicke (2px) beider
   Engines.
+  **Linke Achse in kW statt W (27.07.2026):** nur im Reiter "PV &
+  Einstrahlung" - PV-Erzeugung und PV erwartet werden im Frontend durch
+  1000 geteilt, Einstrahlung (rechte Achse, W/m²) bleibt unverändert.
+  MPP-Tracker/Batterie zeigen weiterhin W auf der linken Achse.
 
 ## Verwendete Verträge
 

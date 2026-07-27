@@ -131,13 +131,15 @@
         }
         return series;
       }
-      // solar (Standard)
-      var series = [{ name: 'PV-Erzeugung', data: d.pv, axis: 0, color: '#e53935', dashed: false }];
+      // solar (Standard) - linke Achse in kW statt W (Dietmars Wunsch,
+      // 27.07.2026), Einstrahlung (rechte Achse, W/m²) bleibt unveraendert.
+      var toKw = function (pts) { return (pts || []).map(function (p) { return [p[0], p[1] / 1000]; }); };
+      var series = [{ name: 'PV-Erzeugung', data: toKw(d.pv), axis: 0, color: '#e53935', dashed: false }];
       if (lastData.hasIrr) {
         series.push({ name: 'Einstrahlung', data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
       }
       if (lastData.hasModel && d.expected && d.expected.length) {
-        series.push({ name: 'PV erwartet', data: d.expected, axis: 0, color: '#e57373', dashed: true });
+        series.push({ name: 'PV erwartet', data: toKw(d.expected), axis: 0, color: '#e57373', dashed: true });
       }
       return series;
     }
@@ -145,7 +147,7 @@
     function axisConfig(tab) {
       if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false }; }
       if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc }; }
-      return { leftName: 'W', rightName: 'W/m²', showRight: !!lastData.hasIrr };
+      return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr };
     }
 
     // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
