@@ -266,6 +266,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Bug (Vorzeichen von InverterHub bestätigt, live nachgeprüft) — nur ein
   Zeitpunkt-Unterschied zwischen zwei Screenshots, verstärkt durch genau
   den Update-Rhythmus-Bug oben (unsere Werte hinkten der Realität hinterher).
+
+  **Vierte Runde (27.07.2026): Netzfarbe doch ein echter Bug, live belegt.**
+  Nach den Fixes oben blieb Netz bei identischer Anlage weiterhin
+  gegensätzlich gefärbt zu InverterHubTile (rot bei uns, grün bei ihnen,
+  gleicher Betrag). Live geprüft: Instanz-Property `MeterInvert` steht auf
+  `true`, aber der rohe `gridPowerID`-Wert war trotzdem nicht korrigiert
+  (-5636 W, während InverterHubTile für dieselbe Anlage zeitgleich Export
+  zeigte) — entgegen der zuvor erhaltenen Zusicherung, der Vertragswert sei
+  MeterInvert-unabhängig immer kanonisch. **Provisorischer Workaround**
+  (`discoverInverterHub()`): liest `MeterInvert` selbst per
+  `IPS_GetConfiguration($id)` und negiert `gridPowerID` entsprechend (Feld
+  `sign` je Geräte-Eintrag, angewendet in `resolvePowerValue()`). Live
+  nachgeprüft: Hauslast dadurch von absurden 13 kW auf plausible ~0 W
+  korrigiert. **Bewusst als Übergang markiert** — liest eine interne
+  InverterHub-Property, kein Vertragsfeld, daher fragil. Rückmeldung mit
+  Beweis an InverterHub raus; Zielzustand bleibt ein bereits korrigierter
+  `gridPowerID`, dann entfällt der Workaround wieder.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
