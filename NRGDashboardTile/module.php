@@ -55,6 +55,7 @@ class NRGDashboardTile extends IPSModule
         'Echte Hauslast (IHUBTILE_GetHouseLoad) bevorzugt vor der berechneten Näherung, sofern konfiguriert.',
         'Manuelle Datenpunkte und frei editierbare Verbraucherliste - die Kachel läuft jetzt auch ganz ohne installiertes Partnermodul.',
         'Vollständige Darstellungs-Einstellungen (Hintergrundfarbe, Schriftart, Übergangszeit, Fluss-Tempo) wie InverterHubTile.',
+        'Einzelne automatisch gefundene Geräte lassen sich jetzt ein-/ausblenden, ohne sie manuell neu einzutragen.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
@@ -88,6 +89,16 @@ class NRGDashboardTile extends IPSModule
         // dieselben Geräte" - frei editierbare Liste, unabhängig von jedem
         // Hub-Modul, analog InverterHubTiles Consumers-Property).
         $this->RegisterPropertyString('Consumers', '[]');
+        // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
+        // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
+        // dann einschalten... oder umgekehrt ausschalten" - passt besser zu
+        // unserem Discovery-Modell als erneutes manuelles Eintragen). Nur
+        // die Spalten Key+Enabled werden ausgewertet (siehe
+        // deviceVisibilityMap()); Geraet/Quelle sind reine Anzeige, werden
+        // bei jedem Formular-Oeffnen frisch aus dem Discovery-Cache befuellt
+        // (Store-Review-Regel: berechnete Anzeigespalten nicht zurueckschreiben,
+        // "loadValuesFromConfiguration": false in form.json).
+        $this->RegisterPropertyString('DeviceVisibility', '[]');
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -136,6 +147,7 @@ class NRGDashboardTile extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->injectDeviceToggleValues($form);
 
         $banner = $this->newsBanner();
         if ($banner !== null) {
@@ -170,6 +182,73 @@ class NRGDashboardTile extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * Stabiler Schluessel je Geraet ueber Discovery-Laeufe hinweg (fuer die
+     * Zuordnung "war diese Zeile schon mal da, was hatte der Nutzer
+     * eingestellt"). Bewusst NICHT die powerID - die kann sich bei manchen
+     * Quellen aendern, Quelle+Instanz+Rolle+Bezeichnung ist stabiler.
+     */
+    private function deviceKey(array $d): string
+    {
+        return ($d['source'] ?? '') . '|' . ($d['instanceID'] ?? 0) . '|' . ($d['function'] ?? '') . '|' . ($d['label'] ?? '');
+    }
+
+    /**
+     * Liest die gespeicherte Sichtbarkeits-Liste (Key->Enabled). Fehlt ein
+     * Schluessel (neues Geraet, erste Suche), gilt konservativ sichtbar=true
+     * - Ausblenden ist eine bewusste Nutzerentscheidung, kein Vorgabezustand.
+     */
+    private function deviceVisibilityMap(): array
+    {
+        $rows = json_decode($this->readStringProperty('DeviceVisibility', '[]'), true);
+        $map = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (is_array($row) && isset($row['Key'])) {
+                    $map[$row['Key']] = !empty($row['Enabled']);
+                }
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Befuellt die "Automatisch gefundene Geräte"-Liste im Formular frisch
+     * aus dem letzten Discovery-Stand (Muster: Tessie VisibleVars) - Geraet/
+     * Quelle sind reine Anzeige und werden NIE aus der Property gelesen
+     * (Store-Review-Regel), nur "Enabled" wird aus der vorherigen Einstellung
+     * uebernommen, gematcht ueber deviceKey().
+     */
+    private function injectDeviceToggleValues(array &$form): void
+    {
+        $visibility = $this->deviceVisibilityMap();
+        $rows = [];
+        foreach ($this->GetDevices() as $d) {
+            $key = $this->deviceKey($d);
+            $rows[] = [
+                'Key'     => $key,
+                'Enabled' => $visibility[$key] ?? true,
+                'Geraet'  => ($d['label'] ?? $d['function']) . ' (' . ($d['function'] ?? '?') . ')',
+                'Quelle'  => $d['source'] ?? '?',
+            ];
+        }
+        $walk = function (array &$elements) use (&$walk, $rows) {
+            foreach ($elements as &$el) {
+                if (!is_array($el)) {
+                    continue;
+                }
+                if (($el['name'] ?? '') === 'DeviceToggles') {
+                    $el['values'] = $rows;
+                }
+                if (isset($el['items']) && is_array($el['items'])) {
+                    $walk($el['items']);
+                }
+            }
+            unset($el);
+        };
+        $walk($form['elements']);
     }
 
     /**
@@ -396,6 +475,16 @@ class NRGDashboardTile extends IPSModule
             }
             return $d;
         }, $this->GetDevices());
+
+        // Vom Nutzer ausgeblendete Geraete entfernen (siehe "Automatisch
+        // gefundene Geräte"-Liste im Formular) - erst hier bei der Anzeige,
+        // NICHT schon beim Discover()/Cache: ein ausgeblendetes Geraet soll
+        // beim naechsten Formular-Oeffnen weiterhin in der Liste auftauchen,
+        // nur eben abgewaehlt, nicht spurlos verschwinden.
+        $visibility = $this->deviceVisibilityMap();
+        $devices = array_values(array_filter($devices, function (array $d) use ($visibility) {
+            return $visibility[$this->deviceKey($d)] ?? true;
+        }));
 
         return [
             'ok'          => true,

@@ -397,11 +397,19 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   (Automatisch/W/kW/MW — wir erwarten Watt direkt) und die Fahrzeug-Zuordnungs-
   tabelle für Wallbox-SOC-Anzeige (Zeit-Korrelations-Algorithmus). Beides bei
   Bedarf nachrüstbar.
-  **Offener Punkt, von Dietmar direkt vorgeschlagen:** statt Geräte erneut
-  manuell einzutragen, könnte eine Liste bereits automatisch gefundener
-  Geräte mit Ein-/Ausschalten pro Zeile angeboten werden — passt besser zu
-  unserem Discovery-Modell als InverterHubTiles Eintrage-Schema. Noch nicht
-  umgesetzt, siehe Diskussion.
+  **Umgesetzt (27.07.2026, noch selber Tag):** Dietmars eigener Vorschlag
+  statt Neueintragung — Panel "Automatisch gefundene Geräte" listet den
+  letzten Discovery-Stand mit einer Ein-/Ausblenden-Checkbox je Zeile
+  (`DeviceToggles`-Liste, Muster: `TessieVehicle`s `VisibleVars`-Ansatz).
+  `deviceKey()` (Quelle+Instanz+Rolle+Bezeichnung, bewusst NICHT `powerID`,
+  da die sich bei manchen Quellen ändern kann) macht die Auswahl über
+  Discovery-Läufe hinweg stabil. Store-Review-konform:
+  `loadValuesFromConfiguration: false`, die Anzeigespalten (`Geraet`/
+  `Quelle`) werden bei jedem Formular-Öffnen frisch aus `GetDevices()`
+  befüllt statt aus der Property gelesen — nur `Enabled` wird per `Key`
+  übernommen. Ausblenden filtert erst bei der Anzeige (`buildPayload()`),
+  nicht schon bei der Discovery — ein ausgeblendetes Gerät bleibt in der
+  Liste wählbar, verschwindet nicht spurlos.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

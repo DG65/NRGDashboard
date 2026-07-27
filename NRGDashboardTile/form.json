@@ -27,6 +27,54 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Automatisch gefundene Geräte",
+      "expanded": true,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Alle über NRG-Stack-Partnermodule gefundenen Geräte. Einzelne Geräte lassen sich hier abwählen, ohne sie neu einzutragen - z. B. wenn ein doppelt erkanntes oder nicht gewünschtes Gerät nicht in der Kachel erscheinen soll. Bleibt nach dem nächsten „Geräte jetzt suchen“ erhalten, solange Quelle/Rolle/Bezeichnung gleich bleiben."
+        },
+        {
+          "type": "List",
+          "name": "DeviceToggles",
+          "caption": "Geräte",
+          "rowCount": 8,
+          "add": false,
+          "delete": false,
+          "loadValuesFromConfiguration": false,
+          "columns": [
+            {
+              "caption": "Anzeigen",
+              "name": "Enabled",
+              "width": "90px",
+              "add": true,
+              "edit": { "type": "CheckBox" }
+            },
+            {
+              "caption": "Gerät",
+              "name": "Geraet",
+              "width": "260px",
+              "add": ""
+            },
+            {
+              "caption": "Quelle",
+              "name": "Quelle",
+              "width": "150px",
+              "add": ""
+            },
+            {
+              "caption": "Key",
+              "name": "Key",
+              "width": "0px",
+              "add": "",
+              "visible": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Manuelle Datenpunkte (optional, ohne installiertes Partnermodul)",
       "expanded": false,
       "items": [
