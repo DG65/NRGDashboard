@@ -2,7 +2,7 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "Dokumentation & Hilfe",
+      "caption": "📖 Dokumentation & Hilfe",
       "expanded": false,
       "items": [
         {
@@ -11,7 +11,7 @@
         },
         {
           "type": "Label",
-          "caption": "Version 0.1.0-beta.1"
+          "caption": "Manuelle Datenpunkte und die Verbraucher-Liste ergänzen die automatische Suche, ersetzen sie nicht - beide Wege wirken gleichzeitig."
         }
       ]
     },

@@ -486,6 +486,26 @@ Wenige Klicks, aber ein bewusster Nutzereingriff — gehört explizit ins
 das Modul veröffentlicht wird (siehe auch `EMS/SUITE.md`, Abschnitt
 „WebFront-Kachel-Wechsel InverterHubTile → NRGDashboardTile").
 
+## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
+
+Nachgezogen (27.07.2026, war zuvor komplett vergessen — berechtigte
+Rückfrage von Dietmar): das Konfigurationsformular folgt jetzt derselben
+Grundstruktur wie alle anderen NRG-Stack-Module (Referenz: InverterHub):
+
+1. **"🆕 Neu in Version X.Y"** — aufgeklappt, pro Version dismissible
+   (`newsBanner()`/`AckNews()`, Attribut `SeenNews`), keine Versionsnummer
+   im Panel selbst.
+2. **"📖 Dokumentation & Hilfe"** — eingeklappt, Versionsnummer wird dynamisch
+   eingefügt (`injectVersionIntoDocPanel()`, aus `library.json`).
+3. Fachpanels (Manuelle Datenpunkte, Weitere Verbraucher, Darstellung).
+4. **GitHub-Hinweis** (noch kein Forum-Thread, Modul unveröffentlicht —
+   Muster: ChargerHub vor der Forum-Veröffentlichung), einmalig dismissible
+   (`DismissReviewHint()`, Attribut `ReviewHintDismissed`).
+
+**Pflege-Pflicht ab jetzt beachten:** bei jedem künftigen Fix/Update prüfen,
+ob etwas ins News-Panel gehört — Ergebnis darf „nichts Relevantes" sein,
+die Prüfung selbst ist Pflicht. Aktuelle `NEWS_VERSION` = `0.2.0`.
+
 ## Store-Review-Checkliste
 
 Wie alle NRG-Stack-Module: keine Selbstpersistenz in Formular-Buttons, kein
