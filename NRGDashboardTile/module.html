@@ -764,7 +764,7 @@ function createSpoke(angleDeg, layout, layer) {
 }
 
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
-const AURA_REACH_W = 25000;
+const AURA_REACH_W = 24000; // Dietmars vereinbarter Wert (27.07.2026) - weicht bewusst von InverterHubTiles 25000 ab
 
 function boltBrightness(magnitude, active) {
   if (!active) { return 0; }
