@@ -1,302 +1,768 @@
-<!--
-  Phase 2: Energiefluss-Diagramm. Zentrum = Hauslast, vier Kategorie-Anker
-  darum (Erzeugung oben, Speicher rechts, Verteilung/Netz links, Verbraucher
-  unten - feste, logische Anordnung, siehe README "Aufbau"). Je Kategorie
-  können mehrere Einzelgeräte als kleinere Knoten um den Anker verteilt sein
-  (z.B. mehrere Wallboxen unter Verbraucher). Browser-Eigenheiten (Safari-
-  Blur/Radialverlauf-Fallen) laut InverterHubTile/CLAUDE.md bewusst vermieden:
-  keine filter:blur(), Verläufe als Kreis+scale statt Ellipse.
-
-  handleMessage() ist der von der WebFront-Kachel erwartete Einstiegspunkt
-  (siehe GetVisualizationTile()/UpdateVisualizationValue() in module.php).
--->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+  /* Visuelle Basis 1:1 von InverterHubTile/module.html übernommen (auf
+     Wunsch Dietmars, 27.07.2026 - die erste Eigenentwicklung wirkte im
+     Vergleich naiv). Münz-Look, Corona-Glow, Fluss-Animationen und die
+     Safari-Fallen-Vermeidung (kein filter:blur() für weiche Verläufe,
+     Ellipsen als Kreis+scale, viewBox fest+preserveAspectRatio) sind
+     unverändert aus dem Referenzmodul übernommen - Details siehe dort. */
+  @property --nc {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: rgb(158,158,158);
+  }
+
+  :root {
+    --grey: rgba(158,158,158,0.85);
+    --grey-glow: rgba(158,158,158,0);
+    --wire: rgba(150,150,150,0.42);
+    --ring-decor: rgba(190,190,190,0.55);
+    --text: inherit;
+    --textmuted: rgba(158,158,158,0.9);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --trans: 800ms;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
   html, body { width: 100%; background: transparent; user-select: none; overflow: hidden; }
   html, body { height: 100vh; }
   html, body { height: 100dvh; }
-  body { max-height: 100dvh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { max-height: 100dvh; }
+
   .flow-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-  text { fill: var(--text, #444); }
-  .cat-label { font-size: 11px; font-weight: 600; text-anchor: middle; opacity: .75; }
-  .val-label { font-size: 12px; font-weight: 700; text-anchor: middle; }
-  .dev-label { font-size: 8px; text-anchor: middle; opacity: .7; }
+  text { font-family: var(--font); }
 
-  .wire { stroke: rgba(150,150,150,0.45); stroke-width: 2; fill: none; transition: stroke 600ms ease, stroke-width 600ms ease; }
-  .wire.active-in  { stroke: #3a3; stroke-width: 3; }
-  .wire.active-out { stroke: #c33; stroke-width: 3; }
+  .status-overlay {
+    position: absolute; left: 4px; bottom: 4px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 26px; padding: 0 13px 0 11px;
+    border-radius: 13px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-family: var(--font);
+    pointer-events: none;
+  }
+  .status-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--textmuted); flex: none; }
+  .status-dot.fresh { background: #4caf50; box-shadow: 0 0 4px rgba(76,175,80,0.85); }
+  .status-dot.fresh.pulse { animation: pulse 2s ease-in-out infinite; }
+  .status-dot.stale { background: #c9a227; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .state-label { font-size: 12px; font-weight: 600; color: var(--textmuted); white-space: nowrap; }
 
-  .node-icon, .node-icon * { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .node-icon [data-fill] { fill: currentColor; stroke: none; }
+  /* Diagnose-Panel: gleiche Plakettenoptik wie die Statusanzeige, oben rechts. */
+  .diag-overlay {
+    position: absolute; right: 4px; top: 4px; z-index: 2;
+    max-width: 62%; max-height: 70%; overflow-y: auto;
+    border-radius: 10px; padding: 6px 10px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.90), rgba(28,30,36,0.90));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-family: var(--font); font-size: 11px; color: var(--textmuted);
+  }
+  .diag-overlay ul { list-style: none; }
+  .diag-overlay li { padding: 2px 0; }
+  .diag-overlay b { color: #ddd; }
 
-  .node-circle { fill: #eee; stroke: rgba(150,150,150,0.5); stroke-width: 1.5; transition: fill 600ms ease, color 600ms ease; }
-  .node.active .node-circle { fill: #fff; }
-  .node.active.pv       { color: #d99200; }
-  .node.active.battery  { color: #2e7d32; }
-  .node.active.grid     { color: #1565c0; }
-  .node.active.verbraucher { color: #8a3ea1; }
-  .node:not(.active) { color: #999; }
+  .node {
+    transform-box: view-box;
+    transform-origin: 0 0;
+    transition: --nc var(--trans) var(--ease),
+                transform var(--trans) var(--ease),
+                opacity var(--trans) var(--ease);
+  }
 
-  #nrgdash-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
+  .node-icon, .node-icon * { fill: var(--nc, var(--grey)); stroke: var(--nc, var(--grey)); }
+  .node-icon rect[data-hollow],
+  .node-icon polygon[data-hollow],
+  .node-icon circle[data-hollow],
+  .node-icon path[data-hollow] { fill: none; }
 
-  #nrgdash-diagnostics { position: absolute; left: 4px; right: 4px; bottom: 20px; font-size: 11px; max-height: 22%; overflow-y: auto; }
-  #nrgdash-diagnostics ul { list-style: none; }
-  #nrgdash-diagnostics li { padding: 1px 0; }
+  .node-value { font-size: 22px; font-weight: 800; fill: var(--nc, var(--grey)); }
+  .node-value-unit { font-size: 0.52em; font-weight: 600; fill: var(--nc, var(--grey)); }
+  .node-label { font-size: 12.5px; fill: var(--textmuted); }
+  .node-sub { font-size: 10px; font-weight: 700; fill: var(--nc, var(--grey)); opacity: 0.75; }
 
-  /* Sichtbarer Aktualisierungsstand (Ampel + Zeitstempel) - Verbund-
-     Konvention "Zustand sichtbar melden, nicht nur im Log". Grau/veraltet,
-     wenn der letzte Discover()-Lauf länger als zwei Aktualisierungsintervalle
-     zurückliegt (Timer steht bei 5 Minuten, siehe module.php). */
-  #nrgdash-status { position: absolute; left: 4px; bottom: 2px; font-size: 10px; opacity: .65; display: flex; align-items: center; gap: 4px; }
-  #nrgdash-status .dot { width: 6px; height: 6px; border-radius: 50%; background: #999; }
-  #nrgdash-status.fresh .dot { background: #3a3; }
-  #nrgdash-status.stale .dot { background: #c90; }
+  .wire { fill: none; stroke: var(--wire); stroke-width: 2.5; stroke-linecap: round; }
+
+  .flow-core {
+    fill: none; stroke-width: 3.5; stroke-linecap: round;
+    filter: blur(3px); opacity: 0;
+    transition: opacity 0.35s, stroke 0.4s;
+  }
+
+  .flow-tri {
+    offset-rotate: auto;
+    animation-name: flowMove;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    transition: opacity 0.35s;
+  }
+  @keyframes flowMove {
+    from { offset-distance: 0%; }
+    to   { offset-distance: 100%; }
+  }
+
+  .flow-bolt {
+    fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0; filter: blur(1.1px);
+    animation-name: boltFlicker;
+    animation-timing-function: steps(1, end);
+    animation-iteration-count: infinite;
+  }
+  @keyframes boltFlicker {
+    0%   { opacity: 0; }
+    4%   { opacity: 0.55; }
+    9%   { opacity: 0; }
+    13%  { opacity: 0.35; }
+    17%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  .node-bolt, .node-aura {
+    fill: none; stroke: var(--nc, var(--grey));
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0; filter: blur(0.8px);
+    animation-name: boltFlickerV;
+    animation-timing-function: steps(1, end);
+    animation-iteration-count: infinite;
+  }
+  @keyframes boltFlickerV {
+    0%   { opacity: 0; }
+    4%   { opacity: var(--bmax, 0.5); }
+    9%   { opacity: 0; }
+    13%  { opacity: calc(var(--bmax, 0.5) * 0.6); }
+    17%  { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .node.inactive .node-bolt { display: none; }
+
+  .ring-decor { fill: none; stroke: var(--ring-decor); stroke-width: 3.5; stroke-dasharray: 2 6; }
+
+  .node-glow { opacity: 0; transition: opacity var(--trans) var(--ease); }
+  .node-ring { fill: none; stroke-width: 3; stroke: var(--nc, var(--grey)); }
+  .node-face { fill: url(#plasticFill); }
+
+  .coin-shadow { fill: url(#coinShadowG); opacity: 0.55; }
+  .node-bevel { fill: none; stroke: url(#bevelGrad); stroke-width: 5; }
+  .node-highlight { fill: url(#glossHi); opacity: 0.5; }
+  .node-spec { fill: url(#glossSpec); opacity: 0.55; }
+
+  .node-face, .coin-shadow, .node-bevel, .node-highlight, .node-spec {
+    transition: opacity var(--trans) var(--ease);
+  }
+  .node.inactive .node-face,
+  .node.inactive .coin-shadow,
+  .node.inactive .node-bevel,
+  .node.inactive .node-highlight,
+  .node.inactive .node-spec { opacity: 0; }
+
+  #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 </style>
+</head>
+<body>
 
-<svg class="flow-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+<svg class="flow-svg" id="svg" viewBox="-17 4 594 594" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+  <defs id="markerDefs"></defs>
+  <defs>
+    <radialGradient id="plasticFill" cx="33%" cy="25%" r="88%">
+      <stop offset="0%"   stop-color="#3d4655"/>
+      <stop offset="42%"  stop-color="#1d222b"/>
+      <stop offset="100%" stop-color="#070a0e"/>
+    </radialGradient>
+    <linearGradient id="bevelGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="28%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="70%"  stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+    </linearGradient>
+    <radialGradient id="glossHi" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="55%"  stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glossSpec" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coinShadowG" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.9"/>
+      <stop offset="55%"  stop-color="#000000" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="relief" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur in="SourceAlpha" stdDev="1.3" result="bump"/>
+      <feSpecularLighting in="bump" surfaceScale="2.6" specularConstant="1"
+          specularExponent="9" lighting-color="#ffffff" result="spec">
+        <fePointLight x="-60" y="-90" z="70"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/>
+      <feOffset in="SourceAlpha" dx="1.1" dy="1.4" result="sa"/>
+      <feGaussianBlur in="sa" stdDev="0.7" result="sab"/>
+      <feFlood flood-color="#000000" flood-opacity="0.75"/>
+      <feComposite in2="sab" operator="in" result="sh"/>
+      <feMerge>
+        <feMergeNode in="sh"/>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="specClip"/>
+      </feMerge>
+    </filter>
+  </defs>
+
   <g id="wires-layer"></g>
+
+  <circle class="ring-decor" id="ring-decor" cx="280" cy="301" r="96" style="display:none"/>
+  <g id="node-center" class="node">
+    <circle class="coin-shadow" cx="0" cy="8.96" r="63"/>
+    <circle class="node-glow" r="56"/>
+    <circle class="node-face" r="56"/>
+    <circle class="node-ring" r="56"/>
+    <circle class="node-bevel" r="56"/>
+    <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
+    <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
+    <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
+      <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
+    </g>
+    <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
+    <text x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
+  </g>
+
   <g id="nodes-layer"></g>
 </svg>
-<div id="nrgdash-empty" style="display:none;">Keine Geräte gefunden - NRGDASH_Discover() ausführen.</div>
-<div id="nrgdash-diagnostics"></div>
-<div id="nrgdash-status"><span class="dot"></span><span id="nrgdash-status-text">–</span></div>
+
+<div id="nrgdash-empty">Keine Geräte gefunden - NRGDASH_Discover() ausführen.</div>
+
+<div id="status" class="status-overlay">
+  <span id="dot" class="status-dot"></span>
+  <span id="stateLabel" class="state-label">–</span>
+</div>
+<div id="nrgdash-diagnostics" class="diag-overlay" style="display:none;"></div>
 
 <script>
-var CX = 200, CY = 200;
+// --- Übernommen aus InverterHubTile/module.html (Referenz-Visualisierung
+// des Verbunds) - Layout-/Effekt-Engine ist geräteartenneutral, daher 1:1
+// wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
+// Geräte-Schema (function/label/value/category) statt fester WR-Felder.
+const CX = 280, CY = 301;
+const DESIGN_R = 56;
+const SCALE_INACTIVE = 44 / 56;
+const R_MAX = 234;
+const NODE_GAP = 10;
+const CENTER_R = DESIGN_R;
+const SPOKE_GAP = 9;
+const TRI_COUNT = 3;
+const BOLT_COUNT = 3;
 
-// Kategorie-Anker: feste Positionen, feste Bedeutung - keine
-// kreuz-und-quer-Anordnung. Winkel in Grad, 0=rechts, 90=unten (SVG-Konvention).
-var CATEGORIES = {
-  erzeugung:   { angle: -90, label: 'Erzeugung',  rAnchor: 110 },
-  speicher:    { angle: 0,   label: 'Speicher',   rAnchor: 110 },
-  verteilung:  { angle: 180, label: 'Netz',       rAnchor: 110 },
-  verbraucher: { angle: 90,  label: 'Verbraucher', rAnchor: 110 }
-};
-var R_DEV = 165; // Radius der Einzelgeräte-Knoten (weiter außen als der Kategorie-Anker)
-
-// Icon-Katalog je function-Typ (Muster: InverterHubTile ICONS-Objekt) -
-// jede Zeichenfunktion arbeitet in einem 20x20-Raster zentriert auf (0,0).
-var ICONS = {
-  pv(g) {
-    g.appendChild(el('circle', { r: 5, 'data-fill': '1' }));
-    [[0,-9,0,-6],[0,6,0,9],[-9,0,-6,0],[9,0,6,0],[-6.4,-6.4,-4.2,-4.2],[4.2,4.2,6.4,6.4],[-6.4,6.4,-4.2,4.2],[4.2,-4.2,6.4,-6.4]]
-      .forEach(([x1,y1,x2,y2]) => g.appendChild(el('line', { x1,y1,x2,y2 })));
-  },
-  battery(g, socPct) {
-    g.appendChild(el('rect', { x: -9, y: -6, width: 16, height: 12, rx: 2 }));
-    g.appendChild(el('rect', { x: 7, y: -3, width: 2.5, height: 6, rx: .6, 'data-fill': '1' }));
-    if (socPct != null) {
-      var pct = Math.max(0, Math.min(100, socPct)) / 100;
-      g.appendChild(el('rect', { x: -7.5, y: -4.5, width: 13 * pct, height: 9, rx: 1, opacity: .5, 'data-fill': '1' }));
-    }
-  },
-  grid(g) {
-    g.appendChild(el('polygon', { points: '1,-9 -5,1.5 -1,1.5 -2,9 5,-1.5 1,-1.5', 'data-fill': '1' }));
-  },
-  house(g) {
-    g.appendChild(el('polygon', { points: '0,-9 10,0 10,9 -10,9 -10,0' }));
-  },
-  charger(g, socPct) {
-    var inner = el('g', { transform: 'translate(0,-2)' });
-    ICONS.battery(inner, socPct);
-    [-6,6].forEach(x => inner.appendChild(el('circle', { cx: x, cy: 8, r: 2.2, 'data-fill': '1' })));
-    g.appendChild(inner);
-  },
-  heatpump(g) {
-    g.appendChild(el('rect', { x: -8, y: -7, width: 16, height: 14, rx: 2 }));
-    g.appendChild(el('circle', { cx: 0, cy: 0, r: 4 }));
-    g.appendChild(el('circle', { cx: 0, cy: 0, r: .8, 'data-fill': '1' }));
-  },
-  vehicle(g, socPct) { ICONS.charger(g, socPct); },
-  default(g) {
-    g.appendChild(el('circle', { r: 4, 'data-fill': '1' }));
+function computeLayout(n) {
+  let outerR = DESIGN_R;
+  if (n >= 3) {
+    const s = Math.sin(Math.PI / n);
+    outerR = Math.min(DESIGN_R, (R_MAX * s - NODE_GAP / 2) / (1 + s));
   }
-};
+  outerR = Math.max(16, outerR);
+  return { outerR, rOuter: R_MAX - outerR };
+}
 
+const C_SOLAR  = [255, 179, 0];
+const C_BAT    = [33, 150, 243];
+const C_GREEN  = [67, 160, 71];
+const C_RED    = [229, 57, 53];
+const C_GREY   = [158, 158, 158];
+const C_PURPLE = [142, 36, 170];
+const C_ORANGE = [251, 140, 0];
+
+function rgb(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+function lerp(a, b, t) {
+  t = Math.max(0, Math.min(1, t));
+  return [Math.round(a[0]+(b[0]-a[0])*t), Math.round(a[1]+(b[1]-a[1])*t), Math.round(a[2]+(b[2]-a[2])*t)];
+}
+
+// Analog fmtPower aus InverterHubTile: unter 1 kW in W, sonst kW mit drei
+// bzw. (geschätzt) einer Nachkommastelle. measured===false -> "≈"-Präfix.
+function fmtPower(w, measured) {
+  const v = w || 0, a = Math.abs(v);
+  const est = (measured === false);
+  const num = (x, d) => (est ? '≈' : '') + x.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  if (a >= 1000000) { return { value: num(v / 1000000, 3), unit: 'MW' }; }
+  if (a >= 1000)    { return { value: num(v / 1000, est ? 1 : 3), unit: 'kW' }; }
+  return { value: num(est ? Math.round(v / 10) * 10 : v, 0), unit: 'W' };
+}
+
+const GLOW_MAX_W = 12000; // Hausanlagen-Maßstab statt WR-Nennleistung (40 kW)
+let glowGradSeq = 0;
+function attachGlow(glowEl) {
+  const defs = document.getElementById('markerDefs');
+  const id = 'glowg' + (++glowGradSeq);
+  const grad = el('radialGradient', { id, cx: '50%', cy: '50%', r: '50%' });
+  const stops = [
+    el('stop', { offset: '0%',   'stop-color': '#fff', 'stop-opacity': '0' }),
+    el('stop', { offset: '52%',  'stop-color': '#fff', 'stop-opacity': '0' }),
+    el('stop', { offset: '58%',  'stop-color': '#fff', 'stop-opacity': '0.8' }),
+    el('stop', { offset: '74%',  'stop-color': '#fff', 'stop-opacity': '0.22' }),
+    el('stop', { offset: '100%', 'stop-color': '#fff', 'stop-opacity': '0' }),
+  ];
+  stops.forEach(s => grad.appendChild(s));
+  if (defs) { defs.appendChild(grad); }
+  glowEl.setAttribute('r', (DESIGN_R * 1.9).toFixed(1));
+  glowEl.style.fill = 'url(#' + id + ')';
+  glowEl._glowStops = [stops[2], stops[3], stops[4]];
+  return glowEl;
+}
+function applyGlow(glowEl, color, magnitudeW) {
+  const t = Math.max(0, Math.min(1, magnitudeW / GLOW_MAX_W));
+  if (glowEl._glowStops) {
+    const c = rgb(color);
+    glowEl._glowStops.forEach(s => s.setAttribute('stop-color', c));
+  }
+  glowEl.style.opacity = (t <= 0) ? '0' : Math.sqrt(t).toFixed(3);
+}
+const SVGNS = 'http://www.w3.org/2000/svg';
 function el(tag, attrs) {
-  var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-  for (var k in attrs) e.setAttribute(k, attrs[k]);
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
   return e;
 }
 
-function polar(cx, cy, r, angleDeg) {
-  var rad = angleDeg * Math.PI / 180;
-  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+function makeCoinShadow(r) { return el('circle', { class: 'coin-shadow', cx: 0, cy: r * 0.16, r: r * 1.13 }); }
+function makeBevel(r) { return el('circle', { class: 'node-bevel', r }); }
+function makeHighlight(r) {
+  const c = el('circle', { class: 'node-highlight', r: r * 0.72 });
+  c.setAttribute('transform', 'translate(' + (-r * 0.30) + ',' + (-r * 0.48) + ') scale(1,0.57)');
+  return c;
+}
+function makeSpecular(r) {
+  const c = el('circle', { class: 'node-spec', r: r * 0.30 });
+  c.setAttribute('transform', 'translate(' + (-r * 0.44) + ',' + (-r * 0.55) + ') scale(1,0.55)');
+  return c;
 }
 
-function fmtW(w) {
-  if (w == null) return '–';
-  var abs = Math.abs(w);
-  return (abs >= 1000 ? (w / 1000).toFixed(2) + ' kW' : Math.round(w) + ' W');
+// -- Icon-Katalog: nur die im NRG-Stack-Vokabular tatsächlich vorkommenden
+//    Zeichenfunktionen (Referenzmuster InverterHubTile ICONS, 32x32-Raster
+//    zentriert auf (0,0)). Erweiterbar - neue function-Werte brauchen hier
+//    einen Eintrag plus einen Schlüssel in FUNCTION_STYLE weiter unten.
+const ICONS = {
+  sun(g) {
+    g.appendChild(el('circle', { r: 7, stroke: 'none' }));
+    const rays = [[0,-13,0,-10],[0,10,0,13],[-13,0,-10,0],[10,0,13,0],
+      [-9.2,-9.2,-7,-7],[7,7,9.2,9.2],[-9.2,9.2,-7,7],[7,-7,9.2,-9.2]];
+    rays.forEach(([x1,y1,x2,y2]) => g.appendChild(el('line', { x1,y1,x2,y2 })));
+  },
+  bolt(g) {
+    g.appendChild(el('polygon', {
+      points: '2,-12 -6.5,2 -1,2 -2.7,12 7.3,-2 2,-2', 'data-hollow': '1',
+      'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+    }));
+  },
+  house(g) {
+    g.appendChild(el('polygon', { points: '0,-15 17,-1 17,15 -17,15 -17,-1', 'data-hollow': '1' }));
+  },
+  battery(g, socPct) {
+    g.appendChild(el('rect', { x: -20, y: -11, width: 37, height: 22, rx: 3, 'data-hollow': '1' }));
+    g.appendChild(el('rect', { x: 17, y: -5.5, width: 5, height: 11, rx: 1.3, stroke: 'none' }));
+    if (socPct != null) {
+      const pct = Math.max(0, Math.min(100, socPct)) / 100;
+      const fillW = 31 * pct;
+      g.appendChild(el('rect', { x: -18, y: -9, width: fillW, height: 18, rx: 1.8, opacity: 0.4, stroke: 'none' }));
+      const t = el('text', { x: -1.5, y: 4, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 800 });
+      t.style.fill = '#fff'; t.style.stroke = 'none';
+      t.textContent = Math.round(socPct) + '%';
+      g.appendChild(t);
+    }
+  },
+  heatpump(g) {
+    g.appendChild(el('rect', { x: -15, y: -12, width: 30, height: 24, rx: 3, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 7.5, 'data-hollow': '1' }));
+    g.appendChild(el('circle', { cx: 0, cy: 0, r: 1.6, stroke: 'none' }));
+    [[0, -7.5], [6.5, 3.75], [-6.5, 3.75]].forEach(([x, y]) => {
+      g.appendChild(el('line', { x1: 0, y1: 0, x2: x, y2: y, 'stroke-linecap': 'round' }));
+    });
+  },
+  car(g, socPct) {
+    const WHEEL_R = 3.5, WHEEL_CY = 14, BAT_BOTTOM = 11;
+    const overhang = (WHEEL_CY + WHEEL_R) - BAT_BOTTOM;
+    const inner = el('g', { transform: 'translate(0,' + (-overhang / 2).toFixed(2) + ')' });
+    ICONS.battery(inner, socPct);
+    [-11, 9].forEach(x => inner.appendChild(el('circle', { cx: x, cy: WHEEL_CY, r: WHEEL_R, stroke: 'none' })));
+    g.appendChild(inner);
+  },
+  other(g) {
+    g.appendChild(el('path', {
+      d: 'M-7.5,-11 L-7.5,-3 C-7.5,1.6 -4.1,5 0,5 C4.1,5 7.5,1.6 7.5,-3 L7.5,-11',
+      'data-hollow': '1', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }));
+    [-3.8, 3.8].forEach(x => g.appendChild(el('line', { x1: x, y1: -14, x2: x, y2: -8, 'stroke-linecap': 'round' })));
+    g.appendChild(el('line', { x1: 0, y1: 5, x2: 0, y2: 13.5, 'stroke-linecap': 'round' }));
+  },
+};
+
+// Farbe/Richtung je function-Typ. Fehlt ein Eintrag, greift DEFAULT_STYLE
+// (grau, "other"-Icon) - lieber unauffällig als unsichtbar (vgl.
+// functionCategory() in module.php, gleiches Rückfall-Prinzip).
+const FUNCTION_STYLE = {
+  pv:       { icon: 'sun',      color: () => C_SOLAR,                          dir: () => 'in' },
+  battery:  { icon: 'battery',  color: () => C_BAT,                            dir: (w) => w >= 0 ? 'in' : 'out', battery: true },
+  grid:     { icon: 'bolt',     color: (w) => w >= 0 ? C_GREEN : C_RED,        dir: (w) => w >= 0 ? 'out' : 'in' },
+  charger:  { icon: 'car',      color: () => C_PURPLE,                         dir: () => 'out' },
+  vehicle:  { icon: 'car',      color: () => C_PURPLE,                         dir: () => 'out' },
+  heatpump: { icon: 'heatpump', color: () => C_ORANGE,                         dir: () => 'out' },
+};
+const DEFAULT_STYLE = { icon: 'other', color: () => C_GREY, dir: () => 'out' };
+
+// Baut die Knotenliste aus den Geräten (das explizite 'house'-Gerät wird nie
+// als Außenknoten gezeichnet, es speist nur das Zentrum - siehe handleMessage).
+function buildItems(devices) {
+  return devices
+    .filter(d => d.function !== 'house')
+    .map(d => {
+      const style = FUNCTION_STYLE[d.function] || DEFAULT_STYLE;
+      return {
+        key: 'dev' + d.instanceID + '_' + d.function + '_' + (d.label || ''),
+        label: d.label || d.function,
+        icon: style.icon,
+        value: d.value ?? 0,
+        soc: null,
+        sub: '',
+        measured: d.measured ?? true,
+        plugged: false,
+        color: style.color,
+        dir: style.dir,
+        battery: !!style.battery,
+      };
+    });
 }
 
-function makeNode(g, id, x, y, r, iconFn, label, socPct) {
-  var node = el('g', { class: 'node', transform: 'translate(' + x + ',' + y + ')' });
-  node.appendChild(el('circle', { class: 'node-circle', r: r }));
-  var iconG = el('g', { class: 'node-icon' });
-  (ICONS[iconFn] || ICONS.default)(iconG, socPct);
-  node.appendChild(iconG);
-  if (label) {
-    var t = el('text', { class: 'dev-label', y: r + 10 });
-    t.textContent = label;
-    node.appendChild(t);
+function setValueText(textEl, watts, measured) {
+  const f = fmtPower(watts, measured);
+  textEl.firstChild.nodeValue = f.value;
+  const unitEl = textEl.querySelector('.node-value-unit');
+  if (unitEl && unitEl.textContent !== f.unit) { unitEl.textContent = f.unit; }
+}
+
+let builtSig = null;
+const nodeRefs = {};
+
+function createOuterNode(item, angleDeg, layout) {
+  const rad = angleDeg * Math.PI / 180;
+  const cx = CX + layout.rOuter * Math.cos(rad);
+  const cy = CY + layout.rOuter * Math.sin(rad);
+
+  const g = el('g', { class: 'node' });
+  g.appendChild(makeCoinShadow(DESIGN_R));
+  const glow = attachGlow(el('circle', { class: 'node-glow' }));
+  g.appendChild(glow);
+  g.appendChild(el('circle', { class: 'node-face', r: DESIGN_R }));
+  g.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
+  g.appendChild(makeBevel(DESIGN_R));
+  g.appendChild(makeHighlight(DESIGN_R));
+  g.appendChild(makeSpecular(DESIGN_R));
+  addNodeBolts(g, DESIGN_R, Math.round(angleDeg + 360));
+
+  const iconG = el('g', { class: 'node-icon', transform: 'translate(0,-30)', 'stroke-width': 2, fill: 'none', filter: 'url(#relief)' });
+  g.appendChild(iconG);
+
+  const valText = el('text', { x: 0, y: 9, 'text-anchor': 'middle', class: 'node-value', filter: 'url(#relief)' });
+  valText.appendChild(document.createTextNode('0'));
+  const unit = el('tspan', { class: 'node-value-unit', dx: 2 });
+  unit.textContent = 'kW';
+  valText.appendChild(unit);
+  g.appendChild(valText);
+
+  const labelText = el('text', { x: 0, y: 33, 'text-anchor': 'middle', class: 'node-label' });
+  labelText.textContent = item.label;
+  g.appendChild(labelText);
+
+  const subText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'node-sub' });
+  g.appendChild(subText);
+
+  return { g, glow, iconG, valText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+}
+
+function jagPath(p1, p2, amp, seg, seed) {
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1];
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  let d = 'M' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1);
+  for (let i = 1; i < seg; i++) {
+    const t = i / seg;
+    const off = Math.sin(seed * 12.9898 + i * 4.1414) * amp * (i % 2 ? 1 : -1);
+    d += ' L' + (p1[0] + dx * t + nx * off).toFixed(1) + ',' + (p1[1] + dy * t + ny * off).toFixed(1);
   }
-  g.appendChild(node);
-  return node;
+  return d + ' L' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
+}
+function jagArc(r, startDeg, endDeg, amp, seg, seed) {
+  const pt = (deg, jitter) => {
+    const rad = deg * Math.PI / 180;
+    const rr = r + jitter;
+    return (rr * Math.cos(rad)).toFixed(1) + ',' + (rr * Math.sin(rad)).toFixed(1);
+  };
+  let d = 'M' + pt(startDeg, 0);
+  for (let i = 1; i < seg; i++) {
+    const deg = startDeg + (endDeg - startDeg) * i / seg;
+    const off = Math.sin(seed * 12.9898 + i * 4.1414) * amp * (i % 2 ? 1 : -1);
+    d += ' L' + pt(deg, off);
+  }
+  return d + ' L' + pt(endDeg, 0);
+}
+function addNodeBolts(g, r, seedBase) {
+  for (let i = 0; i < BOLT_COUNT; i++) {
+    const start = (seedBase * 47 + i * 120) % 360;
+    const span  = 55 + ((seedBase + i) % 3) * 20;
+    const b = el('path', { class: 'node-bolt', d: jagArc(r, start, start + span, 3.2, 8, seedBase * 3 + i + 1) });
+    b.style.animationDuration = (1.15 + ((seedBase + i * 2) % 5) * 0.11).toFixed(2) + 's';
+    b.style.animationDelay = (((seedBase * 7 + i * 13) % 17) / 10).toFixed(2) + 's';
+    g.appendChild(b);
+  }
+}
+(function () {
+  const c = document.getElementById('node-center');
+  const cg = c.querySelector('.node-glow');
+  if (cg) { attachGlow(cg); }
+  const holder = el('g', {});
+  addNodeBolts(holder, DESIGN_R, 5);
+  c.insertBefore(holder, document.getElementById('center-icon'));
+})();
+
+function createSpoke(angleDeg, layout, layer) {
+  const rad = angleDeg * Math.PI / 180;
+  const c = Math.cos(rad), s = Math.sin(rad);
+  const r1 = CENTER_R + SPOKE_GAP;
+  const r2 = layout.rOuter - layout.outerR - SPOKE_GAP;
+  const p1 = [CX + r1 * c, CY + r1 * s];
+  const p2 = [CX + r2 * c, CY + r2 * s];
+  const line = (cls) => el('line', { class: cls, x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1) });
+  layer.appendChild(line('wire'));
+  const core = line('flow-core');
+  layer.appendChild(core);
+  const bolts = [];
+  for (let i = 0; i < BOLT_COUNT; i++) {
+    const b = el('path', { class: 'flow-bolt', d: jagPath(p1, p2, 3.4, 9, i + 1) });
+    layer.appendChild(b);
+    bolts.push(b);
+  }
+  const tris = [];
+  for (let i = 0; i < TRI_COUNT; i++) {
+    const t = el('path', { class: 'flow-tri', d: 'M-3.4,-3.8 L3.8,0 L-3.4,3.8 Z' });
+    layer.appendChild(t);
+    tris.push(t);
+  }
+  return {
+    tris, bolts, core,
+    dIn:  'M' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1) + ' L' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1),
+    dOut: 'M' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1) + ' L' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1),
+  };
 }
 
-function drawWire(g, x1, y1, x2, y2) {
-  return g.appendChild(el('path', { class: 'wire', d: 'M' + x1 + ',' + y1 + ' L' + x2 + ',' + y2 }));
+let FLOW_REF_W = 6000; // Hausanlagen-Maßstab (vgl. GLOW_MAX_W)
+const AURA_REACH_W = 8000;
+
+function boltBrightness(magnitude, active) {
+  if (!active) { return 0; }
+  const k = Math.sqrt(Math.max(0, Math.min(1, magnitude / AURA_REACH_W)));
+  return 0.35 + 0.55 * k;
 }
 
-function renderDiagram(devices) {
-  var wiresLayer = document.getElementById('wires-layer');
-  var nodesLayer = document.getElementById('nodes-layer');
-  wiresLayer.innerHTML = '';
-  nodesLayer.innerHTML = '';
+function updateNodeAura(refs, magnitude, active, color) {
+  const col = rgb(color);
+  const reach = magnitude / AURA_REACH_W;
+  const k = Math.sqrt(Math.max(0, Math.min(1, reach)));
+  const bmax = (0.3 + 0.6 * k).toFixed(2);
+  const amp  = 2 + 4 * k;
+  (refs.aura || []).forEach((a, idx) => {
+    if (!active || reach < 0.03) { a.el.style.display = 'none'; return; }
+    const dx = a.ncx - refs.cx, dy = a.ncy - refs.cy;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist, uy = dy / dist;
+    const start   = [refs.cx + ux * refs.nodeR, refs.cy + uy * refs.nodeR];
+    const nbrEdge = [a.ncx - ux * refs.nodeR, a.ncy - uy * refs.nodeR];
+    const f = Math.min(1, reach);
+    const end = [start[0] + (nbrEdge[0] - start[0]) * f, start[1] + (nbrEdge[1] - start[1]) * f];
+    a.el.setAttribute('d', jagPath(start, end, amp, 7, idx * 3 + 1 + Math.floor(magnitude / 500)));
+    a.el.style.display = '';
+    a.el.style.stroke = col;
+    a.el.style.setProperty('--bmax', bmax);
+    a.el.style.animationDuration = (0.9 + idx * 0.2).toFixed(2) + 's';
+    a.el.style.animationDelay = (idx * 0.31).toFixed(2) + 's';
+  });
+}
 
-  var byCategory = {};
-  devices.forEach(function (d) {
-    var cat = d.category || 'verbraucher';
-    (byCategory[cat] = byCategory[cat] || []).push(d);
+function updateSpoke(sp, color, magnitude, active, dir) {
+  const col = rgb(color);
+  const d = (dir === 'in') ? sp.dIn : sp.dOut;
+  sp.core.style.stroke = col;
+  sp.core.style.opacity = active ? '0.5' : '0';
+  const k = Math.sqrt(Math.max(0, Math.min(1, magnitude / FLOW_REF_W)));
+  const dur = 3.0 - 2.6 * k;
+  sp.tris.forEach((t, i) => {
+    t.style.display = active ? '' : 'none';
+    if (!active) { return; }
+    t.style.offsetPath = 'path("' + d + '")';
+    t.style.animationDuration = dur.toFixed(2) + 's';
+    t.style.animationDelay = (-dur * i / TRI_COUNT).toFixed(2) + 's';
+    t.style.fill = col;
+    t.style.filter = 'drop-shadow(0 0 3px rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',0.9))';
+  });
+  sp.bolts.forEach((b, i) => {
+    b.style.display = active ? '' : 'none';
+    if (!active) { return; }
+    b.style.stroke = col;
+    b.style.animationDuration = (1.1 + i * 0.23).toFixed(2) + 's';
+    b.style.animationDelay = (i * 0.37).toFixed(2) + 's';
+  });
+}
+
+function ensureNodes(items) {
+  const sig = items.map(x => x.key + ':' + x.label + ':' + x.icon).join(',');
+  if (sig === builtSig) return;
+  builtSig = sig;
+  const nodesLayer = document.getElementById('nodes-layer');
+  const wiresLayer = document.getElementById('wires-layer');
+  nodesLayer.textContent = '';
+  wiresLayer.textContent = '';
+  Object.keys(nodeRefs).forEach(k => delete nodeRefs[k]);
+
+  const n = items.length;
+  const layout = computeLayout(n);
+  items.forEach((item, i) => {
+    const angleDeg = -90 + (360 / n) * i;
+    const refs = createOuterNode(item, angleDeg, layout);
+    refs.nodeR = layout.outerR;
+    refs.spoke = createSpoke(angleDeg, layout, wiresLayer);
+    nodeRefs[item.key] = refs;
+    nodesLayer.appendChild(refs.g);
   });
 
-  // Zentrum: Hauslast. Bevorzugt das explizite 'house'-Gerät (z.B. MeterHub-
-  // Gesamtzähler); ohne das summieren sich die Verbraucher-Einzelwerte als
-  // Näherung - besser eine grobe Summe zeigen als ein leeres Zentrum.
-  var houseDevice = devices.find(function (d) { return d.function === 'house'; });
-  var houseValue = houseDevice ? houseDevice.value
-    : (byCategory.verbraucher || []).reduce(function (s, d) { return s + (d.value || 0); }, 0);
-
-  var centerNode = makeNode(nodesLayer, 'center', CX, CY, 34, 'house', null);
-  if (houseValue != null) {
-    centerNode.classList.add('active');
-    var vt = el('text', { class: 'val-label', y: 5 });
-    vt.textContent = fmtW(houseValue);
-    centerNode.appendChild(vt);
-  }
-  var lbl = el('text', { class: 'val-label', y: -44, x: CX });
-  lbl.textContent = 'Haus';
-  lbl.style.opacity = .75;
-  lbl.style.fontSize = '11px';
-  wiresLayer.parentNode.insertBefore(lbl, wiresLayer.nextSibling);
-
-  Object.keys(CATEGORIES).forEach(function (cat) {
-    var conf = CATEGORIES[cat];
-    var items = byCategory[cat] || [];
-    var [ax, ay] = polar(CX, CY, conf.rAnchor, conf.angle);
-
-    // Kategorie-Beschriftung immer sichtbar - auch ohne Geräte, damit die
-    // Anordnung stabil und nachvollziehbar bleibt (keine springenden Anker).
-    var [lx, ly] = polar(CX, CY, conf.rAnchor + 34, conf.angle);
-    var catLabel = el('text', { class: 'cat-label', x: lx, y: ly });
-    catLabel.textContent = conf.label;
-    nodesLayer.appendChild(catLabel);
-
-    if (items.length === 0) { return; }
-
-    var anchorValue = items.reduce(function (s, d) { return s + (d.value || 0); }, 0);
-    var anchorActive = items.some(function (d) { return Math.abs(d.value || 0) > 5; });
-    var anchorNode = makeNode(nodesLayer, cat, ax, ay, 26,
-      items.length === 1 ? items[0].function : 'default', null);
-    if (anchorActive) { anchorNode.classList.add('active', cat); }
-
-    var wire = drawWire(wiresLayer, CX, CY, ax, ay);
-    if (anchorActive) {
-      wire.classList.add(anchorValue >= 0 ? 'active-in' : 'active-out');
-    }
-
-    // Mehrere Geräte derselben Kategorie: als kleinere Knoten auf einem
-    // Bogen um den Kategorie-Anker verteilt (±28°), damit sie nicht
-    // übereinanderliegen und die Reihenfolge stabil bleibt.
-    var spread = 28;
-    items.forEach(function (d, i) {
-      var devAngle = conf.angle;
-      if (items.length > 1) {
-        devAngle = conf.angle - spread + (2 * spread * i / (items.length - 1));
-      }
-      var [dx, dy] = polar(CX, CY, R_DEV, devAngle);
-      var active = Math.abs(d.value || 0) > 5;
-      var devNode = makeNode(nodesLayer, 'dev-' + i, dx, dy, 18, d.function, d.label, d.socPct);
-      if (active) { devNode.classList.add('active', cat); }
-      var devWire = drawWire(wiresLayer, ax, ay, dx, dy);
-      if (active) { devWire.classList.add(anchorValue >= 0 ? 'active-in' : 'active-out'); }
+  items.forEach((item, i) => {
+    const refs = nodeRefs[item.key];
+    const nbr = (n <= 1) ? [] : [...new Set([(i - 1 + n) % n, (i + 1) % n])].filter(j => j !== i);
+    refs.aura = nbr.map(j => {
+      const other = nodeRefs[items[j].key];
+      const b = el('path', { class: 'node-aura' });
+      b.style.display = 'none';
+      wiresLayer.appendChild(b);
+      return { el: b, ncx: other.cx, ncy: other.cy };
     });
   });
 }
 
-// Bewertungs-Badges type-neutral - jeder künftige Diagnostik-Anbieter
-// (siehe README "Diagnostik-Vertrag") nutzt dasselbe level-Vokabular und
-// braucht deshalb hier keine eigene Fallunterscheidung.
-var LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
-// Die Objekt-Schlüssel 'auffaellig' entsprechen wörtlich dem Enum-Wert aus
-// IHUBMON_GetDiagnostics (level) - nicht umbenennen. Nur die Anzeigetexte
-// (Werte dieser Map) tragen die korrekte deutsche Schreibweise mit Umlaut.
-var LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
+function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale) {
+  const scale = baseScale * (active ? 1 : SCALE_INACTIVE);
+  g.classList.toggle('inactive', !active);
+  g.style.transform = `translate(${cx}px, ${cy}px) scale(${scale})`;
+  g.style.opacity = active ? '1' : '0.32';
+  g.style.setProperty('--nc', rgb(color));
+  g.style.setProperty('--bmax', boltBrightness(magnitude, active).toFixed(2));
+  if (active) { applyGlow(glow, color, magnitude); }
+  else { glow.style.opacity = '0'; }
+}
 
-// Generisches Diagnose-Panel: kennt keinen der konkreten `type`-Werte
-// (yield_vs_forecast/mppt_string_compare/riso/...), sondern liest nur das
-// gemeinsame Grundschema (label/level/threshold/reason) plus, sofern
-// vorhanden, einen einzelnen Wert (`expected`+`unit`) oder die Anzahl
-// referenzierter Kanäle (Felder, die auf ID/IDs enden). Ein neuer
-// Diagnose-Typ eines beliebigen Partnermoduls braucht dafür KEINE Änderung
-// an diesem Renderer, solange er dem README-Schema folgt.
-function renderDiagnostics(entries) {
-  var root = document.getElementById('nrgdash-diagnostics');
-  if (!Array.isArray(entries) || entries.length === 0) {
-    root.innerHTML = '';
+function updateOuterNode(refs, item) {
+  const w = item.value ?? 0;
+  const magnitude = Math.abs(w);
+  const active = magnitude > 20 || !!item.plugged;
+  const color = active ? item.color(w) : C_GREY;
+
+  applyNodeState(refs.g, refs.glow, color, magnitude, active, refs.cx, refs.cy, refs.baseScale);
+  updateSpoke(refs.spoke, color, magnitude, active, item.dir(w));
+  updateNodeAura(refs, magnitude, active, color);
+
+  refs.iconG.textContent = '';
+  ICONS[item.icon](refs.iconG, item.soc ?? null);
+  setValueText(refs.valText, magnitude, item.measured);
+  refs.subText.textContent = item.sub || '';
+}
+
+// -- Status-/Diagnose-Anzeige (eigenständig, nicht aus InverterHubTile) --
+const LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
+const LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
+
+function renderStatus(updatedAtSec) {
+  const dot = document.getElementById('dot');
+  const label = document.getElementById('stateLabel');
+  if (!updatedAtSec) {
+    dot.className = 'status-dot';
+    label.textContent = 'noch nicht aktualisiert';
     return;
   }
-  var html = '<ul>';
-  entries.forEach(function (e) {
-    var color = LEVEL_COLOR[e.level] || '#999';
-    var levelText = e.level ? (LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
-    var refCount = Object.keys(e).filter(function (k) { return /ID$|IDs$/.test(k); }).length;
-    var valueText = (e.expected !== undefined && e.expected !== null)
+  const ageSec = (Date.now() / 1000) - updatedAtSec;
+  const fresh = ageSec < 2 * 5 * 60;
+  dot.className = 'status-dot ' + (fresh ? 'fresh pulse' : 'stale');
+  const d = new Date(updatedAtSec * 1000);
+  const hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+  label.textContent = 'aktualisiert ' + hh + ':' + mm + (fresh ? '' : ' (veraltet)');
+}
+
+function renderDiagnostics(entries) {
+  const root = document.getElementById('nrgdash-diagnostics');
+  if (!Array.isArray(entries) || entries.length === 0) {
+    root.style.display = 'none';
+    return;
+  }
+  root.style.display = '';
+  let html = '<ul>';
+  entries.forEach(e => {
+    const color = LEVEL_COLOR[e.level] || '#999';
+    const levelText = e.level ? (LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
+    const refCount = Object.keys(e).filter(k => /ID$|IDs$/.test(k)).length;
+    const valueText = (e.expected !== undefined && e.expected !== null)
       ? (e.expected + (e.unit ? ' ' + e.unit : ''))
       : (refCount + ' Referenz(en)');
     html += '<li><b>' + (e.label || e.type) + '</b>: ' + valueText +
-      ' — <span style="color:' + color + ';">' + levelText + '</span>' +
-      (e.reason ? ' <span style="opacity:.7;">(' + e.reason + ')</span>' : '') +
-      '</li>';
+      ' — <span style="color:' + color + ';">' + levelText + '</span></li>';
   });
   html += '</ul>';
   root.innerHTML = html;
 }
 
-// Aktualisierungsstand: 'fresh' innerhalb von zwei Timer-Intervallen
-// (Timer = 5 Minuten, siehe ApplyChanges() in module.php), sonst 'stale' -
-// erkennt sowohl einen inaktiven Timer als auch eine hängende Instanz,
-// ohne dass der Nutzer ins Log schauen muss.
-function renderStatus(updatedAtSec) {
-  var el = document.getElementById('nrgdash-status');
-  var text = document.getElementById('nrgdash-status-text');
-  if (!updatedAtSec) {
-    el.className = '';
-    text.textContent = 'noch nicht aktualisiert';
-    return;
-  }
-  var ageSec = (Date.now() / 1000) - updatedAtSec;
-  el.className = ageSec < 2 * 5 * 60 ? 'fresh' : 'stale';
-  var d = new Date(updatedAtSec * 1000);
-  var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
-  text.textContent = 'aktualisiert ' + hh + ':' + mm + (el.className === 'stale' ? ' (veraltet)' : '');
-}
-
 function handleMessage(raw) {
-  var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.updatedAt : 0);
-  var empty = document.getElementById('nrgdash-empty');
-  if (!d || !d.ok || !Array.isArray(d.devices) || d.devices.length === 0) {
+  renderDiagnostics(d ? d.diagnostics : []);
+
+  const empty = document.getElementById('nrgdash-empty');
+  const devices = (d && Array.isArray(d.devices)) ? d.devices : [];
+  if (devices.length === 0) {
     empty.style.display = 'flex';
-    document.getElementById('wires-layer').innerHTML = '';
-    document.getElementById('nodes-layer').innerHTML = '';
-    renderDiagnostics(d ? d.diagnostics : []);
+    document.getElementById('svg').style.display = 'none';
     return;
   }
   empty.style.display = 'none';
-  renderDiagram(d.devices);
-  renderDiagnostics(d.diagnostics);
+  document.getElementById('svg').style.display = '';
+
+  // Zentrum: bevorzugt das explizite 'house'-Gerät, sonst Näherung aus der
+  // Summe der Verbraucher-Kategorie (siehe README "Phasenstand"). Farbe wie
+  // bei InverterHubTile: Anteil des Netzbezugs am Verbrauch bestimmt Grün
+  // (vollständig lokal gedeckt) bis Rot (vollständig aus dem Netz) - dafür
+  // wird, sofern vorhanden, der 'grid'-Knoten herangezogen (value < 0 = Bezug,
+  // Vorzeichenkonvention der jeweiligen Quelle - siehe README-Einschränkung).
+  const houseDevice = devices.find(x => x.function === 'house');
+  const houseW = houseDevice ? (houseDevice.value ?? 0)
+    : devices.filter(x => x.category === 'verbraucher').reduce((s, x) => s + (x.value || 0), 0);
+  const gridDevice = devices.find(x => x.function === 'grid');
+  const gridImportW = (gridDevice && (gridDevice.value ?? 0) < 0) ? Math.abs(gridDevice.value) : 0;
+  const gridShare = houseW > 0 ? Math.min(1, gridImportW / houseW) : 0;
+  const centerColor = lerp(C_GREEN, C_RED, gridShare);
+  const centerActive = Math.abs(houseW) > 20;
+  const centerG = document.getElementById('node-center');
+  applyNodeState(centerG, centerG.querySelector('.node-glow'),
+    centerActive ? centerColor : C_GREY, houseW, centerActive, CX, CY, 1);
+  setValueText(document.getElementById('lbl-center-val'), houseW, true);
+
+  const items = buildItems(devices);
+  if (items.length === 0) {
+    document.getElementById('nodes-layer').textContent = '';
+    document.getElementById('wires-layer').textContent = '';
+    builtSig = null;
+    return;
+  }
+  ensureNodes(items);
+  items.forEach(item => updateOuterNode(nodeRefs[item.key], item));
 }
 </script>
+</body>
+</html>

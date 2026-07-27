@@ -148,20 +148,30 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   `category`) und cacht das Ergebnis in `DeviceCache`. Jeder Partnerzugriff
   steht hinter `function_exists()`; fehlt ein Modul, bleibt dessen Anteil
   einfach leer (Verbund-Grundregel).
-- ✅ **Phase 2 — Energiefluss-Diagramm.** Zentrum = Hauslast (bevorzugt ein
-  explizites `house`-Gerät, sonst Näherung aus der Summe der
-  Verbraucher-Kategorie), vier feste Kategorie-Anker darum (Erzeugung oben,
-  Speicher rechts, Netz links, Verbraucher unten — feste, logische
-  Anordnung, keine kreuz-und-quer-Platzierung). Mehrere Geräte derselben
-  Kategorie (z. B. mehrere Wallboxen) verteilen sich als kleinere Knoten auf
-  einem Bogen um ihren Kategorie-Anker. Icon-Katalog (`ICONS`-Objekt,
-  Muster: `InverterHubTile/module.html`) für `pv`/`battery`/`grid`/`house`/
-  `charger`/`heatpump`/`vehicle`. Werte werden bei jedem Rendern frisch aus
-  der `powerID`-Referenz gelesen (`resolvePowerValue()` in `module.php`),
-  nie gecacht — der Discovery-Cache hält nur die Struktur, keine Werte.
-  Live-Update über `UpdateVisualizationValue()`. Bewusst zurückgestellt:
-  Übergangsanimationen/Glow-Effekte (InverterHubTile-Feinschliff), da hier
-  Funktion vor Politur ging.
+- ✅ **Phase 2 — Energiefluss-Diagramm.** Erster Eigenentwurf (vier feste
+  Kategorie-Anker) wurde nach Nutzer-Feedback (27.07.2026, "wirkt wie ein
+  naiver Erstversuch" im Vergleich zu InverterHub) **verworfen**. Die
+  Visualisierung ist jetzt eine direkte Adaption von
+  `InverterHubTile/module.html` (Referenz-Kachel des Verbunds): Münz-Look
+  (Corona-Glow, Kantenanschliff, Glanzlichter als Vektor-Verläufe statt
+  `filter:blur()`), Fluss-Animationen (laufende Dreiecke, Teslaspulen-Blitze,
+  Reichweiten-Aura zum Nachbarknoten) und dieselbe Safari-Fallen-Vermeidung
+  1:1 übernommen — das ist geräteartenneutrale Layout-/Effekt-Engine, keine
+  InverterHub-Spezifik. Alle Geräte (außer einem expliziten `house`-Gerät,
+  das nur das Zentrum speist) werden gleichmäßig radial um die Hauslast
+  verteilt (`computeLayout()`/`ensureNodes()`), statt in feste Kategorien
+  gruppiert zu werden — entspricht dem Verhalten der Referenz-Kachel bei
+  variabler Verbraucherzahl. Farbe/Icon je `function`-Typ über
+  `FUNCTION_STYLE` (pv=gold/Sonne, battery=blau, grid=grün/rot nach
+  Bezug/Einspeisung, charger/vehicle=violett/Auto, heatpump=orange,
+  unbekannt=grau/Stecker-Icon). Werte werden bei jedem Rendern frisch aus der
+  `powerID`-Referenz gelesen (`resolvePowerValue()` in `module.php`), nie
+  gecacht. Status-Ampel/Zeitstempel und das Diagnostik-Panel sind eigene,
+  nicht aus InverterHubTile übernommene Ergänzungen (gleiche Plaketten-Optik).
+  Bewusst noch nicht übernommen: die datengetriebene Grün/Rot-Einfärbung
+  einzelner Verbraucherknoten nach ihrem Netzbezugsanteil (InverterHubTile
+  berechnet das aus Sankey-Daten, die uns in Phase 2 noch fehlen) — unsere
+  Verbraucherknoten tragen vorerst eine feste Funktions-Farbe.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
