@@ -235,13 +235,17 @@ class NRGDashboardTile extends IPSModule
      * MeterHub. Batterie bekommt zusätzlich socID fürs Ladestands-Icon.
      */
     /**
-     * Meldet sichtbar (Log + Instanzstatus), wenn ein installiertes
-     * Partnermodul ZWAR Instanzen hat, aber keinen einzigen auswertbaren
-     * Geraete-Eintrag geliefert hat - typisches Symptom eines Vertrags, der
-     * sich in Form/Feldern geaendert hat (unser eigener discoverInverterHub-
-     * Fehler vom 27.07.2026 waere so sofort im Log aufgefallen, statt erst
-     * durch eine manuelle Live-Pruefung). Kein Fehler, wenn schlicht keine
-     * Instanz installiert ist - das ist der normale, unterstuetzte Fall.
+     * Meldet sichtbar (Log), wenn ein installiertes Partnermodul ZWAR
+     * Instanzen hat, aber keinen einzigen auswertbaren Geraete-Eintrag
+     * geliefert hat. Zwei legitime Ursachen, deshalb bewusst neutral
+     * formuliert statt vorschnell "Fehler" zu behaupten: (1) die Instanzen
+     * sind schlicht noch nicht konfiguriert (z.B. MeterHub ohne
+     * Funktionszuordnung - live beobachteter Normalfall, kein Bug), oder
+     * (2) der Datenvertrag hat sich in Form/Feldern geaendert (unser
+     * eigener discoverInverterHub-Fehler vom 27.07.2026 waere so sofort im
+     * Log aufgefallen, statt erst durch eine manuelle Live-Pruefung). Kein
+     * Fehler, wenn schlicht keine Instanz installiert ist - das ist der
+     * normale, unterstuetzte Fall.
      */
     private function checkSourceCoverage(string $label, string $moduleGUID, int $foundCount): void
     {
@@ -249,8 +253,9 @@ class NRGDashboardTile extends IPSModule
         if ($instanceCount > 0 && $foundCount === 0) {
             $this->LogMessage(
                 sprintf(
-                    '⚠️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
-                    'möglicherweise hat sich der Datenvertrag geändert. Bitte NRGDashboard-Repo prüfen.',
+                    'ℹ️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
+                    'entweder ist dort noch keine Funktionszuordnung konfiguriert, oder der Datenvertrag ' .
+                    'hat sich geändert.',
                     $label,
                     $instanceCount
                 ),
