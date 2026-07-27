@@ -888,25 +888,30 @@ function updateOuterNode(refs, item) {
 // entfernt - reine Portierung von InverterHubTile heißt auch: keine
 // Zusatzelemente, die dort nicht existieren. GetDiagnostics() bleibt im
 // Backend verfügbar für einen künftigen, noch zu bestimmenden Konsumenten.
-function renderStatus(updatedAtSec) {
+function renderStatus(renderedAtSec) {
   const dot = document.getElementById('dot');
   const label = document.getElementById('stateLabel');
-  if (!updatedAtSec) {
+  if (!renderedAtSec) {
     dot.className = 'status-dot';
     label.textContent = 'noch nicht aktualisiert';
     return;
   }
-  const ageSec = (Date.now() / 1000) - updatedAtSec;
-  const fresh = ageSec < 2 * 5 * 60;
+  // "fresh" bezieht sich jetzt auf den tatsaechlichen Push-Zeitpunkt (jedes
+  // MessageSink()/VM_UPDATE ruft buildPayload() neu auf) statt auf den
+  // seltenen Discover()-Takt - ein Wert gilt als veraltet, wenn seit 2
+  // Minuten kein Ereignis mehr eintraf (deutlich enger als die frueheren
+  // 10 Minuten, weil echte Aktualisierungen jetzt sekundennah sind).
+  const ageSec = (Date.now() / 1000) - renderedAtSec;
+  const fresh = ageSec < 120;
   dot.className = 'status-dot ' + (fresh ? 'fresh pulse' : 'stale');
-  const d = new Date(updatedAtSec * 1000);
-  const hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
-  label.textContent = 'aktualisiert ' + hh + ':' + mm + (fresh ? '' : ' (veraltet)');
+  const d = new Date(renderedAtSec * 1000);
+  const hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2), ss = ('0' + d.getSeconds()).slice(-2);
+  label.textContent = 'aktualisiert ' + hh + ':' + mm + ':' + ss + (fresh ? '' : ' (veraltet)');
 }
 
 function handleMessage(raw) {
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  renderStatus(d ? d.updatedAt : 0);
+  renderStatus(d ? d.renderedAt : 0);
 
   // Darstellungs-Einstellungen (1:1 InverterHubTile-Muster, module.html:1224-1229)
   if (d) {

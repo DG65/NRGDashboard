@@ -275,10 +275,16 @@ class NRGDashboardTile extends IPSModule
         return [
             'ok'          => true,
             'devices'     => $devices,
-            // Sichtbarer Aktualisierungsstand fuer den Nutzer, ohne Log-Zugriff
-            // (Verbund-Konvention: Zustand sichtbar melden). Zeitpunkt des
-            // letzten erfolgreichen Discover()-Laufs, nicht des Renderns.
+            // Zeitpunkt des letzten erfolgreichen Discover()-Laufs (Struktur:
+            // neue/entfernte Geraete) - NICHT der Wert-Aktualisierung, die
+            // laeuft ereignisgesteuert und viel haeufiger (MessageSink()).
             'updatedAt'   => $this->ReadAttributeInteger('LastDiscoveryTs'),
+            // Zeitpunkt DIESES Payload-Aufbaus - Dietmar (27.07.2026): weicht
+            // die Statuszeile von InverterHubTiles statischem "Verbunden" ab
+            // und zeigt einen Zeitstempel, muss der auch sekundengenau die
+            // tatsaechliche (ereignisgesteuerte) Aktualisierung wiedergeben,
+            // nicht nur den seltenen Discover()-Takt.
+            'renderedAt'  => time(),
             // Darstellungs-Einstellungen (1:1 InverterHubTile-Feldnamen,
             // module.html liest dieselben Schluessel).
             'bg'          => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
