@@ -541,6 +541,20 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Quelle (`Key` bleibt verborgen am Ende). `Quelle` übernimmt jetzt die
   auto-Breite (letzte sichtbare Spalte), `Instanz` bekommt eine feste
   Breite (220px, gleich mit `Bezeichnung`).
+  **Fünfzehnte Runde (27.07.2026): Bezeichnung ging nach "Übernehmen"
+  wieder verloren - echter Bug.** Dietmar bemerkte, dass eine über die
+  Geräte-Tabelle vergebene Bezeichnung nach dem Speichern verschwindet.
+  Ursache im Vergleich mit `TessieVehicle`s bewährter `VisibleVars`-Liste
+  gefunden: IP-Symcon speichert bei einer `List` standardmäßig nur
+  Spalten mit `"edit"`-Definition zurück in die Property - eine
+  nicht-editierbare Spalte braucht dafür explizit `"save": true` (siehe
+  dort die `Ident`-Spalte). Unsere versteckte `Key`-Spalte (die einzige
+  nicht-editierbare Spalte, die wir beim nächsten Laden tatsächlich aus
+  der Property zurücklesen - Rolle/ID/Quelle/Instanz werden bewusst immer
+  frisch aus `GetDevices()` erzeugt, nicht gespeichert) hatte das nicht -
+  beim Speichern fiel der Schlüssel weg, `deviceOverrideMap()` konnte die
+  gespeicherte Bezeichnung keiner Zeile mehr zuordnen und verwarf sie
+  beim nächsten Formular-Öffnen. Behoben: `"save": true` bei `Key` ergänzt.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
