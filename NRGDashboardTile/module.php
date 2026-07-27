@@ -228,14 +228,18 @@ class NRGDashboardTile extends IPSModule
             if (!is_array($data)) {
                 continue;
             }
-            $label = IPS_GetName($id);
             $measured = $data['measured'] ?? true;
+            // Feste Node-Labels wie in InverterHubTile (NODE_DEFS_LEAD/TAIL:
+            // 'Solar'/'Batterie'/'Netz') - NICHT der Instanzname. Vorheriger
+            // Fehler: IPS_GetName($id) fuer alle drei verwendet, wodurch jeder
+            // Knoten denselben Instanznamen ("InverterHub WR1 (GoodWe)") trug
+            // statt seiner Rolle.
             $map = [
-                'pv'      => $data['pvPowerID']   ?? 0,
-                'battery' => $data['batPowerID']  ?? 0,
-                'grid'    => $data['gridPowerID'] ?? 0,
+                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0],
+                'battery' => ['Batterie', $data['batPowerID']  ?? 0],
+                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0],
             ];
-            foreach ($map as $function => $powerID) {
+            foreach ($map as $function => [$label, $powerID]) {
                 if (!$powerID) {
                     continue;
                 }
