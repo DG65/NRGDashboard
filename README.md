@@ -461,6 +461,31 @@ Einfachheit für den Nutzer) angewandt auf NRGDashboard:
   — würde die "lohnt sich Bezug/Einspeisung gerade"-Frage schon in der
   Grundansicht beantworten, nicht erst mit einem zusätzlichen Reiter.
 
+## Umstieg von InverterHubTile (Migration, manuell)
+
+**Wichtig für den Go-Live, muss in die Release-Kommunikation (Forum-Post,
+"Was ist Neu"-Panel), nicht stillschweigend voraussetzen** — InverterHub hat
+Stand 27.07.2026 ca. 250 Installationen. Wer bisher InverterHubTile als
+Kachel auf einem WebFront-Dashboard-Screen platziert hat, muss den Wechsel
+**manuell** vornehmen — dafür gibt es keinen automatisierten Weg (geprüft,
+keine Vermutung): eine WebFront-Kachel ist eine reine Platzierungs-Referenz
+auf eine Instanz-ID im Dashboard-Editor, keine IPS-API biegt eine bereits
+platzierte Kachel programmatisch auf eine andere Instanz um. `MigrationsHub`
+deckt das ebenfalls nicht ab — das migriert Variablen samt Archivhistorie/
+Referenzen bei Geräte-Ersatz, hat aber keinen Bezug zu Dashboard-Layouts.
+
+**Nötige Schritte für den Nutzer:**
+1. NRGDashboard-Instanz anlegen und konfigurieren (Discovery findet
+   vorhandene Partnermodule automatisch, kein manuelles Verknüpfen nötig).
+2. Im WebFront-Editor die alte InverterHubTile-Kachel vom Dashboard-Screen
+   entfernen.
+3. Die neue NRGDashboardTile-Instanz an derselben Stelle neu platzieren.
+
+Wenige Klicks, aber ein bewusster Nutzereingriff — gehört explizit ins
+"Was ist Neu"-Panel und in einen etwaigen Forum-Ankündigungstext, sobald
+das Modul veröffentlicht wird (siehe auch `EMS/SUITE.md`, Abschnitt
+„WebFront-Kachel-Wechsel InverterHubTile → NRGDashboardTile").
+
 ## Store-Review-Checkliste
 
 Wie alle NRG-Stack-Module: keine Selbstpersistenz in Formular-Buttons, kein
