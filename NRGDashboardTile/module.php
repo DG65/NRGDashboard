@@ -15,6 +15,7 @@ declare(strict_types=1);
 // anderes voraus - jeder Aufruf steht hinter function_exists().
 define('NRGDASH_GUID_INVERTERHUB',    '{BBE2C593-1A91-426D-A714-29A9C7E87589}');
 define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
+define('NRGDASH_GUID_INVERTERHUBTILE', '{9A2E5C7F-3B1D-4A6E-8C9F-2D5B7E1A4C8F}');
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
@@ -80,21 +81,36 @@ class NRGDashboardTile extends IPSModule
         $this->checkSourceCoverage('InverterHub', NRGDASH_GUID_INVERTERHUB, count($inverterHub));
         $devices = array_merge($devices, $inverterHub);
 
-        $meterHub = $this->discoverListContract(NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub');
-        $this->checkSourceCoverage('MeterHub', NRGDASH_GUID_METERHUB, count($meterHub));
-        $devices = array_merge($devices, $meterHub);
+        // InverterHubTile fuehrt selbst schon eine gemischte Verbraucherliste
+        // (manuell in ihrer eigenen Consumers-Property eingetragene Geraete +
+        // MeterHub + HeishaMon, siehe IHUBTILE_GetConsumers - mit InverterHub
+        // abgestimmt am 27.07.2026, nachdem uns eine manuell zugeordnete
+        // "Klimaanlage" fehlte, die in keinem Hub-Vertrag auftaucht). Ist eine
+        // Instanz davon vorhanden, ist ihre Liste die vollstaendigere und wird
+        // bevorzugt - eigene MeterHub/HeishaMon-Direktabfrage entfaellt dann,
+        // sonst gaebe es Dubletten. ChargerHub und Tessie sind NICHT in
+        // IHUBTILE_GetConsumers enthalten (laut InverterHub) und bleiben
+        // deshalb immer eigenstaendige Quellen.
+        $tileConsumers = $this->discoverInverterHubTileConsumers();
+        if (count($tileConsumers) > 0) {
+            $devices = array_merge($devices, $tileConsumers);
+        } else {
+            $meterHub = $this->discoverListContract(NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub');
+            $this->checkSourceCoverage('MeterHub', NRGDASH_GUID_METERHUB, count($meterHub));
+            $devices = array_merge($devices, $meterHub);
 
-        $devices = array_merge($devices, $this->discoverListContract(
-            NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
-        ));
+            $devices = array_merge($devices, $this->discoverListContract(
+                NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
+            ));
+
+            $heishaMon = $this->discoverHeishaMon();
+            $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
+            $devices = array_merge($devices, $heishaMon);
+        }
 
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
         $devices = array_merge($devices, $chargerHub);
-
-        $heishaMon = $this->discoverHeishaMon();
-        $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
-        $devices = array_merge($devices, $heishaMon);
 
         $devices = array_merge($devices, $this->discoverTessie());
 
@@ -300,6 +316,42 @@ class NRGDashboardTile extends IPSModule
                     $entry['socID'] = $data['socID'];
                 }
                 $results[] = $this->normalizeEntry($entry, 'inverterhub', $id);
+            }
+        }
+        return $results;
+    }
+
+    /**
+     * IHUBTILE_GetConsumers($id) (InverterHubTile, ab Commit 0f09445) liefert
+     * die gemischte Verbraucherliste, die deren eigene Kachel rendert: manuell
+     * in der Consumers-Property eingetragene Geraete + MeterHub + HeishaMon,
+     * bereits auf ein Consumer-Type-Schluesselvokabular normalisiert
+     * ('type' entspricht 1:1 unseren CONSUMER_TYPES-Schluesseln in
+     * module.html, keine weitere Uebersetzung noetig). Feldname der
+     * Variablen-ID ist bewusst 'id', nicht 'powerID' - hier auf unser
+     * Schema uebersetzt.
+     */
+    private function discoverInverterHubTileConsumers(): array
+    {
+        $results = [];
+        if (!function_exists('IHUBTILE_GetConsumers')) {
+            return $results;
+        }
+        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBTILE) as $id) {
+            $entries = IHUBTILE_GetConsumers($id);
+            if (!is_array($entries)) {
+                continue;
+            }
+            foreach ($entries as $entry) {
+                if (!is_array($entry) || empty($entry['type']) || empty($entry['id'])) {
+                    continue;
+                }
+                $results[] = $this->normalizeEntry([
+                    'function' => $entry['type'],
+                    'label'    => $entry['label'] ?? $entry['type'],
+                    'powerID'  => $entry['id'],
+                    'measured' => true,
+                ], 'inverterhubtile', $id);
             }
         }
         return $results;

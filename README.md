@@ -208,6 +208,39 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Netz-Knoten-Farbe war entgegen der ersten Fehlvermutung bereits korrekt
   bedingt (grün bei Einspeisung, rot bei Bezug) — das gemeldete Fehlen war
   ein alter Browser-Stand, kein Farb-Bug.
+
+  **Zweite Nachbesserungsrunde (27.07.2026, direkter Kachel-Vergleich):**
+  1) **Positions-Bug behoben:** `pv`/`battery`/`grid` wurden in Entdeckungs-
+  reihenfolge gerendert statt in InverterHubTiles fester `NODE_DEFS_LEAD`/
+  `TAIL`-Reihenfolge (Solar, Batterie, …Verbraucher…, Netz) — die radiale
+  Verteilung hängt direkt an dieser Reihenfolge, dadurch landete Netz an
+  einer völlig anderen Position. `buildItems()` sortiert jetzt explizit in
+  `LEAD_ORDER`/`TAIL_ORDER`.
+  2) **Vorzeichen `gridPowerID` verifiziert, kein Bug:** InverterHub
+  bestätigt `gridPowerID` ist immer `+Einspeisung/−Bezug`, identisch zur
+  eigenen Kachelfarblogik — unsere `color:(w)=>w>=0?GRÜN:ROT` war schon
+  korrekt. Live nachgeprüft (-6944 W → korrekt Rot). Der ursprünglich
+  gemeldete Rot/Grün-Unterschied war ein Zeitpunkt-Unterschied zwischen
+  zwei Screenshots, kein Vorzeichenfehler.
+  3) **"Verluste"-Knoten bewusst nicht nachgebaut:** InverterHub berechnet
+  ihn rein kachel-intern aus einer eigenen Bilanz
+  (`lossW = max(0, pvW − gridW + batW − realHouseW)`, optional gegen einen
+  externen Hauslastzähler) — kein Vertragswert, den `IHUB_GetFunctions`
+  hergibt oder herausgeben sollte (hängt von unserer eigenen, hier noch
+  nicht existierenden Bilanzrechnung ab). Bleibt offen für eine spätere
+  eigene Bilanz, kein Getter dafür geplant.
+  4) **Echte Lücke geschlossen: `IHUBTILE_GetConsumers($id)`** (neu bei
+  InverterHubTile, Commit `0f09445`) liefert die komplette, bereits von
+  ihrer Kachel gerenderte Verbraucherliste — inkl. **manuell** in ihrer
+  eigenen `Consumers`-Property eingetragener Geräte (z. B. eine Klimaanlage
+  ohne jeden Hub-Bezug), die über keinen bisherigen `*_GetFunctions`-Vertrag
+  sichtbar waren. `discoverInverterHubTileConsumers()` konsumiert das
+  bevorzugt; ist eine InverterHubTile-Instanz vorhanden, entfällt die
+  eigene direkte MeterHub-/HeishaMon-Abfrage (sonst Dubletten, laut
+  InverterHub enthält deren Liste beides bereits). ChargerHub und Tessie
+  bleiben eigenständige Quellen (nicht in `IHUBTILE_GetConsumers` enthalten).
+  Der `type`-Schlüssel des neuen Vertrags entspricht bereits 1:1 unseren
+  `CONSUMER_TYPES`-Schlüsseln — keine weitere Übersetzung nötig.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
