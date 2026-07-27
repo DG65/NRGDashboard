@@ -19,6 +19,11 @@
       "type": "Button",
       "caption": "Geräte jetzt suchen",
       "onClick": "NRGDASH_Discover($id);"
+    },
+    {
+      "type": "Label",
+      "name": "DiscoveryResult",
+      "caption": ""
     }
   ]
 }

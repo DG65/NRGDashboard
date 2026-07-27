@@ -132,6 +132,17 @@ class NRGDashboardTile extends IPSModule
             sprintf('NRG Dashboard: %d Geräte, %d Diagnose-Einträge gefunden', count($devices), count($diagnostics)),
             KL_MESSAGE
         );
+        // Sichtbare Rueckmeldung im Konfigurationsformular - vorher lief der
+        // "Geraete jetzt suchen"-Button komplett ins Leere (nur Log-Eintrag,
+        // keine Rueckmeldung im Formular selbst). UpdateFormField ist ein
+        // No-Op, wenn kein Formular gerade offen ist.
+        $this->UpdateFormField(
+            'DiscoveryResult',
+            'caption',
+            count($devices) > 0
+                ? sprintf('✅ %d Geräte gefunden (zuletzt %s Uhr).', count($devices), date('H:i:s'))
+                : '⚠️ Keine Geräte gefunden - sind Partnermodule installiert und konfiguriert?'
+        );
 
         // Ereignisgesteuert statt gepollt (Muster: InverterHubTile - RegisterMessage
         // je Quellvariable, sofortiger Push bei jeder Aenderung). Der 5-Minuten-
