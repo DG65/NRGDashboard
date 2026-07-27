@@ -284,13 +284,20 @@ class NRGDashboardTile extends IPSModule
      */
     private function readIntProperty(string $name, int $default): int
     {
-        $v = $this->ReadPropertyInteger($name);
+        // @ unterdrueckt gezielt NUR die "Eigenschaft ... nicht gefunden"-Warnung
+        // dieses einen Aufrufs (fehlende Property auf einer Instanz, die vor der
+        // Formular-Erweiterung angelegt wurde - siehe Kommentar oben). Der
+        // Rueckgabewert wird trotzdem korrekt geprueft; kein anderer Fehler
+        // dieser Zeile wird verschluckt. Ohne das flutet jedes VM_UPDATE-
+        // Ereignis (mehrmals pro Minute) das Systemprotokoll mit vier
+        // identischen Warnzeilen.
+        $v = @$this->ReadPropertyInteger($name);
         return is_int($v) ? $v : $default;
     }
 
     private function readStringProperty(string $name, string $default): string
     {
-        $v = $this->ReadPropertyString($name);
+        $v = @$this->ReadPropertyString($name);
         return is_string($v) ? $v : $default;
     }
 
