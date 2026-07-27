@@ -495,6 +495,9 @@ class NRGDashboardMonitor extends IPSModule
 
         return [
             'ok'       => true,
+            // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
+            // (localStorage im Frontend) - Muster: InverterHubMonitor.
+            'uid'      => (string) $this->InstanceID,
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,

@@ -697,6 +697,20 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Teilstriche bekommen. Live in einem lokalen Testaufbau reproduziert und
   nach dem Fix (`alignTicks: false` im Chart-Objekt) verifiziert (glatte
   0-11-kW-Schritte, unabhängig von der rechten W/m²-Achse).
+  **Legenden-Sichtbarkeit bleibt erhalten (27.07.2026, Dietmars Wunsch):**
+  Ausgeblendete Kurven bleiben jetzt auch nach dem nächsten Aufruf der
+  Kachel ausgeblendet - Muster 1:1 von InverterHubMonitor übernommen:
+  `vis`-Objekt je Kurvenname, gesichert in `localStorage` unter dem
+  Schlüssel `nrgdashmon_vis_<InstanceID>` (Namensraum je Instanz, damit
+  mehrere Monitoring-Kacheln sich nicht gegenseitig beeinflussen). ECharts:
+  `chart.on('legendselectchanged', ...)` einmalig beim Erzeugen angehängt,
+  `legend.selected` bei jedem `setOption()` aus dem gespeicherten Zustand
+  gesetzt. Highcharts: da `Highcharts.chart()` bei uns bei jedem `render()`
+  eine komplett neue Instanz erzeugt (kein `update()`), startet jede Serie
+  mit `visible: isVisible(name)`, ein `legendItemClick`-Handler hält den
+  gespeicherten Zustand bei späteren Klicks aktuell. Lokal verifiziert
+  (Umschalten setzt sofort `localStorage`, ein Neuladen der Seite stellt
+  den ausgeblendeten Zustand korrekt wieder her).
 
 ## Verwendete Verträge
 

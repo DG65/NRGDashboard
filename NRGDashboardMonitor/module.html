@@ -57,6 +57,20 @@
     var libs = { hc: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
 
+    // Legenden-Sichtbarkeit je Kurvenname - bleibt ueber Reiter-/Tageswechsel
+    // UND ueber ein Neuladen der Kachel erhalten (localStorage), Muster:
+    // InverterHubMonitor. Namensraum je Instanz (uid), damit mehrere
+    // NRGDashboardMonitor-Kacheln sich nicht gegenseitig beeinflussen.
+    var vis = {}, visKey = null, visLoaded = false;
+    function isVisible(name) { return vis[name] !== false; }
+    function loadVis() {
+      if (visLoaded) { return; }
+      visLoaded = true;
+      try { var s = localStorage.getItem(visKey); if (s) { vis = JSON.parse(s) || {}; } } catch (e) {}
+    }
+    function saveVis() { try { localStorage.setItem(visKey, JSON.stringify(vis)); } catch (e) {} }
+    function setVisible(name, on) { vis[name] = on; saveVis(); }
+
     // Highcharts wird bewusst wie in der aktuell installierten InverterHub-
     // Kachel behandelt: vom CDN nachgeladen, NICHT eingebettet (Lizenz - eine
     // Redistribution mit dem Modul wäre bei Highcharts nicht abgedeckt, siehe
@@ -165,18 +179,33 @@
 
     function renderECharts(el, tab, d) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
-      if (!chart) { chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
+      if (!chart) {
+        chart = echarts.init(el, null, { renderer: 'canvas' });
+        chartEngine = 'echarts';
+        // Einmalig anhaengen (nicht je render()-Aufruf, sonst haeufen sich
+        // Listener an) - Aenderung an der Legende wird sofort in
+        // localStorage gesichert, Muster: InverterHubMonitor.
+        chart.on('legendselectchanged', function (pr) {
+          if (pr && pr.selected) {
+            Object.keys(pr.selected).forEach(function (k) { vis[k] = pr.selected[k]; });
+            saveVis();
+          }
+        });
+      }
       var ax = axisConfig(tab);
+      var seriesNames = (tab === 'price') ? ['Strompreis'] : buildSeries(tab, d).map(function (s) { return s.name; });
       var series = (tab === 'price')
         ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300', lineStyle: { width: 0.7 } }]
         : buildSeries(tab, d).map(function (s) {
             return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
           });
+      var legendSelected = {};
+      seriesNames.forEach(function (n) { legendSelected[n] = isVisible(n); });
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 28 },
-        legend: { bottom: 0, textStyle: { color: '#9aa4b0' } },
+        legend: { bottom: 0, textStyle: { color: '#9aa4b0' }, selected: legendSelected },
         tooltip: { trigger: 'axis' },
         // "PV & Einstrahlung": nur Sonnenaufgang-1h bis Sonnenuntergang+1h
         // zeigen (Dietmars Wunsch) - Nachtstunden ohne jede Erzeugung sollen
@@ -199,9 +228,9 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
       var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 0.7, marker: { enabled: false } }]
+        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 0.7, visible: isVisible('Strompreis'), marker: { enabled: false } }]
         : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, visible: isVisible(s.name), dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
           });
       chart = Highcharts.chart(el, {
         // alignTicks (Highcharts-Standard: true) synchronisiert die
@@ -223,6 +252,12 @@
             ],
         legend: { enabled: true },
         credits: { enabled: false },
+        // Highcharts.chart() erzeugt bei uns bei jedem render() eine
+        // komplett neue Instanz (kein update()) - die Sichtbarkeit kommt
+        // daher oben schon als initiales "visible" je Serie; dieser Klick-
+        // Handler haelt vis/localStorage aktuell, wenn der Nutzer die
+        // Legende danach anklickt. Muster: InverterHubMonitor.
+        plotOptions: { series: { events: { legendItemClick: function () { setVisible(this.name, !this.visible); } } } },
         series: series
       });
       chartEngine = 'highcharts';
@@ -281,6 +316,8 @@
       var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (!d || !d.ok) { return; }
       lastData = d;
+      visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
+      loadVis();
       if (d.bg) { document.body.style.background = d.bg; }
       // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
       // Kachel, bevor das Layout sicher fertig ist (WebFront-Rahmen/Flex-
