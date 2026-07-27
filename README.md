@@ -241,6 +241,31 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   bleiben eigenständige Quellen (nicht in `IHUBTILE_GetConsumers` enthalten).
   Der `type`-Schlüssel des neuen Vertrags entspricht bereits 1:1 unseren
   `CONSUMER_TYPES`-Schlüsseln — keine weitere Übersetzung nötig.
+
+  **Dritte Runde (27.07.2026): strukturelle Bugs, keine Stilfragen mehr.**
+  Zwei echte Datenfehler, keine Optik-Diffs:
+  1. **Update-Rhythmus.** InverterHubTile ist ereignisgesteuert
+  (`RegisterMessage($vid, VM_UPDATE)` auf jede Quellvariable, sofortiger
+  Push bei jeder Änderung) — wir hatten `UpdateVisualizationValue()` nur
+  einmal je 5-Minuten-Timer aufgerufen. Dietmar sah dadurch bis zu 5 Minuten
+  alte Werte und hielt es zurecht für einen Bug. Jetzt behoben:
+  `subscribeToDeviceVariables()` registriert nach jedem `Discover()` eine
+  `VM_UPDATE`-Nachricht auf jede `powerID`/`socID`; `MessageSink()` pusht bei
+  jeder Änderung sofort einen frischen Payload. Der 5-Minuten-Timer bleibt
+  nur noch für `Discover()` selbst (neue/entfernte Geräte erkennen).
+  2. **Hauslast-Berechnung.** Statt InverterHubs echter Bilanz
+  (`houseBalanceW = pvW − gridW + batW`) hatten wir nur die Summe der
+  bekannten Einzelverbraucher (Wallboxen/Wärmepumpe) gebildet — das
+  ignoriert jede unsichtbare Grundlast (Kühlschrank, Standby-Geräte usw.)
+  komplett und lag deshalb strukturell zu niedrig (33 W statt 239 W bei
+  identischem PV-Wert). Jetzt: `houseW = pvW − gridW + batW`, wenn eine
+  InverterHub-Instanz vorhanden ist (pv+grid als Voraussetzung); die
+  Verbraucher-Summe bleibt nur Rückfall für reine MeterHub-Setups ohne
+  Wechselrichter.
+  Die Netz-Farbdifferenz aus der vorigen Runde war dagegen tatsächlich kein
+  Bug (Vorzeichen von InverterHub bestätigt, live nachgeprüft) — nur ein
+  Zeitpunkt-Unterschied zwischen zwei Screenshots, verstärkt durch genau
+  den Update-Rhythmus-Bug oben (unsere Werte hinkten der Realität hinterher).
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

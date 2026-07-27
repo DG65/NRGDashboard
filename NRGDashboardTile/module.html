@@ -915,16 +915,29 @@ function handleMessage(raw) {
   empty.style.display = 'none';
   document.getElementById('svg').style.display = '';
 
-  // Zentrum: bevorzugt das explizite 'house'-Gerät, sonst Näherung aus der
-  // Summe der Verbraucher-Kategorie (siehe README "Phasenstand"). Farbe wie
-  // bei InverterHubTile: Anteil des Netzbezugs am Verbrauch bestimmt Grün
-  // (vollständig lokal gedeckt) bis Rot (vollständig aus dem Netz) - dafür
-  // wird, sofern vorhanden, der 'grid'-Knoten herangezogen (value < 0 = Bezug,
-  // Vorzeichenkonvention der jeweiligen Quelle - siehe README-Einschränkung).
+  // Zentrum: bevorzugt eine echte Energiebilanz wie bei InverterHubTile
+  // (houseBalanceW = pvW - gridW + batW; gridW ist +Einspeisung/-Bezug,
+  // von InverterHub bestätigt, 27.07.2026) - NICHT mehr die grobe Summe nur
+  // der bekannten Einzelverbraucher (Wallboxen/Wärmepumpe), die die
+  // unsichtbare Grundlast (Kühlschrank, Standby-Geräte etc.) komplett
+  // ausließ und dadurch strukturell zu niedrig lag. Fällt nur zurück auf die
+  // Verbraucher-Summe, wenn keine InverterHub-Instanz (also kein pv/grid)
+  // vorhanden ist - reines MeterHub/ChargerHub-Setup ohne Wechselrichter.
   const houseDevice = devices.find(x => x.function === 'house');
-  const houseW = houseDevice ? (houseDevice.value ?? 0)
-    : devices.filter(x => x.category === 'verbraucher').reduce((s, x) => s + (x.value || 0), 0);
+  const pvDevice = devices.find(x => x.function === 'pv');
   const gridDevice = devices.find(x => x.function === 'grid');
+  const batDevice = devices.find(x => x.function === 'battery');
+  let houseW;
+  if (houseDevice) {
+    houseW = houseDevice.value ?? 0;
+  } else if (pvDevice && gridDevice) {
+    houseW = (pvDevice.value ?? 0) - (gridDevice.value ?? 0) + (batDevice ? (batDevice.value ?? 0) : 0);
+  } else {
+    houseW = devices.filter(x => x.category === 'verbraucher').reduce((s, x) => s + (x.value || 0), 0);
+  }
+  // Farbe wie bei InverterHubTile: Anteil des Netzbezugs am Verbrauch
+  // bestimmt Grün (vollständig lokal gedeckt) bis Rot (vollständig aus dem
+  // Netz) - value < 0 = Bezug (dieselbe Vorzeichenkonvention wie oben).
   const gridImportW = (gridDevice && (gridDevice.value ?? 0) < 0) ? Math.abs(gridDevice.value) : 0;
   const gridShare = houseW > 0 ? Math.min(1, gridImportW / houseW) : 0;
   const centerColor = lerp(C_GREEN, C_RED, gridShare);

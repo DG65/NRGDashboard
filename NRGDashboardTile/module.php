@@ -124,9 +124,54 @@ class NRGDashboardTile extends IPSModule
             sprintf('NRG Dashboard: %d Geräte, %d Diagnose-Einträge gefunden', count($devices), count($diagnostics)),
             KL_MESSAGE
         );
+
+        // Ereignisgesteuert statt gepollt (Muster: InverterHubTile - RegisterMessage
+        // je Quellvariable, sofortiger Push bei jeder Aenderung). Der 5-Minuten-
+        // Timer laeuft nur noch fuer Discover() selbst (neue/entfernte Geraete
+        // erkennen); Werte werden NICHT mehr auf den naechsten Timer-Tick
+        // vertroestet. Vorheriger Fehler: UpdateVisualizationValue() lief NUR
+        // hier drin, alle 5 Minuten - Dietmar sah dadurch bis zu 5 Minuten alte
+        // Werte und hielt es fuer einen Refresh-Bug (war keiner, aber zurecht
+        // bemaengelt: InverterHub aktualisiert instantan, wir nicht).
+        $this->subscribeToDeviceVariables($devices);
         $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
 
         return $devices;
+    }
+
+    /**
+     * Registriert VM_UPDATE-Nachrichten auf jede powerID/socID der aktuellen
+     * Geraeteliste, damit MessageSink() bei jeder Aenderung sofort einen
+     * frischen Payload pusht - keine Wartezeit auf den naechsten Discover()-
+     * Timer-Tick. Alte Registrierungen werden zuerst vollstaendig entfernt
+     * (Discover() laeuft selten genug, dass ein kompletter Neuaufbau billig
+     * ist und keine verwaisten Registrierungen zurueckbleiben, z.B. wenn eine
+     * Wallbox entfernt wurde).
+     */
+    private function subscribeToDeviceVariables(array $devices): void
+    {
+        foreach ($this->GetMessageList() as $senderID => $messages) {
+            foreach ($messages as $msg) {
+                if ($msg === VM_UPDATE) {
+                    $this->UnregisterMessage($senderID, VM_UPDATE);
+                }
+            }
+        }
+        foreach ($devices as $d) {
+            foreach (['powerID', 'socID'] as $field) {
+                $vid = $d[$field] ?? 0;
+                if ($vid > 0 && IPS_VariableExists($vid)) {
+                    $this->RegisterMessage($vid, VM_UPDATE);
+                }
+            }
+        }
+    }
+
+    public function MessageSink($timestamp, $senderID, $message, $data)
+    {
+        if ($message === VM_UPDATE) {
+            $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+        }
     }
 
     public function GetVisualizationTile()
