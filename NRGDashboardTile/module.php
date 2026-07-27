@@ -263,11 +263,35 @@ class NRGDashboardTile extends IPSModule
             'updatedAt'   => $this->ReadAttributeInteger('LastDiscoveryTs'),
             // Darstellungs-Einstellungen (1:1 InverterHubTile-Feldnamen,
             // module.html liest dieselben Schluessel).
-            'bg'          => $this->ColorOrEmpty($this->ReadPropertyInteger('ColorBackground')),
-            'font'        => $this->FontStack($this->ReadPropertyString('FontFamily')),
+            'bg'          => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
+            'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'transMs'     => $this->TransitionValue(),
             'flowRefW'    => $this->FlowRefValue(),
         ];
+    }
+
+    /**
+     * ReadPropertyInteger()/ReadPropertyString() liefern `false` statt des
+     * Standardwerts, wenn die Property (noch) nicht registriert ist - real
+     * aufgetreten am 27.07.2026: ein reiner Datei-Pull + ApplyChanges() auf
+     * eine BEREITS existierende Instanz reicht nicht, um neu in Create()
+     * hinzugefuegte RegisterPropertyX-Aufrufe zu registrieren (das passiert
+     * nur bei einem echten Modul-Reload ueber die Modulverwaltung). Ohne
+     * diese Absicherung fuehrte das zu einem Fatal Error (TypeError: false
+     * an einen int-Parameter). Diese Helfer machen das Fehlen einer
+     * Property robust, statt sich auf einen rechtzeitigen Modul-Reload zu
+     * verlassen.
+     */
+    private function readIntProperty(string $name, int $default): int
+    {
+        $v = $this->ReadPropertyInteger($name);
+        return is_int($v) ? $v : $default;
+    }
+
+    private function readStringProperty(string $name, string $default): string
+    {
+        $v = $this->ReadPropertyString($name);
+        return is_string($v) ? $v : $default;
     }
 
     private function ColorOrEmpty(int $color): string
@@ -285,13 +309,13 @@ class NRGDashboardTile extends IPSModule
 
     private function FlowRefValue(): int
     {
-        $v = (int) $this->ReadPropertyInteger('FlowRefW');
+        $v = $this->readIntProperty('FlowRefW', self::DEF_FLOWREF);
         return ($v >= 500 && $v <= 100000) ? $v : self::DEF_FLOWREF;
     }
 
     private function TransitionValue(): int
     {
-        $v = (int) $this->ReadPropertyInteger('TransitionMs');
+        $v = $this->readIntProperty('TransitionMs', self::DEF_TRANSITION);
         return ($v >= 0 && $v <= 5000) ? $v : self::DEF_TRANSITION;
     }
 
