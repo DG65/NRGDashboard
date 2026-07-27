@@ -51,15 +51,28 @@
               "edit": { "type": "CheckBox" }
             },
             {
-              "caption": "Gerät",
-              "name": "Geraet",
-              "width": "260px",
+              "caption": "Bezeichnung (leer = Vorgabe)",
+              "name": "Name",
+              "width": "220px",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            },
+            {
+              "caption": "Rolle",
+              "name": "Rolle",
+              "width": "130px",
               "add": ""
+            },
+            {
+              "caption": "Variablen-ID",
+              "name": "ID",
+              "width": "110px",
+              "add": 0
             },
             {
               "caption": "Quelle",
               "name": "Quelle",
-              "width": "150px",
+              "width": "auto",
               "add": ""
             },
             {

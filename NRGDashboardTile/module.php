@@ -219,37 +219,58 @@ class NRGDashboardTile extends IPSModule
      * Schluessel (neues Geraet, erste Suche), gilt konservativ sichtbar=true
      * - Ausblenden ist eine bewusste Nutzerentscheidung, kein Vorgabezustand.
      */
-    private function deviceVisibilityMap(): array
+    /**
+     * Liest die gespeicherten Nutzer-Overrides je Geraet (Key -> Enabled +
+     * optionaler Name). "Name" leer = Vorgabe-Bezeichnung der Quelle
+     * verwenden (Muster: InverterHubTiles Consumers-Liste, "Bezeichnung
+     * leer = Vorgabe der Art").
+     */
+    private function deviceOverrideMap(): array
     {
         $rows = json_decode($this->readStringProperty('DeviceVisibility', '[]'), true);
         $map = [];
         if (is_array($rows)) {
             foreach ($rows as $row) {
                 if (is_array($row) && isset($row['Key'])) {
-                    $map[$row['Key']] = !empty($row['Enabled']);
+                    $map[$row['Key']] = [
+                        'enabled' => !empty($row['Enabled']),
+                        'name'    => trim((string) ($row['Name'] ?? '')),
+                    ];
                 }
             }
         }
         return $map;
     }
 
+    private function deviceVisibilityMap(): array
+    {
+        $map = [];
+        foreach ($this->deviceOverrideMap() as $key => $o) {
+            $map[$key] = $o['enabled'];
+        }
+        return $map;
+    }
+
     /**
      * Befuellt die "Automatisch gefundene Geräte"-Liste im Formular frisch
-     * aus dem letzten Discovery-Stand (Muster: Tessie VisibleVars) - Geraet/
-     * Quelle sind reine Anzeige und werden NIE aus der Property gelesen
-     * (Store-Review-Regel), nur "Enabled" wird aus der vorherigen Einstellung
-     * uebernommen, gematcht ueber deviceKey().
+     * aus dem letzten Discovery-Stand (Muster: Tessie VisibleVars) - Rolle/
+     * ID/Quelle sind reine Anzeige und werden NIE aus der Property gelesen
+     * (Store-Review-Regel), nur "Enabled"/"Name" werden aus der vorherigen
+     * Einstellung uebernommen, gematcht ueber deviceKey().
      */
     private function injectDeviceToggleValues(array &$form): void
     {
-        $visibility = $this->deviceVisibilityMap();
+        $overrides = $this->deviceOverrideMap();
         $rows = [];
         foreach ($this->GetDevices() as $d) {
             $key = $this->deviceKey($d);
+            $o = $overrides[$key] ?? ['enabled' => true, 'name' => ''];
             $rows[] = [
                 'Key'     => $key,
-                'Enabled' => $visibility[$key] ?? true,
-                'Geraet'  => ($d['label'] ?? $d['function']) . ' (' . ($d['function'] ?? '?') . ')',
+                'Enabled' => $o['enabled'],
+                'Name'    => $o['name'],
+                'Rolle'   => $d['function'] ?? '?',
+                'ID'      => (int) ($d['powerID'] ?? 0),
                 'Quelle'  => $d['source'] ?? '?',
             ];
         }
@@ -479,7 +500,21 @@ class NRGDashboardTile extends IPSModule
      */
     private function buildPayload(): array
     {
-        $devices = array_map(function (array $d) {
+        // Key VOR jeder Umbenennung berechnen (deviceKey() nutzt das Label -
+        // wird der Anzeigename unten ueberschrieben, muss der Abgleich mit der
+        // gespeicherten Einstellung trotzdem auf der URSPRUENGLICHEN,
+        // discovery-stabilen Bezeichnung beruhen, sonst geht der Bezug beim
+        // naechsten Rendern sofort wieder verloren).
+        $overrides = $this->deviceOverrideMap();
+        $devices = array_map(function (array $d) use ($overrides) {
+            $key = $this->deviceKey($d);
+            $o = $overrides[$key] ?? null;
+            $d['_visible'] = $o['enabled'] ?? true;
+            // Nutzer-Bezeichnung (Formular "Automatisch gefundene Geräte",
+            // Spalte "Bezeichnung") - leer = Vorgabe der Quelle behalten.
+            if (!empty($o['name'])) {
+                $d['label'] = $o['name'];
+            }
             $d['value'] = $this->resolvePowerValue($d);
             // Manueller Invert-Schalter (Netz/Batterie) - nur bei manuell
             // konfigurierten Geraeten gesetzt (discoverManualCore()).
@@ -505,9 +540,8 @@ class NRGDashboardTile extends IPSModule
         // NICHT schon beim Discover()/Cache: ein ausgeblendetes Geraet soll
         // beim naechsten Formular-Oeffnen weiterhin in der Liste auftauchen,
         // nur eben abgewaehlt, nicht spurlos verschwinden.
-        $visibility = $this->deviceVisibilityMap();
-        $devices = array_values(array_filter($devices, function (array $d) use ($visibility) {
-            return $visibility[$this->deviceKey($d)] ?? true;
+        $devices = array_values(array_filter($devices, function (array $d) {
+            return $d['_visible'];
         }));
 
         return [

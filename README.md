@@ -461,6 +461,26 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   `GetFunctions()` erscheint), keine Lücke bei uns — unser Fix behebt nur,
   dass eine VORHANDENE Zuordnung (wie bei Inexogy) jetzt tatsächlich
   ankommt.
+  **Zehnte Runde (27.07.2026): Tabelle voll, Variablen-ID sichtbar,
+  Umbenennen inline.** Dietmar zur "Automatisch gefundene Geräte"-Liste:
+  Spaltenbreite soll das ganze ExpansionPanel füllen, die Variablen-ID des
+  Geräts soll sichtbar sein, und ein Klick auf die Zeile soll die Bezeichnung
+  direkt änderbar machen. Umgesetzt:
+  - `DeviceToggles`-Spalten erweitert um `ID` (Variablen-ID, `powerID`) und
+    eine editierbare `Name`-Spalte ("Bezeichnung (leer = Vorgabe)",
+    `ValidationTextBox`, gleiches Muster wie in "Weitere Verbraucher"); die
+    reine Info-Spalte `Quelle` bekommt `width: "auto"`, damit sie den
+    verbleibenden Platz füllt und die Tabelle die Panel-Breite ausnutzt.
+  - `deviceVisibilityMap()` zu `deviceOverrideMap()` erweitert (liefert je
+    Schlüssel `enabled` UND `name`), `injectDeviceToggleValues()` befüllt
+    beide neuen Spalten aus dem aktuellen Discovery-Stand.
+  - `buildPayload()`: Reihenfolge ist entscheidend — `deviceKey()` wird VOR
+    einer eventuellen Umbenennung berechnet (der Schlüssel basiert auf dem
+    ursprünglichen, discovery-stabilen Label; würde man ihn erst nach dem
+    Überschreiben von `label` bilden, ginge der Bezug zur gespeicherten
+    Einstellung beim nächsten Rendern sofort wieder verloren). Erst danach
+    wird `label` durch die Nutzer-Bezeichnung ersetzt (falls gesetzt) und die
+    Sichtbarkeit gefiltert.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
