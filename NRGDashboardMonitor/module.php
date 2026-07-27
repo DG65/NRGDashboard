@@ -23,8 +23,10 @@ class NRGDashboardMonitor extends IPSModule
     private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const IHUBMON_GUID     = '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}';
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
+    private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const AGG_5MIN         = 5;
     private const WINDOW_DAYS      = 8;
+    private const SUN_MARGIN_SEC   = 3600;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
@@ -311,6 +313,49 @@ class NRGDashboardMonitor extends IPSModule
         return ($totalKwp > 0.0) ? ['pr' => $pr, 'totalKwp' => $totalKwp] : null;
     }
 
+    /**
+     * Koordinaten aus IP-Symcons eigener "Location Control"-Instanz (Kernel-
+     * Systemstandort, JSON-Property "Location") - dieselbe Quelle, aus der
+     * IPS selbst IsDayStart/IsDayEnd ableitet, keine eigene Konfiguration
+     * noetig.
+     */
+    private function Coordinates(): ?array
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::LOCATION_GUID);
+        if (!is_array($ids) || count($ids) === 0) {
+            return null;
+        }
+        $raw = @IPS_GetProperty((int) $ids[0], 'Location');
+        $loc = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($loc) || !isset($loc['latitude'], $loc['longitude'])) {
+            return null;
+        }
+        return ['lat' => (float) $loc['latitude'], 'lon' => (float) $loc['longitude']];
+    }
+
+    /**
+     * Sonnenaufgang−1h bis Sonnenuntergang+1h fuer den Tag von $dayStart, als
+     * [startMs, endMs] fuers Diagramm "PV & Einstrahlung" (Dietmars Wunsch,
+     * 27.07.2026 - die Nachtstunden ohne jede Erzeugung sollen nicht die
+     * halbe Diagrammbreite einnehmen). PHP-Kernfunktion date_sun_info() statt
+     * eigener Astronomie - liefert bereits Unix-Zeitstempel. Fallback: der
+     * volle Kalendertag, falls kein Systemstandort konfiguriert ist oder der
+     * Ort einen Polartag/-nacht hat (sunrise/sunset dann bool statt Zeit).
+     */
+    private function SunRange(int $dayStart): array
+    {
+        $dayEnd = $dayStart + 86400;
+        $coords = $this->Coordinates();
+        if ($coords === null) {
+            return [$dayStart, $dayEnd];
+        }
+        $info = @date_sun_info($dayStart + 43200, $coords['lat'], $coords['lon']);
+        if (!is_array($info) || !is_int($info['sunrise']) || !is_int($info['sunset'])) {
+            return [$dayStart, $dayEnd];
+        }
+        return [$info['sunrise'] - self::SUN_MARGIN_SEC, $info['sunset'] + self::SUN_MARGIN_SEC];
+    }
+
     private function ArchiveID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(self::ARCHIVE_GUID);
@@ -428,10 +473,17 @@ class NRGDashboardMonitor extends IPSModule
                 $hasData = $hasData || count($s) > 0;
             }
 
+            $sun = $this->SunRange($start);
+
             $days[] = [
                 'id'       => date('Y-m-d', $start),
                 'label'    => date('d.m.Y', $start),
                 'hasData'  => $hasData,
+                // Sonnenaufgang-1h/Sonnenuntergang+1h in ms - nur fuer den
+                // Reiter "PV & Einstrahlung" als x-Achsen-Bereich genutzt
+                // (Dietmars Wunsch: Nachtstunden ohne Erzeugung nicht anzeigen).
+                'sunStart' => $sun[0] * 1000,
+                'sunEnd'   => $sun[1] * 1000,
                 'pv'       => $pv,
                 'irr'      => $irr,
                 'expected' => $expected,

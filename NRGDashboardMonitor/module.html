@@ -175,7 +175,13 @@
         grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 28 },
         legend: { bottom: 0, textStyle: { color: '#9aa4b0' } },
         tooltip: { trigger: 'axis' },
-        xAxis: { type: 'time' },
+        // "PV & Einstrahlung": nur Sonnenaufgang-1h bis Sonnenuntergang+1h
+        // zeigen (Dietmars Wunsch) - Nachtstunden ohne jede Erzeugung sollen
+        // nicht die halbe Diagrammbreite einnehmen. Andere Reiter zeigen
+        // weiterhin den vollen Tag.
+        xAxis: (tab === 'solar' && d && d.sunStart)
+          ? { type: 'time', min: d.sunStart, max: d.sunEnd }
+          : { type: 'time' },
         yAxis: (tab === 'price')
           ? [{ type: 'value', name: 'ct/kWh' }]
           : [
@@ -197,7 +203,9 @@
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
-        xAxis: { type: 'datetime' },
+        xAxis: (tab === 'solar' && d && d.sunStart)
+          ? { type: 'datetime', min: d.sunStart, max: d.sunEnd }
+          : { type: 'datetime' },
         yAxis: (tab === 'price')
           ? [{ title: { text: 'ct/kWh' } }]
           : [

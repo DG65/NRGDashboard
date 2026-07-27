@@ -667,6 +667,17 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   gewählt (`IrradianceID=0`); ohne Einstrahlung kann auch kein
   Erwartungswert berechnet werden, beide Linien hängen an derselben
   fehlenden Einstellung.
+  **Sonnenaufgang/-untergang-Zeitfenster (27.07.2026, Dietmars Wunsch):**
+  Reiter "PV & Einstrahlung" zeigt jetzt nur noch Sonnenaufgang−1h bis
+  Sonnenuntergang+1h statt des vollen Kalendertags - die Nachtstunden ohne
+  jede Erzeugung nahmen sonst einen großen Teil der Diagrammbreite ein.
+  `SunRange()` nutzt PHP-Kernfunktion `date_sun_info()` mit den Koordinaten
+  aus IP-Symcons eigener "Location Control"-Instanz (JSON-Property
+  `Location`) - derselben Quelle, aus der der Kernel selbst
+  `IsDayStart`/`IsDayEnd` ableitet, keine eigene Konfiguration nötig.
+  Fallback auf den vollen Tag, falls kein Systemstandort konfiguriert ist.
+  Andere Reiter (MPP-Tracker/Batterie/Strompreis) zeigen weiterhin den
+  vollen Tag.
 
 ## Verwendete Verträge
 
