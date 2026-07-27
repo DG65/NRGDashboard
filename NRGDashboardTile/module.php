@@ -273,13 +273,21 @@ class NRGDashboardTile extends IPSModule
         foreach ($this->GetDevices() as $d) {
             $key = $this->deviceKey($d);
             $o = $overrides[$key] ?? ['enabled' => true, 'name' => ''];
+            $instanceID = (int) ($d['instanceID'] ?? 0);
             $rows[] = [
-                'Key'     => $key,
-                'Enabled' => $o['enabled'],
-                'Name'    => $o['name'],
-                'Rolle'   => $d['function'] ?? '?',
-                'ID'      => (int) ($d['powerID'] ?? 0),
-                'Quelle'  => $d['source'] ?? '?',
+                'Key'      => $key,
+                'Enabled'  => $o['enabled'],
+                'Name'     => $o['name'],
+                'Rolle'    => $d['function'] ?? '?',
+                'ID'       => (int) ($d['powerID'] ?? 0),
+                'Quelle'   => $d['source'] ?? '?',
+                // Instanzbezeichnung (z. B. "InverterHub WR1 (GoodWe)") - bei
+                // mehreren gleichartigen Partnerinstanzen (z. B. 2 MeterHub-
+                // Zaehler mit Rolle "grid") sonst nicht unterscheidbar, welche
+                // Zeile zu welchem physischen Geraet gehoert.
+                'Instanz'  => $instanceID > 0 && @IPS_InstanceExists($instanceID)
+                    ? IPS_GetName($instanceID)
+                    : '',
             ];
         }
         $walk = function (array &$elements) use (&$walk, $rows) {

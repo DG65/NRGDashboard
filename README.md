@@ -528,6 +528,14 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     der ersten Fassung - ein künftiger vierter Diagnose-Typ eines anderen
     Partnermoduls braucht keine Änderung an `renderDiagnostics()`, solange er
     dem Grundschema folgt.
+  **Dreizehnte Runde (27.07.2026): Instanzbezeichnung in der Geräte-Tabelle.**
+  Dietmar zum Screenshot der "Automatisch gefundene Geräte"-Liste: bei
+  mehreren gleichartigen Partnerinstanzen (z. B. zwei MeterHub-Zähler mit
+  Rolle "grid") war anhand von Rolle/Quelle allein nicht erkennbar, welche
+  Zeile zu welcher physischen Instanz gehört. Neue Spalte "Instanz" (Wert
+  = `IPS_GetName($instanceID)`, reine Anzeige wie Rolle/ID/Quelle) - "Quelle"
+  bekam dafür eine feste Breite (130px), "Instanz" füllt den Rest der
+  Panel-Breite.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

@@ -72,6 +72,12 @@
             {
               "caption": "Quelle",
               "name": "Quelle",
+              "width": "130px",
+              "add": ""
+            },
+            {
+              "caption": "Instanz",
+              "name": "Instanz",
               "width": "auto",
               "add": ""
             },
