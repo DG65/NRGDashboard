@@ -303,69 +303,65 @@ class NRGDashboardTile extends IPSModule
         $this->checkSourceCoverage('InverterHub', NRGDASH_GUID_INVERTERHUB, count($inverterHub));
         $devices = array_merge($devices, $inverterHub);
 
-        // InverterHubTile fuehrt selbst schon eine gemischte Verbraucherliste
-        // (manuell in ihrer eigenen Consumers-Property eingetragene Geraete +
-        // MeterHub + HeishaMon, siehe IHUBTILE_GetConsumers - mit InverterHub
-        // abgestimmt am 27.07.2026, nachdem uns eine manuell zugeordnete
-        // "Klimaanlage" fehlte, die in keinem Hub-Vertrag auftaucht). Ist eine
-        // Instanz davon vorhanden, ist ihre Liste die vollstaendigere und wird
-        // bevorzugt - eigene MeterHub/HeishaMon-Direktabfrage entfaellt dann,
-        // sonst gaebe es Dubletten. ChargerHub und Tessie sind NICHT in
-        // IHUBTILE_GetConsumers enthalten (laut InverterHub) und bleiben
-        // deshalb immer eigenstaendige Quellen.
-        $tileConsumers = $this->discoverInverterHubTileConsumers();
-        if (count($tileConsumers) > 0) {
-            $devices = array_merge($devices, $tileConsumers);
-        } else {
-            $meterHub = $this->discoverListContract(NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub');
-            $this->checkSourceCoverage('MeterHub', NRGDASH_GUID_METERHUB, count($meterHub));
-            $devices = array_merge($devices, $meterHub);
+        // Architektur-Korrektur (Dietmar, 27.07.2026): InverterHubTile ist
+        // eine ABLOESENDE Kachel, kein Dauerbestandteil des Verbunds - sie
+        // "wird verschwinden, weil wir keine 2 gleichen Panels brauchen".
+        // IHUBTILE_GetConsumers/GetHouseLoad duerfen deshalb KEINE dauerhafte
+        // Abhaengigkeit sein, nur ein Uebergangs-Lueckenfueller fuer das, was
+        // sonst nirgends herkommt. Die permanenten Hub-Module (MeterHub,
+        // ChargerHub, HeishaMon) laufen deshalb jetzt IMMER direkt, nicht nur
+        // als Rueckfall - wer InverterHubTile spaeter loescht, verliert
+        // dadurch nichts, was ueber ein eigenes Hub-Modul verfuegbar ist.
+        $meterHub = $this->discoverListContract(NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub');
+        $this->checkSourceCoverage('MeterHub', NRGDASH_GUID_METERHUB, count($meterHub));
+        $devices = array_merge($devices, $meterHub);
 
-            $devices = array_merge($devices, $this->discoverListContract(
-                NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
-            ));
+        $devices = array_merge($devices, $this->discoverListContract(
+            NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
+        ));
 
-            $heishaMon = $this->discoverHeishaMon();
-            $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
-            $devices = array_merge($devices, $heishaMon);
-        }
+        $heishaMon = $this->discoverHeishaMon();
+        $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
+        $devices = array_merge($devices, $heishaMon);
 
-        // Reale Lücke, live entdeckt (27.07.2026): InverterHub sagt, ChargerHub
-        // sei NIE Teil von IHUBTILE_GetConsumers - trotzdem hat Dietmar dieselben
-        // physischen Wallboxen zusaetzlich manuell in die Consumers-Property der
-        // Kachel eingetragen (andere Variablen-ID als der ChargerHub-eigene
-        // Leistungswert). Ohne Entdopplung erschien "WB 1"/"WB 2" zweimal als
-        // getrennter Knoten. Es gibt keinen gemeinsamen Schluessel (unterschiedliche
-        // powerIDs) - Label-Abgleich ist der einzige verfuegbare Anhaltspunkt.
-        // Bevorzugt wird der InverterHubTile-Eintrag (das ist die bereits von
-        // Dietmar sichtgeprüfte Referenzkachel).
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
-        $tileLabels = array_map(function (array $d) {
+        $devices = array_merge($devices, $chargerHub);
+
+        // IHUBTILE_GetConsumers NUR noch fuer Eintraege, die durch KEINE der
+        // permanenten Quellen oben abgedeckt sind (z.B. eine manuell in der
+        // Kachel eingetragene Klimaanlage ohne eigenes Hub-Modul) - Abgleich
+        // per Label, da es keinen gemeinsamen Schluessel gibt (unterschiedliche
+        // powerIDs je Quelle). Wer sowas findet, sollte es beizeiten in die
+        // eigene "Weitere Verbraucher"-Liste dieses Moduls uebertragen, damit
+        // beim Loeschen von InverterHubTile nichts verloren geht.
+        $tileConsumers = $this->discoverInverterHubTileConsumers();
+        $existingLabels = array_map(function (array $d) {
             return mb_strtolower(trim($d['label'] ?? ''));
-        }, array_filter($devices, function (array $d) {
-            return ($d['source'] ?? '') === 'inverterhubtile';
-        }));
-        foreach ($chargerHub as $entry) {
-            if (!in_array(mb_strtolower(trim($entry['label'] ?? '')), $tileLabels, true)) {
+        }, $devices);
+        foreach ($tileConsumers as $entry) {
+            if (!in_array(mb_strtolower(trim($entry['label'] ?? '')), $existingLabels, true)) {
                 $devices[] = $entry;
             }
         }
 
         $devices = array_merge($devices, $this->discoverTessie());
 
-        // Echter Hauslast-Zaehler (IHUBTILE_GetHouseLoad, InverterHub-Fund
-        // 27.07.2026: unsere houseW-Bilanz pv-grid+bat ist nur eine Naeherung;
-        // InverterHubTile bevorzugt einen tatsaechlich konfigurierten Zaehler
-        // (eigene HouseLoadID-Kette, kachelspezifisch, kein Feld in
-        // IHUB_GetFunctions). Als 'house'-Geraet eingehaengt - module.html
-        // bevorzugt ein 'house'-Geraet ohnehin schon vor der Bilanzformel.
-        $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
-
         // Manuelle Konfiguration IMMER zusaetzlich auswerten (kein Hub-Modul
         // vorausgesetzt) - fuer Haushalte ganz ohne InverterHub/MeterHub/etc.
         $devices = array_merge($devices, $this->discoverManualCore());
         $devices = array_merge($devices, $this->discoverManualConsumers());
+
+        // Echter Hauslast-Zaehler: eigene manuelle Konfiguration hat Vorrang;
+        // IHUBTILE_GetHouseLoad ist nur der Uebergangs-Lueckenfueller, solange
+        // Dietmar den echten Zaehler noch nicht selbst in "Manuelle
+        // Datenpunkte" > "Echter Hauslastzähler" eingetragen hat.
+        $hasManualHouse = (bool) array_filter($devices, function (array $d) {
+            return ($d['function'] ?? '') === 'house';
+        });
+        if (!$hasManualHouse) {
+            $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
+        }
 
         $diagnostics = $this->discoverDiagnostics();
 

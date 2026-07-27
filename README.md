@@ -410,6 +410,27 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   übernommen. Ausblenden filtert erst bei der Anzeige (`buildPayload()`),
   nicht schon bei der Discovery — ein ausgeblendetes Gerät bleibt in der
   Liste wählbar, verschwindet nicht spurlos.
+
+  **Architektur-Korrektur, noch selber Tag:** Beim Testen der Toggle-Liste
+  fiel auf, dass 5 von 8 Geräten die Quelle "inverterhubtile" trugen.
+  Dietmars entscheidender Hinweis: **InverterHubTile wird verschwinden**
+  ("wir brauchen keine 2 gleichen Panels") — `IHUBTILE_GetConsumers`/
+  `GetHouseLoad` durften deshalb nie eine Dauerabhängigkeit sein, nur ein
+  Übergangs-Lückenfüller. Korrigiert: MeterHub/ChargerHub/HeishaMon laufen
+  jetzt IMMER direkt (nicht mehr nur als Rückfall, wenn keine
+  InverterHubTile-Instanz gefunden wird) — Wärmepumpe kommt jetzt direkt
+  von HeishaMon, Wallboxen direkt von ChargerHub, unabhängig davon, ob
+  InverterHubTile je existiert hat. `IHUBTILE_GetConsumers` liefert nur noch
+  Einträge, die durch KEINE der permanenten Quellen abgedeckt sind (z. B.
+  eine manuell in der Kachel eingetragene Klimaanlage ohne eigenes Hub-
+  Modul) — Label-Abgleich gegen alle bereits gefundenen Geräte, nicht mehr
+  nur gegen ChargerHub. Ebenso bei `IHUBTILE_GetHouseLoad`: nur noch
+  Lückenfüller, wenn nicht schon eine manuelle `ManualHouseID` gesetzt ist.
+  **Konsequenz für den Nutzer:** Wer eine Klimaanlage oder einen echten
+  Hauslastzähler nur in InverterHubTiles Konfiguration eingetragen hat,
+  sollte das bei Gelegenheit in NRGDashboards eigene "Weitere Verbraucher"/
+  "Manuelle Datenpunkte" übertragen, bevor InverterHubTile gelöscht wird —
+  sonst verschwindet der Eintrag mit der Instanz.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
