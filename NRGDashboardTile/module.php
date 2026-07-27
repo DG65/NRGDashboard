@@ -68,9 +68,7 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = [];
 
-        $devices = array_merge($devices, $this->discoverListContract(
-            NRGDASH_GUID_INVERTERHUB, 'IHUB_GetFunctions', 'inverterhub'
-        ));
+        $devices = array_merge($devices, $this->discoverInverterHub());
         $devices = array_merge($devices, $this->discoverListContract(
             NRGDASH_GUID_METERHUB, 'MHUB_GetFunctions', 'meterhub'
         ));
@@ -117,13 +115,15 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = array_map(function (array $d) {
             $d['value'] = $this->resolvePowerValue($d);
+            if (!empty($d['socID'])) {
+                $d['soc'] = $this->resolveVariableValue((int) $d['socID']);
+            }
             return $d;
         }, $this->GetDevices());
 
         return [
             'ok'          => true,
             'devices'     => $devices,
-            'diagnostics' => $this->GetDiagnostics(),
             // Sichtbarer Aktualisierungsstand fuer den Nutzer, ohne Log-Zugriff
             // (Verbund-Konvention: Zustand sichtbar melden). Zeitpunkt des
             // letzten erfolgreichen Discover()-Laufs, nicht des Renderns.
@@ -141,6 +141,11 @@ class NRGDashboardTile extends IPSModule
     private function resolvePowerValue(array $device): ?float
     {
         $id = $device['powerID'] ?? 0;
+        return $id > 0 ? $this->resolveVariableValue($id) : null;
+    }
+
+    private function resolveVariableValue(int $id): ?float
+    {
         if ($id > 0 && IPS_VariableExists($id)) {
             return (float) GetValue($id);
         }
@@ -195,6 +200,55 @@ class NRGDashboardTile extends IPSModule
                 $entry['source']     = 'inverterhubmonitor';
                 $entry['instanceID'] = $data['instanceID'] ?? $id;
                 $results[] = $entry;
+            }
+        }
+        return $results;
+    }
+
+    /**
+     * InverterHub folgt NICHT dem MHUB_GetFunctions-Listenmuster: IHUB_GetFunctions
+     * liefert pro physischer Instanz ein OBJEKT (contractVersion/instanceID/
+     * manufacturer/measured/pvPowerID/acPowerID/batPowerID/gridPowerID/socID/...),
+     * keine Liste von {function,label,powerID}-Einträgen (siehe InverterHub/
+     * CLAUDE.md, Abschnitt Vertragsversionierung). Ein anfänglicher Versuch, das
+     * über discoverListContract() mit den anderen Hubs zu behandeln, hat PV/
+     * Batterie/Netz stillschweigend verworfen (kein 'function'-Feld vorhanden) -
+     * deshalb eine eigene Uebersetzung: jede vorhandene *PowerID wird zu einem
+     * eigenen Geräte-Eintrag (pv/battery/grid), analog zu einer Zuordnung bei
+     * MeterHub. Batterie bekommt zusätzlich socID fürs Ladestands-Icon.
+     */
+    private function discoverInverterHub(): array
+    {
+        $results = [];
+        if (!function_exists('IHUB_GetFunctions')) {
+            return $results;
+        }
+        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUB) as $id) {
+            $data = IHUB_GetFunctions($id);
+            if (!is_array($data)) {
+                continue;
+            }
+            $label = IPS_GetName($id);
+            $measured = $data['measured'] ?? true;
+            $map = [
+                'pv'      => $data['pvPowerID']   ?? 0,
+                'battery' => $data['batPowerID']  ?? 0,
+                'grid'    => $data['gridPowerID'] ?? 0,
+            ];
+            foreach ($map as $function => $powerID) {
+                if (!$powerID) {
+                    continue;
+                }
+                $entry = [
+                    'function' => $function,
+                    'label'    => $label,
+                    'powerID'  => $powerID,
+                    'measured' => $measured,
+                ];
+                if ($function === 'battery' && !empty($data['socID'])) {
+                    $entry['socID'] = $data['socID'];
+                }
+                $results[] = $this->normalizeEntry($entry, 'inverterhub', $id);
             }
         }
         return $results;

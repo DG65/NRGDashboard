@@ -56,19 +56,6 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   .state-label { font-size: 12px; font-weight: 600; color: var(--textmuted); white-space: nowrap; }
 
-  /* Diagnose-Panel: gleiche Plakettenoptik wie die Statusanzeige, oben rechts. */
-  .diag-overlay {
-    position: absolute; right: 4px; top: 4px; z-index: 2;
-    max-width: 62%; max-height: 70%; overflow-y: auto;
-    border-radius: 10px; padding: 6px 10px;
-    background: linear-gradient(180deg, rgba(60,64,72,0.90), rgba(28,30,36,0.90));
-    border: 1px solid rgba(255,255,255,0.10);
-    font-family: var(--font); font-size: 11px; color: var(--textmuted);
-  }
-  .diag-overlay ul { list-style: none; }
-  .diag-overlay li { padding: 2px 0; }
-  .diag-overlay b { color: #ddd; }
-
   .node {
     transform-box: view-box;
     transform-origin: 0 0;
@@ -242,7 +229,6 @@
   <span id="dot" class="status-dot"></span>
   <span id="stateLabel" class="state-label">–</span>
 </div>
-<div id="nrgdash-diagnostics" class="diag-overlay" style="display:none;"></div>
 
 <script>
 // --- Übernommen aus InverterHubTile/module.html (Referenz-Visualisierung
@@ -426,7 +412,7 @@ function buildItems(devices) {
         label: d.label || d.function,
         icon: style.icon,
         value: d.value ?? 0,
-        soc: null,
+        soc: (d.soc !== undefined && d.soc !== null) ? d.soc : null,
         sub: '',
         measured: d.measured ?? true,
         plugged: false,
@@ -677,10 +663,12 @@ function updateOuterNode(refs, item) {
   refs.subText.textContent = item.sub || '';
 }
 
-// -- Status-/Diagnose-Anzeige (eigenständig, nicht aus InverterHubTile) --
-const LEVEL_COLOR = { normal: '#3a3', 'auffaellig': '#c90', 'kritisch': '#c33' };
-const LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
-
+// -- Statusanzeige (eigenständig, nicht aus InverterHubTile). Das Diagnose-
+// Panel (IHUBMON_GetDiagnostics) wurde nach Nutzer-Feedback (27.07.2026,
+// "gehört wahrscheinlich woanders hin, nicht in diese Kachel") wieder
+// entfernt - reine Portierung von InverterHubTile heißt auch: keine
+// Zusatzelemente, die dort nicht existieren. GetDiagnostics() bleibt im
+// Backend verfügbar für einen künftigen, noch zu bestimmenden Konsumenten.
 function renderStatus(updatedAtSec) {
   const dot = document.getElementById('dot');
   const label = document.getElementById('stateLabel');
@@ -697,32 +685,9 @@ function renderStatus(updatedAtSec) {
   label.textContent = 'aktualisiert ' + hh + ':' + mm + (fresh ? '' : ' (veraltet)');
 }
 
-function renderDiagnostics(entries) {
-  const root = document.getElementById('nrgdash-diagnostics');
-  if (!Array.isArray(entries) || entries.length === 0) {
-    root.style.display = 'none';
-    return;
-  }
-  root.style.display = '';
-  let html = '<ul>';
-  entries.forEach(e => {
-    const color = LEVEL_COLOR[e.level] || '#999';
-    const levelText = e.level ? (LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
-    const refCount = Object.keys(e).filter(k => /ID$|IDs$/.test(k)).length;
-    const valueText = (e.expected !== undefined && e.expected !== null)
-      ? (e.expected + (e.unit ? ' ' + e.unit : ''))
-      : (refCount + ' Referenz(en)');
-    html += '<li><b>' + (e.label || e.type) + '</b>: ' + valueText +
-      ' — <span style="color:' + color + ';">' + levelText + '</span></li>';
-  });
-  html += '</ul>';
-  root.innerHTML = html;
-}
-
 function handleMessage(raw) {
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.updatedAt : 0);
-  renderDiagnostics(d ? d.diagnostics : []);
 
   const empty = document.getElementById('nrgdash-empty');
   const devices = (d && Array.isArray(d.devices)) ? d.devices : [];

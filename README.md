@@ -172,6 +172,20 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   einzelner Verbraucherknoten nach ihrem Netzbezugsanteil (InverterHubTile
   berechnet das aus Sankey-Daten, die uns in Phase 2 noch fehlen) — unsere
   Verbraucherknoten tragen vorerst eine feste Funktions-Farbe.
+  **Nachbesserung (27.07.2026, Dietmars direkter Kachel-Vergleich):**
+  1) Echter Bug gefunden und behoben — `IHUB_GetFunctions` (InverterHub)
+  folgt NICHT dem `MHUB_GetFunctions`-Listenmuster, sondern liefert pro
+  Instanz ein Objekt mit `pvPowerID`/`batPowerID`/`gridPowerID`/`socID`. Der
+  ursprüngliche `discoverListContract()`-Aufruf hat das mangels `function`-
+  Feld stillschweigend verworfen — PV/Batterie/Netz fehlten dadurch
+  komplett. Neue eigene Methode `discoverInverterHub()` übersetzt jede
+  vorhandene `*PowerID` in einen eigenen Geräte-Eintrag (analog zu einer
+  MeterHub-Zuordnung), inkl. `socID` für den Batterie-Ladestand im Icon.
+  2) Das Diagnostik-Panel wurde aus dieser Kachel wieder entfernt (Nutzer-
+  Wunsch: reine Portierung von InverterHubTile ohne Zusatzelemente, die
+  dort nicht existieren — "gehört wahrscheinlich woanders hin"). Das
+  Backend (`GetDiagnostics()`/`discoverDiagnostics()`) bleibt bestehen für
+  einen künftigen, noch zu bestimmenden Konsumenten.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
