@@ -678,6 +678,9 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Fallback auf den vollen Tag, falls kein Systemstandort konfiguriert ist.
   Andere Reiter (MPP-Tracker/Batterie/Strompreis) zeigen weiterhin den
   vollen Tag.
+  **Liniendicke halbiert (27.07.2026):** alle Kurven jetzt mit
+  `lineWidth`/`lineStyle.width: 1` statt der Standarddicke (2px) beider
+  Engines.
 
 ## Verwendete Verträge
 

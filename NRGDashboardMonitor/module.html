@@ -165,9 +165,9 @@
       if (!chart) { chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
       var ax = axisConfig(tab);
       var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300' }]
+        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300', lineStyle: { width: 1 } }]
         : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: s.dashed ? { type: 'dashed' } : {} };
+            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1 }, s.dashed ? { type: 'dashed' } : {}) };
           });
       chart.setOption({
         backgroundColor: 'transparent',
@@ -196,9 +196,9 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
       var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', marker: { enabled: false } }]
+        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 1, marker: { enabled: false } }]
         : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 1, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
           });
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
