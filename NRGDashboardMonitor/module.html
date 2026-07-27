@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  /* Steuerleiste + Reiter 1:1 nach Verbund-Konvention (InverterHubMonitor/
+     InverterHubEnergy) - "Wer eine Kachel mit Datumssteuerung baut, bedient
+     sich identisch". Klassen/Layout hier bewusst gleich benannt. */
+  html, body { margin: 0; height: 100%; background: transparent; }
+  .wrap { position: relative; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; padding: 52px 12px 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; }
+  button.tab { font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; opacity: .6; }
+  button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
+  button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
+  button.tab:disabled { opacity: .3; cursor: default; }
+  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  button.nav:disabled { opacity: .35; cursor: default; }
+  #quick { display: flex; gap: 4px; }
+  button.qday { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  button.qday:hover:not(:disabled) { background: rgba(127,135,145,.22); }
+  button.qday.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
+  button.qday:disabled { opacity: .35; cursor: default; }
+  input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
+  #chart { width: 100%; flex: 1 1 auto; min-height: 160px; }
+  .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
+  .titlebar { position: absolute; top: 12px; left: 12px; font-size: 18px; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="titlebar">Monitoring</div>
+    <div id="bar">
+      <select id="type" class="sel">
+        <option value="day">Tag (Verlauf)</option>
+      </select>
+      <button id="prev" class="nav" title="Zurück">&#9664;</button>
+      <input id="pick" class="pick" type="date">
+      <button id="next" class="nav" title="Vor">&#9654;</button>
+      <span id="quick"></span>
+    </div>
+    <div id="body">
+      <div id="tabs">
+        <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
+        <button class="tab" disabled title="Folgt in einer späteren Runde">MPP-Tracker</button>
+        <button class="tab" disabled title="Folgt in einer späteren Runde">Batterie</button>
+        <button class="tab" disabled title="Folgt in einer späteren Runde">Strompreis</button>
+      </div>
+      <div id="chartcol"><div id="chart"></div></div>
+    </div>
+  </div>
+
+  <script>/*__ECHARTS_JS__*/</script>
+  <script>
+    var lastData = null, chart = null, chartEngine = null, idx = 0;
+    var libs = { hc: 0 };
+
+    // Highcharts wird bewusst wie in der aktuell installierten InverterHub-
+    // Kachel behandelt: vom CDN nachgeladen, NICHT eingebettet (Lizenz - eine
+    // Redistribution mit dem Modul wäre bei Highcharts nicht abgedeckt, siehe
+    // README). Nur wer diese Engine explizit wählt, braucht dafür Internet-
+    // zugriff und eine eigene gültige Highcharts-Lizenz. ECharts (Standard)
+    // ist lokal eingebettet (Apache-2.0) und braucht beides nicht.
+    function addScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); }; document.head.appendChild(s); }
+    function ensureHighcharts(cb) {
+      if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; return cb(); }
+      if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
+      libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
+    }
+
+    function fmtDate(d) {
+      var y = d.getFullYear(), m = ('0' + (d.getMonth() + 1)).slice(-2), day = ('0' + d.getDate()).slice(-2);
+      return y + '-' + m + '-' + day;
+    }
+
+    function syncNav() {
+      var days = (lastData && lastData.days) || [];
+      document.getElementById('prev').disabled = (idx >= days.length - 1);
+      document.getElementById('next').disabled = (idx <= 0);
+      var d = days[idx];
+      if (d) { document.getElementById('pick').value = d.id; }
+
+      var quick = document.getElementById('quick');
+      quick.innerHTML = '';
+      var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
+      labels.forEach(function (l) {
+        var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
+        var btn = document.createElement('button');
+        btn.className = 'qday' + (target === idx ? ' active' : '');
+        btn.textContent = l[0];
+        btn.disabled = (target < 0) || !days[target] || !days[target].hasData;
+        btn.onclick = function () { idx = target; render(); };
+        quick.appendChild(btn);
+      });
+    }
+
+    function sizeChart() {
+      if (!chart) { return; }
+      if (chartEngine === 'highcharts') { chart.reflow(); } else { chart.resize(); }
+    }
+
+    function destroyChart() {
+      if (chart) { try { if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); } } catch (e) {} }
+      chart = null; chartEngine = null;
+      var el = document.getElementById('chart'); if (el) { el.innerHTML = ''; }
+    }
+
+    function buildSeries(d) {
+      var series = [
+        { name: 'PV-Erzeugung', data: d.pv, axis: 0, color: '#e53935', dashed: false },
+      ];
+      if (lastData.hasIrr) {
+        series.push({ name: 'Einstrahlung', data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
+      }
+      if (lastData.hasModel && d.expected && d.expected.length) {
+        series.push({ name: 'PV erwartet', data: d.expected, axis: 0, color: '#e57373', dashed: true });
+      }
+      return series;
+    }
+
+    function renderECharts(el, d) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
+      var series = buildSeries(d).map(function (s) {
+        return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: s.dashed ? { type: 'dashed' } : {} };
+      });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: lastData.hasIrr ? 46 : 12, top: 28, bottom: 28 },
+        legend: { bottom: 0, textStyle: { color: '#9aa4b0' } },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'time' },
+        yAxis: [
+          { type: 'value', name: 'W', position: 'left' },
+          { type: 'value', name: 'W/m²', position: 'right', show: !!lastData.hasIrr }
+        ],
+        series: series
+      });
+    }
+
+    function renderHighcharts(el, d) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var series = buildSeries(d).map(function (s) {
+        return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+      });
+      chart = Highcharts.chart(el, {
+        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: { type: 'datetime' },
+        yAxis: [
+          { title: { text: 'W' } },
+          { title: { text: 'W/m²' }, opposite: true, visible: !!lastData.hasIrr }
+        ],
+        legend: { enabled: true },
+        credits: { enabled: false },
+        series: series
+      });
+      chartEngine = 'highcharts';
+    }
+
+    function render() {
+      syncNav();
+      var days = (lastData && lastData.days) || [];
+      var d = days[idx];
+      var el = document.getElementById('chart');
+      if (!d || !d.hasData) {
+        destroyChart();
+        el.innerHTML = '<div class="empty">Keine Archivdaten für diesen Tag</div>';
+        return;
+      }
+      var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+      if (wantEngine === 'highcharts') {
+        ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, d); });
+      } else {
+        el.innerHTML = '';
+        renderECharts(el, d);
+        setTimeout(sizeChart, 60);
+      }
+    }
+
+    function handleMessage(raw) {
+      var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!d || !d.ok) { return; }
+      lastData = d;
+      if (d.bg) { document.body.style.background = d.bg; }
+      render();
+    }
+
+    document.getElementById('prev').onclick = function () {
+      var days = (lastData && lastData.days) || [];
+      if (idx < days.length - 1) { idx++; render(); }
+    };
+    document.getElementById('next').onclick = function () {
+      if (idx > 0) { idx--; render(); }
+    };
+    document.getElementById('pick').onchange = function (e) {
+      var days = (lastData && lastData.days) || [];
+      var i = days.findIndex(function (d) { return d.id === e.target.value; });
+      if (i >= 0) { idx = i; render(); }
+    };
+    window.addEventListener('resize', function () { if (chart) { setTimeout(sizeChart, 60); } });
+  </script>
+</body>
+</html>

@@ -560,12 +560,59 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Umschalten und war dadurch nicht anklickbar. Verschoben nach rechts
   unten (analog zum Status-Overlay links unten), Detail-Panel öffnet jetzt
   nach oben statt nach unten.
-- ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
-  PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
-  Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
-  `energyImportID`). Eigene, selbst eingebettete Chart-Lösung ohne externen
-  CDN-Zugriff (WebFront-Kacheln müssen offline funktionieren) — Wahl der
-  konkreten Bibliothek noch offen, siehe Koordinationshinweis unten.
+- 🚧 **Phase 3 — Zeitreihen-Charts, gestartet (27.07.2026).** InverterHub
+  übergab proaktiv die vollständige Spezifikation der eigenen
+  `InverterHubMonitor`-Kachel (Übergabeziel: Diagnose-Logik bleibt bei
+  InverterHub, die Zeitreihen-**Darstellung** wandert zu NRGDashboard).
+  Neues Modul **`NRGDashboardMonitor`** (eigene GUID/Prefix `NRGDASHMON`,
+  library.json auf 0.3.0-beta.1/Build 3 angehoben):
+  - **Erste Ausbaustufe:** nur Reiter „PV & Einstrahlung“, nur Ansicht
+    „Tag (Verlauf)“ - bewusst nicht die komplette Kachel in einem Schritt,
+    um jede Stufe live verifizieren zu können (Arbeitsweise dieser
+    Sitzung). MPP-Tracker/Batterie/Strompreis-Reiter sowie Woche/Monat/
+    Jahr/Gesamt-Ansichten folgen in weiteren Runden.
+  - **Chart-Engine-Entscheidung:** InverterHubMonitor lädt ECharts/
+    Highcharts zur Laufzeit von einem CDN nach - das widerspricht dem in
+    dieser Datei ursprünglich formulierten Prinzip "kein externer
+    CDN-Zugriff, WebFront-Kacheln müssen offline funktionieren". Nach
+    Abstimmung mit Dietmar: **ECharts (Apache-2.0) wird lokal eingebettet**
+    (`echarts.min.js`, ~1 MB, direkt in `GetVisualizationTile()` inline
+    eingefügt statt vom CDN geladen - Standard-Engine, kein Internetzugriff
+    nötig). **Highcharts bleibt wie in der aktuell installierten
+    InverterHub-Kachel vom CDN nachgeladen** (`code.highcharts.com`) - eine
+    Einbettung wäre bei Highcharts' proprietärer Lizenz für redistribuierte
+    Software (ein Modul, das andere Nutzer installieren) nicht abgedeckt,
+    anders als bei Apache-2.0-lizenziertem ECharts. Nutzer, die Highcharts
+    wählen, brauchen dafür Internetzugriff und eine eigene gültige Lizenz -
+    das ist in der Formularbeschriftung vermerkt.
+  - **Archiv-Muster 1:1 von InverterHubMonitor übernommen:** `AC_GetAggregatedValues`
+    immer mit 6 Argumenten (Limit=0), Aggregationstyp 5=5-Minuten-Werte.
+    Rollierendes 8-Tage-Fenster (`WINDOW_DAYS`) wird in EINEM Archivdurchlauf
+    je Serie beim Kachel-Öffnen/Timer-Tick (5 Minuten) vollständig
+    mitgeschickt - das Frontend navigiert rein clientseitig zwischen den
+    mitgelieferten Tagen (Vor/Zurück/Datumsfeld/Vorgestern-Gestern-Heute),
+    ohne bei jedem Klick erneut das Modul aufzurufen.
+  - **Erwartungswert-Modell** (`PvfModel()`) 1:1 von InverterHubMonitor
+    übernommen: `PVF_GetGenerators()` bevorzugt (kWp+PR je Generator),
+    Fallback `IPS_GetConfiguration()` für alte Prognose-Stable-Versionen
+    ohne Getter, PR-Default 0,85. **Bewusst NIE `PVF_GetForecast()`** (kann
+    einen ratenbegrenzten Wetter-API-Aufruf auslösen) - die Diagnose
+    vergleicht gemessene Einstrahlung × Generatorparameter, nicht die
+    Wetterprognose, sonst würde ein Wetterfehler wie ein Anlagenfehler
+    aussehen (InverterHub/Prognose-Absprache, unverändert übernommen).
+    `expectedW = Einstrahlung(W/m²) × Gesamt-kWp × PR` - der scheinbare
+    Faktor 1000 (W/m² ↔ kWp) kürzt sich numerisch weg.
+  - **PV-Instanz-Erkennung:** automatisch über `IHUB_GetFunctions()`, aber
+    NUR wenn genau eine InverterHub-Instanz installiert ist (kein Raten bei
+    mehreren Wechselrichtern, Muster: `PvfInstanceID()`) - sonst muss die
+    Variable im Formular explizit gewählt werden.
+  - Datumssteuerung/Optik folgt der Verbund-Konvention aus InverterHubs
+    `CLAUDE.md` ("Kacheln mit Datumssteuerung bedienen sich identisch"):
+    Ansicht-Auswahl · ◀ · Datumsfeld · ▶ · Schnellwahl, gleiche CSS-Klassen.
+  - Restliches Konzept (Strompreis-Reiter nur Tagesansicht, Counter-
+    Erkennung lifetime/dayReset, Vorzeichen-Konventionen `meter_total`)
+    bleibt für die nächsten Ausbaustufen dokumentiert, siehe Übergabe-
+    Nachricht von InverterHub (27.07.2026) - noch nicht umgesetzt.
 
 ## Verwendete Verträge
 

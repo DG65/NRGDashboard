@@ -1,0 +1,15 @@
+{
+  "id": "{E1A674D1-F48F-492D-B172-F8B9390BFEB3}",
+  "name": "NRGDashboardMonitor",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG Dashboard Monitoring",
+    "Ertrags- und Diagnose-Verlauf"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHMON"
+}

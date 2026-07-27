@@ -1,0 +1,72 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "📖 Dokumentation & Hilfe",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Zeitreihen-Kachel des NRG-Stack-Verbunds - Übergabe von InverterHubMonitor: die Diagnose-Logik bleibt bei InverterHub, die Darstellung wandert hierher. Erste Ausbaustufe: Reiter „PV & Einstrahlung“, Ansicht „Tag (Verlauf)“."
+        },
+        {
+          "type": "Label",
+          "caption": "PV-Leistung wird automatisch über InverterHub gefunden, sofern genau eine Instanz installiert ist - bei mehreren Wechselrichtern bitte die Variable unten explizit wählen."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Datenquelle",
+      "expanded": true,
+      "items": [
+        {
+          "type": "SelectVariable",
+          "name": "PvPowerID",
+          "caption": "PV-Leistung (optional - sonst automatisch über InverterHub)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "IrradianceID",
+          "caption": "Einstrahlungs-Variable (W/m², optional)"
+        },
+        {
+          "type": "SelectInstance",
+          "name": "PvfInstance",
+          "caption": "PV-Prognose-Instanz für Erwartungswerte (optional, sonst automatisch bei genau einer Instanz)",
+          "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
+        },
+        {
+          "type": "Label",
+          "caption": "Ohne PV-Prognose-Instanz fehlt nur die gestrichelte „PV erwartet“-Linie - der Verlauf von PV-Erzeugung und Einstrahlung wird trotzdem angezeigt."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Darstellung",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Select",
+          "name": "Engine",
+          "caption": "Chart-Engine",
+          "options": [
+            { "caption": "ECharts (eingebettet, empfohlen)", "value": "echarts" },
+            { "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)", "value": "highcharts" }
+          ]
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        }
+      ]
+    }
+  ]
+}
