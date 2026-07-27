@@ -536,6 +536,11 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   = `IPS_GetName($instanceID)`, reine Anzeige wie Rolle/ID/Quelle) - "Quelle"
   bekam dafür eine feste Breite (130px), "Instanz" füllt den Rest der
   Panel-Breite.
+  **Vierzehnte Runde (27.07.2026): Spaltenreihenfolge.** Auf Dietmars Vorgabe
+  umsortiert: Anzeigen · Variablen-ID · Instanz · Bezeichnung · Rolle ·
+  Quelle (`Key` bleibt verborgen am Ende). `Quelle` übernimmt jetzt die
+  auto-Breite (letzte sichtbare Spalte), `Instanz` bekommt eine feste
+  Breite (220px, gleich mit `Bezeichnung`).
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

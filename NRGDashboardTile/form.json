@@ -51,6 +51,18 @@
               "edit": { "type": "CheckBox" }
             },
             {
+              "caption": "Variablen-ID",
+              "name": "ID",
+              "width": "110px",
+              "add": 0
+            },
+            {
+              "caption": "Instanz",
+              "name": "Instanz",
+              "width": "220px",
+              "add": ""
+            },
+            {
               "caption": "Bezeichnung (leer = Vorgabe)",
               "name": "Name",
               "width": "220px",
@@ -64,20 +76,8 @@
               "add": ""
             },
             {
-              "caption": "Variablen-ID",
-              "name": "ID",
-              "width": "110px",
-              "add": 0
-            },
-            {
               "caption": "Quelle",
               "name": "Quelle",
-              "width": "130px",
-              "add": ""
-            },
-            {
-              "caption": "Instanz",
-              "name": "Instanz",
               "width": "auto",
               "add": ""
             },
