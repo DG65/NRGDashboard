@@ -219,7 +219,16 @@ class NRGDashboardTile extends IPSModule
     private function resolvePowerValue(array $device): ?float
     {
         $id = $device['powerID'] ?? 0;
-        return $id > 0 ? $this->resolveVariableValue($id) : null;
+        if ($id <= 0) {
+            return null;
+        }
+        $value = $this->resolveVariableValue($id);
+        if ($value === null) {
+            return null;
+        }
+        // Provisorischer Vorzeichen-Ausgleich (siehe discoverInverterHub) -
+        // bei allen anderen Quellen ist 'sign' nicht gesetzt und wirkt als 1.
+        return $value * ($device['sign'] ?? 1);
     }
 
     private function resolveVariableValue(int $id): ?float
@@ -342,12 +351,27 @@ class NRGDashboardTile extends IPSModule
             // Fehler: IPS_GetName($id) fuer alle drei verwendet, wodurch jeder
             // Knoten denselben Instanznamen ("InverterHub WR1 (GoodWe)") trug
             // statt seiner Rolle.
+            //
+            // PROVISORISCHER Workaround (27.07.2026, live belegt): InverterHub
+            // hatte zugesichert, gridPowerID sei IMMER bereits kanonisch
+            // (+Einspeisung/-Bezug), unabhaengig von der Instanz-Property
+            // MeterInvert (die nur die physische Verkabelung korrigiere). Live
+            // an Dietmars WR1-Instanz widerlegt: MeterInvert=true, aber der
+            // rohe gridPowerID-Wert war trotzdem NICHT korrigiert (-5636 W
+            // bei tatsaechlichem Export, waehrend InverterHubTile fuer
+            // dieselbe Anlage zeitgleich gruen/Export zeigte). Bis das auf
+            // InverterHub-Seite geklaert/gefixt ist, gleichen wir selbst aus -
+            // Property-Name ist Interna, kein Vertragsfeld, daher nur mit
+            // defensivem Rueckfall (Property fehlt -> keine Korrektur).
+            $config = json_decode(IPS_GetConfiguration($id), true);
+            $gridSign = (is_array($config) && !empty($config['MeterInvert'])) ? -1 : 1;
+
             $map = [
-                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0],
-                'battery' => ['Batterie', $data['batPowerID']  ?? 0],
-                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0],
+                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0, 1],
+                'battery' => ['Batterie', $data['batPowerID']  ?? 0, 1],
+                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0, $gridSign],
             ];
-            foreach ($map as $function => [$label, $powerID]) {
+            foreach ($map as $function => [$label, $powerID, $sign]) {
                 if (!$powerID) {
                     continue;
                 }
@@ -356,6 +380,7 @@ class NRGDashboardTile extends IPSModule
                     'label'    => $label,
                     'powerID'  => $powerID,
                     'measured' => $measured,
+                    'sign'     => $sign,
                 ];
                 if ($function === 'battery' && !empty($data['socID'])) {
                     $entry['socID'] = $data['socID'];
