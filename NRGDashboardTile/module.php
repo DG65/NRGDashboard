@@ -515,7 +515,23 @@ class NRGDashboardTile extends IPSModule
             return $results;
         }
         foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBTILE) as $id) {
-            $entries = IHUBTILE_GetConsumers($id);
+            // Verteidigung in der Tiefe (27.07.2026): IHUBTILE_GetConsumers()
+            // hat zwischenzeitlich live die Signatur gewechselt (2 statt 1
+            // Parameter verlangt) und liess Discover() dadurch komplett mit
+            // einem Fatal Error abbrechen - function_exists() allein schuetzt
+            // NICHT vor einer falschen Parameterzahl. Try/catch begrenzt den
+            // Schaden auf diese eine Quelle, statt die gesamte Discovery zu
+            // verlieren (Verbund-Grundregel: kein Modul setzt ein anderes
+            // ungeprueft voraus).
+            try {
+                $entries = IHUBTILE_GetConsumers($id);
+            } catch (\Throwable $e) {
+                $this->LogMessage(
+                    '⚠️ IHUBTILE_GetConsumers($id) ist fehlgeschlagen (' . $e->getMessage() . ') - Verbraucherliste von InverterHubTile wird übersprungen.',
+                    KL_WARNING
+                );
+                continue;
+            }
             if (!is_array($entries)) {
                 continue;
             }
@@ -551,7 +567,15 @@ class NRGDashboardTile extends IPSModule
             return $results;
         }
         foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBTILE) as $id) {
-            $data = IHUBTILE_GetHouseLoad($id);
+            try {
+                $data = IHUBTILE_GetHouseLoad($id);
+            } catch (\Throwable $e) {
+                $this->LogMessage(
+                    '⚠️ IHUBTILE_GetHouseLoad($id) ist fehlgeschlagen (' . $e->getMessage() . ') - echte Hauslast-Quelle wird übersprungen, Näherung (pv-grid+bat) greift stattdessen.',
+                    KL_WARNING
+                );
+                continue;
+            }
             if (!is_array($data) || empty($data['houseLoadID'])) {
                 continue;
             }
