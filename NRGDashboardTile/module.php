@@ -142,7 +142,7 @@ class NRGDashboardTile extends IPSModule
             array_unshift($form['elements'], $banner);
         }
 
-        if (!$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
+        if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'RowLayout',
                 'name' => 'ReviewHint',
@@ -179,7 +179,7 @@ class NRGDashboardTile extends IPSModule
      */
     private function newsBanner(): ?array
     {
-        if ($this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
             return null;
         }
         $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
