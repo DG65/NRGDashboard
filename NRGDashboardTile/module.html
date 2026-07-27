@@ -56,6 +56,40 @@
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
   .state-label { font-size: 12px; font-weight: 600; color: var(--textmuted); white-space: nowrap; }
 
+  /* Diagnose-Badge (IHUBMON_GetDiagnostics, siehe README "Diagnostik-
+     Vertrag") - bewusst dezent: nur sichtbar, wenn ueberhaupt Eintraege
+     vorliegen, faengt als reine Zahl+Farbe (schlechtestes level) an und
+     zeigt die Details erst bei Klick/Hover, um in der engen Kachel keinen
+     Platz zu verbrauchen, solange alles unauffaellig ist. */
+  .diag-badge {
+    position: absolute; right: 4px; top: 4px; z-index: 3;
+    display: none; align-items: center; gap: 6px;
+    height: 24px; padding: 0 10px;
+    border-radius: 12px; cursor: pointer;
+    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-family: var(--font); font-size: 12px; font-weight: 600;
+    color: var(--textmuted);
+  }
+  .diag-badge.show { display: inline-flex; }
+  .diag-badge .diag-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #3a3; }
+  .diag-badge.level-auffaellig .diag-dot { background: #c9a227; }
+  .diag-badge.level-kritisch .diag-dot { background: #c33; }
+  .diag-panel {
+    position: absolute; right: 4px; top: 32px; z-index: 3;
+    display: none; min-width: 220px; max-width: 280px;
+    padding: 8px 10px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.96), rgba(28,30,36,0.96));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-family: var(--font); font-size: 11.5px; color: var(--textmuted);
+  }
+  .diag-panel.open { display: block; }
+  .diag-row { padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+  .diag-row:first-child { border-top: none; }
+  .diag-row .diag-label { font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .diag-row .diag-value { opacity: 0.9; margin: 1px 0; }
+  .diag-row .diag-reason { opacity: 0.7; font-size: 11px; }
+
   .node {
     transform-box: view-box;
     transform-origin: 0 0;
@@ -229,6 +263,12 @@
   <span id="dot" class="status-dot"></span>
   <span id="stateLabel" class="state-label">–</span>
 </div>
+
+<div id="diagBadge" class="diag-badge" onclick="toggleDiagPanel()">
+  <span class="diag-dot"></span>
+  <span id="diagBadgeText">0</span>
+</div>
+<div id="diagPanel" class="diag-panel"></div>
 
 <script>
 // --- Übernommen aus InverterHubTile/module.html (Referenz-Visualisierung
@@ -882,12 +922,7 @@ function updateOuterNode(refs, item) {
   refs.subText.textContent = item.sub || '';
 }
 
-// -- Statusanzeige (eigenständig, nicht aus InverterHubTile). Das Diagnose-
-// Panel (IHUBMON_GetDiagnostics) wurde nach Nutzer-Feedback (27.07.2026,
-// "gehört wahrscheinlich woanders hin, nicht in diese Kachel") wieder
-// entfernt - reine Portierung von InverterHubTile heißt auch: keine
-// Zusatzelemente, die dort nicht existieren. GetDiagnostics() bleibt im
-// Backend verfügbar für einen künftigen, noch zu bestimmenden Konsumenten.
+// -- Statusanzeige (eigenständig, nicht aus InverterHubTile).
 function renderStatus(renderedAtSec) {
   const dot = document.getElementById('dot');
   const label = document.getElementById('stateLabel');
@@ -909,9 +944,79 @@ function renderStatus(renderedAtSec) {
   label.textContent = 'aktualisiert ' + hh + ':' + mm + ':' + ss + (fresh ? '' : ' (veraltet)');
 }
 
+// -- Diagnose-Panel (IHUBMON_GetDiagnostics, siehe README "Diagnostik-
+// Vertrag"). type-neutral: kennt die drei aktuell existierenden Typen
+// (yield_vs_forecast/mppt_string_compare/riso) nur ueber ihre jeweiligen
+// Werte-Felder, die vom Backend (resolveDiagnostics()) schon aufgeloest
+// wurden - level/threshold/reason kommen unveraendert vom Anbieter, hier
+// wird NICHTS neu bewertet, nur dargestellt. Ein neuer Typ eines anderen
+// Partnermoduls braucht KEINE Aenderung an diesem Renderer, solange er
+// dem Grundschema (type/label/level/reason + einen der bekannten
+// Werte-Felder) folgt - er landet automatisch im "sonst"-Zweig unten.
+const DIAG_LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
+const DIAG_LEVEL_RANK = { kritisch: 2, 'auffaellig': 1, normal: 0 };
+
+function fmtNum(v, unit) {
+  if (v === null || v === undefined || isNaN(v)) { return '–'; }
+  const n = Math.abs(v) >= 100 ? Math.round(v) : Math.round(v * 10) / 10;
+  return n + (unit ? ' ' + unit : '');
+}
+
+function diagValueText(e) {
+  if (e.type === 'yield_vs_forecast') {
+    return fmtNum(e.measured, e.unit) + ' / ' + fmtNum(e.expected, e.unit) + ' erwartet';
+  }
+  if (e.type === 'mppt_string_compare' && e.stringValues) {
+    return Object.keys(e.stringValues).sort().map(function (n) {
+      return 'Str.' + n + ': ' + fmtNum(e.stringValues[n], e.unit);
+    }).join(' · ');
+  }
+  if (e.type === 'riso') {
+    return fmtNum(e.measuredValue, e.unit) + (e.threshold ? ' (Grenze ' + e.threshold + ' ' + e.unit + ')' : '');
+  }
+  // Unbekannter kuenftiger Typ: zeige, was vorhanden ist, statt nichts.
+  if (e.expected !== undefined) { return fmtNum(e.expected, e.unit); }
+  return '';
+}
+
+function toggleDiagPanel() {
+  document.getElementById('diagPanel').classList.toggle('open');
+}
+
+function renderDiagnostics(entries) {
+  const badge = document.getElementById('diagBadge');
+  const panel = document.getElementById('diagPanel');
+  if (!Array.isArray(entries) || entries.length === 0) {
+    badge.classList.remove('show');
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    return;
+  }
+  let worst = 'normal';
+  entries.forEach(function (e) {
+    if (e.level && DIAG_LEVEL_RANK[e.level] > DIAG_LEVEL_RANK[worst]) { worst = e.level; }
+  });
+  badge.classList.add('show');
+  badge.classList.toggle('level-auffaellig', worst === 'auffaellig');
+  badge.classList.toggle('level-kritisch', worst === 'kritisch');
+  document.getElementById('diagBadgeText').textContent = entries.length;
+
+  panel.innerHTML = entries.map(function (e) {
+    const color = e.level ? ({ normal: '#3a3', 'auffaellig': '#c9a227', 'kritisch': '#c33' }[e.level] || '#999') : '#999';
+    const levelText = e.level ? (DIAG_LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
+    return '<div class="diag-row">' +
+      '<div class="diag-label"><span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex:none;"></span>' +
+      (e.label || e.type) + '</div>' +
+      '<div class="diag-value">' + diagValueText(e) + ' — ' + levelText + '</div>' +
+      (e.reason ? '<div class="diag-reason">' + e.reason + '</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
 function handleMessage(raw) {
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.renderedAt : 0);
+  renderDiagnostics(d ? d.diagnostics : []);
 
   // Darstellungs-Einstellungen (1:1 InverterHubTile-Muster, module.html:1224-1229)
   if (d) {

@@ -510,6 +510,24 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   gecachten Stand. Behoben: `ApplyChanges()` ruft jetzt selbst `Discover()`
   auf (IPS ruft `ApplyChanges()` bei jedem Kernel-Start für jede Instanz
   auf — der richtige Ort, nicht nur der Timer).
+  **Zwölfte Runde (27.07.2026): Diagnose-Panel wieder eingebaut.** InverterHub
+  übergab proaktiv den vollständigen `IHUBMON_GetDiagnostics()`-Vertrag
+  (drei Typen: `yield_vs_forecast`, `mppt_string_compare`, `riso` - Details
+  siehe Abschnitt "Diagnostik-Vertrag"). Anders als beim ersten Anlauf (Zweite
+  Nachbesserungsrunde) diesmal auf Dietmars ausdrücklichen Wunsch als
+  eigenständiges Overlay eingebaut, nicht als InverterHubTile-Kopie:
+  - `resolveDiagnostics()` (`module.php`) löst die gecachten Referenzen
+    (`measuredPowerID`/`measuredID`/`stringPowerIDs`) live über
+    `resolveVariableValue()` auf - bewusst ungeglättet, wie InverterHubMonitor
+    selbst. `level`/`threshold`/`reason` werden unverändert durchgereicht,
+    NICHTS wird hier neu bewertet.
+  - Neues `diagnostics`-Feld in `buildPayload()`.
+  - `module.html`: dezentes Badge oben rechts (nur sichtbar, wenn Einträge
+    vorliegen, Farbe = schlechtestes `level`), Klick öffnet ein Detail-Panel
+    mit Wert, Bewertung und Begründung je Eintrag. Type-neutral wie schon in
+    der ersten Fassung - ein künftiger vierter Diagnose-Typ eines anderen
+    Partnermoduls braucht keine Änderung an `renderDiagnostics()`, solange er
+    dem Grundschema folgt.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

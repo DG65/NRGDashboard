@@ -571,7 +571,40 @@ class NRGDashboardTile extends IPSModule
             'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'transMs'     => $this->TransitionValue(),
             'flowRefW'    => $this->FlowRefValue(),
+            'diagnostics' => $this->resolveDiagnostics(),
         ];
+    }
+
+    /**
+     * Loest die in GetDiagnostics() gecachten Referenzen (measuredPowerID/
+     * measuredID/stringPowerIDs) auf aktuelle Live-Werte auf - bewusst LIVE
+     * gelesen statt geglaettet, exakt wie InverterHubMonitor selbst
+     * (Rueckmeldung 27.07.2026: Riso/MPPT-Werte sind bei ihnen ungeglaettet,
+     * ein einzelner Ausreisser darf durchschlagen). level/threshold/reason
+     * kommen bereits fertig bewertet vom Anbieter - hier wird NICHTS davon
+     * neu berechnet, nur der/die Anzeige-Wert(e) ergaenzt. Type-neutral:
+     * kennt keinen der `type`-Werte, sondern nur, dass Feldnamen auf
+     * ID/IDs enden (Muster: fruehere renderDiagnostics()-Fassung).
+     */
+    private function resolveDiagnostics(): array
+    {
+        $entries = $this->GetDiagnostics();
+        return array_map(function (array $e) {
+            if (isset($e['measuredPowerID'])) {
+                $e['measured'] = $this->resolveVariableValue((int) $e['measuredPowerID']);
+            }
+            if (isset($e['measuredID'])) {
+                $e['measuredValue'] = $this->resolveVariableValue((int) $e['measuredID']);
+            }
+            if (isset($e['stringPowerIDs']) && is_array($e['stringPowerIDs'])) {
+                $vals = [];
+                foreach ($e['stringPowerIDs'] as $n => $vid) {
+                    $vals[$n] = $this->resolveVariableValue((int) $vid);
+                }
+                $e['stringValues'] = $vals;
+            }
+            return $e;
+        }, $entries);
     }
 
     /**
