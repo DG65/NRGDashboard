@@ -498,6 +498,18 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   und Umbenennen dadurch wirkungslos (Lesezugriff über
   `readStringProperty()` fing das ab, der Schreibzugriff beim Formular-
   Speichern aber nicht).
+  **Elfte Runde (27.07.2026): veraltete Werte nach Symcon-Neustart.**
+  Dietmar bemerkte nach einem geplanten Neustart (wegen der Property oben),
+  dass die Kacheln "längere Zeit Differenzen" zeigten und erst nach einem
+  manuell angestoßenen `NRGDASH_Discover()` wieder stimmten. Ursache:
+  `ApplyChanges()` stellte bisher nur den 5-Minuten-Timer, rief `Discover()`
+  selbst aber nicht auf. `RegisterMessage`-Abonnements (VM_UPDATE) sind rein
+  im Arbeitsspeicher und überleben einen Kernel-Neustart grundsätzlich
+  nicht — bis zum ersten Timer-Tick blieb die Kachel dadurch bis zu 5
+  Minuten lang ohne aktive Abos und zeigte nur den zuletzt vor dem Neustart
+  gecachten Stand. Behoben: `ApplyChanges()` ruft jetzt selbst `Discover()`
+  auf (IPS ruft `ApplyChanges()` bei jedem Kernel-Start für jede Instanz
+  auf — der richtige Ort, nicht nur der Timer).
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/

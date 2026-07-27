@@ -116,6 +116,14 @@ class NRGDashboardTile extends IPSModule
         // sonst zeigt die Instanz bis zum ersten Timer-Tick keinen definierten
         // Zustand (Verbund-Konvention: Zustand sichtbar melden, nicht nur im Log).
         $this->SetStatus(102);
+        // Sofortiger Discover()-Lauf statt auf den ersten 5-Minuten-Timer zu
+        // warten (Fehlerbild 27.07.2026: nach einem Symcon-Neustart zeigte die
+        // Kachel bis zu 5 Minuten lang veraltete Werte, weil RegisterMessage-
+        // Abos den Neustart nicht ueberleben und ApplyChanges() bisher nur den
+        // Timer stellte, ohne selbst neu zu abonnieren/zu rendern - IPS ruft
+        // ApplyChanges() bei JEDEM Kernel-Start fuer jede Instanz auf, das ist
+        // also der richtige Ort dafuer, nicht nur der Timer).
+        $this->Discover();
     }
 
     /**
