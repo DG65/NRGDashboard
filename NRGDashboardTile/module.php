@@ -114,6 +114,14 @@ class NRGDashboardTile extends IPSModule
 
         $devices = array_merge($devices, $this->discoverTessie());
 
+        // Echter Hauslast-Zaehler (IHUBTILE_GetHouseLoad, InverterHub-Fund
+        // 27.07.2026: unsere houseW-Bilanz pv-grid+bat ist nur eine Naeherung;
+        // InverterHubTile bevorzugt einen tatsaechlich konfigurierten Zaehler
+        // (eigene HouseLoadID-Kette, kachelspezifisch, kein Feld in
+        // IHUB_GetFunctions). Als 'house'-Geraet eingehaengt - module.html
+        // bevorzugt ein 'house'-Geraet ohnehin schon vor der Bilanzformel.
+        $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
+
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
@@ -413,6 +421,37 @@ class NRGDashboardTile extends IPSModule
                     'measured' => true,
                 ], 'inverterhubtile', $id);
             }
+        }
+        return $results;
+    }
+
+    /**
+     * IHUBTILE_GetHouseLoad($id) (InverterHubTile, ab Commit cf33250):
+     * liefert houseLoadID > 0, wenn die Kachel einen ECHTEN Hauslast-Zaehler
+     * bevorzugt (eigene Prioritaetskette: HouseLoadID-Property > Quell-
+     * instanz HouseLoadMeterID/ManualHouseID > MeterHub-Kernwert), sonst 0
+     * (dann rechnet auch InverterHubTile selbst nur die Bilanz). Nur bei
+     * houseLoadID > 0 ein 'house'-Geraet einhaengen - module.html bevorzugt
+     * ein vorhandenes 'house'-Geraet ohnehin schon vor der eigenen
+     * pv-grid+bat-Naeherung (siehe handleMessage()).
+     */
+    private function discoverInverterHubTileHouseLoad(): array
+    {
+        $results = [];
+        if (!function_exists('IHUBTILE_GetHouseLoad')) {
+            return $results;
+        }
+        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBTILE) as $id) {
+            $data = IHUBTILE_GetHouseLoad($id);
+            if (!is_array($data) || empty($data['houseLoadID'])) {
+                continue;
+            }
+            $results[] = $this->normalizeEntry([
+                'function' => 'house',
+                'label'    => 'Haus',
+                'powerID'  => $data['houseLoadID'],
+                'measured' => true,
+            ], 'inverterhubtile', $id);
         }
         return $results;
     }

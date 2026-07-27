@@ -297,6 +297,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   dort steht `MeterInvert` laut InverterHub inhaltlich falsch — ein
   Konfigurationsfehler auf ihrer Seite, kein erneuter Vertragsbruch; liegt
   außerhalb unserer Zuständigkeit.
+
+  **Fünfte Runde (27.07.2026): echte Hauslast-Quelle statt Näherung.**
+  Netz/Solar/Batterie stimmten nach der MeterInvert-Klärung überein, Hauslast
+  weiterhin nicht (10.315 W bei uns / berechnete Bilanz vs. 1.468 W bei
+  InverterHub / echter Zähler). Ursache, gefunden auf Dietmars Hinweis, die
+  InverterHubTile-Konfiguration selbst anzusehen: die Kachel hat eine
+  `HouseLoadID`-Property (echter Hauslast-Zähler), die laut ihrem eigenen
+  Code Vorrang vor der Bilanzformel hat — ein Feld, das nirgends in
+  `IHUB_GetFunctions` auftaucht, weil es reine Tile-Konfiguration ist, keine
+  Eigenschaft der InverterHub-Kerninstanz. Neuer Vertrag von InverterHub:
+  `IHUBTILE_GetHouseLoad($id)` → `{'contractVersion':'1.0','houseLoadID':int}`,
+  `0` wenn kein echter Zähler konfiguriert ist (dann bilanzieren beide
+  Seiten identisch). `discoverInverterHubTileHouseLoad()` hängt bei
+  `houseLoadID > 0` ein `'house'`-Gerät ein — `module.html` bevorzugt ein
+  vorhandenes `'house'`-Gerät gegenüber der `pv−grid+bat`-Näherung ohnehin
+  bereits (siehe Phase-2-Eintrag oben), keine weitere Änderung an der
+  Darstellung nötig.
 - ⏳ **Phase 3 — Zeitreihen-Charts.** Strompreis (`TIBBERGR_GetPriceCurve`),
   PV-/Lastprognose (`PVF_GetForecast`/`LFC_GetForecast`), Leistung/Energie je
   Gerät (`AC_GetAggregatedValues`/`AC_GetLoggedValues` auf `powerID`/
