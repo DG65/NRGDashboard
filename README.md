@@ -560,7 +560,7 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Umschalten und war dadurch nicht anklickbar. Verschoben nach rechts
   unten (analog zum Status-Overlay links unten), Detail-Panel öffnet jetzt
   nach oben statt nach unten.
-- 🚧 **Phase 3 — Zeitreihen-Charts, gestartet (27.07.2026).** InverterHub
+- ✅ **Phase 3 — Zeitreihen-Charts, abgeschlossen (27.-28.07.2026).** InverterHub
   übergab proaktiv die vollständige Spezifikation der eigenen
   `InverterHubMonitor`-Kachel (Übergabeziel: Diagnose-Logik bleibt bei
   InverterHub, die Zeitreihen-**Darstellung** wandert zu NRGDashboard).
@@ -994,6 +994,41 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     Daten (Rauschen simuliert reale Wechselrichter-Sprünge) vor/nach
     verglichen - Linien danach sichtbar scharf und dünn statt breiig.
 
+- **Weitere ECharts/Highcharts-Optikangleichungen, drei Runden (28.07.2026,
+  im Anschluss an obige Runde).** Dietmar hat beide Engines nebeneinander
+  verglichen und noch vier Detailunterschiede gefunden - alle lokal mit
+  synthetischen Daten nachgestellt und verifiziert, bevor sie live gingen:
+  1. **Zarte Hintergrund-Gitterlinien** für Zeit (x-Achse) und die linke
+     Achse (PV-Leistung/kW) fehlten ganz; die rechte Achse (Einstrahlung)
+     sollte bewusst *keine* eigenen bekommen (zwei Gitter mit
+     unterschiedlicher Teilung überlagern sich sonst). ECharts:
+     `splitLine` je Achse einzeln gesetzt/deaktiviert. Highcharts:
+     `gridLineWidth`/`gridLineColor` je Achse (Standard zeigt sonst an
+     beiden y-Achsen Gitterlinien).
+  2. **ECharts zeigte Zeitachsen-Beschriftungen nur alle 2 Stunden**,
+     Highcharts von sich aus stündlich - ECharts' automatische
+     "schöne" Teilstrich-Wahl an einer Zeitachse ist nicht deckungsgleich
+     mit Highcharts' Wahl. Fix: `xAxis.minInterval`/`maxInterval` auf
+     exakt `3600*1000` (1 Stunde) erzwungen statt der automatischen Wahl
+     zu vertrauen.
+  3. **ECharts zeigt beim Hovern einen gestrichelten Cursor (`axisPointer`)
+     über der Zeitachse, Highcharts von sich aus keinen** - Highcharts
+     braucht dafür ein explizites `xAxis.crosshair` (hier:
+     `{width:1,color:'rgba(255,255,255,.4)',dashStyle:'Dash'}`), sonst
+     bleibt es beim reinen Tooltip ohne visuellen Zeitanker.
+  4. **In den Energie-Ansichten (Woche/Monat/Jahr/Gesamt) zeigt ECharts'
+     `axisPointer:{type:'shadow'}` beim Hovern eine flächige Aufhellung
+     über der ganzen Balken-Kategorie, Highcharts nichts Vergleichbares.**
+     Lösung ohne Zusatzaufwand: Highcharts zeichnet auf einer
+     Kategorie-Achse (`xAxis.categories`, kein `type:'datetime'`) mit
+     einem einfachen `xAxis.crosshair:{color:...}` von sich aus **ein
+     flächiges Rechteck über die volle Kategoriebreite** statt einer
+     Linie - exakt das gewünschte Pendant, kein Nachbau per zusätzlicher
+     unsichtbarer Hilfsserie nötig.
+  - Damit ist Phase 3 (Zeitreihen-Charts, alle vier Reiter × alle sechs
+    Ansichten, beide Engines optisch angeglichen) aus Sicht von Dietmar
+    und dieser Sitzung abgeschlossen.
+
 ## Lehren für den Verbund: ECharts/Highcharts-Fallstricke (28.07.2026)
 
 Verbindlich für **jedes** Modul im NRG-Stack, das ECharts oder Highcharts
@@ -1053,6 +1088,20 @@ jeweils in den Runden-Einträgen oben, hier nur die verdichtete Lehre:
    SVG-Rendering ist davon unabhängig immer scharf - bei einem direkten
    Vergleich beider Engines mit identischer `lineWidth` fällt der
    Unterschied sofort auf.
+10. **Gitterlinien je Achse explizit setzen, nicht auf Standardwerte
+    verlassen** - beide Engines zeigen sonst an beiden y-Achsen (z. B.
+    kW UND W/m²) eigene, unterschiedlich geteilte Gitter, die sich
+    optisch überlagern. ECharts: `splitLine` pro Achse. Highcharts:
+    `gridLineWidth`/`gridLineColor` pro Achse.
+11. **Eine Zeitachse braucht `minInterval`/`maxInterval`, wenn ein festes
+    Beschriftungsraster (hier: stündlich) gewünscht ist** - ECharts'
+    automatische Teilstrich-Wahl an einer Zeitachse muss nicht mit der
+    von Highcharts übereinstimmen, auch bei identischem Datenbereich.
+12. **Highcharts zeichnet `xAxis.crosshair` auf einer Kategorie-Achse
+    (`categories`, kein `type:'datetime'`) automatisch als flächiges
+    Rechteck über die volle Kategoriebreite**, nicht als Linie - das
+    ist bereits das Pendant zu ECharts' `axisPointer:{type:'shadow'}` in
+    Balkendiagrammen, ganz ohne Nachbau per zusätzlicher Hilfsserie.
 
 **Nicht-Chart-Lehre, aber im selben Zeitraum gefunden, ebenfalls
 verbindlich:** Eine versteckte, nicht-editierbare `List`-Spalte (z. B.
