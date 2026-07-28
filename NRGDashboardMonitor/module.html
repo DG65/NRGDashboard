@@ -70,7 +70,12 @@
 
   <script>/*__ECHARTS_JS__*/</script>
   <script>
-    var lastData = null, chart = null, chartEngine = null, idx = 0, curTab = 'solar';
+    // idx=1 statt 0, weil days[0] jetzt "morgen" ist (nur beim Strompreis-
+    // Reiter befuellt, siehe module.php::buildPayload()) - der Default beim
+    // Oeffnen der Kachel bleibt "heute" (Dietmars Wunsch, 28.07.2026:
+    // "morgen" per Vor-Navigation erreichbar machen, ohne den Standard-
+    // Einstieg fuer die anderen Reiter zu verschieben).
+    var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
     // gewuenschten Zeitraums - bewusst kein natives type=week/month-Feld,

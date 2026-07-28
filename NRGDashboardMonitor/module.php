@@ -646,22 +646,40 @@ class NRGDashboardMonitor extends IPSModule
             }, $model['generatorKwp']));
         }
 
-        $days = [];
-        for ($k = 0; $k < self::WINDOW_DAYS; $k++) {
-            $start = strtotime("today -{$k} days 00:00:00");
-            $end   = min(time(), $start + 86400);
+        $todayStart = strtotime('today 00:00:00');
 
-            $pv  = $aid > 0 ? $this->DaySeries($aid, $pvID, $start, $end) : [];
-            $irr = $aid > 0 ? $this->DaySeries($aid, $irrID, $start, $end) : [];
-            $temp = $aid > 0 ? $this->DaySeries($aid, $tempID, $start, $end) : [];
-            $bat = $aid > 0 ? $this->DaySeries($aid, $batID, $start, $end) : [];
+        $days = [];
+        // k=-1 (morgen) zusaetzlich zu k=0..WINDOW_DAYS-2 (heute rueckwaerts) -
+        // NUR der Strompreis-Reiter kann einen Folgetag ueberhaupt fuellen
+        // (TIBBERGR_GetPriceCurve liefert morgen, sobald Tibber die Preise
+        // veroeffentlicht hat); Dietmars Wunsch, 28.07.2026: "Morgen" muss
+        // per Vor-Navigation erreichbar sein. Bewusst als ZUSAETZLICHER Tag
+        // VOR dem bisherigen Fenster eingefuegt (Index 0 bleibt "heute" fuer
+        // den JS-Default idx=1, nicht 0 - siehe module.html) statt das
+        // Fenster nach vorn zu verschieben, damit alle anderen Reiter beim
+        // Oeffnen der Kachel unveraendert mit "heute" starten.
+        for ($k = -1; $k < self::WINDOW_DAYS - 1; $k++) {
+            $start = $todayStart - $k * 86400;
+            $end   = min(time(), $start + 86400);
+            // Ein Tag in der Zukunft (morgen) hat archivseitig grundsaetzlich
+            // nichts zu bieten - $start läge dann NACH $end (min(time(),...)
+            // bliebe bei "jetzt" haengen), das wuerde AC_GetAggregatedValues
+            // mit vertauschten Grenzen aufrufen. Archivfelder bleiben dort
+            // deshalb schlicht leer, nur PriceDaySlots() (siehe unten) deckt
+            // auch morgen sinnvoll ab.
+            $isFuture = $start > time();
+
+            $pv  = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $pvID, $start, $end) : [];
+            $irr = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $irrID, $start, $end) : [];
+            $temp = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $tempID, $start, $end) : [];
+            $bat = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $batID, $start, $end) : [];
             // SOC-Rauschen glaetten (Muster: InverterHubMonitor::SmoothPoints,
             // Fenster 15) - nur fuer die eigene Anzeige, kein Diagnostik-Wert.
-            $soc = $aid > 0 ? $this->SmoothPoints($this->DaySeries($aid, $socID, $start, $end), 15) : [];
+            $soc = (!$isFuture && $aid > 0) ? $this->SmoothPoints($this->DaySeries($aid, $socID, $start, $end), 15) : [];
 
             $mpptSeries = [];
             foreach ($mppt as $n => $vid) {
-                $mpptSeries[$n] = $aid > 0 ? $this->DaySeries($aid, $vid, $start, $end) : [];
+                $mpptSeries[$n] = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $vid, $start, $end) : [];
             }
 
             // Temperaturwerte je Zeitstempel zuordnen (gleiches 5-Minuten-
