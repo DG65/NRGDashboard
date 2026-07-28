@@ -772,7 +772,36 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   verifiziert (Datenpunkt korrekt zwischen den 08:00/09:00-Achsenmarkierungen
   statt bei 06:30).
 
-## Verwendete Verträge
+  **Architektur-Korrektur (28.07.2026): eigene Legende statt Bibliotheks-
+  Ereignissen.** Trotz der 50ms-Verzögerung blieb ein verwandtes Symptom:
+  eine wieder EINgeblendete Kurve verschwand erneut, sobald man den Reiter
+  wechselte und zurückkehrte - ganz ohne Neuladen. Die Ursache lag im
+  Grundmuster selbst: `chart.on('legendselectchanged', ...)` bzw. Highcharts'
+  `legendItemClick` sind Bibliotheks-Ereignisse, deren genaues Timing
+  (synchron vs. verzögert, echt vs. synthetisch ausgelöst) sich nicht
+  zuverlässig vorhersagen lässt - jede weitere Sonderfall-Sperre hätte nur
+  das nächste Timing-Loch verschoben, nicht behoben. Stattdessen:
+  **komplett eigene Legende** (`#legendRow`, `renderLegend()`) unterhalb des
+  Diagramms, die `vis[]` direkt und ausschließlich über echte Klicks auf
+  unsere eigenen `<span>`-Elemente ändert. Die native Legende beider
+  Bibliotheken ist jetzt abgeschaltet (`legend:{show:false}`/
+  `legend:{enabled:false}`), ausgeblendete Serien werden vor dem Bau der
+  Chart-Optionen komplett aus dem `series`-Array gefiltert (`isVisible()`)
+  statt nur über `legend.selected`/`visible` versteckt - kein
+  Bibliotheks-Ereignis wird mehr abgehört, es gibt daher auch keinen
+  Zeitpunkt mehr, an dem eine gerade gesetzte Auswahl durch ein verzögertes
+  oder synthetisches Ereignis überschrieben werden könnte. Lokal Schritt für
+  Schritt nachgestellt und verifiziert: Kurve ausblenden → Reiter wechseln
+  → zurück (bleibt aus), Kurve wieder einblenden → Reiter wechseln → zurück
+  (bleibt sichtbar) - genau die von Dietmar gemeldete Abfolge.
+
+  **Tooltip-Fix, im selben Zug gefunden:** Dietmar bemerkte, dass der
+  Tooltip nur den Wert einer einzelnen Kurve zeigte statt aller drei
+  gleichzeitig. Ursache: Highcharts' Tooltip ist standardmäßig
+  `shared: false` (nur die Kurve unter dem Mauszeiger), ECharts dagegen
+  zeigt mit `trigger: 'axis'` bereits alle Kurven an der Zeitposition -
+  der Unterschied fiel nur bei Highcharts auf. Behoben mit `tooltip:
+  { shared: true }`.
 
 | Partner | Vertrag | GUID |
 |---|---|---|

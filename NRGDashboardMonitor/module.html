@@ -27,6 +27,15 @@
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; }
   .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
+  /* Eigene Legende statt der eingebauten von ECharts/Highcharts - beide
+     Bibliotheken feuern bei Klicks auf ihre native Legende ein Ereignis,
+     das sich nicht zuverlaessig von einem rein programmatisch (beim
+     Wiederherstellen der Sichtbarkeit) ausgeloesten Zustand unterscheiden
+     laesst. Eigene Legende = volle Kontrolle, kein Ereignis-Ratespiel. */
+  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 4px 0 0; font-size: 11px; }
+  .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
+  .legItem.off { opacity: .35; }
+  .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 </style>
 </head>
 <body>
@@ -47,14 +56,13 @@
         <button class="tab" data-tab="battery">Batterie</button>
         <button class="tab" data-tab="price">Strompreis</button>
       </div>
-      <div id="chartcol"><div id="chart"></div></div>
+      <div id="chartcol"><div id="chart"></div><div id="legendRow"></div></div>
     </div>
   </div>
 
   <script>/*__ECHARTS_JS__*/</script>
   <script>
     var lastData = null, chart = null, chartEngine = null, idx = 0, curTab = 'solar';
-    var suppressLegendEvent = false;
     var libs = { hc: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
 
@@ -128,6 +136,7 @@
       if (chart) { try { if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); } } catch (e) {} }
       chart = null; chartEngine = null;
       var el = document.getElementById('chart'); if (el) { el.innerHTML = ''; }
+      var lr = document.getElementById('legendRow'); if (lr) { lr.innerHTML = ''; }
     }
 
     // Je Reiter: Serien + Achsenbeschriftungen. "right"=true nutzt die rechte
@@ -159,6 +168,23 @@
       return series;
     }
 
+    // Eigene, von uns kontrollierte Legende statt der eingebauten Klick-
+    // Ereignisse von ECharts/Highcharts (siehe CSS-Kommentar #legendRow) -
+    // ein Klick schaltet direkt vis[name] um und rendert neu, kein
+    // Ereignis-Umweg ueber die Chart-Bibliothek.
+    function renderLegend(tab, allNames) {
+      var row = document.getElementById('legendRow');
+      row.innerHTML = '';
+      var items = (tab === 'price') ? [{ name: 'Strompreis', color: '#ffb300' }] : allNames;
+      items.forEach(function (it) {
+        var el = document.createElement('span');
+        el.className = 'legItem' + (isVisible(it.name) ? '' : ' off');
+        el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name;
+        el.onclick = function () { setVisible(it.name, !isVisible(it.name)); render(); };
+        row.appendChild(el);
+      });
+    }
+
     function axisConfig(tab) {
       if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false, leftInterval: null }; }
       if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc, leftInterval: null }; }
@@ -183,43 +209,27 @@
       if (!chart) {
         chart = echarts.init(el, null, { renderer: 'canvas' });
         chartEngine = 'echarts';
-        // Einmalig anhaengen (nicht je render()-Aufruf, sonst haeufen sich
-        // Listener an) - Aenderung an der Legende wird sofort in
-        // localStorage gesichert, Muster: InverterHubMonitor.
-        chart.on('legendselectchanged', function (pr) {
-          // ECharts feuert dieses Ereignis NICHT nur bei echten Nutzer-
-          // klicks, sondern auch synthetisch, wenn wir selbst per
-          // setOption() ein legend.selected setzen, das vom aktuellen
-          // (internen Default-)Zustand abweicht - genau der Fall beim
-          // Wiederherstellen einer gespeicherten Auswahl nach einem Reload.
-          // Ohne diese Sperre wuerde der synthetische Event die gerade erst
-          // aus localStorage geladene Auswahl sofort wieder ueberschreiben
-          // (live beobachtet: nach Reload standen alle Serien wieder auf
-          // true, obwohl localStorage korrekt "false" enthielt). Deshalb:
-          // waehrend eines setOption()-Aufrufs ignorieren, nur ECHTE,
-          // spaeter (asynchron) ausgeloeste Klicks uebernehmen.
-          if (suppressLegendEvent) { return; }
-          if (pr && pr.selected) {
-            Object.keys(pr.selected).forEach(function (k) { vis[k] = pr.selected[k]; });
-            saveVis();
-          }
-        });
       }
       var ax = axisConfig(tab);
-      var seriesNames = (tab === 'price') ? ['Strompreis'] : buildSeries(tab, d).map(function (s) { return s.name; });
-      var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', showSymbol: false, step: 'end', data: priceStepPoints(), color: '#ffb300', lineStyle: { width: 0.7 } }]
-        : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
-          });
-      var legendSelected = {};
-      seriesNames.forEach(function (n) { legendSelected[n] = isVisible(n); });
-      suppressLegendEvent = true;
+      var allSeries = (tab === 'price')
+        ? [{ name: 'Strompreis', data: priceStepPoints(), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        : buildSeries(tab, d);
+      renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
+      // ueber legend.selected zu verstecken - dadurch entfaellt jede
+      // Abhaengigkeit von ECharts' eigenem, teils synthetisch feuerndem
+      // Legenden-Ereignis (siehe README, frueherer Anlauf mit
+      // legendselectchanged/suppressLegendEvent). Eigene Legende oben
+      // steuert vis[] direkt.
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var series = visSeries.map(function (s) {
+        return { name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
+      });
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 28 },
-        legend: { bottom: 0, textStyle: { color: '#9aa4b0' }, selected: legendSelected },
+        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 12 },
+        legend: { show: false },
         tooltip: { trigger: 'axis' },
         // "PV & Einstrahlung": nur Sonnenaufgang-1h bis Sonnenuntergang+1h
         // zeigen (Dietmars Wunsch) - Nachtstunden ohne jede Erzeugung sollen
@@ -236,27 +246,19 @@
             ],
         series: series
       }, true);
-      // Etwaige synthetische legendselectchanged-Ereignisse feuern
-      // Ein synthetisches legendselectchanged kann auch noch NACH dem
-      // synchronen Rueckkehren aus setOption() feuern (naechster Tick/
-      // Animationsframe von ECharts) - ein sofortiges Zuruecksetzen hier
-      // liess genau dieses verzoegerte Ereignis wieder durch und
-      // ueberschrieb eine gerade erst wiederhergestellte/neu gesetzte
-      // Auswahl erneut (live beobachtet: Kurve wieder eingeblendet,
-      // Reiterwechsel und zurueck liess sie wieder verschwinden). Deshalb
-      // die Sperre um einen Tick verzoegert aufheben statt sofort - ein
-      // echter Klick kurz danach bleibt davon unberuehrt.
-      setTimeout(function () { suppressLegendEvent = false; }, 50);
     }
 
     function renderHighcharts(el, tab, d) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
-      var series = (tab === 'price')
-        ? [{ name: 'Strompreis', type: 'line', step: 'right', data: priceStepPoints(), color: '#ffb300', lineWidth: 0.7, visible: isVisible('Strompreis'), marker: { enabled: false } }]
-        : buildSeries(tab, d).map(function (s) {
-            return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, visible: isVisible(s.name), dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
-          });
+      var allSeries = (tab === 'price')
+        ? [{ name: 'Strompreis', data: priceStepPoints(), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        : buildSeries(tab, d);
+      renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var series = visSeries.map(function (s) {
+        return { name: s.name, type: 'line', step: s.step ? 'right' : undefined, data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+      });
       chart = Highcharts.chart(el, {
         // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
         // UTC statt in der Zeitzone des Browsers (live gefunden: Tooltip
@@ -284,14 +286,13 @@
               { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined },
               { title: { text: ax.rightName }, opposite: true, visible: ax.showRight }
             ],
-        legend: { enabled: true },
+        legend: { enabled: false },
         credits: { enabled: false },
-        // Highcharts.chart() erzeugt bei uns bei jedem render() eine
-        // komplett neue Instanz (kein update()) - die Sichtbarkeit kommt
-        // daher oben schon als initiales "visible" je Serie; dieser Klick-
-        // Handler haelt vis/localStorage aktuell, wenn der Nutzer die
-        // Legende danach anklickt. Muster: InverterHubMonitor.
-        plotOptions: { series: { events: { legendItemClick: function () { setVisible(this.name, !this.visible); } } } },
+        // shared:true zeigt alle Kurven an der Zeitposition im selben
+        // Tooltip statt nur der gerade unter dem Mauszeiger liegenden
+        // (Standard bei Highcharts ist false - Dietmars Beobachtung "nur
+        // eine Kurve im Tooltip" war genau dieser Highcharts-Standard).
+        tooltip: { shared: true },
         series: series
       });
       chartEngine = 'highcharts';
