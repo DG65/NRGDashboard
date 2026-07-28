@@ -597,7 +597,12 @@
         time: { useUTC: false },
         chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
-        xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0 } },
+        // crosshair auf einer Kategorie-Achse zeichnet bei Highcharts von
+        // sich aus ein flaechiges Rechteck ueber die volle Kategorie-
+        // Breite (kein Strich wie bei einer Zeit-/Werteachse) - genau das
+        // Pendant zu ECharts' axisPointer{type:'shadow'} in der Energie-
+        // Ansicht (Dietmars Vergleich, 28.07.2026).
+        xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [{ title: { text: 'kWh' } }],
         legend: { enabled: false },
         credits: { enabled: false },
