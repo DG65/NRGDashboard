@@ -79,6 +79,9 @@
     var customFrom = null, customTo = null;
     var libs = { hc: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
+    // Zarte Gitterlinien-Farbe fuer Zeit- und linke Achse (Dietmars Wunsch,
+    // 28.07.2026) - in beiden Engines identisch verwendet.
+    var GRID_COLOR = 'rgba(255,255,255,.09)';
 
     // Legenden-Sichtbarkeit je Kurvenname - bleibt ueber Reiter-/Tageswechsel
     // UND ueber ein Neuladen der Kachel erhalten (localStorage), Muster:
@@ -448,14 +451,19 @@
         // zeigen (Dietmars Wunsch) - Nachtstunden ohne jede Erzeugung sollen
         // nicht die halbe Diagrammbreite einnehmen. Andere Reiter zeigen
         // weiterhin den vollen Tag.
-        xAxis: (tab === 'solar' && d && d.sunStart)
-          ? { type: 'time', min: d.sunStart, max: d.sunEnd }
-          : { type: 'time' },
+        // Zarte Hintergrund-Gitterlinien fuer Zeit (x-Achse) und die linke
+        // Achse (PV-Leistung/kW) - die rechte Achse (Einstrahlung) bekommt
+        // bewusst keine eigenen, sonst ueberlagern sich zwei Gitter mit
+        // unterschiedlicher Teilung (Dietmars Wunsch, 28.07.2026).
+        xAxis: Object.assign(
+          (tab === 'solar' && d && d.sunStart) ? { type: 'time', min: d.sunStart, max: d.sunEnd } : { type: 'time' },
+          { splitLine: { show: true, lineStyle: { color: GRID_COLOR } } }
+        ),
         yAxis: (tab === 'price')
-          ? [{ type: 'value', name: 'ct/kWh' }]
+          ? [{ type: 'value', name: 'ct/kWh', splitLine: { lineStyle: { color: GRID_COLOR } } }]
           : [
-              { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null },
-              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight }
+              { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, splitLine: { show: false } }
             ],
         series: series
       }, true);
@@ -490,14 +498,20 @@
         // zufaellig zur rechten Achse (W/m^2) passt.
         chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
-        xAxis: (tab === 'solar' && d && d.sunStart)
-          ? { type: 'datetime', min: d.sunStart, max: d.sunEnd }
-          : { type: 'datetime' },
+        // Zarte Gitterlinien fuer Zeit (x-Achse) und die linke Achse (PV-
+        // Leistung/kW) - die rechte Achse (Einstrahlung) bekommt bewusst
+        // keine eigenen, sonst ueberlagern sich zwei Gitter mit
+        // unterschiedlicher Teilung (Dietmars Wunsch, 28.07.2026, Pendant
+        // zur gleichen Regelung bei ECharts).
+        xAxis: Object.assign(
+          (tab === 'solar' && d && d.sunStart) ? { type: 'datetime', min: d.sunStart, max: d.sunEnd } : { type: 'datetime' },
+          { gridLineWidth: 1, gridLineColor: GRID_COLOR }
+        ),
         yAxis: (tab === 'price')
-          ? [{ title: { text: 'ct/kWh' } }]
+          ? [{ title: { text: 'ct/kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR }]
           : [
-              { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined },
-              { title: { text: ax.rightName }, opposite: true, visible: ax.showRight }
+              { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: ax.rightName }, opposite: true, visible: ax.showRight, gridLineWidth: 0 }
             ],
         legend: { enabled: false },
         credits: { enabled: false },
