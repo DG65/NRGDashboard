@@ -42,6 +42,8 @@ class NRGDashboardMonitor extends IPSModule
 
         $this->RegisterPropertyInteger('PvPowerID', 0);
         $this->RegisterPropertyInteger('IrradianceID', 0);
+        $this->RegisterPropertyInteger('TemperatureID', 0);
+        $this->RegisterPropertyFloat('TempCoeff', -0.40);
         $this->RegisterPropertyInteger('PvfInstance', 0);
         $this->RegisterPropertyInteger('BatPowerID', 0);
         $this->RegisterPropertyInteger('SocID', 0);
@@ -111,6 +113,34 @@ class NRGDashboardMonitor extends IPSModule
     {
         $v = @$this->ReadPropertyString($name);
         return is_string($v) && $v !== '' ? $v : $default;
+    }
+
+    private function readFloatProperty(string $name, float $default): float
+    {
+        $v = @$this->ReadPropertyFloat($name);
+        return is_float($v) ? $v : $default;
+    }
+
+    /**
+     * Temperaturkorrektur fuer "PV erwartet" - fehlte bisher komplett
+     * (Fund der Prognose-Sitzung, 28.07.2026, gegen Dietmars Live-Archiv
+     * verifiziert: ohne dieses Glied weicht die Linie ab Mittag zunehmend
+     * nach oben ab). Exakt dieselbe NOCT-Naeherung wie in
+     * PVPrognose/module.php::fetchOpenMeteo() (Zeilen ~742-748) - selbe
+     * Konstanten (800 W/m^2 NOCT-Referenz, 20 K NOCT-Delta), damit unsere
+     * Diagnose und die Prognose physikalisch konsistent bleiben, obwohl
+     * wir bewusst NICHT PVF_GetForecast() konsumieren (siehe Kommentar bei
+     * PvfModel() - ein Wetterprognosefehler soll nicht wie ein
+     * Anlagenfehler aussehen; die Temperaturkorrektur hier nutzt dagegen
+     * ausschliesslich echte Messwerte, kein API-Aufruf).
+     */
+    private function DerateFactor(float $ta, float $irrWm2, float $tc): float
+    {
+        if ($tc == 0.0 || $irrWm2 <= 0.0) {
+            return 1.0;
+        }
+        $tcell = $ta + $irrWm2 / 800.0 * 20.0;
+        return max(0.0, 1.0 + ($tc / 100.0) * ($tcell - 25.0));
     }
 
     /**
@@ -438,6 +468,29 @@ class NRGDashboardMonitor extends IPSModule
         return $out;
     }
 
+    /**
+     * Reiner Tages-Mittelwert (kein Energie-Hochrechnungs-Kunstgriff wie
+     * DailyEnergyMap) - fuer nicht-energetische Groessen wie Temperatur,
+     * die als Tagesdurchschnitt in die Energie-Ansichten einfliessen.
+     */
+    private function DailyAverageMap(int $aid, int $vid): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $end = time();
+        $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            $out[date('Y-m-d', (int) $row['TimeStamp'])] = round((float) $row['Avg'], 2);
+        }
+        return $out;
+    }
+
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
@@ -488,6 +541,8 @@ class NRGDashboardMonitor extends IPSModule
         $aid = $this->ArchiveID();
         $pvID = $this->PvPowerID();
         $irrID = $this->readIntProperty('IrradianceID', 0);
+        $tempID = $this->readIntProperty('TemperatureID', 0);
+        $tc = $this->readFloatProperty('TempCoeff', -0.40);
         $batID = $this->BatPowerID();
         $socID = $this->SocID();
         $mppt = $this->MpptPowerIDs();
@@ -500,6 +555,7 @@ class NRGDashboardMonitor extends IPSModule
 
             $pv  = $aid > 0 ? $this->DaySeries($aid, $pvID, $start, $end) : [];
             $irr = $aid > 0 ? $this->DaySeries($aid, $irrID, $start, $end) : [];
+            $temp = $aid > 0 ? $this->DaySeries($aid, $tempID, $start, $end) : [];
             $bat = $aid > 0 ? $this->DaySeries($aid, $batID, $start, $end) : [];
             // SOC-Rauschen glaetten (Muster: InverterHubMonitor::SmoothPoints,
             // Fenster 15) - nur fuer die eigene Anzeige, kein Diagnostik-Wert.
@@ -517,8 +573,20 @@ class NRGDashboardMonitor extends IPSModule
                 // (W/m^2 <-> kWp) kuerzt sich numerisch weg: kWp ist "kW bei
                 // 1000 W/m^2 STC", 1 kWp entspricht also zahlenmaessig
                 // 1000 W - beide Male /1000 bzw. *1000 heben sich auf.
+                // Temperaturkorrektur (Fund der Prognose-Sitzung, 28.07.2026):
+                // ohne Temperaturglied fehlt der Grossteil der ab Mittag
+                // zunehmenden Abweichung nach oben - Zellen werden bei hoher
+                // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
+                // liefern dadurch real weniger, als die reine Einstrahlungs-
+                // Rechnung vorhersagt. Temperaturwerte je Zeitstempel
+                // zuordnen (gleiches 5-Minuten-Raster wie Einstrahlung, daher
+                // per Zeitstempel-Map statt Index koppelbar).
+                $tempByTs = [];
+                foreach ($temp as $tp) { $tempByTs[$tp[0]] = $tp[1]; }
                 foreach ($irr as $p) {
-                    $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'], 0)];
+                    $ta = $tempByTs[$p[0]] ?? null;
+                    $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
+                    $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'] * $derate, 0)];
                 }
             }
 
@@ -560,6 +628,14 @@ class NRGDashboardMonitor extends IPSModule
         // Erzeugung") - bewusst nachgezogen, damit "PV & Einstrahlung"
         // auch hier alle drei Linien der Tagesansicht spiegelt.
         $energyIrr = $aid > 0 ? $this->DailyEnergyMap($aid, $irrID) : [];
+        // Temperaturkorrektur auch hier (Fund der Prognose-Sitzung,
+        // 28.07.2026) - bewusst ein GROBER Tagesdurchschnitt statt der
+        // exakten 5-Minuten-Kopplung aus dem Tagesverlauf: eine echte
+        // Integration ueber 5 Jahre x 5-Minuten-Werte je Serie waere fuer
+        // einen einzelnen Kachel-Aufbau zu teuer. $avgIrrWm2 wird aus dem
+        // bereits vorhandenen "Tages-kWh"-Kunstgriff zurueckgerechnet
+        // (kwhEquivalent = Avg*24/1000 → Avg = kwhEquivalent*1000/24).
+        $energyTemp = ($aid > 0 && $tempID > 0) ? $this->DailyAverageMap($aid, $tempID) : [];
         $energyExpected = [];
         if ($model !== null) {
             // Gleicher Kunstgriff wie im Tagesverlauf: Einstrahlung(W/m^2)
@@ -567,7 +643,12 @@ class NRGDashboardMonitor extends IPSModule
             // hochgerechneten Einstrahlungs-Reihe angewendet (derselbe
             // Avg*24/1000-Kunstgriff, der Faktor kuerzt sich identisch weg).
             foreach ($energyIrr as $day => $kwhEquivalent) {
-                $energyExpected[$day] = round($kwhEquivalent * $model['totalKwp'] * $model['pr'], 2);
+                $derate = 1.0;
+                if (isset($energyTemp[$day])) {
+                    $avgIrrWm2 = $kwhEquivalent * 1000.0 / 24.0;
+                    $derate = $this->DerateFactor((float) $energyTemp[$day], $avgIrrWm2, $tc);
+                }
+                $energyExpected[$day] = round($kwhEquivalent * $model['totalKwp'] * $model['pr'] * $derate, 2);
             }
         }
         $energy = [

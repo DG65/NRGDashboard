@@ -932,6 +932,41 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   - Rückmeldung mit diesem konkreten Befund ging an EMS, wie von Dietmar
     verlangt.
 
+  **Temperaturkorrektur für "PV erwartet" ergänzt (28.07.2026, Fund der
+  Prognose-Sitzung).** Dietmar zeigte einen Screenshot: "PV erwartet"
+  weicht ab Mittag zunehmend nach oben von der tatsächlichen "PV-
+  Erzeugung" ab. Die Prognose-Sitzung hat das gegen Dietmars Live-Archiv
+  verifiziert (24.07., 13:39 Uhr: 950 W/m² Einstrahlung, 29,1 °C
+  Außentemperatur, 9,18 kWp, PR 0,85 → ohne Temperaturglied 7,41 kW, mit
+  NOCT-Korrektur 6,58 kW, tatsächliche Erzeugung ~6,0 kW - die Korrektur
+  schließt den Großteil der Lücke) und uns beauftragt, das zu übernehmen
+  (nicht die Prognose selbst, um `PVF_GetForecast()` weiterhin bewusst
+  NICHT zu konsumieren - siehe `PvfModel()`-Kommentar).
+  - **`DerateFactor()`** - exakt dieselbe NOCT-Näherung wie
+    `PVPrognose/module.php::fetchOpenMeteo()` (`tcell = ta + irr/800×20`,
+    `derate = 1 + (tc/100)×(tcell-25)`, geclampt auf ≥0), damit Diagnose
+    und Prognose physikalisch konsistent bleiben. Neue Felder
+    `TemperatureID` (optional, `SelectVariable`) und `TempCoeff` (Default
+    -0,40 %/K, identisch zu `PVF_TempCoeff`s eigenem Default - kein
+    bestehender Vertrag liefert diesen Koeffizienten, `PVF_GetGenerators()`
+    trägt nur `pr`/`totalKwp`, deshalb eigene Property statt Fremdzugriff).
+    Fehlt die Temperatur-Variable, bleibt das Verhalten unverändert
+    (`derate=1.0`, rückwärtskompatibel).
+  - **Tagesansicht:** exakte Kopplung je 5-Minuten-Zeitstempel (Temperatur-
+    und Einstrahlungsreihe laufen auf demselben Raster, daher per
+    Zeitstempel-Map koppelbar statt nur per Index).
+  - **Energie-Ansichten:** bewusst gröbere Näherung mit einem Tages-
+    durchschnitt (`DailyAverageMap()`, neu - reiner Mittelwert ohne den
+    Energie-Hochrechnungs-Kunstgriff von `DailyEnergyMap()`) statt einer
+    echten 5-Minuten-Integration über 5 Jahre × mehrere Serien, das wäre
+    für einen einzelnen Kachel-Aufbau zu teuer. Die dafür nötige
+    Durchschnitts-Einstrahlung wird aus der bereits vorhandenen "Tages-
+    kWh"-Reihe zurückgerechnet (`kwhEquivalent × 1000 / 24`).
+  - Lokal mit den exakten Referenzwerten der Prognose-Sitzung
+    nachgerechnet: `derate(29,1°C, 950 W/m², -0,40) = 0,8886`,
+    `950 × 9,18 × 0,85 × 0,8886 = 6587 W` - deckungsgleich mit deren
+    6,58 kW.
+
 ## Verwendete Verträge
 
 | Partner | Vertrag | GUID |

@@ -42,6 +42,23 @@
         },
         {
           "type": "SelectVariable",
+          "name": "TemperatureID",
+          "caption": "Außentemperatur (°C, optional - verbessert „PV erwartet“)"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "TempCoeff",
+          "caption": "Temperaturkoeffizient der Module (%/K, Herstellerangabe - Vorgabe -0,40 passt für die meisten Siliziummodule)",
+          "digits": 2,
+          "minimum": -1,
+          "maximum": 0
+        },
+        {
+          "type": "Label",
+          "caption": "Ohne Temperatur-Variable wird „PV erwartet“ nur aus Einstrahlung berechnet - an heißen, sonnigen Tagen weicht die Linie dann ab Mittag zunehmend nach oben von der tatsächlichen Erzeugung ab, weil wärmere Solarzellen real weniger liefern als die reine Einstrahlungsrechnung annimmt."
+        },
+        {
+          "type": "SelectVariable",
           "name": "BatPowerID",
           "caption": "Batterie-Leistung (optional - sonst automatisch über InverterHub)"
         },
