@@ -711,6 +711,24 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   gespeicherten Zustand bei späteren Klicks aktuell. Lokal verifiziert
   (Umschalten setzt sofort `localStorage`, ein Neuladen der Seite stellt
   den ausgeblendeten Zustand korrekt wieder her).
+  **Live-Fehlerbild, noch selber Tag:** Bei Dietmar blieb die Auswahl
+  innerhalb einer offenen Seite (Reiter-/Tageswechsel, 5-Minuten-Update)
+  korrekt erhalten, ging aber nach einem echten Neuladen (Cmd+Shift+R)
+  verloren - obwohl `localStorage` den korrekten Wert enthielt (per
+  DevTools bestätigt: `{"Einstrahlung":false}`). Diagnosezeile direkt in
+  der Kachel eingebaut (temporär) zeigte: nach dem Neuladen standen
+  plötzlich ALLE Serien wieder auf `true` in `localStorage` - der
+  korrekte, geladene Wert wurde also aktiv wieder überschrieben, nicht nur
+  falsch gelesen. **Ursache gefunden:** ECharts feuert `legendselectchanged`
+  nicht nur bei echten Klicks, sondern auch **synthetisch**, wenn per
+  `setOption()` ein `legend.selected` gesetzt wird, das vom internen
+  Default abweicht (genau der Fall beim Wiederherstellen einer gespeicherten
+  Auswahl) - unser Handler hat das ununterscheidbar behandelt und die
+  gerade geladene Auswahl sofort wieder mit dem synthetischen (falschen)
+  Zustand überschrieben. Behoben mit einer Sperre (`suppressLegendEvent`),
+  die während des `setOption()`-Aufrufs aktiv ist und danach sofort wieder
+  aufgehoben wird - echte, asynchron ausgelöste Nutzerklicks bleiben davon
+  unberührt.
 
 ## Verwendete Verträge
 

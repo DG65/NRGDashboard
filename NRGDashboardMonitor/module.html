@@ -55,6 +55,7 @@
   <script>/*__ECHARTS_JS__*/</script>
   <script>
     var lastData = null, chart = null, chartEngine = null, idx = 0, curTab = 'solar';
+    var suppressLegendEvent = false;
     var libs = { hc: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
 
@@ -187,6 +188,18 @@
         // Listener an) - Aenderung an der Legende wird sofort in
         // localStorage gesichert, Muster: InverterHubMonitor.
         chart.on('legendselectchanged', function (pr) {
+          // ECharts feuert dieses Ereignis NICHT nur bei echten Nutzer-
+          // klicks, sondern auch synthetisch, wenn wir selbst per
+          // setOption() ein legend.selected setzen, das vom aktuellen
+          // (internen Default-)Zustand abweicht - genau der Fall beim
+          // Wiederherstellen einer gespeicherten Auswahl nach einem Reload.
+          // Ohne diese Sperre wuerde der synthetische Event die gerade erst
+          // aus localStorage geladene Auswahl sofort wieder ueberschreiben
+          // (live beobachtet: nach Reload standen alle Serien wieder auf
+          // true, obwohl localStorage korrekt "false" enthielt). Deshalb:
+          // waehrend eines setOption()-Aufrufs ignorieren, nur ECHTE,
+          // spaeter (asynchron) ausgeloeste Klicks uebernehmen.
+          if (suppressLegendEvent) { return; }
           if (pr && pr.selected) {
             Object.keys(pr.selected).forEach(function (k) { vis[k] = pr.selected[k]; });
             saveVis();
@@ -202,6 +215,7 @@
           });
       var legendSelected = {};
       seriesNames.forEach(function (n) { legendSelected[n] = isVisible(n); });
+      suppressLegendEvent = true;
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
@@ -223,6 +237,11 @@
             ],
         series: series
       }, true);
+      // Etwaige synthetische legendselectchanged-Ereignisse feuern
+      // synchron innerhalb von setOption() - nach dessen Rueckkehr ist die
+      // Sperre nicht mehr noetig, echte spaetere Klicks sollen wieder
+      // greifen.
+      suppressLegendEvent = false;
     }
 
     function renderHighcharts(el, tab, d) {
