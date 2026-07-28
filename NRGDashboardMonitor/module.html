@@ -413,15 +413,41 @@
     }
 
     // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
-    // Punkte wie die anderen Reiter) als Treppenlinie: je Intervall Start-
-    // und End-Zeitpunkt mit demselben Preis, damit die Stufe sichtbar wird.
+    // Punkte wie die anderen Reiter): EIN Punkt je Slot in der SLOT-MITTE
+    // (nicht am Slot-Anfang) + step:'middle'/'center' - das laesst ECharts/
+    // Highcharts die Stufe automatisch symmetrisch um jeden Punkt zeichnen
+    // (bis zur Mitte zum Nachbarn), deckungsgleich mit den echten Slot-
+    // Grenzen, SOFERN alle Slots gleich lang sind (bei uns immer der Fall -
+    // entweder durchgehend stuendlich oder durchgehend viertelstuendlich).
+    // Vorherige Fassung schickte Start- UND Endpunkt jedes Slots einzeln -
+    // an jeder Slot-Grenze lagen dadurch ZWEI Punkte auf demselben
+    // Zeitstempel mit unterschiedlichem Preis, worauf der Tooltip beim
+    // Hovern nahe der Grenze mal den einen, mal den anderen zeigte
+    // (Dietmars Fund, 28.07.2026: "faengt im 15-Min-Intervall, zeigt 2
+    // Strompreise"). Mit gleichmaessig in der Mitte verteilten Punkten faellt
+    // die Naechster-Punkt-Grenze der Tooltip-Erkennung exakt auf die echte
+    // Slot-Grenze - jede Hover-Position im Slot trifft eindeutig diesen einen
+    // Punkt. slotStart/slotEnd bleiben als Zusatzfelder erhalten, damit der
+    // Tooltip die tatsaechliche Slot-Startzeit (nicht die Slot-Mitte)
+    // anzeigen kann.
     function priceStepPoints(d) {
-      var out = [];
-      ((d && d.price) || []).forEach(function (slot) {
-        out.push([slot[0], slot[2]]);
-        out.push([slot[1], slot[2]]);
+      return ((d && d.price) || []).map(function (slot) {
+        var center = slot[0] + (slot[1] - slot[0]) / 2;
+        return { value: [center, slot[2]], slotStart: slot[0], slotEnd: slot[1] };
       });
-      return out;
+    }
+
+    // Highcharts erwartet Punkte als {x,y,...}, nicht ECharts' {value:[x,y]}
+    // - gleiche slotStart/slotEnd-Zusatzfelder, nur andere Punktform.
+    function priceStepPointsHC(d) {
+      return priceStepPoints(d).map(function (p) {
+        return { x: p.value[0], y: p.value[1], slotStart: p.slotStart, slotEnd: p.slotEnd };
+      });
+    }
+
+    function fmtHM(ms) {
+      var dt = new Date(ms);
+      return ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
     }
 
     function renderECharts(el, tab, d) {
@@ -449,7 +475,7 @@
       }
       var ax = axisConfig(tab);
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: 'middle' }]
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
@@ -460,7 +486,7 @@
       // steuert vis[] direkt.
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
-        return { name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
+        return { name: s.name, type: 'line', showSymbol: false, step: s.step === 'middle' ? 'middle' : (s.step ? 'end' : false), data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
       });
       // Strompreis, aktueller Tag: rote vertikale Linie fuer "jetzt"
       // (Dietmars Wunsch, 28.07.2026) - an die erste sichtbare Serie
@@ -491,7 +517,18 @@
           extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
           // Werte im Tooltip auf 2 Nachkommastellen begrenzen (Dietmars
           // Wunsch, 28.07.2026) statt der vollen Fliesskomma-Genauigkeit.
+          // Strompreis-Reiter: eigener Zweig, da der Datenpunkt in der Mitte
+          // des Slots liegt (siehe priceStepPoints()) - der Tooltip soll
+          // aber den tatsaechlichen Slot-Zeitraum (Start-Ende) zeigen, nicht
+          // die Slot-Mitte, plus den Preis explizit als "ct/kWh" beschriftet
+          // (Dietmars Wunsch, 28.07.2026).
           formatter: function (params) {
+            if (tab === 'price' && params[0] && params[0].data && params[0].data.slotStart !== undefined) {
+              var slot = params[0].data;
+              var head = '<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot.slotStart) + '–' + fmtHM(slot.slotEnd) + ' Uhr</div>';
+              var v = params[0].value[1];
+              return head + '<div>' + params[0].marker + ' Strompreis: <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + ' ct/kWh</b></div>';
+            }
             return params.map(function (p, i) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString('de-DE') + '</div>' : '';
@@ -530,12 +567,12 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 0, dashed: false, step: 'center' }]
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
-        return { name: s.name, type: 'line', step: s.step ? 'right' : undefined, data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+        return { name: s.name, type: 'line', step: (s.step === 'center') ? 'center' : (s.step ? 'right' : undefined), data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
       });
       chart = Highcharts.chart(el, {
         // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
@@ -601,6 +638,16 @@
           shared: true,
           useHTML: true,
           formatter: function () {
+            // Strompreis-Reiter: Datenpunkt liegt in der Slot-Mitte (siehe
+            // priceStepPointsHC()) - Tooltip zeigt den tatsaechlichen Slot-
+            // Zeitraum (Start-Ende), nicht die Slot-Mitte, plus den Preis
+            // explizit als "ct/kWh" beschriftet (Dietmars Wunsch, 28.07.2026).
+            var firstPoint = this.points ? this.points[0].point : this.point;
+            if (tab === 'price' && firstPoint && firstPoint.slotStart !== undefined) {
+              var head = '<div style="font-weight:600;margin-bottom:2px">' + fmtHM(firstPoint.slotStart) + '–' + fmtHM(firstPoint.slotEnd) + ' Uhr</div>';
+              var y = firstPoint.y;
+              return head + '<div><span style="color:' + firstPoint.color + '">●</span> Strompreis: <b>' + (y === null || y === undefined ? '–' : Number(y).toFixed(2)) + ' ct/kWh</b></div>';
+            }
             // Highcharts.dateFormat() ist eine GLOBALE Funktion und
             // ignoriert das chart-eigene "time: { useUTC: false }" - genau
             // dieselbe 2-Stunden-UTC-Abweichung wie zuvor bei der Achse,
