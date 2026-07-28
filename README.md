@@ -893,6 +893,18 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   brauchte das einen eigenen `formatter` (vorher kein custom Tooltip dort);
   im selben Zug den Zeitstempel im Tooltip-Kopf ergänzt (Datum + Uhrzeit).
 
+  **Direkt danach ein echter, eigener Fehler gefunden (Dietmar zu Recht
+  scharf zurückgemeldet):** Der neu ergänzte Zeitstempel im Highcharts-
+  Tooltip-Kopf nutzte `Highcharts.dateFormat()` - eine GLOBALE Funktion,
+  die (anders als die Achse selbst) das chart-eigene `time: { useUTC:
+  false }` ignoriert und auf UTC zurückfällt. Exakt dieselbe 2-Stunden-
+  Abweichung wie beim ursprünglichen Achsen-Bug, diesmal im Tooltip statt
+  auf der Achse - Tooltip-Zeit und Achsen-Position liefen dadurch
+  auseinander. Behoben: natives JS-`Date` statt der globalen Highcharts-
+  API, exakt wie an allen anderen Stellen im Code bereits gehandhabt.
+  Live mit einem bekannten Referenz-Zeitstempel verifiziert (Tooltip zeigt
+  "28.07.2026 08:30", identisch zur Achsenposition).
+
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide

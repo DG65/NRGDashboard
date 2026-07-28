@@ -494,7 +494,14 @@
           shared: true,
           useHTML: true,
           formatter: function () {
-            var head = '<div style="font-weight:600;margin-bottom:2px">' + Highcharts.dateFormat('%d.%m.%Y %H:%M', this.x) + '</div>';
+            // Highcharts.dateFormat() ist eine GLOBALE Funktion und
+            // ignoriert das chart-eigene "time: { useUTC: false }" - genau
+            // dieselbe 2-Stunden-UTC-Abweichung wie zuvor bei der Achse,
+            // nur diesmal im Tooltip (live gefunden, Dietmar 28.07.2026).
+            // Deshalb hier bewusst natives JS-Datum statt Highcharts-API.
+            var dt = new Date(this.x);
+            var p2 = function (n) { return ('0' + n).slice(-2); };
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes()) + '</div>';
             var lines = (this.points || [this]).map(function (p) {
               return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>';
             });
