@@ -237,15 +237,19 @@
     var MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
+    var WEEKDAY_NAMES_FULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
     function buildEnergyRows(tab) {
       var seriesDefs = energySeriesFor(tab);
       var categories = [];
+      var fullLabels = []; // volle Beschriftung je Kategorie, fuer den Tooltip
       var dateLists = []; // je Kategorie: Liste von 'Y-m-d', die dort einfliessen
       if (curView === 'week') {
         var ws = startOfWeek(viewRef);
         for (var i = 0; i < 7; i++) {
           var dt = new Date(ws); dt.setDate(ws.getDate() + i);
           categories.push(WEEKDAY_NAMES[i] + ' ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2));
+          fullLabels.push(WEEKDAY_NAMES_FULL[i] + ', ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear());
           dateLists.push([fmtDate(dt)]);
         }
       } else if (curView === 'month') {
@@ -253,12 +257,14 @@
         var last = new Date(y, m + 1, 0).getDate();
         for (var day = 1; day <= last; day++) {
           categories.push(String(day));
+          fullLabels.push(day + '. ' + MONTH_NAMES_FULL[m] + ' ' + y);
           dateLists.push([fmtDate(new Date(y, m, day))]);
         }
       } else if (curView === 'year') {
         var yy = viewRef.getFullYear();
         for (var mo = 0; mo < 12; mo++) {
           categories.push(MONTH_NAMES[mo]);
+          fullLabels.push(MONTH_NAMES_FULL[mo] + ' ' + yy);
           var lastD = new Date(yy, mo + 1, 0).getDate();
           var list = [];
           for (var dd = 1; dd <= lastD; dd++) { list.push(fmtDate(new Date(yy, mo, dd))); }
@@ -269,6 +275,7 @@
         for (var k = 4; k >= 0; k--) {
           var yr = thisYear - k;
           categories.push(String(yr));
+          fullLabels.push(String(yr));
           var l2 = [];
           for (var mm = 0; mm < 12; mm++) {
             var lastDd = new Date(yr, mm + 1, 0).getDate();
@@ -280,6 +287,7 @@
         var from = new Date(customFrom + 'T00:00:00'), to = new Date(customTo + 'T00:00:00');
         for (var cd = new Date(from); cd <= to; cd.setDate(cd.getDate() + 1)) {
           categories.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2));
+          fullLabels.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2) + '.' + cd.getFullYear());
           dateLists.push([fmtDate(cd)]);
         }
       }
@@ -291,7 +299,7 @@
         });
         return { name: s.name, color: s.color, data: data };
       });
-      return { categories: categories, series: series };
+      return { categories: categories, fullLabels: fullLabels, series: series };
     }
 
     function sizeChart() {
@@ -486,7 +494,19 @@
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: { left: 46, right: 12, top: 28, bottom: 40 },
         legend: { show: false },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        // Tooltip-Kopf zeigt die volle Bezeichnung (z.B. "Montag,
+        // 27.07.2026" statt nur "Mo 27.07") - Dietmars Wunsch, 28.07.2026,
+        // im selben Zug wie die Datumsanzeige im Navigationsbalken.
+        tooltip: {
+          trigger: 'axis', axisPointer: { type: 'shadow' },
+          formatter: function (params) {
+            var idx = params[0] ? params[0].dataIndex : 0;
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + (rows.fullLabels[idx] || rows.categories[idx]) + '</div>';
+            return head + params.map(function (p) {
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (p.value === null ? '–' : p.value) + ' kWh</b></div>';
+            }).join('');
+          }
+        },
         xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0 } },
         yAxis: [{ type: 'value', name: 'kWh' }],
         series: visSeries.map(function (s) {
@@ -508,7 +528,19 @@
         yAxis: [{ title: { text: 'kWh' } }],
         legend: { enabled: false },
         credits: { enabled: false },
-        tooltip: { shared: true },
+        // Tooltip-Kopf zeigt die volle Bezeichnung statt nur der kurzen
+        // Achsen-Kategorie (Dietmars Wunsch, 28.07.2026).
+        tooltip: {
+          shared: true,
+          formatter: function () {
+            var idx = this.points ? this.points[0].point.index : this.point.index;
+            var lines = ['<b>' + (rows.fullLabels[idx] || rows.categories[idx]) + '</b>'];
+            (this.points || [this]).forEach(function (p) {
+              lines.push('<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null ? '–' : p.y) + ' kWh</b>');
+            });
+            return lines;
+          }
+        },
         series: visSeries.map(function (s) {
           return { name: s.name, type: 'column', data: s.data, color: s.color };
         })

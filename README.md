@@ -871,6 +871,13 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   (bleibt weiterhin bei Tag/Benutzerdefiniert). `isoWeekNumber()` liefert
   die Kalenderwoche nach ISO-8601 (Donnerstag-Regel).
 
+  **Tooltip im selben Zug nachgebessert (Dietmars Wunsch).** Der Tooltip-
+  Kopf in den Energie-Ansichten zeigte bislang nur die kurze
+  Achsenbeschriftung ("Mo 27.07", bloße Tageszahl, Monatskürzel) - jetzt
+  zeigt er die volle Bezeichnung ("Montag, 27.07.2026" / "11. Juli 2026" /
+  "Juli 2026" / Jahr) über einen eigenen `formatter` (ECharts) bzw.
+  `tooltip.formatter` (Highcharts), gespeist aus einem parallel zu den
+  Achsenkategorien mitgeführten `fullLabels`-Array in `buildEnergyRows()`.
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide
