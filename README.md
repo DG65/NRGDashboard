@@ -878,6 +878,12 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   "Juli 2026" / Jahr) über einen eigenen `formatter` (ECharts) bzw.
   `tooltip.formatter` (Highcharts), gespeist aus einem parallel zu den
   Achsenkategorien mitgeführten `fullLabels`-Array in `buildEnergyRows()`.
+  **Nachbesserung, noch selber Tag:** Bei Highcharts liefen alle Zeilen
+  in einer Reihe statt (wie bei "Tag (Verlauf)") untereinander zu stehen.
+  Ursache: der Tooltip-`formatter` gibt HTML-`<span>`-Farbpunkte zurück,
+  ohne `useHTML: true` behandelt Highcharts das als reinen Text und
+  rendert alles in eine Zeile. Behoben: `useHTML: true` gesetzt, jede
+  Zeile zusätzlich in ein eigenes `<div>` gepackt.
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide

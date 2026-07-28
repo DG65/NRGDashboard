@@ -529,16 +529,20 @@
         legend: { enabled: false },
         credits: { enabled: false },
         // Tooltip-Kopf zeigt die volle Bezeichnung statt nur der kurzen
-        // Achsen-Kategorie (Dietmars Wunsch, 28.07.2026).
+        // Achsen-Kategorie (Dietmars Wunsch, 28.07.2026). useHTML:true ist
+        // hier zwingend - ohne das werden die <span>-Farbpunkte als reiner
+        // Text ausgegeben und alle Zeilen laufen in eine Reihe statt
+        // (wie bei "Tag (Verlauf)") untereinander zu stehen.
         tooltip: {
           shared: true,
+          useHTML: true,
           formatter: function () {
             var idx = this.points ? this.points[0].point.index : this.point.index;
             var lines = ['<b>' + (rows.fullLabels[idx] || rows.categories[idx]) + '</b>'];
             (this.points || [this]).forEach(function (p) {
-              lines.push('<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null ? '–' : p.y) + ' kWh</b>');
+              lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null ? '–' : p.y) + ' kWh</b></div>');
             });
-            return lines;
+            return lines.join('');
           }
         },
         series: visSeries.map(function (s) {
