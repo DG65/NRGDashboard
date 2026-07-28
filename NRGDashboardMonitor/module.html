@@ -24,6 +24,7 @@
   button.qday.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
   button.qday:disabled { opacity: .35; cursor: default; }
   input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; }
   .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
@@ -350,7 +351,9 @@
         return series;
       }
       if (tab === 'battery') {
-        var series = [{ name: 'Batterie-Leistung', data: d.bat, axis: 0, color: '#43a047', dashed: false }];
+        // Linke Achse in kW statt W (Dietmars Wunsch, 28.07.2026, analog
+        // Solar/MPP-Tracker).
+        var series = [{ name: 'Batterie-Leistung', data: toKw(d.bat), axis: 0, color: '#43a047', dashed: false }];
         if (lastData.hasSoc) {
           series.push({ name: 'Batterie-SOC', data: d.soc, axis: 1, color: '#9575cd', dashed: false });
         }
@@ -389,7 +392,11 @@
       // Linke Achse (kW) in 1-kW-Schritten (Dietmars Wunsch, 28.07.2026,
       // analog zum Solar-Reiter).
       if (tab === 'mpp') { return { leftName: 'kW', rightName: '', showRight: false, leftInterval: 1 }; }
-      if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc, leftInterval: null }; }
+      // Linke Achse (kW) in 1-kW-Schritten wie bei Solar/MPP-Tracker; rechte
+      // Achse (SOC) fest 0-100%, nicht dynamisch skaliert (Dietmars Wunsch,
+      // 28.07.2026 - ein SOC-Verlauf, der z.B. nur 40-60% abdeckt, soll die
+      // Achse nicht künstlich strecken).
+      if (tab === 'battery') { return { leftName: 'kW', rightName: '%', showRight: !!lastData.hasSoc, leftInterval: 1, rightMin: 0, rightMax: 100 }; }
       // Linke Achse (kW) in 1-kW-Schritten (Dietmars Wunsch, 27.07.2026).
       return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr, leftInterval: 1 };
     }
@@ -492,7 +499,7 @@
           ? [{ type: 'value', name: 'ct/kWh', splitLine: { lineStyle: { color: GRID_COLOR } } }]
           : [
               { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
-              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, splitLine: { show: false } }
+              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, splitLine: { show: false }, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
         series: series
       }, true);
@@ -543,7 +550,7 @@
           ? [{ title: { text: 'ct/kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR }]
           : [
               { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
-              { title: { text: ax.rightName }, opposite: true, visible: ax.showRight, gridLineWidth: 0 }
+              { title: { text: ax.rightName }, opposite: true, visible: ax.showRight, gridLineWidth: 0, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -775,6 +782,16 @@
         if (btn.disabled) { return; }
         curTab = btn.getAttribute('data-tab');
         Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) { b.classList.toggle('active', b === btn); });
+        // Batterie hat (anders als PV & Einstrahlung/MPP-Tracker) keine
+        // Energie-Ansichten (Woche/Monat/Jahr/Gesamt/Benutzerdefiniert) -
+        // die Auswahl ist dort ohne Wirkung, deshalb gesperrt und fest auf
+        // "Tag" gesetzt (Dietmars Wunsch, 28.07.2026).
+        var typeSel = document.getElementById('type');
+        typeSel.disabled = (curTab === 'battery');
+        if (curTab === 'battery' && curView !== 'day') {
+          curView = 'day';
+          typeSel.value = 'day';
+        }
         render();
       };
     });
