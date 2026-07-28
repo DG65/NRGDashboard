@@ -967,6 +967,100 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     `950 × 9,18 × 0,85 × 0,8886 = 6587 W` - deckungsgleich mit deren
     6,58 kW.
 
+- **ECharts-Optik an Highcharts angeglichen (28.07.2026).** Dietmar meldete
+  zunächst eine komplett leere Diagrammfläche bei ECharts (alles andere -
+  Reiter, Legende, Datumsleiste - sichtbar). Lokale Nachstellung mit dem
+  exakt aktuellen, live deployten Code (`module.html` + `echarts.min.js`)
+  und synthetischen Daten zeigte das Diagramm korrekt - der Fehler war
+  clientseitig nicht reproduzierbar. Zwischenzeitlich hat sich das Problem
+  offenbar durch ein erneutes Laden der Kachel selbst gelöst (kein Fund
+  auf unserer Seite nötig), Dietmar konnte anschließend drei echte,
+  bleibende Optik-Unterschiede zwischen den Engines an Screenshots
+  festmachen:
+  - **Zeitachsen-Beschriftung unten abgeschnitten (nur ECharts).**
+    `grid.bottom` war mit `12` zu knapp bemessen; auf `32` erhöht.
+  - **Tooltip hell statt dunkel (nur ECharts).** Highcharts' `useHTML`-
+    Tooltip wird vom Browser/OS automatisch dunkel dargestellt, ECharts'
+    Tooltip ist standardmäßig hell - jetzt explizit
+    `backgroundColor:'rgba(30,32,36,.92)'`, `textStyle.color:'#e8e8e8'`.
+  - **Linien wirkten bei ECharts kräftiger/verwaschener als bei Highcharts**
+    (identische `lineStyle.width: 0.7` in beiden Engines). Ursache:
+    ECharts' Canvas-Renderer fällt ohne explizites `devicePixelRatio` auf
+    `1` zurück, wenn der Browser es nicht selbst liefert - auf einem
+    Retina-Display verwäscht das dünne Linien zu optisch dickeren, weichen
+    Kanten. Highcharts' SVG-Rendering ist davon unabhängig immer scharf.
+    Fix: `echarts.init(el, null, { renderer:'canvas', devicePixelRatio:
+    window.devicePixelRatio || 2 })`. Lokal mit synthetischen Zickzack-
+    Daten (Rauschen simuliert reale Wechselrichter-Sprünge) vor/nach
+    verglichen - Linien danach sichtbar scharf und dünn statt breiig.
+
+## Lehren für den Verbund: ECharts/Highcharts-Fallstricke (28.07.2026)
+
+Verbindlich für **jedes** Modul im NRG-Stack, das ECharts oder Highcharts
+einbindet (bei uns: `NRGDashboardMonitor`; bekanntermaßen auch
+`InverterHubMonitor`/`InverterHubEnergy`) - alle Punkte hier wurden live an
+Dietmars Instanz gefunden, nicht nur theoretisch vermutet. Details/Code
+jeweils in den Runden-Einträgen oben, hier nur die verdichtete Lehre:
+
+1. **Eigene Legende statt Bibliotheks-Klickereignisse.** ECharts'
+   `legendselectchanged` und Highcharts' `legendItemClick` feuern nicht
+   nur bei echten Nutzerklicks, sondern auch **synthetisch**, wenn man
+   selbst per `setOption()`/Neuaufbau eine vom internen Default
+   abweichende Auswahl setzt (z. B. beim Wiederherstellen einer aus
+   `localStorage` geladenen Sichtbarkeit) - und das Timing dieser
+   synthetischen Ereignisse ist nicht zuverlässig vorhersagbar (mal
+   synchron, mal einen Tick später). Jede Sperrflag-Lösung verschiebt das
+   Problem nur. **Der tragfähige Fix: eine komplett selbst gebaute
+   Legende** (eigene klickbare Elemente, native Legende abgeschaltet via
+   `legend:{show:false}`/`legend:{enabled:false}`), die den
+   Sichtbarkeits-Zustand direkt und ausschließlich selbst verwaltet.
+2. **`el.innerHTML` nie leeren, wenn eine bestehende Chart-Instanz nur
+   weiterverwendet wird.** Ein Leeren des Containers reißt bei ECharts den
+   internen Canvas aus dem DOM, ohne die Instanz zu entsorgen - `setOption()`
+   läuft danach gegen einen abgehängten Canvas ins Leere (leerer Wrapper-
+   Div, keine sichtbaren Balken/Linien, obwohl `chart.getOption()` die
+   Daten korrekt zeigt). Nur leeren, wenn tatsächlich `echarts.init()` neu
+   aufgerufen wird.
+3. **Ein selbst gebautes/reduziertes ECharts-Bundle muss JEDEN
+   tatsächlich genutzten Serientyp enthalten** (`LineChart`, `BarChart`,
+   ...) - ein fehlender Typ wird von ECharts **stillschweigend verworfen**
+   (leeres `series`-Array in `getOption()`, keine Fehlermeldung).
+4. **Highcharts formatiert Zeit standardmäßig in UTC**, nicht in der
+   Zeitzone des Browsers - `time: { useUTC: false }` je Chart-Objekt
+   nötig, ECharts macht das bereits von sich aus richtig.
+5. **`Highcharts.dateFormat()` ist eine GLOBALE Funktion und ignoriert
+   das chart-eigene `useUTC: false`** - derselbe UTC-Fehler kann so an
+   zwei Stellen unabhängig auftreten (Achse UND Tooltip), einmal behoben
+   heißt nicht überall behoben. Für Datumsformatierung in eigenen
+   Tooltip-/Label-Formattern natives JS-`Date` verwenden, nicht die
+   Highcharts-eigene Formatierungs-API.
+6. **Highcharts' Tooltip ist standardmäßig `shared: false`** (zeigt nur
+   die Serie unter dem Mauszeiger) - für einen Vergleich mehrerer Kurven
+   an derselben Zeitposition (wie bei ECharts' `trigger:'axis'` bereits
+   Standard) explizit `shared: true` setzen.
+7. **Ein eigener HTML-Tooltip-`formatter` in Highcharts braucht
+   `useHTML: true`**, sonst werden `<span>`/`<div>`-Tags als reiner Text
+   ausgegeben und alle Zeilen laufen in eine Reihe statt (wie gewünscht)
+   untereinander zu stehen.
+8. **Werte in Tooltips/Anzeigen bewusst auf 2 Nachkommastellen begrenzen**
+   (`Number(v).toFixed(2)`) statt der vollen Fließkomma-Genauigkeit -
+   sonst zeigen Rundungsartefakte lange, bedeutungslose Nachkommastellen.
+9. **ECharts' Canvas-Renderer braucht ein explizites `devicePixelRatio`**
+   (`echarts.init(el, null, { renderer:'canvas', devicePixelRatio:
+   window.devicePixelRatio || 2 })`) - ohne das fällt es auf `1` zurück,
+   wenn der Browser es nicht selbst liefert, und dünne Linien verwaschen
+   auf Retina-Displays zu optisch kräftigeren, weichen Kanten. Highcharts'
+   SVG-Rendering ist davon unabhängig immer scharf - bei einem direkten
+   Vergleich beider Engines mit identischer `lineWidth` fällt der
+   Unterschied sofort auf.
+
+**Nicht-Chart-Lehre, aber im selben Zeitraum gefunden, ebenfalls
+verbindlich:** Eine versteckte, nicht-editierbare `List`-Spalte (z. B.
+ein interner Schlüssel zur Zeilen-Identifikation über einen Neuaufbau
+hinweg) braucht explizit `"save": true` im Formular - IP-Symcon speichert
+bei einer `List` standardmäßig nur Spalten mit `"edit"`-Definition zurück
+in die Property.
+
 ## Verwendete Verträge
 
 | Partner | Vertrag | GUID |
