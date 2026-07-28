@@ -45,6 +45,10 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyInteger('PvfInstance', 0);
         $this->RegisterPropertyInteger('BatPowerID', 0);
         $this->RegisterPropertyInteger('SocID', 0);
+        $this->RegisterPropertyInteger('Mppt1ID', 0);
+        $this->RegisterPropertyInteger('Mppt2ID', 0);
+        $this->RegisterPropertyInteger('Mppt3ID', 0);
+        $this->RegisterPropertyInteger('Mppt4ID', 0);
         $this->RegisterPropertyInteger('TibberInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -189,29 +193,40 @@ class NRGDashboardMonitor extends IPSModule
      */
     private function MpptPowerIDs(): array
     {
-        if (!function_exists('IHUBMON_GetDiagnostics')) {
-            return [];
-        }
-        $ids = @IPS_GetInstanceListByModuleID(self::IHUBMON_GUID);
-        if (!is_array($ids) || count($ids) !== 1) {
-            return [];
-        }
-        $data = @IHUBMON_GetDiagnostics((int) $ids[0]);
-        if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
-            return [];
-        }
-        foreach ($data['entries'] as $entry) {
-            if (($entry['type'] ?? '') === 'mppt_string_compare' && isset($entry['stringPowerIDs'])) {
-                $out = [];
-                foreach ($entry['stringPowerIDs'] as $n => $vid) {
-                    if ((int) $vid > 0 && IPS_VariableExists((int) $vid)) {
-                        $out[(string) $n] = (int) $vid;
+        $out = [];
+        if (function_exists('IHUBMON_GetDiagnostics')) {
+            $ids = @IPS_GetInstanceListByModuleID(self::IHUBMON_GUID);
+            if (is_array($ids) && count($ids) === 1) {
+                $data = @IHUBMON_GetDiagnostics((int) $ids[0]);
+                if (is_array($data) && isset($data['entries']) && is_array($data['entries'])) {
+                    foreach ($data['entries'] as $entry) {
+                        if (($entry['type'] ?? '') === 'mppt_string_compare' && isset($entry['stringPowerIDs'])) {
+                            foreach ($entry['stringPowerIDs'] as $n => $vid) {
+                                if ((int) $vid > 0 && IPS_VariableExists((int) $vid)) {
+                                    $out[(string) $n] = (int) $vid;
+                                }
+                            }
+                            break;
+                        }
                     }
                 }
-                return $out;
             }
         }
-        return [];
+        if (count($out) > 0) {
+            return $out;
+        }
+        // Manueller Rueckfall (Store-Review-Checkliste Punkt 12,
+        // "Neuinstallations-Simulation", 28.07.2026): ohne installierte
+        // InverterHubMonitor-Instanz gab es bislang KEINEN Weg an MPPT-Daten
+        // zu kommen, anders als bei PV/Batterie/SOC, die alle ein manuelles
+        // Feld haben - echte Luecke, kein reines Anzeigeproblem.
+        for ($i = 1; $i <= 4; $i++) {
+            $vid = $this->readIntProperty('Mppt' . $i . 'ID', 0);
+            if ($vid > 0 && IPS_VariableExists($vid)) {
+                $out[(string) $i] = $vid;
+            }
+        }
+        return $out;
     }
 
     private function TibberInstanceID(): int

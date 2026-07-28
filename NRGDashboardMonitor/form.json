@@ -11,7 +11,7 @@
         },
         {
           "type": "Label",
-          "caption": "PV-Leistung wird automatisch über InverterHub gefunden, sofern genau eine Instanz installiert ist - bei mehreren Wechselrichtern bitte die Variable unten explizit wählen."
+          "caption": "PV-/Batterie-Leistung werden automatisch über InverterHub gefunden (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert), sofern genau eine InverterHub-Instanz installiert ist - bei mehreren Wechselrichtern oder ohne InverterHub bitte die Variablen unten manuell wählen."
         }
       ]
     },
@@ -52,8 +52,12 @@
         },
         {
           "type": "Label",
-          "caption": "MPPT-Stränge werden automatisch über InverterHubMonitors Diagnose-Vertrag gefunden, sofern genau eine InverterHubMonitor-Instanz installiert ist."
+          "caption": "MPPT-Stränge werden automatisch gefunden, sofern genau eine InverterHubMonitor-Instanz installiert ist (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert) - ohne InverterHubMonitor bitte die Variablen unten manuell wählen (nicht jeder Wechselrichter hat 4 Stränge, ungenutzte Felder leer lassen)."
         },
+        { "type": "SelectVariable", "name": "Mppt1ID", "caption": "MPPT-Strang 1 (optional, nur falls kein InverterHubMonitor installiert)" },
+        { "type": "SelectVariable", "name": "Mppt2ID", "caption": "MPPT-Strang 2 (optional)" },
+        { "type": "SelectVariable", "name": "Mppt3ID", "caption": "MPPT-Strang 3 (optional)" },
+        { "type": "SelectVariable", "name": "Mppt4ID", "caption": "MPPT-Strang 4 (optional)" },
         {
           "type": "SelectInstance",
           "name": "TibberInstance",

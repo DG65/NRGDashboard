@@ -846,6 +846,33 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     verifiziert: Tag → Monat → Jahr → Gesamt → Benutzerdefiniert → zurück
     zu Tag, mit beiden Engines.
 
+  **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
+  ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
+  verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide
+  Formulare (`NRGDashboardTile`, `NRGDashboardMonitor`) durchgegangen gegen
+  die drei Prüffragen (implizite Pflicht-Hardware? automatisch/manuell
+  unklar? für Laien mit anderer Anlage verständlich?) plus Volltextsuche
+  nach eigenen IDs/Instanz-Nummern/Standortdaten im Repo:
+  - **Kein Fund** bei "implizite Pflicht-Hardware": alle Partnermodul-
+    Referenzen sind bereits durchgängig als "optional - sonst automatisch
+    über X" formuliert, kein Feld verlangt einen bestimmten Hersteller.
+  - **Kein Fund** bei "automatisch/manuell unklar": jedes Datenquelle-Feld
+    in beiden Formularen nennt bereits explizit die Automatik-Bedingung.
+  - **Ein echter Fund** bei "für Laien mit anderer Anlage verständlich"/
+    Vollständigkeit: der MPP-Tracker-Reiter hatte anders als PV/Batterie/
+    SOC **keinen manuellen Rückfall** - ohne installierte
+    InverterHubMonitor-Instanz gab es keinen Weg an MPPT-Daten zu kommen.
+    Behoben: vier optionale `SelectVariable`-Felder (`Mppt1ID`…`Mppt4ID`),
+    `MpptPowerIDs()` nutzt sie als Rückfall, wenn die Automatik nichts
+    liefert. Außerdem zwei Formulierungen präzisiert, die "InverterHub"
+    ohne Herstellerneutralitäts-Hinweis nannten (jetzt: "unterstützt jeden
+    Wechselrichter-Hersteller, für den dort ein Treiber existiert").
+  - Volltextsuche nach eigenen IDs/Instanznummern/Standortdaten: keine
+    Treffer außer Code-Kommentaren, die Dietmar als Entscheidungsträger
+    nennen (kein Nutzer-sichtbarer Text, keine Default-Werte).
+  - Rückmeldung mit diesem konkreten Befund ging an EMS, wie von Dietmar
+    verlangt.
+
 ## Verwendete Verträge
 
 | Partner | Vertrag | GUID |
