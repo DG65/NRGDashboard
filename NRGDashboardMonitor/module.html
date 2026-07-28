@@ -470,7 +470,7 @@
       // Strich statt ueber die volle Diagrammhoehe zu reichen (live so
       // vorgefunden).
       if (tab === 'price' && d && d.id === fmtDate(new Date()) && series.length > 0) {
-        series[0].markLine = { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: '#ff5252', width: 2 }, data: [{ xAxis: Date.now() }] };
+        series[0].markLine = { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: '#ff5252', width: 2, type: 'solid' }, data: [{ xAxis: Date.now() }] };
       }
       chart.setOption({
         backgroundColor: 'transparent',
