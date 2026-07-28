@@ -322,9 +322,19 @@
     function buildSeries(tab, d) {
       if (tab === 'mpp') {
         var keys = lastData.mpptKeys || [];
-        return keys.map(function (k, i) {
-          return { name: 'MPPT ' + k, data: (d.mppt && d.mppt[k]) || [], axis: 0, color: MPPT_COLORS[i % MPPT_COLORS.length], dashed: false };
+        var series = [];
+        keys.forEach(function (k, i) {
+          var color = MPPT_COLORS[i % MPPT_COLORS.length];
+          series.push({ name: 'MPPT ' + k, data: (d.mppt && d.mppt[k]) || [], axis: 0, color: color, dashed: false });
+          // "PV erwartet" je Strang (Dietmars Wunsch, 28.07.2026, analog zur
+          // Gesamt-Erwartungskurve im Solar-Reiter) - nur wenn das Backend
+          // eine belastbare Generator-zu-Strang-Zuordnung liefern konnte
+          // (hasMpptModel, siehe module.php::PvfModel()/buildPayload()).
+          if (lastData.hasMpptModel && d.mpptExpected && d.mpptExpected[k] && d.mpptExpected[k].length) {
+            series.push({ name: 'MPPT ' + k + ' erwartet', data: d.mpptExpected[k], axis: 0, color: color, dashed: true });
+          }
         });
+        return series;
       }
       if (tab === 'battery') {
         var series = [{ name: 'Batterie-Leistung', data: d.bat, axis: 0, color: '#43a047', dashed: false }];
@@ -461,7 +471,7 @@
         // sich aus auf stuendliche Beschriftung (Dietmars Vergleich,
         // 28.07.2026).
         xAxis: Object.assign(
-          (tab === 'solar' && d && d.sunStart) ? { type: 'time', min: d.sunStart, max: d.sunEnd } : { type: 'time' },
+          ((tab === 'solar' || tab === 'mpp') && d && d.sunStart) ? { type: 'time', min: d.sunStart, max: d.sunEnd } : { type: 'time' },
           { splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000 }
         ),
         yAxis: (tab === 'price')
@@ -512,7 +522,7 @@
         // ueber axisPointer standardmaessig zeigt - Highcharts zeigt ohne
         // explizites crosshair gar keine (Dietmars Vergleich, 28.07.2026).
         xAxis: Object.assign(
-          (tab === 'solar' && d && d.sunStart) ? { type: 'datetime', min: d.sunStart, max: d.sunEnd } : { type: 'datetime' },
+          ((tab === 'solar' || tab === 'mpp') && d && d.sunStart) ? { type: 'datetime', min: d.sunStart, max: d.sunEnd } : { type: 'datetime' },
           { gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ),
         yAxis: (tab === 'price')

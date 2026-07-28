@@ -352,12 +352,19 @@ class NRGDashboardMonitor extends IPSModule
             $pr = 0.85;
         }
         $totalKwp = 0.0;
+        $generatorKwp = [];
         foreach ($rows as $row) {
             if ($row['kwp'] > 0.0) {
-                $totalKwp += $row['kwp'] * (($row['factor'] > 0.0) ? $row['factor'] : 1.0);
+                $eff = $row['kwp'] * (($row['factor'] > 0.0) ? $row['factor'] : 1.0);
+                $totalKwp += $eff;
+                $generatorKwp[] = $eff;
             }
         }
-        return ($totalKwp > 0.0) ? ['pr' => $pr, 'totalKwp' => $totalKwp] : null;
+        // generatorKwp additiv fuer die MPP-Tracker-Erwartungskurve (28.07.2026,
+        // Dietmars Wunsch) - je Generator effektive kWp (kwp*factor), in der
+        // Reihenfolge von PVF_GetGenerators(). Aendert nichts an pr/totalKwp,
+        // die der Solar-Reiter bereits nutzt.
+        return ($totalKwp > 0.0) ? ['pr' => $pr, 'totalKwp' => $totalKwp, 'generatorKwp' => $generatorKwp] : null;
     }
 
     /**
@@ -547,6 +554,11 @@ class NRGDashboardMonitor extends IPSModule
         $socID = $this->SocID();
         $mppt = $this->MpptPowerIDs();
         $model = $this->PvfModel();
+        // Nur wenn die Anzahl PVF-Generatoren zur Anzahl gefundener MPPT-
+        // Straenge passt, ist die 1:1-Zuordnung "Generator N = Strang N"
+        // (Reihenfolge von PVF_GetGenerators()) belastbar genug fuer eine
+        // Erwartungskurve je Strang (Dietmars Wunsch, 28.07.2026).
+        $mpptModelUsable = ($model !== null && isset($model['generatorKwp']) && count($mppt) > 0 && count($model['generatorKwp']) === count($mppt));
 
         $days = [];
         for ($k = 0; $k < self::WINDOW_DAYS; $k++) {
@@ -566,6 +578,13 @@ class NRGDashboardMonitor extends IPSModule
                 $mpptSeries[$n] = $aid > 0 ? $this->DaySeries($aid, $vid, $start, $end) : [];
             }
 
+            // Temperaturwerte je Zeitstempel zuordnen (gleiches 5-Minuten-
+            // Raster wie Einstrahlung, daher per Zeitstempel-Map statt Index
+            // koppelbar) - fuer beide Erwartungskurven unten (Gesamt UND je
+            // MPP-Tracker-Strang) gemeinsam einmal aufgebaut.
+            $tempByTs = [];
+            foreach ($temp as $tp) { $tempByTs[$tp[0]] = $tp[1]; }
+
             $expected = [];
             if ($model !== null && count($irr) > 0) {
                 // Muster: InverterHubMonitor - expectedW = Einstrahlung(W/m^2)
@@ -578,15 +597,34 @@ class NRGDashboardMonitor extends IPSModule
                 // zunehmenden Abweichung nach oben - Zellen werden bei hoher
                 // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
                 // liefern dadurch real weniger, als die reine Einstrahlungs-
-                // Rechnung vorhersagt. Temperaturwerte je Zeitstempel
-                // zuordnen (gleiches 5-Minuten-Raster wie Einstrahlung, daher
-                // per Zeitstempel-Map statt Index koppelbar).
-                $tempByTs = [];
-                foreach ($temp as $tp) { $tempByTs[$tp[0]] = $tp[1]; }
+                // Rechnung vorhersagt.
                 foreach ($irr as $p) {
                     $ta = $tempByTs[$p[0]] ?? null;
                     $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
                     $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'] * $derate, 0)];
+                }
+            }
+
+            // "PV erwartet" je MPP-Tracker-Strang (Dietmars Wunsch, 28.07.2026,
+            // analog zur Gesamt-Erwartungskurve im Solar-Reiter). Mangels
+            // eines Vertrags, der einen PVF-Generator einem InverterHub-
+            // MPPT-Strang eindeutig zuordnet, gilt die einzig belastbare
+            // Annahme: stimmt die Anzahl der PVF-Generatoren mit der Anzahl
+            // gefundener Straenge ueberein, entspricht Generator N (in
+            // PVF_GetGenerators()-Reihenfolge) Strang N. Bei Abweichung
+            // lieber gar keine Erwartungskurve je Strang als eine geratene,
+            // falsch zugeordnete.
+            $mpptExpected = [];
+            if ($mpptModelUsable && count($irr) > 0) {
+                $kwpByKey = array_combine(array_keys($mpptSeries), $model['generatorKwp']);
+                foreach ($kwpByKey as $n => $kwp) {
+                    $series = [];
+                    foreach ($irr as $p) {
+                        $ta = $tempByTs[$p[0]] ?? null;
+                        $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
+                        $series[] = [$p[0], round($p[1] * $kwp * $model['pr'] * $derate, 0)];
+                    }
+                    $mpptExpected[$n] = $series;
                 }
             }
 
@@ -612,6 +650,7 @@ class NRGDashboardMonitor extends IPSModule
                 'bat'      => $bat,
                 'soc'      => $soc,
                 'mppt'     => $mpptSeries,
+                'mpptExpected' => $mpptExpected,
             ];
         }
 
@@ -667,6 +706,7 @@ class NRGDashboardMonitor extends IPSModule
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
+            'hasMpptModel' => $mpptModelUsable,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
             'mpptKeys' => array_keys($mppt),
