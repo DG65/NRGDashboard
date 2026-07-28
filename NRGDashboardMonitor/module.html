@@ -50,6 +50,7 @@
         <option value="custom">Benutzerdefiniert</option>
       </select>
       <button id="prev" class="nav" title="Zurück">&#9664;</button>
+      <span id="periodLabel" class="pick" style="display:none; cursor:default;"></span>
       <input id="pick" class="pick" type="date">
       <input id="pickTo" class="pick" type="date" style="display:none">
       <button id="next" class="nav" title="Vor">&#9654;</button>
@@ -153,16 +154,39 @@
       }
 
       pickTo.style.display = 'none';
+      var periodLabel = document.getElementById('periodLabel');
       if (curView === 'all') {
-        pick.style.display = 'none';
+        pick.style.display = 'none'; periodLabel.style.display = 'none';
         document.getElementById('prev').disabled = true;
         document.getElementById('next').disabled = true;
         return;
       }
-      pick.style.display = '';
+      // Woche/Monat/Jahr: statt eines vollen Datums (das die eigentlich
+      // gemeinte Einheit - Kalenderwoche/Monat/Jahr - eher verschleiert
+      // als zeigt) einen dazu passenden Text anzeigen (Dietmars Wunsch,
+      // 28.07.2026: "KW vor das Datum" bzw. Monat/Jahr sollen selbst
+      // sichtbar sein). Vor/Zurück deckt die Navigation bereits vollständig
+      // ab, ein natives Datumsfeld ist hier nicht mehr nötig.
+      pick.style.display = 'none';
+      periodLabel.style.display = '';
       document.getElementById('prev').disabled = false;
       document.getElementById('next').disabled = false;
-      pick.value = fmtDate(viewRef);
+      if (curView === 'week') {
+        periodLabel.textContent = 'KW ' + isoWeekNumber(viewRef) + ', ' + viewRef.getFullYear();
+      } else if (curView === 'month') {
+        periodLabel.textContent = MONTH_NAMES_FULL[viewRef.getMonth()] + ' ' + viewRef.getFullYear();
+      } else if (curView === 'year') {
+        periodLabel.textContent = String(viewRef.getFullYear());
+      }
+    }
+
+    function isoWeekNumber(date) {
+      var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      var dayNum = (d.getUTCDay() + 6) % 7;
+      d.setUTCDate(d.getUTCDate() - dayNum + 3);
+      var firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+      var diff = (d - firstThursday) / 86400000;
+      return 1 + Math.round(diff / 7);
     }
 
     function shiftViewRef(dir) {
@@ -210,6 +234,7 @@
     }
 
     var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    var MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
     function buildEnergyRows(tab) {

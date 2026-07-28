@@ -861,6 +861,16 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Reihenfolge links nach rechts auf Dietmars Wunsch: PV erwartet,
   PV-Erzeugung, Einstrahlung.
 
+  **Datumsanzeige an die Ansicht angepasst (28.07.2026, Dietmars Wunsch):**
+  Woche/Monat/Jahr zeigten bislang immer ein volles Datum
+  („21.07.2026“) - für diese Ansichten verschleiert das eher die
+  eigentlich gemeinte Einheit, als sie zu zeigen. Jetzt: `#periodLabel`
+  ersetzt das Datumsfeld dort durch „KW 30, 2026“ / „Juli 2026“ /
+  „2026“ - Vor/Zurück deckt die Navigation weiterhin vollständig ab, ein
+  natives Datumsfeld ist für diese drei Ansichten nicht mehr nötig
+  (bleibt weiterhin bei Tag/Benutzerdefiniert). `isoWeekNumber()` liefert
+  die Kalenderwoche nach ISO-8601 (Donnerstag-Regel).
+
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide
