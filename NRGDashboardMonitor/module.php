@@ -507,13 +507,6 @@ class NRGDashboardMonitor extends IPSModule
         return $html;
     }
 
-    // Temporaeres Diagnose-Hilfsmittel (28.07.2026) - wird nach der ECharts-
-    // Blank-Chart-Fehlersuche wieder entfernt, siehe README.
-    public function DebugPayload(): string
-    {
-        return json_encode($this->buildPayload());
-    }
-
     public function Render(): void
     {
         $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
