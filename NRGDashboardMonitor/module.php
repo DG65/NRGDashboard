@@ -637,6 +637,13 @@ class NRGDashboardMonitor extends IPSModule
                 // (Dietmars Wunsch: Nachtstunden ohne Erzeugung nicht anzeigen).
                 'sunStart' => $sun[0] * 1000,
                 'sunEnd'   => $sun[1] * 1000,
+                // Kalendertag-Grenzen in ms (NICHT wie $end oben auf "jetzt"
+                // gedeckelt) - der Batterie-Reiter soll auch am heutigen Tag
+                // immer die vollen 0-24 Uhr zeigen, statt die x-Achse an der
+                // aktuellen Uhrzeit abzuschneiden (Dietmars Wunsch,
+                // 28.07.2026).
+                'dayStart' => $start * 1000,
+                'dayEnd'   => ($start + 86400) * 1000,
                 'pv'       => $pv,
                 'irr'      => $irr,
                 'expected' => $expected,

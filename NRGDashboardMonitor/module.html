@@ -401,6 +401,18 @@
       return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr, leftInterval: 1 };
     }
 
+    // x-Achsen-Bereich je Reiter (Tag-Ansicht): Solar/MPP-Tracker zeigen nur
+    // Sonnenaufgang-1h bis Sonnenuntergang+1h, Batterie IMMER den vollen
+    // Kalendertag 0-24 Uhr - auch am heutigen Tag, wo die Daten nur bis
+    // "jetzt" reichen (sonst schneidet die x-Achse an der aktuellen Uhrzeit
+    // ab statt den Tag vollstaendig zu zeigen, Dietmars Wunsch, 28.07.2026).
+    function xAxisRange(tab, d) {
+      if (!d) { return null; }
+      if ((tab === 'solar' || tab === 'mpp') && d.sunStart) { return { min: d.sunStart, max: d.sunEnd }; }
+      if (tab === 'battery' && d.dayStart) { return { min: d.dayStart, max: d.dayEnd }; }
+      return null;
+    }
+
     // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
     // Punkte wie die anderen Reiter) als Treppenlinie: je Intervall Start-
     // und End-Zeitpunkt mit demselben Preis, damit die Stufe sichtbar wird.
@@ -492,7 +504,7 @@
         // sich aus auf stuendliche Beschriftung (Dietmars Vergleich,
         // 28.07.2026).
         xAxis: Object.assign(
-          ((tab === 'solar' || tab === 'mpp') && d && d.sunStart) ? { type: 'time', min: d.sunStart, max: d.sunEnd } : { type: 'time' },
+          { type: 'time' }, xAxisRange(tab, d) || {},
           { splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000 }
         ),
         yAxis: (tab === 'price')
@@ -551,7 +563,7 @@
         // Raster je nach sichtbarem Zeitfenster unterschiedlich waehlt
         // (Dietmars Fund, 28.07.2026, Batterie-Reiter).
         xAxis: Object.assign(
-          ((tab === 'solar' || tab === 'mpp') && d && d.sunStart) ? { type: 'datetime', min: d.sunStart, max: d.sunEnd } : { type: 'datetime' },
+          { type: 'datetime' }, xAxisRange(tab, d) || {},
           { gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ),
         yAxis: (tab === 'price')
