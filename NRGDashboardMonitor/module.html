@@ -392,7 +392,14 @@
         // gefunden (Balken blieben unsichtbar, obwohl die Daten korrekt
         // in chart.getOption() ankamen).
         el.innerHTML = '';
-        chart = echarts.init(el, null, { renderer: 'canvas' });
+        // devicePixelRatio explizit setzen - ohne dieses Feld faellt ECharts'
+        // Canvas-Renderer auf 1 zurueck, wenn der Browser es nicht von sich
+        // aus erkennt, wodurch duenne Linien auf Retina-Displays verwaschen
+        // und dadurch optisch dicker wirken als in Highcharts' SVG-Rendering
+        // (Dietmars Vergleichsscreenshot, 28.07.2026: ECharts-Linien wirkten
+        // deutlich kraeftiger als bei Highcharts, obwohl beide dieselbe
+        // lineStyle.width nutzen).
+        chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 });
         chartEngine = 'echarts';
       }
       var ax = axisConfig(tab);
@@ -413,12 +420,22 @@
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 12 },
+        // bottom:32 statt 12 - bei 12 wurden die Uhrzeit-Beschriftungen der
+        // x-Achse unten abgeschnitten (Dietmar, 28.07.2026).
+        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 32 },
         legend: { show: false },
-        // Werte im Tooltip auf 2 Nachkommastellen begrenzen (Dietmars
-        // Wunsch, 28.07.2026) statt der vollen Fliesskomma-Genauigkeit.
+        // Dunkler Tooltip passend zu Highcharts (dessen useHTML-Tooltip vom
+        // Browser/OS automatisch dunkel dargestellt wird) - ECharts' Tooltip
+        // ist standardmaessig hell und wirkte dadurch im Vergleich fremd
+        // (Dietmars Screenshot-Vergleich, 28.07.2026).
         tooltip: {
           trigger: 'axis',
+          backgroundColor: 'rgba(30,32,36,0.92)',
+          borderWidth: 0,
+          textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          // Werte im Tooltip auf 2 Nachkommastellen begrenzen (Dietmars
+          // Wunsch, 28.07.2026) statt der vollen Fliesskomma-Genauigkeit.
           formatter: function (params) {
             return params.map(function (p, i) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
@@ -515,7 +532,7 @@
 
     function renderBarECharts(el, tab) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
-      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
       var rows = buildEnergyRows(tab);
       renderLegend(tab, rows.series.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
@@ -529,6 +546,10 @@
         // im selben Zug wie die Datumsanzeige im Navigationsbalken.
         tooltip: {
           trigger: 'axis', axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(30,32,36,0.92)',
+          borderWidth: 0,
+          textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
           formatter: function (params) {
             var idx = params[0] ? params[0].dataIndex : 0;
             var head = '<div style="font-weight:600;margin-bottom:2px">' + (rows.fullLabels[idx] || rows.categories[idx]) + '</div>';
