@@ -63,6 +63,7 @@
         <button class="tab" data-tab="mpp">MPP-Tracker</button>
         <button class="tab" data-tab="battery">Batterie</button>
         <button class="tab" data-tab="price">Strompreis</button>
+        <button class="tab" data-tab="flow">Energiebilanz</button>
       </div>
       <div id="chartcol"><div id="chart"></div><div id="legendRow"></div></div>
     </div>
@@ -83,7 +84,7 @@
     // Anker um die passende Einheit). Benutzerdefiniert nutzt customFrom/To.
     var viewRef = new Date();
     var customFrom = null, customTo = null;
-    var libs = { hc: 0 };
+    var libs = { hc: 0, hcSankey: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
     // Zarte Gitterlinien-Farbe fuer Zeit- und linke Achse (Dietmars Wunsch,
     // 28.07.2026) - in beiden Engines identisch verwendet.
@@ -114,6 +115,18 @@
       if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; return cb(); }
       if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
       libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
+    }
+
+    // Energiebilanz-Reiter (Sankey) braucht zusaetzlich das Highcharts-
+    // Sankey-Modul - eigenes Nachladen wie bei ensureHighcharts, aber erst
+    // NACH dem Kern, da das Modul auf Highcharts aufsetzt.
+    function ensureHighchartsSankey(cb) {
+      ensureHighcharts(function () {
+        if (Highcharts.seriesTypes && Highcharts.seriesTypes.sankey) { return cb(); }
+        if (libs.hcSankey === 1) { return setTimeout(function () { ensureHighchartsSankey(cb); }, 80); }
+        libs.hcSankey = 1;
+        addScript('https://code.highcharts.com/modules/sankey.js', function () { libs.hcSankey = 2; cb(); });
+      });
     }
 
     function fmtDate(d) {
@@ -745,6 +758,103 @@
       chartEngine = 'highcharts';
     }
 
+    // Energiebilanz (Sankey) - Datengrundlage kommt fertig berechnet von
+    // InverterHubEnergy::IHUBNRG_GetFlow() (Verbund-Vertrag, 28.07.2026:
+    // nodes/links/totalIn/hasData, Farben je Node bereits enthalten) - wir
+    // zeichnen nur, keine eigene Zaehler-Differenzbildung/Doppelzaehlungs-
+    // Vermeidung noetig, die bleibt komplett bei InverterHub. Prozentangaben
+    // im Tooltip immer relativ zu totalIn (= Solar + Netzbezug, ohne
+    // Batterie als interner Transfer - exakt wie in deren eigener Kachel).
+    function sankeyLookups(flow) {
+      var label = {}, color = {}, incoming = {}, outgoing = {};
+      (flow.nodes || []).forEach(function (n) { label[n.key] = n.label; color[n.key] = n.color; incoming[n.key] = 0; outgoing[n.key] = 0; });
+      (flow.links || []).forEach(function (l) {
+        outgoing[l.from] = (outgoing[l.from] || 0) + l.value;
+        incoming[l.to] = (incoming[l.to] || 0) + l.value;
+      });
+      return { label: label, color: color, incoming: incoming, outgoing: outgoing };
+    }
+
+    function renderSankeyECharts(el, flow) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      var lk = sankeyLookups(flow);
+      var totalIn = flow.totalIn || 0;
+      var nodes = (flow.nodes || []).map(function (n) { return { name: n.key, depth: n.column, itemStyle: { color: n.color } }; });
+      var links = (flow.links || []).map(function (l) { return { source: l.from, target: l.to, value: l.value }; });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          formatter: function (p) {
+            if (p.dataType === 'edge') {
+              var pctE = totalIn > 0 ? (p.value / totalIn * 100) : 0;
+              return (lk.label[p.data.source] || p.data.source) + ' → ' + (lk.label[p.data.target] || p.data.target)
+                + ': <b>' + Number(p.value).toFixed(2) + ' kWh</b> (' + pctE.toFixed(0) + ' %)';
+            }
+            var key = p.data.name;
+            var v = Math.max(lk.incoming[key] || 0, lk.outgoing[key] || 0);
+            var pctN = totalIn > 0 ? (v / totalIn * 100) : 0;
+            var extra = (lk.incoming[key] > 0.0001 && lk.outgoing[key] > 0.0001)
+              ? '<br/>eingespeist ' + lk.incoming[key].toFixed(2) + ' kWh / entnommen ' + lk.outgoing[key].toFixed(2) + ' kWh' : '';
+            return '<b>' + (lk.label[key] || key) + '</b>: ' + v.toFixed(2) + ' kWh (' + pctN.toFixed(0) + ' %)' + extra;
+          }
+        },
+        series: [{
+          type: 'sankey',
+          data: nodes,
+          links: links,
+          emphasis: { focus: 'adjacency' },
+          label: { color: '#e8e8e8', formatter: function (p) { return lk.label[p.name] || p.name; } },
+          lineStyle: { color: 'gradient', opacity: 0.42, curveness: 0.5 },
+          nodeWidth: 16, nodeGap: 14, draggable: false
+        }]
+      }, true);
+    }
+
+    function renderSankeyHighcharts(el, flow) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var lk = sankeyLookups(flow);
+      var totalIn = flow.totalIn || 0;
+      var data = (flow.links || []).map(function (l) { return [l.from, l.to, l.value]; });
+      var nodesCfg = (flow.nodes || []).map(function (n) { return { id: n.key, name: n.label, color: n.color, column: n.column }; });
+      chart = Highcharts.chart(el, {
+        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        credits: { enabled: false },
+        tooltip: {
+          useHTML: true,
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, style: { color: '#e8e8e8' },
+          formatter: function () {
+            if (this.point.isNode) {
+              var key = this.point.id;
+              var v = Math.max(lk.incoming[key] || 0, lk.outgoing[key] || 0);
+              var pctN = totalIn > 0 ? (v / totalIn * 100) : 0;
+              var extra = (lk.incoming[key] > 0.0001 && lk.outgoing[key] > 0.0001)
+                ? '<br/>eingespeist ' + lk.incoming[key].toFixed(2) + ' kWh / entnommen ' + lk.outgoing[key].toFixed(2) + ' kWh' : '';
+              return '<b>' + this.point.name + '</b>: ' + v.toFixed(2) + ' kWh (' + pctN.toFixed(0) + ' %)' + extra;
+            }
+            var pctE = totalIn > 0 ? (this.point.weight / totalIn * 100) : 0;
+            return this.point.fromNode.name + ' → ' + this.point.toNode.name + ': <b>' + Number(this.point.weight).toFixed(2) + ' kWh</b> (' + pctE.toFixed(0) + ' %)';
+          }
+        },
+        series: [{
+          type: 'sankey',
+          keys: ['from', 'to', 'weight'],
+          data: data,
+          nodes: nodesCfg,
+          dataLabels: { color: '#e8e8e8', style: { textOutline: 'none' } },
+          linkOpacity: 0.45,
+          curveFactor: 0.5,
+          animation: false
+        }]
+      });
+      chartEngine = 'highcharts';
+    }
+
     function render() {
       syncNav();
       var el = document.getElementById('chart');
@@ -763,6 +873,28 @@
       if (curTab === 'battery' && !lastData.hasBat && !lastData.hasSoc) {
         destroyChart();
         el.innerHTML = '<div class="empty">Keine Batterie-Variable gefunden - im Formular „Datenquelle“ wählen oder InverterHub installieren</div>';
+        return;
+      }
+      if (curTab === 'flow') {
+        if (!lastData.hasEnergyFlow) {
+          destroyChart();
+          el.innerHTML = '<div class="empty">Keine InverterHubEnergy-Instanz gefunden - im Formular „Datenquelle“ wählen oder InverterHubEnergy installieren</div>';
+          return;
+        }
+        var flowDay = (lastData.days || [])[idx];
+        if (!flowDay || !flowDay.flow || !flowDay.flow.hasData) {
+          destroyChart();
+          el.innerHTML = '<div class="empty">Keine Energiedaten für diesen Tag</div>';
+          return;
+        }
+        var legendRowEl = document.getElementById('legendRow'); if (legendRowEl) { legendRowEl.innerHTML = ''; }
+        var wantEngineFlow = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+        if (wantEngineFlow === 'highcharts') {
+          ensureHighchartsSankey(function () { el.innerHTML = ''; renderSankeyHighcharts(el, flowDay.flow); });
+        } else {
+          renderSankeyECharts(el, flowDay.flow);
+          setTimeout(sizeChart, 60);
+        }
         return;
       }
 
@@ -860,7 +992,7 @@
         // Monat/Jahr/Gesamt/Benutzerdefiniert) - die Auswahl ist dort ohne
         // Wirkung, deshalb gesperrt und fest auf "Tag" gesetzt (Dietmars
         // Wunsch, 28.07.2026).
-        var dayOnly = (curTab === 'battery' || curTab === 'price');
+        var dayOnly = (curTab === 'battery' || curTab === 'price' || curTab === 'flow');
         var typeSel = document.getElementById('type');
         typeSel.disabled = dayOnly;
         if (dayOnly && curView !== 'day') {

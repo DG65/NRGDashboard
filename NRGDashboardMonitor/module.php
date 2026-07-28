@@ -23,6 +23,7 @@ class NRGDashboardMonitor extends IPSModule
     private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const IHUBMON_GUID     = '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}';
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
+    private const IHUBNRG_GUID     = '{C3E7A1F4-9B2D-4E6A-8F1C-7A5B3D9E2C08}';
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
@@ -52,6 +53,7 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyInteger('Mppt3ID', 0);
         $this->RegisterPropertyInteger('Mppt4ID', 0);
         $this->RegisterPropertyInteger('TibberInstance', 0);
+        $this->RegisterPropertyInteger('InverterHubEnergyInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
@@ -378,6 +380,36 @@ class NRGDashboardMonitor extends IPSModule
         }
         $ids = @IPS_GetInstanceListByModuleID(self::PVF_GUID);
         return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    private function InverterHubEnergyInstanceID(): int
+    {
+        $cfg = $this->readIntProperty('InverterHubEnergyInstance', 0);
+        if ($cfg > 0 && IPS_InstanceExists($cfg)
+            && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::IHUBNRG_GUID) {
+            return $cfg;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(self::IHUBNRG_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Sankey-Energiebilanz fuer einen Zeitraum - reiner Durchreich-Aufruf an
+     * InverterHubEnergy::GetFlow() (Verbund-Vertrag, mit deren Sitzung
+     * 28.07.2026 abgestimmt: IHUBNRG_GetFlow liefert bereits fertige
+     * nodes/links/totalIn/hasData samt Farben, keine eigene Berechnung
+     * noetig - Zaehler-Differenzbildung, Doppelzaehlungs-Vermeidung
+     * zwischen manuellen/MeterHub-/HeishaMon-Verbrauchern bleibt komplett
+     * bei InverterHub).
+     */
+    private function EnergyFlow(int $start, int $end): ?array
+    {
+        $id = $this->InverterHubEnergyInstanceID();
+        if ($id <= 0 || !function_exists('IHUBNRG_GetFlow')) {
+            return null;
+        }
+        $flow = @IHUBNRG_GetFlow($id, $start, $end);
+        return is_array($flow) ? $flow : null;
     }
 
     /**
@@ -710,8 +742,13 @@ class NRGDashboardMonitor extends IPSModule
             }
 
             $price = $this->PriceDaySlots($start);
+            // Sankey-Energiebilanz nur fuer den Zeitraum, der wirklich schon
+            // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
+            // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
+            $flow = (!$isFuture) ? $this->EnergyFlow($start, $end) : null;
 
-            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0;
+            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
+                || ($flow !== null && ($flow['hasData'] ?? false));
             foreach ($mpptSeries as $s) {
                 $hasData = $hasData || count($s) > 0;
             }
@@ -741,6 +778,7 @@ class NRGDashboardMonitor extends IPSModule
                 'soc'      => $soc,
                 'mppt'     => $mpptSeries,
                 'price'    => $price,
+                'flow'     => $flow,
             ];
         }
 
@@ -797,6 +835,7 @@ class NRGDashboardMonitor extends IPSModule
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
             'hasMpptModel' => $mpptModelUsable,
+            'hasEnergyFlow' => $this->InverterHubEnergyInstanceID() > 0,
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
