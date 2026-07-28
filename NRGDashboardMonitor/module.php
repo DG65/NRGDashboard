@@ -272,12 +272,10 @@ class NRGDashboardMonitor extends IPSModule
 
     /**
      * Aktuelle Strompreiskurve (TIBBERGR_GetPriceCurve, Verbund-Vertrag) -
-     * bewusst NICHT Teil des navigierbaren Tage-Fensters: der Vertrag ist
-     * ein VORWAERTS gerichteter Verlauf (jetzt + kommende Slots), keine
-     * archivierte Zeitreihe vergangener Tage. Der Strompreis-Reiter zeigt
-     * deshalb immer die aktuelle Kurve, unabhaengig vom gewaehlten Tag im
-     * Navigations-Fenster (Verbund-Konvention: "Strompreis nur in der
-     * Tagesansicht sinnvoll").
+     * VORWAERTS gerichteter Verlauf (deckt laut Tibber Grid Rewards immer
+     * den vollen heutigen Tag von 0 Uhr an ab, plus den Folgetag sobald
+     * dessen Preise veroeffentlicht sind - kein reiner "ab jetzt"-Ausschnitt).
+     * Fuer Tage VOR heute reicht dieser Vertrag nicht, siehe PriceDaySlots().
      */
     private function PriceCurve(): array
     {
@@ -295,6 +293,78 @@ class NRGDashboardMonitor extends IPSModule
                 continue;
             }
             $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000, round((float) $slot['price'], 2)];
+        }
+        return $out;
+    }
+
+    /**
+     * Strompreis-Stufenverlauf fuer EINEN Kalendertag, als [[startMs, endMs,
+     * price],...] - Dietmars Wunsch (28.07.2026): der Strompreis-Reiter soll
+     * wie die anderen Reiter Tage rueckwaerts navigieren koennen, nicht nur
+     * die aktuelle Vorwaertskurve zeigen.
+     *
+     * Heute/morgen: aus PriceCurve() (TIBBERGR_GetPriceCurve, deckt den
+     * vollen Tag ab) auf das angefragte Fenster zugeschnitten.
+     *
+     * Tage VOR heute: PriceCurve() kennt sie nicht mehr (reiner Vorwaerts-
+     * Vertrag) - stattdessen aus der ARCHIVIERTEN Statusvariable "CurrentPrice"
+     * der Tibber Grid Rewards-Instanz rekonstruiert (dort archiviert Tibber
+     * Grid Rewards selbst jeden Slot-Wechsel, siehe deren
+     * TibberGridReward::ApplyCurrentPriceSlot()). AC_GetLoggedValues liefert
+     * die rohen Aenderungszeitpunkte (kein Aggregat) - daraus werden analog
+     * priceStepPoints() im Frontend Stufen gebaut: jeder geloggte Wert gilt
+     * bis zum naechsten geloggten Zeitpunkt bzw. bis Tagesende. Der Zustand
+     * VOR Tagesbeginn (fuer die erste Stufe) kommt aus dem letzten Log-Wert
+     * vor $dayStart (bis zu 7 Tage zurueckgesucht - Grid Rewards aktualisiert
+     * mindestens stuendlich, ein leerer 7-Tage-Rueckblick bedeutet also
+     * plausibel "keine Archivdaten", nicht nur "seltener Wechsel").
+     */
+    private function PriceDaySlots(int $dayStart): array
+    {
+        $dayEnd = $dayStart + 86400;
+        if ($dayStart >= strtotime('today')) {
+            $out = [];
+            foreach ($this->PriceCurve() as $slot) {
+                $s = intdiv($slot[0], 1000);
+                $e = intdiv($slot[1], 1000);
+                if ($e > $dayStart && $s < $dayEnd) {
+                    $out[] = [max($s, $dayStart) * 1000, min($e, $dayEnd) * 1000, $slot[2]];
+                }
+            }
+            return $out;
+        }
+
+        $tid = $this->TibberInstanceID();
+        $aid = $this->ArchiveID();
+        if ($tid <= 0 || $aid <= 0) {
+            return [];
+        }
+        $vid = @IPS_GetObjectIDByIdent('CurrentPrice', $tid);
+        if (!$vid || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+
+        $before = @AC_GetLoggedValues($aid, $vid, $dayStart - 7 * 86400, $dayStart, 1);
+        $curVal = (is_array($before) && count($before) > 0) ? (float) $before[0]['Value'] : null;
+
+        $rows = @AC_GetLoggedValues($aid, $vid, $dayStart, $dayEnd, 0);
+        if (!is_array($rows)) {
+            $rows = [];
+        }
+        usort($rows, function ($a, $b) { return (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']; });
+
+        $out = [];
+        $curTs = $dayStart;
+        foreach ($rows as $row) {
+            $ts = (int) $row['TimeStamp'];
+            if ($curVal !== null) {
+                $out[] = [$curTs * 1000, $ts * 1000, round($curVal, 2)];
+            }
+            $curTs = $ts;
+            $curVal = (float) $row['Value'];
+        }
+        if ($curVal !== null) {
+            $out[] = [$curTs * 1000, $dayEnd * 1000, round($curVal, 2)];
         }
         return $out;
     }
@@ -621,7 +691,9 @@ class NRGDashboardMonitor extends IPSModule
                 }
             }
 
-            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0;
+            $price = $this->PriceDaySlots($start);
+
+            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0;
             foreach ($mpptSeries as $s) {
                 $hasData = $hasData || count($s) > 0;
             }
@@ -650,6 +722,7 @@ class NRGDashboardMonitor extends IPSModule
                 'bat'      => $bat,
                 'soc'      => $soc,
                 'mppt'     => $mpptSeries,
+                'price'    => $price,
             ];
         }
 
@@ -710,7 +783,6 @@ class NRGDashboardMonitor extends IPSModule
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
             'mpptKeys' => array_keys($mppt),
-            'price'    => $this->PriceCurve(),
             'days'     => $days,
             'energy'   => $energy,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',

@@ -118,13 +118,7 @@
 
     function syncNav() {
       var days = (lastData && lastData.days) || [];
-      // Strompreis ist ein VORWAERTS gerichteter Vertrag (TIBBERGR_GetPriceCurve),
-      // keine archivierte Tages-Zeitreihe - die Tagesnavigation ist dort
-      // sinnlos (Verbund-Konvention: "Strompreis nur in der Tagesansicht
-      // sinnvoll", hier zusaetzlich ganz ausgeblendet statt nur inaktiv).
-      var isPrice = (curTab === 'price');
-      document.getElementById('bar').style.visibility = isPrice ? 'hidden' : 'visible';
-      if (isPrice) { return; }
+      document.getElementById('bar').style.visibility = 'visible';
 
       var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
       quick.innerHTML = '';
@@ -409,16 +403,16 @@
     function xAxisRange(tab, d) {
       if (!d) { return null; }
       if ((tab === 'solar' || tab === 'mpp') && d.sunStart) { return { min: d.sunStart, max: d.sunEnd }; }
-      if (tab === 'battery' && d.dayStart) { return { min: d.dayStart, max: d.dayEnd }; }
+      if ((tab === 'battery' || tab === 'price') && d.dayStart) { return { min: d.dayStart, max: d.dayEnd }; }
       return null;
     }
 
     // Preiskurve (Intervalle [start,end,price], keine gleichmaessigen 5-Min-
     // Punkte wie die anderen Reiter) als Treppenlinie: je Intervall Start-
     // und End-Zeitpunkt mit demselben Preis, damit die Stufe sichtbar wird.
-    function priceStepPoints() {
+    function priceStepPoints(d) {
       var out = [];
-      (lastData.price || []).forEach(function (slot) {
+      ((d && d.price) || []).forEach(function (slot) {
         out.push([slot[0], slot[2]]);
         out.push([slot[1], slot[2]]);
       });
@@ -450,7 +444,7 @@
       }
       var ax = axisConfig(tab);
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: true }]
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
@@ -463,6 +457,16 @@
       var series = visSeries.map(function (s) {
         return { name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
       });
+      // Strompreis, aktueller Tag: rote vertikale Linie fuer "jetzt"
+      // (Dietmars Wunsch, 28.07.2026) - an die erste sichtbare Serie
+      // gehaengt, NICHT an eine leere Hilfsserie: eine markLine ohne
+      // eigene Werte-Bandbreite (Hilfsserie mit nur einem Nullwert) haengt
+      // sich sonst an DEREN Werteumfang und bleibt ein paar Pixel hoher
+      // Strich statt ueber die volle Diagrammhoehe zu reichen (live so
+      // vorgefunden).
+      if (tab === 'price' && d && d.id === fmtDate(new Date()) && series.length > 0) {
+        series[0].markLine = { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: '#ff5252', width: 2 }, data: [{ xAxis: Date.now() }] };
+      }
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
@@ -521,7 +525,7 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(), color: '#ffb300', axis: 0, dashed: false, step: true }]
+        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: true }]
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
@@ -562,9 +566,17 @@
         // maxInterval oben, nur hier zusaetzlich noetig, weil Highcharts das
         // Raster je nach sichtbarem Zeitfenster unterschiedlich waehlt
         // (Dietmars Fund, 28.07.2026, Batterie-Reiter).
+        // Strompreis, aktueller Tag: rote vertikale Linie fuer "jetzt"
+        // (Dietmars Wunsch, 28.07.2026) - Pendant zu ECharts' markLine oben.
         xAxis: Object.assign(
           { type: 'datetime' }, xAxisRange(tab, d) || {},
-          { gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          {
+            gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000,
+            crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' },
+            plotLines: (tab === 'price' && d && d.id === fmtDate(new Date()))
+              ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }]
+              : []
+          }
         ),
         yAxis: (tab === 'price')
           ? [{ title: { text: 'ct/kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR }]
@@ -685,19 +697,9 @@
       syncNav();
       var el = document.getElementById('chart');
 
-      if (curTab === 'price') {
-        if (!lastData.price || !lastData.price.length) {
-          destroyChart();
-          el.innerHTML = '<div class="empty">Keine Preiskurve verfügbar - Tibber Grid Rewards-Instanz wählen oder installieren</div>';
-          return;
-        }
-        var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
-        if (wantEngine === 'highcharts') {
-          ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, 'price', null); });
-        } else {
-          renderECharts(el, 'price', null);
-          setTimeout(sizeChart, 60);
-        }
+      if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
+        destroyChart();
+        el.innerHTML = '<div class="empty">Keine Preiskurve verfügbar - Tibber Grid Rewards-Instanz wählen oder installieren</div>';
         return;
       }
 
@@ -802,13 +804,14 @@
         if (btn.disabled) { return; }
         curTab = btn.getAttribute('data-tab');
         Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) { b.classList.toggle('active', b === btn); });
-        // Batterie hat (anders als PV & Einstrahlung/MPP-Tracker) keine
-        // Energie-Ansichten (Woche/Monat/Jahr/Gesamt/Benutzerdefiniert) -
-        // die Auswahl ist dort ohne Wirkung, deshalb gesperrt und fest auf
-        // "Tag" gesetzt (Dietmars Wunsch, 28.07.2026).
+        // Batterie UND Strompreis haben keine Energie-Ansichten (Woche/
+        // Monat/Jahr/Gesamt/Benutzerdefiniert) - die Auswahl ist dort ohne
+        // Wirkung, deshalb gesperrt und fest auf "Tag" gesetzt (Dietmars
+        // Wunsch, 28.07.2026).
+        var dayOnly = (curTab === 'battery' || curTab === 'price');
         var typeSel = document.getElementById('type');
-        typeSel.disabled = (curTab === 'battery');
-        if (curTab === 'battery' && curView !== 'day') {
+        typeSel.disabled = dayOnly;
+        if (dayOnly && curView !== 'day') {
           curView = 'day';
           typeSel.value = 'day';
         }
