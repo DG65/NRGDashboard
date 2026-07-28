@@ -555,10 +555,27 @@ class NRGDashboardMonitor extends IPSModule
         foreach ($mppt as $n => $vid) {
             $energyMppt[$n] = $aid > 0 ? $this->DailyEnergyMap($aid, $vid) : [];
         }
+        // Einstrahlung/PV erwartet fehlten in der ersten Fassung der
+        // Energie-Ansichten (Dietmar, 28.07.2026: "Woche zeigt nur PV-
+        // Erzeugung") - bewusst nachgezogen, damit "PV & Einstrahlung"
+        // auch hier alle drei Linien der Tagesansicht spiegelt.
+        $energyIrr = $aid > 0 ? $this->DailyEnergyMap($aid, $irrID) : [];
+        $energyExpected = [];
+        if ($model !== null) {
+            // Gleicher Kunstgriff wie im Tagesverlauf: Einstrahlung(W/m^2)
+            // * totalKwp * PR - hier auf der bereits zu "Tages-kWh"
+            // hochgerechneten Einstrahlungs-Reihe angewendet (derselbe
+            // Avg*24/1000-Kunstgriff, der Faktor kuerzt sich identisch weg).
+            foreach ($energyIrr as $day => $kwhEquivalent) {
+                $energyExpected[$day] = round($kwhEquivalent * $model['totalKwp'] * $model['pr'], 2);
+            }
+        }
         $energy = [
-            'pv'   => $aid > 0 ? $this->DailyEnergyMap($aid, $pvID) : [],
-            'bat'  => $aid > 0 ? $this->DailyEnergyMap($aid, $batID) : [],
-            'mppt' => $energyMppt,
+            'pv'       => $aid > 0 ? $this->DailyEnergyMap($aid, $pvID) : [],
+            'bat'      => $aid > 0 ? $this->DailyEnergyMap($aid, $batID) : [],
+            'irr'      => $energyIrr,
+            'expected' => $energyExpected,
+            'mppt'     => $energyMppt,
         ];
 
         return [

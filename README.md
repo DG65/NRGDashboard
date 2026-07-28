@@ -846,6 +846,19 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
     verifiziert: Tag → Monat → Jahr → Gesamt → Benutzerdefiniert → zurück
     zu Tag, mit beiden Engines.
 
+  **Nachbesserung, noch selber Tag: Einstrahlung/PV erwartet fehlten in
+  den Energie-Ansichten.** Dietmar bemerkte auf der echten Instanz, dass
+  "Woche" nur die PV-Erzeugung zeigt - die Tagesansicht hat aber drei
+  Linien. Ursache: `energySeriesFor('solar')` lieferte bewusst (aber ohne
+  das anzukündigen) nur die PV-Erzeugung, da Einstrahlung/PV erwartet im
+  Tagesverlauf aus Leistungswerten kommen, für die es noch keine
+  entsprechende Tages-kWh-Berechnung gab. Nachgezogen: `DailyEnergyMap()`
+  wird jetzt auch auf die Einstrahlungs-Variable angewendet (liefert
+  "Tages-kWh-Äquivalent" nach demselben `Avg×24/1000`-Muster), "PV
+  erwartet" wird daraus mit demselben `× kWp × PR`-Kunstgriff wie im
+  Tagesverlauf abgeleitet - alle drei Linien der Tagesansicht spiegeln
+  sich jetzt auch in Woche/Monat/Jahr/Gesamt/Benutzerdefiniert.
+
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide

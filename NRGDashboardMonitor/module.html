@@ -194,7 +194,17 @@
       if (tab === 'battery') {
         return [{ name: 'Batterie-Leistung', color: '#43a047', map: (lastData.energy && lastData.energy.bat) || {} }];
       }
-      return [{ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} }];
+      // solar - spiegelt die drei Linien der Tagesansicht (Dietmar,
+      // 28.07.2026: "Woche zeigt nur PV-Erzeugung, Einstrahlung/PV
+      // erwartet fehlen").
+      var solarSeries = [{ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} }];
+      if (lastData.hasIrr) {
+        solarSeries.push({ name: 'Einstrahlung', color: '#fbc02d', map: (lastData.energy && lastData.energy.irr) || {} });
+      }
+      if (lastData.hasModel) {
+        solarSeries.push({ name: 'PV erwartet', color: '#e57373', map: (lastData.energy && lastData.energy.expected) || {} });
+      }
+      return solarSeries;
     }
 
     var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
