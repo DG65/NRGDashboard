@@ -542,9 +542,17 @@
         // crosshair: gestrichelte Vertikale beim Hovern, wie ECharts das
         // ueber axisPointer standardmaessig zeigt - Highcharts zeigt ohne
         // explizites crosshair gar keine (Dietmars Vergleich, 28.07.2026).
+        // tickInterval fest auf 1 Stunde - ohne das waehlt Highcharts bei
+        // einem laengeren, nicht auf Sonnenauf-/-untergang eingeschraenkten
+        // Zeitfenster (z.B. der volle 24h-Tag im Batterie-Reiter) von sich
+        // aus ein groeberes Raster (hier: alle 2 Stunden), um die Beschriftung
+        // nicht zu ueberladen - dasselbe Pendant zu ECharts' minInterval/
+        // maxInterval oben, nur hier zusaetzlich noetig, weil Highcharts das
+        // Raster je nach sichtbarem Zeitfenster unterschiedlich waehlt
+        // (Dietmars Fund, 28.07.2026, Batterie-Reiter).
         xAxis: Object.assign(
           ((tab === 'solar' || tab === 'mpp') && d && d.sunStart) ? { type: 'datetime', min: d.sunStart, max: d.sunEnd } : { type: 'datetime' },
-          { gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          { gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ),
         yAxis: (tab === 'price')
           ? [{ title: { text: 'ct/kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR }]
