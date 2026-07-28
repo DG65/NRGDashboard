@@ -196,13 +196,15 @@
       }
       // solar - spiegelt die drei Linien der Tagesansicht (Dietmar,
       // 28.07.2026: "Woche zeigt nur PV-Erzeugung, Einstrahlung/PV
-      // erwartet fehlen").
-      var solarSeries = [{ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} }];
-      if (lastData.hasIrr) {
-        solarSeries.push({ name: 'Einstrahlung', color: '#fbc02d', map: (lastData.energy && lastData.energy.irr) || {} });
-      }
+      // erwartet fehlen"). Reihenfolge links nach rechts (Dietmars Wunsch,
+      // 28.07.2026): PV erwartet, PV-Erzeugung, Einstrahlung.
+      var solarSeries = [];
       if (lastData.hasModel) {
         solarSeries.push({ name: 'PV erwartet', color: '#e57373', map: (lastData.energy && lastData.energy.expected) || {} });
+      }
+      solarSeries.push({ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} });
+      if (lastData.hasIrr) {
+        solarSeries.push({ name: 'Einstrahlung', color: '#fbc02d', map: (lastData.energy && lastData.energy.irr) || {} });
       }
       return solarSeries;
     }

@@ -858,6 +858,8 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   erwartet" wird daraus mit demselben `× kWp × PR`-Kunstgriff wie im
   Tagesverlauf abgeleitet - alle drei Linien der Tagesansicht spiegeln
   sich jetzt auch in Woche/Monat/Jahr/Gesamt/Benutzerdefiniert.
+  Reihenfolge links nach rechts auf Dietmars Wunsch: PV erwartet,
+  PV-Erzeugung, Einstrahlung.
 
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
