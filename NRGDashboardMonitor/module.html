@@ -319,19 +319,23 @@
 
     // Je Reiter: Serien + Achsenbeschriftungen. "right"=true nutzt die rechte
     // Achse (nur bei zwei verschiedenen Einheiten in einem Reiter noetig).
+    function toKw(pts) { return (pts || []).map(function (p) { return [p[0], p[1] / 1000]; }); }
+
     function buildSeries(tab, d) {
       if (tab === 'mpp') {
+        // Linke Achse in kW statt W (Dietmars Wunsch, 28.07.2026, analog
+        // zum Solar-Reiter).
         var keys = lastData.mpptKeys || [];
         var series = [];
         keys.forEach(function (k, i) {
           var color = MPPT_COLORS[i % MPPT_COLORS.length];
-          series.push({ name: 'MPPT ' + k, data: (d.mppt && d.mppt[k]) || [], axis: 0, color: color, dashed: false });
+          series.push({ name: 'MPPT ' + k, data: toKw(d.mppt && d.mppt[k]), axis: 0, color: color, dashed: false });
           // "PV erwartet" je Strang (Dietmars Wunsch, 28.07.2026, analog zur
           // Gesamt-Erwartungskurve im Solar-Reiter) - nur wenn das Backend
           // eine belastbare Generator-zu-Strang-Zuordnung liefern konnte
           // (hasMpptModel, siehe module.php::PvfModel()/buildPayload()).
           if (lastData.hasMpptModel && d.mpptExpected && d.mpptExpected[k] && d.mpptExpected[k].length) {
-            series.push({ name: 'MPPT ' + k + ' erwartet', data: d.mpptExpected[k], axis: 0, color: color, dashed: true });
+            series.push({ name: 'MPPT ' + k + ' erwartet', data: toKw(d.mpptExpected[k]), axis: 0, color: color, dashed: true });
           }
         });
         return series;
@@ -345,7 +349,6 @@
       }
       // solar (Standard) - linke Achse in kW statt W (Dietmars Wunsch,
       // 27.07.2026), Einstrahlung (rechte Achse, W/m²) bleibt unveraendert.
-      var toKw = function (pts) { return (pts || []).map(function (p) { return [p[0], p[1] / 1000]; }); };
       var series = [{ name: 'PV-Erzeugung', data: toKw(d.pv), axis: 0, color: '#e53935', dashed: false }];
       if (lastData.hasIrr) {
         series.push({ name: 'Einstrahlung', data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
@@ -374,7 +377,9 @@
     }
 
     function axisConfig(tab) {
-      if (tab === 'mpp') { return { leftName: 'W', rightName: '', showRight: false, leftInterval: null }; }
+      // Linke Achse (kW) in 1-kW-Schritten (Dietmars Wunsch, 28.07.2026,
+      // analog zum Solar-Reiter).
+      if (tab === 'mpp') { return { leftName: 'kW', rightName: '', showRight: false, leftInterval: 1 }; }
       if (tab === 'battery') { return { leftName: 'W', rightName: '%', showRight: !!lastData.hasSoc, leftInterval: null }; }
       // Linke Achse (kW) in 1-kW-Schritten (Dietmars Wunsch, 27.07.2026).
       return { leftName: 'kW', rightName: 'W/m²', showRight: !!lastData.hasIrr, leftInterval: 1 };
