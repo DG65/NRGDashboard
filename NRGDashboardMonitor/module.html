@@ -237,10 +237,16 @@
         series: series
       }, true);
       // Etwaige synthetische legendselectchanged-Ereignisse feuern
-      // synchron innerhalb von setOption() - nach dessen Rueckkehr ist die
-      // Sperre nicht mehr noetig, echte spaetere Klicks sollen wieder
-      // greifen.
-      suppressLegendEvent = false;
+      // Ein synthetisches legendselectchanged kann auch noch NACH dem
+      // synchronen Rueckkehren aus setOption() feuern (naechster Tick/
+      // Animationsframe von ECharts) - ein sofortiges Zuruecksetzen hier
+      // liess genau dieses verzoegerte Ereignis wieder durch und
+      // ueberschrieb eine gerade erst wiederhergestellte/neu gesetzte
+      // Auswahl erneut (live beobachtet: Kurve wieder eingeblendet,
+      // Reiterwechsel und zurueck liess sie wieder verschwinden). Deshalb
+      // die Sperre um einen Tick verzoegert aufheben statt sofort - ein
+      // echter Klick kurz danach bleibt davon unberuehrt.
+      setTimeout(function () { suppressLegendEvent = false; }, 50);
     }
 
     function renderHighcharts(el, tab, d) {
@@ -252,6 +258,15 @@
             return { name: s.name, type: 'line', data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, visible: isVisible(s.name), dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
           });
       chart = Highcharts.chart(el, {
+        // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
+        // UTC statt in der Zeitzone des Browsers (live gefunden: Tooltip
+        // zeigte 06:30 fuer einen Messpunkt, der tatsaechlich 08:30 Ortszeit
+        // war - exakt die Sommerzeit-Differenz UTC+2 fuer Europe/Berlin).
+        // Unsere Zeitstempel sind echte Unix-Millisekunden (UTC-Epoche);
+        // useUTC:false laesst Highcharts sie wie ECharts in der lokalen
+        // Zeitzone des Browsers anzeigen, statt sie zusaetzlich als UTC zu
+        // interpretieren.
+        time: { useUTC: false },
         // alignTicks (Highcharts-Standard: true) synchronisiert die
         // Anzahl der Gitterlinien zwischen linker und rechter Achse - dabei
         // wird ein explizites tickInterval auf einer Achse stillschweigend

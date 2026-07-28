@@ -746,6 +746,32 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   um den `setOption()`/`Highcharts.chart()`-Aufruf) - sonst wird die
   gespeicherte Auswahl beim nächsten Laden lautlos wieder verworfen.
 
+  **Nachbesserung, noch selber Tag: Sperrflag zu früh aufgehoben.** Nach dem
+  ersten Fix trat ein neues, verwandtes Symptom auf: eine wieder
+  eingeblendete Kurve (echter Klick, korrekt gespeichert) verschwand erneut,
+  sobald man den Reiter wechselte und zurückkehrte - ganz ohne Neuladen.
+  Ursache: `suppressLegendEvent` wurde direkt nach der synchronen Rückkehr
+  aus `setOption()` wieder aufgehoben, ein synthetisches
+  `legendselectchanged` von ECharts kann aber auch noch einen Tick **später**
+  (nächster Animationsframe) feuern - genau in diesem Fenster war die Sperre
+  schon wieder offen und das verzögerte Ereignis überschrieb die gerade
+  gesetzte Auswahl erneut. Behoben: Aufheben der Sperre um 50 ms verzögert
+  (`setTimeout`), deckt auch nachlaufende synthetische Ereignisse ab, ein
+  echter Klick kurz danach bleibt davon unberührt.
+
+  **Weiterer echter Bug, unabhängig gefunden (Dietmar, 28.07.2026):** Die
+  Uhrzeit im Tooltip/auf der Zeitachse stimmte bei Highcharts nicht -
+  Punkte erschienen 2 Stunden zu früh (z. B. Tooltip "06:30" für einen
+  tatsächlich um 08:30 Ortszeit gemessenen Wert). Ursache: Highcharts
+  formatiert Zeitstempel standardmäßig in **UTC**, nicht in der Zeitzone
+  des Browsers - bei Europe/Berlin im Sommer (UTC+2) ergibt das exakt die
+  beobachtete 2-Stunden-Differenz. Unsere Zeitstempel sind echte
+  Unix-Millisekunden; ECharts zeigt sie standardmäßig bereits korrekt in
+  der Browser-Zeitzone, Highcharts brauchte dafür explizit
+  `time: { useUTC: false }`. Lokal mit einem bekannten Referenz-Zeitstempel
+  verifiziert (Datenpunkt korrekt zwischen den 08:00/09:00-Achsenmarkierungen
+  statt bei 06:30).
+
 ## Verwendete Verträge
 
 | Partner | Vertrag | GUID |
