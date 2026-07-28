@@ -559,6 +559,22 @@ class NRGDashboardMonitor extends IPSModule
         // (Reihenfolge von PVF_GetGenerators()) belastbar genug fuer eine
         // Erwartungskurve je Strang (Dietmars Wunsch, 28.07.2026).
         $mpptModelUsable = ($model !== null && isset($model['generatorKwp']) && count($mppt) > 0 && count($model['generatorKwp']) === count($mppt));
+        // Anteil je Strang an der Gesamt-kWp - die Erwartungskurve je Strang
+        // hat exakt dieselbe Form wie die bereits gesendete Gesamt-
+        // Erwartungskurve ($expected), nur mit einem anderen kWp-Faktor
+        // skaliert (Einstrahlung, PR und Temperaturableitung sind fuer alle
+        // Straenge identisch). Statt je Strang eine komplett eigene 5-Minuten-
+        // Zeitreihe ueber alle WINDOW_DAYS zu senden (hat den Ausgabepuffer
+        // gesprengt: "Output-Buffer exceeds Limit", live gefunden 28.07.2026),
+        // schickt das Backend nur DIESEN einen Skalar je Strang - das
+        // Frontend multipliziert ihn clientseitig mit den ohnehin schon
+        // vorhandenen Punkten von d.expected.
+        $mpptShare = [];
+        if ($mpptModelUsable) {
+            $mpptShare = array_combine(array_keys($mppt), array_map(function ($kwp) use ($model) {
+                return $model['totalKwp'] > 0.0 ? $kwp / $model['totalKwp'] : 0.0;
+            }, $model['generatorKwp']));
+        }
 
         $days = [];
         for ($k = 0; $k < self::WINDOW_DAYS; $k++) {
@@ -605,29 +621,6 @@ class NRGDashboardMonitor extends IPSModule
                 }
             }
 
-            // "PV erwartet" je MPP-Tracker-Strang (Dietmars Wunsch, 28.07.2026,
-            // analog zur Gesamt-Erwartungskurve im Solar-Reiter). Mangels
-            // eines Vertrags, der einen PVF-Generator einem InverterHub-
-            // MPPT-Strang eindeutig zuordnet, gilt die einzig belastbare
-            // Annahme: stimmt die Anzahl der PVF-Generatoren mit der Anzahl
-            // gefundener Straenge ueberein, entspricht Generator N (in
-            // PVF_GetGenerators()-Reihenfolge) Strang N. Bei Abweichung
-            // lieber gar keine Erwartungskurve je Strang als eine geratene,
-            // falsch zugeordnete.
-            $mpptExpected = [];
-            if ($mpptModelUsable && count($irr) > 0) {
-                $kwpByKey = array_combine(array_keys($mpptSeries), $model['generatorKwp']);
-                foreach ($kwpByKey as $n => $kwp) {
-                    $series = [];
-                    foreach ($irr as $p) {
-                        $ta = $tempByTs[$p[0]] ?? null;
-                        $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
-                        $series[] = [$p[0], round($p[1] * $kwp * $model['pr'] * $derate, 0)];
-                    }
-                    $mpptExpected[$n] = $series;
-                }
-            }
-
             $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0;
             foreach ($mpptSeries as $s) {
                 $hasData = $hasData || count($s) > 0;
@@ -650,7 +643,6 @@ class NRGDashboardMonitor extends IPSModule
                 'bat'      => $bat,
                 'soc'      => $soc,
                 'mppt'     => $mpptSeries,
-                'mpptExpected' => $mpptExpected,
             ];
         }
 
@@ -707,6 +699,7 @@ class NRGDashboardMonitor extends IPSModule
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
             'hasMpptModel' => $mpptModelUsable,
+            'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
             'mpptKeys' => array_keys($mppt),

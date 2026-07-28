@@ -333,9 +333,18 @@
           // "PV erwartet" je Strang (Dietmars Wunsch, 28.07.2026, analog zur
           // Gesamt-Erwartungskurve im Solar-Reiter) - nur wenn das Backend
           // eine belastbare Generator-zu-Strang-Zuordnung liefern konnte
-          // (hasMpptModel, siehe module.php::PvfModel()/buildPayload()).
-          if (lastData.hasMpptModel && d.mpptExpected && d.mpptExpected[k] && d.mpptExpected[k].length) {
-            series.push({ name: 'MPPT ' + k + ' erwartet', data: toKw(d.mpptExpected[k]), axis: 0, color: color, dashed: true });
+          // (hasMpptModel). Die Kurvenform ist je Strang identisch zur
+          // bereits vorhandenen Gesamt-Erwartungskurve d.expected (gleiche
+          // Einstrahlung/PR/Temperaturableitung, nur ein anderer kWp-Anteil)
+          // - statt einer kompletten eigenen Zeitreihe je Strang schickt das
+          // Backend nur den skalaren Anteil (mpptShare) und wir skalieren
+          // d.expected hier clientseitig. Eine volle Zeitreihe je Strang
+          // ueber alle vorgehaltenen Tage hat den Ausgabepuffer gesprengt
+          // ("Output-Buffer exceeds Limit", live gefunden 28.07.2026).
+          var share = lastData.mpptShare && lastData.mpptShare[k];
+          if (lastData.hasMpptModel && share && d.expected && d.expected.length) {
+            var scaled = d.expected.map(function (p) { return [p[0], p[1] * share]; });
+            series.push({ name: 'MPPT ' + k + ' erwartet', data: toKw(scaled), axis: 0, color: color, dashed: true });
           }
         });
         return series;
