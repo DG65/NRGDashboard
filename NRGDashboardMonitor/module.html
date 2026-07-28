@@ -43,9 +43,15 @@
     <div id="bar">
       <select id="type" class="sel">
         <option value="day">Tag (Verlauf)</option>
+        <option value="week">Woche (Energie)</option>
+        <option value="month">Monat (Energie)</option>
+        <option value="year">Jahr (Energie)</option>
+        <option value="all">Gesamt (Energie)</option>
+        <option value="custom">Benutzerdefiniert</option>
       </select>
       <button id="prev" class="nav" title="Zurück">&#9664;</button>
       <input id="pick" class="pick" type="date">
+      <input id="pickTo" class="pick" type="date" style="display:none">
       <button id="next" class="nav" title="Vor">&#9654;</button>
       <span id="quick"></span>
     </div>
@@ -63,6 +69,13 @@
   <script>/*__ECHARTS_JS__*/</script>
   <script>
     var lastData = null, chart = null, chartEngine = null, idx = 0, curTab = 'solar';
+    var curView = 'day';
+    // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
+    // gewuenschten Zeitraums - bewusst kein natives type=week/month-Feld,
+    // die sind browserseitig zu uneinheitlich; Vor/Zurueck verschiebt den
+    // Anker um die passende Einheit). Benutzerdefiniert nutzt customFrom/To.
+    var viewRef = new Date();
+    var customFrom = null, customTo = null;
     var libs = { hc: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
 
@@ -108,23 +121,140 @@
       document.getElementById('bar').style.visibility = isPrice ? 'hidden' : 'visible';
       if (isPrice) { return; }
 
-      document.getElementById('prev').disabled = (idx >= days.length - 1);
-      document.getElementById('next').disabled = (idx <= 0);
-      var d = days[idx];
-      if (d) { document.getElementById('pick').value = d.id; }
-
-      var quick = document.getElementById('quick');
+      var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
       quick.innerHTML = '';
-      var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
-      labels.forEach(function (l) {
-        var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
-        var btn = document.createElement('button');
-        btn.className = 'qday' + (target === idx ? ' active' : '');
-        btn.textContent = l[0];
-        btn.disabled = (target < 0) || !days[target] || !days[target].hasData;
-        btn.onclick = function () { idx = target; render(); };
-        quick.appendChild(btn);
+
+      if (curView === 'day') {
+        pick.style.display = ''; pickTo.style.display = 'none';
+        document.getElementById('prev').disabled = (idx >= days.length - 1);
+        document.getElementById('next').disabled = (idx <= 0);
+        var d = days[idx];
+        if (d) { pick.value = d.id; }
+        var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
+        labels.forEach(function (l) {
+          var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
+          var btn = document.createElement('button');
+          btn.className = 'qday' + (target === idx ? ' active' : '');
+          btn.textContent = l[0];
+          btn.disabled = (target < 0) || !days[target] || !days[target].hasData;
+          btn.onclick = function () { idx = target; render(); };
+          quick.appendChild(btn);
+        });
+        return;
+      }
+
+      if (curView === 'custom') {
+        pick.style.display = ''; pickTo.style.display = '';
+        document.getElementById('prev').disabled = true;
+        document.getElementById('next').disabled = true;
+        if (customFrom) { pick.value = customFrom; }
+        if (customTo) { pickTo.value = customTo; }
+        return;
+      }
+
+      pickTo.style.display = 'none';
+      if (curView === 'all') {
+        pick.style.display = 'none';
+        document.getElementById('prev').disabled = true;
+        document.getElementById('next').disabled = true;
+        return;
+      }
+      pick.style.display = '';
+      document.getElementById('prev').disabled = false;
+      document.getElementById('next').disabled = false;
+      pick.value = fmtDate(viewRef);
+    }
+
+    function shiftViewRef(dir) {
+      var r = new Date(viewRef);
+      if (curView === 'week') { r.setDate(r.getDate() + dir * 7); }
+      else if (curView === 'month') { r.setMonth(r.getMonth() + dir); }
+      else if (curView === 'year') { r.setFullYear(r.getFullYear() + dir); }
+      viewRef = r;
+    }
+
+    function startOfWeek(date) {
+      var r = new Date(date);
+      var wd = (r.getDay() + 6) % 7; // Montag=0
+      r.setDate(r.getDate() - wd);
+      return r;
+    }
+
+    // Baut Kategorien+Reihen fuer die Energie-Ansichten (Woche/Monat/Jahr/
+    // Gesamt/Benutzerdefiniert) aus den vom Backend gelieferten Tages-kWh-
+    // Karten (lastData.energy) - EIN Archivdurchlauf pro Serie liefert alle
+    // Ansichten, hier wird nur noch clientseitig gruppiert.
+    function energySeriesFor(tab) {
+      if (tab === 'mpp') {
+        var keys = lastData.mpptKeys || [];
+        return keys.map(function (k, i) {
+          return { name: 'MPPT ' + k, color: MPPT_COLORS[i % MPPT_COLORS.length], map: (lastData.energy && lastData.energy.mppt && lastData.energy.mppt[k]) || {} };
+        });
+      }
+      if (tab === 'battery') {
+        return [{ name: 'Batterie-Leistung', color: '#43a047', map: (lastData.energy && lastData.energy.bat) || {} }];
+      }
+      return [{ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} }];
+    }
+
+    var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+    var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+    function buildEnergyRows(tab) {
+      var seriesDefs = energySeriesFor(tab);
+      var categories = [];
+      var dateLists = []; // je Kategorie: Liste von 'Y-m-d', die dort einfliessen
+      if (curView === 'week') {
+        var ws = startOfWeek(viewRef);
+        for (var i = 0; i < 7; i++) {
+          var dt = new Date(ws); dt.setDate(ws.getDate() + i);
+          categories.push(WEEKDAY_NAMES[i] + ' ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2));
+          dateLists.push([fmtDate(dt)]);
+        }
+      } else if (curView === 'month') {
+        var y = viewRef.getFullYear(), m = viewRef.getMonth();
+        var last = new Date(y, m + 1, 0).getDate();
+        for (var day = 1; day <= last; day++) {
+          categories.push(String(day));
+          dateLists.push([fmtDate(new Date(y, m, day))]);
+        }
+      } else if (curView === 'year') {
+        var yy = viewRef.getFullYear();
+        for (var mo = 0; mo < 12; mo++) {
+          categories.push(MONTH_NAMES[mo]);
+          var lastD = new Date(yy, mo + 1, 0).getDate();
+          var list = [];
+          for (var dd = 1; dd <= lastD; dd++) { list.push(fmtDate(new Date(yy, mo, dd))); }
+          dateLists.push(list);
+        }
+      } else if (curView === 'all') {
+        var thisYear = new Date().getFullYear();
+        for (var k = 4; k >= 0; k--) {
+          var yr = thisYear - k;
+          categories.push(String(yr));
+          var l2 = [];
+          for (var mm = 0; mm < 12; mm++) {
+            var lastDd = new Date(yr, mm + 1, 0).getDate();
+            for (var d2 = 1; d2 <= lastDd; d2++) { l2.push(fmtDate(new Date(yr, mm, d2))); }
+          }
+          dateLists.push(l2);
+        }
+      } else if (curView === 'custom' && customFrom && customTo) {
+        var from = new Date(customFrom + 'T00:00:00'), to = new Date(customTo + 'T00:00:00');
+        for (var cd = new Date(from); cd <= to; cd.setDate(cd.getDate() + 1)) {
+          categories.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2));
+          dateLists.push([fmtDate(cd)]);
+        }
+      }
+      var series = seriesDefs.map(function (s) {
+        var data = dateLists.map(function (dl) {
+          var sum = 0, any = false;
+          dl.forEach(function (ds) { if (s.map[ds] !== undefined) { sum += s.map[ds]; any = true; } });
+          return any ? Math.round(sum * 100) / 100 : null;
+        });
+        return { name: s.name, color: s.color, data: data };
       });
+      return { categories: categories, series: series };
     }
 
     function sizeChart() {
@@ -207,6 +337,16 @@
     function renderECharts(el, tab, d) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) {
+        // el.innerHTML NUR hier leeren (ein evtl. vorheriger "Keine Daten"-
+        // Text) und NUR beim echten Neuanlegen - ein Leeren VOR jedem
+        // Wiederverwenden des bestehenden chart-Objekts (frueher in
+        // render()) hat dessen internen Canvas aus dem DOM gerissen, ohne
+        // die ECharts-Instanz zu entsorgen: setOption() lief danach gegen
+        // einen abgehaengten Canvas ins Leere (leerer Wrapper-Div ohne
+        // sichtbaren Inhalt) - live beim Bau der Energie-Ansichten
+        // gefunden (Balken blieben unsichtbar, obwohl die Daten korrekt
+        // in chart.getOption() ankamen).
+        el.innerHTML = '';
         chart = echarts.init(el, null, { renderer: 'canvas' });
         chartEngine = 'echarts';
       }
@@ -298,6 +438,47 @@
       chartEngine = 'highcharts';
     }
 
+    function renderBarECharts(el, tab) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas' }); chartEngine = 'echarts'; }
+      var rows = buildEnergyRows(tab);
+      renderLegend(tab, rows.series.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 12, top: 28, bottom: 40 },
+        legend: { show: false },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0 } },
+        yAxis: [{ type: 'value', name: 'kWh' }],
+        series: visSeries.map(function (s) {
+          return { name: s.name, type: 'bar', data: s.data, color: s.color };
+        })
+      }, true);
+    }
+
+    function renderBarHighcharts(el, tab) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var rows = buildEnergyRows(tab);
+      renderLegend(tab, rows.series.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
+      chart = Highcharts.chart(el, {
+        time: { useUTC: false },
+        chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0 } },
+        yAxis: [{ title: { text: 'kWh' } }],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: { shared: true },
+        series: visSeries.map(function (s) {
+          return { name: s.name, type: 'column', data: s.data, color: s.color };
+        })
+      });
+      chartEngine = 'highcharts';
+    }
+
     function render() {
       syncNav();
       var el = document.getElementById('chart');
@@ -312,7 +493,6 @@
         if (wantEngine === 'highcharts') {
           ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, 'price', null); });
         } else {
-          el.innerHTML = '';
           renderECharts(el, 'price', null);
           setTimeout(sizeChart, 60);
         }
@@ -330,6 +510,26 @@
         return;
       }
 
+      // Energie-Ansichten (Woche/Monat/Jahr/Gesamt/Benutzerdefiniert) -
+      // Balken statt Verlaufslinie, aus den vorab gelieferten Tages-kWh-
+      // Karten gruppiert (siehe buildEnergyRows()), kein erneuter
+      // Archivzugriff je Ansichtswechsel.
+      if (curView !== 'day') {
+        if (curView === 'custom' && (!customFrom || !customTo)) {
+          destroyChart();
+          el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>';
+          return;
+        }
+        var wantEngineBar = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+        if (wantEngineBar === 'highcharts') {
+          ensureHighcharts(function () { el.innerHTML = ''; renderBarHighcharts(el, curTab); });
+        } else {
+          renderBarECharts(el, curTab);
+          setTimeout(sizeChart, 60);
+        }
+        return;
+      }
+
       var days = (lastData && lastData.days) || [];
       var d = days[idx];
       if (!d || !d.hasData) {
@@ -341,7 +541,6 @@
       if (wantEngine === 'highcharts') {
         ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, curTab, d); });
       } else {
-        el.innerHTML = '';
         renderECharts(el, curTab, d);
         setTimeout(sizeChart, 60);
       }
@@ -364,16 +563,37 @@
     }
 
     document.getElementById('prev').onclick = function () {
-      var days = (lastData && lastData.days) || [];
-      if (idx < days.length - 1) { idx++; render(); }
+      if (curView === 'day') {
+        var days = (lastData && lastData.days) || [];
+        if (idx < days.length - 1) { idx++; render(); }
+      } else if (curView === 'week' || curView === 'month' || curView === 'year') {
+        shiftViewRef(-1); render();
+      }
     };
     document.getElementById('next').onclick = function () {
-      if (idx > 0) { idx--; render(); }
+      if (curView === 'day') {
+        if (idx > 0) { idx--; render(); }
+      } else if (curView === 'week' || curView === 'month' || curView === 'year') {
+        shiftViewRef(1); render();
+      }
     };
     document.getElementById('pick').onchange = function (e) {
-      var days = (lastData && lastData.days) || [];
-      var i = days.findIndex(function (d) { return d.id === e.target.value; });
-      if (i >= 0) { idx = i; render(); }
+      if (curView === 'day') {
+        var days = (lastData && lastData.days) || [];
+        var i = days.findIndex(function (d) { return d.id === e.target.value; });
+        if (i >= 0) { idx = i; render(); }
+      } else if (curView === 'custom') {
+        customFrom = e.target.value; render();
+      } else if (e.target.value) {
+        viewRef = new Date(e.target.value + 'T00:00:00'); render();
+      }
+    };
+    document.getElementById('pickTo').onchange = function (e) {
+      customTo = e.target.value; render();
+    };
+    document.getElementById('type').onchange = function (e) {
+      curView = e.target.value;
+      render();
     };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {

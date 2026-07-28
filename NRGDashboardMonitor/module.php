@@ -25,7 +25,9 @@ class NRGDashboardMonitor extends IPSModule
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const AGG_5MIN         = 5;
+    private const AGG_DAY          = 1;
     private const WINDOW_DAYS      = 8;
+    private const SPAN_YEARS       = 5;
     private const SUN_MARGIN_SEC   = 3600;
 
     private const DEF_BACKGROUND = -1;
@@ -384,6 +386,43 @@ class NRGDashboardMonitor extends IPSModule
         return $pts;
     }
 
+    /**
+     * Tages-kWh je Kalendertag ueber die letzten SPAN_YEARS Jahre, als
+     * ['Y-m-d' => kWh] - EIN Archivdurchlauf pro Serie (Muster:
+     * InverterHubMonitor, "eine Tageswerte-Zeitreihe pro Serie über 5 Jahre
+     * zurückgerechnet, ein Archivdurchlauf pro Serie, nicht pro Ansicht").
+     * Woche/Monat/Jahr/Gesamt/Benutzerdefiniert werden daraus im Frontend
+     * gruppiert, statt je Ansicht erneut das Archiv abzufragen.
+     *
+     * Alle unsere Quellen (PV-/Batterie-/MPPT-Leistung) sind reine
+     * Leistungswerte, keine kumulativen Zaehler - anders als
+     * InverterHubMonitors CATALOG-Werte gibt es bei uns aktuell keinen
+     * energyImportID-Vertrag dafuer. Tages-kWh wird deshalb immer aus der
+     * Leistung hochgerechnet (Avg * 24h / 1000), nicht aus einem
+     * Zaehler-Zuwachs - das ist eine Naeherung (nimmt an, der Tagesmittel-
+     * wert haette 24h angehalten), aber die einzige uns verfuegbare Methode.
+     */
+    private function DailyEnergyMap(int $aid, int $vid): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $end = time();
+        $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            $kwh = round(((float) $row['Avg']) * 24.0 / 1000.0, 2);
+            if (is_finite($kwh) && $kwh >= 0) {
+                $out[date('Y-m-d', (int) $row['TimeStamp'])] = $kwh;
+            }
+        }
+        return $out;
+    }
+
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
@@ -493,6 +532,20 @@ class NRGDashboardMonitor extends IPSModule
             ];
         }
 
+        // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert: EIN Archivdurchlauf pro
+        // Serie ueber SPAN_YEARS Jahre (Tages-kWh), das Frontend gruppiert
+        // daraus die jeweilige Ansicht selbst - kein erneuter Archivzugriff
+        // bei jedem Ansichts-/Zeitraumwechsel.
+        $energyMppt = [];
+        foreach ($mppt as $n => $vid) {
+            $energyMppt[$n] = $aid > 0 ? $this->DailyEnergyMap($aid, $vid) : [];
+        }
+        $energy = [
+            'pv'   => $aid > 0 ? $this->DailyEnergyMap($aid, $pvID) : [],
+            'bat'  => $aid > 0 ? $this->DailyEnergyMap($aid, $batID) : [],
+            'mppt' => $energyMppt,
+        ];
+
         return [
             'ok'       => true,
             // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
@@ -506,6 +559,7 @@ class NRGDashboardMonitor extends IPSModule
             'mpptKeys' => array_keys($mppt),
             'price'    => $this->PriceCurve(),
             'days'     => $days,
+            'energy'   => $energy,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),

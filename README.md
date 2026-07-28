@@ -801,7 +801,52 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   `shared: false` (nur die Kurve unter dem Mauszeiger), ECharts dagegen
   zeigt mit `trigger: 'axis'` bereits alle Kurven an der Zeitposition -
   der Unterschied fiel nur bei Highcharts auf. Behoben mit `tooltip:
-  { shared: true }`.
+  { shared: true }`. **Von Dietmar am 28.07.2026 live bestätigt** (Kurve
+  aus-/wieder einblenden über Reiterwechsel hinweg, Tooltip zeigt alle
+  drei Kurven) - beide Fixes halten.
+
+  **Woche/Monat/Jahr/Gesamt/Benutzerdefiniert nachgeliefert (28.07.2026,
+  Dietmars Wunsch).** Bislang bewusst zurückgestellt (siehe InverterHubs
+  Übergabe-Nachricht) - jetzt umgesetzt, alle Reiter (PV & Einstrahlung/
+  MPP-Tracker/Batterie) außer Strompreis (bleibt reiner Vorwärts-Vertrag
+  ohne Zeitraumwahl).
+  - **`DailyEnergyMap()`** (`module.php`): EIN Archivdurchlauf pro Serie
+    über `SPAN_YEARS=5` Jahre (Tagesaggregation, `AGG_DAY`), liefert
+    `['Y-m-d' => kWh]`. Da unsere Quellen (PV-/Batterie-/MPPT-Leistung)
+    reine Leistungswerte ohne Zähler-Vertrag sind, wird kWh aus der
+    Leistung hochgerechnet (`Avg × 24h / 1000`) - eine Näherung (nimmt an,
+    der Tagesmittelwert hätte 24h angehalten), aber die einzige uns
+    verfügbare Methode ohne `energyImportID`-Vertrag.
+  - **Gruppierung komplett clientseitig** (`buildEnergyRows()`,
+    `module.html`): das Frontend gruppiert die gelieferte Tages-kWh-Karte
+    selbst in Woche (7 Tage)/Monat (Tage des Monats)/Jahr (12 Monate)/
+    Gesamt (letzte 5 Jahre)/Benutzerdefiniert (freier Datumsbereich) - kein
+    erneuter Archivzugriff je Ansichtswechsel, nur beim erstmaligen Laden
+    bzw. dem 5-Minuten-Update.
+  - Datumsauswahl bewusst vereinfacht: statt native `type="week"`/
+    `type="month"`-Felder (browserübergreifend uneinheitlich, Safari
+    unterstützt `type="week"` z. B. nicht) bleibt `#pick` immer
+    `type="date"` - ein beliebiger Tag INNERHALB der gewünschten Woche/des
+    Monats/Jahres reicht, Vor/Zurück verschiebt den Anker um die passende
+    Einheit. Benutzerdefiniert zeigt zusätzlich `#pickTo` für das Bis-Datum.
+  - **Echter Bug beim Bau gefunden:** Balken blieben zunächst unsichtbar,
+    obwohl `chart.getOption()` die korrekten Werte zeigte. Ursache 1: das
+    eigens gebaute ECharts-Bundle (siehe weiter oben) enthielt nur
+    `LineChart`, kein `BarChart` - unbekannte Serientypen verwirft ECharts
+    stillschweigend. Nachgezogen (`esbuild`-Bundle jetzt mit `BarChart`).
+    Ursache 2, gravierender: `render()` leerte `el.innerHTML` VOR jedem
+    Aufruf von `renderECharts()`/`renderBarECharts()`, auch wenn die
+    bestehende ECharts-Instanz nur weiterverwendet wurde (kein
+    Engine-/Typwechsel) - das riss den internen Canvas der Instanz aus dem
+    DOM, ohne sie zu entsorgen: `setOption()` lief danach gegen einen
+    abgehängten Canvas ins Leere. Behoben: `el.innerHTML` wird jetzt nur
+    noch an der einen Stelle geleert, an der tatsächlich eine NEUE
+    ECharts-Instanz entsteht (`if (!chart) { el.innerHTML = ''; ... }`),
+    nicht mehr pauschal vor jedem Render-Aufruf. Lokal Schritt für Schritt
+    verifiziert: Tag → Monat → Jahr → Gesamt → Benutzerdefiniert → zurück
+    zu Tag, mit beiden Engines.
+
+## Verwendete Verträge
 
 | Partner | Vertrag | GUID |
 |---|---|---|
