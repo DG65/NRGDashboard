@@ -884,6 +884,15 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   ohne `useHTML: true` behandelt Highcharts das als reinen Text und
   rendert alles in eine Zeile. Behoben: `useHTML: true` gesetzt, jede
   Zeile zusätzlich in ein eigenes `<div>` gepackt.
+
+  **Tooltip-Werte auf 2 Nachkommastellen begrenzt (Dietmars Wunsch,
+  28.07.2026, mindestens für "PV & Einstrahlung", der Einfachheit halber
+  überall angewendet).** Sowohl Tagesansicht als auch Energie-Ansichten
+  (beide Engines) formatieren Tooltip-Werte jetzt über `Number(v).toFixed(2)`
+  statt der vollen Fließkomma-Genauigkeit anzuzeigen. Für die Tagesansicht
+  brauchte das einen eigenen `formatter` (vorher kein custom Tooltip dort);
+  im selben Zug den Zeitstempel im Tooltip-Kopf ergänzt (Datum + Uhrzeit).
+
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide

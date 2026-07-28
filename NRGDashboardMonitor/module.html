@@ -415,7 +415,18 @@
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 12 },
         legend: { show: false },
-        tooltip: { trigger: 'axis' },
+        // Werte im Tooltip auf 2 Nachkommastellen begrenzen (Dietmars
+        // Wunsch, 28.07.2026) statt der vollen Fliesskomma-Genauigkeit.
+        tooltip: {
+          trigger: 'axis',
+          formatter: function (params) {
+            return params.map(function (p, i) {
+              var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
+              var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString('de-DE') + '</div>' : '';
+              return head + '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
+            }).join('');
+          }
+        },
         // "PV & Einstrahlung": nur Sonnenaufgang-1h bis Sonnenuntergang+1h
         // zeigen (Dietmars Wunsch) - Nachtstunden ohne jede Erzeugung sollen
         // nicht die halbe Diagrammbreite einnehmen. Andere Reiter zeigen
@@ -477,7 +488,19 @@
         // Tooltip statt nur der gerade unter dem Mauszeiger liegenden
         // (Standard bei Highcharts ist false - Dietmars Beobachtung "nur
         // eine Kurve im Tooltip" war genau dieser Highcharts-Standard).
-        tooltip: { shared: true },
+        // useHTML+2 Nachkommastellen: gleiches Muster wie bei den Energie-
+        // Ansichten (Dietmars Wunsch, 28.07.2026).
+        tooltip: {
+          shared: true,
+          useHTML: true,
+          formatter: function () {
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + Highcharts.dateFormat('%d.%m.%Y %H:%M', this.x) + '</div>';
+            var lines = (this.points || [this]).map(function (p) {
+              return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>';
+            });
+            return head + lines.join('');
+          }
+        },
         series: series
       });
       chartEngine = 'highcharts';
@@ -503,7 +526,7 @@
             var idx = params[0] ? params[0].dataIndex : 0;
             var head = '<div style="font-weight:600;margin-bottom:2px">' + (rows.fullLabels[idx] || rows.categories[idx]) + '</div>';
             return head + params.map(function (p) {
-              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (p.value === null ? '–' : p.value) + ' kWh</b></div>';
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (p.value === null || p.value === undefined ? '–' : Number(p.value).toFixed(2)) + ' kWh</b></div>';
             }).join('');
           }
         },
@@ -540,7 +563,7 @@
             var idx = this.points ? this.points[0].point.index : this.point.index;
             var lines = ['<b>' + (rows.fullLabels[idx] || rows.categories[idx]) + '</b>'];
             (this.points || [this]).forEach(function (p) {
-              lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null ? '–' : p.y) + ' kWh</b></div>');
+              lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' kWh</b></div>');
             });
             return lines.join('');
           }
