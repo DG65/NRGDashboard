@@ -728,7 +728,23 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   Zustand überschrieben. Behoben mit einer Sperre (`suppressLegendEvent`),
   die während des `setOption()`-Aufrufs aktiv ist und danach sofort wieder
   aufgehoben wird - echte, asynchron ausgelöste Nutzerklicks bleiben davon
-  unberührt.
+  unberührt. Von Dietmar am 28.07.2026 live verifiziert (Cmd+Shift+R-Test
+  bestätigt fehlerfrei) - die temporäre Diagnosezeile (`#dbg`-Element +
+  Ausgabe in `handleMessage()`) wurde danach wieder entfernt.
+
+  **Lehre für den Verbund (betrifft `InverterHubMonitor` und jede künftige
+  Kachel mit demselben `vis`/`localStorage`-Muster):** `InverterHubMonitor`
+  hat strukturell **denselben** `chart.on('legendselectchanged', ...)`-
+  Handler ohne Unterdrückung während `setOption()` - der Bug ist dort
+  bisher nur deshalb nicht aufgefallen, weil er nie mit einer bereits
+  vom Standard abweichenden gespeicherten Auswahl gegen einen echten
+  Reload getestet wurde (von InverterHub selbst am 27.07.2026 bestätigt:
+  "nie auf der echten WebFront-App gegengeprüft"). Jede Kachel, die
+  `legend.selected`/`visible` beim Aufbau aus einem gespeicherten Zustand
+  setzt, sollte das programmatische Setzen vor einer eventuell synthetisch
+  ausgelösten Legenden-Ereignisbehandlung schützen (Muster: Sperrflag rund
+  um den `setOption()`/`Highcharts.chart()`-Aufruf) - sonst wird die
+  gespeicherte Auswahl beim nächsten Laden lautlos wieder verworfen.
 
 ## Verwendete Verträge
 
