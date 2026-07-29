@@ -36,14 +36,18 @@ class NRGDashboardMap extends IPSModule
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
 
-        $this->RegisterTimer('NRGDASHMAP_Refresh', 0, 'NRGDASHMAP_Discover($_IPS[\'TARGET\']);');
+        // Phase 2: zwei Timer - langsame Topologie-Entdeckung + schnelle Wert-Updates
+        $this->RegisterTimer('NRGDASHMAP_Discover', 0, 'NRGDASHMAP_Discover($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('NRGDASHMAP_UpdateValues', 0, 'NRGDASHMAP_UpdateValues($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-        $this->SetTimerInterval('NRGDASHMAP_Refresh', 5 * 60 * 1000);
+        // Phase 2: Topologie selten neu entdecken (10min), Werte häufig updaten (10s)
+        $this->SetTimerInterval('NRGDASHMAP_Discover', 10 * 60 * 1000);
+        $this->SetTimerInterval('NRGDASHMAP_UpdateValues', 10 * 1000);
         $this->SetVisualizationType(1);
         $this->SetStatus(102);
         $this->Discover();
@@ -107,6 +111,15 @@ class NRGDashboardMap extends IPSModule
      * tragen zusaetzlich 'kind' ('physical'|'contract') fuer die
      * unterschiedliche Linienart in der 3D-Darstellung.
      */
+    public function UpdateValues(): void
+    {
+        // Phase 2: nur Wert-Update, keine Topologie-Neuberechnung
+        $payload = [
+            'values' => $this->GetLiveValues(),
+        ];
+        $this->UpdateVisualizationValue(json_encode($payload));
+    }
+
     public function Discover(): array
     {
         $nodes = [];
@@ -122,18 +135,21 @@ class NRGDashboardMap extends IPSModule
                 $vid = $this->FindVarByIdent($ihub, 'mppt' . $i . '_power');
                 if ($vid > 0) {
                     $key = 'pv_string_' . $i;
-                    $nodes[] = ['key' => $key, 'label' => 'PV-Strang ' . $i, 'layer' => 0, 'category' => 'pv'];
+                    $nodes[] = ['key' => $key, 'label' => 'PV-Strang ' . $i, 'layer' => 0, 'category' => 'pv', 'powerID' => $vid];
                     $stringKeys[] = $key;
                 }
             }
             // Layer 1: Wechselrichter
-            $nodes[] = ['key' => 'inverter', 'label' => IPS_GetName($ihub), 'layer' => 1, 'category' => 'inverter'];
+            $acPowerID = $this->FindVarByIdent($ihub, 'ac_power');
+            $nodes[] = ['key' => 'inverter', 'label' => IPS_GetName($ihub), 'layer' => 1, 'category' => 'inverter', 'powerID' => ($acPowerID > 0 ? $acPowerID : 0)];
             foreach ($stringKeys as $k) {
                 $edges[] = ['from' => $k, 'to' => 'inverter', 'kind' => 'physical'];
             }
             // Layer 2: Batterie
             if ((int) ($ihubData['batPowerID'] ?? 0) > 0) {
-                $nodes[] = ['key' => 'battery', 'label' => 'Batterie', 'layer' => 2, 'category' => 'battery'];
+                $batPowerID = (int) ($ihubData['batPowerID'] ?? 0);
+                $batSocID = $this->FindVarByIdent($ihub, 'bat_soc');
+                $nodes[] = ['key' => 'battery', 'label' => 'Batterie', 'layer' => 2, 'category' => 'battery', 'powerID' => $batPowerID, 'valueID' => ($batSocID > 0 ? $batSocID : 0)];
                 $edges[] = ['from' => 'inverter', 'to' => 'battery', 'kind' => 'physical'];
             }
         }
@@ -144,18 +160,19 @@ class NRGDashboardMap extends IPSModule
         foreach ($this->MeterHubAssignments() as $a) {
             $fn = $a['function'] ?? '';
             $label = (string) ($a['label'] ?? $fn);
-            $key = 'meter_' . $fn . '_' . ($a['powerID'] ?? uniqid());
+            $powerID = (int) ($a['powerID'] ?? 0);
+            $key = 'meter_' . $fn . '_' . ($powerID ?: uniqid());
             if ($fn === 'grid') {
                 $gridKey = $key;
-                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'grid'];
+                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'grid', 'powerID' => $powerID];
                 if ($ihub > 0) {
                     $edges[] = ['from' => 'inverter', 'to' => $key, 'kind' => 'physical'];
                 }
             } elseif ($fn === 'house') {
                 $houseKey = $key;
-                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'house'];
+                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'house', 'powerID' => $powerID];
             } elseif ($fn !== '' && $fn !== 'pv' && $fn !== 'battery') {
-                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'consumer'];
+                $nodes[] = ['key' => $key, 'label' => $label, 'layer' => 3, 'category' => 'consumer', 'powerID' => $powerID];
                 $edges[] = ['from' => $houseKey ?? ($gridKey ?? 'inverter'), 'to' => $key, 'kind' => 'physical'];
             }
         }
@@ -166,8 +183,10 @@ class NRGDashboardMap extends IPSModule
         // HeishaMon (Waermepumpe) - Verbraucher, gleiche Ebene wie MeterHub-Verbraucher.
         if (function_exists('HEISHA_GetFunctions')) {
             foreach (@IPS_GetInstanceListByModuleID(NRGDASHMAP_GUID_HEISHAMON) as $id) {
+                $id = (int) $id;
+                $powerID = $this->FindVarByIdent($id, 'power');
                 $key = 'heishamon_' . $id;
-                $nodes[] = ['key' => $key, 'label' => IPS_GetName((int) $id), 'layer' => 3, 'category' => 'consumer'];
+                $nodes[] = ['key' => $key, 'label' => IPS_GetName($id), 'layer' => 3, 'category' => 'consumer', 'powerID' => ($powerID > 0 ? $powerID : 0)];
                 $edges[] = ['from' => $houseKey ?? ($gridKey ?? 'inverter'), 'to' => $key, 'kind' => 'physical'];
             }
         }
@@ -176,7 +195,8 @@ class NRGDashboardMap extends IPSModule
         $wbKeys = [];
         if (function_exists('CHUB_GetFunctions')) {
             foreach (@IPS_GetInstanceListByModuleID(NRGDASHMAP_GUID_CHARGERHUB) as $id) {
-                $entries = @CHUB_GetFunctions((int) $id);
+                $id = (int) $id;
+                $entries = @CHUB_GetFunctions($id);
                 if (is_string($entries)) {
                     $entries = json_decode($entries, true);
                 }
@@ -184,19 +204,20 @@ class NRGDashboardMap extends IPSModule
                     continue;
                 }
                 foreach ($entries as $e) {
+                    $powerID = (int) ($e['powerID'] ?? 0);
+                    $plugStateID = (int) ($e['plugStateID'] ?? 0);
                     $key = 'wallbox_' . $id;
-                    $nodes[] = ['key' => $key, 'label' => (string) ($e['label'] ?? 'Wallbox'), 'layer' => 4, 'category' => 'wallbox', 'plugStateID' => (int) ($e['plugStateID'] ?? 0)];
+                    $nodes[] = ['key' => $key, 'label' => (string) ($e['label'] ?? 'Wallbox'), 'layer' => 4, 'category' => 'wallbox', 'plugStateID' => $plugStateID, 'powerID' => $powerID];
                     $edges[] = ['from' => $houseKey ?? ($gridKey ?? 'inverter'), 'to' => $key, 'kind' => 'physical'];
-                    $wbKeys[$key] = (int) ($e['plugStateID'] ?? 0);
+                    $wbKeys[$key] = $plugStateID;
                 }
             }
         }
 
         // Layer 5: Fahrzeuge (Tessie) - Vertragskante (kind='contract') zu
         // einer gerade "verbunden" gemeldeten Wallbox, best-effort ohne die
-        // volle Zeitkorrelation aus NRGDashboardTile::AssignVehicles()
-        // (Phase 1: statische Karte, keine Live-Zuordnung noetig - reicht
-        // hier ein grober "irgendeine Wallbox ist gerade verbunden"-Treffer).
+        // volle Zeitkorrelation aus NRGDashboardTile::AssignVehicles().
+        // Phase 2: auch SoC-ID tracken fuer Live-Anzeige.
         if (function_exists('TESSIE_GetVehicleState')) {
             $anyWbConnected = null;
             foreach ($wbKeys as $k => $plugID) {
@@ -206,13 +227,15 @@ class NRGDashboardMap extends IPSModule
                 }
             }
             foreach (@IPS_GetInstanceListByModuleID(NRGDASHMAP_GUID_TESSIE) as $id) {
-                $raw = @TESSIE_GetVehicleState((int) $id);
+                $id = (int) $id;
+                $raw = @TESSIE_GetVehicleState($id);
                 $state = is_string($raw) ? json_decode($raw, true) : $raw;
                 if (!is_array($state)) {
                     continue;
                 }
+                $socID = (int) ($state['socID'] ?? 0);
                 $key = 'vehicle_' . $id;
-                $nodes[] = ['key' => $key, 'label' => (string) ($state['name'] ?? 'Fahrzeug'), 'layer' => 5, 'category' => 'vehicle'];
+                $nodes[] = ['key' => $key, 'label' => (string) ($state['name'] ?? 'Fahrzeug'), 'layer' => 5, 'category' => 'vehicle', 'valueID' => $socID];
                 if (($state['connected'] ?? false) === true && $anyWbConnected !== null) {
                     $edges[] = ['from' => $anyWbConnected, 'to' => $key, 'kind' => 'contract'];
                 }
@@ -272,6 +295,33 @@ class NRGDashboardMap extends IPSModule
         return is_array($data) ? $data : ['nodes' => [], 'edges' => []];
     }
 
+    private function GetLiveValues(): array
+    {
+        $map = $this->GetMap();
+        $values = [];
+        foreach ($map['nodes'] ?? [] as $node) {
+            $key = $node['key'] ?? '';
+            $nodeValues = [];
+
+            // Leistung (powerID)
+            if (isset($node['powerID']) && $node['powerID'] > 0 && IPS_VariableExists($node['powerID'])) {
+                $power = (float) GetValue($node['powerID']);
+                $nodeValues['power'] = round($power, 1);
+            }
+
+            // Weitere Werte (SoC, Prozent, etc.)
+            if (isset($node['valueID']) && $node['valueID'] > 0 && IPS_VariableExists($node['valueID'])) {
+                $value = (float) GetValue($node['valueID']);
+                $nodeValues['value'] = round($value, 1);
+            }
+
+            if (!empty($nodeValues)) {
+                $values[$key] = $nodeValues;
+            }
+        }
+        return $values;
+    }
+
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
@@ -283,11 +333,12 @@ class NRGDashboardMap extends IPSModule
     {
         $map = $this->GetMap();
         return [
-            'ok'    => true,
-            'nodes' => $map['nodes'],
-            'edges' => $map['edges'],
-            'bg'    => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
-            'font'  => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            'ok'     => true,
+            'nodes'  => $map['nodes'],
+            'edges'  => $map['edges'],
+            'values' => $this->GetLiveValues(),
+            'bg'     => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
+            'font'   => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
         ];
     }
 }

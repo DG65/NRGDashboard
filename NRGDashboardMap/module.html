@@ -37,8 +37,12 @@
     var scene, camera, renderer, group, labelLayer;
     var nodeMeshes = {};
     var nodeLabelEls = {};
+    var nodeValueEls = {};
+    var edgeMeshes = [];
     var rotY = 0.5, tiltX = -0.35, dist = 130;
     var dragging = false, lastX = 0, lastY = 0;
+    var animTime = 0;
+    var liveValues = {};
 
     function initScene() {
       var wrap = document.getElementById('wrap');
@@ -85,11 +89,22 @@
 
     function animate() {
       requestAnimationFrame(animate);
+      animTime += 0.016; // ~60fps
+      if (animTime > 100) animTime = 0;
+
       var cx = dist * Math.sin(rotY) * Math.cos(tiltX);
       var cy = dist * Math.sin(-tiltX) + 40;
       var cz = dist * Math.cos(rotY) * Math.cos(tiltX);
       camera.position.set(cx, cy, cz);
       camera.lookAt(0, 20, 0);
+
+      // Animierte dashed-Offset fuer Energiefluss
+      edgeMeshes.forEach(function (e) {
+        if (e.line && e.line.material && e.line.material.dashOffset !== undefined) {
+          e.line.material.dashOffset = animTime * 2 % 10;
+        }
+      });
+
       renderer.render(scene, camera);
       updateLabelPositions();
     }
@@ -99,6 +114,8 @@
       nodeMeshes = {};
       labelLayer.innerHTML = '';
       nodeLabelEls = {};
+      nodeValueEls = {};
+      edgeMeshes = [];
     }
 
     function nodePosition(node, layout) {
@@ -123,6 +140,7 @@
       clearGroup();
       var nodes = d.nodes || [];
       var edges = d.edges || [];
+      liveValues = d.values || {};
       if (nodes.length === 0) {
         document.getElementById('empty').style.display = 'flex';
         document.getElementById('empty').textContent = 'Noch keine Geräte gefunden - InverterHub/MeterHub/ChargerHub/Tessie installieren oder auf den nächsten Suchlauf warten.';
@@ -134,6 +152,7 @@
       var positions = {};
       nodes.forEach(function (n) { positions[n.key] = nodePosition(n, layout); });
 
+      // Knoten + Label
       nodes.forEach(function (n) {
         var color = CAT_COLOR[n.category] || 0x888888;
         var geo = new THREE.BoxGeometry(10, 10, 10);
@@ -149,8 +168,31 @@
         el.textContent = n.label;
         labelLayer.appendChild(el);
         nodeLabelEls[n.key] = el;
+
+        // Value-Label (z.B. "500W", "35%")
+        if (liveValues[n.key]) {
+          var vals = liveValues[n.key];
+          var valText = '';
+          if (vals.power !== undefined) {
+            var pw = Math.abs(vals.power);
+            var unit = vals.power < 0 ? ' (Bezug)' : '';
+            valText = (pw >= 1000 ? (pw / 1000).toFixed(1) + ' kW' : pw.toFixed(0) + ' W') + unit;
+          } else if (vals.value !== undefined) {
+            valText = vals.value.toFixed(0) + ' %';
+          }
+          if (valText) {
+            var vel = document.createElement('div');
+            vel.className = 'node-label';
+            vel.textContent = valText;
+            vel.style.fontSize = '10px';
+            vel.style.opacity = '0.7';
+            labelLayer.appendChild(vel);
+            nodeValueEls[n.key] = vel;
+          }
+        }
       });
 
+      // Kanten (statisch + animiert)
       edges.forEach(function (e) {
         var a = positions[e.from], b = positions[e.to];
         if (!a || !b) { return; }
@@ -167,6 +209,7 @@
         var line = new THREE.Line(geo, mat);
         line.computeLineDistances();
         group.add(line);
+        edgeMeshes.push({ line: line, from: e.from, to: e.to, fromPos: a, toPos: b });
       });
     }
 
@@ -176,6 +219,7 @@
       Object.keys(nodeMeshes).forEach(function (key) {
         var mesh = nodeMeshes[key];
         var el = nodeLabelEls[key];
+        var vel = nodeValueEls[key];
         if (!mesh || !el) { return; }
         var v = mesh.position.clone().project(camera);
         var x = (v.x * 0.5 + 0.5) * w;
@@ -183,6 +227,30 @@
         el.style.left = x + 'px';
         el.style.top = (y + 14) + 'px';
         el.style.display = (v.z > 1) ? 'none' : '';
+        // Value-Label darunter
+        if (vel) {
+          vel.style.left = x + 'px';
+          vel.style.top = (y + 26) + 'px';
+          vel.style.display = (v.z > 1) ? 'none' : '';
+        }
+      });
+    }
+
+    function updateLiveValues(d) {
+      liveValues = d.values || {};
+      Object.keys(liveValues).forEach(function (key) {
+        if (nodeValueEls[key]) {
+          var vals = liveValues[key];
+          var valText = '';
+          if (vals.power !== undefined) {
+            var pw = Math.abs(vals.power);
+            var unit = vals.power < 0 ? ' (Bezug)' : '';
+            valText = (pw >= 1000 ? (pw / 1000).toFixed(1) + ' kW' : pw.toFixed(0) + ' W') + unit;
+          } else if (vals.value !== undefined) {
+            valText = vals.value.toFixed(0) + ' %';
+          }
+          nodeValueEls[key].textContent = valText;
+        }
       });
     }
 
@@ -196,6 +264,12 @@
         document.getElementById('empty').textContent = (d && d.error) || 'Keine Daten verfügbar.';
         return;
       }
+      // Nur Werte-Update?
+      if (d.values && !d.nodes) {
+        updateLiveValues(d);
+        return;
+      }
+      // Kompletter Map-Update (Nodes/Edges)
       renderMap(d);
     }
   </script>
