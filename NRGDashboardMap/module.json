@@ -1,0 +1,14 @@
+{
+  "id": "{B5345E99-061C-47C4-B870-0489B61BC57E}",
+  "name": "NRGDashboardMap",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Dashboard Map"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHMAP"
+}

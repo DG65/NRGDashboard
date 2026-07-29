@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="three.min.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #wrap { position: relative; width: 100%; height: 100vh; cursor: grab; }
+  #wrap.dragging { cursor: grabbing; }
+  canvas { display: block; }
+  #label-layer { position: absolute; inset: 0; pointer-events: none; }
+  .node-label {
+    position: absolute; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: 600; color: rgba(230,236,242,.95);
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
+    white-space: nowrap;
+  }
+  .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; color: #ccc; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="label-layer"></div>
+    <div id="empty" class="empty" style="display:none"></div>
+  </div>
+
+  <script>
+    var CAT_COLOR = {
+      pv: 0xF2C230, inverter: 0xE8823C, battery: 0x5FCB6B, grid: 0x4AA3E0,
+      house: 0xE8A23C, consumer: 0x90A4AE, wallbox: 0x9575CD, vehicle: 0x4DD0E1,
+      signal: 0xEC407A
+    };
+    var LAYER_HEIGHT = 26;   // Abstand zwischen den Ebenen (Y)
+    var NODE_SPACING = 22;   // Abstand innerhalb einer Ebene (X)
+
+    var scene, camera, renderer, group, labelLayer;
+    var nodeMeshes = {};
+    var nodeLabelEls = {};
+    var rotY = 0.5, tiltX = -0.35, dist = 130;
+    var dragging = false, lastX = 0, lastY = 0;
+
+    function initScene() {
+      var wrap = document.getElementById('wrap');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 2000);
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      wrap.insertBefore(renderer.domElement, document.getElementById('label-layer'));
+      labelLayer = document.getElementById('label-layer');
+
+      var hemi = new THREE.HemisphereLight(0xffffff, 0x30363d, 1.1);
+      scene.add(hemi);
+      var dir = new THREE.DirectionalLight(0xffffff, 0.6);
+      dir.position.set(40, 80, 60);
+      scene.add(dir);
+
+      group = new THREE.Group();
+      scene.add(group);
+
+      wrap.addEventListener('mousedown', function (e) {
+        dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.classList.add('dragging');
+      });
+      window.addEventListener('mouseup', function () { dragging = false; wrap.classList.remove('dragging'); });
+      window.addEventListener('mousemove', function (e) {
+        if (!dragging) { return; }
+        rotY += (e.clientX - lastX) * 0.008;
+        tiltX = Math.max(-1.2, Math.min(0.1, tiltX + (e.clientY - lastY) * 0.006));
+        lastX = e.clientX; lastY = e.clientY;
+      });
+      wrap.addEventListener('wheel', function (e) {
+        dist = Math.max(40, Math.min(400, dist + e.deltaY * 0.15));
+        e.preventDefault();
+      }, { passive: false });
+
+      window.addEventListener('resize', function () {
+        camera.aspect = wrap.clientWidth / wrap.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+      });
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      var cx = dist * Math.sin(rotY) * Math.cos(tiltX);
+      var cy = dist * Math.sin(-tiltX) + 40;
+      var cz = dist * Math.cos(rotY) * Math.cos(tiltX);
+      camera.position.set(cx, cy, cz);
+      camera.lookAt(0, 20, 0);
+      renderer.render(scene, camera);
+      updateLabelPositions();
+    }
+
+    function clearGroup() {
+      while (group.children.length) { group.remove(group.children[0]); }
+      nodeMeshes = {};
+      labelLayer.innerHTML = '';
+      nodeLabelEls = {};
+    }
+
+    function nodePosition(node, layout) {
+      var l = layout[node.layer];
+      var idx = l.keys.indexOf(node.key);
+      var n = l.keys.length;
+      var x = (idx - (n - 1) / 2) * NODE_SPACING;
+      var y = (node.layer + 1) * LAYER_HEIGHT;
+      return new THREE.Vector3(x, y, 0);
+    }
+
+    function buildLayout(nodes) {
+      var layout = {};
+      nodes.forEach(function (n) {
+        if (!layout[n.layer]) { layout[n.layer] = { keys: [] }; }
+        layout[n.layer].keys.push(n.key);
+      });
+      return layout;
+    }
+
+    function renderMap(d) {
+      clearGroup();
+      var nodes = d.nodes || [];
+      var edges = d.edges || [];
+      if (nodes.length === 0) {
+        document.getElementById('empty').style.display = 'flex';
+        document.getElementById('empty').textContent = 'Noch keine Geräte gefunden - InverterHub/MeterHub/ChargerHub/Tessie installieren oder auf den nächsten Suchlauf warten.';
+        return;
+      }
+      document.getElementById('empty').style.display = 'none';
+
+      var layout = buildLayout(nodes);
+      var positions = {};
+      nodes.forEach(function (n) { positions[n.key] = nodePosition(n, layout); });
+
+      nodes.forEach(function (n) {
+        var color = CAT_COLOR[n.category] || 0x888888;
+        var geo = new THREE.BoxGeometry(10, 10, 10);
+        var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5, metalness: 0.1 });
+        var mesh = new THREE.Mesh(geo, mat);
+        var p = positions[n.key];
+        mesh.position.copy(p);
+        group.add(mesh);
+        nodeMeshes[n.key] = mesh;
+
+        var el = document.createElement('div');
+        el.className = 'node-label';
+        el.textContent = n.label;
+        labelLayer.appendChild(el);
+        nodeLabelEls[n.key] = el;
+      });
+
+      edges.forEach(function (e) {
+        var a = positions[e.from], b = positions[e.to];
+        if (!a || !b) { return; }
+        var pts = [a, b];
+        var geo = new THREE.BufferGeometry().setFromPoints(pts);
+        var isContract = e.kind === 'contract';
+        var mat = new THREE.LineDashedMaterial({
+          color: isContract ? 0xffffff : 0x88a0b8,
+          dashSize: isContract ? 2.5 : 1e6,
+          gapSize: isContract ? 1.5 : 0,
+          opacity: isContract ? 0.85 : 0.55,
+          transparent: true
+        });
+        var line = new THREE.Line(geo, mat);
+        line.computeLineDistances();
+        group.add(line);
+      });
+    }
+
+    function updateLabelPositions() {
+      var wrap = document.getElementById('wrap');
+      var w = wrap.clientWidth, h = wrap.clientHeight;
+      Object.keys(nodeMeshes).forEach(function (key) {
+        var mesh = nodeMeshes[key];
+        var el = nodeLabelEls[key];
+        if (!mesh || !el) { return; }
+        var v = mesh.position.clone().project(camera);
+        var x = (v.x * 0.5 + 0.5) * w;
+        var y = (-v.y * 0.5 + 0.5) * h;
+        el.style.left = x + 'px';
+        el.style.top = (y + 14) + 'px';
+        el.style.display = (v.z > 1) ? 'none' : '';
+      });
+    }
+
+    function handleMessage(raw) {
+      var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (d && d.bg) { document.body.style.background = d.bg; }
+      if (d && d.font) { document.body.style.fontFamily = d.font; }
+      if (!scene) { initScene(); }
+      if (!d || !d.ok) {
+        document.getElementById('empty').style.display = 'flex';
+        document.getElementById('empty').textContent = (d && d.error) || 'Keine Daten verfügbar.';
+        return;
+      }
+      renderMap(d);
+    }
+  </script>
+</body>
+</html>

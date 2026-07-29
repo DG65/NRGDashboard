@@ -1,0 +1,41 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "📖 Dokumentation & Hilfe",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Räumliche 3D-Karte des gesamten NRG-Stack-Verbunds: physische Anordnung (PV-Strang → Wechselrichter → Batterie → Netz/Zähler → Wallbox → Fahrzeug) als Basis, Vertrags-/Datenfluss-Beziehungen als zusätzliche, gestrichelte Verbindungslinien. Alle Geräte werden automatisch über die installierten Partnermodule gefunden - keine manuelle Konfiguration nötig."
+        },
+        {
+          "type": "Label",
+          "caption": "Erster Ausbauschritt (Phase 1): Aufbau und Anordnung, noch ohne Live-Werte/Animation - kommt in einem späteren Schritt. Mit der Maus ziehen zum Drehen, Mausrad zum Zoomen."
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Geräte jetzt suchen",
+      "onClick": "NRGDASHMAP_Discover($id);"
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Darstellung",
+      "expanded": false,
+      "items": [
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        }
+      ]
+    }
+  ]
+}
