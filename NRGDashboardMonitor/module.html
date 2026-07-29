@@ -781,10 +781,26 @@
     // "natuerlichen" Reihenfolge 1,2,3,4,5 (Dietmars Wunsch, 28.07.2026:
     // 5,4,3,2,1 von oben nach unten). Andere Spalten (Solar/Netzbezug,
     // Batterie) bleiben unangetastet.
+    // Dietmars persoenliche Wunsch-Reihenfolge der letzten Spalte (Verbraucher/
+    // Netzeinspeisung), von oben nach unten (28.07.2026) - eine feste Liste
+    // NUR fuer diese Installation, kein Verbund-Standard: Verbrauchernamen
+    // sind pro Anlage frei benannt (InverterHubEnergy-Konfiguration), andere
+    // Installationen haben andere/keine dieser Labels. Ein hier unbekanntes
+    // Label faellt einfach ans Ende (in unveraenderter relativer Reihenfolge),
+    // bricht also nirgends.
+    var SANKEY_SINK_ORDER = ['Wärmepumpe', 'Klimaanlage', 'Sonstiger Verbrauch', 'Netzeinspeisung', 'WB 1', 'WB 2'];
+
     function sankeyNodesTopDown(flow) {
       var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
       var head = (flow.nodes || []).filter(function (n) { return n.column !== maxColumn; });
-      var lastCol = (flow.nodes || []).filter(function (n) { return n.column === maxColumn; }).reverse();
+      var lastCol = (flow.nodes || []).filter(function (n) { return n.column === maxColumn; });
+      var rank = function (n) {
+        var i = SANKEY_SINK_ORDER.indexOf(n.label);
+        return i === -1 ? SANKEY_SINK_ORDER.length : i;
+      };
+      lastCol = lastCol.map(function (n, i) { return { n: n, i: i }; })
+        .sort(function (a, b) { return (rank(a.n) - rank(b.n)) || (a.i - b.i); })
+        .map(function (x) { return x.n; });
       return head.concat(lastCol);
     }
 
@@ -833,6 +849,14 @@
           emphasis: { focus: 'adjacency' },
           label: { color: '#e8e8e8', formatter: function (p) { return lk.label[p.name] || p.name; } },
           lineStyle: { color: 'gradient', opacity: 0.42, curveness: 0.5 },
+          // layoutIterations:0 - ECharts' Standard (32 Iterationen) sortiert
+          // Knoten zur Kreuzungsminimierung eigenmaechtig um und ignoriert
+          // damit unsere Reihenfolge im data-Array (live geprueft: identische
+          // SANKEY_SINK_ORDER-Sortierung im Array, trotzdem andere sichtbare
+          // Reihenfolge). Mit 0 Iterationen bleibt die Array-Reihenfolge
+          // massgeblich (Dietmars Wunsch, 28.07.2026: feste eigene Reihen-
+          // folge statt automatischer Kreuzungsminimierung).
+          layoutIterations: 0,
           nodeWidth: 16, nodeGap: 14, draggable: false
         }]
       }, true);
@@ -901,24 +925,29 @@
       probeChart.series[0].nodes.forEach(function (n) {
         if (countByColumn[n.column] === 1) { topOffsets[n.id] = -n.nodeY; }
       });
-      // Reihenfolge der letzten Spalte (Verbraucher/Netzeinspeisung) von
-      // oben nach unten umdrehen (Dietmars Wunsch, 28.07.2026) - Highcharts
-      // bestimmt die vertikale Reihenfolge ueber einen eigenen, gewichts-
-      // basierten Layout-Algorithmus und ignoriert dafuer die Reihenfolge
-      // im nodes-Array komplett (live geprueft: identisches Ergebnis mit
-      // und ohne Array-Umkehr). Deshalb hier stattdessen der gesamte
-      // gemessene Block der letzten Spalte an seiner eigenen Mittelachse
-      // gespiegelt: jeder Knoten bekommt die Position, die (Bloecken-intern)
-      // sein Gegenstueck von unten hatte - newTop = Blockhoehe - (natY+Hoehe),
-      // das dreht die komplette Stapelreihenfolge exakt um, unabhaengig von
-      // unterschiedlich hohen Knoten (anders als ein simpler Indexversatz).
+      // Feste Wunsch-Reihenfolge der letzten Spalte (SANKEY_SINK_ORDER, s.o.)
+      // von oben nach unten - Highcharts bestimmt die vertikale Reihenfolge
+      // ueber einen eigenen, gewichtsbasierten Layout-Algorithmus und
+      // ignoriert dafuer die Reihenfolge im nodes-Array komplett (live
+      // geprueft: identisches Ergebnis mit und ohne Array-Umkehr). Deshalb
+      // hier stattdessen die gemessenen Knotenhoehen in der GEWUENSCHTEN
+      // Reihenfolge neu gestapelt (eigener nodePadding-Abstand von 14px,
+      // gleicher Wert wie unten in der Serienoption), verankert an der
+      // natuerlichen oberen Blockkante.
       var lastNodes = probeChart.series[0].nodes.filter(function (n) { return n.column === maxColumnHC; });
       if (lastNodes.length > 1) {
         var blockTop = Math.min.apply(null, lastNodes.map(function (n) { return n.nodeY; }));
-        var blockBottom = Math.max.apply(null, lastNodes.map(function (n) { return n.nodeY + n.shapeArgs.height; }));
-        lastNodes.forEach(function (n) {
-          var newY = blockTop + (blockBottom - (n.nodeY + n.shapeArgs.height));
-          topOffsets[n.id] = newY - n.nodeY;
+        var rankHC = function (n) {
+          var i = SANKEY_SINK_ORDER.indexOf(n.name);
+          return i === -1 ? SANKEY_SINK_ORDER.length : i;
+        };
+        var ordered = lastNodes.map(function (n, i) { return { n: n, i: i }; })
+          .sort(function (a, b) { return (rankHC(a.n) - rankHC(b.n)) || (a.i - b.i); })
+          .map(function (x) { return x.n; });
+        var y = blockTop;
+        ordered.forEach(function (n) {
+          topOffsets[n.id] = y - n.nodeY;
+          y += n.shapeArgs.height + 14;
         });
       }
       probeChart.destroy();
