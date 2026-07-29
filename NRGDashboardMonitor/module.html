@@ -390,7 +390,10 @@
     function renderLegend(tab, allNames) {
       var row = document.getElementById('legendRow');
       row.innerHTML = '';
-      var items = (tab === 'price') ? [{ name: 'Strompreis', color: '#ffb300' }] : allNames;
+      // Frueher fuer 'price' fest auf "Strompreis" begrenzt - jetzt kann der
+      // Reiter auch "Netzbezug" enthalten, deshalb einfach die tatsaechliche
+      // Serienliste uebernehmen (Dietmars Wunsch, 28.07.2026).
+      var items = allNames;
       items.forEach(function (it) {
         var el = document.createElement('span');
         el.className = 'legItem' + (isVisible(it.name) ? '' : ' off');
@@ -487,8 +490,13 @@
         chartEngine = 'echarts';
       }
       var ax = axisConfig(tab);
+      // Strompreis: rechte Achse (ct/kWh), Netzbezug (falls vorhanden) als
+      // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
+      // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 0, dashed: false, step: 'middle' }]
+        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }]
+          .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
+            ? [{ name: 'Netzbezug', data: d.gridDraw, color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
@@ -499,6 +507,9 @@
       // steuert vis[] direkt.
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
+        if (s.bar) {
+          return { name: s.name, type: 'bar', data: s.data, yAxisIndex: s.axis, color: s.color, itemStyle: { opacity: 0.55 }, barMaxWidth: 14 };
+        }
         return { name: s.name, type: 'line', showSymbol: false, step: s.step === 'middle' ? 'middle' : (s.step ? 'end' : false), data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
       });
       // Strompreis, aktueller Tag: rote vertikale Linie fuer "jetzt"
@@ -516,7 +527,7 @@
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         // bottom:32 statt 12 - bei 12 wurden die Uhrzeit-Beschriftungen der
         // x-Achse unten abgeschnitten (Dietmar, 28.07.2026).
-        grid: { left: 46, right: (tab !== 'price' && ax.showRight) ? 46 : 12, top: 28, bottom: 32 },
+        grid: { left: 46, right: (ax.showRight || tab === 'price') ? 46 : 12, top: 28, bottom: 32 },
         legend: { show: false },
         // Dunkler Tooltip passend zu Highcharts (dessen useHTML-Tooltip vom
         // Browser/OS automatisch dunkel dargestellt wird) - ECharts' Tooltip
@@ -536,11 +547,23 @@
           // die Slot-Mitte, plus den Preis explizit als "ct/kWh" beschriftet
           // (Dietmars Wunsch, 28.07.2026).
           formatter: function (params) {
-            if (tab === 'price' && params[0] && params[0].data && params[0].data.slotStart !== undefined) {
-              var slot = params[0].data;
-              var head = '<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot.slotStart) + '–' + fmtHM(slot.slotEnd) + ' Uhr</div>';
-              var v = params[0].value[1];
-              return head + '<div>' + params[0].marker + ' Strompreis: <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + ' ct/kWh</b></div>';
+            if (tab === 'price') {
+              // Preis- und Netzbezugs-Punkt liegen auf unterschiedlichen
+              // Zeitrastern (Slot-Mitte vs. 15-Minuten-Balken) - deshalb hier
+              // ueber ALLE Punkte des Hovers iteriert statt nur params[0] zu
+              // lesen (Dietmars Wunsch, 28.07.2026: Netzbezug zusaetzlich zum
+              // Strompreis zeigen).
+              var priceP = params.filter(function (p) { return p.data && p.data.slotStart !== undefined; })[0];
+              var head = priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '';
+              var lines = params.map(function (p) {
+                if (p.data && p.data.slotStart !== undefined) {
+                  var v = p.value[1];
+                  return '<div>' + p.marker + ' Strompreis: <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + ' ct/kWh</b></div>';
+                }
+                var v2 = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
+                return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v2 === null || v2 === undefined ? '–' : Number(v2).toFixed(2)) + ' kWh</b></div>';
+              });
+              return head + lines.join('');
             }
             return params.map(function (p, i) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
@@ -567,7 +590,10 @@
           { splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000 }
         ),
         yAxis: (tab === 'price')
-          ? [{ type: 'value', name: 'ct/kWh', splitLine: { lineStyle: { color: GRID_COLOR } } }]
+          ? [
+              { type: 'value', name: 'kWh', position: 'left', splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: 'ct/kWh', position: 'right', splitLine: { show: false } }
+            ]
           : [
               { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
               { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, splitLine: { show: false }, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
@@ -579,12 +605,20 @@
     function renderHighcharts(el, tab, d) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var ax = axisConfig(tab);
+      // Strompreis: rechte Achse (ct/kWh), Netzbezug (falls vorhanden) als
+      // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
+      // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 0, dashed: false, step: 'center' }]
+        ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }]
+          .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
+            ? [{ name: 'Netzbezug', data: d.gridDraw, color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
+        if (s.bar) {
+          return { name: s.name, type: 'column', data: s.data, yAxis: s.axis, color: s.color, opacity: 0.55, pointPadding: 0.1, groupPadding: 0.05 };
+        }
         return { name: s.name, type: 'line', step: (s.step === 'center') ? 'center' : (s.step ? 'right' : undefined), data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
       });
       chart = Highcharts.chart(el, {
@@ -634,7 +668,10 @@
           }
         ),
         yAxis: (tab === 'price')
-          ? [{ title: { text: 'ct/kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR }]
+          ? [
+              { title: { text: 'kWh' }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: 'ct/kWh' }, opposite: true, gridLineWidth: 0 }
+            ]
           : [
               { title: { text: ax.leftName }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
               { title: { text: ax.rightName }, opposite: true, visible: ax.showRight, gridLineWidth: 0, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
@@ -655,11 +692,22 @@
             // priceStepPointsHC()) - Tooltip zeigt den tatsaechlichen Slot-
             // Zeitraum (Start-Ende), nicht die Slot-Mitte, plus den Preis
             // explizit als "ct/kWh" beschriftet (Dietmars Wunsch, 28.07.2026).
-            var firstPoint = this.points ? this.points[0].point : this.point;
-            if (tab === 'price' && firstPoint && firstPoint.slotStart !== undefined) {
-              var head = '<div style="font-weight:600;margin-bottom:2px">' + fmtHM(firstPoint.slotStart) + '–' + fmtHM(firstPoint.slotEnd) + ' Uhr</div>';
-              var y = firstPoint.y;
-              return head + '<div><span style="color:' + firstPoint.color + '">●</span> Strompreis: <b>' + (y === null || y === undefined ? '–' : Number(y).toFixed(2)) + ' ct/kWh</b></div>';
+            if (tab === 'price') {
+              // Preis- und Netzbezugs-Punkt liegen auf unterschiedlichen
+              // Zeitrastern (Slot-Mitte vs. 15-Minuten-Balken) - deshalb hier
+              // ueber ALLE Punkte des (shared) Hovers iteriert statt nur den
+              // ersten zu lesen (Dietmars Wunsch, 28.07.2026: Netzbezug
+              // zusaetzlich zum Strompreis zeigen).
+              var pts = this.points || [this.point];
+              var priceQ = pts.filter(function (p) { return p.slotStart !== undefined; })[0];
+              var head = priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '';
+              var lines = pts.map(function (p) {
+                if (p.slotStart !== undefined) {
+                  return '<div><span style="color:' + p.color + '">●</span> Strompreis: <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' ct/kWh</b></div>';
+                }
+                return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' kWh</b></div>';
+              });
+              return head + lines.join('');
             }
             // Highcharts.dateFormat() ist eine GLOBALE Funktion und
             // ignoriert das chart-eigene "time: { useUTC: false }" - genau

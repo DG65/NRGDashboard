@@ -68,6 +68,11 @@
           "caption": "Batterie-Ladestand SOC (optional - sonst automatisch über InverterHub)"
         },
         {
+          "type": "SelectVariable",
+          "name": "GridPowerID",
+          "caption": "Netzleistung, „+“ = Einspeisung (optional - sonst automatisch über InverterHub) - zeigt den Netzbezug als Balken im Strompreis-Reiter"
+        },
+        {
           "type": "Label",
           "caption": "MPPT-Stränge werden automatisch gefunden, sofern genau eine InverterHubMonitor-Instanz installiert ist (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert) - ohne InverterHubMonitor bitte die Variablen unten manuell wählen (nicht jeder Wechselrichter hat 4 Stränge, ungenutzte Felder leer lassen)."
         },

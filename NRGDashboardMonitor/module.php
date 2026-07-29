@@ -47,6 +47,7 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyFloat('TempCoeff', -0.40);
         $this->RegisterPropertyInteger('PvfInstance', 0);
         $this->RegisterPropertyInteger('BatPowerID', 0);
+        $this->RegisterPropertyInteger('GridPowerID', 0);
         $this->RegisterPropertyInteger('SocID', 0);
         $this->RegisterPropertyInteger('Mppt1ID', 0);
         $this->RegisterPropertyInteger('Mppt2ID', 0);
@@ -199,6 +200,21 @@ class NRGDashboardMonitor extends IPSModule
         $data = @IHUB_GetFunctions($ihub);
         $bat = (int) ($data['batPowerID'] ?? 0);
         return ($bat > 0 && IPS_VariableExists($bat)) ? $bat : 0;
+    }
+
+    private function GridPowerID(): int
+    {
+        $explicit = $this->readIntProperty('GridPowerID', 0);
+        if ($explicit > 0 && IPS_VariableExists($explicit)) {
+            return $explicit;
+        }
+        $ihub = $this->singleInverterHubID();
+        if ($ihub <= 0) {
+            return 0;
+        }
+        $data = @IHUB_GetFunctions($ihub);
+        $grid = (int) ($data['gridPowerID'] ?? 0);
+        return ($grid > 0 && IPS_VariableExists($grid)) ? $grid : 0;
     }
 
     private function SocID(): int
@@ -541,6 +557,44 @@ class NRGDashboardMonitor extends IPSModule
     }
 
     /**
+     * Netzbezug in 15-Minuten-Balken (Muster: InverterHubMonitor::
+     * SlotEnergyBars() - Netzbezug im Strompreis-Reiter, mit deren Sitzung
+     * abgestimmt). $vid ist eine kanonische Netzleistungs-Variable
+     * (GridPowerID/IHUB_GetFunctions()['gridPowerID'], "+ Einspeisung",
+     * bereits MeterInvert-korrigiert bei der Quelle - siehe InverterHub-
+     * CLAUDE.md, "MeterInvert/BatInvert gehoeren NUR nach module.php").
+     * Bezug ist der negative Anteil: draw = max(0, -Avg). 15-Minuten-Raster
+     * an der vollen Stunde ausgerichtet (900s), passend zu den ueblichen
+     * Tibber/EnWG-Slotlaengen - je Bucket werden die enthaltenen 5-Minuten-
+     * Mittelwerte zu kWh aufintegriert (Avg * 5/60 / 1000, negative Werte
+     * (=Einspeisung) auf 0 geklemmt).
+     */
+    private function SlotEnergyBars(int $aid, int $vid, int $start, int $end): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_5MIN, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $buckets = [];
+        foreach ($data as $row) {
+            $ts = (int) $row['TimeStamp'];
+            $bucketStart = $ts - ($ts % 900);
+            $drawW = max(0.0, -(float) $row['Avg']);
+            $kwh = $drawW * (5.0 / 60.0) / 1000.0;
+            $buckets[$bucketStart] = ($buckets[$bucketStart] ?? 0.0) + $kwh;
+        }
+        ksort($buckets);
+        $out = [];
+        foreach ($buckets as $bucketStart => $kwh) {
+            $out[] = [$bucketStart * 1000, round($kwh, 3)];
+        }
+        return $out;
+    }
+
+    /**
      * Tages-kWh je Kalendertag ueber die letzten SPAN_YEARS Jahre, als
      * ['Y-m-d' => kWh] - EIN Archivdurchlauf pro Serie (Muster:
      * InverterHubMonitor, "eine Tageswerte-Zeitreihe pro Serie über 5 Jahre
@@ -746,6 +800,10 @@ class NRGDashboardMonitor extends IPSModule
             // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
             // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
             $flow = (!$isFuture) ? $this->EnergyFlow($start, $end) : null;
+            // Netzbezug im Strompreis-Reiter (Dietmars Wunsch, 28.07.2026,
+            // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
+            // Preiskurve, gleicher $aid/$end wie die anderen Serien.
+            $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $this->GridPowerID(), $start, $end) : [];
 
             $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
                 || ($flow !== null && ($flow['hasData'] ?? false));
@@ -779,6 +837,7 @@ class NRGDashboardMonitor extends IPSModule
                 'mppt'     => $mpptSeries,
                 'price'    => $price,
                 'flow'     => $flow,
+                'gridDraw' => $gridDraw,
             ];
         }
 
@@ -836,6 +895,7 @@ class NRGDashboardMonitor extends IPSModule
             'hasModel' => $model !== null,
             'hasMpptModel' => $mpptModelUsable,
             'hasEnergyFlow' => $this->InverterHubEnergyInstanceID() > 0,
+            'hasGrid'  => $this->GridPowerID() > 0,
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
