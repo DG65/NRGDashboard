@@ -589,7 +589,19 @@ class NRGDashboardMonitor extends IPSModule
         ksort($buckets);
         $out = [];
         foreach ($buckets as $bucketStart => $kwh) {
-            $out[] = [$bucketStart * 1000, round($kwh, 3)];
+            // Zeitstempel der Slot-MITTE (bucketStart + 450s), nicht des
+            // Slot-Anfangs - genau wie priceStepPoints()/PriceDaySlots()
+            // fuers Frontend die Strompreis-Punkte zentriert. Highcharts
+            // (und ECharts) zeichnen einen Balken standardmaessig zentriert
+            // um seinen x-Wert - mit dem Slot-ANFANG als x wirkte der Balken
+            // dadurch um eine halbe Viertelstunde nach frueh versetzt (live
+            // gefunden, Dietmar 28.07.2026: "Netzbezug ist versetzt und wird
+            // vom Cursor gefangen"). Mit der Slot-Mitte deckt sich der Balken
+            // exakt mit dem echten 15-Minuten-Fenster UND liegt exakt auf
+            // demselben Zeitstempel wie der zugehoerige Strompreis-Punkt -
+            // das Frontend kann Kosten (Bezug x Preis) dadurch einfach ueber
+            // gleiche x-Werte zuordnen.
+            $out[] = [($bucketStart + 450) * 1000, round($kwh, 3)];
         }
         return $out;
     }

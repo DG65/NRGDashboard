@@ -510,6 +510,22 @@
       return ('0' + dt.getHours()).slice(-2) + ':' + ('0' + dt.getMinutes()).slice(-2);
     }
 
+    // Findet den Preis-Slot, der einen Zeitpunkt enthaelt - ueber Zeitraum-
+    // Enthaltensein, NICHT ueber exakte Punkt-Gleichheit: Strompreis-Slots
+    // sind haeufig STUENDLICH, Netzbezugs-Balken dagegen immer 15-Minuten-
+    // Buckets (siehe SlotEnergyBars()). Ein reiner Hover-Punkt-Abgleich
+    // (beide Serien treffen bei diesem x) funktioniert deshalb nur, wenn
+    // zufaellig auch der Strompreis viertelstuendlich aufgeloest ist -
+    // dieser Suchweg funktioniert immer, unabhaengig von der Preis-
+    // Aufloesung (Dietmars Wunsch, 28.07.2026: "Kosten" je Netzbezugs-Slot).
+    function priceSlotAt(d, ms) {
+      if (!d || !d.price) { return null; }
+      for (var i = 0; i < d.price.length; i++) {
+        if (ms >= d.price[i][0] && ms < d.price[i][1]) { return d.price[i]; }
+      }
+      return null;
+    }
+
     function renderECharts(el, tab, d) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) {
@@ -595,12 +611,17 @@
           formatter: function (params) {
             if (tab === 'price') {
               // Preis- und Netzbezugs-Punkt liegen auf unterschiedlichen
-              // Zeitrastern (Slot-Mitte vs. 15-Minuten-Balken) - deshalb hier
-              // ueber ALLE Punkte des Hovers iteriert statt nur params[0] zu
-              // lesen (Dietmars Wunsch, 28.07.2026: Netzbezug zusaetzlich zum
-              // Strompreis zeigen).
+              // Zeitrastern (Strompreis oft stuendlich, Netzbezug immer
+              // viertelstuendlich) - der Preis fuer die "Kosten"-Zeile wird
+              // deshalb NICHT ueber einen gemeinsamen Hover-Treffer bezogen,
+              // sondern per priceSlotAt() ueber den Zeitpunkt gesucht (robust
+              // unabhaengig von der Preis-Aufloesung).
               var priceP = params.filter(function (p) { return p.data && p.data.slotStart !== undefined; })[0];
-              var head = priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '';
+              var gridP = params.filter(function (p) { return !(p.data && p.data.slotStart !== undefined); })[0];
+              var refX = gridP ? gridP.value[0] : (priceP ? priceP.value[0] : null);
+              var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
+              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
+                : (priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '');
               var lines = params.map(function (p) {
                 if (p.data && p.data.slotStart !== undefined) {
                   var v = p.value[1];
@@ -609,6 +630,14 @@
                 var v2 = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
                 return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v2 === null || v2 === undefined ? '–' : Number(v2).toFixed(2)) + ' kWh</b></div>';
               });
+              // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
+              // diesen Slot (Dietmars Wunsch, 28.07.2026).
+              if (gridP && slot) {
+                var gridV = (gridP.value && gridP.value[1] !== undefined) ? gridP.value[1] : gridP.value;
+                if (gridV !== null && gridV !== undefined) {
+                  lines.push('<div>Kosten: <b>' + (gridV * slot[2]).toFixed(2) + ' ct</b></div>');
+                }
+              }
               return head + lines.join('');
             }
             return params.map(function (p, i) {
@@ -749,19 +778,29 @@
             // explizit als "ct/kWh" beschriftet (Dietmars Wunsch, 28.07.2026).
             if (tab === 'price') {
               // Preis- und Netzbezugs-Punkt liegen auf unterschiedlichen
-              // Zeitrastern (Slot-Mitte vs. 15-Minuten-Balken) - deshalb hier
-              // ueber ALLE Punkte des (shared) Hovers iteriert statt nur den
-              // ersten zu lesen (Dietmars Wunsch, 28.07.2026: Netzbezug
-              // zusaetzlich zum Strompreis zeigen).
+              // Zeitrastern (Strompreis oft stuendlich, Netzbezug immer
+              // viertelstuendlich) - der Preis fuer die "Kosten"-Zeile wird
+              // deshalb NICHT ueber einen gemeinsamen Hover-Treffer bezogen,
+              // sondern per priceSlotAt() ueber den Zeitpunkt gesucht (robust
+              // unabhaengig von der Preis-Aufloesung).
               var pts = this.points || [this.point];
               var priceQ = pts.filter(function (p) { return p.slotStart !== undefined; })[0];
-              var head = priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '';
+              var gridQ = pts.filter(function (p) { return p.slotStart === undefined; })[0];
+              var refX = gridQ ? gridQ.x : (priceQ ? priceQ.x : null);
+              var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
+              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
+                : (priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '');
               var lines = pts.map(function (p) {
                 if (p.slotStart !== undefined) {
                   return '<div><span style="color:' + p.color + '">●</span> Strompreis: <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' ct/kWh</b></div>';
                 }
                 return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' kWh</b></div>';
               });
+              // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
+              // diesen Slot (Dietmars Wunsch, 28.07.2026).
+              if (gridQ && slot && gridQ.y !== null && gridQ.y !== undefined) {
+                lines.push('<div>Kosten: <b>' + (gridQ.y * slot[2]).toFixed(2) + ' ct</b></div>');
+              }
               return head + lines.join('');
             }
             // Highcharts.dateFormat() ist eine GLOBALE Funktion und
