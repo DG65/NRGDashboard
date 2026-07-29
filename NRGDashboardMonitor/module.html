@@ -616,27 +616,37 @@
               // deshalb NICHT ueber einen gemeinsamen Hover-Treffer bezogen,
               // sondern per priceSlotAt() ueber den Zeitpunkt gesucht (robust
               // unabhaengig von der Preis-Aufloesung).
+              // Strompreis wird IMMER ueber priceSlotAt() (Zeitraum-Suche)
+              // bezogen, nicht ueber einen zufaelligen gemeinsamen Hover-
+              // Treffer der beiden Serien - sonst zeigt der Tooltip alle drei
+              // Werte nur dann zusammen, wenn Strompreis- und Netzbezugs-
+              // Punkt gerade auf demselben Zeitstempel liegen (bei "heute"
+              // meist zufaellig der Fall, bei rekonstruierten vergangenen
+              // Tagen mit laengeren/unregelmaessigen Preis-Slots aber nicht -
+              // Dietmars Fund, 29.07.2026: "sollte zu jedem Zeitpunkt so
+              // sein, nicht nur bei Heute").
               var priceP = params.filter(function (p) { return p.data && p.data.slotStart !== undefined; })[0];
               var gridP = params.filter(function (p) { return !(p.data && p.data.slotStart !== undefined); })[0];
               var refX = gridP ? gridP.value[0] : (priceP ? priceP.value[0] : null);
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
               var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
                 : (priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '');
-              var lines = params.map(function (p) {
-                if (p.data && p.data.slotStart !== undefined) {
-                  var v = p.value[1];
-                  return '<div>' + p.marker + ' Strompreis: <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + ' ct/kWh</b></div>';
+              var lines = [];
+              var priceVal = slot ? slot[2] : (priceP ? priceP.value[1] : null);
+              if (priceVal !== null && priceVal !== undefined) {
+                lines.push('<div><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb300;margin-right:4px"></span>Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+              }
+              var gridV = null;
+              if (gridP) {
+                gridV = (gridP.value && gridP.value[1] !== undefined) ? gridP.value[1] : gridP.value;
+                if (gridV !== null && gridV !== undefined) {
+                  lines.push('<div>' + gridP.marker + ' Netzbezug: <b>' + Number(gridV).toFixed(2) + ' kWh</b></div>');
                 }
-                var v2 = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
-                return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v2 === null || v2 === undefined ? '–' : Number(v2).toFixed(2)) + ' kWh</b></div>';
-              });
+              }
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
               // diesen Slot (Dietmars Wunsch, 28.07.2026).
-              if (gridP && slot) {
-                var gridV = (gridP.value && gridP.value[1] !== undefined) ? gridP.value[1] : gridP.value;
-                if (gridV !== null && gridV !== undefined) {
-                  lines.push('<div>Kosten: <b>' + (gridV * slot[2]).toFixed(2) + ' ct</b></div>');
-                }
+              if (gridV !== null && gridV !== undefined && priceVal !== null && priceVal !== undefined) {
+                lines.push('<div>Kosten: <b>' + (gridV * priceVal).toFixed(2) + ' ct</b></div>');
               }
               return head + lines.join('');
             }
@@ -783,6 +793,15 @@
               // deshalb NICHT ueber einen gemeinsamen Hover-Treffer bezogen,
               // sondern per priceSlotAt() ueber den Zeitpunkt gesucht (robust
               // unabhaengig von der Preis-Aufloesung).
+              // Strompreis wird IMMER ueber priceSlotAt() (Zeitraum-Suche)
+              // bezogen, nicht ueber einen zufaelligen gemeinsamen Hover-
+              // Treffer der beiden Serien - sonst zeigt der Tooltip alle drei
+              // Werte nur dann zusammen, wenn Strompreis- und Netzbezugs-
+              // Punkt gerade auf demselben Zeitstempel liegen (bei "heute"
+              // meist zufaellig der Fall, bei rekonstruierten vergangenen
+              // Tagen mit laengeren/unregelmaessigen Preis-Slots aber nicht -
+              // Dietmars Fund, 29.07.2026: "sollte zu jedem Zeitpunkt so
+              // sein, nicht nur bei Heute").
               var pts = this.points || [this.point];
               var priceQ = pts.filter(function (p) { return p.slotStart !== undefined; })[0];
               var gridQ = pts.filter(function (p) { return p.slotStart === undefined; })[0];
@@ -790,16 +809,18 @@
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
               var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
                 : (priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '');
-              var lines = pts.map(function (p) {
-                if (p.slotStart !== undefined) {
-                  return '<div><span style="color:' + p.color + '">●</span> Strompreis: <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' ct/kWh</b></div>';
-                }
-                return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' kWh</b></div>';
-              });
+              var lines = [];
+              var priceVal = slot ? slot[2] : (priceQ ? priceQ.y : null);
+              if (priceVal !== null && priceVal !== undefined) {
+                lines.push('<div><span style="color:#ffb300">●</span> Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+              }
+              if (gridQ && gridQ.y !== null && gridQ.y !== undefined) {
+                lines.push('<div><span style="color:' + gridQ.color + '">●</span> Netzbezug: <b>' + Number(gridQ.y).toFixed(2) + ' kWh</b></div>');
+              }
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
               // diesen Slot (Dietmars Wunsch, 28.07.2026).
-              if (gridQ && slot && gridQ.y !== null && gridQ.y !== undefined) {
-                lines.push('<div>Kosten: <b>' + (gridQ.y * slot[2]).toFixed(2) + ' ct</b></div>');
+              if (gridQ && gridQ.y !== null && gridQ.y !== undefined && priceVal !== null && priceVal !== undefined) {
+                lines.push('<div>Kosten: <b>' + (gridQ.y * priceVal).toFixed(2) + ' ct</b></div>');
               }
               return head + lines.join('');
             }
