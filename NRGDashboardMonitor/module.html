@@ -780,7 +780,17 @@
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
       var lk = sankeyLookups(flow);
       var totalIn = flow.totalIn || 0;
-      var nodes = (flow.nodes || []).map(function (n) { return { name: n.key, depth: n.column, itemStyle: { color: n.color } }; });
+      // Beschriftung der letzten Spalte NACH LINKS INS Diagramm statt nach
+      // rechts DARUEBER HINAUS (ECharts' Default) - bei vielen Verbrauchern
+      // liefen die Labels sonst rechts aus dem Diagramm heraus/ueberlappten
+      // sich, und das Diagramm musste zusaetzlichen Rand dafuer reservieren.
+      // Highcharts platziert von sich aus einwaerts, das hier ist das
+      // ECharts-Pendant dazu (Dietmars Wunsch, 28.07.2026).
+      var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
+      var nodes = (flow.nodes || []).map(function (n) {
+        var isLast = n.column === maxColumn;
+        return { name: n.key, depth: n.column, itemStyle: { color: n.color }, label: isLast ? { position: 'insideLeft' } : {} };
+      });
       var links = (flow.links || []).map(function (l) { return { source: l.from, target: l.to, value: l.value }; });
       chart.setOption({
         backgroundColor: 'transparent',
