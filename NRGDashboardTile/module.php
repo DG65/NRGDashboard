@@ -880,7 +880,15 @@ class NRGDashboardTile extends IPSModule
         $wbConnected = [];
         $wbAllIdx = [];
         foreach ($rows as $i => $row) {
-            if (($row['function'] ?? '') !== 'wallbox') {
+            // normalizeDeviceCategory() statt eines rohen Vergleichs auf
+            // 'wallbox' - ChargerHub liefert die Kategorie roh als 'charger'
+            // (Verbund-Vertrag CHUB_GetFunctions), nicht als 'wallbox'. Ein
+            // wörtlicher Vergleich hat die beiden echten ChargerHub-Instanzen
+            // (WB1/WB2, Dietmars Anlage) komplett übersehen - real gefundener
+            // Fehler, 29.07.2026, module.html hatte für die Icon-Anzeige
+            // längst eine eigene Übersetzung (CONSUMER_TYPE_MAP), nur diese
+            // Stelle hier nicht.
+            if ($this->normalizeDeviceCategory($row['function'] ?? '') !== 'wallbox') {
                 continue;
             }
             $wbAllIdx[] = $i;
