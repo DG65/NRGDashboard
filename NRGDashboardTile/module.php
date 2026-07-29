@@ -578,7 +578,7 @@ class NRGDashboardTile extends IPSModule
         // zeigen, nicht nur "Wallbox aktiv") - muss VOR dem Ausblenden/
         // Reindizieren unten laufen, AssignVehicles() liefert Indizes auf
         // dieses $devices-Array.
-        $vehicles = $this->ReadVehicleRows();
+        $vehicles = $this->AllVehicles();
         if (count($vehicles) > 0) {
             $assign = $this->AssignVehicles($devices, $vehicles);
             foreach ($assign as $wbIdx => $vIdx) {
@@ -764,9 +764,10 @@ class NRGDashboardTile extends IPSModule
 
     /**
      * Frei editierbare Fahrzeugliste (Muster: InverterHubTile Vehicles-
-     * Property, 1:1 uebernommen). Zeilen ohne gueltige SOC-Variable werden
-     * verworfen - ohne SOC gibt es nichts anzuzeigen, das Fahrzeug waere
-     * fuer die Zuordnung nutzlos.
+     * Property, 1:1 uebernommen). Nur noch als Rueckfall fuer Fahrzeuge OHNE
+     * Tessie (anderes Fabrikat) gedacht - siehe AllVehicles(). Zeilen ohne
+     * gueltige SOC-Variable werden verworfen - ohne SOC gibt es nichts
+     * anzuzeigen, das Fahrzeug waere fuer die Zuordnung nutzlos.
      */
     private function ReadVehicleRows(): array
     {
@@ -790,6 +791,59 @@ class NRGDashboardTile extends IPSModule
             ];
         }
         return $out;
+    }
+
+    /**
+     * Tessie-Fahrzeuge VOLLAUTOMATISCH ueber den oeffentlichen Verbund-
+     * Vertrag TESSIE_GetVehicleState($id) erkannt - kein manueller Eintrag
+     * noetig (Dietmar, 29.07.2026: "wenn alles mit unseren Modulen
+     * eingerichtet wurde, dann sollten sich alle Geraetschaften erkennen").
+     * 'connected' kommt bereits fertig berechnet aus dem Vertrag (Tessies
+     * eigene, robuste Logik: "Ladestatus (Detail)" != 'disconnected', mit
+     * Rueckfall auf den Lade-Status - NICHT hier neu nachgebaut). Fuer die
+     * Zeitkorrelation in AssignVehicles() zusaetzlich der Ident
+     * 'stat_tel_DetailedChargeState' (stabiler Ident, Verbund-Konvention
+     * "Idents sind API") fuer den Aenderungszeitpunkt.
+     */
+    private function discoverTessieVehicles(): array
+    {
+        $out = [];
+        if (!function_exists('TESSIE_GetVehicleState')) {
+            return $out;
+        }
+        foreach (@IPS_GetInstanceListByModuleID(NRGDASH_GUID_TESSIE) as $id) {
+            $raw = @TESSIE_GetVehicleState((int) $id);
+            $state = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (!is_array($state) || (int) ($state['socID'] ?? 0) <= 0) {
+                continue;
+            }
+            $changeVid = $this->FindVarByIdent((int) $id, 'stat_tel_DetailedChargeState');
+            $out[] = [
+                'name' => trim((string) ($state['name'] ?? '')) ?: 'Fahrzeug',
+                'socID' => (int) $state['socID'],
+                'connected' => (bool) ($state['connected'] ?? false),
+                'changedAt' => $this->ChangedAt($changeVid),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Automatisch erkannte Tessie-Fahrzeuge + manuell eingetragene (fuer
+     * andere Fabrikate ohne Tessie) - bei Namensgleichheit (Grossschreibung
+     * egal) gewinnt die automatische Erkennung, sie ist live und braucht
+     * keine Pflege.
+     */
+    private function AllVehicles(): array
+    {
+        $auto = $this->discoverTessieVehicles();
+        $autoNames = array_map(function ($v) {
+            return strtolower($v['name']);
+        }, $auto);
+        $manual = array_values(array_filter($this->ReadVehicleRows(), function ($v) use ($autoNames) {
+            return !in_array(strtolower($v['name']), $autoNames, true);
+        }));
+        return array_merge($auto, $manual);
     }
 
     /**
@@ -900,8 +954,19 @@ class NRGDashboardTile extends IPSModule
             }
         }
 
+        // Zwei Fahrzeug-Formen: automatisch erkannte Tessie-Fahrzeuge tragen
+        // 'connected' bereits fertig berechnet (Verbund-Vertrag
+        // TESSIE_GetVehicleState) + 'changedAt' fuer die Zeitkorrelation;
+        // manuell eingetragene (Fahrzeuge ohne Tessie) haben stattdessen
+        // plugID/plugOp/plugVal und werden ueber CondMet() ausgewertet.
         $vConnected = [];
         foreach ($vehicles as $j => $v) {
+            if (array_key_exists('connected', $v)) {
+                if ($v['connected'] === true) {
+                    $vConnected[$j] = (int) ($v['changedAt'] ?? 0);
+                }
+                continue;
+            }
             if ($this->CondMet((int) $v['plugID'], (string) $v['plugOp'], (string) $v['plugVal']) === true) {
                 $vConnected[$j] = $this->ChangedAt((int) $v['plugID']);
             }
@@ -942,7 +1007,9 @@ class NRGDashboardTile extends IPSModule
                 (string) ($row['plugOp'] ?? 'truthy'),
                 (string) ($row['plugVal'] ?? '')
             );
-            $vState = $this->CondMet((int) $vehicles[0]['plugID'], (string) $vehicles[0]['plugOp'], (string) $vehicles[0]['plugVal']);
+            $vState = array_key_exists('connected', $vehicles[0])
+                ? $vehicles[0]['connected']
+                : $this->CondMet((int) $vehicles[0]['plugID'], (string) $vehicles[0]['plugOp'], (string) $vehicles[0]['plugVal']);
             if ($wbState !== false && $vState !== false) {
                 $map[$i] = 0;
             }

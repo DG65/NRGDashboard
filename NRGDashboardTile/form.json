@@ -213,7 +213,7 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Steht hier mindestens ein Fahrzeug, wird bei eingesteckter Wallbox automatisch das gerade angesteckte Fahrzeug erkannt (über die zeitliche Nähe der beiden „Verbunden“-Meldungen) und dessen Name sowie Ladestand an der Wallbox angezeigt - keine feste Wallbox-Fahrzeug-Zuordnung nötig, auch bei mehreren Wallboxen/Fahrzeugen. Ohne Eintrag bleibt die Wallbox wie bisher nur „aktiv“, ohne Namen/Ladestand."
+          "caption": "Tesla-Fahrzeuge über Tessie werden automatisch erkannt - hier nur für andere Fabrikate ohne Tessie nötig. Bei eingesteckter Wallbox wird automatisch das gerade angesteckte Fahrzeug erkannt (über die zeitliche Nähe der beiden „Verbunden“-Meldungen) und dessen Name sowie Ladestand an der Wallbox angezeigt - keine feste Wallbox-Fahrzeug-Zuordnung nötig, auch bei mehreren Wallboxen/Fahrzeugen."
         },
         {
           "type": "List",
