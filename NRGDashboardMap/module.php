@@ -135,7 +135,9 @@ class NRGDashboardMap extends IPSModule
                 $vid = $this->FindVarByIdent($ihub, 'mppt' . $i . '_power');
                 if ($vid > 0) {
                     $key = 'pv_string_' . $i;
-                    $nodes[] = ['key' => $key, 'label' => 'PV-Strang ' . $i, 'layer' => 0, 'category' => 'pv', 'powerID' => $vid];
+                    $nodeData = ['key' => $key, 'label' => 'PV-Strang ' . $i, 'layer' => 0, 'category' => 'pv', 'powerID' => $vid];
+                    $this->LogMessage("DEBUG: Adding node $key with powerID=$vid", KL_MESSAGE);
+                    $nodes[] = $nodeData;
                     $stringKeys[] = $key;
                 }
             }
