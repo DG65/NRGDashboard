@@ -775,6 +775,19 @@
       return { label: label, color: color, incoming: incoming, outgoing: outgoing };
     }
 
+    // Reihenfolge der Knoten der LETZTEN Spalte (Verbraucher/Netzeinspeisung)
+    // von oben nach unten umgedreht - beide Engines stapeln Knoten in
+    // Array-Reihenfolge, InverterHubEnergy liefert sie aber in der
+    // "natuerlichen" Reihenfolge 1,2,3,4,5 (Dietmars Wunsch, 28.07.2026:
+    // 5,4,3,2,1 von oben nach unten). Andere Spalten (Solar/Netzbezug,
+    // Batterie) bleiben unangetastet.
+    function sankeyNodesTopDown(flow) {
+      var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
+      var head = (flow.nodes || []).filter(function (n) { return n.column !== maxColumn; });
+      var lastCol = (flow.nodes || []).filter(function (n) { return n.column === maxColumn; }).reverse();
+      return head.concat(lastCol);
+    }
+
     function renderSankeyECharts(el, flow) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
@@ -787,7 +800,7 @@
       // Highcharts platziert von sich aus einwaerts, das hier ist das
       // ECharts-Pendant dazu (Dietmars Wunsch, 28.07.2026).
       var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
-      var nodes = (flow.nodes || []).map(function (n) {
+      var nodes = sankeyNodesTopDown(flow).map(function (n) {
         var isLast = n.column === maxColumn;
         return { name: n.key, depth: n.column, itemStyle: { color: n.color }, label: isLast ? { position: 'insideLeft' } : {} };
       });
@@ -862,10 +875,10 @@
       var countByColumn = {};
       (flow.nodes || []).forEach(function (n) { countByColumn[n.column] = (countByColumn[n.column] || 0) + 1; });
       var buildNodesCfg = function (topOffsets) {
-        return (flow.nodes || []).map(function (n) {
+        return sankeyNodesTopDown(flow).map(function (n) {
           var cfg = { id: n.key, name: n.label, color: n.color, column: n.column };
           if (n.column === maxColumnHC) { cfg.dataLabels = { align: 'right', x: -8 }; }
-          if (countByColumn[n.column] === 1 && topOffsets && topOffsets[n.key] !== undefined) { cfg.offset = topOffsets[n.key]; }
+          if (topOffsets && topOffsets[n.key] !== undefined) { cfg.offset = topOffsets[n.key]; }
           return cfg;
         });
       };
@@ -888,6 +901,26 @@
       probeChart.series[0].nodes.forEach(function (n) {
         if (countByColumn[n.column] === 1) { topOffsets[n.id] = -n.nodeY; }
       });
+      // Reihenfolge der letzten Spalte (Verbraucher/Netzeinspeisung) von
+      // oben nach unten umdrehen (Dietmars Wunsch, 28.07.2026) - Highcharts
+      // bestimmt die vertikale Reihenfolge ueber einen eigenen, gewichts-
+      // basierten Layout-Algorithmus und ignoriert dafuer die Reihenfolge
+      // im nodes-Array komplett (live geprueft: identisches Ergebnis mit
+      // und ohne Array-Umkehr). Deshalb hier stattdessen der gesamte
+      // gemessene Block der letzten Spalte an seiner eigenen Mittelachse
+      // gespiegelt: jeder Knoten bekommt die Position, die (Bloecken-intern)
+      // sein Gegenstueck von unten hatte - newTop = Blockhoehe - (natY+Hoehe),
+      // das dreht die komplette Stapelreihenfolge exakt um, unabhaengig von
+      // unterschiedlich hohen Knoten (anders als ein simpler Indexversatz).
+      var lastNodes = probeChart.series[0].nodes.filter(function (n) { return n.column === maxColumnHC; });
+      if (lastNodes.length > 1) {
+        var blockTop = Math.min.apply(null, lastNodes.map(function (n) { return n.nodeY; }));
+        var blockBottom = Math.max.apply(null, lastNodes.map(function (n) { return n.nodeY + n.shapeArgs.height; }));
+        lastNodes.forEach(function (n) {
+          var newY = blockTop + (blockBottom - (n.nodeY + n.shapeArgs.height));
+          topOffsets[n.id] = newY - n.nodeY;
+        });
+      }
       probeChart.destroy();
       document.body.removeChild(measureEl);
       var nodesCfg = buildNodesCfg(topOffsets);
