@@ -208,6 +208,81 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Fahrzeuge (optional, für Wallbox-Anzeige)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Steht hier mindestens ein Fahrzeug, wird bei eingesteckter Wallbox automatisch das gerade angesteckte Fahrzeug erkannt (über die zeitliche Nähe der beiden „Verbunden“-Meldungen) und dessen Name sowie Ladestand an der Wallbox angezeigt - keine feste Wallbox-Fahrzeug-Zuordnung nötig, auch bei mehreren Wallboxen/Fahrzeugen. Ohne Eintrag bleibt die Wallbox wie bisher nur „aktiv“, ohne Namen/Ladestand."
+        },
+        {
+          "type": "List",
+          "name": "Vehicles",
+          "caption": "Fahrzeuge",
+          "rowCount": 4,
+          "add": true,
+          "delete": true,
+          "columns": [
+            {
+              "caption": "Bezeichnung",
+              "name": "Name",
+              "width": "180px",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            },
+            {
+              "caption": "Ladestand-Variable (%)",
+              "name": "SocID",
+              "width": "240px",
+              "add": 0,
+              "edit": { "type": "SelectVariable" }
+            },
+            {
+              "caption": "Verbunden-Variable",
+              "name": "PlugID",
+              "width": "240px",
+              "add": 0,
+              "edit": { "type": "SelectVariable" }
+            },
+            {
+              "caption": "Bedingung",
+              "name": "PlugOp",
+              "width": "230px",
+              "add": "truthy",
+              "edit": {
+                "type": "Select",
+                "options": [
+                  { "caption": "ist gesetzt (wahr / ≠ 0 / nicht leer)", "value": "truthy" },
+                  { "caption": "gleich Wert",           "value": "eq" },
+                  { "caption": "ungleich Wert",         "value": "ne" },
+                  { "caption": "größer Wert",           "value": "gt" },
+                  { "caption": "größer/gleich Wert",    "value": "ge" },
+                  { "caption": "kleiner Wert",          "value": "lt" },
+                  { "caption": "kleiner/gleich Wert",   "value": "le" }
+                ]
+              }
+            },
+            {
+              "caption": "Vergleichswert",
+              "name": "PlugVal",
+              "width": "auto",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            }
+          ]
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "MatchToleranceSec",
+          "caption": "Zeitfenster für die Zuordnung (0 = ohne Begrenzung)",
+          "minimum": 0,
+          "maximum": 86400,
+          "suffix": "s"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [

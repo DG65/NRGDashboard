@@ -672,7 +672,7 @@ function buildItems(devices) {
         icon: style.icon,
         value: d.value ?? 0,
         soc: (d.soc !== undefined && d.soc !== null) ? d.soc : null,
-        sub: '',
+        sub: d.sub || '',
         measured: d.measured ?? true,
         plugged: !!d.plugged,
         color: style.color,

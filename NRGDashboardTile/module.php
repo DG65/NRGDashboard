@@ -42,6 +42,7 @@ class NRGDashboardTile extends IPSModule
     private const DEF_FONT       = 'system';
     private const DEF_TRANSITION = 800;
     private const DEF_FLOWREF    = 10000;
+    private const DEF_MATCH_TOLERANCE = 300;
 
     // Formular-Konvention des Verbunds (SUITE.md "Einheitliche Formular-
     // Optik", Referenz InverterHub) - "Was ist Neu"/Doku/Forum-Hinweis.
@@ -89,6 +90,13 @@ class NRGDashboardTile extends IPSModule
         // dieselben Geräte" - frei editierbare Liste, unabhängig von jedem
         // Hub-Modul, analog InverterHubTiles Consumers-Property).
         $this->RegisterPropertyString('Consumers', '[]');
+        // Fahrzeug-Zuordnung fuer Wallboxen (1:1 aus InverterHubTile
+        // uebernommen, Verbund-Absprache 29.07.2026: Dietmar wollte bei
+        // eingestecktem Auto Name+Ladestand des ERKANNTEN Fahrzeugs sehen,
+        // nicht nur "Wallbox aktiv" - die Zuordnung wandert komplett zu uns,
+        // InverterHubTile streicht ihre eigene Fassung).
+        $this->RegisterPropertyString('Vehicles', '[]');
+        $this->RegisterPropertyInteger('MatchToleranceSec', self::DEF_MATCH_TOLERANCE);
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
         // dann einschalten... oder umgekehrt ausschalten" - passt besser zu
@@ -551,6 +559,22 @@ class NRGDashboardTile extends IPSModule
             return $d;
         }, $this->GetDevices());
 
+        // Fahrzeug-Zuordnung fuer Wallboxen (Dietmar, 29.07.2026: bei
+        // eingestecktem Auto sollen subText/SOC-Ring das ERKANNTE Fahrzeug
+        // zeigen, nicht nur "Wallbox aktiv") - muss VOR dem Ausblenden/
+        // Reindizieren unten laufen, AssignVehicles() liefert Indizes auf
+        // dieses $devices-Array.
+        $vehicles = $this->ReadVehicleRows();
+        if (count($vehicles) > 0) {
+            $assign = $this->AssignVehicles($devices, $vehicles);
+            foreach ($assign as $wbIdx => $vIdx) {
+                $v = $vehicles[$vIdx];
+                $devices[$wbIdx]['socHave'] = true;
+                $devices[$wbIdx]['soc'] = round((float) GetValue($v['socID']));
+                $devices[$wbIdx]['sub'] = $v['name'];
+            }
+        }
+
         // Vom Nutzer ausgeblendete Geraete entfernen (siehe "Automatisch
         // gefundene Geräte"-Liste im Formular) - erst hier bei der Anzeige,
         // NICHT schon beim Discover()/Cache: ein ausgeblendetes Geraet soll
@@ -722,6 +746,187 @@ class NRGDashboardTile extends IPSModule
             return (string) $value === (string) ($d['plugVal'] ?? '');
         }
         return !empty($value);
+    }
+
+    /**
+     * Frei editierbare Fahrzeugliste (Muster: InverterHubTile Vehicles-
+     * Property, 1:1 uebernommen). Zeilen ohne gueltige SOC-Variable werden
+     * verworfen - ohne SOC gibt es nichts anzuzeigen, das Fahrzeug waere
+     * fuer die Zuordnung nutzlos.
+     */
+    private function ReadVehicleRows(): array
+    {
+        $rows = json_decode($this->readStringProperty('Vehicles', '[]'), true);
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            $socID = (int) ($row['SocID'] ?? 0);
+            if ($socID <= 0 || !IPS_VariableExists($socID)) {
+                continue;
+            }
+            $name = trim((string) ($row['Name'] ?? ''));
+            $out[] = [
+                'name' => ($name !== '' ? $name : 'Fahrzeug'),
+                'socID' => $socID,
+                'plugID' => (int) ($row['PlugID'] ?? 0),
+                'plugOp' => (string) ($row['PlugOp'] ?? 'truthy'),
+                'plugVal' => (string) ($row['PlugVal'] ?? ''),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * Allgemeine Bedingungspruefung fuer "Verbunden"-Variablen (Muster:
+     * InverterHubTile CondMet() - erweitert resolvePluggedCondition() um
+     * numerische Vergleiche, die AssignVehicles() fuer Wallbox UND Fahrzeug
+     * gleichermassen braucht). null = Variable fehlt/ungueltig.
+     */
+    private function CondMet(int $varID, string $op, string $val): ?bool
+    {
+        if ($varID <= 0 || !IPS_VariableExists($varID)) {
+            return null;
+        }
+        $v = GetValue($varID);
+        switch ($op) {
+            case 'eq': return $this->ValEquals($v, $val);
+            case 'ne': return !$this->ValEquals($v, $val);
+            case 'gt': return $this->ValNum($v) > (float) $val;
+            case 'ge': return $this->ValNum($v) >= (float) $val;
+            case 'lt': return $this->ValNum($v) < (float) $val;
+            case 'le': return $this->ValNum($v) <= (float) $val;
+            default:   return $this->ValTruthy($v);
+        }
+    }
+
+    private function ValEquals($v, $val): bool
+    {
+        if (is_bool($v)) {
+            return $v === $this->ValTruthy($val);
+        }
+        if (is_numeric($v) && is_numeric($val)) {
+            return ((float) $v) == ((float) $val);
+        }
+        return strcasecmp(trim((string) $v), trim((string) $val)) === 0;
+    }
+
+    private function ValNum($v): float
+    {
+        return is_bool($v) ? ($v ? 1.0 : 0.0) : (is_numeric($v) ? (float) $v : 0.0);
+    }
+
+    private function ValTruthy($v): bool
+    {
+        if (is_bool($v)) {
+            return $v;
+        }
+        if (is_numeric($v)) {
+            return ((float) $v) != 0.0;
+        }
+        $s = strtolower(trim((string) $v));
+        return !($s === '' || $s === '0' || $s === 'false' || $s === 'no' || $s === 'nein');
+    }
+
+    /**
+     * Zeitpunkt der letzten WERT-Aenderung (IPS' VariableChanged aendert
+     * sich nur bei echtem Wertwechsel) - dient als "verbunden seit"-Zeitpunkt
+     * fuer die Zeitkorrelation in AssignVehicles(), ganz ohne eigenen
+     * Datenpunkt dafuer.
+     */
+    private function ChangedAt(int $varID): int
+    {
+        if ($varID <= 0 || !IPS_VariableExists($varID)) {
+            return 0;
+        }
+        $info = @IPS_GetVariable($varID);
+        return $info ? (int) $info['VariableChanged'] : 0;
+    }
+
+    /**
+     * Ordnet eingesteckte Fahrzeuge den Wallbox-Geraeten zu (1:1 aus
+     * InverterHubTile::AssignVehicles() uebernommen, Verbund-Absprache
+     * 29.07.2026: Wallbox und Fahrzeug melden "verbunden" jeweils fuer sich
+     * unabhaengig; da beide praktisch gleichzeitig wechseln, wenn ein Auto
+     * eingesteckt wird, dient IPS' VariableChanged-Zeitstempel als
+     * Korrelations-Anker. Alle Wallbox-Fahrzeug-Paare innerhalb von
+     * MatchToleranceSec werden gebildet, nach zeitlicher Naehe sortiert und
+     * eindeutig (1:1) vergeben - so landet bei mehreren Autos/Wallboxen
+     * jedes dort, wo es tatsaechlich eingesteckt wurde, ohne dass irgendwo
+     * ein Datenpunkt "welches Auto steht hier" existieren muesste.
+     * $rows: komplette Geraeteliste (normalizeEntry()-Form, 'function' ===
+     * 'wallbox' wird intern gefiltert). Rueckgabe: [Index in $rows => Index
+     * in $vehicles].
+     */
+    private function AssignVehicles(array $rows, array $vehicles): array
+    {
+        $tol = max(0, $this->readIntProperty('MatchToleranceSec', self::DEF_MATCH_TOLERANCE));
+
+        $wbConnected = [];
+        $wbAllIdx = [];
+        foreach ($rows as $i => $row) {
+            if (($row['function'] ?? '') !== 'wallbox') {
+                continue;
+            }
+            $wbAllIdx[] = $i;
+            $plugID = (int) ($row['plugStateID'] ?? 0);
+            $op = (string) ($row['plugOp'] ?? 'truthy');
+            $val = (string) ($row['plugVal'] ?? '');
+            if ($this->CondMet($plugID, $op, $val) === true) {
+                $wbConnected[$i] = $this->ChangedAt($plugID);
+            }
+        }
+
+        $vConnected = [];
+        foreach ($vehicles as $j => $v) {
+            if ($this->CondMet((int) $v['plugID'], (string) $v['plugOp'], (string) $v['plugVal']) === true) {
+                $vConnected[$j] = $this->ChangedAt((int) $v['plugID']);
+            }
+        }
+
+        $pairs = [];
+        foreach ($wbConnected as $i => $tw) {
+            foreach ($vConnected as $j => $tv) {
+                $d = abs($tw - $tv);
+                if ($tol > 0 && $d > $tol) {
+                    continue;
+                }
+                $pairs[] = ['d' => $d, 'w' => $i, 'v' => $j];
+            }
+        }
+        usort($pairs, function ($a, $b) {
+            return $a['d'] <=> $b['d'];
+        });
+
+        $map = [];
+        $usedV = [];
+        foreach ($pairs as $p) {
+            if (isset($map[$p['w']]) || isset($usedV[$p['v']])) {
+                continue;
+            }
+            $map[$p['w']] = $p['v'];
+            $usedV[$p['v']] = true;
+        }
+
+        // Sonderfall genau eine Wallbox / genau ein Fahrzeug: die Lage ist
+        // auch ohne Zeitkorrelation eindeutig - hier darf die Verbunden-
+        // Bedingung des Fahrzeugs sogar fehlen.
+        if (count($map) === 0 && count($wbAllIdx) === 1 && count($vehicles) === 1) {
+            $i = $wbAllIdx[0];
+            $row = $rows[$i];
+            $wbState = $this->CondMet(
+                (int) ($row['plugStateID'] ?? 0),
+                (string) ($row['plugOp'] ?? 'truthy'),
+                (string) ($row['plugVal'] ?? '')
+            );
+            $vState = $this->CondMet((int) $vehicles[0]['plugID'], (string) $vehicles[0]['plugOp'], (string) $vehicles[0]['plugVal']);
+            if ($wbState !== false && $vState !== false) {
+                $map[$i] = 0;
+            }
+        }
+
+        return $map;
     }
 
     /**
