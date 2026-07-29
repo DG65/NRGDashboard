@@ -62,9 +62,9 @@ class NRGDashboardTopology extends IPSModule
     }
 
     /**
-     * EMS-Instanz - explizite Wahl gewinnt, sonst Automatik NUR bei genau
-     * einer installierten Instanz (kein Raten bei mehreren, Muster:
-     * PvfInstanceID() bei NRGDashboardMonitor).
+     * EMS-Instanz - explizite Wahl gewinnt, sonst Automatik: bei mehreren
+     * Instanzen die erste mit Status 102 (gesund), sonst die erste Instanz.
+     * Muster: z.B. Mehrinstanz-Testszenarios mit alten/neuen EMS-Kopien.
      */
     private function EmsInstanceID(): int
     {
@@ -74,7 +74,21 @@ class NRGDashboardTopology extends IPSModule
             return $cfg;
         }
         $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        if (!is_array($ids) || count($ids) === 0) {
+            return 0;
+        }
+        // Bei genau einer: nimm sie
+        if (count($ids) === 1) {
+            return (int) $ids[0];
+        }
+        // Bei mehreren: bevorzuge Status 102 (gesund)
+        foreach ($ids as $id) {
+            if (IPS_GetInstance((int) $id)['InstanceStatus'] === 102) {
+                return (int) $id;
+            }
+        }
+        // Fallback: erste Instanz
+        return (int) $ids[0];
     }
 
     private function ColorOrEmpty(int $v): string
