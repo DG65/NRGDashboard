@@ -843,9 +843,22 @@
           }
         };
       });
-      var nodesCfg = (flow.nodes || []).map(function (n) { return { id: n.key, name: n.label, color: n.color, column: n.column }; });
+      // Beschriftung der letzten Spalte nach LINKS INS Diagramm statt nach
+      // rechts darueber hinaus - Highcharts' Standard fuer die rechte Spalte
+      // ist "Label rechts vom Knoten", das lief bei vielen Verbrauchern
+      // ebenso aus dem Diagramm heraus wie zuvor bei ECharts (Dietmars
+      // Wunsch, 28.07.2026, dasselbe Vorgehen wie dort: align:'right'/
+      // negatives x schiebt den Text an die linke Kante des Knotens, ins
+      // Diagramm hinein statt hinaus, das Diagramm kann dadurch die volle
+      // Breite nutzen statt Rand fuer ueberlaufende Labels zu reservieren).
+      var maxColumnHC = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
+      var nodesCfg = (flow.nodes || []).map(function (n) {
+        var cfg = { id: n.key, name: n.label, color: n.color, column: n.column };
+        if (n.column === maxColumnHC) { cfg.dataLabels = { align: 'right', x: -8 }; }
+        return cfg;
+      });
       chart = Highcharts.chart(el, {
-        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: { backgroundColor: 'transparent', spacingRight: 8, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         credits: { enabled: false },
         tooltip: {
