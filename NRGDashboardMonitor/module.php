@@ -675,6 +675,37 @@ class NRGDashboardMonitor extends IPSModule
         $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
     }
 
+    /**
+     * Live-Nachforderung aus der Kachel (WebFront-Bruecke requestAction() im
+     * Tile-JS, siehe module.html) - fuer den Energiebilanz-Reiter mit einem
+     * ANDEREN Zeitraum als "Tag" (Woche/Monat/Jahr/Gesamt/Benutzerdefiniert):
+     * das Tage-Fenster im Payload deckt nur WINDOW_DAYS Tage ab, ein Sankey
+     * fuer z.B. "dieses Jahr" braucht einen frischen IHUBNRG_GetFlow()-Aufruf
+     * mit den tatsaechlichen Periodengrenzen (Dietmars Wunsch, 28.07.2026:
+     * Energiebilanz auch fuer Woche/Monat/Jahr/Gesamt/Benutzerdefiniert
+     * auswaehlbar, nicht nur Tag). Ergebnis kommt asynchron per
+     * UpdateVisualizationValue() zurueck, ohne die Kachel neu zu laden -
+     * das Tile-JS erkennt den Typ 'flowUpdate' und rendert bei Bedarf neu.
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        if ($Ident === 'flowPeriod') {
+            $req = json_decode((string) $Value, true);
+            $start = (int) ($req['start'] ?? 0);
+            $end = (int) ($req['end'] ?? 0);
+            $flow = ($end > $start) ? $this->EnergyFlow($start, $end) : null;
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'    => true,
+                'type'  => 'flowUpdate',
+                'start' => $start,
+                'end'   => $end,
+                'flow'  => $flow,
+            ]));
+            return;
+        }
+        throw new Exception('Invalid Ident: ' . $Ident);
+    }
+
     private function ColorOrEmpty(int $v): string
     {
         if ($v < 0) {
