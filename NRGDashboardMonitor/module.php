@@ -336,6 +336,21 @@ class NRGDashboardMonitor extends IPSModule
      * vor $dayStart (bis zu 7 Tage zurueckgesucht - Grid Rewards aktualisiert
      * mindestens stuendlich, ein leerer 7-Tage-Rueckblick bedeutet also
      * plausibel "keine Archivdaten", nicht nur "seltener Wechsel").
+     *
+     * ZWEI mit echten Daten gefundene Fallstricke (Dietmar, 29.07.2026:
+     * "Gestern sieht anders aus als heute"):
+     * 1. "CurrentPrice" speichert EUR/kWh (TibberGridReward::
+     *    ApplyCurrentPriceSlot() rechnet den Slot-Preis /100), waehrend
+     *    PriceCurve()/TIBBERGR_GetPriceCurve() bereits in ct/kWh liefert -
+     *    ohne *100 waren rekonstruierte Tage um den Faktor 100 zu klein.
+     * 2. Die Archiv-Log-Zeile aendert sich nicht nur bei echtem Slot-Wechsel,
+     *    sondern auch durch wiederholtes Schreiben desselben Werts mit
+     *    minimaler Gleitkomma-Abweichung (z.B. 0,1800/0,1801/0,1861 EUR
+     *    innerhalb weniger Minuten) - jede Log-Zeile ungefiltert als neue
+     *    Stufe zu behandeln erzeugte dadurch viele winzige, falsche
+     *    Zwischenstufen statt sauberer Stunden-/Viertelstunden-Bloecke.
+     *    Aufeinanderfolgende Werte, die sich um weniger als 0,1 ct/kWh
+     *    unterscheiden, gelten deshalb als derselbe Preis (kein Stufenwechsel).
      */
     private function PriceDaySlots(int $dayStart): array
     {
@@ -362,8 +377,10 @@ class NRGDashboardMonitor extends IPSModule
             return [];
         }
 
+        // *100: CurrentPrice speichert EUR/kWh, unser Vertrag (wie
+        // PriceCurve()) ist ct/kWh.
         $before = @AC_GetLoggedValues($aid, $vid, $dayStart - 7 * 86400, $dayStart, 1);
-        $curVal = (is_array($before) && count($before) > 0) ? (float) $before[0]['Value'] : null;
+        $curVal = (is_array($before) && count($before) > 0) ? (float) $before[0]['Value'] * 100 : null;
 
         $rows = @AC_GetLoggedValues($aid, $vid, $dayStart, $dayEnd, 0);
         if (!is_array($rows)) {
@@ -375,11 +392,19 @@ class NRGDashboardMonitor extends IPSModule
         $curTs = $dayStart;
         foreach ($rows as $row) {
             $ts = (int) $row['TimeStamp'];
+            $newVal = (float) $row['Value'] * 100;
+            // Gleitkomma-Nachschreiben desselben Preises (z.B. wiederholtes
+            // Schreiben von 18,00/18,01 ct/kWh) ist KEIN echter Slot-Wechsel -
+            // ohne diese Toleranz entstehen viele winzige Falschstufen statt
+            // sauberer Stunden-/Viertelstunden-Bloecke.
+            if ($curVal !== null && abs($newVal - $curVal) < 0.1) {
+                continue;
+            }
             if ($curVal !== null) {
                 $out[] = [$curTs * 1000, $ts * 1000, round($curVal, 2)];
             }
             $curTs = $ts;
-            $curVal = (float) $row['Value'];
+            $curVal = $newVal;
         }
         if ($curVal !== null) {
             $out[] = [$curTs * 1000, $dayEnd * 1000, round($curVal, 2)];
