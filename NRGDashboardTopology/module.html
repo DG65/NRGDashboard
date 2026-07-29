@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  /* Coin-Look angelehnt an NRGDashboardTile (Verbund-Optik), hier ohne
+     Fluss-Animation - es gibt keine "Richtung", nur einen Verbindungs-
+     status je Partnermodul. */
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { position: relative; width: 100%; height: 100vh; }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .node-face { filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+  .node-label { font-size: 13px; font-weight: 600; fill: var(--text, #dfe6ee); text-anchor: middle; }
+  .node-sub { font-size: 10px; fill: var(--textmuted, rgba(200,210,220,.75)); text-anchor: middle; }
+  .status-overlay {
+    position: absolute; left: 8px; bottom: 8px; z-index: 2;
+    display: inline-flex; align-items: center; gap: 8px;
+    max-width: calc(100% - 16px);
+    height: 26px; padding: 0 13px 0 11px;
+    border-radius: 13px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 12px; font-weight: 600; color: rgba(200,210,220,.9);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #4caf50; }
+  .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <svg id="svg" viewBox="0 0 560 560" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="gCenter" cx="35%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="#5b6b7a"/>
+          <stop offset="100%" stop-color="#2a323c"/>
+        </radialGradient>
+      </defs>
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </svg>
+    <div id="empty" class="empty" style="display:none"></div>
+    <div id="status" class="status-overlay" style="display:none">
+      <span id="dot" class="status-dot"></span>
+      <span id="summaryText"></span>
+    </div>
+  </div>
+
+  <script>
+    var CX = 280, CY = 280, R = 190, NODE_R = 46, CENTER_R = 56;
+    var STATUS_COLOR = { healthy: '#4caf50', unhealthy: '#e53935', missing: '#78828c' };
+    var STATUS_DASH = { healthy: '0', unhealthy: '0', missing: '6,5' };
+
+    function svgEl(tag, attrs) {
+      var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (var k in attrs) { el.setAttribute(k, attrs[k]); }
+      return el;
+    }
+
+    function renderTopology(d) {
+      var edges = document.getElementById('edges');
+      var nodesG = document.getElementById('nodes');
+      edges.innerHTML = ''; nodesG.innerHTML = '';
+
+      // Zentrum (EMS)
+      var centerCircle = svgEl('circle', { cx: CX, cy: CY, r: CENTER_R, fill: 'url(#gCenter)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, class: 'node-face' });
+      nodesG.appendChild(centerCircle);
+      var centerLabel = svgEl('text', { x: CX, y: CY + 5, class: 'node-label' });
+      centerLabel.textContent = 'EMS';
+      nodesG.appendChild(centerLabel);
+
+      var n = d.nodes.length;
+      d.nodes.forEach(function (node, i) {
+        var angle = (n > 0) ? (2 * Math.PI * i / n) - Math.PI / 2 : 0;
+        var x = CX + R * Math.cos(angle);
+        var y = CY + R * Math.sin(angle);
+        var color = STATUS_COLOR[node.status] || STATUS_COLOR.missing;
+
+        var edge = svgEl('line', {
+          x1: CX, y1: CY, x2: x, y2: y,
+          stroke: color, 'stroke-width': 2, opacity: node.status === 'missing' ? 0.5 : 0.85,
+          'stroke-dasharray': STATUS_DASH[node.status] || '0'
+        });
+        edges.appendChild(edge);
+
+        var circle = svgEl('circle', { cx: x, cy: y, r: NODE_R, fill: '#232a32', stroke: color, 'stroke-width': 3, class: 'node-face' });
+        nodesG.appendChild(circle);
+
+        var dotY = y - NODE_R - 10;
+        var statusDot = svgEl('circle', { cx: x, cy: dotY, r: 5, fill: color });
+        nodesG.appendChild(statusDot);
+
+        var label = svgEl('text', { x: x, y: y + 4, class: 'node-label' });
+        label.textContent = node.label;
+        // Lange Bezeichnungen (z.B. "Tibber Grid Rewards") im Knoten
+        // umbrechen statt abzuschneiden.
+        if (node.label.length > 12) {
+          var parts = node.label.split(' ');
+          var lines = [];
+          var cur = '';
+          parts.forEach(function (p) {
+            if ((cur + ' ' + p).trim().length > 12 && cur) { lines.push(cur); cur = p; }
+            else { cur = (cur + ' ' + p).trim(); }
+          });
+          if (cur) { lines.push(cur); }
+          label.textContent = '';
+          lines.forEach(function (ln, li) {
+            var tspan = svgEl('tspan', { x: x, dy: li === 0 ? (4 - (lines.length - 1) * 6) : 12 });
+            tspan.textContent = ln;
+            label.appendChild(tspan);
+          });
+        }
+        nodesG.appendChild(label);
+      });
+    }
+
+    function handleMessage(raw) {
+      var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      var empty = document.getElementById('empty');
+      var svg = document.getElementById('svg');
+      var status = document.getElementById('status');
+
+      if (d && d.bg) { document.body.style.background = d.bg; }
+      if (d && d.font) { document.documentElement.style.setProperty('--font', d.font); document.body.style.fontFamily = d.font; }
+
+      if (!d || !d.ok) {
+        svg.style.display = 'none';
+        status.style.display = 'none';
+        empty.style.display = 'flex';
+        empty.textContent = (d && d.error) || 'Keine Daten verfügbar.';
+        return;
+      }
+      empty.style.display = 'none';
+      svg.style.display = '';
+      renderTopology(d);
+
+      status.style.display = 'inline-flex';
+      var dot = document.getElementById('dot');
+      var allHealthy = d.total > 0 && d.healthy === d.total;
+      dot.style.background = allHealthy ? '#4caf50' : (d.healthy > 0 ? '#c9a227' : '#e53935');
+      document.getElementById('summaryText').textContent = d.summary || (d.healthy + '/' + d.total + ' Partnerinstanzen gesund');
+    }
+  </script>
+</body>
+</html>

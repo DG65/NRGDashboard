@@ -1,0 +1,14 @@
+{
+  "id": "{28EEBB3F-A735-4CE6-B879-6408A0EC4A68}",
+  "name": "NRGDashboardTopology",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Dashboard Verbund-Gesundheit"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHTOPO"
+}
