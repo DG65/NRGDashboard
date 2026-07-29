@@ -148,8 +148,8 @@ class NRGDashboardMap extends IPSModule
             // Layer 2: Batterie
             if ((int) ($ihubData['batPowerID'] ?? 0) > 0) {
                 $batPowerID = (int) ($ihubData['batPowerID'] ?? 0);
-                $batSocID = $this->FindVarByIdent($ihub, 'bat_soc');
-                $nodes[] = ['key' => 'battery', 'label' => 'Batterie', 'layer' => 2, 'category' => 'battery', 'powerID' => $batPowerID, 'valueID' => ($batSocID > 0 ? $batSocID : 0)];
+                $socID = $this->FindVarByIdent($ihub, 'soc');
+                $nodes[] = ['key' => 'battery', 'label' => 'Batterie', 'layer' => 2, 'category' => 'battery', 'powerID' => $batPowerID, 'valueID' => ($socID > 0 ? $socID : 0)];
                 $edges[] = ['from' => 'inverter', 'to' => 'battery', 'kind' => 'physical'];
             }
         }
