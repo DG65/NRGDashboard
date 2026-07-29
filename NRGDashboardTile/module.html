@@ -841,7 +841,7 @@ function updateNodeAura(refs, magnitude, active, color) {
   });
 }
 
-function updateSpoke(sp, color, magnitude, active, dir) {
+function updateSpoke(sp, color, magnitude, active, flowing, dir) {
   const col = rgb(color);
   const d = (dir === 'in') ? sp.dIn : sp.dOut;
   sp.core.style.stroke = col;
@@ -849,8 +849,8 @@ function updateSpoke(sp, color, magnitude, active, dir) {
   const k = Math.sqrt(Math.max(0, Math.min(1, magnitude / FLOW_REF_W)));
   const dur = 3.0 - 2.6 * k;
   sp.tris.forEach((t, i) => {
-    t.style.display = active ? '' : 'none';
-    if (!active) { return; }
+    t.style.display = flowing ? '' : 'none';
+    if (!flowing) { return; }
     t.style.offsetPath = 'path("' + d + '")';
     t.style.animationDuration = dur.toFixed(2) + 's';
     t.style.animationDelay = (-dur * i / TRI_COUNT).toFixed(2) + 's';
@@ -858,8 +858,8 @@ function updateSpoke(sp, color, magnitude, active, dir) {
     t.style.filter = 'drop-shadow(0 0 3px rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',0.9))';
   });
   sp.bolts.forEach((b, i) => {
-    b.style.display = active ? '' : 'none';
-    if (!active) { return; }
+    b.style.display = flowing ? '' : 'none';
+    if (!flowing) { return; }
     b.style.stroke = col;
     b.style.animationDuration = (1.1 + i * 0.23).toFixed(2) + 's';
     b.style.animationDelay = (i * 0.37).toFixed(2) + 's';
@@ -914,11 +914,16 @@ function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale) {
 function updateOuterNode(refs, item) {
   const w = item.value ?? 0;
   const magnitude = Math.abs(w);
+  // "aktiv" (volle Farbe/Größe) darf auch ohne Leistung gelten, z.B.
+  // eingesteckte aber gerade nicht ladende Wallbox - "fließend" (animierte
+  // Pfeile/Blitze auf der Speiche) braucht dagegen tatsächlich Leistung,
+  // sonst würde ein Fluss angezeigt, wo keiner stattfindet.
   const active = magnitude > 20 || !!item.plugged;
+  const flowing = magnitude > 20;
   const color = active ? item.color(w) : C_GREY;
 
   applyNodeState(refs.g, refs.glow, color, magnitude, active, refs.cx, refs.cy, refs.baseScale);
-  updateSpoke(refs.spoke, color, magnitude, active, item.dir(w));
+  updateSpoke(refs.spoke, color, magnitude, active, flowing, item.dir(w));
   updateNodeAura(refs, magnitude, active, color);
 
   refs.iconG.textContent = '';
