@@ -25,6 +25,10 @@ define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}'
 define('NRGDASH_GUID_STROMGEDACHT',   '{D5A8C3A1-2222-4A55-8888-123456789003}');
 define('NRGDASH_GUID_PVPROGNOSE',     '{257DD4E8-9705-462E-89FC-56D0A1038353}');
 define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
+// Schwester-Kachel im selben Repo (NRGDashboardMonitor) - fuer den
+// IrradianceID-Rueckfall (Dietmar, 29.07.2026: "Einstrahlungswerte nicht
+// mehr als einmal irgendwo eintragen").
+define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 
 class NRGDashboardTile extends IPSModule
 {
@@ -1026,7 +1030,7 @@ class NRGDashboardTile extends IPSModule
         // Generatorparameter, NIE PVF_GetForecast (Wetterfehler wuerde sonst
         // als Anlagenfehler ausgewiesen - Verbund-Konvention, siehe
         // InverterHub/CLAUDE.md "Diagnose = GEMESSENE Einstrahlung ...").
-        $irr = $this->readIntProperty('IrradianceID', 0);
+        $irr = $this->resolveIrradianceID();
         $pvVid = (int) ($data['pvPowerID'] ?? 0);
         if ($irr > 0 && IPS_VariableExists($irr) && $pvVid > 0) {
             $pvf = $this->PvfModel();
@@ -1128,6 +1132,31 @@ class NRGDashboardTile extends IPSModule
         }
 
         return $entries;
+    }
+
+    /**
+     * Eigene Property gewinnt; sonst - bei genau einer NRGDashboardMonitor-
+     * Instanz - deren "IrradianceID" mitlesen (Dietmar, 29.07.2026: "möchte
+     * Einstrahlungswerte nicht mehr als einmal irgendwo eintragen"). Direktes
+     * Lesen einer Schwester-Instanz-Property ist hier bewusst in Ordnung -
+     * beide Kacheln leben im selben Repo/derselben Suite, das ist keine
+     * Kopplung an ein fremdes Modul, die einen *_GetFunctions()-Vertrag
+     * bräuchte.
+     */
+    private function resolveIrradianceID(): int
+    {
+        $own = $this->readIntProperty('IrradianceID', 0);
+        if ($own > 0 && IPS_VariableExists($own)) {
+            return $own;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_MONITOR);
+        if (is_array($ids) && count($ids) === 1) {
+            $vid = (int) @IPS_GetProperty((int) $ids[0], 'IrradianceID');
+            if ($vid > 0 && IPS_VariableExists($vid)) {
+                return $vid;
+            }
+        }
+        return 0;
     }
 
     private function singleInverterHubCoreID(): int

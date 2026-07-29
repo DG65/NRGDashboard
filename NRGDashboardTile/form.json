@@ -290,7 +290,7 @@
           "type": "Label",
           "caption": "Nur bei genau einer installierten InverterHub-Instanz aktiv (sonst wäre die Zuordnung nicht eindeutig). MPPT-Strangvergleich läuft automatisch. Für „Ertrag vs. Prognose“ zusätzlich Einstrahlung + PV-Prognose-Instanz eintragen. Für den Isolationswiderstand-Hinweis zusätzlich eine Warnschwelle setzen - ohne Schwelle wird der Rohwert angezeigt, aber nicht bewertet."
         },
-        { "type": "SelectVariable", "name": "IrradianceID", "caption": "Einstrahlungs-Variable (W/m², für „Ertrag vs. Prognose“)" },
+        { "type": "SelectVariable", "name": "IrradianceID", "caption": "Einstrahlungs-Variable (W/m², optional - sonst automatisch von der NRG-Dashboard-Monitor-Kachel übernommen, sofern dort eingetragen)" },
         {
           "type": "SelectInstance",
           "name": "PvfInstance",
