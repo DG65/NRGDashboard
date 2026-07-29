@@ -407,19 +407,51 @@ class NRGDashboardMonitor extends IPSModule
      *    Aufeinanderfolgende Werte, die sich um weniger als 0,1 ct/kWh
      *    unterscheiden, gelten deshalb als derselbe Preis (kein Stufenwechsel).
      */
+    /**
+     * Gleiche Aufloesung fuer JEDEN Tag erzwingen - GENAU 96 Viertelstunden-
+     * Buckets, unabhaengig davon, ob die Quelle stuendliche Vorwaerts-Slots
+     * (PriceCurve()) oder unregelmaessig lange rekonstruierte Bloecke
+     * (Archiv-Reihe vergangener Tage) liefert. Dietmars Fund (29.07.2026):
+     * "Heute" fuehlte sich im Tooltip richtig an, andere Tage nicht - eine
+     * Zeitraum-Suche im Frontend (priceSlotAt()) hat das nur pro Hover
+     * repariert, statt die eigentliche Ursache zu beseitigen: Strompreis und
+     * Netzbezug lagen auf UNTERSCHIEDLICH feinen Zeitrastern. Mit exakt
+     * demselben 15-Minuten-Raster wie SlotEnergyBars() verhaelt sich jeder
+     * Tag identisch zu "Heute", ganz ohne Sonderfall-Code.
+     */
+    private function ResampleTo15Min(array $slots, int $dayStart, int $dayEnd): array
+    {
+        $out = [];
+        for ($bucketStart = $dayStart; $bucketStart < $dayEnd; $bucketStart += 900) {
+            $bucketEnd = $bucketStart + 900;
+            $center = $bucketStart + 450;
+            $price = null;
+            foreach ($slots as $slot) {
+                if ($center >= $slot[0] && $center < $slot[1]) {
+                    $price = $slot[2];
+                    break;
+                }
+            }
+            if ($price !== null) {
+                $out[] = [$bucketStart * 1000, $bucketEnd * 1000, $price];
+            }
+        }
+        return $out;
+    }
+
     private function PriceDaySlots(int $dayStart): array
     {
         $dayEnd = $dayStart + 86400;
         if ($dayStart >= strtotime('today')) {
-            $out = [];
+            $raw = [];
             foreach ($this->PriceCurve() as $slot) {
                 $s = intdiv($slot[0], 1000);
                 $e = intdiv($slot[1], 1000);
                 if ($e > $dayStart && $s < $dayEnd) {
-                    $out[] = [max($s, $dayStart) * 1000, min($e, $dayEnd) * 1000, $slot[2]];
+                    $raw[] = [max($s, $dayStart), min($e, $dayEnd), $slot[2]];
                 }
             }
-            return $out;
+            return $this->ResampleTo15Min($raw, $dayStart, $dayEnd);
         }
 
         $tid = $this->TibberInstanceID();
@@ -470,15 +502,15 @@ class NRGDashboardMonitor extends IPSModule
                 continue;
             }
             if ($curVal !== null) {
-                $out[] = [$curTs * 1000, $ts * 1000, round($curVal, 2)];
+                $out[] = [$curTs, $ts, round($curVal, 2)];
             }
             $curTs = $ts;
             $curVal = $newVal;
         }
         if ($curVal !== null) {
-            $out[] = [$curTs * 1000, $dayEnd * 1000, round($curVal, 2)];
+            $out[] = [$curTs, $dayEnd, round($curVal, 2)];
         }
-        return $out;
+        return $this->ResampleTo15Min($out, $dayStart, $dayEnd);
     }
 
     private function PvfInstanceID(): int
