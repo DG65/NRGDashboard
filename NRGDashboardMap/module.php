@@ -333,9 +333,30 @@ class NRGDashboardMap extends IPSModule
     private function buildPayload(): array
     {
         $map = $this->GetMap();
+        $nodes = $map['nodes'];
+
+        // WORKAROUND Phase 2: Wenn Nodes keine powerID haben, versuche sie hinzuzufügen
+        $ihub = $this->singleInverterHubCoreID();
+        if ($ihub > 0) {
+            foreach ($nodes as &$n) {
+                if (!isset($n['powerID']) || $n['powerID'] == 0) {
+                    if (strpos($n['key'], 'pv_string_') === 0) {
+                        $m = [];
+                        if (preg_match('/pv_string_(\d)/', $n['key'], $m)) {
+                            $vid = $this->FindVarByIdent($ihub, 'mppt' . $m[1] . '_power');
+                            if ($vid > 0) $n['powerID'] = $vid;
+                        }
+                    } elseif ($n['key'] === 'inverter') {
+                        $vid = $this->FindVarByIdent($ihub, 'ac_power');
+                        if ($vid > 0) $n['powerID'] = $vid;
+                    }
+                }
+            }
+        }
+
         return [
             'ok'     => true,
-            'nodes'  => $map['nodes'],
+            'nodes'  => $nodes,
             'edges'  => $map['edges'],
             'values' => $this->GetLiveValues(),
             'bg'     => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
