@@ -89,6 +89,17 @@
     // Zarte Gitterlinien-Farbe fuer Zeit- und linke Achse (Dietmars Wunsch,
     // 28.07.2026) - in beiden Engines identisch verwendet.
     var GRID_COLOR = 'rgba(255,255,255,.09)';
+    // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
+    // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
+    // schmaler sichtbarer Slider unten als "Legende" fuer den Zoom-Zustand
+    // (Dietmars Nachtrag: der Zoom soll erkennbar/bedienbar sein, nicht nur
+    // per Mausrad blind). xAxisIndex/yAxisIndex bewusst nicht gesetzt -
+    // ECharts' Default ist die erste x-Achse (bei uns immer die Zeitachse),
+    // die y-Achse bleibt dabei unangetastet.
+    var DATA_ZOOM_INSIDE = [
+      { type: 'inside', filterMode: 'none' },
+      { type: 'slider', filterMode: 'none', height: 14, bottom: 4, borderColor: GRID_COLOR, fillerColor: 'rgba(255,255,255,.12)', handleStyle: { color: '#888' }, textStyle: { color: '#888' }, dataBackground: { lineStyle: { color: GRID_COLOR }, areaStyle: { color: GRID_COLOR } } }
+    ];
 
     // Legenden-Sichtbarkeit je Kurvenname - bleibt ueber Reiter-/Tageswechsel
     // UND ueber ein Neuladen der Kachel erhalten (localStorage), Muster:
@@ -527,7 +538,9 @@
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         // bottom:32 statt 12 - bei 12 wurden die Uhrzeit-Beschriftungen der
         // x-Achse unten abgeschnitten (Dietmar, 28.07.2026).
-        grid: { left: 46, right: (ax.showRight || tab === 'price') ? 46 : 12, top: 28, bottom: 32 },
+        // bottom:52 statt 32 - Platz fuer den Zoom-Slider unter der
+        // Zeitachsen-Beschriftung (Dietmars Wunsch, 28.07.2026).
+        grid: { left: 46, right: (ax.showRight || tab === 'price') ? 46 : 12, top: 28, bottom: 52 },
         legend: { show: false },
         // Dunkler Tooltip passend zu Highcharts (dessen useHTML-Tooltip vom
         // Browser/OS automatisch dunkel dargestellt wird) - ECharts' Tooltip
@@ -598,6 +611,11 @@
               { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
               { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, splitLine: { show: false }, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
+        // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - Mausrad/
+        // Pinch/Ziehen auf der Zeitachse, kein sichtbarer Slider (spart
+        // Platz in der Kachel), Doppelklick setzt zurueck (ECharts-Standard
+        // bei type:'inside').
+        dataZoom: DATA_ZOOM_INSIDE,
         series: series
       }, true);
     }
@@ -637,7 +655,11 @@
         // ueberschrieben, damit beide Achsen gleich viele Teilstriche haben.
         // Deshalb hier deaktiviert, sonst wirkt "1-kW-Schritte" nur, wenn es
         // zufaellig zur rechten Achse (W/m^2) passt.
-        chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // zoomType:'x' - Ziehen auf der Zeitachse zoomt, Highcharts zeigt
+        // dabei von sich aus einen "Reset zoom"-Knopf (Dietmars Wunsch,
+        // 28.07.2026: Zoom in allen Charts, mit erkennbarer Bedienung/
+        // Rueckstellung - Pendant zum sichtbaren Slider bei ECharts).
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // Zarte Gitterlinien fuer Zeit (x-Achse) und die linke Achse (PV-
         // Leistung/kW) - die rechte Achse (Einstrahlung) bekommt bewusst
@@ -737,7 +759,10 @@
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: 12, top: 28, bottom: 40 },
+        // bottom:60 statt 40 - Platz fuer den Zoom-Slider (Dietmars Wunsch,
+        // 28.07.2026), zusaetzlich zu den ggf. schraeg gestellten Kategorie-
+        // Beschriftungen.
+        grid: { left: 46, right: 12, top: 28, bottom: 60 },
         legend: { show: false },
         // Tooltip-Kopf zeigt die volle Bezeichnung (z.B. "Montag,
         // 27.07.2026" statt nur "Mo 27.07") - Dietmars Wunsch, 28.07.2026,
@@ -758,6 +783,7 @@
         },
         xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0 } },
         yAxis: [{ type: 'value', name: 'kWh' }],
+        dataZoom: DATA_ZOOM_INSIDE,
         series: visSeries.map(function (s) {
           return { name: s.name, type: 'bar', data: s.data, color: s.color };
         })
@@ -771,7 +797,9 @@
       var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
-        chart: { backgroundColor: 'transparent', alignTicks: false, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // zoomType:'x' - Ziehen auf der Kategorie-Achse zoomt, mit
+        // automatischem "Reset zoom"-Knopf (Dietmars Wunsch, 28.07.2026).
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // crosshair auf einer Kategorie-Achse zeichnet bei Highcharts von
         // sich aus ein flaechiges Rechteck ueber die volle Kategorie-
