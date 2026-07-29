@@ -23,7 +23,7 @@ class NRGDashboardMonitor extends IPSModule
     private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const IHUBMON_GUID     = '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}';
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
-    private const IHUBNRG_GUID     = '{C3E7A1F4-9B2D-4E6A-8F1C-7A5B3D9E2C08}';
+    private const METERHUB_GUID    = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
@@ -54,7 +54,6 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyInteger('Mppt3ID', 0);
         $this->RegisterPropertyInteger('Mppt4ID', 0);
         $this->RegisterPropertyInteger('TibberInstance', 0);
-        $this->RegisterPropertyInteger('InverterHubEnergyInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
@@ -524,34 +523,263 @@ class NRGDashboardMonitor extends IPSModule
         return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
     }
 
-    private function InverterHubEnergyInstanceID(): int
+    // Feste Knotenfarben, 1:1 aus InverterHubEnergy::COL_* uebernommen (deren
+    // Sankey-Vorlage, mit denen abgestimmt) - Konsistenz, falls Dietmar die
+    // Kachel je wieder nebeneinander sieht.
+    private const COL_SOLAR = '#F2C230';
+    private const COL_BAT   = '#5FCB6B';
+    private const COL_GRID  = '#4AA3E0';
+    private const COL_LOAD  = '#E8823C';
+
+    // 1:1 aus InverterHubEnergy::CONSUMER_TYPES uebernommen (nur die Farben -
+    // die Bezeichnung liefert MHUB_GetFunctions() bereits als eigenes Feld
+    // "label", die muss hier nicht dupliziert werden).
+    private const CONSUMER_COLORS = [
+        'wallbox' => '#9575CD', 'heatpump' => '#FF7A18', 'ac' => '#26C6DA', 'aircon' => '#26C6DA',
+        'poolheat' => '#FF8A50', 'poolpump' => '#26A69A', 'sauna' => '#F4511E', 'boiler' => '#FFA726',
+        'dryer' => '#78909C', 'washer' => '#4DD0E1', 'dishwasher' => '#4DB6AC', 'oven' => '#EF6C00',
+        'stove' => '#E64A19', 'fridge' => '#4FC3F7', 'kitchen' => '#FFB74D', 'heater' => '#FF7043',
+        'vent' => '#80DEEA', 'light' => '#FFD54F', 'it' => '#7986CB', 'workshop' => '#8D6E63',
+        'garage' => '#B39DDB', 'other' => '#90A4AE',
+    ];
+
+    /**
+     * Alle Zuordnungen aller MeterHub-Instanzen, flach - "grid"/"house"
+     * gesondert behandelt (s. EnergyFlow()), alles andere ist ein
+     * generischer Verbraucher. Bevorzugt eine "billing"-Zuordnung, wo
+     * mehrere Instanzen dieselbe Funktion melden (z.B. zwei Netzzaehler,
+     * Inexogy=billing vs. PAC2200=auxiliary - live an Dietmars Anlage
+     * bestaetigt, 29.07.2026).
+     */
+    private function MeterHubAssignments(): array
     {
-        $cfg = $this->readIntProperty('InverterHubEnergyInstance', 0);
-        if ($cfg > 0 && IPS_InstanceExists($cfg)
-            && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::IHUBNRG_GUID) {
-            return $cfg;
+        $ids = @IPS_GetInstanceListByModuleID(self::METERHUB_GUID);
+        if (!is_array($ids)) {
+            return [];
         }
-        $ids = @IPS_GetInstanceListByModuleID(self::IHUBNRG_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        $out = [];
+        foreach ($ids as $id) {
+            if (!function_exists('MHUB_GetFunctions')) {
+                break;
+            }
+            $f = @MHUB_GetFunctions($id);
+            if (!is_array($f) || !isset($f['assignments']) || !is_array($f['assignments'])) {
+                continue;
+            }
+            foreach ($f['assignments'] as $a) {
+                $out[] = $a;
+            }
+        }
+        return $out;
     }
 
     /**
-     * Sankey-Energiebilanz fuer einen Zeitraum - reiner Durchreich-Aufruf an
-     * InverterHubEnergy::GetFlow() (Verbund-Vertrag, mit deren Sitzung
-     * 28.07.2026 abgestimmt: IHUBNRG_GetFlow liefert bereits fertige
-     * nodes/links/totalIn/hasData samt Farben, keine eigene Berechnung
-     * noetig - Zaehler-Differenzbildung, Doppelzaehlungs-Vermeidung
-     * zwischen manuellen/MeterHub-/HeishaMon-Verbrauchern bleibt komplett
-     * bei InverterHub).
+     * Beste Zuordnung fuer eine Funktion (z.B. "grid") - "billing" schlaegt
+     * "auxiliary", sonst die erste gefundene.
+     */
+    private function BestAssignment(array $assignments, string $function): ?array
+    {
+        $best = null;
+        foreach ($assignments as $a) {
+            if (($a['function'] ?? '') !== $function) {
+                continue;
+            }
+            if ($best === null || ($a['authority'] ?? '') === 'billing') {
+                $best = $a;
+                if (($a['authority'] ?? '') === 'billing') {
+                    break;
+                }
+            }
+        }
+        return $best;
+    }
+
+    /**
+     * Zaehlerstand-Differenz ueber einen Zeitraum (Muster: InverterHubEnergy::
+     * PeriodEnergy() - mit deren Sitzung abgestimmt, 29.07.2026, dieselbe
+     * Reset-sichere Logik: negative Differenz = Zaehlerruecksetzung/
+     * Ausreisser, dann null statt eines falschen Werts).
+     */
+    private function PeriodEnergyCounter(int $vid, int $start, int $end): ?float
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return null;
+        }
+        $aid = $this->ArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return null;
+        }
+        $endVal = ($end >= time() - 5) ? (float) GetValue($vid) : $this->ArchiveValueAt($aid, $vid, $end);
+        if ($endVal === null) {
+            return null;
+        }
+        $startVal = $this->ArchiveValueAt($aid, $vid, $start);
+        if ($startVal === null) {
+            $r = @AC_GetLoggedValues($aid, $vid, 0, $end, 0);
+            $startVal = (is_array($r) && count($r) > 0) ? (float) $r[count($r) - 1]['Value'] : null;
+        }
+        if ($startVal === null) {
+            return null;
+        }
+        $delta = $endVal - $startVal;
+        return ($delta >= 0) ? $delta : null;
+    }
+
+    private function ArchiveValueAt(int $aid, int $vid, int $t): ?float
+    {
+        if ($t <= 0) {
+            return null;
+        }
+        $r = @AC_GetLoggedValues($aid, $vid, 0, $t, 1);
+        return (is_array($r) && count($r) > 0) ? (float) $r[0]['Value'] : null;
+    }
+
+    /**
+     * Energie (kWh) aus einer reinen LEISTUNGS-Variable ueber einen
+     * Zeitraum - InverterHub liefert fuer PV/Batterie nur Leistung, keinen
+     * kumulativen Zaehler (IHUB_GetFunctions() hat pvPowerID/batPowerID,
+     * keine *EnergyID). $sign: 1 = nur positive Werte aufsummieren
+     * (Erzeugung/Entladung), -1 = nur negative (Ladung), Vorzeichen
+     * kanonisch wie ueberall im Verbund ("+ Einspeisung"/"+ Entladen").
+     */
+    private function PowerToEnergy(int $vid, int $start, int $end, int $sign): float
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return 0.0;
+        }
+        $aid = $this->ArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return 0.0;
+        }
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_5MIN, $start, $end, 0);
+        if (!is_array($data)) {
+            return 0.0;
+        }
+        $kwh = 0.0;
+        foreach ($data as $row) {
+            $avg = (float) $row['Avg'];
+            $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
+            $kwh += $part * (5.0 / 60.0) / 1000.0;
+        }
+        return $kwh;
+    }
+
+    /**
+     * Sankey-Energiebilanz fuer einen Zeitraum - EIGENE Berechnung (nicht
+     * mehr ueber InverterHubEnergy, die Instanz hat Dietmar bewusst
+     * geloescht, 29.07.2026: "moechte nicht so viele Instanzen verwalten").
+     * Mit InverterHub UND MeterHub abgestimmt: Solar/Batterie kommen als
+     * LEISTUNG von der InverterHub-Kerninstanz (IHUB_GetFunctions(), per
+     * PowerToEnergy() aufintegriert), Netzbezug/-einspeisung und alle
+     * Verbraucher als ECHTE Zaehlerstaende von MeterHub (PeriodEnergyCounter(),
+     * Netz bevorzugt "billing"-Zuordnung - Inexogy vor PAC2200 an Dietmars
+     * Anlage). "Hausverbrauch" ist bei ihm ein ECHTER MeterHub-Zaehler
+     * (function 'house'), keine Ableitung aus PV+Batterie+Netz mehr noetig,
+     * sofern vorhanden. Aufteilungsformel (PV/Batterie/Netz-Anteile je
+     * Verbraucher) 1:1 aus InverterHubEnergy::ComputeFlow() uebernommen -
+     * das ist reine Rechenlogik, keine Zaehlerfrage, bewusst unveraendert
+     * gelassen, um keine neuen Fallstricke einzubauen.
      */
     private function EnergyFlow(int $start, int $end): ?array
     {
-        $id = $this->InverterHubEnergyInstanceID();
-        if ($id <= 0 || !function_exists('IHUBNRG_GetFlow')) {
-            return null;
+        $ihub = $this->singleInverterHubID();
+        $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
+        $pvPowerID = is_array($data) ? (int) ($data['pvPowerID'] ?? 0) : 0;
+        $batPowerID = is_array($data) ? (int) ($data['batPowerID'] ?? 0) : 0;
+        $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
+
+        $solar = $this->PowerToEnergy($pvPowerID, $start, $end, 1);
+        $batCh = $this->PowerToEnergy($batPowerID, $start, $end, -1);
+        $batDis = $this->PowerToEnergy($batPowerID, $start, $end, 1);
+
+        $assignments = $this->MeterHubAssignments();
+        $gridA = $this->BestAssignment($assignments, 'grid');
+        $houseA = $this->BestAssignment($assignments, 'house');
+
+        if ($gridA !== null) {
+            $gridImp = $this->PeriodEnergyCounter((int) ($gridA['energyImportID'] ?? 0), $start, $end);
+            $gridExp = $this->PeriodEnergyCounter((int) ($gridA['energyExportID'] ?? 0), $start, $end);
+        } else {
+            // Kein MeterHub-Netzzaehler getaggt - Rueckfall auf InverterHubs
+            // Netzleistung (Naeherung ueber Leistungsintegration statt
+            // echtem Zaehlerstand).
+            $gridImp = $this->PowerToEnergy($ihubGridPowerID, $start, $end, -1);
+            $gridExp = $this->PowerToEnergy($ihubGridPowerID, $start, $end, 1);
         }
-        $flow = @IHUBNRG_GetFlow($id, $start, $end);
-        return is_array($flow) ? $flow : null;
+        $gridImp = max(0.0, (float) $gridImp);
+        $gridExp = max(0.0, (float) $gridExp);
+
+        $houseE = ($houseA !== null) ? $this->PeriodEnergyCounter((int) ($houseA['energyImportID'] ?? 0), $start, $end) : null;
+
+        // Aufteilungsmodell (1:1 InverterHubEnergy::ComputeFlow()): Netz-
+        // einspeisung und Batterie-Ladung stammen aus PV; der PV-Rest sowie
+        // Batterie-Entladung und Netzbezug decken den Verbrauch.
+        $pvToLoad = max(0.0, $solar - $gridExp - $batCh);
+        $load = ($houseE !== null && $houseE > 0) ? (float) $houseE : ($pvToLoad + $batDis + $gridImp);
+
+        $consumers = [];
+        $consSum = 0.0;
+        foreach ($assignments as $a) {
+            $fn = $a['function'] ?? '';
+            if ($fn === '' || $fn === 'grid' || $fn === 'house' || $fn === 'pv' || $fn === 'battery') {
+                continue;
+            }
+            $e = $this->PeriodEnergyCounter((int) ($a['energyImportID'] ?? 0), $start, $end);
+            if ($e === null) {
+                continue;
+            }
+            $e = max(0.0, (float) $e);
+            $consumers[] = [
+                'key' => 'c' . count($consumers),
+                'label' => (string) ($a['label'] ?? $fn),
+                'color' => self::CONSUMER_COLORS[$fn] ?? self::COL_LOAD,
+                'val' => $e,
+            ];
+            $consSum += $e;
+        }
+        $rest = max(0.0, $load - $consSum);
+
+        $nodes = [];
+        $links = [];
+        $batNode = ($batCh > 0 || $batDis > 0);
+
+        if ($solar > 0) { $nodes[] = ['key' => 'solar', 'label' => 'Solar', 'color' => self::COL_SOLAR, 'column' => 0]; }
+        if ($gridImp > 0) { $nodes[] = ['key' => 'gridimp', 'label' => 'Netzbezug', 'color' => self::COL_GRID, 'column' => 0]; }
+        if ($batNode) { $nodes[] = ['key' => 'bat', 'label' => 'Batterie', 'color' => self::COL_BAT, 'column' => 1]; }
+        foreach ($consumers as $c) {
+            $nodes[] = ['key' => $c['key'], 'label' => $c['label'], 'color' => $c['color'], 'column' => 2];
+        }
+        if ($rest > 0) { $nodes[] = ['key' => 'rest', 'label' => ($consSum > 0 ? 'Sonstiger Verbrauch' : 'Hausverbrauch'), 'color' => self::COL_LOAD, 'column' => 2]; }
+        if ($gridExp > 0) { $nodes[] = ['key' => 'gridexp', 'label' => 'Netzeinspeisung', 'color' => self::COL_GRID, 'column' => 2]; }
+
+        $addLink = function ($from, $to, $val) use (&$links) {
+            if ($val > 0.0001) {
+                $links[] = ['from' => $from, 'to' => $to, 'value' => round($val, 3)];
+            }
+        };
+        if ($solar > 0 && $batCh > 0) { $addLink('solar', 'bat', $batCh); }
+        if ($solar > 0 && $gridExp > 0) { $addLink('solar', 'gridexp', $gridExp); }
+        $sinkList = [];
+        foreach ($consumers as $c) { $sinkList[$c['key']] = $c['val']; }
+        if ($rest > 0) { $sinkList['rest'] = $rest; }
+        if ($load > 0) {
+            $fPv = $pvToLoad / $load;
+            $fBat = $batDis / $load;
+            $fGrid = $gridImp / $load;
+            foreach ($sinkList as $k => $v) {
+                if ($solar > 0 && $pvToLoad > 0) { $addLink('solar', $k, $v * $fPv); }
+                if ($batNode && $batDis > 0) { $addLink('bat', $k, $v * $fBat); }
+                if ($gridImp > 0) { $addLink('gridimp', $k, $v * $fGrid); }
+            }
+        }
+
+        return [
+            'contractVersion' => '1.0',
+            'hasData' => (count($links) > 0),
+            'totalIn' => round($solar + $gridImp, 2),
+            'nodes' => $nodes,
+            'links' => $links,
+        ];
     }
 
     /**
@@ -1063,7 +1291,7 @@ class NRGDashboardMonitor extends IPSModule
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
             'hasMpptModel' => $mpptModelUsable,
-            'hasEnergyFlow' => $this->InverterHubEnergyInstanceID() > 0,
+            'hasEnergyFlow' => $this->singleInverterHubID() > 0 || count($this->MeterHubAssignments()) > 0,
             'hasGrid'  => $this->GridPowerID() > 0,
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
