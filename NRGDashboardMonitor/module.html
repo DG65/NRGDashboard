@@ -819,7 +819,20 @@
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       var lk = sankeyLookups(flow);
       var totalIn = flow.totalIn || 0;
-      var data = (flow.links || []).map(function (l) { return [l.from, l.to, l.value]; });
+      // Verlaufsfarbe je Link (Quellknoten- zu Zielknoten-Farbe), analog zu
+      // ECharts' lineStyle.color:'gradient' - Highcharts baut das nicht von
+      // sich aus, deshalb je Link ein eigener linearGradient auf Basis der
+      // ohnehin bekannten Knotenfarben (Dietmars Wunsch, 28.07.2026: HC an
+      // die ECharts-Optik angleichen).
+      var data = (flow.links || []).map(function (l) {
+        return {
+          from: l.from, to: l.to, weight: l.value,
+          color: {
+            linearGradient: { x1: 0, y1: 0, x2: 1, y2: 0 },
+            stops: [[0, lk.color[l.from] || '#888'], [1, lk.color[l.to] || '#888']]
+          }
+        };
+      });
       var nodesCfg = (flow.nodes || []).map(function (n) { return { id: n.key, name: n.label, color: n.color, column: n.column }; });
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
@@ -841,13 +854,21 @@
             return this.point.fromNode.name + ' → ' + this.point.toNode.name + ': <b>' + Number(this.point.weight).toFixed(2) + ' kWh</b> (' + pctE.toFixed(0) + ' %)';
           }
         },
+        // nodeWidth/nodePadding/linkOpacity/curveFactor an ECharts'
+        // nodeWidth:16/nodeGap:14/opacity:0.42/curveness:0.5 angeglichen -
+        // Highcharts' eigene Defaults wirkten dagegen breiter/klobiger
+        // (Dietmars Vergleich, 28.07.2026). borderWidth:0 entfernt die
+        // dicken hellen Umrandungen der Knoten, die ECharts von Haus aus
+        // nicht zeichnet.
         series: [{
           type: 'sankey',
-          keys: ['from', 'to', 'weight'],
           data: data,
           nodes: nodesCfg,
-          dataLabels: { color: '#e8e8e8', style: { textOutline: 'none' } },
-          linkOpacity: 0.45,
+          nodeWidth: 16,
+          nodePadding: 14,
+          borderWidth: 0,
+          dataLabels: { color: '#e8e8e8', style: { textOutline: 'none', fontWeight: 'normal' } },
+          linkOpacity: 0.42,
           curveFactor: 0.5,
           animation: false
         }]
