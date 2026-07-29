@@ -112,6 +112,38 @@ class NRGDashboardMonitor extends IPSModule
         return is_int($v) ? $v : $default;
     }
 
+    /**
+     * Rekursive Ident-Suche unterhalb einer Instanz - IPS_GetObjectIDByIdent
+     * findet nur DIREKTE Kinder. InverterHubs Treiber verschiebt seine
+     * Variablen aber sofort nach der Anlage in fachliche Unterkategorien
+     * (hier z.B. "PV / MPPT") - live bestaetigt (29.07.2026): mppt1_power
+     * usw. liegen NICHT direkt an der Instanz, sondern in dieser
+     * Unterkategorie. Ohne Rekursion faende IPS_GetObjectIDByIdent sie nie.
+     */
+    private function FindVarByIdent(int $parentID, string $ident): int
+    {
+        $children = @IPS_GetChildrenIDs($parentID);
+        if (!is_array($children)) {
+            return 0;
+        }
+        foreach ($children as $cid) {
+            $obj = @IPS_GetObject($cid);
+            if (!is_array($obj)) {
+                continue;
+            }
+            if (($obj['ObjectIdent'] ?? '') === $ident) {
+                return $cid;
+            }
+            if ($obj['HasChildren'] ?? false) {
+                $found = $this->FindVarByIdent($cid, $ident);
+                if ($found > 0) {
+                    return $found;
+                }
+            }
+        }
+        return 0;
+    }
+
     private function readStringProperty(string $name, string $default): string
     {
         $v = @$this->ReadPropertyString($name);
@@ -263,6 +295,29 @@ class NRGDashboardMonitor extends IPSModule
         if (count($out) > 0) {
             return $out;
         }
+        // Direkter Ident-Zugriff auf die InverterHub-KERNINSTANZ (nicht
+        // InverterHubMonitor) - deren Treiber legt die MPPT-Straenge als
+        // eigene Variablen mppt1_power../mppt4_power an, allerdings NICHT
+        // direkt an der Instanz, sondern in einer fachlichen Unterkategorie
+        // ("PV / MPPT") - deshalb rekursive Suche (FindVarByIdent), ein
+        // einfaches IPS_GetObjectIDByIdent faende nur direkte Kinder (live
+        // bestaetigt, 29.07.2026, mit der InverterHub-Sitzung abgestimmt).
+        // Dietmar wollte InverterHubMonitor/-Energy NICHT als zusaetzliche,
+        // zu unserer Kachel redundante Anzeige-Instanzen behalten - dieser
+        // Weg braucht nur die ohnehin vorhandene WR-Instanz, kein
+        // Diagnose-Zwischenmodul mehr.
+        $ihub = $this->singleInverterHubID();
+        if ($ihub > 0) {
+            for ($i = 1; $i <= 4; $i++) {
+                $vid = $this->FindVarByIdent($ihub, 'mppt' . $i . '_power');
+                if ($vid > 0 && IPS_VariableExists($vid)) {
+                    $out[(string) $i] = $vid;
+                }
+            }
+        }
+        if (count($out) > 0) {
+            return $out;
+        }
         // Manueller Rueckfall (Store-Review-Checkliste Punkt 12,
         // "Neuinstallations-Simulation", 28.07.2026): ohne installierte
         // InverterHubMonitor-Instanz gab es bislang KEINEN Weg an MPPT-Daten
@@ -398,6 +453,20 @@ class NRGDashboardMonitor extends IPSModule
             // ohne diese Toleranz entstehen viele winzige Falschstufen statt
             // sauberer Stunden-/Viertelstunden-Bloecke.
             if ($curVal !== null && abs($newVal - $curVal) < 0.1) {
+                continue;
+            }
+            // Zu kurze Stufe (z.B. der "vor Tagesbeginn"-Ruecklauf-Wert,
+            // Sekunden spaeter durch den ersten echten Log-Eintrag des Tages
+            // ueberschrieben) erzeugt eine winzige Zeitluecke im Diagramm -
+            // live gefunden (Dietmar 29.07.2026): ein 1-Sekunden-Slot um
+            // Mitternacht liess ECharts'/Highcharts' automatische
+            // Balkenbreiten-Berechnung fuer den Netzbezug (teilt sich
+            // dieselbe Zeitachse) fuer den GESAMTEN Tag sichtbar schrumpfen.
+            // Ein zu frueher Wechsel wird deshalb uebersprungen - der neue
+            // Wert gilt einfach rueckwirkend als Fortsetzung der laufenden
+            // Stufe, statt eine eigene (zu kurze) Stufe zu eroeffnen.
+            if ($curVal !== null && ($ts - $curTs) < 60) {
+                $curVal = $newVal;
                 continue;
             }
             if ($curVal !== null) {
