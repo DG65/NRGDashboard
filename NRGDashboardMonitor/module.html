@@ -788,7 +788,13 @@
     // Installationen haben andere/keine dieser Labels. Ein hier unbekanntes
     // Label faellt einfach ans Ende (in unveraenderter relativer Reihenfolge),
     // bricht also nirgends.
-    var SANKEY_SINK_ORDER = ['Wärmepumpe', 'Klimaanlage', 'Sonstiger Verbrauch', 'Netzeinspeisung', 'WB 1', 'WB 2'];
+    // "Wärmepumoe" (ohne "p") ist bewusst kein Tippfehler hier im Code,
+    // sondern deckt sich mit dem exakten Verbrauchernamen in Dietmars
+    // InverterHubEnergy-Konfiguration (live geprueft, 29.07.2026 - die
+    // Sortierung griff vorher nicht, weil "Wärmepumpe" dort nicht vorkam).
+    // Wird der Verbraucher dort umbenannt, muss diese Liste mitgezogen
+    // werden.
+    var SANKEY_SINK_ORDER = ['Wärmepumoe', 'Klimaanlage', 'Sonstiger Verbrauch', 'Netzeinspeisung', 'WB 1', 'WB 2'];
 
     function sankeyNodesTopDown(flow) {
       var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
