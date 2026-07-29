@@ -97,6 +97,16 @@ class NRGDashboardTile extends IPSModule
         // InverterHubTile streicht ihre eigene Fassung).
         $this->RegisterPropertyString('Vehicles', '[]');
         $this->RegisterPropertyInteger('MatchToleranceSec', self::DEF_MATCH_TOLERANCE);
+        // Eigene Gesundheits-/Diagnose-Berechnung (Dietmar, 29.07.2026: die
+        // Anzeige war nach dem Loeschen der InverterHubMonitor-Instanz leer,
+        // gleicher Grund wie beim Sankey - Datenquelle war eine Zwischen-
+        // Instanz, die er nicht mehr haben wollte). Ertrag-vs-Prognose
+        // braucht Einstrahlung + PV-Prognose-Instanz, Riso nur die Schwelle
+        // (kein Herstellerdefault ohne Bestaetigung - Tester-Wunsch,
+        // uebernommen von InverterHubMonitor).
+        $this->RegisterPropertyInteger('IrradianceID', 0);
+        $this->RegisterPropertyInteger('PvfInstance', 0);
+        $this->RegisterPropertyInteger('RisoWarnKOhm', 0);
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
         // dann einschalten... oder umgekehrt ausschalten" - passt besser zu
@@ -951,35 +961,249 @@ class NRGDashboardTile extends IPSModule
      * Diagnose-Verträge sind bewusst NICHT ins gemeinsame Geräte-Schema
      * gemischt (normalizeEntry()/functionCategory()) - sie tragen keinen
      * function-Wert und gehören fachlich zu einer eigenen Instanz statt
-     * einem Fluss-Icon. Erster Anbieter: IHUBMON_GetDiagnostics
-     * (InverterHubMonitor, ab 0.74.0-beta.1). Jeder Eintrag ist bereits
-     * generisch (type/label/level/threshold/reason + Referenzen/Werte je
-     * Typ) - das Rendering in module.html iteriert type-neutral, damit ein
-     * künftiger zweiter Anbieter (MeterHub, HeishaMon, ...) ohne
-     * Aenderungen an dieser Stelle reinpasst, solange er demselben
-     * Grundschema folgt (siehe README, Abschnitt "Diagnostik-Vertrag").
+     * einem Fluss-Icon. Ursprünglicher Anbieter: IHUBMON_GetDiagnostics
+     * (InverterHubMonitor) - bleibt als Fallback bestehen, falls doch mal
+     * installiert. Seit Dietmar diese Instanz gelöscht hat ("möchte nicht so
+     * viele Instanzen verwalten", gleicher Grund wie beim Sankey/MPPT-Fix,
+     * 28./29.07.2026), berechnen wir alle drei Diagnose-Typen selbst
+     * (computeOwnDiagnostics()) direkt über die InverterHub-KERNINSTANZ.
+     * Jeder Eintrag bleibt generisch (type/label/level/threshold/reason +
+     * Referenzen/Werte je Typ), das Rendering in module.html iteriert
+     * type-neutral, unveraendert.
      */
     private function discoverDiagnostics(): array
     {
         $results = [];
-        if (!function_exists('IHUBMON_GetDiagnostics')) {
-            return $results;
-        }
-        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBMON) as $id) {
-            $data = IHUBMON_GetDiagnostics($id);
-            if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
-                continue;
-            }
-            foreach ($data['entries'] as $entry) {
-                if (!is_array($entry) || !isset($entry['type'])) {
+        if (function_exists('IHUBMON_GetDiagnostics')) {
+            foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBMON) as $id) {
+                $data = IHUBMON_GetDiagnostics($id);
+                if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
                     continue;
                 }
-                $entry['source']     = 'inverterhubmonitor';
-                $entry['instanceID'] = $data['instanceID'] ?? $id;
-                $results[] = $entry;
+                foreach ($data['entries'] as $entry) {
+                    if (!is_array($entry) || !isset($entry['type'])) {
+                        continue;
+                    }
+                    $entry['source']     = 'inverterhubmonitor';
+                    $entry['instanceID'] = $data['instanceID'] ?? $id;
+                    $results[] = $entry;
+                }
             }
         }
+        if (count($results) > 0) {
+            return $results;
+        }
+        foreach ($this->computeOwnDiagnostics() as $entry) {
+            $entry['source'] = 'nrgdashboard';
+            $results[] = $entry;
+        }
         return $results;
+    }
+
+    /**
+     * Eigene Gesundheits-/Diagnose-Berechnung, unabhaengig von
+     * InverterHubMonitor - 1:1 dieselbe Bewertungslogik wie deren
+     * GetDiagnostics() (Schwellen/Formeln unveraendert uebernommen, mit der
+     * InverterHub-Sitzung abgestimmt, 29.07.2026), nur die Datenherkunft ist
+     * jetzt die InverterHub-KERNINSTANZ statt eines Diagnose-Zwischenmoduls.
+     * Nur bei genau einer InverterHub-Instanz (sonst waere die Zuordnung von
+     * Einstrahlung/PVF-Instanz/Riso-Schwelle zu "welchem" WR nicht eindeutig
+     * - dieselbe Automatik-Konvention wie ueberall sonst im Verbund).
+     */
+    private function computeOwnDiagnostics(): array
+    {
+        $entries = [];
+        $ihub = $this->singleInverterHubCoreID();
+        if ($ihub <= 0 || !function_exists('IHUB_GetFunctions')) {
+            return $entries;
+        }
+        $data = @IHUB_GetFunctions($ihub);
+        if (!is_array($data)) {
+            return $entries;
+        }
+
+        // 1) Ertrag vs. PV-Prognose - GEMESSENE Einstrahlung x
+        // Generatorparameter, NIE PVF_GetForecast (Wetterfehler wuerde sonst
+        // als Anlagenfehler ausgewiesen - Verbund-Konvention, siehe
+        // InverterHub/CLAUDE.md "Diagnose = GEMESSENE Einstrahlung ...").
+        $irr = $this->readIntProperty('IrradianceID', 0);
+        $pvVid = (int) ($data['pvPowerID'] ?? 0);
+        if ($irr > 0 && IPS_VariableExists($irr) && $pvVid > 0) {
+            $pvf = $this->PvfModel();
+            if ($pvf !== null) {
+                $measuredW = (float) GetValue($pvVid);
+                $expectedW = (float) GetValue($irr) * $pvf['totalKwp'] * $pvf['pr'];
+                if ($expectedW > 200.0) {
+                    $ratio = $measuredW / $expectedW;
+                    if ($ratio < 0.5) {
+                        $level = 'kritisch';
+                        $reason = 'Gemessener Ertrag liegt unter 50 % der Erwartung — Verschmutzung oder Defekt möglich.';
+                    } elseif ($ratio < 0.8) {
+                        $level = 'auffaellig';
+                        $reason = 'Gemessener Ertrag liegt unter 80 % der Erwartung.';
+                    } else {
+                        $level = 'normal';
+                        $reason = 'Ertrag im erwarteten Bereich.';
+                    }
+                } else {
+                    $level = null;
+                    $reason = 'Erwartete Leistung zu gering für eine Bewertung (Dämmerung/stark bewölkt).';
+                }
+                $entries[] = [
+                    'type' => 'yield_vs_forecast',
+                    'label' => 'Ertrag vs. Prognose',
+                    'measuredPowerID' => $pvVid,
+                    'expected' => round($expectedW, 0),
+                    'unit' => 'W',
+                    'level' => $level,
+                    'threshold' => 0.8,
+                    'reason' => $reason,
+                ];
+            }
+        }
+
+        // 2) MPPT-Strangvergleich - nur ab mindestens 2 Straengen sinnvoll.
+        $stringIDs = [];
+        foreach ([1, 2, 3, 4] as $n) {
+            $vid = $this->FindVarByIdent($ihub, 'mppt' . $n . '_power');
+            if ($vid > 0) {
+                $stringIDs[$n] = $vid;
+            }
+        }
+        if (count($stringIDs) >= 2) {
+            $vals = [];
+            foreach ($stringIDs as $n => $vid) {
+                $vals[$n] = (float) GetValue($vid);
+            }
+            $max = max($vals);
+            if ($max > 100.0) {
+                $level = 'normal';
+                $reason = 'Alle Stränge im erwarteten Verhältnis zueinander.';
+                foreach ($vals as $n => $v) {
+                    if ($v < 0.5 * $max) {
+                        $level = 'auffaellig';
+                        $reason = 'MPPT ' . $n . ' liegt deutlich unter den übrigen Strängen — Verschattung oder Defekt möglich.';
+                        break;
+                    }
+                }
+            } else {
+                $level = null;
+                $reason = 'Erzeugung zu gering für eine Bewertung.';
+            }
+            $entries[] = [
+                'type' => 'mppt_string_compare',
+                'label' => 'MPPT-Strangvergleich',
+                'stringPowerIDs' => $stringIDs,
+                'unit' => 'W',
+                'level' => $level,
+                'threshold' => 0.5,
+                'reason' => $reason,
+            ];
+        }
+
+        // 3) Isolationswiderstand (Riso) - Bewertung NUR mit vom Nutzer
+        // gesetzter Schwelle (kein Herstellerdefault ohne Bestaetigung).
+        $risoVid = $this->FindVarByIdent($ihub, 'riso');
+        if ($risoVid > 0) {
+            $warn = $this->readIntProperty('RisoWarnKOhm', 0);
+            $val = (float) GetValue($risoVid);
+            if ($warn > 0) {
+                $level = ($val < $warn) ? 'kritisch' : 'normal';
+                $reason = ($val < $warn)
+                    ? 'Isolationswiderstand liegt unter der konfigurierten Schwelle (' . $warn . ' kΩ).'
+                    : 'Isolationswiderstand über der konfigurierten Schwelle.';
+            } else {
+                $level = null;
+                $reason = 'Keine Schwelle konfiguriert (Instanzeinstellungen) — Bewertung nicht möglich.';
+            }
+            $entries[] = [
+                'type' => 'riso',
+                'label' => 'Isolationswiderstand',
+                'measuredID' => $risoVid,
+                'unit' => 'kΩ',
+                'level' => $level,
+                'threshold' => $warn ?: null,
+                'reason' => $reason,
+            ];
+        }
+
+        return $entries;
+    }
+
+    private function singleInverterHubCoreID(): int
+    {
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUB);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Rekursive Ident-Suche (Muster: NRGDashboardMonitor::FindVarByIdent(),
+     * 1:1 uebernommen) - IPS_GetObjectIDByIdent findet nur DIREKTE Kinder,
+     * InverterHubs Treiber verschieben ihre Variablen aber sofort nach
+     * Anlage in fachliche Unterkategorien (z.B. "PV / MPPT").
+     */
+    private function FindVarByIdent(int $parentID, string $ident): int
+    {
+        $children = @IPS_GetChildrenIDs($parentID);
+        if (!is_array($children)) {
+            return 0;
+        }
+        foreach ($children as $cid) {
+            $obj = @IPS_GetObject($cid);
+            if (!is_array($obj)) {
+                continue;
+            }
+            if (($obj['ObjectIdent'] ?? '') === $ident) {
+                return $cid;
+            }
+            if ($obj['HasChildren'] ?? false) {
+                $found = $this->FindVarByIdent($cid, $ident);
+                if ($found > 0) {
+                    return $found;
+                }
+            }
+        }
+        return 0;
+    }
+
+    private function PvfInstanceID(): int
+    {
+        $explicit = $this->readIntProperty('PvfInstance', 0);
+        if ($explicit > 0 && IPS_InstanceExists($explicit)) {
+            return $explicit;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_PVPROGNOSE);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Generatorparameter der PV-Prognose (Muster: InverterHubMonitor::
+     * PvfModel(), reduziert auf das, was die Diagnose braucht: Gesamt-kWp +
+     * Performance-Ratio - keine Temperaturkorrektur, die betrifft nur die
+     * Erwartungskurve im Monitor-Tab, nicht diese Schwellenbewertung).
+     */
+    private function PvfModel(): ?array
+    {
+        $id = $this->PvfInstanceID();
+        if ($id <= 0 || !function_exists('PVF_GetGenerators')) {
+            return null;
+        }
+        $r = @PVF_GetGenerators($id);
+        if (!is_array($r) || !isset($r['generators']) || !is_array($r['generators'])) {
+            return null;
+        }
+        $pr = (float) ($r['pr'] ?? 0);
+        if ($pr <= 0.0) {
+            $pr = 0.85;
+        }
+        $total = 0.0;
+        foreach ($r['generators'] as $g) {
+            $total += (float) ($g['kwp'] ?? 0);
+        }
+        if ($total <= 0.0) {
+            return null;
+        }
+        return ['pr' => $pr, 'totalKwp' => $total];
     }
 
     /**

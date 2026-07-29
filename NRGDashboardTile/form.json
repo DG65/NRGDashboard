@@ -283,6 +283,31 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Gesundheit / Diagnose (optional)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Nur bei genau einer installierten InverterHub-Instanz aktiv (sonst wäre die Zuordnung nicht eindeutig). MPPT-Strangvergleich läuft automatisch. Für „Ertrag vs. Prognose“ zusätzlich Einstrahlung + PV-Prognose-Instanz eintragen. Für den Isolationswiderstand-Hinweis zusätzlich eine Warnschwelle setzen - ohne Schwelle wird der Rohwert angezeigt, aber nicht bewertet."
+        },
+        { "type": "SelectVariable", "name": "IrradianceID", "caption": "Einstrahlungs-Variable (W/m², für „Ertrag vs. Prognose“)" },
+        {
+          "type": "SelectInstance",
+          "name": "PvfInstance",
+          "caption": "PV-Prognose-Instanz (optional, sonst automatisch bei genau einer Instanz)",
+          "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "RisoWarnKOhm",
+          "caption": "Warnschwelle Isolationswiderstand (kΩ, 0 = keine Bewertung)",
+          "minimum": 0,
+          "suffix": " kΩ"
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [
