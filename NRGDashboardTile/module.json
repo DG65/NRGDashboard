@@ -4,8 +4,7 @@
   "type": 3,
   "vendor": "",
   "aliases": [
-    "NRG Dashboard",
-    "Energiefluss-Kachel"
+    "NRG-Stack Dashboard Energiefluss"
   ],
   "url": "https://github.com/DG65/NRGDashboard",
   "parentRequirements": [],

@@ -1,12 +1,12 @@
 {
   "id": "{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}",
   "author": "DG65",
-  "name": "NRGDashboard for IP-Symcon",
+  "name": "NRG-Stack Dashboard for IP-Symcon",
   "url": "https://github.com/DG65/NRGDashboard",
   "compatibility": {
     "version": "9.0"
   },
-  "version": "0.5.0-beta.1",
-  "build": 5,
-  "date": 1785220446
+  "version": "0.6.0-beta.1",
+  "build": 6,
+  "date": 1785361200
 }

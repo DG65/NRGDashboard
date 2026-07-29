@@ -54,13 +54,17 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.2.0';
+    private const NEWS_VERSION = '0.3.0';
     private const NEWS_ITEMS = [
         'Ereignisgesteuerte Aktualisierung (sofortiger Push bei jeder Wertänderung) statt reinem 5-Minuten-Takt.',
         'Echte Hauslast (IHUBTILE_GetHouseLoad) bevorzugt vor der berechneten Näherung, sofern konfiguriert.',
         'Manuelle Datenpunkte und frei editierbare Verbraucherliste - die Kachel läuft jetzt auch ganz ohne installiertes Partnermodul.',
         'Vollständige Darstellungs-Einstellungen (Hintergrundfarbe, Schriftart, Übergangszeit, Fluss-Tempo) wie InverterHubTile.',
         'Einzelne automatisch gefundene Geräte lassen sich jetzt ein-/ausblenden, ohne sie manuell neu einzutragen.',
+        'Eingesteckte, nicht ladende Wallbox animiert keinen Fluss-Pfeil mehr ohne echte Leistung.',
+        'Gesundheits-/Diagnose-Anzeige (Ertrag vs. Prognose, MPPT-Strangvergleich, Isolationswiderstand) selbst berechnet, keine InverterHubMonitor-Instanz mehr nötig.',
+        'Fahrzeug-Erkennung an Wallboxen: Tesla-Fahrzeuge über Tessie vollautomatisch erkannt (Name + Ladestand), auch ChargerHub-Wallboxen jetzt korrekt einbezogen.',
+        'Modul heißt jetzt „NRG-Stack Dashboard Energiefluss" (bisher „NRG Dashboard“/„Energiefluss-Kachel“) - bestehende Instanzen bleiben unverändert funktionsfähig.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
