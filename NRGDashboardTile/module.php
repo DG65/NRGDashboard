@@ -1028,15 +1028,23 @@ class NRGDashboardTile extends IPSModule
      */
     public function GetDevices(): array
     {
+        // ReadAttributeString() kann in seltenen Kernel-Uebergangszustaenden
+        // (z.B. waehrend eines Modul-Reloads, wenn ein MessageSink()-Event
+        // die Instanz erreicht, bevor sie wieder vollstaendig angebunden ist)
+        // 'false' statt eines Strings liefern - json_decode() wirft dann in
+        // PHP 8 einen TypeError statt nur eine Warnung. is_string()-Wache
+        // davor, statt das nur nach dem Decode abzufangen (real aufgetreten,
+        // 30.07.2026, ausgeloest durch einen Modul-Reload waehrend eines
+        // MeterHub-Wertupdates).
         $json = $this->ReadAttributeString('DeviceCache');
-        $data = json_decode($json, true);
+        $data = is_string($json) ? json_decode($json, true) : null;
         return is_array($data) ? $data : [];
     }
 
     public function GetDiagnostics(): array
     {
         $json = $this->ReadAttributeString('DiagnosticsCache');
-        $data = json_decode($json, true);
+        $data = is_string($json) ? json_decode($json, true) : null;
         return is_array($data) ? $data : [];
     }
 
