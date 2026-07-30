@@ -788,6 +788,18 @@ class NRGDashboardTile extends IPSModule
     private const SAME_LOAD_TOLERANCE = 0.25;
     private const SAME_LOAD_MIN_SCALE = 50.0;
 
+    // Zusaetzliche ABSOLUTE Toleranz fuer Werte nahe Null (Dietmar,
+    // 30.07.2026, live an Netzleistung nahe dem Einspeise-/Bezugs-
+    // Nulldurchgang beobachtet): InverterHub=24W, PAC2200=-9.93W - Betrag
+    // der Differenz nur ~14W, aber die relative Toleranz griff wegen der
+    // 50W-Mindestskala trotzdem nicht (14/50=28% > 25%). Ein rein
+    // prozentualer Vergleich versagt strukturell nahe Null, wo bereits
+    // kleine absolute Messabweichungen/Zeitversatz zwischen zwei Sensoren
+    // relativ riesig wirken. Absolute Toleranz greift ZUSAETZLICH
+    // (oder-verknuepft) - reicht die Differenz in Watt aus, gilt die Last
+    // unabhaengig vom Prozentwert als identisch.
+    private const SAME_LOAD_ABS_TOLERANCE_W = 30.0;
+
     /**
      * Echter Live-Wertevergleich, BEVOR zwei gleich kategorisierte Quellen
      * (z.B. HeishaMon + MeterHub, beide function='heatpump') als redundant
@@ -817,8 +829,12 @@ class NRGDashboardTile extends IPSModule
         }
         $a = abs($a);
         $b = abs($b);
+        $diff = abs($a - $b);
+        if ($diff <= self::SAME_LOAD_ABS_TOLERANCE_W) {
+            return true;
+        }
         $scale = max($a, $b, self::SAME_LOAD_MIN_SCALE);
-        return (abs($a - $b) / $scale) < self::SAME_LOAD_TOLERANCE;
+        return ($diff / $scale) < self::SAME_LOAD_TOLERANCE;
     }
 
     /**
