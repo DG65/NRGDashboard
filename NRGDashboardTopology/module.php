@@ -278,9 +278,15 @@ class NRGDashboardTopology extends IPSModule
     /**
      * Stern-Topologie: EMS-Instanz in der Mitte, ein Knoten je Eintrag aus
      * EMS_GetFederationHealth()['entries']. Status je Knoten:
-     *   healthy   - status===102 (laeuft)
-     *   unhealthy - Instanz existiert, aber status!==102 (Fehler/Inaktiv)
-     *   missing   - Instanz wurde geloescht (status===0 laut EMS-Vertrag)
+     *   healthy    - status===102 (laeuft)
+     *   unhealthy  - Instanz existiert, aber status!==102 (Fehler/Inaktiv)
+     *   missing    - Instanz wurde geloescht (status===0 laut EMS-Vertrag)
+     *   noresponse - Instanz installiert, aber Vertragsfunktion antwortet
+     *                nicht (EMS 0.11.0, additive Felder 'missing'/
+     *                'missingCount' - eigener Fall, NICHT dasselbe wie
+     *                der obige geloescht-Fall trotz gleichem Wortlaut bei
+     *                EMS. Higher-Alarm-Stufe: noch installiert, aber
+     *                stumm - genau das, was Dietmar als Alarmfall wollte.
      */
     private function buildPayload(): array
     {
@@ -313,13 +319,29 @@ class NRGDashboardTopology extends IPSModule
             ];
         }
 
+        // EMS 0.11.0: additive Liste "installiert, aber ohne Antwort" -
+        // eigener Status noresponse, damit der Verbund diesen Fall optisch
+        // von "abgeschaltet/Fehler" (unhealthy) und "komplett geloescht"
+        // (missing) unterscheiden kann. Fehlt das Feld (aeltere EMS-Version),
+        // bleibt die Liste leer - rein additiv, kein Bruch.
+        foreach ((array) ($health['missing'] ?? []) as $m) {
+            $module = (string) ($m['module'] ?? '');
+            $nodes[] = [
+                'key'    => $module . '_' . (int) ($m['instanceID'] ?? 0) . '_noresponse',
+                'label'  => (string) ($m['label'] ?? (self::MODULE_LABELS[$module] ?? $module)),
+                'module' => $module,
+                'status' => 'noresponse',
+            ];
+        }
+
         return [
-            'ok'        => true,
-            'emsLabel'  => IPS_GetName($emsID),
-            'summary'   => (string) ($health['summary'] ?? ''),
-            'total'     => (int) ($health['total'] ?? count($nodes)),
-            'healthy'   => (int) ($health['healthyCount'] ?? 0),
-            'nodes'     => $nodes,
+            'ok'           => true,
+            'emsLabel'     => IPS_GetName($emsID),
+            'summary'      => (string) ($health['summary'] ?? ''),
+            'total'        => (int) ($health['total'] ?? count($nodes)),
+            'healthy'      => (int) ($health['healthyCount'] ?? 0),
+            'missingCount' => (int) ($health['missingCount'] ?? 0),
+            'nodes'        => $nodes,
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
         ];

@@ -56,8 +56,11 @@
     var CENTER_R = 56;
     var NODE_R = 44;       // Einzelinstanz / Cluster-Hub
     var MEMBER_R = 32;     // Cluster-Mitglied (kleiner, da mehrere pro Sektor)
-    var STATUS_COLOR = { healthy: '#4caf50', unhealthy: '#e53935', missing: '#78828c' };
-    var STATUS_DASH = { healthy: '0', unhealthy: '0', missing: '6,5' };
+    // noresponse (EMS 0.11.0): installiert, aber Vertragsfunktion antwortet
+    // nicht - eigener Alarmfall, bewusst amber statt rot/grau, damit er sich
+    // von "Fehlerstatus" (rot) und "geloescht" (grau) optisch abhebt.
+    var STATUS_COLOR = { healthy: '#4caf50', unhealthy: '#e53935', missing: '#78828c', noresponse: '#ff9800' };
+    var STATUS_DASH = { healthy: '0', unhealthy: '0', missing: '6,5', noresponse: '3,3' };
 
     // Anzeigename je Modul-Schluessel - Spiegelbild von MODULE_LABELS in
     // module.php (dort pro Einzelinstanz genutzt, hier zusaetzlich fuer
@@ -92,11 +95,14 @@
     }
 
     /**
-     * Aggregat-Status eines Clusters: unhealthy schlaegt missing schlaegt
-     * healthy - "noch da, aber gestoert" ist mindestens so alarmierend wie
-     * "verschwunden", beides soll aus dem Cluster-Hub sofort ablesbar sein.
+     * Aggregat-Status eines Clusters, absteigend nach Dringlichkeit:
+     * noresponse/unhealthy (jetzt akut gestoert) vor missing (geloescht,
+     * historisch) vor healthy. "Installiert, aber stumm" ist mindestens so
+     * alarmierend wie ein Fehlerstatus - beides soll aus dem Cluster-Hub
+     * sofort ablesbar sein, nicht erst beim Aufklappen der Mitglieder.
      */
     function aggregateStatus(members) {
+      if (members.some(function (m) { return m.status === 'noresponse'; })) { return 'noresponse'; }
       if (members.some(function (m) { return m.status === 'unhealthy'; })) { return 'unhealthy'; }
       if (members.some(function (m) { return m.status === 'missing'; })) { return 'missing'; }
       return 'healthy';
