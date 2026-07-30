@@ -1,0 +1,25 @@
+{
+  "name": "nrgdashboard",
+  "version": "1.0.0",
+  "description": "Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im [Kompatibilitäts-Manifest](https://github.com/DG65/EMS/blob/main/SUITE.md).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DG65/NRGDashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DG65/NRGDashboard/issues"
+  },
+  "homepage": "https://github.com/DG65/NRGDashboard#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.1",
+    "three": "^0.185.1"
+  }
+}
