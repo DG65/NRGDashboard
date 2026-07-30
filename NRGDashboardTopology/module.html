@@ -3,35 +3,53 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* Coin-Look angelehnt an NRGDashboardTile (Verbund-Optik), hier ohne
-     Fluss-Animation - es gibt keine "Richtung", nur einen Verbindungs-
-     status je Partnermodul. */
+  /* "Tahoe"-artige Frosted-Glass-Optik (Dietmars Vorbild: Apples aktuelle
+     "Liquid Glass"-Formensprache), auf Map uebertragen von hier. */
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   .wrap { position: relative; width: 100%; height: 100vh; }
   svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .node-face { filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
-  .node-label { font-size: 13px; font-weight: 600; fill: var(--text, #dfe6ee); text-anchor: middle; }
-  .node-label.small { font-size: 11px; }
-  .node-sub { font-size: 10px; fill: var(--textmuted, rgba(200,210,220,.75)); text-anchor: middle; }
-  .hub-count { font-size: 10px; font-weight: 700; fill: rgba(255,255,255,.85); text-anchor: middle; }
-  .status-overlay {
-    position: absolute; left: 8px; bottom: 8px; z-index: 2;
+  .node-face { filter: drop-shadow(0 3px 8px rgba(0,0,0,.4)); }
+
+  .label-pill {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; height: 100%; text-align: center;
+    font-size: 13px; font-weight: 600; color: #eef2f6; white-space: nowrap;
+    padding: 3px 10px; border-radius: 999px; box-sizing: border-box;
+    background: rgba(38, 42, 50, 0.55);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.10);
+  }
+  .label-pill.small { font-size: 11px; padding: 2px 8px; }
+  .label-pill .hub-count { font-size: 9px; font-weight: 500; opacity: .75; }
+
+  #status, #tooltip {
+    position: absolute; z-index: 3;
     display: inline-flex; align-items: center; gap: 8px;
-    max-width: calc(100% - 16px);
-    height: 26px; padding: 0 13px 0 11px;
-    border-radius: 13px;
-    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
-    border: 1px solid rgba(255,255,255,0.10);
-    font-size: 12px; font-weight: 600; color: rgba(200,210,220,.9);
+    padding: 0 13px 0 11px; height: 26px; border-radius: 13px;
+    background: rgba(38, 42, 50, 0.6);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.10);
+    font-size: 12px; font-weight: 600; color: rgba(220,226,232,.95);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  #status { left: 8px; bottom: 8px; max-width: calc(100% - 16px); }
+  #tooltip {
+    display: none; pointer-events: none; height: auto; line-height: 1.5;
+    padding: 7px 14px; border-radius: 16px; flex-direction: column; align-items: flex-start;
+  }
+  #tooltip b { font-weight: 700; }
+  #tooltip .tt-sub { opacity: .75; font-size: 10.5px; font-weight: 500; }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #4caf50; }
   .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; }
 </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="wrap">
     <svg id="svg" viewBox="0 0 700 700" preserveAspectRatio="xMidYMid meet">
       <defs>
         <radialGradient id="gCenter" cx="35%" cy="30%" r="75%">
@@ -39,14 +57,17 @@
           <stop offset="100%" stop-color="#2a323c"/>
         </radialGradient>
       </defs>
+      <g id="sectors"></g>
       <g id="edges"></g>
       <g id="nodes"></g>
+      <g id="labels"></g>
     </svg>
     <div id="empty" class="empty" style="display:none"></div>
-    <div id="status" class="status-overlay" style="display:none">
+    <div id="status" style="display:none">
       <span id="dot" class="status-dot"></span>
       <span id="summaryText"></span>
     </div>
+    <div id="tooltip"></div>
   </div>
 
   <script>
@@ -71,42 +92,120 @@
       tibber: 'Tibber Grid Rewards'
     };
 
+    var gradientCache = {};
+
     function svgEl(tag, attrs) {
       var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
       for (var k in attrs) { el.setAttribute(k, attrs[k]); }
       return el;
     }
 
-    function wrapLabel(el, text, x, maxLen) {
-      if (text.length <= maxLen) { el.textContent = text; return; }
-      var parts = text.split(' ');
-      var lines = []; var cur = '';
-      parts.forEach(function (p) {
-        if ((cur + ' ' + p).trim().length > maxLen && cur) { lines.push(cur); cur = p; }
-        else { cur = (cur + ' ' + p).trim(); }
-      });
-      if (cur) { lines.push(cur); }
-      el.textContent = '';
-      lines.forEach(function (ln, li) {
-        var tspan = svgEl('tspan', { x: x, dy: li === 0 ? (4 - (lines.length - 1) * 6) : 12 });
-        tspan.textContent = ln;
-        el.appendChild(tspan);
-      });
+    /**
+     * Weicher Glas-Farbverlauf je Grundfarbe statt flachem Fill (Dietmars
+     * "Tahoe"-Anregung, hier auf SVG-Radialverlaeufe uebertragen) -
+     * Verlauf pro Farbe einmalig anlegen und wiederverwenden, damit die
+     * <defs> bei vielen Knoten nicht unnoetig wachsen.
+     */
+    function glassGradient(defs, hexColor) {
+      if (gradientCache[hexColor]) { return gradientCache[hexColor]; }
+      var id = 'glass_' + hexColor.replace('#', '');
+      var grad = svgEl('radialGradient', { id: id, cx: '32%', cy: '28%', r: '80%' });
+      grad.appendChild(svgEl('stop', { offset: '0%', 'stop-color': lighten(hexColor, 0.35) }));
+      grad.appendChild(svgEl('stop', { offset: '55%', 'stop-color': hexColor }));
+      grad.appendChild(svgEl('stop', { offset: '100%', 'stop-color': darken(hexColor, 0.28) }));
+      defs.appendChild(grad);
+      gradientCache[hexColor] = id;
+      return id;
+    }
+    function lighten(hex, amt) { return mixWhite(hex, amt); }
+    function darken(hex, amt) { return mixBlack(hex, amt); }
+    function mixWhite(hex, amt) {
+      var c = hexToRgb(hex);
+      return rgbToHex(c.r + (255 - c.r) * amt, c.g + (255 - c.g) * amt, c.b + (255 - c.b) * amt);
+    }
+    function mixBlack(hex, amt) {
+      var c = hexToRgb(hex);
+      return rgbToHex(c.r * (1 - amt), c.g * (1 - amt), c.b * (1 - amt));
+    }
+    function hexToRgb(hex) {
+      var v = parseInt(hex.replace('#', ''), 16);
+      return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+    }
+    function rgbToHex(r, g, b) {
+      var h = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+      return '#' + h(r) + h(g) + h(b);
     }
 
     /**
-     * Aggregat-Status eines Clusters, absteigend nach Dringlichkeit:
-     * noresponse/unhealthy (jetzt akut gestoert) vor missing (geloescht,
-     * historisch) vor healthy. "Installiert, aber stumm" ist mindestens so
-     * alarmierend wie ein Fehlerstatus - beides soll aus dem Cluster-Hub
-     * sofort ablesbar sein, nicht erst beim Aufklappen der Mitglieder.
+     * Frosted-Glass-Label als <foreignObject> statt reinem SVG-<text> -
+     * lebt in derselben Koordinatenwelt wie die Knoten, skaliert also
+     * automatisch mit der SVG-viewBox mit, ohne eigene Bildschirm-Pixel-
+     * Umrechnung.
      */
+    function addLabelFO(parent, x, y, w, h, text, small, subCountText) {
+      var fo = svgEl('foreignObject', { x: x - w / 2, y: y - h / 2, width: w, height: h });
+      var div = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
+      div.setAttribute('class', small ? 'label-pill small' : 'label-pill');
+      var textSpan = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
+      textSpan.textContent = text;
+      div.appendChild(textSpan);
+      if (subCountText) {
+        var sub = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
+        sub.setAttribute('class', 'hub-count');
+        sub.textContent = subCountText;
+        div.appendChild(sub);
+      }
+      fo.appendChild(div);
+      parent.appendChild(fo);
+      return fo;
+    }
+
+    /**
+     * Dezente Sektor-Einfaerbung: eine flache, sehr transparente
+     * Tortenstueck-Flaeche je Modul-Slot, damit die Gruppierung auch ohne
+     * Verbindungslinien sofort erkennbar bleibt (Dietmars eigener
+     * Vorschlag, hier aufgegriffen).
+     */
+    function addSectorTint(sectorsG, angle, halfWidth, color, outerR) {
+      var innerR = 66;
+      var steps = 10;
+      var d = 'M ' + (CX + innerR * Math.cos(angle - halfWidth)) + ' ' + (CY + innerR * Math.sin(angle - halfWidth));
+      for (var s = 0; s <= steps; s++) {
+        var a = angle - halfWidth + (2 * halfWidth) * (s / steps);
+        d += ' L ' + (CX + outerR * Math.cos(a)) + ' ' + (CY + outerR * Math.sin(a));
+      }
+      for (var s2 = steps; s2 >= 0; s2--) {
+        var a2 = angle - halfWidth + (2 * halfWidth) * (s2 / steps);
+        d += ' L ' + (CX + innerR * Math.cos(a2)) + ' ' + (CY + innerR * Math.sin(a2));
+      }
+      d += ' Z';
+      sectorsG.appendChild(svgEl('path', { d: d, fill: color, opacity: 0.07 }));
+    }
+
+    /**
+     * Hover-Tooltip (Muster: Map) - zeigt Bezeichnung, Modul und
+     * Status/Instanzzahl beim Ueberfahren eines Knotens.
+     */
+    function attachTooltip(el, label, sub) {
+      var tip = document.getElementById('tooltip');
+      el.style.cursor = 'default';
+      el.addEventListener('mousemove', function (e) {
+        tip.innerHTML = '<b>' + label + '</b><span class="tt-sub">' + sub + '</span>';
+        tip.style.left = (e.clientX + 16) + 'px';
+        tip.style.top = (e.clientY + 16) + 'px';
+        tip.style.display = 'inline-flex';
+      });
+      el.addEventListener('mouseleave', function () { tip.style.display = 'none'; });
+    }
+
     function aggregateStatus(members) {
       if (members.some(function (m) { return m.status === 'noresponse'; })) { return 'noresponse'; }
       if (members.some(function (m) { return m.status === 'unhealthy'; })) { return 'unhealthy'; }
       if (members.some(function (m) { return m.status === 'missing'; })) { return 'missing'; }
       return 'healthy';
     }
+
+    var STATUS_TEXT = { healthy: 'gesund', unhealthy: 'gestört', missing: 'gelöscht', noresponse: 'ohne Antwort' };
 
     /**
      * Zweistufiges Radial-Layout (Muster: geclusterte Radial-Layouts, z.B.
@@ -115,24 +214,21 @@
      * Module mit mehreren Instanzen (MeterHub, ChargerHub, Tessie, ...)
      * bekommen einen Cluster-Hub auf dem Hauptring, dessen Mitglieder
      * lokal in einem eigenen Sektor weiter aussen aufgefaechert werden.
-     * Das haelt die Knotenzahl auf dem vollen 360-Grad-Ring klein und
-     * unabhaengig davon, wie viele MeterHub-Zaehler Dietmar betreibt -
-     * neue Instanzen eines Typs verdraengen keine anderen Module mehr,
-     * sie fuellen nur ihren eigenen Sektor.
      */
     function renderTopology(d) {
+      var defs = document.querySelector('#svg defs');
+      var sectorsG = document.getElementById('sectors');
       var edges = document.getElementById('edges');
       var nodesG = document.getElementById('nodes');
-      edges.innerHTML = ''; nodesG.innerHTML = '';
+      var labelsG = document.getElementById('labels');
+      sectorsG.innerHTML = ''; edges.innerHTML = ''; nodesG.innerHTML = ''; labelsG.innerHTML = '';
 
       // Zentrum (EMS)
       var centerCircle = svgEl('circle', { cx: CX, cy: CY, r: CENTER_R, fill: 'url(#gCenter)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, class: 'node-face' });
       nodesG.appendChild(centerCircle);
-      var centerLabel = svgEl('text', { x: CX, y: CY + 5, class: 'node-label' });
-      centerLabel.textContent = 'EMS';
-      nodesG.appendChild(centerLabel);
+      attachTooltip(centerCircle, 'EMS', d.emsLabel || 'Verbund-Koordinator');
+      addLabelFO(labelsG, CX, CY, 90, 34, 'EMS');
 
-      // Nach Modul-Typ gruppieren, Reihenfolge der ersten Sichtung erhalten
       var groups = []; var byModule = {};
       d.nodes.forEach(function (node) {
         if (!byModule[node.module]) {
@@ -151,31 +247,28 @@
         var hubStatus = isCluster ? aggregateStatus(grp.members) : grp.members[0].status;
         var hubColor = STATUS_COLOR[hubStatus] || STATUS_COLOR.missing;
 
-        // EMS -> Hub (Einzelinstanz oder Cluster-Sammelknoten)
+        addSectorTint(sectorsG, angle, (2 * Math.PI / g) * 0.42, hubColor, isCluster ? R_MEMBER + 40 : R_TYPE + 30);
+
         edges.appendChild(svgEl('line', {
           x1: CX, y1: CY, x2: hx, y2: hy,
           stroke: hubColor, 'stroke-width': 2, opacity: hubStatus === 'missing' ? 0.5 : 0.85,
           'stroke-dasharray': STATUS_DASH[hubStatus] || '0'
         }));
 
-        var hubCircle = svgEl('circle', { cx: hx, cy: hy, r: NODE_R, fill: '#232a32', stroke: hubColor, 'stroke-width': 3, class: 'node-face' });
+        var gradId = glassGradient(defs, hubColor);
+        var hubCircle = svgEl('circle', { cx: hx, cy: hy, r: NODE_R, fill: 'url(#' + gradId + ')', stroke: hubColor, 'stroke-width': 2, class: 'node-face' });
         nodesG.appendChild(hubCircle);
 
         var dotY = hy - NODE_R - 10;
         nodesG.appendChild(svgEl('circle', { cx: hx, cy: dotY, r: 5, fill: hubColor }));
 
         var hubLabelText = isCluster ? (MODULE_DISPLAY[grp.module] || grp.module) : grp.members[0].label;
-        var hubLabel = svgEl('text', { x: hx, y: hy + (isCluster ? -2 : 4), class: 'node-label' });
-        wrapLabel(hubLabel, hubLabelText, hx, 12);
-        nodesG.appendChild(hubLabel);
+        addLabelFO(labelsG, hx, hy, 130, isCluster ? 44 : 34, hubLabelText, false, isCluster ? (grp.members.length + ' Instanzen') : null);
+        attachTooltip(hubCircle, hubLabelText, isCluster
+          ? (grp.members.length + ' Instanzen · Status ' + STATUS_TEXT[hubStatus])
+          : ('Status: ' + STATUS_TEXT[hubStatus]));
 
         if (isCluster) {
-          var countLabel = svgEl('text', { x: hx, y: hy + 16, class: 'hub-count' });
-          countLabel.textContent = grp.members.length + ' Instanzen';
-          nodesG.appendChild(countLabel);
-
-          // Mitglieder lokal im Sektor auffaechern (70% der Sektorbreite,
-          // damit Nachbarsektoren nicht beruehrt werden).
           var sectorWidth = (2 * Math.PI / g) * 0.7;
           var n = grp.members.length;
           grp.members.forEach(function (member, j) {
@@ -192,15 +285,15 @@
               'stroke-dasharray': STATUS_DASH[member.status] || '0'
             }));
 
-            var mCircle = svgEl('circle', { cx: mx, cy: my, r: MEMBER_R, fill: '#232a32', stroke: mColor, 'stroke-width': 2.5, class: 'node-face' });
+            var mGradId = glassGradient(defs, mColor);
+            var mCircle = svgEl('circle', { cx: mx, cy: my, r: MEMBER_R, fill: 'url(#' + mGradId + ')', stroke: mColor, 'stroke-width': 1.5, class: 'node-face' });
             nodesG.appendChild(mCircle);
 
             var mDotY = my - MEMBER_R - 8;
             nodesG.appendChild(svgEl('circle', { cx: mx, cy: mDotY, r: 4, fill: mColor }));
 
-            var mLabel = svgEl('text', { x: mx, y: my + 4, class: 'node-label small' });
-            wrapLabel(mLabel, member.label, mx, 11);
-            nodesG.appendChild(mLabel);
+            addLabelFO(labelsG, mx, my, 100, 26, member.label, true);
+            attachTooltip(mCircle, member.label, 'Status: ' + STATUS_TEXT[member.status]);
           });
         }
       });
