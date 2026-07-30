@@ -326,6 +326,17 @@ class NRGDashboardMap extends IPSModule
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
+
+        // Bette Three.js inline ein (IPS serviert externe Files nicht)
+        $three = @file_get_contents(__DIR__ . '/three.min.js');
+        if ($three) {
+            $html = str_replace(
+                '<script src="three.min.js"></script>',
+                '<script>' . $three . '</script>',
+                $html
+            );
+        }
+
         $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
         return $html;
     }
