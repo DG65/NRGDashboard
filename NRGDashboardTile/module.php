@@ -404,52 +404,7 @@ class NRGDashboardTile extends IPSModule
 
         $heishaMon = $this->discoverHeishaMon();
         $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
-
-        // Redundanz-Erkennung Waermepumpe (Dietmar, 30.07.2026): HeishaMon
-        // (eigene RS485-Ablesung) und MeterHub (externer Shelly-Zaehler)
-        // KOENNEN dieselbe physische Waermepumpe unabhaengig voneinander
-        // messen - muessen es aber nicht (ein Haushalt mit zwei getrennten
-        // Waermepumpen haette z.B. eine ueber HeishaMon UND eine zweite,
-        // andere ueber einen eigenen MeterHub-Zaehler). Gleiche function
-        // ('heatpump') auf beiden Seiten ist daher NUR ein Kandidaten-
-        // Filter, kein Beweis - erst ein echter Live-Wertevergleich
-        // (isSameLoad()) entscheidet, ob wirklich gemergt wird. Bei
-        // Dietmar live bestaetigt: nahezu identische Werte (~2-3W Versatz,
-        // zwei Proben im Abstand von 3 Minuten). Ohne diese Pruefung waere
-        // die Regel eine unzulaessige Verallgemeinerung der eigenen Anlage
-        // (SUITE.md "keine eigene Anlage als Norm annehmen") - sie muss bei
-        // JEDER Installation selbst pruefen, nicht nur bei Dietmars.
-        //
-        // MeterHub gilt bei bestaetigter Redundanz als PRIMAER (haeufigerer
-        // Poll-Takt, getrennte Ein-/Ausspeise-Energiezaehler statt nur
-        // einem Gesamtwert); HeishaMons Messung wird dann NICHT mehr als
-        // eigener Verbraucher-Kreis gezeigt, sondern als Fallback gemerged
-        // (siehe resolvePowerValue()) - wichtig fuer eine etwaige Steuerung:
-        // faellt die genauere Quelle aus, bleibt trotzdem ein Wert statt
-        // eines toten Feldes.
-        $heishaMonRemaining = [];
-        foreach ($heishaMon as $hEntry) {
-            $merged = false;
-            if (($hEntry['function'] ?? '') === 'heatpump') {
-                foreach ($devices as &$existing) {
-                    if (($existing['source'] ?? '') === 'meterhub'
-                        && ($existing['function'] ?? '') === 'heatpump'
-                        && $this->isSameLoad((int) ($existing['powerID'] ?? 0), (int) ($hEntry['powerID'] ?? 0))) {
-                        $existing['fallbackPowerID']        = (int) ($hEntry['powerID'] ?? 0);
-                        $existing['fallbackEnergyImportID']  = (int) ($hEntry['energyImportID'] ?? 0);
-                        $existing['fallbackMeasured']        = (bool) ($hEntry['measured'] ?? true);
-                        $existing['fallbackLabel']           = (string) ($hEntry['label'] ?? 'HeishaMon');
-                        $merged = true;
-                        break;
-                    }
-                }
-                unset($existing);
-            }
-            if (!$merged) {
-                $heishaMonRemaining[] = $hEntry;
-            }
-        }
-        $devices = array_merge($devices, $heishaMonRemaining);
+        $devices = array_merge($devices, $heishaMon);
 
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
@@ -498,6 +453,12 @@ class NRGDashboardTile extends IPSModule
         if (!$hasManualHouse) {
             $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
         }
+
+        // Generische Redundanz-Erkennung ueber ALLE bis hierhin gefundenen
+        // Geraete (nicht nur den urspruenglichen Waermepumpen-Einzelfall) -
+        // laeuft bei jedem Discover(), also alle 5 Minuten neu, nicht nur
+        // beim ersten Scan.
+        $devices = $this->mergeRedundantSources($devices);
 
         $diagnostics = $this->discoverDiagnostics();
 
@@ -836,6 +797,16 @@ class NRGDashboardTile extends IPSModule
      * aktuell ablesbare Werte auf BEIDEN Seiten wird bewusst NICHT gemergt
      * (im Zweifel lieber zwei sichtbare Verbraucher als einen faelschlich
      * unterschlagenen).
+     *
+     * Vergleich auf BETRAG, nicht auf Vorzeichen (Dietmar, 30.07.2026):
+     * zwei unabhaengige Quellen fuer dieselbe physische Last koennen
+     * gegensaetzliche Vorzeichen-Konventionen haben (z.B. eine zaehlt
+     * Bezug positiv, die andere negativ) - das macht sie nicht zu einer
+     * anderen Last. Frueher wurde abs() nur fuer die Skala verwendet,
+     * die eigentliche Differenz aber auf den vorzeichenbehafteten Werten
+     * gebildet - dadurch waeren zwei tatsaechlich identische Lasten mit
+     * gegenlaeufigem Vorzeichen faelschlich als "verschieden" erkannt
+     * worden (Differenz ~2x Betrag statt ~0).
      */
     private function isSameLoad(int $idA, int $idB): bool
     {
@@ -844,8 +815,146 @@ class NRGDashboardTile extends IPSModule
         if ($a === null || $b === null) {
             return false;
         }
-        $scale = max(abs($a), abs($b), self::SAME_LOAD_MIN_SCALE);
+        $a = abs($a);
+        $b = abs($b);
+        $scale = max($a, $b, self::SAME_LOAD_MIN_SCALE);
         return (abs($a - $b) / $scale) < self::SAME_LOAD_TOLERANCE;
+    }
+
+    /**
+     * Kategorien, in denen der reale Referenzpunkt typischerweise EIN
+     * physischer Punkt je Haushalt ist (Netzanschluss, Hausverbrauch,
+     * Batterie, eine bestimmte Waermepumpe) - ein zweiter Eintrag
+     * derselben Kategorie ist dort mit hoher Wahrscheinlichkeit eine
+     * redundante Zweitmessung, kein zweites echtes Geraet. BEWUSST
+     * AUSGESCHLOSSEN: 'wallbox'/'vehicle'/generische 'consumer'-Eintraege -
+     * dort sind mehrere Instanzen (WB1/WB2, mehrere Fahrzeuge, mehrere
+     * Haushaltsgeraete) der Normalfall, ein automatischer Wertevergleich
+     * koennte dort zwei echte, unterschiedliche Geraete faelschlich
+     * zusammenlegen (z.B. zwei Waschmaschinen mit zufaellig aehnlicher
+     * Momentanleistung).
+     */
+    private const REDUNDANCY_ELIGIBLE_FUNCTIONS = ['heatpump', 'grid', 'house', 'battery'];
+
+    /**
+     * Reichhaltigkeits-Punktzahl einer Quelle - je hoeher, desto eher als
+     * PRIMAER geeignet: getrennte Ein-/Ausspeise-Energiezaehler statt nur
+     * einem Gesamtwert, abrechnungsrelevante Quelle (MeterHub-Vertrag
+     * 'authority'==='billing'), echtzeitnahe Anbindung statt verzoegert,
+     * tatsaechlich gemessen statt geschaetzt.
+     */
+    private function sourceRichnessScore(array $d): int
+    {
+        $score = 0;
+        if (!empty($d['energyImportID'])) {
+            $score += 2;
+        }
+        if (!empty($d['energyExportID'])) {
+            $score += 2;
+        }
+        if (($d['authority'] ?? '') === 'billing') {
+            $score += 4;
+        }
+        if (($d['latency'] ?? '') === 'realtime') {
+            $score += 1;
+        }
+        if (($d['measured'] ?? true) === true) {
+            $score += 1;
+        }
+        return $score;
+    }
+
+    /**
+     * Generische Redundanz-Erkennung ueber ALLE Quellen (Dietmar,
+     * 30.07.2026: "es werden alle Zähler im Auge behalten, nicht nur
+     * beim ersten Scan" UND "verallgemeinere das") - laeuft bei JEDEM
+     * Discover()-Lauf (5-Minuten-Timer) neu ueber den kompletten,
+     * gerade frisch eingelesenen Geraetebestand, nicht nur einmalig beim
+     * urspruenglichen HeishaMon/MeterHub-Waermepumpenfall.
+     *
+     * Bildet Cluster aus Geraeten derselben (redundanzfaehigen) Kategorie
+     * mit uebereinstimmendem Live-Wert (isSameLoad(), betragsbasiert) -
+     * deckt damit z.B. auch Dietmars zwei Netzzaehler (Inexogy + PAC2200,
+     * beide MeterHub) UND einen etwaigen dritten, InverterHub-eigenen
+     * Netzwert ab, nicht nur den urspruenglichen Waermepumpen-Einzelfall.
+     * Je Cluster bleibt nur die reichhaltigste Quelle als PRIMAER
+     * sichtbar, die zweitreichhaltigste wird als Fallback angehaengt
+     * (resolvePowerValue()), alle weiteren werden nicht mehr separat
+     * gezeigt (mehr als ein Fallback-Slot ist im Schema nicht vorgesehen -
+     * bei drei redundanten Quellen ist "primär + ein Fallback" bereits
+     * die relevante Verbesserung gegenueber drei sichtbaren Dubletten).
+     */
+    private function mergeRedundantSources(array $devices): array
+    {
+        $devices = array_values($devices);
+        $n = count($devices);
+        $clusterOf = array_fill(0, $n, -1);
+        $clusters = [];
+
+        for ($i = 0; $i < $n; $i++) {
+            $fi = $devices[$i]['function'] ?? '';
+            $pidI = (int) ($devices[$i]['powerID'] ?? 0);
+            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $pidI <= 0) {
+                continue;
+            }
+            for ($j = $i + 1; $j < $n; $j++) {
+                $fj = $devices[$j]['function'] ?? '';
+                $pidJ = (int) ($devices[$j]['powerID'] ?? 0);
+                if ($fj !== $fi || $pidJ <= 0) {
+                    continue;
+                }
+                if (!$this->isSameLoad($pidI, $pidJ)) {
+                    continue;
+                }
+                $ci = $clusterOf[$i];
+                $cj = $clusterOf[$j];
+                if ($ci === -1 && $cj === -1) {
+                    $clusters[] = [$i, $j];
+                    $newIdx = count($clusters) - 1;
+                    $clusterOf[$i] = $newIdx;
+                    $clusterOf[$j] = $newIdx;
+                } elseif ($ci !== -1 && $cj === -1) {
+                    $clusters[$ci][] = $j;
+                    $clusterOf[$j] = $ci;
+                } elseif ($ci === -1 && $cj !== -1) {
+                    $clusters[$cj][] = $i;
+                    $clusterOf[$i] = $cj;
+                } elseif ($ci !== $cj) {
+                    foreach ($clusters[$cj] as $idx) {
+                        $clusterOf[$idx] = $ci;
+                        $clusters[$ci][] = $idx;
+                    }
+                    $clusters[$cj] = [];
+                }
+            }
+        }
+
+        $dropIndexes = [];
+        foreach ($clusters as $members) {
+            $members = array_values(array_unique($members));
+            if (count($members) < 2) {
+                continue;
+            }
+            usort($members, function ($a, $b) use ($devices) {
+                return $this->sourceRichnessScore($devices[$b]) <=> $this->sourceRichnessScore($devices[$a]);
+            });
+            $primaryIdx = $members[0];
+            $fallback = $devices[$members[1]];
+            $devices[$primaryIdx]['fallbackPowerID']       = (int) ($fallback['powerID'] ?? 0);
+            $devices[$primaryIdx]['fallbackEnergyImportID'] = (int) ($fallback['energyImportID'] ?? 0);
+            $devices[$primaryIdx]['fallbackMeasured']       = (bool) ($fallback['measured'] ?? true);
+            $devices[$primaryIdx]['fallbackLabel']          = (string) ($fallback['label'] ?? ($fallback['source'] ?? 'Fallback'));
+            foreach ($members as $k => $idx) {
+                if ($k > 0) {
+                    $dropIndexes[] = $idx;
+                }
+            }
+        }
+
+        foreach ($dropIndexes as $idx) {
+            unset($devices[$idx]);
+        }
+        return array_values($devices);
     }
 
     private function resolveVariableValue(int $id): ?float
