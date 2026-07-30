@@ -891,35 +891,57 @@ class NRGDashboardTile extends IPSModule
      * gerade frisch eingelesenen Geraetebestand, nicht nur einmalig beim
      * urspruenglichen HeishaMon/MeterHub-Waermepumpenfall.
      *
-     * Bildet Cluster aus Geraeten derselben (redundanzfaehigen) Kategorie
-     * mit uebereinstimmendem Live-Wert (isSameLoad(), betragsbasiert) -
-     * deckt damit z.B. auch Dietmars zwei Netzzaehler (Inexogy + PAC2200,
-     * beide MeterHub) UND einen etwaigen dritten, InverterHub-eigenen
-     * Netzwert ab, nicht nur den urspruenglichen Waermepumpen-Einzelfall.
+     * ZWEISTUFIG, wegen eines live beobachteten Problems (Dietmars drei
+     * Netzzaehler Inexogy/PAC2200/InverterHub-eigen): ein reiner
+     * Momentan-Wertevergleich (isSameLoad()) ist bei einer schnell
+     * schwankenden Groesse wie Netzleistung UND einer Quelle mit
+     * 'latency'==='delayed' (Inexogy, bis zu 15 Minuten alter Stand)
+     * strukturell instabil - zwei aufeinanderfolgende Discover()-Laeufe
+     * clusterten live unterschiedliche Zaehler-Paare, weil Inexogys
+     * gecachter Wert mal zufaellig zum aktuellen Live-Wert passte und
+     * mal nicht. Ein Vergleich gegen einen bekannt veralteten Wert ist
+     * kein verlaesslicher Redundanz-Beweis.
+     *
+     * Stufe 1: NUR echtzeitfaehige Quellen (latency==='realtime' oder
+     * InverterHub-eigene Eintraege ohne latency-Feld, siehe
+     * sourceRichnessScore()) werden untereinander per Live-Wert
+     * geclustert - hier ist ein Momentanvergleich sinnvoll, weil beide
+     * Seiten tatsaechlich einen aktuellen Wert liefern.
+     * Stufe 2: Verzoegerte Quellen (z.B. Inexogy) werden NICHT mehr zum
+     * Aufbau eines Clusters herangezogen, sondern nur noch NACHTRAEGLICH
+     * an einen bereits stufe-1-bestaetigten Cluster derselben Kategorie
+     * angehaengt - und auch nur, wenn dieser Cluster noch KEINEN
+     * Fallback aus Stufe 1 hat (eine echtzeitfaehige Zweitquelle ist
+     * immer die bessere Wahl als eine strukturell veraltete).
+     *
      * Je Cluster bleibt nur die reichhaltigste Quelle als PRIMAER
      * sichtbar, die zweitreichhaltigste wird als Fallback angehaengt
      * (resolvePowerValue()), alle weiteren werden nicht mehr separat
-     * gezeigt (mehr als ein Fallback-Slot ist im Schema nicht vorgesehen -
-     * bei drei redundanten Quellen ist "primär + ein Fallback" bereits
-     * die relevante Verbesserung gegenueber drei sichtbaren Dubletten).
+     * gezeigt (mehr als ein Fallback-Slot ist im Schema nicht vorgesehen).
      */
     private function mergeRedundantSources(array $devices): array
     {
         $devices = array_values($devices);
         $n = count($devices);
+
+        $isRealtimeCandidate = function (array $d): bool {
+            $latency = $d['latency'] ?? (($d['source'] ?? '') === 'inverterhub' ? 'realtime' : '');
+            return $latency === 'realtime';
+        };
+
+        // Stufe 1: nur echtzeitfaehige Quellen per Live-Wert clustern.
         $clusterOf = array_fill(0, $n, -1);
         $clusters = [];
-
         for ($i = 0; $i < $n; $i++) {
             $fi = $devices[$i]['function'] ?? '';
             $pidI = (int) ($devices[$i]['powerID'] ?? 0);
-            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $pidI <= 0) {
+            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $pidI <= 0 || !$isRealtimeCandidate($devices[$i])) {
                 continue;
             }
             for ($j = $i + 1; $j < $n; $j++) {
                 $fj = $devices[$j]['function'] ?? '';
                 $pidJ = (int) ($devices[$j]['powerID'] ?? 0);
-                if ($fj !== $fi || $pidJ <= 0) {
+                if ($fj !== $fi || $pidJ <= 0 || !$isRealtimeCandidate($devices[$j])) {
                     continue;
                 }
                 if (!$this->isSameLoad($pidI, $pidJ)) {
@@ -944,6 +966,47 @@ class NRGDashboardTile extends IPSModule
                         $clusters[$ci][] = $idx;
                     }
                     $clusters[$cj] = [];
+                }
+            }
+        }
+
+        // Einzelknoten-Cluster fuer jede redundanzfaehige, echtzeitfaehige
+        // Quelle anlegen, die in Stufe 1 keinen Treffer hatte - sonst
+        // haette Stufe 2 nichts zum Andocken (Cluster entstehen in Stufe 1
+        // nur bei einem tatsaechlichen Treffer, nie einzeln).
+        for ($i = 0; $i < $n; $i++) {
+            if ($clusterOf[$i] !== -1) {
+                continue;
+            }
+            $fi = $devices[$i]['function'] ?? '';
+            $pidI = (int) ($devices[$i]['powerID'] ?? 0);
+            if (in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) && $pidI > 0 && $isRealtimeCandidate($devices[$i])) {
+                $clusters[] = [$i];
+                $clusterOf[$i] = count($clusters) - 1;
+            }
+        }
+
+        // Stufe 2: verzoegerte Quellen NUR nachtraeglich an einen bereits
+        // bestehenden Stufe-1-Cluster derselben Kategorie anhaengen -
+        // NIE als eigenstaendiger Cluster-Beweis, NIE wenn der Cluster
+        // schon eine echtzeitfaehige Zweitquelle (Fallback-Kandidat) hat.
+        for ($i = 0; $i < $n; $i++) {
+            if ($clusterOf[$i] !== -1) {
+                continue;
+            }
+            $fi = $devices[$i]['function'] ?? '';
+            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $isRealtimeCandidate($devices[$i])) {
+                continue;
+            }
+            foreach ($clusters as $ci => $members) {
+                if (count($members) === 0 || count($members) >= 2) {
+                    continue; // schon voll (Primaer+Fallback) oder leer
+                }
+                $memberFn = $devices[$members[0]]['function'] ?? '';
+                if ($memberFn === $fi) {
+                    $clusters[$ci][] = $i;
+                    $clusterOf[$i] = $ci;
+                    break;
                 }
             }
         }
