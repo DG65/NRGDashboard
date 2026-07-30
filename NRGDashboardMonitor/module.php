@@ -680,7 +680,15 @@ class NRGDashboardMonitor extends IPSModule
      * das ist reine Rechenlogik, keine Zaehlerfrage, bewusst unveraendert
      * gelassen, um keine neuen Fallstricke einzubauen.
      */
-    private function EnergyFlow(int $start, int $end): ?array
+    /**
+     * Kernberechnung (1:1 InverterHubEnergy::ComputeFlow()), aus EnergyFlow()
+     * herausgezogen (30.07.2026) - fuer den neuen "Bilanz"-Reiter (Flaechen-/
+     * Balkendiagramm nach Dietmars SEMS-Vorbild) OHNE die Sankey-Knoten/
+     * Kanten gebraucht, nur die fuenf benannten Groessen selbst. EnergyFlow()
+     * (Sankey) und BalanceTotals() (Bilanz) rufen beide dieselbe Funktion,
+     * damit die Zahlen zwischen beiden Ansichten nie auseinanderlaufen.
+     */
+    private function FlowComponents(int $start, int $end): array
     {
         $ihub = $this->singleInverterHubID();
         $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
@@ -716,6 +724,40 @@ class NRGDashboardMonitor extends IPSModule
         // Batterie-Entladung und Netzbezug decken den Verbrauch.
         $pvToLoad = max(0.0, $solar - $gridExp - $batCh);
         $load = ($houseE !== null && $houseE > 0) ? (float) $houseE : ($pvToLoad + $batDis + $gridImp);
+
+        return [
+            'solar' => $solar, 'batCh' => $batCh, 'batDis' => $batDis,
+            'gridImp' => $gridImp, 'gridExp' => $gridExp, 'pvToLoad' => $pvToLoad,
+            'load' => $load, 'assignments' => $assignments,
+        ];
+    }
+
+    /**
+     * Fuenf benannte Bilanz-Groessen fuer einen Zeitraum (Muster: Dietmars
+     * SEMS-Vorbild-Screenshots, 30.07.2026) - Netzbezug/Batterieentladung/
+     * Direktverbrauch fuer den "Verbrauch"-Teil, Direktverbrauch/
+     * Batterieladung/Netzeinspeisung fuer den "Erzeugung"-Teil (Direkt-
+     * verbrauch kommt bewusst in beiden vor, wie im Vorbild - er ist
+     * sowohl Verbrauchs- als auch Erzeugungsanteil).
+     */
+    private function BalanceTotals(int $start, int $end): array
+    {
+        $c = $this->FlowComponents($start, $end);
+        return [
+            'netzbezug'         => round($c['gridImp'], 3),
+            'batterieentladung' => round($c['batDis'], 3),
+            'direktverbrauch'   => round($c['pvToLoad'], 3),
+            'batterieladung'    => round($c['batCh'], 3),
+            'netzeinspeisung'   => round($c['gridExp'], 3),
+        ];
+    }
+
+    private function EnergyFlow(int $start, int $end): ?array
+    {
+        $c = $this->FlowComponents($start, $end);
+        $solar = $c['solar']; $batCh = $c['batCh']; $batDis = $c['batDis'];
+        $gridImp = $c['gridImp']; $gridExp = $c['gridExp']; $pvToLoad = $c['pvToLoad'];
+        $load = $c['load']; $assignments = $c['assignments'];
 
         $consumers = [];
         $consSum = 0.0;
@@ -1069,7 +1111,158 @@ class NRGDashboardMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'balancePeriod') {
+            $req = json_decode((string) $Value, true);
+            $key = (string) ($req['key'] ?? '');
+            $result = $this->BuildBalancePeriod($req);
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'      => true,
+                'type'    => 'balanceUpdate',
+                'key'     => $key,
+                'balance' => $result,
+            ]));
+            return;
+        }
         throw new Exception('Invalid Ident: ' . $Ident);
+    }
+
+    /**
+     * Neuer "Bilanz"-Reiter (Dietmar, 30.07.2026, nach SEMS-Vorbild-
+     * Screenshots): eigener Reiter NEBEN dem bestehenden Sankey-
+     * "Energiebilanz"-Reiter (Dietmars ausdrueckliche Entscheidung, Sankey
+     * bleibt unangetastet). granularity 'day' liefert die 5-Minuten-Kurven
+     * fuer das Flaechendiagramm, 'month'/'year'/'all' liefern je einen
+     * Balken pro Tag/Monat/Jahr - IMMER ueber die feinste Einheit (ein
+     * echter Kalendertag, per BalanceTotals() bei 5-Minuten-Aufloesung
+     * berechnet) aufsummiert, damit Batterie-Ladung/-Entladung innerhalb
+     * eines Tages nicht durch eine grobe Tagesmittelwert-Naeherung
+     * gegeneinander wegfallen (dieselbe Falle, die PowerToEnergy() mit
+     * sign=+-1 auf 5-Minuten-Basis genau vermeidet).
+     */
+    private function BuildBalancePeriod(array $req): array
+    {
+        $granularity = (string) ($req['granularity'] ?? 'day');
+        $start = (int) ($req['start'] ?? 0);
+        $end = (int) ($req['end'] ?? 0);
+        if ($end <= $start) {
+            return ['ok' => false];
+        }
+
+        if ($granularity === 'day') {
+            $curve = $this->DayBalanceCurve($start, $end);
+            $totals = $this->BalanceTotals($start, $end);
+            return ['ok' => true, 'granularity' => 'day', 'curve' => $curve, 'totals' => $totals];
+        }
+
+        // Balken-Granularitaet der FEINSTEN Bucket-Einheit passend zur
+        // Ansicht gestaffelt (Monat->Tage, Jahr->Monate, Gesamt->Jahre) -
+        // NICHT immer Tage ueber den ganzen Zeitraum: "Gesamt" liefert laut
+        // flowPeriodBounds() den Bereich seit Unix-Epoche (1970) - das waeren
+        // sonst tausende Tages-Einzelabfragen und ein Zeitueberschreitungs-
+        // Risiko fuer einen einzelnen WebFront-Request. Jeder Bucket wird
+        // trotzdem intern bei 5-Minuten-Aufloesung berechnet (BalanceTotals()
+        // -> FlowComponents()), nur die Bucket-GRENZEN sind groeber.
+        $bars = [];
+        $guardMax = 400;
+        if ($granularity === 'month') {
+            $cursor = $start;
+            while ($cursor < $end && $guardMax-- > 0) {
+                $dayStart = strtotime('midnight', $cursor);
+                $dayEnd = min($end, $dayStart + 86400);
+                $t = $this->BalanceTotals($dayStart, $dayEnd);
+                $t['id'] = date('Y-m-d', $dayStart);
+                $t['label'] = date('j', $dayStart);
+                $bars[] = $t;
+                $cursor = $dayStart + 86400;
+            }
+        } elseif ($granularity === 'year') {
+            $cursor = $start;
+            while ($cursor < $end && $guardMax-- > 0) {
+                $monthStart = (int) mktime(0, 0, 0, (int) date('n', $cursor), 1, (int) date('Y', $cursor));
+                $monthEnd = min($end, (int) strtotime('+1 month', $monthStart));
+                $t = $this->BalanceTotals($monthStart, $monthEnd);
+                $t['id'] = date('Y-m', $monthStart);
+                $t['label'] = date('M', $monthStart);
+                $bars[] = $t;
+                $cursor = $monthEnd;
+            }
+        } else {
+            // 'all'/Gesamt: auf SPAN_YEARS zurueckdatieren (Date(0)/1970 aus
+            // flowPeriodBounds() waere sonst jahrzehntelang leer), ein
+            // Balken je Kalenderjahr.
+            $cursor = $start;
+            $earliestUseful = strtotime('-' . self::SPAN_YEARS . ' years', time());
+            if ($cursor < $earliestUseful) {
+                $cursor = (int) mktime(0, 0, 0, 1, 1, (int) date('Y', $earliestUseful));
+            }
+            while ($cursor < $end && $guardMax-- > 0) {
+                $yearNum = (int) date('Y', $cursor);
+                $yearStart = (int) mktime(0, 0, 0, 1, 1, $yearNum);
+                $yearEnd = min($end, (int) mktime(0, 0, 0, 1, 1, $yearNum + 1));
+                $t = $this->BalanceTotals($yearStart, $yearEnd);
+                $t['id'] = (string) $yearNum;
+                $t['label'] = (string) $yearNum;
+                $bars[] = $t;
+                $cursor = $yearEnd;
+            }
+        }
+        return ['ok' => true, 'granularity' => $granularity, 'bars' => $bars];
+    }
+
+    /**
+     * 5-Minuten-Kurven der fuenf Bilanz-Groessen fuer GENAU EINEN Tag
+     * (Flaechendiagramm "Tag"-Ansicht) - leitet pro Zeitstempel-Bucket
+     * dieselbe Aufteilung ab wie FlowComponents()/BalanceTotals() fuer
+     * einen ganzen Zeitraum, hier aber punktweise statt aufsummiert.
+     */
+    private function DayBalanceCurve(int $start, int $end): array
+    {
+        $ihub = $this->singleInverterHubID();
+        $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
+        $pvPowerID = is_array($data) ? (int) ($data['pvPowerID'] ?? 0) : 0;
+        $batPowerID = is_array($data) ? (int) ($data['batPowerID'] ?? 0) : 0;
+        $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
+
+        $assignments = $this->MeterHubAssignments();
+        $gridA = $this->BestAssignment($assignments, 'grid');
+        $gridPowerID = $gridA['powerID'] ?? 0;
+        $gridPowerID = ($gridPowerID > 0) ? (int) $gridPowerID : $ihubGridPowerID;
+
+        $aid = $this->ArchiveID();
+        $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
+        $batPts = ($aid > 0) ? $this->DaySeries($aid, $batPowerID, $start, $end) : [];
+        $gridPts = ($aid > 0) ? $this->DaySeries($aid, $gridPowerID, $start, $end) : [];
+
+        $byTs = [];
+        foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
+        foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
+        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1]; }
+        ksort($byTs);
+
+        $netzbezug = []; $batterieentladung = []; $direktverbrauch = [];
+        $batterieladung = []; $netzeinspeisung = [];
+        foreach ($byTs as $ts => $v) {
+            $pv = max(0.0, (float) ($v['pv'] ?? 0));
+            $bat = (float) ($v['bat'] ?? 0);
+            $grid = (float) ($v['grid'] ?? 0);
+            $batCh = max(0.0, -$bat);
+            $batDis = max(0.0, $bat);
+            $gridImp = max(0.0, -$grid);
+            $gridExp = max(0.0, $grid);
+            $pvToLoad = max(0.0, $pv - $gridExp - $batCh);
+            $netzbezug[] = [$ts, round($gridImp / 1000.0, 3)];
+            $batterieentladung[] = [$ts, round($batDis / 1000.0, 3)];
+            $direktverbrauch[] = [$ts, round($pvToLoad / 1000.0, 3)];
+            $batterieladung[] = [$ts, round($batCh / 1000.0, 3)];
+            $netzeinspeisung[] = [$ts, round($gridExp / 1000.0, 3)];
+        }
+        return [
+            'netzbezug' => $netzbezug,
+            'batterieentladung' => $batterieentladung,
+            'direktverbrauch' => $direktverbrauch,
+            'batterieladung' => $batterieladung,
+            'netzeinspeisung' => $netzeinspeisung,
+        ];
     }
 
     private function ColorOrEmpty(int $v): string

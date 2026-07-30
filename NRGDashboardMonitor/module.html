@@ -37,6 +37,22 @@
   .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
   .legItem.off { opacity: .35; }
   .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* Bilanz-Zusammenfassung (neuer Reiter, Dietmars SEMS-Vorbild-Screenshots,
+     30.07.2026) - zwei Spalten Verbrauch/Erzeugung, eigene Steuerflaechen-
+     Optik statt GoodWe-Farben (Dietmars ausdruecklicher Wunsch). */
+  #balancePanel { flex: 0 0 auto; padding-top: 6px; font-size: 12px; }
+  .balHead { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
+  .balHead .car { transition: transform .15s; }
+  .balHead.collapsed .car { transform: rotate(-90deg); }
+  .balBody { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 22px; padding: 4px 2px 8px; }
+  .balBody.collapsed { display: none; }
+  .balRow { display: flex; align-items: center; gap: 7px; padding: 3px 0; border-bottom: 1px solid rgba(127,135,145,.14); }
+  .balRow .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .balRow .lbl { flex: 1 1 auto; opacity: .85; }
+  .balRow .val { font-weight: 700; white-space: nowrap; }
+  .balRow.total { border-bottom: none; font-weight: 700; }
+  .balQuote { grid-column: 1 / -1; display: flex; justify-content: space-between; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -64,8 +80,13 @@
         <button class="tab" data-tab="battery">Batterie</button>
         <button class="tab" data-tab="price">Strompreis</button>
         <button class="tab" data-tab="flow">Energiebilanz</button>
+        <button class="tab" data-tab="balance">Bilanz</button>
       </div>
-      <div id="chartcol"><div id="chart"></div><div id="legendRow"></div></div>
+      <div id="chartcol">
+        <div id="chart"></div>
+        <div id="legendRow"></div>
+        <div id="balancePanel" style="display:none"></div>
+      </div>
     </div>
   </div>
 
@@ -83,6 +104,24 @@
     // Tab-/Reiterwechsel erneut angefordert wird. flowPendingKey verhindert
     // doppelte Anfragen, waehrend eine Antwort noch aussteht.
     var flowCache = {}, flowPendingKey = null;
+    // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026) -
+    // eigener Reiter NEBEN dem bestehenden Sankey "Energiebilanz" (Dietmars
+    // ausdrueckliche Entscheidung). Gleiches Nachforder-/Cache-Muster wie
+    // flowCache oben, eigener Key-Namensraum ("balance_<granularity>_<start>_<end>").
+    var balanceCache = {}, balancePendingKey = null;
+    var balancePanelCollapsed = false;
+    // Eigene Farbpalette (Dietmars Wunsch: "die Steuerflaechen moechte ich
+    // unsere nehmen" - NICHT die GoodWe-SEMS-Farben kopieren). Solar/Batterie/
+    // Netz greifen die bereits im Sankey etablierten Farben dieses Moduls
+    // wieder auf (COL_SOLAR/COL_BAT/COL_GRID aus module.php), Netzbezug/
+    // Batterieentladung bekommen zwei neue, aber stimmige Toene.
+    var BALANCE_SERIES = [
+      { key: 'netzbezug',         name: 'Netzbezug',         color: '#E53935', panel: 'v' },
+      { key: 'batterieentladung', name: 'Batterieentladung', color: '#FFB74D', panel: 'v' },
+      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#F2C230', panel: 'both' },
+      { key: 'batterieladung',    name: 'Batterieladung',    color: '#5FCB6B', panel: 'e' },
+      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#4AA3E0', panel: 'e' }
+    ];
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
     // gewuenschten Zeitraums - bewusst kein natives type=week/month-Feld,
@@ -927,6 +966,215 @@
       chartEngine = 'highcharts';
     }
 
+    // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):
+    // Flaechendiagramm (Tag) bzw. Balkendiagramm (Monat/Jahr/Gesamt), jeweils
+    // zwei gestapelte Panels "Verbrauch"/"Erzeugung" mit gemeinsamer Legende
+    // (Direktverbrauch kommt in beiden Panels vor, wie im Vorbild) plus einer
+    // IMMER sichtbaren grauen Summenlinie/-kontur je Panel, die beim Aus-
+    // blenden einzelner Kategorien bestehen bleibt (Muster: SEMS-Screenshots -
+    // beim Abwaehlen einer Farbe bleibt die Gesamtkontur erhalten). Eigene
+    // Farbpalette statt GoodWe-Farben (Dietmars ausdruecklicher Wunsch).
+    function renderBalance(el, balance) {
+      if (!balance || balance.ok === false) {
+        destroyChart();
+        document.getElementById('balancePanel').innerHTML = '';
+        el.innerHTML = '<div class="empty">Keine Bilanzdaten für diesen Zeitraum</div>';
+        return;
+      }
+      if (balance.granularity === 'day') {
+        renderBalanceDay(el, balance.curve || {}, balance.totals || {});
+      } else {
+        renderBalanceBars(el, balance.bars || [], balance.granularity);
+      }
+    }
+
+    function renderBalanceDay(el, curve, totals) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+
+      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+
+      function seriesFor(panel, stackName) {
+        return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
+          .filter(function (s) { return isVisible(s.name); })
+          .map(function (s) {
+            return {
+              name: s.name, type: 'line', stack: stackName, areaStyle: { opacity: .55 },
+              lineStyle: { width: 1 }, symbol: 'none', color: s.color,
+              xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
+              data: curve[s.key] || []
+            };
+          });
+      }
+
+      // Summenlinie je Panel - bewusst NICHT ueber isVisible gefiltert, bleibt
+      // immer sichtbar (die Kontur aus den SEMS-Screenshots).
+      function sumSeries(keys, panelIdx) {
+        var byTs = {};
+        keys.forEach(function (k) {
+          (curve[k] || []).forEach(function (p) { byTs[p[0]] = (byTs[p[0]] || 0) + p[1]; });
+        });
+        var pts = Object.keys(byTs).map(function (t) { return [Number(t), byTs[t]]; }).sort(function (a, b) { return a[0] - b[0]; });
+        return {
+          name: panelIdx === 0 ? '__totalV' : '__totalE', type: 'line', symbol: 'none', silent: true,
+          lineStyle: { width: 1.5, color: 'rgba(220,226,232,.6)' },
+          xAxisIndex: panelIdx, yAxisIndex: panelIdx, data: pts, tooltip: { show: false }
+        };
+      }
+
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: [
+          { left: 46, right: 16, top: 30, height: '32%' },
+          { left: 46, right: 16, top: '58%', height: '32%' }
+        ],
+        title: [
+          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
+          { text: 'Erzeugung', left: 'center', top: '53%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+        ],
+        legend: { show: false },
+        tooltip: {
+          trigger: 'axis', axisPointer: { type: 'line' },
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          formatter: function (params) {
+            var shown = params.filter(function (p) { return p.seriesName.indexOf('__total') !== 0; });
+            if (!shown.length) { return ''; }
+            var t = new Date(shown[0].value[0]);
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+            return head + shown.map(function (p) {
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
+            }).join('');
+          }
+        },
+        xAxis: [
+          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } },
+          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } }
+        ],
+        yAxis: [
+          { gridIndex: 0, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } }
+        ],
+        series: [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0)]
+          .concat(seriesFor('v', 'v'))
+          .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1)])
+          .concat(seriesFor('e', 'e'))
+      }, true);
+
+      renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
+    }
+
+    function renderBalanceBars(el, bars, granularity) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+
+      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+
+      var categories = bars.map(function (b) { return b.label; });
+      var fullLabels = bars.map(function (b) { return b.id; });
+
+      function seriesFor(panel, stackName) {
+        return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
+          .filter(function (s) { return isVisible(s.name); })
+          .map(function (s) {
+            return {
+              name: s.name, type: 'bar', stack: stackName, color: s.color,
+              xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
+              data: bars.map(function (b) { return b[s.key] || 0; })
+            };
+          });
+      }
+      function sumSeries(keys, panelIdx) {
+        return {
+          name: panelIdx === 0 ? '__totalV' : '__totalE', type: 'bar', barGap: '-100%', silent: true,
+          itemStyle: { color: 'transparent', borderColor: 'rgba(220,226,232,.6)', borderWidth: 1 },
+          xAxisIndex: panelIdx, yAxisIndex: panelIdx, z: -1,
+          data: bars.map(function (b) { return keys.reduce(function (sum, k) { return sum + (b[k] || 0); }, 0); }),
+          tooltip: { show: false }
+        };
+      }
+
+      var maxLen = Math.max.apply(null, categories.map(function (c) { return String(c).length; }).concat([1]));
+
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: [
+          { left: 46, right: 16, top: 30, height: '32%' },
+          { left: 46, right: 16, top: '58%', height: '32%' }
+        ],
+        title: [
+          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
+          { text: 'Erzeugung', left: 'center', top: '53%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+        ],
+        legend: { show: false },
+        tooltip: {
+          trigger: 'axis', axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          formatter: function (params) {
+            var shown = params.filter(function (p) { return p.seriesName.indexOf('__total') !== 0; });
+            if (!shown.length) { return ''; }
+            var i = shown[0].dataIndex;
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + (fullLabels[i] || categories[i]) + '</div>';
+            return head + shown.map(function (p) {
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value).toFixed(2) + ' kWh</b></div>';
+            }).join('');
+          }
+        },
+        xAxis: [
+          { gridIndex: 0, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0 } },
+          { gridIndex: 1, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0 } }
+        ],
+        yAxis: [
+          { gridIndex: 0, type: 'value', name: 'kWh', splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', name: 'kWh', splitLine: { lineStyle: { color: GRID_COLOR } } }
+        ],
+        series: [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0)]
+          .concat(seriesFor('v', 'v'))
+          .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1)])
+          .concat(seriesFor('e', 'e'))
+      }, true);
+
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
+      bars.forEach(function (b) {
+        Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); });
+      });
+      var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
+      renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
+    }
+
+    function renderBilanzPanel(totals, verbrauchLabel, ertragLabel) {
+      var panel = document.getElementById('balancePanel');
+      var verbrauch = (totals.netzbezug || 0) + (totals.batterieentladung || 0) + (totals.direktverbrauch || 0);
+      var ertrag = (totals.direktverbrauch || 0) + (totals.batterieladung || 0) + (totals.netzeinspeisung || 0);
+      var quote = verbrauch > 0 ? Math.round((totals.direktverbrauch || 0) / verbrauch * 100) : 0;
+      function row(name, color, val, isTotal) {
+        return '<div class="balRow' + (isTotal ? ' total' : '') + '"><span class="dot" style="background:' + color + '"></span>'
+          + '<span class="lbl">' + name + '</span><span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
+      }
+      panel.innerHTML =
+        '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
+        + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
+        + row(verbrauchLabel, 'linear-gradient(135deg,#E53935,#F2C230)', verbrauch, true)
+        + row('Netzbezug', '#E53935', totals.netzbezug || 0)
+        + row('Batterieentladung', '#FFB74D', totals.batterieentladung || 0)
+        + row('Direktverbrauch', '#F2C230', totals.direktverbrauch || 0)
+        + row(ertragLabel, 'linear-gradient(135deg,#5FCB6B,#4AA3E0)', ertrag, true)
+        + row('Batterieladung', '#5FCB6B', totals.batterieladung || 0)
+        + row('Netzeinspeisung', '#4AA3E0', totals.netzeinspeisung || 0)
+        + '<div class="balQuote"><span>Direktverbrauchsquote</span><span><b>' + quote + ' %</b></span></div>'
+        + '</div>';
+      var head = document.getElementById('balHeadToggle');
+      head.classList.toggle('collapsed', balancePanelCollapsed);
+      head.onclick = function () {
+        balancePanelCollapsed = !balancePanelCollapsed;
+        document.getElementById('balBodyRows').classList.toggle('collapsed', balancePanelCollapsed);
+        head.classList.toggle('collapsed', balancePanelCollapsed);
+      };
+    }
+
     // Energiebilanz (Sankey) - Datengrundlage kommt fertig berechnet von
     // InverterHubEnergy::IHUBNRG_GetFlow() (Verbund-Vertrag, 28.07.2026:
     // nodes/links/totalIn/hasData, Farben je Node bereits enthalten) - wir
@@ -1173,6 +1421,7 @@
     function render() {
       syncNav();
       var el = document.getElementById('chart');
+      if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
 
       if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
         destroyChart();
@@ -1188,6 +1437,45 @@
       if (curTab === 'battery' && !lastData.hasBat && !lastData.hasSoc) {
         destroyChart();
         el.innerHTML = '<div class="empty">Keine Batterie-Variable gefunden - im Formular „Datenquelle“ wählen oder InverterHub installieren</div>';
+        return;
+      }
+      if (curTab === 'balance') {
+        document.getElementById('balancePanel').style.display = '';
+        if (!lastData.hasEnergyFlow) {
+          destroyChart();
+          document.getElementById('balancePanel').innerHTML = '';
+          el.innerHTML = '<div class="empty">Keine InverterHubEnergy-Instanz gefunden - im Formular „Datenquelle“ wählen oder InverterHubEnergy installieren</div>';
+          return;
+        }
+        if (curView === 'custom' && (!customFrom || !customTo)) {
+          destroyChart();
+          document.getElementById('balancePanel').innerHTML = '';
+          el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>';
+          return;
+        }
+        var balBounds, balGran;
+        if (curView === 'day') {
+          var balDay = (lastData.days || [])[idx];
+          if (!balDay) { destroyChart(); el.innerHTML = '<div class="empty">Kein Tag ausgewählt</div>'; return; }
+          balBounds = { start: Math.floor(balDay.dayStart / 1000), end: Math.floor(balDay.dayEnd / 1000) };
+          balGran = 'day';
+        } else {
+          balBounds = flowPeriodBounds();
+          balGran = (curView === 'week') ? 'month' : curView; // Woche hat keine eigene Bilanz-Granularitaet - Tagesbalken wie Monat
+          if (!balBounds) { destroyChart(); el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>'; return; }
+        }
+        var balKey = 'balance_' + balGran + '_' + balBounds.start + '_' + balBounds.end;
+        if (balanceCache[balKey] !== undefined) {
+          renderBalance(el, balanceCache[balKey]);
+        } else {
+          destroyChart();
+          document.getElementById('balancePanel').innerHTML = '';
+          el.innerHTML = '<div class="empty">Lade Bilanz…</div>';
+          if (balancePendingKey !== balKey) {
+            balancePendingKey = balKey;
+            requestAction('balancePeriod', JSON.stringify({ key: balKey, granularity: balGran, start: balBounds.start, end: balBounds.end }));
+          }
+        }
         return;
       }
       if (curTab === 'flow') {
@@ -1292,6 +1580,14 @@
         flowCache[d.start + '_' + d.end] = d.flow;
         flowPendingKey = null;
         if (curTab === 'flow') { render(); }
+        return;
+      }
+      // Antwort auf requestAction('balancePeriod', ...) - neuer "Bilanz"-
+      // Reiter (30.07.2026), gleiches Nachforder-/Cache-Muster wie flowUpdate.
+      if (d.type === 'balanceUpdate') {
+        balanceCache[d.key] = d.balance;
+        balancePendingKey = null;
+        if (curTab === 'balance') { render(); }
         return;
       }
       lastData = d;
