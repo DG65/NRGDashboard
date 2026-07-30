@@ -220,10 +220,11 @@ class NRGDashboardTopology extends IPSModule
     /**
      * "Was ist Neu"-Panel, versionsscharf dismissible: erscheint erneut,
      * sobald sich NEWS_VERSION erhoeht, auch wenn eine fruehere Version
-     * schon bestaetigt wurde. Caption bewusst OHNE Versionsnummer (SUITE.md,
-     * "Einheitliche Formular-Optik", Punkt 1: "Keine Versionsnummer in
-     * diesem Panel (verschwindet sonst mit dem Dismiss)") - die Version
-     * steht dauerhaft im Doku-Panel (injectVersionIntoDocPanel).
+     * schon bestaetigt wurde. Version STEHT in der Caption (Klaerung EMS/
+     * InverterHub, 30.07.2026: SUITE.md-Text "keine Versionsnummer im
+     * Panel" war veraltet/falsch, nicht die Praxis - Dismiss blendet das
+     * GESAMTE Panel aus, kein Zwischenzustand moeglich. SUITE.md in
+     * Commit da42f8c korrigiert.)
      */
     private function newsBanner(): ?array
     {
@@ -235,7 +236,7 @@ class NRGDashboardTopology extends IPSModule
             $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
         }
         $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_AckNews($id);'];
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in diesem Modul', 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
     }
 
     public function AckNews(): void
