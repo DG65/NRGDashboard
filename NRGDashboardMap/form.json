@@ -22,6 +22,25 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "ℹ️ Entdeckte Geräte",
+      "expanded": true,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Automatische Discovery wird beim Speichern ausgeführt. Die 3D-Karte zeigt folgende Schichten:"
+        },
+        {
+          "type": "Label",
+          "caption": "Layer 0: PV-Stränge (MPPT) | Layer 1: Wechselrichter | Layer 2: Batterie | Layer 3: Netz/Zähler/Verbraucher | Layer 4: Wallboxen | Layer 5: Fahrzeuge"
+        },
+        {
+          "type": "Label",
+          "caption": "Wenn die Kachel leer bleibt: Stelle sicher, dass InverterHub, ChargerHub und weitere Module installiert sind."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [
