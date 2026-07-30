@@ -837,11 +837,30 @@ class NRGDashboardTile extends IPSModule
     private const REDUNDANCY_ELIGIBLE_FUNCTIONS = ['heatpump', 'grid', 'house', 'battery'];
 
     /**
-     * Reichhaltigkeits-Punktzahl einer Quelle - je hoeher, desto eher als
-     * PRIMAER geeignet: getrennte Ein-/Ausspeise-Energiezaehler statt nur
-     * einem Gesamtwert, abrechnungsrelevante Quelle (MeterHub-Vertrag
-     * 'authority'==='billing'), echtzeitnahe Anbindung statt verzoegert,
-     * tatsaechlich gemessen statt geschaetzt.
+     * Reichhaltigkeits-Punktzahl einer Quelle fuer die Auswahl als PRIMAER
+     * bei einer Anzeige-/Steuerungskachel - NICHT dasselbe wie Abrechnungs-
+     * Genauigkeit. Korrektur (Dietmar, 30.07.2026): der erste Wurf hat
+     * 'authority'==='billing' stark belohnt (Inexogy ist Dietmars
+     * Abrechnungszaehler) und damit live die falsche Quelle als primaer
+     * gewaehlt - Inexogy liefert laut Dietmar "absolut am wenigsten Daten"
+     * und ist "fuer Steuerungen total ungeeignet" (15-Minuten-Werte, siehe
+     * MeterHub-Vertrag 'latency'==='delayed').
+     *
+     * 'authority' und 'latency' sind laut dem MeterHub-Vertrag (InverterHub/
+     * CLAUDE.md, "Abrechnungsgenauer Netzzaehler") ausdruecklich ZWEI
+     * ORTHOGONALE Achsen: 'authority' beantwortet "steht der Wert auf der
+     * Rechnung?", 'latency' beantwortet "darf ein Echtzeit-Regler darauf
+     * regeln?". Fuer DIESE Kachel (Live-Anzeige + potenzielle Steuer-
+     * grundlage) zaehlt ausschliesslich Letzteres - 'authority' fliesst
+     * hier bewusst NICHT mehr ein. Ein eigener Abrechnungs-/Kostenvergleich
+     * waere ein anderer Anwendungsfall (EMS/Kostenauswertung), nicht diese
+     * Verbraucherkachel.
+     *
+     * InverterHub-eigene Eintraege haben kein 'latency'-Feld (der Vertrag
+     * sieht es dort nicht vor), gelten aber als eigener, direkter Modbus-
+     * Register-Wert ohne Cloud-/Polling-Zwischenschicht implizit als
+     * echtzeitfaehig - deshalb der Spezialfall unten statt einer stillen
+     * Abwertung mangels Feld.
      */
     private function sourceRichnessScore(array $d): int
     {
@@ -852,11 +871,11 @@ class NRGDashboardTile extends IPSModule
         if (!empty($d['energyExportID'])) {
             $score += 2;
         }
-        if (($d['authority'] ?? '') === 'billing') {
-            $score += 4;
-        }
-        if (($d['latency'] ?? '') === 'realtime') {
-            $score += 1;
+        $latency = $d['latency'] ?? (($d['source'] ?? '') === 'inverterhub' ? 'realtime' : '');
+        if ($latency === 'realtime') {
+            $score += 6;
+        } elseif ($latency === 'delayed') {
+            $score -= 4;
         }
         if (($d['measured'] ?? true) === true) {
             $score += 1;
