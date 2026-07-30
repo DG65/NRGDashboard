@@ -404,7 +404,42 @@ class NRGDashboardTile extends IPSModule
 
         $heishaMon = $this->discoverHeishaMon();
         $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
-        $devices = array_merge($devices, $heishaMon);
+
+        // Redundanz-Erkennung Waermepumpe (Dietmar, 30.07.2026): HeishaMon
+        // (eigene RS485-Ablesung) und MeterHub (externer Shelly-Zaehler)
+        // koennen dieselbe physische Waermepumpe unabhaengig voneinander
+        // messen. Live per Wertevergleich bestaetigt: nahezu identische
+        // Werte (~2-3W Versatz, zwei Proben im Abstand von 3 Minuten), aber
+        // MeterHub aktualisiert deutlich haeufiger (5s-Poll-Vertrag) und
+        // fuehrt getrennte Ein-/Ausspeise-Energiezaehler statt nur einem
+        // Gesamtwert. MeterHub gilt daher als PRIMAER; die HeishaMon-eigene
+        // Waermepumpen-Messung wird NICHT mehr als eigener Verbraucher-Kreis
+        // gezeigt, sondern als Fallback in den MeterHub-Eintrag gemerged
+        // (siehe resolvePowerValue()) - wichtig fuer eine etwaige Steuerung:
+        // faellt die genauere Quelle aus, bleibt trotzdem ein Wert statt
+        // eines toten Feldes. Merge nur bei function==='heatpump' auf
+        // BEIDEN Seiten, andere HeishaMon-Funktionen bleiben unberuehrt.
+        $heishaMonRemaining = [];
+        foreach ($heishaMon as $hEntry) {
+            $merged = false;
+            if (($hEntry['function'] ?? '') === 'heatpump') {
+                foreach ($devices as &$existing) {
+                    if (($existing['source'] ?? '') === 'meterhub' && ($existing['function'] ?? '') === 'heatpump') {
+                        $existing['fallbackPowerID']        = (int) ($hEntry['powerID'] ?? 0);
+                        $existing['fallbackEnergyImportID']  = (int) ($hEntry['energyImportID'] ?? 0);
+                        $existing['fallbackMeasured']        = (bool) ($hEntry['measured'] ?? true);
+                        $existing['fallbackLabel']           = (string) ($hEntry['label'] ?? 'HeishaMon');
+                        $merged = true;
+                        break;
+                    }
+                }
+                unset($existing);
+            }
+            if (!$merged) {
+                $heishaMonRemaining[] = $hEntry;
+            }
+        }
+        $devices = array_merge($devices, $heishaMonRemaining);
 
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
@@ -726,10 +761,50 @@ class NRGDashboardTile extends IPSModule
      * zwischenzeitlich geloescht wurde (genau der Fall, den dieses Modul
      * gegenueber IPS View robust machen soll).
      */
-    private function resolvePowerValue(array $device): ?float
+    // Schwelle, ab der ein Primaerwert als "haengengeblieben" statt nur
+    // ruhig gilt und auf den Fallback umgeschaltet wird (Dietmar, 30.07.2026:
+    // "fuer eine Steuerung sehr sehr wichtig" - ein eingefrorener statt ein
+    // fehlender Wert ist fuer einen Regler das gefaehrlichere Szenario).
+    // Deutlich groesszuegiger als MeterHubs 5s-Polling, damit normale
+    // Netzwerk-/Poll-Jitter keinen Fehlalarm ausloest.
+    private const FALLBACK_STALE_SECONDS = 60;
+
+    /**
+     * Liest den Leistungswert, mit Rueckfall auf eine zweite (redundante)
+     * Quelle, falls die primaere fehlt ODER seit FALLBACK_STALE_SECONDS
+     * nicht mehr aktualisiert wurde. $device wird per Referenz uebergeben,
+     * damit 'measured'/'usingFallback' beim tatsaechlichen Umschalten
+     * mitgesetzt werden koennen - nutzt damit dieselbe bestehende
+     * 'measured'-Kennzeichnung (≈-Anzeige), die HeishaMons eigene grobe
+     * Schaetzung bereits kennzeichnet, statt eine neue UI extra zu bauen.
+     */
+    private function resolvePowerValue(array &$device): ?float
     {
-        $id = $device['powerID'] ?? 0;
-        return $id > 0 ? $this->resolveVariableValue($id) : null;
+        $id = (int) ($device['powerID'] ?? 0);
+        $value = $id > 0 ? $this->resolveVariableValue($id) : null;
+
+        $fallbackId = (int) ($device['fallbackPowerID'] ?? 0);
+        if ($fallbackId > 0 && $this->isStaleOrMissing($id, $value)) {
+            $fbValue = $this->resolveVariableValue($fallbackId);
+            if ($fbValue !== null) {
+                $device['measured'] = $device['fallbackMeasured'] ?? true;
+                $device['usingFallback'] = true;
+                return $fbValue;
+            }
+        }
+        return $value;
+    }
+
+    private function isStaleOrMissing(int $id, ?float $value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+        if ($id <= 0 || !IPS_VariableExists($id)) {
+            return true;
+        }
+        $updated = IPS_GetVariable($id)['VariableUpdated'] ?? 0;
+        return (time() - $updated) > self::FALLBACK_STALE_SECONDS;
     }
 
     private function resolveVariableValue(int $id): ?float
