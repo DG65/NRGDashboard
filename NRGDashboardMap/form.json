@@ -7,11 +7,32 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Räumliche 3D-Karte des gesamten NRG-Stack-Verbunds: physische Anordnung (PV-Strang → Wechselrichter → Batterie → Netz/Zähler → Wallbox → Fahrzeug). Alle Geräte werden automatisch über die installierten Partnermodule gefunden - keine manuelle Konfiguration nötig."
+          "caption": "Räumliche 3D-Karte des gesamten NRG-Stack-Verbunds: der Wechselrichter im Zentrum, alle Geräte-Kategorien (PV, Batterie, Netz, Hausverbrauch, Verbraucher, Wallbox, Fahrzeug) radial darum. Alle Geräte werden automatisch über die installierten Partnermodule gefunden - keine manuelle Konfiguration nötig."
         },
         {
           "type": "Label",
-          "caption": "Mit der Maus ziehen zum Drehen, Mausrad zum Zoomen. Die Karte wird als HTMLBox-Variable dargestellt (siehe unten)."
+          "caption": "Kategorien mit mehreren Instanzen (z. B. zwei Netzzähler oder zwei Wallboxen) erscheinen als Sammelknoten mit den einzelnen Instanzen lokal aufgefächert - das hält die Karte übersichtlich, egal wie viele Zähler dazukommen."
+        },
+        {
+          "type": "Label",
+          "caption": "Mit der Maus ziehen zum Drehen (mit sanftem Ausklingen), Mausrad zum Zoomen."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Datenquelle",
+      "expanded": true,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Optional - wird bei genau einer installierten InverterHub-Instanz automatisch erkannt. Nur bei mehreren Instanzen gezielt auswählen."
+        },
+        {
+          "type": "SelectInstance",
+          "name": "InverterInstance",
+          "caption": "InverterHub-Instanz",
+          "moduleID": "{BBE2C593-1A91-426D-A714-29A9C7E87589}"
         }
       ]
     },
@@ -19,6 +40,40 @@
       "type": "Button",
       "caption": "Geräte jetzt suchen",
       "onClick": "NRGDASHMAP_Discover($id);"
+    },
+    {
+      "type": "Label",
+      "name": "DiscoveryResult",
+      "caption": ""
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Darstellung",
+      "expanded": false,
+      "items": [
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Stil zurücksetzen",
+      "onClick": "NRGDASHMAP_ResetStyle($id);"
+    }
+  ],
+  "status": [
+    {
+      "code": 102,
+      "icon": "active",
+      "caption": "Karte aktiv."
     }
   ]
 }
