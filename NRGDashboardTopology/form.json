@@ -21,9 +21,13 @@
       "expanded": true,
       "items": [
         {
+          "type": "Label",
+          "caption": "Optional - wird bei genau einer installierten EMS-Instanz automatisch erkannt. Nur bei mehreren EMS-Instanzen (z. B. Test/Produktiv nebeneinander) hier gezielt auswählen."
+        },
+        {
           "type": "SelectInstance",
           "name": "EmsInstance",
-          "caption": "EMS-Instanz (optional, sonst automatisch bei genau einer Instanz)",
+          "caption": "EMS-Instanz",
           "moduleID": "{31C61A7B-28C4-4F97-9651-1A64B3469E3C}"
         }
       ]
@@ -32,6 +36,11 @@
       "type": "Button",
       "caption": "Jetzt aktualisieren",
       "onClick": "NRGDASHTOPO_Render($id);"
+    },
+    {
+      "type": "Label",
+      "name": "DiscoveryResult",
+      "caption": ""
     },
     {
       "type": "ExpansionPanel",

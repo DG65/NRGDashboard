@@ -159,6 +159,30 @@ class NRGDashboardTopology extends IPSModule
         $payload = $this->buildPayload();
         $this->updateInstanceStatus($payload);
         $this->UpdateVisualizationValue(json_encode($payload));
+        $this->updateDiscoveryResultLabel($payload);
+    }
+
+    /**
+     * Ergebnis-Label im Formular (Muster NRGDashboardTile::DiscoveryResult),
+     * hier zusaetzlich mit den Partnernamen statt nur der Anzahl - genau die
+     * Namen, die auch die Kachel je Knoten zeigt (node.label), damit der
+     * Nutzer schon im Formular sieht, WER gefunden wurde, nicht nur wie viele.
+     * No-Op, wenn gerade kein Formular offen ist (UpdateFormField).
+     */
+    private function updateDiscoveryResultLabel(array $payload): void
+    {
+        if (!($payload['ok'] ?? false)) {
+            $this->UpdateFormField('DiscoveryResult', 'caption', '⚠️ ' . ($payload['error'] ?? 'Keine Verbindungsdaten verfügbar.'));
+            return;
+        }
+        $names = array_map(static fn (array $n) => $n['label'], $payload['nodes'] ?? []);
+        $this->UpdateFormField(
+            'DiscoveryResult',
+            'caption',
+            count($names) > 0
+                ? sprintf('✅ %d Partner gefunden: %s (zuletzt %s Uhr).', count($names), implode(', ', $names), date('H:i:s'))
+                : sprintf('⚠️ EMS-Instanz „%s“ gefunden, aber keine Partnermodule gemeldet.', $payload['emsLabel'] ?? '?')
+        );
     }
 
     public function ResetStyle(): void
