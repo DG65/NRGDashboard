@@ -12,7 +12,9 @@
   svg { position: absolute; inset: 0; width: 100%; height: 100%; }
   .node-face { filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
   .node-label { font-size: 13px; font-weight: 600; fill: var(--text, #dfe6ee); text-anchor: middle; }
+  .node-label.small { font-size: 11px; }
   .node-sub { font-size: 10px; fill: var(--textmuted, rgba(200,210,220,.75)); text-anchor: middle; }
+  .hub-count { font-size: 10px; font-weight: 700; fill: rgba(255,255,255,.85); text-anchor: middle; }
   .status-overlay {
     position: absolute; left: 8px; bottom: 8px; z-index: 2;
     display: inline-flex; align-items: center; gap: 8px;
@@ -30,7 +32,7 @@
 </head>
 <body>
   <div class="wrap">
-    <svg id="svg" viewBox="0 0 560 560" preserveAspectRatio="xMidYMid meet">
+    <svg id="svg" viewBox="0 0 700 700" preserveAspectRatio="xMidYMid meet">
       <defs>
         <radialGradient id="gCenter" cx="35%" cy="30%" r="75%">
           <stop offset="0%" stop-color="#5b6b7a"/>
@@ -48,9 +50,23 @@
   </div>
 
   <script>
-    var CX = 280, CY = 280, R = 190, NODE_R = 46, CENTER_R = 56;
+    var CX = 350, CY = 350;
+    var R_TYPE = 190;    // Ring fuer Einzelinstanzen und Cluster-Hubs (z.B. "MeterHub (6)")
+    var R_MEMBER = 300;  // Ring fuer einzelne Instanzen INNERHALB eines Clusters
+    var CENTER_R = 56;
+    var NODE_R = 44;       // Einzelinstanz / Cluster-Hub
+    var MEMBER_R = 32;     // Cluster-Mitglied (kleiner, da mehrere pro Sektor)
     var STATUS_COLOR = { healthy: '#4caf50', unhealthy: '#e53935', missing: '#78828c' };
     var STATUS_DASH = { healthy: '0', unhealthy: '0', missing: '6,5' };
+
+    // Anzeigename je Modul-Schluessel - Spiegelbild von MODULE_LABELS in
+    // module.php (dort pro Einzelinstanz genutzt, hier zusaetzlich fuer
+    // die Cluster-Hub-Beschriftung "MeterHub (6)" gebraucht).
+    var MODULE_DISPLAY = {
+      goodweet: 'GoodWe ET', inverterhub: 'InverterHub', meterhub: 'MeterHub',
+      chargerhub: 'ChargerHub', heishamon: 'HeishaMon', tessie: 'Tessie',
+      tibber: 'Tibber Grid Rewards'
+    };
 
     function svgEl(tag, attrs) {
       var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -58,6 +74,46 @@
       return el;
     }
 
+    function wrapLabel(el, text, x, maxLen) {
+      if (text.length <= maxLen) { el.textContent = text; return; }
+      var parts = text.split(' ');
+      var lines = []; var cur = '';
+      parts.forEach(function (p) {
+        if ((cur + ' ' + p).trim().length > maxLen && cur) { lines.push(cur); cur = p; }
+        else { cur = (cur + ' ' + p).trim(); }
+      });
+      if (cur) { lines.push(cur); }
+      el.textContent = '';
+      lines.forEach(function (ln, li) {
+        var tspan = svgEl('tspan', { x: x, dy: li === 0 ? (4 - (lines.length - 1) * 6) : 12 });
+        tspan.textContent = ln;
+        el.appendChild(tspan);
+      });
+    }
+
+    /**
+     * Aggregat-Status eines Clusters: unhealthy schlaegt missing schlaegt
+     * healthy - "noch da, aber gestoert" ist mindestens so alarmierend wie
+     * "verschwunden", beides soll aus dem Cluster-Hub sofort ablesbar sein.
+     */
+    function aggregateStatus(members) {
+      if (members.some(function (m) { return m.status === 'unhealthy'; })) { return 'unhealthy'; }
+      if (members.some(function (m) { return m.status === 'missing'; })) { return 'missing'; }
+      return 'healthy';
+    }
+
+    /**
+     * Zweistufiges Radial-Layout (Muster: geclusterte Radial-Layouts, z.B.
+     * yFiles Radial Layout): EMS im Zentrum, EIN Slot je Partnermodul-Typ
+     * auf dem Hauptring. Einzelinstanz-Module haengen direkt am Hauptring;
+     * Module mit mehreren Instanzen (MeterHub, ChargerHub, Tessie, ...)
+     * bekommen einen Cluster-Hub auf dem Hauptring, dessen Mitglieder
+     * lokal in einem eigenen Sektor weiter aussen aufgefaechert werden.
+     * Das haelt die Knotenzahl auf dem vollen 360-Grad-Ring klein und
+     * unabhaengig davon, wie viele MeterHub-Zaehler Dietmar betreibt -
+     * neue Instanzen eines Typs verdraengen keine anderen Module mehr,
+     * sie fuellen nur ihren eigenen Sektor.
+     */
     function renderTopology(d) {
       var edges = document.getElementById('edges');
       var nodesG = document.getElementById('nodes');
@@ -70,48 +126,77 @@
       centerLabel.textContent = 'EMS';
       nodesG.appendChild(centerLabel);
 
-      var n = d.nodes.length;
-      d.nodes.forEach(function (node, i) {
-        var angle = (n > 0) ? (2 * Math.PI * i / n) - Math.PI / 2 : 0;
-        var x = CX + R * Math.cos(angle);
-        var y = CY + R * Math.sin(angle);
-        var color = STATUS_COLOR[node.status] || STATUS_COLOR.missing;
+      // Nach Modul-Typ gruppieren, Reihenfolge der ersten Sichtung erhalten
+      var groups = []; var byModule = {};
+      d.nodes.forEach(function (node) {
+        if (!byModule[node.module]) {
+          byModule[node.module] = { module: node.module, members: [] };
+          groups.push(byModule[node.module]);
+        }
+        byModule[node.module].members.push(node);
+      });
 
-        var edge = svgEl('line', {
-          x1: CX, y1: CY, x2: x, y2: y,
-          stroke: color, 'stroke-width': 2, opacity: node.status === 'missing' ? 0.5 : 0.85,
-          'stroke-dasharray': STATUS_DASH[node.status] || '0'
-        });
-        edges.appendChild(edge);
+      var g = groups.length;
+      groups.forEach(function (grp, i) {
+        var angle = (g > 0) ? (2 * Math.PI * i / g) - Math.PI / 2 : 0;
+        var hx = CX + R_TYPE * Math.cos(angle);
+        var hy = CY + R_TYPE * Math.sin(angle);
+        var isCluster = grp.members.length > 1;
+        var hubStatus = isCluster ? aggregateStatus(grp.members) : grp.members[0].status;
+        var hubColor = STATUS_COLOR[hubStatus] || STATUS_COLOR.missing;
 
-        var circle = svgEl('circle', { cx: x, cy: y, r: NODE_R, fill: '#232a32', stroke: color, 'stroke-width': 3, class: 'node-face' });
-        nodesG.appendChild(circle);
+        // EMS -> Hub (Einzelinstanz oder Cluster-Sammelknoten)
+        edges.appendChild(svgEl('line', {
+          x1: CX, y1: CY, x2: hx, y2: hy,
+          stroke: hubColor, 'stroke-width': 2, opacity: hubStatus === 'missing' ? 0.5 : 0.85,
+          'stroke-dasharray': STATUS_DASH[hubStatus] || '0'
+        }));
 
-        var dotY = y - NODE_R - 10;
-        var statusDot = svgEl('circle', { cx: x, cy: dotY, r: 5, fill: color });
-        nodesG.appendChild(statusDot);
+        var hubCircle = svgEl('circle', { cx: hx, cy: hy, r: NODE_R, fill: '#232a32', stroke: hubColor, 'stroke-width': 3, class: 'node-face' });
+        nodesG.appendChild(hubCircle);
 
-        var label = svgEl('text', { x: x, y: y + 4, class: 'node-label' });
-        label.textContent = node.label;
-        // Lange Bezeichnungen (z.B. "Tibber Grid Rewards") im Knoten
-        // umbrechen statt abzuschneiden.
-        if (node.label.length > 12) {
-          var parts = node.label.split(' ');
-          var lines = [];
-          var cur = '';
-          parts.forEach(function (p) {
-            if ((cur + ' ' + p).trim().length > 12 && cur) { lines.push(cur); cur = p; }
-            else { cur = (cur + ' ' + p).trim(); }
-          });
-          if (cur) { lines.push(cur); }
-          label.textContent = '';
-          lines.forEach(function (ln, li) {
-            var tspan = svgEl('tspan', { x: x, dy: li === 0 ? (4 - (lines.length - 1) * 6) : 12 });
-            tspan.textContent = ln;
-            label.appendChild(tspan);
+        var dotY = hy - NODE_R - 10;
+        nodesG.appendChild(svgEl('circle', { cx: hx, cy: dotY, r: 5, fill: hubColor }));
+
+        var hubLabelText = isCluster ? (MODULE_DISPLAY[grp.module] || grp.module) : grp.members[0].label;
+        var hubLabel = svgEl('text', { x: hx, y: hy + (isCluster ? -2 : 4), class: 'node-label' });
+        wrapLabel(hubLabel, hubLabelText, hx, 12);
+        nodesG.appendChild(hubLabel);
+
+        if (isCluster) {
+          var countLabel = svgEl('text', { x: hx, y: hy + 16, class: 'hub-count' });
+          countLabel.textContent = grp.members.length + ' Instanzen';
+          nodesG.appendChild(countLabel);
+
+          // Mitglieder lokal im Sektor auffaechern (70% der Sektorbreite,
+          // damit Nachbarsektoren nicht beruehrt werden).
+          var sectorWidth = (2 * Math.PI / g) * 0.7;
+          var n = grp.members.length;
+          grp.members.forEach(function (member, j) {
+            var mAngle = (n > 1)
+              ? (angle - sectorWidth / 2 + sectorWidth * (j / (n - 1)))
+              : angle;
+            var mx = CX + R_MEMBER * Math.cos(mAngle);
+            var my = CY + R_MEMBER * Math.sin(mAngle);
+            var mColor = STATUS_COLOR[member.status] || STATUS_COLOR.missing;
+
+            edges.appendChild(svgEl('line', {
+              x1: hx, y1: hy, x2: mx, y2: my,
+              stroke: mColor, 'stroke-width': 1.5, opacity: member.status === 'missing' ? 0.5 : 0.75,
+              'stroke-dasharray': STATUS_DASH[member.status] || '0'
+            }));
+
+            var mCircle = svgEl('circle', { cx: mx, cy: my, r: MEMBER_R, fill: '#232a32', stroke: mColor, 'stroke-width': 2.5, class: 'node-face' });
+            nodesG.appendChild(mCircle);
+
+            var mDotY = my - MEMBER_R - 8;
+            nodesG.appendChild(svgEl('circle', { cx: mx, cy: mDotY, r: 4, fill: mColor }));
+
+            var mLabel = svgEl('text', { x: mx, y: my + 4, class: 'node-label small' });
+            wrapLabel(mLabel, member.label, mx, 11);
+            nodesG.appendChild(mLabel);
           });
         }
-        nodesG.appendChild(label);
       });
     }
 
