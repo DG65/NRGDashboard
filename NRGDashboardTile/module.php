@@ -407,24 +407,34 @@ class NRGDashboardTile extends IPSModule
 
         // Redundanz-Erkennung Waermepumpe (Dietmar, 30.07.2026): HeishaMon
         // (eigene RS485-Ablesung) und MeterHub (externer Shelly-Zaehler)
-        // koennen dieselbe physische Waermepumpe unabhaengig voneinander
-        // messen. Live per Wertevergleich bestaetigt: nahezu identische
-        // Werte (~2-3W Versatz, zwei Proben im Abstand von 3 Minuten), aber
-        // MeterHub aktualisiert deutlich haeufiger (5s-Poll-Vertrag) und
-        // fuehrt getrennte Ein-/Ausspeise-Energiezaehler statt nur einem
-        // Gesamtwert. MeterHub gilt daher als PRIMAER; die HeishaMon-eigene
-        // Waermepumpen-Messung wird NICHT mehr als eigener Verbraucher-Kreis
-        // gezeigt, sondern als Fallback in den MeterHub-Eintrag gemerged
+        // KOENNEN dieselbe physische Waermepumpe unabhaengig voneinander
+        // messen - muessen es aber nicht (ein Haushalt mit zwei getrennten
+        // Waermepumpen haette z.B. eine ueber HeishaMon UND eine zweite,
+        // andere ueber einen eigenen MeterHub-Zaehler). Gleiche function
+        // ('heatpump') auf beiden Seiten ist daher NUR ein Kandidaten-
+        // Filter, kein Beweis - erst ein echter Live-Wertevergleich
+        // (isSameLoad()) entscheidet, ob wirklich gemergt wird. Bei
+        // Dietmar live bestaetigt: nahezu identische Werte (~2-3W Versatz,
+        // zwei Proben im Abstand von 3 Minuten). Ohne diese Pruefung waere
+        // die Regel eine unzulaessige Verallgemeinerung der eigenen Anlage
+        // (SUITE.md "keine eigene Anlage als Norm annehmen") - sie muss bei
+        // JEDER Installation selbst pruefen, nicht nur bei Dietmars.
+        //
+        // MeterHub gilt bei bestaetigter Redundanz als PRIMAER (haeufigerer
+        // Poll-Takt, getrennte Ein-/Ausspeise-Energiezaehler statt nur
+        // einem Gesamtwert); HeishaMons Messung wird dann NICHT mehr als
+        // eigener Verbraucher-Kreis gezeigt, sondern als Fallback gemerged
         // (siehe resolvePowerValue()) - wichtig fuer eine etwaige Steuerung:
         // faellt die genauere Quelle aus, bleibt trotzdem ein Wert statt
-        // eines toten Feldes. Merge nur bei function==='heatpump' auf
-        // BEIDEN Seiten, andere HeishaMon-Funktionen bleiben unberuehrt.
+        // eines toten Feldes.
         $heishaMonRemaining = [];
         foreach ($heishaMon as $hEntry) {
             $merged = false;
             if (($hEntry['function'] ?? '') === 'heatpump') {
                 foreach ($devices as &$existing) {
-                    if (($existing['source'] ?? '') === 'meterhub' && ($existing['function'] ?? '') === 'heatpump') {
+                    if (($existing['source'] ?? '') === 'meterhub'
+                        && ($existing['function'] ?? '') === 'heatpump'
+                        && $this->isSameLoad((int) ($existing['powerID'] ?? 0), (int) ($hEntry['powerID'] ?? 0))) {
                         $existing['fallbackPowerID']        = (int) ($hEntry['powerID'] ?? 0);
                         $existing['fallbackEnergyImportID']  = (int) ($hEntry['energyImportID'] ?? 0);
                         $existing['fallbackMeasured']        = (bool) ($hEntry['measured'] ?? true);
@@ -805,6 +815,37 @@ class NRGDashboardTile extends IPSModule
         }
         $updated = IPS_GetVariable($id)['VariableUpdated'] ?? 0;
         return (time() - $updated) > self::FALLBACK_STALE_SECONDS;
+    }
+
+    // Toleranz fuer den Live-Korrelationstest zweier vermeintlich
+    // redundanter Leistungsquellen - grosszuegig genug fuer normale
+    // Messabweichung zwischen zwei unabhaengigen Sensoren (Kalibrierung,
+    // Zeitpunkt der Ablesung), eng genug um zwei tatsaechlich
+    // UNTERSCHIEDLICHE Verbraucher sicher zu unterscheiden (bei ~200W+
+    // typischer Waermepumpen-Last wuerde ein zweiter, andersartiger
+    // Verbraucher i.d.R. um ein Vielfaches abweichen, nicht nur um Prozente).
+    private const SAME_LOAD_TOLERANCE = 0.25;
+    private const SAME_LOAD_MIN_SCALE = 50.0;
+
+    /**
+     * Echter Live-Wertevergleich, BEVOR zwei gleich kategorisierte Quellen
+     * (z.B. HeishaMon + MeterHub, beide function='heatpump') als redundant
+     * gemergt werden - reine Kategorie-Uebereinstimmung ist kein Beweis
+     * (siehe SUITE.md "keine eigene Anlage als Norm annehmen": ein anderer
+     * Haushalt kann zwei tatsaechlich getrennte Waermepumpen haben). Ohne
+     * aktuell ablesbare Werte auf BEIDEN Seiten wird bewusst NICHT gemergt
+     * (im Zweifel lieber zwei sichtbare Verbraucher als einen faelschlich
+     * unterschlagenen).
+     */
+    private function isSameLoad(int $idA, int $idB): bool
+    {
+        $a = $this->resolveVariableValue($idA);
+        $b = $this->resolveVariableValue($idB);
+        if ($a === null || $b === null) {
+            return false;
+        }
+        $scale = max(abs($a), abs($b), self::SAME_LOAD_MIN_SCALE);
+        return (abs($a - $b) / $scale) < self::SAME_LOAD_TOLERANCE;
     }
 
     private function resolveVariableValue(int $id): ?float
