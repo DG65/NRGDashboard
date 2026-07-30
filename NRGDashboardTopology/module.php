@@ -23,6 +23,17 @@ class NRGDashboardTopology extends IPSModule
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
 
+    // Verbund-Formularkonvention (Muster NRGDashboardTile): "Was ist Neu"
+    // (versionsscharf dismissible) + Forum-Hinweis (einmalig dismissible) +
+    // Versionszeile im Doku-Panel. NEWS_VERSION bei jeder nutzersichtbaren
+    // Aenderung an diesem Modul erhoehen.
+    private const NEWS_VERSION = '0.6.0';
+    private const NEWS_ITEMS = [
+        'Neu: Verbund-Gesundheit als Stern-Topologie um die EMS-Instanz - Partnermodule farbig nach Verbindungsstatus.',
+    ];
+    private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
+    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+
     public function Create()
     {
         parent::Create();
@@ -30,6 +41,9 @@ class NRGDashboardTopology extends IPSModule
         $this->RegisterPropertyInteger('EmsInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
+
+        $this->RegisterAttributeString('SeenNews', '');
+        $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHTOPO_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -39,7 +53,6 @@ class NRGDashboardTopology extends IPSModule
     {
         parent::ApplyChanges();
         $this->SetVisualizationType(1);
-        $this->SetStatus(102);
         // Verbindungsstatus kann sich haeufiger aendern als Energiewerte -
         // 60s-Takt statt der 5-Minuten der anderen beiden Module, plus ein
         // sofortiger Lauf bei ApplyChanges() (gleiche Lehre wie bei
@@ -47,6 +60,17 @@ class NRGDashboardTopology extends IPSModule
         // Timer-Tick auf einem veralteten Stand).
         $this->SetTimerInterval('Refresh', 60 * 1000);
         $this->Render();
+    }
+
+    /**
+     * Instanzstatus spiegelt jetzt den tatsaechlichen Zustand wider (Muster:
+     * Tile/Monitor) statt immer auf 102 zu stehen - buildPayload() liefert
+     * das Fehlerbild ohnehin schon, hier nur zusaetzlich auf die
+     * IPS-Statusanzeige (Konsole/Objektbaum) gespiegelt.
+     */
+    private function updateInstanceStatus(array $payload): void
+    {
+        $this->SetStatus(($payload['ok'] ?? false) ? 102 : 104);
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -123,14 +147,107 @@ class NRGDashboardTopology extends IPSModule
 
     public function GetVisualizationTile()
     {
+        $payload = $this->buildPayload();
+        $this->updateInstanceStatus($payload);
         $html = file_get_contents(__DIR__ . '/module.html');
-        $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
+        $html .= '<script>handleMessage(' . json_encode($payload) . ');</script>';
         return $html;
     }
 
     public function Render(): void
     {
-        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+        $payload = $this->buildPayload();
+        $this->updateInstanceStatus($payload);
+        $this->UpdateVisualizationValue(json_encode($payload));
+    }
+
+    public function ResetStyle(): void
+    {
+        $this->UpdateFormField('ColorBackground', 'value', self::DEF_BACKGROUND);
+        $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
+    }
+
+    /**
+     * Fuegt "Was ist Neu" (versionsscharf dismissible) und den Forum-Hinweis
+     * (einmalig dismissible) um die statische form.json herum ein, traegt die
+     * Versionsnummer ins Doku-Panel ein - exakte Struktur wie
+     * NRGDashboardTile (Muster fuer den ganzen Verbund).
+     */
+    public function GetConfigurationForm()
+    {
+        $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        if (!isset($form['elements']) || !is_array($form['elements'])) {
+            $form['elements'] = [];
+        }
+
+        $this->injectVersionIntoDocPanel($form);
+
+        $banner = $this->newsBanner();
+        if ($banner !== null) {
+            array_unshift($form['elements'], $banner);
+        }
+
+        if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
+            $form['elements'][] = [
+                'type' => 'RowLayout',
+                'name' => 'ReviewHint',
+                'items' => [
+                    ['type' => 'Label', 'caption' => '🧪 NRG-Stack Dashboard ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_DismissReviewHint($id);'],
+                ],
+            ];
+        }
+
+        return json_encode($form);
+    }
+
+    private function injectVersionIntoDocPanel(array &$form): void
+    {
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $verTxt = (is_array($lib) && isset($lib['Version']))
+            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            : 'ℹ️ NRG-Stack Dashboard';
+        foreach ($form['elements'] as &$el) {
+            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+                array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
+                return;
+            }
+        }
+        unset($el);
+    }
+
+    /**
+     * "Was ist Neu"-Panel, versionsscharf dismissible: erscheint erneut,
+     * sobald sich NEWS_VERSION erhoeht, auch wenn eine fruehere Version
+     * schon bestaetigt wurde. Caption bewusst OHNE Versionsnummer (SUITE.md,
+     * "Einheitliche Formular-Optik", Punkt 1: "Keine Versionsnummer in
+     * diesem Panel (verschwindet sonst mit dem Dismiss)") - die Version
+     * steht dauerhaft im Doku-Panel (injectVersionIntoDocPanel).
+     */
+    private function newsBanner(): ?array
+    {
+        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+            return null;
+        }
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        foreach (self::NEWS_ITEMS as $line) {
+            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        }
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_AckNews($id);'];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in diesem Modul', 'expanded' => true, 'items' => $items];
+    }
+
+    public function AckNews(): void
+    {
+        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        $this->UpdateFormField('NewsPanel', 'visible', false);
+    }
+
+    public function DismissReviewHint(): void
+    {
+        $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
+        $this->UpdateFormField('ReviewHint', 'visible', false);
     }
 
     /**
