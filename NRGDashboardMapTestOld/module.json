@@ -1,0 +1,14 @@
+{
+  "id": "{A1B2C3D4-E5F6-4789-9ABC-DEF012345678}",
+  "name": "NRGDashboardMapTestOld",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "TEST: NRG-Stack Map (alte SetVisualizationType-Methode)"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHMAPOLD"
+}
