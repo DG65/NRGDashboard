@@ -1186,8 +1186,14 @@
     // Spalten) ist bewusst reines HTML statt Chart-Tooltip - bei einer
     // 15+-Jahre-Historie will man alle Werte auf einen Blick, nicht erst
     // ueber jede Linie hovern.
-    function ycColor(i, n) {
-      var hue = Math.round((i * 360 / Math.max(n, 1)) % 360);
+    // Farbe haengt nur vom JAHR selbst ab (nicht von seiner Position/der
+    // Gesamtzahl im aktuellen Array) - kommt ein neues Jahr dazu, sollen
+    // sich die Farben der bisherigen Jahre nicht mitverschieben (Dietmar,
+    // 31.07.2026: "Was passiert mit dem Chart, wenn mehr Jahre dazu
+    // kommen?"). Goldener Winkel (137.508°) verteilt aufeinanderfolgende
+    // Jahre gut sichtbar unterscheidbar, auch ueber viele Jahre hinweg.
+    function ycColor(year) {
+      var hue = Math.round((year * 137.508) % 360);
       return 'hsl(' + hue + ',62%,55%)';
     }
     function ycSeriesValues(data, factor) {
@@ -1242,7 +1248,7 @@
       renderYearCompareTable(data, unit, values);
       var legendYears = data.years.concat(['Mittelwert']);
       var legendItems = legendYears.map(function (y, i) {
-        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(i, data.years.length) };
+        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(y) };
       });
       if (values.expected) { legendItems.push({ name: 'Erwartung', color: '#9aa4b0' }); }
       renderLegend('yearcompare', legendItems);
@@ -1326,9 +1332,8 @@
     function renderYearCompareECharts(el, data, unit, values) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
-      var n = data.years.length;
-      var series = data.years.map(function (y, i) {
-        return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(i, n), data: values[y] };
+      var series = data.years.map(function (y) {
+        return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(y), data: values[y] };
       });
       series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#e8e8e8', data: values.mittelwert, z: 10 });
       if (values.expected) {
@@ -1356,9 +1361,8 @@
     }
     function renderYearCompareHighcharts(el, data, unit, values) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
-      var n = data.years.length;
-      var series = data.years.filter(function (y) { return isVisible(String(y)); }).map(function (y, i) {
-        return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(data.years.indexOf(y), n), data: values[y] };
+      var series = data.years.filter(function (y) { return isVisible(String(y)); }).map(function (y) {
+        return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(y), data: values[y] };
       });
       if (isVisible('Mittelwert')) {
         series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#e8e8e8', data: values.mittelwert, zIndex: 10 });
