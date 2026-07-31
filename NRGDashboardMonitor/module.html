@@ -1199,9 +1199,16 @@
         // ausserhalb, der des oberen zu weit links - Dietmar, 31.07.2026).
         // tickInterval:1 = festes 1-kW-Gitterraster (Dietmar: "Die
         // Gitternetzlinien sollten jedes kW dargestellt sein").
+        // labels.x identisch fuer beide Panels gesetzt (Dietmar, 31.07.2026:
+        // "Y-Achse obere ChartBeschriftung ... 5px nach rechts. Untere ...
+        // auf die gleiche Position wie oben") - garantiert dieselbe
+        // Beschriftungsposition unabhaengig von automatisch berechneten
+        // Highcharts-Defaults. top/height an xAxis[1] angeglichen (war
+        // durch die vorherige Rand-Korrektur auf 38% statt 42% stehen
+        // geblieben).
         yAxis: [
-          { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, tickInterval: 1, top: '58%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
+          { title: { text: null }, tickInterval: 1, top: '58%', height: '42%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1246,14 +1253,16 @@
       // yAxis.title (Dietmar, 31.07.2026: Highcharts' automatische Titel-
       // Positionierung kollidierte mit dem fest gesetzten marginLeft -
       // beim unteren Panel war der Titel dadurch unsichtbar, beim oberen
-      // zu weit links). Links im festen 58px-Rand (x=6), vertikal je
-      // Panel zentriert (top + halbe Panelhoehe).
+      // zu weit links). x=11 (5px weiter rechts als zuvor, Dietmar,
+      // 31.07.2026) - fuer beide Panels IDENTISCH, damit "kW" oben/unten
+      // garantiert auf gleicher Position steht. Vertikal je Panel
+      // zentriert (top + halbe Panelhoehe).
       if (unit) {
         c.__balLabels.push(
-          c.renderer.text(unit, 6, c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, 11, c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
         c.__balLabels.push(
-          c.renderer.text(unit, 6, c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, 11, c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
       }
     }
