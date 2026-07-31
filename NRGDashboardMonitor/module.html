@@ -1246,13 +1246,20 @@
           trigger: 'axis', axisPointer: { type: 'line' },
           backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
           extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
-          // Tooltip-Box (mit Uhrzeit-Kopf) faengt in der Luecke zwischen
-          // den beiden Charts fest ein, statt dem Cursor auf der y-Achse zu
-          // folgen (Dietmar, 31.07.2026: "Uhrzeit soll in der Mitte der
-          // beiden Charts stehen") - x bleibt an der Maus, y ist fix.
+          // Tooltip-Box (mit Uhrzeit-Kopf) haengt vertikal fest in der
+          // Luecke zwischen den beiden Charts (Dietmar, 31.07.2026: "Uhrzeit
+          // soll in der Mitte der beiden Charts stehen"). Horizontal darf
+          // sie NIE ueber dem Zeiger haengen (Dietmar, 31.07.2026), sondern
+          // weicht seitlich aus - bevorzugt rechts vom Zeiger, links davon
+          // nur wenn rechts kein Platz mehr ist - bleibt dabei immer
+          // innerhalb des Charts.
           position: function (pt, params, dom, rect, size) {
             var midY = size.viewSize[1] * 0.46 - size.contentSize[1] / 2;
-            var x = pt[0] - size.contentSize[0] / 2;
+            var gap = 14;
+            var x = pt[0] + gap;
+            if (x + size.contentSize[0] > size.viewSize[0] - 4) {
+              x = pt[0] - gap - size.contentSize[0];
+            }
             x = Math.max(4, Math.min(x, size.viewSize[0] - size.contentSize[0] - 4));
             return [x, Math.max(4, midY)];
           },
