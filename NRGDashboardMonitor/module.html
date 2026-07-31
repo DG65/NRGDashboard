@@ -130,7 +130,7 @@
     // Anker um die passende Einheit). Benutzerdefiniert nutzt customFrom/To.
     var viewRef = new Date();
     var customFrom = null, customTo = null;
-    var libs = { hc: 0, hcSankey: 0 };
+    var libs = { hc: 0, hcSankey: 0, ec: 0 };
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
     // Zarte Gitterlinien-Farbe fuer Zeit- und linke Achse (Dietmars Wunsch,
     // 28.07.2026) - in beiden Engines identisch verwendet.
@@ -172,6 +172,21 @@
       if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; return cb(); }
       if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
       libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
+    }
+
+    // Fix (31.07.2026): ECharts war bisher IMMER lokal eingebettet (~618KB),
+    // sobald diese Engine gewaehlt war - zusammen mit dem restlichen
+    // Tage-Fenster-Payload (WINDOW_DAYS Tage x mehrere Serien) hat das live
+    // bei Dietmar "Output-Buffer exceeds Limit (1048576 bytes)" ausgeloest.
+    // Gleiches Muster wie ensureHighcharts() jetzt auch fuer ECharts: per
+    // CDN nachladen statt einbetten - Highcharts laeuft nachweislich schon
+    // ueber ein CDN in dieser Umgebung, dieselbe Netzwerk-Erreichbarkeit
+    // gilt also auch hier.
+    function ensureECharts(cb) {
+      if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
+      if (libs.ec === 1) { return setTimeout(function () { ensureECharts(cb); }, 80); }
+      libs.ec = 1;
+      addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
     }
 
     // Energiebilanz-Reiter (Sankey) braucht zusaetzlich das Highcharts-
@@ -999,12 +1014,14 @@
         });
         return;
       }
-      if (balance.granularity === 'day') {
-        renderBalanceDay(el, balance.curve || {}, balance.totals || {});
-      } else {
-        renderBalanceBars(el, balance.bars || [], balance.granularity);
-      }
-      setTimeout(sizeChart, 60);
+      ensureECharts(function () {
+        if (balance.granularity === 'day') {
+          renderBalanceDay(el, balance.curve || {}, balance.totals || {});
+        } else {
+          renderBalanceBars(el, balance.bars || [], balance.granularity);
+        }
+        setTimeout(sizeChart, 60);
+      });
     }
 
     function renderBalanceDayHighcharts(el, curve, totals) {
@@ -1671,8 +1688,12 @@
         if (wantEngineFlow === 'highcharts') {
           ensureHighchartsSankey(function () { el.innerHTML = ''; renderSankeyHighcharts(el, flowObj); });
         } else {
-          renderSankeyECharts(el, flowObj);
-          setTimeout(sizeChart, 60);
+          // KEIN el.innerHTML-Reset hier - renderSankeyECharts() leert/
+          // erstellt intern nur beim tatsaechlichen Neuanlegen (siehe
+          // Kommentar bei renderECharts() weiter oben: externes Leeren VOR
+          // jeder Wiederverwendung reisst den Canvas ab, setOption() liefe
+          // danach ins Leere).
+          ensureECharts(function () { renderSankeyECharts(el, flowObj); setTimeout(sizeChart, 60); });
         }
         return;
       }
@@ -1691,8 +1712,7 @@
         if (wantEngineBar === 'highcharts') {
           ensureHighcharts(function () { el.innerHTML = ''; renderBarHighcharts(el, curTab); });
         } else {
-          renderBarECharts(el, curTab);
-          setTimeout(sizeChart, 60);
+          ensureECharts(function () { renderBarECharts(el, curTab); setTimeout(sizeChart, 60); });
         }
         return;
       }
@@ -1708,8 +1728,7 @@
       if (wantEngine === 'highcharts') {
         ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, curTab, d); });
       } else {
-        renderECharts(el, curTab, d);
-        setTimeout(sizeChart, 60);
+        ensureECharts(function () { renderECharts(el, curTab, d); setTimeout(sizeChart, 60); });
       }
     }
 

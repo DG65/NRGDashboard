@@ -1065,15 +1065,15 @@ class NRGDashboardMonitor extends IPSModule
     public function GetVisualizationTile()
     {
         $html = file_get_contents(__DIR__ . '/module.html');
-        // ECharts (~1 MB) nur einbetten, wenn diese Engine auch gewaehlt ist -
-        // sonst reisst allein die eingebettete Bibliothek IP-Symcons
-        // Ausgabepuffer fuer Kacheln (1 MB), unabhaengig von der tatsaechlich
-        // genutzten Engine (live aufgetreten: "Output-Buffer exceeds Limit",
-        // auch mit gewaehltem Highcharts, weil der Platzhalter bisher IMMER
-        // ersetzt wurde).
-        $engine = ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts';
-        $echarts = ($engine === 'echarts') ? file_get_contents(__DIR__ . '/echarts.min.js') : '';
-        $html = str_replace('/*__ECHARTS_JS__*/', $echarts, $html);
+        // Fix (31.07.2026): ECharts (~618 KB) NICHT mehr einbetten - selbst
+        // NUR bei gewaehlter ECharts-Engine hat das zusammen mit dem
+        // restlichen Tage-Fenster-Payload (WINDOW_DAYS Tage x mehrere
+        // Serien, inkl. des neuen Bilanz-Reiters) live "Output-Buffer
+        // exceeds Limit (1048576 bytes)" ausgeloest. module.html laedt
+        // ECharts jetzt per CDN nach (ensureECharts(), gleiches Muster wie
+        // ensureHighcharts()) statt es einzubetten - Platzhalter bleibt
+        // deshalb unbesetzt.
+        $html = str_replace('/*__ECHARTS_JS__*/', '', $html);
         $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
         return $html;
     }
