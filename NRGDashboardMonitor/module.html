@@ -1299,19 +1299,28 @@
           // breite Achsenbeschriftungen und stehen dadurch nicht
           // uebereinander).
           marginLeft: 58, marginRight: 16,
+          // Gleiche Randkorrektur wie in der Tagesansicht (Dietmar,
+          // 31.07.2026: "die gleichen Werte fuer die Charts und das ganze
+          // drumherum fuer Woche, Monat, Jahr etc.").
+          marginBottom: 18, spacingBottom: 0,
           events: { render: function () { renderBalancePanelTitles(this, 'kWh'); } }
         },
         title: { text: null },
+        // Abstand zwischen den Panels analog zur Tagesansicht verkleinert
+        // (top 50%->53.5% waere GROESSER, nicht kleiner - hier stattdessen
+        // wie in der Tagesansicht 53.5%/46.5%, Balkenbeschriftung unten
+        // bleibt aber sichtbar, anders als die Uhrzeit bei Tag).
         xAxis: [
           { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-          { categories: categories, top: '50%', height: '46%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+          { categories: categories, top: '53.5%', height: '46.5%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         // "kWh"-Achsenname kommt jetzt ueber renderBalancePanelTitles()
         // statt yAxis.title (Dietmar, 31.07.2026 - siehe Begruendung in
-        // renderBalanceDayHighcharts).
+        // renderBalanceDayHighcharts). labels.x an die Tagesansicht
+        // angeglichen.
         yAxis: [
-          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
+          { title: { text: null }, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 14 } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
