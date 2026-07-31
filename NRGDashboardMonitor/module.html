@@ -303,6 +303,15 @@
     // auf dunklem Hintergrund Kontrast hat) - mittleres Grau mit Alpha
     // funktioniert auf Hell UND Dunkel, betrifft alle Charts im Modul.
     var GRID_COLOR = 'rgba(128,128,128,.28)';
+    // Echte Theme-Erkennung statt Halo-Trick (Dietmar, 31.07.2026: "Kann
+    // man nicht sagen, dass der Text bei Hell Dunkelgrau und bei Dunkel
+    // Hellgrau sein soll?") - ueber prefers-color-scheme, da die Kachel
+    // keine eigene "ist WebFront gerade hell/dunkel"-Information vom
+    // Backend bekommt. Unklar, ob Symcons Hell/Dunkel-Umschalter das
+    // tatsaechlich setzt - noch unbestaetigt, ggf. Nachbesserung noetig.
+    function isLightTheme() {
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    }
     // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
     // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
     // schmaler sichtbarer Slider unten als "Legende" fuer den Zoom-Zustand
@@ -2143,13 +2152,19 @@
           data: nodes,
           links: links,
           emphasis: { focus: 'adjacency' },
-          // Weisser Text MIT dunklem Halo statt reinem Hell-auf-Dunkel-Grau
-          // (Dietmar, 31.07.2026: "Schrift ist auf Weiss schlecht zu
-          // erkennen") - textBorderColor/-Width sorgt fuer Kontrast
-          // unabhaengig davon, ob dahinter eine helle Kachel-Seite oder ein
-          // dunkler/heller Knoten/Fluss liegt, statt auf eine einzelne
-          // Textfarbe zu setzen, die nur auf EINEM Hintergrund funktioniert.
-          label: { color: '#fff', textBorderColor: 'rgba(0,0,0,.55)', textBorderWidth: 3, formatter: function (p) { return lk.label[p.name] || p.name; } },
+          // Dunkelgrau auf Hell, Hellgrau auf Dunkel statt reinem Weiss
+          // (Dietmar, 31.07.2026: "Kann man nicht sagen, dass der Text bei
+          // Hell Dunkelgrau und bei Dunkel Hellgrau sein soll?") - echte
+          // Theme-Erkennung via isLightTheme() statt Halo-Trick. Ein
+          // duennerer, zur Textfarbe passender Halo bleibt trotzdem, falls
+          // ein Label ueber einem gleich hellen/dunklen Knoten oder Fluss
+          // landet.
+          label: {
+            color: isLightTheme() ? '#333' : '#e8e8e8',
+            textBorderColor: isLightTheme() ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.5)',
+            textBorderWidth: 2.5,
+            formatter: function (p) { return lk.label[p.name] || p.name; }
+          },
           lineStyle: { color: 'gradient', opacity: 0.42, curveness: 0.5 },
           // layoutIterations:0 - ECharts' Standard (32 Iterationen) sortiert
           // Knoten zur Kreuzungsminimierung eigenmaechtig um und ignoriert
