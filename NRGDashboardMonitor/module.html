@@ -1432,7 +1432,15 @@
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
             return {
-              name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0, marker: { enabled: false }, fillOpacity: 0.55,
+              // Duenne, theme-neutrale Kontur (nicht die Serienfarbe) noetig
+              // (Dietmar, 31.07.2026: "Schaue Dir bei Hell die Abgrenzung
+              // Gelb zu Weiss an") - ohne Rand ging der obere Rand einer
+              // hellen Flaeche (z.B. Netzeinspeisung-Gelb) im Hellmodus
+              // nahtlos in den weissen Seitenhintergrund ueber, keine
+              // erkennbare Grenze mehr. Ein neutrales Grau statt der
+              // eigenen (oft ebenfalls hellen) Serienfarbe gibt auf Hell
+              // UND Dunkel einen sichtbaren, aber dezenten Rand.
+              name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 1, lineColor: 'rgba(120,120,120,.5)', marker: { enabled: false }, fillOpacity: 0.55,
               fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(s.color) }
             };
           });
@@ -1804,9 +1812,13 @@
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
             return {
+              // Duenne, theme-neutrale Kontur (nicht die Serienfarbe) - siehe
+              // Kommentar in renderBalanceDayHighcharts (Dietmar,
+              // 31.07.2026: "Abgrenzung Gelb zu Weiss" ging im Hellmodus
+              // ohne Rand nahtlos in den weissen Hintergrund ueber).
               name: s.name, type: 'line', stack: stackName,
               areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(s.color).map(function (p) { return { offset: p[0], color: p[1] }; })) },
-              lineStyle: { width: 0 }, symbol: 'none', color: s.color,
+              lineStyle: { width: 1, color: 'rgba(120,120,120,.5)' }, symbol: 'none',
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: curve[s.key] || []
             };
