@@ -46,6 +46,13 @@
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
   #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; overflow-x: auto; }
+  /* Jahresvergleich kann auf viele Jahre anwachsen (Dietmar, 31.07.2026:
+     "Wohin werden die weiteren Jahre geschrieben?") - die einzeilige,
+     horizontal scrollende Legende (siehe #legendRow oben, urspruenglich
+     fuer die Bilanz-Legende gedacht) waere hier mit 15+ Jahren + Mittelwert
+     + Erwartung unbrauchbar. Fuer diesen Reiter stattdessen normal
+     umbrechen lassen (mehrzeilig, kein Scrollen). */
+  #legendRow.legendWrap { flex-wrap: wrap; overflow-x: visible; }
   .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; flex: none; white-space: nowrap; }
   .legItem.off { opacity: .35; }
   /* Plastischere Werteflaechen mit Glanzlicht statt flacher Farbflaeche
@@ -2240,6 +2247,7 @@
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
+      document.getElementById('legendRow').classList.toggle('legendWrap', curTab === 'yearcompare');
 
       if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
         destroyChart();
