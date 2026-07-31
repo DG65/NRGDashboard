@@ -111,11 +111,10 @@
 
   /* Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026):
      Unter-Reiter "Gesamtertrag"/"Spezifischer Anlagenertrag" + Tabelle
-     (Jahre als Zeilen, Monate als Spalten). Kein Konfigurationsdialog -
-     kWh/kWp kommt ausschliesslich aus dem optionalen Prognose-Modul
-     (Dietmar, 31.07.2026: eine zweite, manuell gepflegte kWp-Eingabe hier
-     waere nur eine fehleranfaellige Dopplung zu Prognoses eigenem,
-     physikbasiertem Ertragsmodell). */
+     (Jahre als Zeilen, Monate als Spalten) + Dialog fuer die "erwartete
+     Leistung" (spezifischer Jahresertrag x Anlagenleistung x Monatsanteil -
+     Prognose hat dafuer noch kein eigenes Konzept, siehe Klaerung 31.07.2026,
+     deshalb hier). */
   #yearComparePanel { flex: 0 0 auto; padding-top: 6px; font-size: 12px; }
   .ycSubTabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 8px; }
   .ycSubTabs button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; opacity: .75; }
@@ -127,7 +126,22 @@
   .ycTable th, .ycTable td { padding: 3px 8px; text-align: right; }
   .ycTable th:first-child, .ycTable td:first-child { text-align: left; }
   .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
-  .ycTable tbody tr:last-child td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
+  .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
+  .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
+  .ycFoot { text-align: center; margin-top: 8px; }
+  .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  .ycOverlay { position: absolute; inset: 0; background: rgba(20,21,24,.55); display: flex; align-items: center; justify-content: center; z-index: 20; }
+  .ycDialog { background: #24262b; border-radius: 8px; padding: 16px 20px; width: min(92%, 480px); max-height: 90%; overflow-y: auto; font-size: 12px; }
+  .ycDialog h3 { margin: 0 0 10px; font-size: 14px; }
+  .ycRow { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .ycRow label { flex: 1 1 auto; }
+  .ycRow input[type="number"] { width: 90px; }
+  .ycMonthGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+  .ycMonthGrid div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .ycMonthGrid input { width: 100%; text-align: center; }
+  .ycSum { text-align: right; opacity: .8; margin: 4px 0; }
+  .ycSum.bad { color: #ff8a80; }
+  .ycDialogFoot { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -1173,32 +1187,34 @@
     function ycSeriesValues(data, factor) {
       // factor=1 -> kWh (Gesamtertrag), factor=1/kwp -> kWh/kWp (Spezifischer
       // Anlagenertrag). null bleibt null (keine Daten fuer diesen Monat).
+      function scale(arr) { return (arr || []).map(function (v) { return v === null || v === undefined ? null : Math.round(v * factor * 100) / 100; }); }
       var out = {};
-      data.years.forEach(function (y) {
-        out[y] = data.data[y].map(function (v) { return v === null ? null : Math.round(v * factor * 100) / 100; });
-      });
-      out.mittelwert = data.mittelwert.map(function (v) { return v === null ? null : Math.round(v * factor * 100) / 100; });
+      data.years.forEach(function (y) { out[y] = scale(data.data[y]); });
+      out.mittelwert = scale(data.mittelwert);
+      out.expected = data.expected ? scale(data.expected) : null;
       return out;
     }
     function renderYearCompareTable(data, unit, values) {
       var panel = document.getElementById('yearComparePanel');
       var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
       function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
-      function rowHtml(label, arr, isTotal) {
+      function rowHtml(label, arr, cls) {
         var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
-        return '<tr' + (isTotal ? ' style="font-weight:700"' : '') + '><td>' + label + '</td>'
+        return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
           + arr.map(function (v) { return '<td>' + fmt(v) + '</td>'; }).join('')
           + '<td>' + fmt(sum) + '</td></tr>';
       }
       var body = data.years.map(function (y) { return rowHtml(y, values[y]); }).join('');
-      body += rowHtml('Mittelwert', values.mittelwert, true);
+      body += rowHtml('Mittelwert', values.mittelwert, 'ycTotal');
+      if (values.expected) { body += rowHtml('Erwartung', values.expected, 'ycExpected'); }
       var sub = '<div class="ycSubTabs">'
         + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">Gesamtertrag</button>'
         + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">Spezifischer Anlagenertrag</button>'
         + '</div>';
-      var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren (liefert die Anlagenleistung).</div>';
+      var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren oder die Anlagenleistung unten manuell eingeben.</div>';
       panel.innerHTML = sub + hint
-        + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+        + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>'
+        + '<div class="ycFoot"><button id="ycConfigBtn">Erwartete Leistung einstellen</button></div>';
       Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button'), function (btn) {
         btn.onclick = function () {
           if (btn.disabled) { return; }
@@ -1206,6 +1222,7 @@
           renderYearCompare(document.getElementById('chart'), yearCompareCache);
         };
       });
+      document.getElementById('ycConfigBtn').onclick = function () { openYearCompareDialog(data); };
     }
     function renderYearCompare(el, data) {
       if (!data || !data.years || !data.years.length) {
@@ -1217,15 +1234,88 @@
       var factor = (yearCompareSub === 'specific' && data.kwp) ? (1 / data.kwp) : 1;
       var values = ycSeriesValues(data, factor);
       renderYearCompareTable(data, unit, values);
-      renderLegend('yearcompare', data.years.concat(['Mittelwert']).map(function (y, i, arr) {
-        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(i, arr.length - 1) };
-      }));
+      var legendYears = data.years.concat(['Mittelwert']);
+      var legendItems = legendYears.map(function (y, i) {
+        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(i, data.years.length) };
+      });
+      if (values.expected) { legendItems.push({ name: 'Erwartung', color: '#9aa4b0' }); }
+      renderLegend('yearcompare', legendItems);
       var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
       if (wantEngine === 'highcharts') {
         ensureHighcharts(function () { el.innerHTML = ''; renderYearCompareHighcharts(el, data, unit, values); });
         return;
       }
       ensureECharts(function () { renderYearCompareECharts(el, data, unit, values); setTimeout(sizeChart, 60); });
+    }
+    // Dialog fuer die "erwartete Leistung" (Dietmar, 31.07.2026: "Wie sieht
+    // es mit der Prognostizierten Leistung aus?") - spezifischer Jahres-
+    // ertrag (kWh/kWp) x Anlagenleistung x Monatsanteil (%), analog zum
+    // SMA-Sunny-Portal-Dialog. Anlagenleistung entweder aus Prognose
+    // (PVF_GetGenerators, Checkbox nur anwaehlbar wenn vorhanden) oder
+    // manuell - NIE eine Pflicht-Abhaengigkeit zu Prognose.
+    function openYearCompareDialog(data) {
+      var cfg = data.config || { specificYield: 0, kwp: 0, useAutoKwp: true, monthlyPct: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+      var panel = document.getElementById('yearComparePanel');
+      var overlay = document.createElement('div');
+      overlay.className = 'ycOverlay';
+      var monthInputs = MONTH_NAMES.map(function (m, i) {
+        return '<div><span>' + m + '</span><input type="number" step="0.1" data-m="' + i + '" value="' + (cfg.monthlyPct[i] || 0).toString().replace('.', ',') + '"></div>';
+      }).join('');
+      overlay.innerHTML =
+        '<div class="ycDialog">'
+        + '<h3>Erwartete Leistung einstellen</h3>'
+        + '<div class="ycRow"><label>Spezifischer Jahresertrag (kWh/kWp)</label><input type="number" step="1" id="ycSpecific" value="' + cfg.specificYield + '"></div>'
+        + '<div class="ycRow"><label>Anlagenleistung (kWp)</label><input type="number" step="0.1" id="ycKwp" value="' + (cfg.useAutoKwp && data.autoKwp ? data.autoKwp : cfg.kwp) + '" ' + (cfg.useAutoKwp && data.autoKwp ? 'disabled' : '') + '></div>'
+        + (data.autoKwp ? '<div class="ycRow"><label>Aus Prognose-Modul übernehmen (' + data.autoKwp + ' kWp)</label><input type="checkbox" id="ycAutoKwp" ' + (cfg.useAutoKwp ? 'checked' : '') + '></div>' : '')
+        + '<div style="opacity:.7;margin-top:8px">Monatsverteilung (%, Summe muss 100 ergeben):</div>'
+        + '<div class="ycMonthGrid">' + monthInputs + '</div>'
+        + '<div class="ycSum" id="ycSum"></div>'
+        + '<div class="ycDialogFoot">'
+        + '<button id="ycSuggest">Aus Mittelwert vorschlagen</button>'
+        + '<span><button id="ycCancel">Abbrechen</button> <button id="ycSave">Speichern</button></span>'
+        + '</div>'
+        + '</div>';
+      panel.style.position = 'relative';
+      panel.appendChild(overlay);
+
+      function monthEls() { return Array.prototype.slice.call(overlay.querySelectorAll('.ycMonthGrid input')); }
+      function updateSum() {
+        var sum = monthEls().reduce(function (s, inp) { return s + (parseFloat(inp.value.replace(',', '.')) || 0); }, 0);
+        var el = overlay.querySelector('#ycSum');
+        el.textContent = 'Summe: ' + sum.toFixed(1).replace('.', ',') + ' %';
+        el.classList.toggle('bad', Math.abs(sum - 100) > 0.5);
+      }
+      monthEls().forEach(function (inp) { inp.oninput = updateSum; });
+      updateSum();
+
+      var autoKwpEl = overlay.querySelector('#ycAutoKwp');
+      var kwpEl = overlay.querySelector('#ycKwp');
+      if (autoKwpEl) {
+        autoKwpEl.onchange = function () {
+          kwpEl.disabled = autoKwpEl.checked;
+          if (autoKwpEl.checked) { kwpEl.value = data.autoKwp; }
+        };
+      }
+      overlay.querySelector('#ycSuggest').onclick = function () {
+        var sum = data.mittelwert.reduce(function (s, v) { return s + (v || 0); }, 0);
+        monthEls().forEach(function (inp, i) {
+          var pct = sum > 0 ? (data.mittelwert[i] || 0) / sum * 100 : 0;
+          inp.value = Math.round(pct * 10) / 10;
+        });
+        updateSum();
+      };
+      overlay.querySelector('#ycCancel').onclick = function () { overlay.remove(); };
+      overlay.querySelector('#ycSave').onclick = function () {
+        var newCfg = {
+          specificYield: parseFloat(overlay.querySelector('#ycSpecific').value.replace(',', '.')) || 0,
+          kwp: parseFloat(kwpEl.value.replace(',', '.')) || 0,
+          useAutoKwp: autoKwpEl ? !!autoKwpEl.checked : false,
+          monthlyPct: monthEls().map(function (inp) { return parseFloat(inp.value.replace(',', '.')) || 0; })
+        };
+        overlay.remove();
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Speichere…</div>';
+        requestAction('yearCompareConfig', JSON.stringify(newCfg));
+      };
     }
     function renderYearCompareECharts(el, data, unit, values) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
@@ -1235,6 +1325,9 @@
         return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(i, n), data: values[y] };
       });
       series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#e8e8e8', data: values.mittelwert, z: 10 });
+      if (values.expected) {
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 2, type: 'dashed' }, color: '#9aa4b0', data: values.expected, z: 9 });
+      }
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
@@ -1263,6 +1356,9 @@
       });
       if (isVisible('Mittelwert')) {
         series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#e8e8e8', data: values.mittelwert, zIndex: 10 });
+      }
+      if (values.expected && isVisible('Erwartung')) {
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 2, dashStyle: 'Dash', color: '#9aa4b0', data: values.expected, zIndex: 9 });
       }
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },

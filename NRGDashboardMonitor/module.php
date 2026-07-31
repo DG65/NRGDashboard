@@ -59,6 +59,10 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
+        // Jahresvergleich-Konfiguration (Dietmar, 31.07.2026): spezifischer
+        // erwarteter Jahresertrag + Anlagenleistung (auto aus Prognose ODER
+        // manuell) + 12 Monatsanteile in % - siehe YearCompareConfig().
+        $this->RegisterAttributeString('YearCompareConfig', '{}');
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHMON_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -547,18 +551,56 @@ class NRGDashboardMonitor extends IPSModule
     }
 
     /**
-     * kWh/kWp ("Spezifischer Anlagenertrag") braucht die Anlagenleistung -
-     * die holt sich Monitor NUR aus dem Prognose-Modul (PVF_GetGenerators()),
-     * nie manuell eingegeben (Dietmar, 31.07.2026: Prognose hat mit seinem
-     * physikbasierten Ertragsmodell ohnehin die verlaesslichere Quelle;
-     * eine zweite, manuell gepflegte kWp-Eingabe hier waere nur eine
-     * fehleranfaellige Dopplung). Ohne installierte Prognose-Instanz bleibt
-     * die kWh/kWp-Ansicht schlicht deaktiviert (Frontend zeigt einen
-     * Hinweis), der Gesamtertrag in kWh funktioniert davon unabhaengig
-     * immer.
+     * Konfiguration fuer die "erwartete Leistung" im Jahresvergleich
+     * (Dietmar, 31.07.2026: "Wie sieht es mit der Prognostizierten Leistung
+     * aus?" - Prognose hat dafuer noch kein Konzept, siehe Recherche vom
+     * selben Tag, deshalb bewusst zurueck in Monitor statt auf ein neues
+     * Prognose-Feature zu warten). Attribut statt Property (Muster:
+     * ReviewHintDismissed) - wird ueber einen eigenen Dialog IN der
+     * Kachel gespeichert, nicht ueber die Instanz-Konfigurationsform.
      */
-    private function BuildYearCompare(): array
+    private function YearCompareConfig(): array
     {
+        $raw = $this->ReadAttributeString('YearCompareConfig');
+        $cfg = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($cfg)) {
+            $cfg = [];
+        }
+        $cfg['specificYield'] = (float) ($cfg['specificYield'] ?? 0);
+        $cfg['kwp'] = (float) ($cfg['kwp'] ?? 0);
+        $cfg['useAutoKwp'] = (bool) ($cfg['useAutoKwp'] ?? true);
+        $pct = is_array($cfg['monthlyPct'] ?? null) ? $cfg['monthlyPct'] : [];
+        $cfg['monthlyPct'] = array_map(function ($i) use ($pct) {
+            return (float) ($pct[$i] ?? 0);
+        }, range(0, 11));
+        return $cfg;
+    }
+
+    private function SaveYearCompareConfig(array $req): array
+    {
+        $cfg = [
+            'specificYield' => (float) ($req['specificYield'] ?? 0),
+            'kwp'           => (float) ($req['kwp'] ?? 0),
+            'useAutoKwp'    => (bool) ($req['useAutoKwp'] ?? true),
+            'monthlyPct'    => array_map(function ($i) use ($req) {
+                $p = is_array($req['monthlyPct'] ?? null) ? $req['monthlyPct'] : [];
+                return (float) ($p[$i] ?? 0);
+            }, range(0, 11)),
+        ];
+        $this->WriteAttributeString('YearCompareConfig', json_encode($cfg));
+        return $cfg;
+    }
+
+    /**
+     * kWh/kWp ("Spezifischer Anlagenertrag") braucht die Anlagenleistung -
+     * bevorzugt aus dem Prognose-Modul (PVF_GetGenerators()), sonst aus der
+     * manuellen Eingabe im Dialog ("useAutoKwp" schaltet um, nur anwaehlbar
+     * wenn eine Prognose-Instanz gefunden wurde - Dietmar, 31.07.2026: "was
+     * machen wir, wenn ein Nutzer die Prognose nicht installiert hat?").
+     */
+    private function BuildYearCompare(?array $cfg = null): array
+    {
+        $cfg = $cfg ?? $this->YearCompareConfig();
         $aid = $this->ArchiveID();
         $pvID = $this->PvPowerID();
         $end = time();
@@ -600,13 +642,30 @@ class NRGDashboardMonitor extends IPSModule
         }
 
         $model = $this->PvfModel();
-        $kwp = ($model !== null) ? (float) ($model['totalKwp'] ?? 0) : 0.0;
+        $autoKwp = ($model !== null) ? (float) ($model['totalKwp'] ?? 0) : 0.0;
+        $kwp = ($cfg['useAutoKwp'] && $autoKwp > 0) ? $autoKwp : $cfg['kwp'];
+
+        // Erwartete Monatswerte = spezifischer Jahresertrag (kWh/kWp) x kWp x
+        // Monatsanteil (%) - EINFACHE, unveraendert vom Nutzer eingegebene
+        // Zielkurve (kein Wettermodell), analog zum SMA-Dialog. Nur wenn
+        // beide Faktoren (kWp UND spezifischer Ertrag) tatsaechlich gesetzt
+        // sind, sonst bleibt 'expected' leer statt einer Nulllinie.
+        $expected = null;
+        $expectedTotal = $cfg['specificYield'] * $kwp;
+        if ($kwp > 0 && $cfg['specificYield'] > 0) {
+            $expected = array_map(function ($pct) use ($expectedTotal) {
+                return round($expectedTotal * $pct / 100.0, 2);
+            }, $cfg['monthlyPct']);
+        }
 
         return [
             'years'      => $years,
             'data'       => $data,
             'mittelwert' => $mittelwert,
             'kwp'        => $kwp > 0 ? $kwp : null,
+            'autoKwp'    => $autoKwp > 0 ? $autoKwp : null,
+            'expected'   => $expected,
+            'config'     => $cfg,
         ];
     }
 
@@ -1226,6 +1285,16 @@ class NRGDashboardMonitor extends IPSModule
                 'ok'   => true,
                 'type' => 'yearCompareUpdate',
                 'data' => $this->BuildYearCompare(),
+            ]));
+            return;
+        }
+        if ($Ident === 'yearCompareConfig') {
+            $req = json_decode((string) $Value, true);
+            $cfg = $this->SaveYearCompareConfig(is_array($req) ? $req : []);
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'   => true,
+                'type' => 'yearCompareUpdate',
+                'data' => $this->BuildYearCompare($cfg),
             ]));
             return;
         }
