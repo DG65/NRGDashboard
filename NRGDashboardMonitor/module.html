@@ -1514,9 +1514,15 @@
         // Highcharts-Defaults. top/height an xAxis[1] angeglichen (war
         // durch die vorherige Rand-Korrektur auf 38% statt 42% stehen
         // geblieben).
+        // reversedStacks:false erzwingt dieselbe Stapel-Reihenfolge wie
+        // ECharts (Dietmar, 31.07.2026: "Faellt Dir die Differenz bei der
+        // Stapelung nicht auf?" - Gruen/Direktverbrauch vs. Gelb/
+        // Netzeinspeisung im Erzeugung-Panel) - Highcharts dreht die
+        // Stapel-Reihenfolge bei gestapelten Serien standardmaessig
+        // gegenueber der Array-Reihenfolge um, ECharts nicht.
         yAxis: [
-          { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 8 } },
-          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 12 } }
+          { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 8 }, reversedStacks: false },
+          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 12 }, reversedStacks: false }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1638,9 +1644,12 @@
         // statt yAxis.title (Dietmar, 31.07.2026 - siehe Begruendung in
         // renderBalanceDayHighcharts). labels.x an die Tagesansicht
         // angeglichen.
+        // reversedStacks:false - siehe Kommentar in renderBalanceDayHighcharts
+        // (Dietmar, 31.07.2026: Highcharts dreht die Stapel-Reihenfolge bei
+        // gestapelten Serien sonst gegenueber ECharts um).
         yAxis: [
-          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
-          { title: { text: null }, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 25 } }
+          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 }, reversedStacks: false },
+          { title: { text: null }, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 25 }, reversedStacks: false }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
