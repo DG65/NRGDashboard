@@ -1230,8 +1230,10 @@
         // Grids bis fast an den unteren Rand gezogen (Dietmar: "Legende
         // koennte weiter oben stehen") - weniger Leerraum vor #legendRow.
         grid: [
-          { left: 46, right: 16, top: 28, height: '40%' },
-          { left: 46, right: 16, top: '50%', height: '46%' }
+          // left etwas vergroessert (46->58), damit die "kW"-Achsenbeschriftung
+          // links neben den Zahlen Platz hat, ohne sie zu ueberlappen.
+          { left: 58, right: 16, top: 28, height: '40%' },
+          { left: 58, right: 16, top: '50%', height: '46%' }
         ],
         title: [
           // Verbrauch bleibt ueber dem oberen, Erzeugung wandert unter das
@@ -1289,16 +1291,13 @@
           { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false } }
         ],
         // Fixer 1-kW-Raster statt automatischer Teilung (Dietmar, 31.07.2026:
-        // "jede 1 kW ein Strich, fest eingestellt") - Achsenname je Panel
-        // entfernt, dafuer EINE gemeinsame "kW"-Beschriftung ueber das
-        // graphic-Element mittig zwischen beiden Charts (statt zweimal je
-        // Panel oben).
+        // "jede 1 kW ein Strich, fest eingestellt"). Zwei "kW"-Beschriftungen,
+        // je eine pro Panel, vertikal mittig am eigenen Chart (nicht eine
+        // gemeinsame zwischen beiden - Dietmar, 31.07.2026, Korrektur der
+        // vorherigen Fassung mit nur einem geteilten Label).
         yAxis: [
-          { gridIndex: 0, type: 'value', interval: 1, splitLine: { lineStyle: { color: GRID_COLOR } } },
-          { gridIndex: 1, type: 'value', interval: 1, splitLine: { lineStyle: { color: GRID_COLOR } } }
-        ],
-        graphic: [
-          { type: 'text', left: 6, top: 'middle', style: { text: 'kW', fill: '#9aa4b0', fontSize: 12, fontWeight: 600 } }
+          { gridIndex: 0, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
         ],
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
