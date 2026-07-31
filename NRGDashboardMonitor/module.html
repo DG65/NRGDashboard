@@ -1157,6 +1157,16 @@
         time: { useUTC: false },
         chart: {
           backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {},
+          // Fester statt automatisch je Achse berechneter linker Rand
+          // (Dietmar, 31.07.2026: "Die Achsenbeschriftung ... passt vom
+          // oberen zum unteren Chartrand ueberhaupt nicht") - Highcharts
+          // bemisst sonst die Beschriftungsbreite JEDER y-Achse einzeln
+          // nach ihren eigenen Werten (Verbrauch meist einstellig,
+          // Erzeugung zweistellig), wodurch die Zahlen/Gitterlinien beider
+          // Panels nicht auf gleicher x-Position stehen. marginLeft/-Right
+          // erzwingt denselben Plot-Rand fuer beide Panels, wie ECharts'
+          // festes grid.left/right (58/16) das schon tat.
+          marginLeft: 58, marginRight: 16,
           events: { render: function () { renderBalancePanelTitles(this); } }
         },
         title: { text: null },
@@ -1243,6 +1253,12 @@
       chart = Highcharts.chart(el, {
         chart: {
           backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {},
+          // Fester linker/rechter Rand, an ECharts angeglichen (siehe
+          // renderBalanceDayHighcharts weiter oben fuer die Begruendung -
+          // ansonsten haben Verbrauch- und Erzeugung-Panel unterschiedlich
+          // breite Achsenbeschriftungen und stehen dadurch nicht
+          // uebereinander).
+          marginLeft: 58, marginRight: 16,
           events: { render: function () { renderBalancePanelTitles(this); } }
         },
         title: { text: null },
