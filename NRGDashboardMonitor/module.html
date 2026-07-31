@@ -1104,11 +1104,12 @@
           events: { render: function () { renderBalancePanelTitles(this); } }
         },
         title: { text: null },
+        // Fixes 1-Stunden-Raster, Stunden-Beschriftung in der Farbe der
+        // "Erzeugung"-Unterschrift (Dietmar, 31.07.2026 - an ECharts
+        // angeglichen).
         xAxis: [
-          // KEINE vertikalen Gitterlinien (Muster: ECharts-Variante,
-          // splitLine:{show:false} dort) - nur die horizontalen der y-Achse.
-          { type: 'datetime', top: '4%', height: '40%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
-          { type: 'datetime', top: '50%', height: '46%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          { type: 'datetime', top: '4%', height: '40%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
+          { type: 'datetime', top: '50%', height: '46%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { style: { color: '#9aa4b0' } } }
         ],
         yAxis: [
           { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
@@ -1391,13 +1392,18 @@
         // Schildern (siehe balanceWireHover()) - deshalb tooltip:{show:false}.
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
         tooltip: { show: false },
+        // Fixes 1-Stunden-Raster statt automatischer Teilung, Stunden-
+        // Beschriftung in derselben Farbe wie die "Erzeugung"-Unterschrift
+        // (Dietmar, 31.07.2026: "Gridlinien im festen Abstand von einer
+        // Stunde und die Stunden sollten die gleiche Farbe wie Erzeugung
+        // unter der Chart haben").
         xAxis: [
-          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
+          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600000, maxInterval: 3600000, axisLabel: { color: '#9aa4b0' }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
           // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
           // 31.07.2026) - die Zeitachse ist bereits einmal ueber dem
           // oberen Chart und im mittig fixierten Tooltip zu sehen, eine
           // zweite Reihe darunter war redundant.
-          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } }
+          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600000, maxInterval: 3600000, axisLabel: { show: false }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } }
         ],
         // Fixer 1-kW-Raster statt automatischer Teilung (Dietmar, 31.07.2026:
         // "jede 1 kW ein Strich, fest eingestellt"). Zwei "kW"-Beschriftungen,
