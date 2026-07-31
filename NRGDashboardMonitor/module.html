@@ -1173,7 +1173,7 @@
           // die ungenutzte Reserve zurueck (Dietmar, 31.07.2026: "min.
           // 50 px mehr Platz nach unten").
           marginBottom: 18, spacingBottom: 0,
-          events: { render: function () { renderBalancePanelTitles(this, 'kW'); } }
+          events: { render: function () { renderBalancePanelTitles(this, 'kW', -2); } }
         },
         title: { text: null },
         // Uhrzeit wandert vom unteren zum oberen Chart, in die Luecke
@@ -1208,7 +1208,7 @@
         // geblieben).
         yAxis: [
           { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
-          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 25 } }
+          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 15 } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1234,7 +1234,7 @@
     // als seitliche Achsenbeschriftung). Alte Labels vor jedem Redraw
     // entfernen, sonst haeufen sich beim Wiederholen von setOption()/
     // Resize Karteileichen an.
-    function renderBalancePanelTitles(c, unit) {
+    function renderBalancePanelTitles(c, unit, unitX) {
       if (c.__balLabels) { c.__balLabels.forEach(function (el) { el.destroy(); }); }
       c.__balLabels = [];
       if (!c.yAxis || c.yAxis.length < 2) { return; }
@@ -1253,16 +1253,21 @@
       // yAxis.title (Dietmar, 31.07.2026: Highcharts' automatische Titel-
       // Positionierung kollidierte mit dem fest gesetzten marginLeft -
       // beim unteren Panel war der Titel dadurch unsichtbar, beim oberen
-      // zu weit links). x=11 (5px weiter rechts als zuvor, Dietmar,
-      // 31.07.2026) - fuer beide Panels IDENTISCH, damit "kW" oben/unten
-      // garantiert auf gleicher Position steht. Vertikal je Panel
-      // zentriert (top + halbe Panelhoehe).
+      // zu weit links). x kommt jetzt als eigener Parameter (Dietmar,
+      // 31.07.2026: "kW stehen 10px zu weit links, weil es im kW-Bereich
+      // keine 3-stelligen Werte gibt [wie bei kWh]") - Tag (kW, max.
+      // 2-stellig) und Woche/Monat/Jahr (kWh, bis 3-stellig) brauchen
+      // unterschiedlich viel Reserveplatz und duerfen sich daher nicht
+      // mehr denselben Wert teilen. Fuer beide Panels EINER Ansicht
+      // weiterhin identisch, damit "kW"/"kWh" oben/unten auf gleicher
+      // Position steht. Vertikal je Panel zentriert (top + halbe
+      // Panelhoehe).
       if (unit) {
         c.__balLabels.push(
-          c.renderer.text(unit, 8,c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, unitX, c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
         c.__balLabels.push(
-          c.renderer.text(unit, 8,c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, unitX, c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
       }
     }
@@ -1303,7 +1308,7 @@
           // 31.07.2026: "die gleichen Werte fuer die Charts und das ganze
           // drumherum fuer Woche, Monat, Jahr etc.").
           marginBottom: 18, spacingBottom: 0,
-          events: { render: function () { renderBalancePanelTitles(this, 'kWh'); } }
+          events: { render: function () { renderBalancePanelTitles(this, 'kWh', 8); } }
         },
         title: { text: null },
         // Abstand zwischen den Panels analog zur Tagesansicht verkleinert
