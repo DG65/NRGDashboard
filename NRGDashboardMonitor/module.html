@@ -33,7 +33,10 @@
      das sich nicht zuverlaessig von einem rein programmatisch (beim
      Wiederherstellen der Sichtbarkeit) ausgeloesten Zustand unterscheiden
      laesst. Eigene Legende = volle Kontrolle, kein Ereignis-Ratespiel. */
-  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: -6px; font-size: 11px; }
+  /* Abstand "Erzeugung" -> Legende auf die gleiche Groesse gebracht wie
+     Chart -> "Erzeugung" (Dietmar, 31.07.2026 - vorher zog die negative
+     margin die Legende zu dicht an die Beschriftung heran). */
+  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; }
   .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
   .legItem.off { opacity: .35; }
   .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -64,7 +67,6 @@
   .lblwrap { display: flex; align-items: center; gap: 7px; opacity: .85; }
   .lblwrap .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .balRow .val { text-align: right; font-weight: 700; white-space: nowrap; }
-  .balQuote { display: flex; justify-content: center; align-items: center; gap: 50px; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -1069,17 +1071,10 @@
             return { name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 1, marker: { enabled: false }, fillOpacity: 0.55 };
           });
       }
-      function sumSeries(keys, yIdx, xIdx, nm) {
-        var byTs = {};
-        keys.forEach(function (k) { (curve[k] || []).forEach(function (p) { byTs[p[0]] = (byTs[p[0]] || 0) + p[1]; }); });
-        var pts = Object.keys(byTs).map(function (t) { return [Number(t), byTs[t]]; }).sort(function (a, b) { return a[0] - b[0]; });
-        return { name: nm, type: 'line', data: pts, color: 'rgba(220,226,232,.6)', lineWidth: 1.5, marker: { enabled: false }, yAxis: yIdx, xAxis: xIdx, enableMouseTracking: false, showInLegend: false };
-      }
-
-      var series = [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0, 0, '__totalV')]
-        .concat(seriesFor('v', 0, 0))
-        .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1, 1, '__totalE')])
-        .concat(seriesFor('e', 1, 1));
+      // Duenne Summenlinien-Kontur entfernt (Dietmar, 31.07.2026: "Alle
+      // duennen Linien in der Bilanz muessen entfernt werden") - die
+      // gestapelte Flaeche zeigt ihre Summe ohnehin als obere Kontur.
+      var series = seriesFor('v', 0, 0).concat(seriesFor('e', 1, 1));
 
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
@@ -1156,18 +1151,8 @@
             return { name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), color: s.color, yAxis: yIdx, xAxis: xIdx };
           });
       }
-      function sumSeries(keys, yIdx, xIdx, nm) {
-        return {
-          name: nm, type: 'column', data: bars.map(function (b) { return keys.reduce(function (sum, k) { return sum + (b[k] || 0); }, 0); }),
-          color: 'transparent', borderColor: 'rgba(220,226,232,.6)', borderWidth: 1, yAxis: yIdx, xAxis: xIdx,
-          enableMouseTracking: false, showInLegend: false, pointPadding: 0, groupPadding: 0.1, grouping: false
-        };
-      }
-
-      var series = [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0, 0, '__totalV')]
-        .concat(seriesFor('v', 0, 0))
-        .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1, 1, '__totalE')])
-        .concat(seriesFor('e', 1, 1));
+      // Duenne Summenlinien-Kontur entfernt (Dietmar, 31.07.2026).
+      var series = seriesFor('v', 0, 0).concat(seriesFor('e', 1, 1));
 
       chart = Highcharts.chart(el, {
         chart: {
@@ -1247,6 +1232,12 @@
           { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
+        // Beide x-Achsen gekoppelt (Dietmar, 31.07.2026: "Die beiden
+        // Tooltips sollen bei Mouseover ueber eines der beiden Charts
+        // immer zeitgleich dargestellt werden") - ohne Kopplung aktiviert
+        // ECharts den axisPointer nur auf der gerade gehoverten Achse,
+        // der Tooltip-Formatter unten saehe dann nur ein Panel in params.
+        axisPointer: { link: [{ xAxisIndex: 'all' }] },
         tooltip: {
           trigger: 'axis', axisPointer: { type: 'line' },
           backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
@@ -1289,9 +1280,17 @@
           // zweite Reihe darunter war redundant.
           { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false } }
         ],
+        // Fixer 1-kW-Raster statt automatischer Teilung (Dietmar, 31.07.2026:
+        // "jede 1 kW ein Strich, fest eingestellt") - Achsenname je Panel
+        // entfernt, dafuer EINE gemeinsame "kW"-Beschriftung ueber das
+        // graphic-Element mittig zwischen beiden Charts (statt zweimal je
+        // Panel oben).
         yAxis: [
-          { gridIndex: 0, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } },
-          { gridIndex: 1, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } }
+          { gridIndex: 0, type: 'value', interval: 1, splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', interval: 1, splitLine: { lineStyle: { color: GRID_COLOR } } }
+        ],
+        graphic: [
+          { type: 'text', left: 6, top: 'middle', style: { text: 'kW', fill: '#9aa4b0', fontSize: 12, fontWeight: 600 } }
         ],
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
@@ -1319,16 +1318,7 @@
             };
           });
       }
-      function sumSeries(keys, panelIdx) {
-        return {
-          name: panelIdx === 0 ? '__totalV' : '__totalE', type: 'bar', barGap: '-100%', silent: true,
-          itemStyle: { color: 'transparent', borderColor: 'rgba(220,226,232,.6)', borderWidth: 1 },
-          xAxisIndex: panelIdx, yAxisIndex: panelIdx, z: -1,
-          data: bars.map(function (b) { return keys.reduce(function (sum, k) { return sum + (b[k] || 0); }, 0); }),
-          tooltip: { show: false }
-        };
-      }
-
+      // Duenne Summenlinien-Kontur entfernt (Dietmar, 31.07.2026).
       var maxLen = Math.max.apply(null, categories.map(function (c) { return String(c).length; }).concat([1]));
 
       chart.setOption({
@@ -1365,10 +1355,7 @@
           { gridIndex: 0, type: 'value', name: 'kWh', splitLine: { lineStyle: { color: GRID_COLOR } } },
           { gridIndex: 1, type: 'value', name: 'kWh', splitLine: { lineStyle: { color: GRID_COLOR } } }
         ],
-        series: [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0)]
-          .concat(seriesFor('v', 'v'))
-          .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1)])
-          .concat(seriesFor('e', 'e'))
+        series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
 
       var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
@@ -1389,6 +1376,15 @@
           + '<span class="lblwrap"><span class="dot" style="background:' + color + '"></span><span class="lbl">' + name + '</span></span>'
           + '<span></span>'
           + '<span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
+      }
+      // Direktverbrauchsquote ist jetzt Teil der rechten Spalte, auf Hoehe
+      // von "Direktverbrauch" links (Dietmar, 31.07.2026), statt einer
+      // eigenen, ueber die volle Breite gespannten Zeile darunter.
+      function quoteRow(name, val) {
+        return '<div class="balRow quote">'
+          + '<span class="lblwrap"><span class="lbl">' + name + '</span></span>'
+          + '<span></span>'
+          + '<span class="val">' + val + ' %</span></div>';
       }
       // Zwei ECHTE Spalten (Verbrauch links, Erzeugung rechts), nicht ein
       // reihenweise fuellendes Grid (Fix, 31.07.2026 - Dietmars Screenshot-
@@ -1419,8 +1415,8 @@
         + row(ertragLabel, gradE, ertrag, true)
         + row('Batterieladung', col.batterieladung, totals.batterieladung || 0)
         + row('Netzeinspeisung', col.netzeinspeisung, totals.netzeinspeisung || 0)
+        + quoteRow('Direktverbrauchsquote', quote)
         + '</div>'
-        + '<div class="balQuote"><span>Direktverbrauchsquote</span><span><b>' + quote + ' %</b></span></div>'
         + '</div>'
         + '</div>';
       var head = document.getElementById('balHeadToggle');
