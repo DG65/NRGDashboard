@@ -1167,9 +1167,14 @@
           { type: 'datetime', top: '4%', height: '40%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
           { type: 'datetime', top: '50%', height: '46%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { style: { color: '#9aa4b0' } } }
         ],
+        // "kW"-Achsenname je Panel, an ECharts angeglichen (dort:
+        // yAxis.name+nameLocation:'middle' - hier fehlte er bisher komplett,
+        // Dietmar, 31.07.2026: "Vieles ... passt auch nicht bei Highchart").
+        // rotation:0 statt Highcharts' Standard -90 Grad, da die ECharts-
+        // Fassung den Namen ebenfalls waagerecht zeigt.
         yAxis: [
-          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: 'kW', align: 'middle', rotation: 0, style: { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'kW', align: 'middle', rotation: 0, style: { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' } }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1245,9 +1250,11 @@
           { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
           { categories: categories, top: '50%', height: '46%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
+        // "kWh"-Achsenname je Panel, an ECharts angeglichen (fehlte bisher
+        // komplett, Dietmar 31.07.2026).
         yAxis: [
-          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: 'kWh', align: 'middle', rotation: 0, style: { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'kWh', align: 'middle', rotation: 0, style: { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' } }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1397,8 +1404,16 @@
     // sonst identische Logik/Optik (Dietmar, 31.07.2026: "das ganze Design
     // auf Highcharts uebertragen").
     function balanceWireHoverHighcharts(chartEl, chartInst) {
-      if (chartInst.__balHoverWired) { return; }
-      chartInst.__balHoverWired = true;
+      // Anders als ECharts (chart.setOption() aktualisiert dieselbe
+      // Instanz in-place, siehe renderBalanceDay/renderBalanceBars: dort
+      // nur EIN echarts.init() hinter einem if(!chart)-Guard) baut
+      // Highcharts.chart() bei JEDEM Rendern (Tag-/Zeitraum-Navigation)
+      // eine komplett NEUE Instanz - ein __balHoverWired-Guard auf der
+      // Instanz wuerde also nie greifen. Alte .balTip-Divs aus vorherigen
+      // Instanzen haeufen sich sonst in #chart an (Dietmar, 31.07.2026:
+      // "Vieles ... passt auch nicht bei Highchart") - deshalb vor jedem
+      // Neuaufbau erst aufraeumen, dann frisch verdrahten.
+      Array.prototype.slice.call(chartEl.querySelectorAll('.balTip')).forEach(function (n) { n.parentNode.removeChild(n); });
       var tips = balanceCreateTips(chartEl);
       function hide() { tips.tipV.style.display = 'none'; tips.tipE.style.display = 'none'; }
       function move(e) {
