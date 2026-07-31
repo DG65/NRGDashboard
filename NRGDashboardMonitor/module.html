@@ -42,22 +42,29 @@
      30.07.2026) - zwei Spalten Verbrauch/Erzeugung, eigene Steuerflaechen-
      Optik statt GoodWe-Farben (Dietmars ausdruecklicher Wunsch). */
   #balancePanel { flex: 0 0 auto; padding-top: 6px; font-size: 12px; }
-  .balHead { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
+  /* Kopf, Tabelle und Quote sitzen als ein zusammenhaengender, inhaltsbreiter
+     Block mittig unter den Charts (Dietmar, 31.07.2026: Quote und "Bilanz"-
+     Kopf sollen sich an die Tabelle anpassen, nicht die volle Kachelbreite
+     nutzen). */
+  .balWrap { width: fit-content; margin: 0 auto; }
+  .balHead { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
   .balHead .car { transition: transform .15s; }
   .balHead.collapsed .car { transform: rotate(-90deg); }
-  /* Zeilen nicht mehr auf volle Spaltenbreite gestreckt (das riss Label
-     und Wert weit auseinander) - Zeilen sind jetzt so schmal wie ihr
-     Inhalt, die Luecke Label->Wert ist fix ~50px (Dietmar, 31.07.2026).
-     Die Tabelle bleibt als Ganzes mittig unter den Charts. */
   .balBody { display: flex; flex-wrap: wrap; gap: 2px 40px; padding: 4px 2px 8px; justify-content: center; }
   .balBody.collapsed { display: none; }
-  .balCol { flex: 0 0 auto; }
-  .balRow { display: flex; align-items: center; gap: 7px; padding: 3px 0; border-bottom: 1px solid rgba(127,135,145,.14); }
-  .balRow .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-  .balRow .lbl { flex: none; opacity: .85; }
-  .balRow .val { flex: none; margin-left: 50px; font-weight: 700; white-space: nowrap; }
-  .balRow.total { border-bottom: none; font-weight: 700; }
-  .balQuote { flex: 1 1 100%; display: flex; justify-content: space-between; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
+  /* Jede Spalte ist ein eigenes Grid mit fixer 50px-Luecke zwischen
+     Beschriftung und rechtsbuendigem Wert (Dietmar, 31.07.2026) - die
+     Zeilen selbst (.balRow) sind nur noch Gruppierung (display:contents),
+     ihre Kinder sind direkte Grid-Items, damit alle Werte einer Spalte
+     auf gleicher Position enden statt je nach Labellaenge zu wandern. */
+  .balCol { display: grid; grid-template-columns: auto 50px auto; align-items: center; }
+  .balRow { display: contents; }
+  .balRow > * { padding: 3px 0; border-bottom: 1px solid rgba(127,135,145,.14); }
+  .balRow.total > * { border-bottom: none; font-weight: 700; }
+  .lblwrap { display: flex; align-items: center; gap: 7px; opacity: .85; }
+  .lblwrap .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .balRow .val { text-align: right; font-weight: 700; white-space: nowrap; }
+  .balQuote { display: flex; justify-content: center; align-items: center; gap: 50px; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -1276,7 +1283,11 @@
         },
         xAxis: [
           { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } },
-          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } }
+          // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
+          // 31.07.2026) - die Zeitachse ist bereits einmal ueber dem
+          // oberen Chart und im mittig fixierten Tooltip zu sehen, eine
+          // zweite Reihe darunter war redundant.
+          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false } }
         ],
         yAxis: [
           { gridIndex: 0, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } },
@@ -1374,8 +1385,10 @@
       var ertrag = (totals.direktverbrauch || 0) + (totals.batterieladung || 0) + (totals.netzeinspeisung || 0);
       var quote = verbrauch > 0 ? Math.round((totals.direktverbrauch || 0) / verbrauch * 100) : 0;
       function row(name, color, val, isTotal) {
-        return '<div class="balRow' + (isTotal ? ' total' : '') + '"><span class="dot" style="background:' + color + '"></span>'
-          + '<span class="lbl">' + name + '</span><span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
+        return '<div class="balRow' + (isTotal ? ' total' : '') + '">'
+          + '<span class="lblwrap"><span class="dot" style="background:' + color + '"></span><span class="lbl">' + name + '</span></span>'
+          + '<span></span>'
+          + '<span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
       }
       // Zwei ECHTE Spalten (Verbrauch links, Erzeugung rechts), nicht ein
       // reihenweise fuellendes Grid (Fix, 31.07.2026 - Dietmars Screenshot-
@@ -1393,7 +1406,8 @@
       var gradV = 'linear-gradient(135deg,' + col.netzbezug + ',' + col.batterieentladung + ',' + col.direktverbrauch + ')';
       var gradE = 'linear-gradient(135deg,' + col.batterieladung + ',' + col.netzeinspeisung + ',' + col.direktverbrauch + ')';
       panel.innerHTML =
-        '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
+        '<div class="balWrap">'
+        + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
         + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
         + '<div class="balCol">'
         + row(verbrauchLabel, gradV, verbrauch, true)
@@ -1407,6 +1421,7 @@
         + row('Netzeinspeisung', col.netzeinspeisung, totals.netzeinspeisung || 0)
         + '</div>'
         + '<div class="balQuote"><span>Direktverbrauchsquote</span><span><b>' + quote + ' %</b></span></div>'
+        + '</div>'
         + '</div>';
       var head = document.getElementById('balHeadToggle');
       head.classList.toggle('collapsed', balancePanelCollapsed);
