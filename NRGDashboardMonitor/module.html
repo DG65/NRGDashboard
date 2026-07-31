@@ -36,8 +36,10 @@
   /* Abstand "Erzeugung" -> Legende auf die gleiche Groesse gebracht wie
      Chart -> "Erzeugung" (Dietmar, 31.07.2026 - vorher zog die negative
      margin die Legende zu dicht an die Beschriftung heran). */
-  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; }
-  .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
+  /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
+     horizontal scrollen als umbrechen. */
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; overflow-x: auto; }
+  .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; flex: none; white-space: nowrap; }
   .legItem.off { opacity: .35; }
   .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
