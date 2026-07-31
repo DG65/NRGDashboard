@@ -512,6 +512,104 @@ class NRGDashboardMonitor extends IPSModule
         return $this->ResampleTo15Min($out, $dayStart, $dayEnd);
     }
 
+    /**
+     * Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026): ein
+     * Archivdurchlauf ueber die GESAMTE verfuegbare Historie (nicht auf
+     * SPAN_YEARS/5 Jahre begrenzt wie DailyEnergyMap - hier soll bewusst
+     * "seit Inbetriebnahme" verglichen werden koennen), Monatswerte statt
+     * Tageswerte (aggregation level 3 = Monat), IPS liefert nur Zeilen fuer
+     * Monate mit tatsaechlichen Logeintraegen - daraus ergeben sich die
+     * vorhandenen Jahre von selbst, keine separate "erstes Jahr"-Abfrage
+     * noetig.
+     */
+    private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $data = @AC_GetAggregatedValues($aid, $vid, 3, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            if (!isset($row['Avg'])) {
+                continue;
+            }
+            $ts = (int) $row['TimeStamp'];
+            $daysInMonth = (int) date('t', $ts);
+            $kwh = round(((float) $row['Avg']) * $daysInMonth * 24.0 / 1000.0, 2);
+            if (is_finite($kwh) && $kwh >= 0) {
+                $out[date('Y-n', $ts)] = $kwh;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * kWh/kWp ("Spezifischer Anlagenertrag") braucht die Anlagenleistung -
+     * die holt sich Monitor NUR aus dem Prognose-Modul (PVF_GetGenerators()),
+     * nie manuell eingegeben (Dietmar, 31.07.2026: Prognose hat mit seinem
+     * physikbasierten Ertragsmodell ohnehin die verlaesslichere Quelle;
+     * eine zweite, manuell gepflegte kWp-Eingabe hier waere nur eine
+     * fehleranfaellige Dopplung). Ohne installierte Prognose-Instanz bleibt
+     * die kWh/kWp-Ansicht schlicht deaktiviert (Frontend zeigt einen
+     * Hinweis), der Gesamtertrag in kWh funktioniert davon unabhaengig
+     * immer.
+     */
+    private function BuildYearCompare(): array
+    {
+        $aid = $this->ArchiveID();
+        $pvID = $this->PvPowerID();
+        $end = time();
+        // 20 Jahre zurueck ist grosszuegig genug fuer "seit Inbetriebnahme"
+        // bei jeder realistischen PV-Anlage, ohne bei jedem Aufruf erst die
+        // tatsaechlich fruehste Logzeile separat ermitteln zu muessen.
+        $start = strtotime('-20 years', $end);
+        $monthly = ($aid > 0) ? $this->MonthlyEnergyMap($aid, $pvID, $start, $end) : [];
+
+        $years = [];
+        foreach (array_keys($monthly) as $ym) {
+            $y = (int) explode('-', $ym)[0];
+            if (!in_array($y, $years, true)) {
+                $years[] = $y;
+            }
+        }
+        sort($years);
+
+        $data = [];
+        foreach ($years as $y) {
+            $row = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $row[] = $monthly[$y . '-' . $m] ?? null;
+            }
+            $data[(string) $y] = $row;
+        }
+
+        $mittelwert = [];
+        for ($m = 0; $m < 12; $m++) {
+            $sum = 0.0;
+            $n = 0;
+            foreach ($data as $row) {
+                if ($row[$m] !== null) {
+                    $sum += $row[$m];
+                    $n++;
+                }
+            }
+            $mittelwert[] = $n > 0 ? round($sum / $n, 2) : null;
+        }
+
+        $model = $this->PvfModel();
+        $kwp = ($model !== null) ? (float) ($model['totalKwp'] ?? 0) : 0.0;
+
+        return [
+            'years'      => $years,
+            'data'       => $data,
+            'mittelwert' => $mittelwert,
+            'kwp'        => $kwp > 0 ? $kwp : null,
+        ];
+    }
+
     private function PvfInstanceID(): int
     {
         $cfg = $this->readIntProperty('PvfInstance', 0);
@@ -1120,6 +1218,14 @@ class NRGDashboardMonitor extends IPSModule
                 'type'    => 'balanceUpdate',
                 'key'     => $key,
                 'balance' => $result,
+            ]));
+            return;
+        }
+        if ($Ident === 'yearCompare') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'   => true,
+                'type' => 'yearCompareUpdate',
+                'data' => $this->BuildYearCompare(),
             ]));
             return;
         }

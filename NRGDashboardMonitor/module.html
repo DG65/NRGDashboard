@@ -15,7 +15,7 @@
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
   button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
   button.tab:disabled { opacity: .3; cursor: default; }
-  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
   button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   button.nav:disabled { opacity: .35; cursor: default; }
   #quick { display: flex; gap: 4px; }
@@ -108,6 +108,26 @@
   .lblwrap { display: flex; align-items: center; gap: 7px; opacity: .85; }
   .lblwrap .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .balRow .val { text-align: right; font-weight: 700; white-space: nowrap; }
+
+  /* Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026):
+     Unter-Reiter "Gesamtertrag"/"Spezifischer Anlagenertrag" + Tabelle
+     (Jahre als Zeilen, Monate als Spalten). Kein Konfigurationsdialog -
+     kWh/kWp kommt ausschliesslich aus dem optionalen Prognose-Modul
+     (Dietmar, 31.07.2026: eine zweite, manuell gepflegte kWp-Eingabe hier
+     waere nur eine fehleranfaellige Dopplung zu Prognoses eigenem,
+     physikbasiertem Ertragsmodell). */
+  #yearComparePanel { flex: 0 0 auto; padding-top: 6px; font-size: 12px; }
+  .ycSubTabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 8px; }
+  .ycSubTabs button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; opacity: .75; }
+  .ycSubTabs button.active { opacity: 1; font-weight: 700; border-color: rgba(127,135,145,.7); }
+  .ycSubTabs button:disabled { opacity: .3; cursor: default; }
+  .ycHint { text-align: center; opacity: .7; margin-bottom: 8px; }
+  .ycTableWrap { overflow-x: auto; }
+  .ycTable { border-collapse: collapse; width: 100%; font-size: 11px; white-space: nowrap; }
+  .ycTable th, .ycTable td { padding: 3px 8px; text-align: right; }
+  .ycTable th:first-child, .ycTable td:first-child { text-align: left; }
+  .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
+  .ycTable tbody tr:last-child td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -136,11 +156,13 @@
         <button class="tab" data-tab="price">Strompreis</button>
         <button class="tab" data-tab="flow">Energiebilanz</button>
         <button class="tab" data-tab="balance">Bilanz</button>
+        <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
       </div>
       <div id="chartcol">
         <div id="chart"></div>
         <div id="legendRow"></div>
         <div id="balancePanel" style="display:none"></div>
+        <div id="yearComparePanel" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -164,6 +186,10 @@
     // ausdrueckliche Entscheidung). Gleiches Nachforder-/Cache-Muster wie
     // flowCache oben, eigener Key-Namensraum ("balance_<granularity>_<start>_<end>").
     var balanceCache = {}, balancePendingKey = null;
+    // Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026) - kein
+    // Zeitraum-Parameter noetig (immer "seit Inbetriebnahme"), deshalb reicht
+    // ein einzelner Cache-Slot statt eines Keys wie bei balanceCache.
+    var yearCompareCache = null, yearComparePending = false, yearCompareSub = 'total';
     // Ein-/Ausklappen der Bilanz-Tabelle ist zurueck (Dietmar, 31.07.2026:
     // "waere es von Vorteil, wenn man die Bilanztabelle komprimieren und
     // die Charts gleichzeitig expandieren koennte") - diesmal bewusst OHNE
@@ -1134,6 +1160,132 @@
       });
     }
 
+    // Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026):
+    // Linienchart mit einer Linie je Jahr + fett hervorgehobenem Mittelwert,
+    // Monate auf der x-Achse. Tabelle darunter (Jahre = Zeilen, Monate =
+    // Spalten) ist bewusst reines HTML statt Chart-Tooltip - bei einer
+    // 15+-Jahre-Historie will man alle Werte auf einen Blick, nicht erst
+    // ueber jede Linie hovern.
+    function ycColor(i, n) {
+      var hue = Math.round((i * 360 / Math.max(n, 1)) % 360);
+      return 'hsl(' + hue + ',62%,55%)';
+    }
+    function ycSeriesValues(data, factor) {
+      // factor=1 -> kWh (Gesamtertrag), factor=1/kwp -> kWh/kWp (Spezifischer
+      // Anlagenertrag). null bleibt null (keine Daten fuer diesen Monat).
+      var out = {};
+      data.years.forEach(function (y) {
+        out[y] = data.data[y].map(function (v) { return v === null ? null : Math.round(v * factor * 100) / 100; });
+      });
+      out.mittelwert = data.mittelwert.map(function (v) { return v === null ? null : Math.round(v * factor * 100) / 100; });
+      return out;
+    }
+    function renderYearCompareTable(data, unit, values) {
+      var panel = document.getElementById('yearComparePanel');
+      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
+      function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
+      function rowHtml(label, arr, isTotal) {
+        var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
+        return '<tr' + (isTotal ? ' style="font-weight:700"' : '') + '><td>' + label + '</td>'
+          + arr.map(function (v) { return '<td>' + fmt(v) + '</td>'; }).join('')
+          + '<td>' + fmt(sum) + '</td></tr>';
+      }
+      var body = data.years.map(function (y) { return rowHtml(y, values[y]); }).join('');
+      body += rowHtml('Mittelwert', values.mittelwert, true);
+      var sub = '<div class="ycSubTabs">'
+        + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">Gesamtertrag</button>'
+        + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">Spezifischer Anlagenertrag</button>'
+        + '</div>';
+      var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren (liefert die Anlagenleistung).</div>';
+      panel.innerHTML = sub + hint
+        + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+      Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button'), function (btn) {
+        btn.onclick = function () {
+          if (btn.disabled) { return; }
+          yearCompareSub = btn.getAttribute('data-sub');
+          renderYearCompare(document.getElementById('chart'), yearCompareCache);
+        };
+      });
+    }
+    function renderYearCompare(el, data) {
+      if (!data || !data.years || !data.years.length) {
+        destroyChart();
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Keine Ertragsdaten im Archiv gefunden</div>';
+        return;
+      }
+      var unit = (yearCompareSub === 'specific' && data.kwp) ? 'kWh/kWp' : 'kWh';
+      var factor = (yearCompareSub === 'specific' && data.kwp) ? (1 / data.kwp) : 1;
+      var values = ycSeriesValues(data, factor);
+      renderYearCompareTable(data, unit, values);
+      renderLegend('yearcompare', data.years.concat(['Mittelwert']).map(function (y, i, arr) {
+        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(i, arr.length - 1) };
+      }));
+      var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+      if (wantEngine === 'highcharts') {
+        ensureHighcharts(function () { el.innerHTML = ''; renderYearCompareHighcharts(el, data, unit, values); });
+        return;
+      }
+      ensureECharts(function () { renderYearCompareECharts(el, data, unit, values); setTimeout(sizeChart, 60); });
+    }
+    function renderYearCompareECharts(el, data, unit, values) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      var n = data.years.length;
+      var series = data.years.map(function (y, i) {
+        return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(i, n), data: values[y] };
+      });
+      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#e8e8e8', data: values.mittelwert, z: 10 });
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 16, top: 16, bottom: 24 },
+        legend: { show: false },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          formatter: function (params) {
+            var shown = params.filter(function (p) { return p.value !== null && p.value !== undefined; });
+            if (!shown.length) { return ''; }
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + MONTH_NAMES[shown[0].dataIndex] + '</div>';
+            return head + shown.map(function (p) { return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value).toFixed(2) + ' ' + unit + '</b></div>'; }).join('');
+          }
+        },
+        xAxis: { type: 'category', data: MONTH_NAMES, axisLine: { lineStyle: { color: GRID_COLOR } } },
+        yAxis: { type: 'value', name: unit, splitLine: { lineStyle: { color: GRID_COLOR } } },
+        series: series.filter(function (s) { return isVisible(s.name); })
+      }, true);
+    }
+    function renderYearCompareHighcharts(el, data, unit, values) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var n = data.years.length;
+      var series = data.years.filter(function (y) { return isVisible(String(y)); }).map(function (y, i) {
+        return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(data.years.indexOf(y), n), data: values[y] };
+      });
+      if (isVisible('Mittelwert')) {
+        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#e8e8e8', data: values.mittelwert, zIndex: 10 });
+      }
+      chart = Highcharts.chart(el, {
+        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: { categories: MONTH_NAMES, gridLineWidth: 0 },
+        yAxis: { title: { text: unit }, gridLineColor: GRID_COLOR },
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          shared: true, useHTML: true,
+          formatter: function () {
+            var pts = (this.points || []).filter(function (p) { return p.y !== null && p.y !== undefined; });
+            if (!pts.length) { return false; }
+            var lines = ['<b>' + MONTH_NAMES[this.x] + '</b>'];
+            pts.forEach(function (p) { lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + Number(p.y).toFixed(2) + ' ' + unit + '</b></div>'); });
+            return lines.join('');
+          }
+        },
+        series: series
+      });
+      chartEngine = 'highcharts';
+    }
+
     function renderBalanceDayHighcharts(el, curve, totals) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
@@ -1981,6 +2133,7 @@
       syncNav();
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
+      if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
 
       if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
         destroyChart();
@@ -2033,6 +2186,21 @@
           if (balancePendingKey !== balKey) {
             balancePendingKey = balKey;
             requestAction('balancePeriod', JSON.stringify({ key: balKey, granularity: balGran, start: balBounds.start, end: balBounds.end }));
+          }
+        }
+        return;
+      }
+      if (curTab === 'yearcompare') {
+        document.getElementById('yearComparePanel').style.display = '';
+        if (yearCompareCache) {
+          renderYearCompare(el, yearCompareCache);
+        } else {
+          destroyChart();
+          document.getElementById('yearComparePanel').innerHTML = '';
+          el.innerHTML = '<div class="empty">Lade Jahresvergleich…</div>';
+          if (!yearComparePending) {
+            yearComparePending = true;
+            requestAction('yearCompare', '{}');
           }
         }
         return;
@@ -2151,6 +2319,15 @@
         if (curTab === 'balance') { render(); }
         return;
       }
+      // Antwort auf requestAction('yearCompare'/'yearCompareConfig', ...) -
+      // neuer "Jahresvergleich"-Reiter (31.07.2026), gleiches Nachforder-
+      // Muster, aber nur EIN Cache-Slot (kein Zeitraum-Parameter).
+      if (d.type === 'yearCompareUpdate') {
+        yearCompareCache = d.data;
+        yearComparePending = false;
+        if (curTab === 'yearcompare') { render(); }
+        return;
+      }
       lastData = d;
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
@@ -2202,7 +2379,20 @@
         if (btn.disabled) { return; }
         var leavingBalance = (curTab === 'balance' && btn.getAttribute('data-tab') !== 'balance');
         curTab = btn.getAttribute('data-tab');
-        if (leavingBalance) { unlockChartHeight(); }
+        if (leavingBalance) {
+          unlockChartHeight();
+          // Bilanz haengt eigene Mousemove-Tooltip-Schilder an dieselbe
+          // Chart-Instanz (balanceWireHover) - die bleibt beim Wechsel zu
+          // "Jahresvergleich" (selbe Engine) bestehen und wuerde sonst
+          // weiter stale Bilanz-Tooltips ueber dem neuen Chart zeigen.
+          // __balMode=null laesst balanceHoverAt() bei der naechsten Maus-
+          // bewegung die Schilder ausblenden - bis dahin (und weil ECharts'
+          // Canvas-Instanz beim Reiterwechsel wiederverwendet, nicht neu
+          // aufgebaut wird) sofort verstecken, statt auf die naechste
+          // Mausbewegung zu warten.
+          if (chart) { chart.__balMode = null; }
+          Array.prototype.forEach.call(document.querySelectorAll('#chart .balTip'), function (t) { t.style.display = 'none'; });
+        }
         Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) { b.classList.toggle('active', b === btn); });
         // Batterie UND Strompreis haben keine Energie-Ansichten (Woche/
         // Monat/Jahr/Gesamt/Benutzerdefiniert) - die Auswahl ist dort ohne
@@ -2218,6 +2408,9 @@
           curView = 'day';
           typeSel.value = 'day';
         }
+        // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
+        // Woche/Monat/Jahr-Navigation noetig (Dietmar, 31.07.2026).
+        document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
         render();
       };
     });
