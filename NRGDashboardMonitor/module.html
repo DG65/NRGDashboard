@@ -2152,17 +2152,17 @@
           data: nodes,
           links: links,
           emphasis: { focus: 'adjacency' },
-          // Dunkelgrau auf Hell, Hellgrau auf Dunkel statt reinem Weiss
-          // (Dietmar, 31.07.2026: "Kann man nicht sagen, dass der Text bei
-          // Hell Dunkelgrau und bei Dunkel Hellgrau sein soll?") - echte
-          // Theme-Erkennung via isLightTheme() statt Halo-Trick. Ein
-          // duennerer, zur Textfarbe passender Halo bleibt trotzdem, falls
-          // ein Label ueber einem gleich hellen/dunklen Knoten oder Fluss
-          // landet.
+          // Dunkelgrau auf Hell, Hellgrau auf Dunkel, OHNE Umrandung
+          // (Dietmar, 31.07.2026: "Da Du weissen Text mit dunkler
+          // Umrandung benutzt hast, kann ich nicht sehen, dass die Theme-
+          // Umschaltung funktionieren sollte" - der Rand verschleierte,
+          // dass isLightTheme() im Hellmodus offenbar NICHT den erwarteten
+          // Zweig waehlte, der Text blieb weiss/hell statt dunkel. Ohne
+          // Rand ist sofort sichtbar, ob die Umschaltung tatsaechlich
+          // greift oder ob prefers-color-scheme bei Dietmar den Symcon-
+          // Umschalter gar nicht widerspiegelt).
           label: {
             color: isLightTheme() ? '#333' : '#e8e8e8',
-            textBorderColor: isLightTheme() ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.5)',
-            textBorderWidth: 2.5,
             formatter: function (p) { return lk.label[p.name] || p.name; }
           },
           lineStyle: { color: 'gradient', opacity: 0.42, curveness: 0.5 },
