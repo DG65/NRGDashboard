@@ -74,7 +74,10 @@
      Kopf sollen sich an die Tabelle anpassen, nicht die volle Kachelbreite
      nutzen). */
   .balWrap { width: fit-content; margin: 0 auto; }
-  .balHead { text-align: center; font-weight: 700; opacity: .85; padding: 4px 2px; }
+  .balHead { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
+  .balHead .car { transition: transform .15s; }
+  .balHead.collapsed .car { transform: rotate(-90deg); }
+  .balBody.collapsed { display: none; }
   /* Buendig-Versuch mit Legende (space-between/alignBalanceBlocks) wieder
      rueckgaengig gemacht (Dietmar, 31.07.2026) - stattdessen Abstand
      zwischen den beiden Tabellenbloecken um 10px vergroessert (40->50). */
@@ -161,15 +164,15 @@
     // ausdrueckliche Entscheidung). Gleiches Nachforder-/Cache-Muster wie
     // flowCache oben, eigener Key-Namensraum ("balance_<granularity>_<start>_<end>").
     var balanceCache = {}, balancePendingKey = null;
-    // Chart-Hoehe waehrend des Bilanz-Reiters fixieren (Dietmar, 31.07.2026:
-    // "oben soll unveraendert stehen bleiben") - #chart und #balancePanel
-    // sind Geschwister in derselben Flex-Spalte #chartcol, #chart hat
-    // flex:1 1 auto und wuerde sonst bei jedem Neu-Rendern der Bilanz-Werte
-    // (unterschiedliche Zeilenanzahl je nach Granularitaet) leicht in der
-    // Hoehe schwanken. Einmalig beim ersten Bilanz-Rendern die aktuelle,
-    // natuerliche Hoehe messen und als feste Groesse einfrieren; beim
-    // Verlassen des Reiters wieder loesen, damit die anderen Reiter weiter
-    // normal wachsen.
+    // Ein-/Ausklappen der Bilanz-Tabelle ist zurueck (Dietmar, 31.07.2026:
+    // "waere es von Vorteil, wenn man die Bilanztabelle komprimieren und
+    // die Charts gleichzeitig expandieren koennte") - diesmal bewusst OHNE
+    // Hoehen-Sperre fuer #chart: #chart (flex:1 1 auto) und #balancePanel
+    // sind Geschwister in #chartcol, .balBody.collapsed (display:none)
+    // gibt den Platz frei, den sich #chart dann von selbst zurueckholt -
+    // genau das war beim vorigen (inzwischen entfernten) Anlauf noch
+    // UNERWUENSCHT, jetzt ist es der Zweck der Funktion.
+    var balancePanelCollapsed = false;
     var balanceChartLocked = false;
     function lockChartHeightOnce() {
       if (balanceChartLocked) { return; }
@@ -1601,13 +1604,13 @@
       // Tagesertrag = Batterieladung+Netzeinspeisung+Direktverbrauch.
       var gradV = 'linear-gradient(135deg,' + col.netzbezug + ',' + col.batterieentladung + ',' + col.direktverbrauch + ')';
       var gradE = 'linear-gradient(135deg,' + col.batterieladung + ',' + col.netzeinspeisung + ',' + col.direktverbrauch + ')';
-      // Kein Ein-/Ausklappen mehr (Dietmar, 31.07.2026: "diese Funktion
-      // kann raus") - Bilanz ist immer sichtbar, "Bilanz"-Kopf ist nur
-      // noch eine statische Ueberschrift ohne Pfeil/Klick.
+      // Ein-/Ausklappen wieder da (Dietmar, 31.07.2026, siehe Kommentar bei
+      // balancePanelCollapsed oben) - Klick auf den Kopf blendet die
+      // Tabelle aus, #chart waechst dann von selbst in den freien Platz.
       panel.innerHTML =
         '<div class="balWrap">'
-        + '<div class="balHead">Bilanz</div>'
-        + '<div class="balBody" id="balBodyRows">'
+        + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
+        + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
         + pairRow(verbrauchLabel, gradV, kwh(verbrauch), ertragLabel, gradE, kwh(ertrag), 'total')
         + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung', col.batterieladung, kwh(totals.batterieladung || 0))
         + pairRow('Batterieentladung', col.batterieentladung, kwh(totals.batterieentladung || 0), 'Netzeinspeisung', col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
@@ -1615,10 +1618,15 @@
         + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
         + '</div>'
         + '</div>';
-      // Hoehe erst NACH dem tatsaechlichen Einfuegen ins DOM sperren (kurz
-      // verzoegert, damit Layout/Chart-Groesse sich vorher gesetzt haben) -
-      // No-Op, wenn schon gesperrt.
-      setTimeout(lockChartHeightOnce, 30);
+      var head = document.getElementById('balHeadToggle');
+      head.classList.toggle('collapsed', balancePanelCollapsed);
+      head.onclick = function () {
+        balancePanelCollapsed = !balancePanelCollapsed;
+        document.getElementById('balBodyRows').classList.toggle('collapsed', balancePanelCollapsed);
+        head.classList.toggle('collapsed', balancePanelCollapsed);
+        // Keine Hoehen-Sperre mehr fuer #chart - es soll sich den frei
+        // werdenden bzw. wieder benoetigten Platz von selbst zurueckholen.
+      };
     }
 
     // Energiebilanz (Sankey) - Datengrundlage kommt fertig berechnet von
