@@ -130,13 +130,19 @@
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
-  .ycOverlay { position: absolute; inset: 0; background: rgba(20,21,24,.55); display: flex; align-items: center; justify-content: center; z-index: 20; }
-  .ycDialog { background: #24262b; border-radius: 8px; padding: 16px 20px; width: min(92%, 480px); max-height: 90%; overflow-y: auto; font-size: 12px; }
+  /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
+     gross sein, dass man alles sieht ohne zu scrollen") - als absolute
+     Ueberlagerung nur INNERHALB von #yearComparePanel war die verfuegbare
+     Hoehe auf die (oft knappe) Kachelhoehe begrenzt; fixed nutzt die volle
+     Fensterhoehe des Tiles. max-height/overflow bleiben als reine
+     Sicherheitsbremse fuer sehr kleine Fenster, nicht als Regelfall. */
+  .ycOverlay { position: fixed; inset: 0; background: rgba(20,21,24,.55); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 16px; box-sizing: border-box; }
+  .ycDialog { background: #24262b; border-radius: 8px; padding: 16px 20px; width: min(94%, 620px); max-height: 96vh; overflow-y: auto; font-size: 12px; }
   .ycDialog h3 { margin: 0 0 10px; font-size: 14px; }
   .ycRow { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
   .ycRow label { flex: 1 1 auto; }
   .ycRow input[type="number"] { width: 90px; }
-  .ycMonthGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+  .ycMonthGrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0; }
   .ycMonthGrid div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .ycMonthGrid input { width: 100%; text-align: center; }
   .ycSum { text-align: right; opacity: .8; margin: 4px 0; }
@@ -1275,7 +1281,6 @@
         + '<span><button id="ycCancel">Abbrechen</button> <button id="ycSave">Speichern</button></span>'
         + '</div>'
         + '</div>';
-      panel.style.position = 'relative';
       panel.appendChild(overlay);
 
       function monthEls() { return Array.prototype.slice.call(overlay.querySelectorAll('.ycMonthGrid input')); }
