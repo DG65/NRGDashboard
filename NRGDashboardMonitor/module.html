@@ -1253,11 +1253,18 @@
       var factor = (yearCompareSub === 'specific' && data.kwp) ? (1 / data.kwp) : 1;
       var values = ycSeriesValues(data, factor);
       renderYearCompareTable(data, unit, values);
+      // Mittelwert/Erwartung bewusst als mittleres, theme-neutrales Grau
+      // (Dietmar, 31.07.2026: "Wenn ich das Symcon System auf Hell
+      // schalte, sieht man den Mittelwert nicht mehr" - das vorherige
+      // #e8e8e8/#9aa4b0 war auf Dunkel-Hintergrund abgestimmt und
+      // verschwand im Hellmodus) - hell genug fuer Kontrast auf Dunkel,
+      // dunkel genug fuer Kontrast auf Hell, aber gedeckter als die
+      // kraeftigen Jahresfarben, damit beide weiter im Hintergrund bleiben.
       var legendYears = data.years.concat(['Mittelwert']);
       var legendItems = legendYears.map(function (y, i) {
-        return { name: String(y), color: (y === 'Mittelwert') ? '#e8e8e8' : ycColor(y) };
+        return { name: String(y), color: (y === 'Mittelwert') ? '#8a919c' : ycColor(y) };
       });
-      if (values.expected) { legendItems.push({ name: 'Erwartung', color: '#9aa4b0' }); }
+      if (values.expected) { legendItems.push({ name: 'Erwartung', color: '#aeb4bd' }); }
       renderLegend('yearcompare', legendItems);
       var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
       if (wantEngine === 'highcharts') {
@@ -1342,9 +1349,9 @@
       var series = data.years.map(function (y) {
         return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(y), data: values[y] };
       });
-      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#e8e8e8', data: values.mittelwert, z: 10 });
+      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#8a919c', data: values.mittelwert, z: 10 });
       if (values.expected) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 2, type: 'dashed' }, color: '#9aa4b0', data: values.expected, z: 9 });
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 2, type: 'dashed' }, color: '#aeb4bd', data: values.expected, z: 9 });
       }
       chart.setOption({
         backgroundColor: 'transparent',
@@ -1372,10 +1379,10 @@
         return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(y), data: values[y] };
       });
       if (isVisible('Mittelwert')) {
-        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#e8e8e8', data: values.mittelwert, zIndex: 10 });
+        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#8a919c', data: values.mittelwert, zIndex: 10 });
       }
       if (values.expected && isVisible('Erwartung')) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 2, dashStyle: 'Dash', color: '#9aa4b0', data: values.expected, zIndex: 9 });
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 2, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 9 });
       }
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
