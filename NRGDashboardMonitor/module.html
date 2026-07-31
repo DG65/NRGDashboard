@@ -45,14 +45,15 @@
   .balHead { display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
   .balHead .car { transition: transform .15s; }
   .balHead.collapsed .car { transform: rotate(-90deg); }
-  .balBody { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 22px; padding: 4px 2px 8px; }
+  .balBody { display: flex; flex-wrap: wrap; gap: 2px 28px; padding: 4px 2px 8px; }
   .balBody.collapsed { display: none; }
+  .balCol { flex: 1 1 220px; min-width: 200px; }
   .balRow { display: flex; align-items: center; gap: 7px; padding: 3px 0; border-bottom: 1px solid rgba(127,135,145,.14); }
   .balRow .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .balRow .lbl { flex: 1 1 auto; opacity: .85; }
   .balRow .val { font-weight: 700; white-space: nowrap; }
   .balRow.total { border-bottom: none; font-weight: 700; }
-  .balQuote { grid-column: 1 / -1; display: flex; justify-content: space-between; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
+  .balQuote { flex: 1 1 100%; display: flex; justify-content: space-between; padding: 6px 0 0; border-top: 1px solid rgba(127,135,145,.22); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -1034,12 +1035,12 @@
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: [
-          { type: 'datetime', top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
-          { type: 'datetime', top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          { type: 'datetime', top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
+          { type: 'datetime', top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ],
         yAxis: [
-          { title: { text: 'Verbrauch (kW)', style: { color: '#9aa4b0' } }, top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: 'Erzeugung (kW)', style: { color: '#9aa4b0' } }, top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: 'Verbrauch (kW)', style: { color: '#9aa4b0' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'Erzeugung (kW)', style: { color: '#9aa4b0' } }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1091,12 +1092,12 @@
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: [
-          { categories: categories, top: '2%', height: '38%', labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-          { categories: categories, top: '56%', height: '38%', labels: { rotation: categories.length > 12 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+          { categories: categories, top: '4%', height: '40%', labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+          { categories: categories, top: '50%', height: '40%', labels: { rotation: categories.length > 12 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         yAxis: [
-          { title: { text: 'Verbrauch (kWh)', style: { color: '#9aa4b0' } }, top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: 'Erzeugung (kWh)', style: { color: '#9aa4b0' } }, top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: 'Verbrauch (kWh)', style: { color: '#9aa4b0' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'Erzeugung (kWh)', style: { color: '#9aa4b0' } }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1159,12 +1160,12 @@
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: [
-          { left: 46, right: 16, top: 30, height: '32%' },
-          { left: 46, right: 16, top: '58%', height: '32%' }
+          { left: 46, right: 16, top: 28, height: '40%' },
+          { left: 46, right: 16, top: '52%', height: '40%' }
         ],
         title: [
           { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '53%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Erzeugung', left: 'center', top: '47%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
         tooltip: {
@@ -1234,12 +1235,12 @@
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: [
-          { left: 46, right: 16, top: 30, height: '32%' },
-          { left: 46, right: 16, top: '58%', height: '32%' }
+          { left: 46, right: 16, top: 28, height: '40%' },
+          { left: 46, right: 16, top: '52%', height: '40%' }
         ],
         title: [
           { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '53%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Erzeugung', left: 'center', top: '47%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
         tooltip: {
@@ -1287,16 +1288,26 @@
         return '<div class="balRow' + (isTotal ? ' total' : '') + '"><span class="dot" style="background:' + color + '"></span>'
           + '<span class="lbl">' + name + '</span><span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
       }
+      // Zwei ECHTE Spalten (Verbrauch links, Erzeugung rechts), nicht ein
+      // reihenweise fuellendes Grid (Fix, 31.07.2026 - Dietmars Screenshot-
+      // Anmerkung: "Tagesertrag" landete durch das reihenweise Grid mitten
+      // in der linken statt am Kopf der rechten Spalte). Jede Gruppe ist
+      // jetzt ein eigener Flex-Block, die Reihenfolge bleibt so erhalten,
+      // egal wie breit die Kachel gerade ist.
       panel.innerHTML =
         '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
         + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
+        + '<div class="balCol">'
         + row(verbrauchLabel, 'linear-gradient(135deg,#E53935,#F2C230)', verbrauch, true)
         + row('Netzbezug', '#E53935', totals.netzbezug || 0)
         + row('Batterieentladung', '#FFB74D', totals.batterieentladung || 0)
         + row('Direktverbrauch', '#F2C230', totals.direktverbrauch || 0)
+        + '</div>'
+        + '<div class="balCol">'
         + row(ertragLabel, 'linear-gradient(135deg,#5FCB6B,#4AA3E0)', ertrag, true)
         + row('Batterieladung', '#5FCB6B', totals.batterieladung || 0)
         + row('Netzeinspeisung', '#4AA3E0', totals.netzeinspeisung || 0)
+        + '</div>'
         + '<div class="balQuote"><span>Direktverbrauchsquote</span><span><b>' + quote + ' %</b></span></div>'
         + '</div>';
       var head = document.getElementById('balHeadToggle');
