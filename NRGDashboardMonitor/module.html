@@ -1632,9 +1632,15 @@
         legend: { show: false },
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
         tooltip: { show: false },
+        // Beschriftung vom unteren zum oberen Chart verschoben, analog zu
+        // Highcharts (Dietmar, 31.07.2026: "Ich sehe gerade die Timeline
+        // im EChart unteren Balkendiagramm, das kann man entfernen") -
+        // unteres Panel verliert Label, Achsenlinie UND Tickmarken
+        // komplett, sonst bliebe die nackte Achse als ungenutzte
+        // "Zeitleiste" stehen.
         xAxis: [
-          { gridIndex: 0, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0 }, axisPointer: { show: true, type: 'shadow', label: { show: false } } },
-          { gridIndex: 1, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0 }, axisPointer: { show: true, type: 'shadow', label: { show: false } } }
+          { gridIndex: 0, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0, color: '#9aa4b0' }, axisPointer: { show: true, type: 'shadow', label: { show: false } } },
+          { gridIndex: 1, type: 'category', data: categories, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, axisPointer: { show: true, type: 'shadow', label: { show: false } } }
         ],
         yAxis: [
           { gridIndex: 0, type: 'value', name: 'kWh', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
