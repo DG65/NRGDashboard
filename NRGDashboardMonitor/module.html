@@ -1178,7 +1178,11 @@
         // dazwischen freigeben.
         xAxis: [
           { type: 'datetime', top: '4%', height: '40%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { style: { color: '#9aa4b0' } } },
-          { type: 'datetime', top: '58%', height: '38%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } }
+          // lineWidth/tickLength:0 - ohne Labels blieb sonst noch die
+          // nackte Achsenlinie samt Tickmarken als ungenutzte "Zeitleiste"
+          // unter dem unteren Chart stehen (Dietmar, 31.07.2026). Panel
+          // gleichzeitig etwas hoeher (38%->42%), da der Platz jetzt frei ist.
+          { type: 'datetime', top: '58%', height: '42%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, lineWidth: 0, tickLength: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } }
         ],
         // "kW"-Achsenname kommt jetzt ueber renderBalancePanelTitles()
         // (eigenes renderer.text(), links im festen 58px-Rand, vertikal
