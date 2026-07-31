@@ -1193,6 +1193,30 @@
       renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
     }
 
+    // Gemeinsame Helfer fuer die zwei getrennten Tagesansicht-Tooltips
+    // (Dietmar, 31.07.2026: "2 Schilder, eines fuer das obere Chart, eines
+    // fuer das untere Chart") - siehe tooltip-Array in renderBalanceDay.
+    function balanceTooltipPosition(pt, size, top, bottom) {
+      var gap = 14;
+      var x = pt[0] + gap;
+      if (x + size.contentSize[0] > size.viewSize[0] - 4) {
+        x = pt[0] - gap - size.contentSize[0];
+      }
+      x = Math.max(4, Math.min(x, size.viewSize[0] - size.contentSize[0] - 4));
+      var y = Math.max(top + 4, Math.min(top + 8, bottom - size.contentSize[1] - 4));
+      return [x, y];
+    }
+    function balanceTooltipPanel(params, axIdx, title) {
+      var pts = params.filter(function (p) { return p.axisIndex === axIdx; });
+      if (!pts.length) { return ''; }
+      var t = new Date(pts[0].value[0]);
+      var head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+      var sub = '<div style="font-weight:600;color:#9aa4b0;margin:0 0 2px">' + title + '</div>';
+      return head + sub + pts.map(function (p) {
+        return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
+      }).join('');
+    }
+
     function renderBalanceDay(el, curve, totals) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
@@ -1242,47 +1266,32 @@
         // ECharts den axisPointer nur auf der gerade gehoverten Achse,
         // der Tooltip-Formatter unten saehe dann nur ein Panel in params.
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
-        tooltip: {
-          trigger: 'axis', axisPointer: { type: 'line' },
-          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
-          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
-          // Tooltip-Box (mit Uhrzeit-Kopf) haengt vertikal fest in der
-          // Luecke zwischen den beiden Charts (Dietmar, 31.07.2026: "Uhrzeit
-          // soll in der Mitte der beiden Charts stehen"). Horizontal darf
-          // sie NIE ueber dem Zeiger haengen (Dietmar, 31.07.2026), sondern
-          // weicht seitlich aus - bevorzugt rechts vom Zeiger, links davon
-          // nur wenn rechts kein Platz mehr ist - bleibt dabei immer
-          // innerhalb des Charts.
-          position: function (pt, params, dom, rect, size) {
-            var midY = size.viewSize[1] * 0.46 - size.contentSize[1] / 2;
-            var gap = 14;
-            var x = pt[0] + gap;
-            if (x + size.contentSize[0] > size.viewSize[0] - 4) {
-              x = pt[0] - gap - size.contentSize[0];
-            }
-            x = Math.max(4, Math.min(x, size.viewSize[0] - size.contentSize[0] - 4));
-            return [x, Math.max(4, midY)];
+        // Zwei eigenstaendige "Schilder" statt einer gemeinsamen Box
+        // (Dietmar, 31.07.2026: "2 Schilder, eines fuer das obere Chart,
+        // eines fuer das untere Chart") - dank der axisPointer-Kopplung
+        // oben bekommen BEIDE Tooltip-Komponenten bei jedem Hover die
+        // Serien aus BEIDEN Grids in ihren params, jede zeigt per Filter
+        // (balanceTooltipPanel) aber nur ihr eigenes Panel. Jede haengt
+        // seitlich vom Zeiger ausweichend (nie darueber, Dietmar,
+        // 31.07.2026), aber innerhalb der Grenzen des jeweils EIGENEN
+        // Charts (balanceTooltipPosition), nicht mehr in der Luecke
+        // zwischen beiden.
+        tooltip: [
+          {
+            trigger: 'axis', axisPointer: { type: 'line' },
+            backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+            extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+            position: function (pt, params, dom, rect, size) { return balanceTooltipPosition(pt, size, 28, 28 + size.viewSize[1] * 0.40); },
+            formatter: function (params) { return balanceTooltipPanel(params, 0, 'Verbrauch'); }
           },
-          formatter: function (params) {
-            if (!params.length) { return ''; }
-            // Beide Panels zeitgleich in einem Tooltip, aber inhaltlich
-            // getrennt (Dietmar, 31.07.2026: "Beide Tooltips sollen schon
-            // zeitgleich angezeigt werden, nur eben separat fuer unten und
-            // oben") - axisIndex trennt Verbrauch (0) von Erzeugung (1)
-            // zuverlaessig, auch fuer "Direktverbrauch", das in beiden
-            // Panels vorkommt und sich am Namen allein nicht unterscheiden liesse.
-            var t = new Date(params[0].value[0]);
-            var head = '<div style="font-weight:600;margin-bottom:4px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
-            function block(axIdx, title) {
-              var pts = params.filter(function (p) { return p.axisIndex === axIdx; });
-              if (!pts.length) { return ''; }
-              return '<div style="font-weight:600;color:#9aa4b0;margin:4px 0 2px">' + title + '</div>' + pts.map(function (p) {
-                return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
-              }).join('');
-            }
-            return head + block(0, 'Verbrauch') + block(1, 'Erzeugung');
+          {
+            trigger: 'axis', axisPointer: { type: 'line' },
+            backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+            extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+            position: function (pt, params, dom, rect, size) { return balanceTooltipPosition(pt, size, size.viewSize[1] * 0.50, size.viewSize[1] * 0.96); },
+            formatter: function (params) { return balanceTooltipPanel(params, 1, 'Erzeugung'); }
           }
-        },
+        ],
         xAxis: [
           { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } },
           // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
