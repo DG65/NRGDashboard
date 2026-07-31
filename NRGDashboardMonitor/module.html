@@ -314,6 +314,16 @@
     function isLightTheme() {
       return !!(lastData && lastData.lightTheme);
     }
+    // Dunkelgrau auf Hell, wie bisher Hellgrau auf Dunkel (Dietmar,
+    // 31.07.2026: "Wenn Hell eingestellt ist, dann sollte die
+    // Beschriftung der Charts dunkelgrau sein") - fuer ALLE Achsen-/
+    // Panel-Beschriftungen im Modul (Verbrauch/Erzeugung-Titel, Achsen-
+    // Labels, Achsennamen, Tooltip-Zwischenueberschriften), nicht nur den
+    // Sankey. GRID_COLOR (Gitternetzlinien) bleibt bewusst der bereits
+    // theme-neutrale Grauton, das hier betrifft nur TEXT.
+    function themeLabelColor() {
+      return isLightTheme() ? '#333' : '#9aa4b0';
+    }
     // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
     // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
     // schmaler sichtbarer Slider unten als "Legende" fuer den Zoom-Zustand
@@ -1491,7 +1501,7 @@
         // die jetzt dort fehlenden Zahlen Platz fuer die Stunden-Zeile
         // dazwischen freigeben.
         xAxis: [
-          { type: 'datetime', top: '4%', height: '40%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { style: { color: '#9aa4b0' } } },
+          { type: 'datetime', top: '4%', height: '40%', tickInterval: 3600 * 1000, gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { style: { color: themeLabelColor() } } },
           // lineWidth/tickLength:0 - ohne Labels blieb sonst noch die
           // nackte Achsenlinie samt Tickmarken als ungenutzte "Zeitleiste"
           // unter dem unteren Chart stehen (Dietmar, 31.07.2026). Panel
@@ -1553,7 +1563,7 @@
       c.__balLabels = [];
       if (!c.yAxis || c.yAxis.length < 2) { return; }
       var midX = c.plotLeft + c.plotWidth / 2;
-      var style = { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' };
+      var style = { color: themeLabelColor(), fontSize: '12px', fontWeight: '600' };
       // "Verbrauch" bleibt ueber dem oberen, "Erzeugung" wandert unter das
       // untere Chart (Dietmar, 31.07.2026 - an ECharts angeglichen, wo
       // "Erzeugung" bereits unterhalb statt oberhalb des Panels steht).
@@ -1637,7 +1647,7 @@
           // Tickmarken komplett (lineWidth/tickLength:0), sonst bliebe
           // dort eine ungenutzte nackte Achse stehen (wie schon bei der
           // "Zeitleiste"-Korrektur im Tages-View).
-          { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0, style: { color: '#9aa4b0' } }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+          { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0, style: { color: themeLabelColor() } }, crosshair: { color: 'rgba(255,255,255,.08)' } },
           { categories: categories, top: '53.5%', height: '46.5%', gridLineWidth: 0, lineWidth: 0, tickLength: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         // "kWh"-Achsenname kommt jetzt ueber renderBalancePanelTitles()
@@ -1710,7 +1720,7 @@
         var t = new Date(ts);
         head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
       }
-      var sub = '<div style="font-weight:600;color:#9aa4b0;margin:0 0 2px">' + title + '</div>';
+      var sub = '<div style="font-weight:600;color:' + themeLabelColor() + ';margin:0 0 2px">' + title + '</div>';
       return head + sub + lines.join('');
     }
     // Bars-Pendant zu balancePanelHtml (Woche/Monat/Jahr/Gesamt) - gleiche
@@ -1729,7 +1739,7 @@
       });
       if (!lines.length) { return ''; }
       var head = '<div style="font-weight:600;margin-bottom:2px">' + (b.id || b.label) + '</div>';
-      var sub = '<div style="font-weight:600;color:#9aa4b0;margin:0 0 2px">' + title + '</div>';
+      var sub = '<div style="font-weight:600;color:' + themeLabelColor() + ';margin:0 0 2px">' + title + '</div>';
       return head + sub + lines.join('');
     }
     // Positioniert ein Schild seitlich vom Zeiger ausweichend (nie darueber,
@@ -1865,8 +1875,8 @@
         title: [
           // Verbrauch bleibt ueber dem oberen, Erzeugung wandert unter das
           // untere Chart (Dietmar, 31.07.2026).
-          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
+          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
         ],
         legend: { show: false },
         // Beide x-Achsen gekoppelt, damit die Fadenkreuz-Linie in beiden
@@ -1885,7 +1895,7 @@
         // Stunde und die Stunden sollten die gleiche Farbe wie Erzeugung
         // unter der Chart haben").
         xAxis: [
-          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600000, maxInterval: 3600000, axisLabel: { color: '#9aa4b0' }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
+          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600000, maxInterval: 3600000, axisLabel: { color: themeLabelColor() }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
           // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
           // 31.07.2026) - die Zeitachse ist bereits einmal ueber dem
           // oberen Chart und im mittig fixierten Tooltip zu sehen, eine
@@ -1898,8 +1908,8 @@
         // gemeinsame zwischen beiden - Dietmar, 31.07.2026, Korrektur der
         // vorherigen Fassung mit nur einem geteilten Label).
         yAxis: [
-          { gridIndex: 0, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
-          { gridIndex: 1, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
+          { gridIndex: 0, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
         ],
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
@@ -1947,8 +1957,8 @@
           { left: 58, right: 16, top: '50%', height: '46%' }
         ],
         title: [
-          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
+          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
         ],
         legend: { show: false },
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
@@ -1960,12 +1970,12 @@
         // komplett, sonst bliebe die nackte Achse als ungenutzte
         // "Zeitleiste" stehen.
         xAxis: [
-          { gridIndex: 0, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0, color: '#9aa4b0' }, axisPointer: { show: true, type: 'shadow', label: { show: false } } },
+          { gridIndex: 0, type: 'category', data: categories, axisLabel: { rotate: maxLen > 2 ? 45 : 0, color: themeLabelColor() }, axisPointer: { show: true, type: 'shadow', label: { show: false } } },
           { gridIndex: 1, type: 'category', data: categories, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, axisPointer: { show: true, type: 'shadow', label: { show: false } } }
         ],
         yAxis: [
-          { gridIndex: 0, type: 'value', name: 'kWh', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
-          { gridIndex: 1, type: 'value', name: 'kWh', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: '#9aa4b0', fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
+          { gridIndex: 0, type: 'value', name: 'kWh', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
+          { gridIndex: 1, type: 'value', name: 'kWh', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
         ],
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
