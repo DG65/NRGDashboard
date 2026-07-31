@@ -981,11 +981,144 @@
         el.innerHTML = '<div class="empty">Keine Bilanzdaten für diesen Zeitraum</div>';
         return;
       }
+      // Engine-Weiche (Fix, 30.07.2026): ECharts wird von GetVisualizationTile()
+      // NUR eingebettet, wenn diese Engine auch gewaehlt ist (siehe module.php,
+      // Ausgabepuffer-Limit) - bei gewaehltem Highcharts war 'echarts' schlicht
+      // nicht definiert ("Uncaught ReferenceError"), live bei Dietmar so
+      // aufgetreten. Dieselbe Weiche wie bei allen anderen Reitern.
+      var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+      if (wantEngine === 'highcharts') {
+        ensureHighcharts(function () {
+          el.innerHTML = '';
+          if (balance.granularity === 'day') {
+            renderBalanceDayHighcharts(el, balance.curve || {}, balance.totals || {});
+          } else {
+            renderBalanceBarsHighcharts(el, balance.bars || [], balance.granularity);
+          }
+        });
+        return;
+      }
       if (balance.granularity === 'day') {
         renderBalanceDay(el, balance.curve || {}, balance.totals || {});
       } else {
         renderBalanceBars(el, balance.bars || [], balance.granularity);
       }
+      setTimeout(sizeChart, 60);
+    }
+
+    function renderBalanceDayHighcharts(el, curve, totals) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+
+      function seriesFor(panel, yIdx, xIdx) {
+        return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
+          .filter(function (s) { return isVisible(s.name); })
+          .map(function (s) {
+            return { name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0.7, marker: { enabled: false }, fillOpacity: 0.55 };
+          });
+      }
+      function sumSeries(keys, yIdx, xIdx, nm) {
+        var byTs = {};
+        keys.forEach(function (k) { (curve[k] || []).forEach(function (p) { byTs[p[0]] = (byTs[p[0]] || 0) + p[1]; }); });
+        var pts = Object.keys(byTs).map(function (t) { return [Number(t), byTs[t]]; }).sort(function (a, b) { return a[0] - b[0]; });
+        return { name: nm, type: 'line', data: pts, color: 'rgba(220,226,232,.6)', lineWidth: 1.5, marker: { enabled: false }, yAxis: yIdx, xAxis: xIdx, enableMouseTracking: false, showInLegend: false };
+      }
+
+      var series = [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0, 0, '__totalV')]
+        .concat(seriesFor('v', 0, 0))
+        .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1, 1, '__totalE')])
+        .concat(seriesFor('e', 1, 1));
+
+      chart = Highcharts.chart(el, {
+        time: { useUTC: false },
+        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: [
+          { type: 'datetime', top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
+          { type: 'datetime', top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+        ],
+        yAxis: [
+          { title: { text: 'Verbrauch (kW)', style: { color: '#9aa4b0' } }, top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'Erzeugung (kW)', style: { color: '#9aa4b0' } }, top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+        ],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          shared: true, useHTML: true,
+          formatter: function () {
+            var pts = (this.points || []).filter(function (p) { return p.series.name.indexOf('__total') !== 0; });
+            if (!pts.length) { return false; }
+            var t = new Date(pts[0].x);
+            var lines = ['<b>' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</b>'];
+            pts.forEach(function (p) { lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + Number(p.y).toFixed(2) + ' kW</b></div>'); });
+            return lines.join('');
+          }
+        },
+        series: series
+      });
+      chartEngine = 'highcharts';
+      renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
+    }
+
+    function renderBalanceBarsHighcharts(el, bars, granularity) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+
+      var categories = bars.map(function (b) { return b.label; });
+      var fullLabels = bars.map(function (b) { return b.id; });
+
+      function seriesFor(panel, yIdx, xIdx) {
+        return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
+          .filter(function (s) { return isVisible(s.name); })
+          .map(function (s) {
+            return { name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), color: s.color, yAxis: yIdx, xAxis: xIdx };
+          });
+      }
+      function sumSeries(keys, yIdx, xIdx, nm) {
+        return {
+          name: nm, type: 'column', data: bars.map(function (b) { return keys.reduce(function (sum, k) { return sum + (b[k] || 0); }, 0); }),
+          color: 'transparent', borderColor: 'rgba(220,226,232,.6)', borderWidth: 1, yAxis: yIdx, xAxis: xIdx,
+          enableMouseTracking: false, showInLegend: false, pointPadding: 0, groupPadding: 0.1, grouping: false
+        };
+      }
+
+      var series = [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0, 0, '__totalV')]
+        .concat(seriesFor('v', 0, 0))
+        .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1, 1, '__totalE')])
+        .concat(seriesFor('e', 1, 1));
+
+      chart = Highcharts.chart(el, {
+        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: [
+          { categories: categories, top: '2%', height: '38%', labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+          { categories: categories, top: '56%', height: '38%', labels: { rotation: categories.length > 12 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+        ],
+        yAxis: [
+          { title: { text: 'Verbrauch (kWh)', style: { color: '#9aa4b0' } }, top: '2%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: 'Erzeugung (kWh)', style: { color: '#9aa4b0' } }, top: '56%', height: '38%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+        ],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          shared: true, useHTML: true,
+          formatter: function () {
+            var pts = (this.points || []).filter(function (p) { return p.series.name.indexOf('__total') !== 0; });
+            if (!pts.length) { return false; }
+            var i = pts[0].point.index;
+            var lines = ['<b>' + (fullLabels[i] || categories[i]) + '</b>'];
+            pts.forEach(function (p) { lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + Number(p.y).toFixed(2) + ' kWh</b></div>'); });
+            return lines.join('');
+          }
+        },
+        series: series
+      });
+      chartEngine = 'highcharts';
+
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
+      bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
+      var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
+      renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
     }
 
     function renderBalanceDay(el, curve, totals) {
