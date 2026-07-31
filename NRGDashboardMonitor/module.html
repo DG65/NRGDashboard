@@ -35,11 +35,8 @@
      laesst. Eigene Legende = volle Kontrolle, kein Ereignis-Ratespiel. */
   /* Abstand "Erzeugung" -> Legende auf die gleiche Groesse gebracht wie
      Chart -> "Erzeugung" (Dietmar, 31.07.2026 - vorher zog die negative
-     margin die Legende zu dicht an die Beschriftung heran). Inhaltsbreit
-     statt volle Kachelbreite, damit alignBalanceBlocks() (siehe Skript)
-     Legende und Bilanz-Tabelle auf exakt gleiche Breite bringen und so
-     links/rechts buendig zueinander stehen kann (Dietmar, 31.07.2026). */
-  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin: 20px auto 0; width: fit-content; font-size: 11px; }
+     margin die Legende zu dicht an die Beschriftung heran). */
+  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; }
   .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
   .legItem.off { opacity: .35; }
   .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -56,12 +53,10 @@
   .balHead { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
   .balHead .car { transition: transform .15s; }
   .balHead.collapsed .car { transform: rotate(-90deg); }
-  /* space-between statt center: sobald alignBalanceBlocks() .balWrap auf
-     die (meist breitere) Legendenbreite bringt, sollen die Spalten die
-     neue Breite ausfuellen statt darin zentriert mittig zu bleiben - nur
-     so reicht die linke Spalte bis an den linken, die rechte bis an den
-     rechten Rand (Dietmar, 31.07.2026). */
-  .balBody { display: flex; flex-wrap: wrap; gap: 2px 40px; padding: 4px 2px 8px; justify-content: space-between; }
+  /* Buendig-Versuch mit Legende (space-between/alignBalanceBlocks) wieder
+     rueckgaengig gemacht (Dietmar, 31.07.2026) - stattdessen Abstand
+     zwischen den beiden Tabellenbloecken um 10px vergroessert (40->50). */
+  .balBody { display: flex; flex-wrap: wrap; gap: 2px 50px; padding: 4px 2px 8px; justify-content: center; }
   .balBody.collapsed { display: none; }
   /* Jede Spalte ist ein eigenes Grid mit fixer 50px-Luecke zwischen
      Beschriftung und rechtsbuendigem Wert (Dietmar, 31.07.2026) - die
@@ -1440,24 +1435,6 @@
       // verzoegert, damit Layout/Chart-Groesse sich vorher gesetzt haben) -
       // No-Op, wenn schon gesperrt.
       setTimeout(lockChartHeightOnce, 30);
-      setTimeout(alignBalanceBlocks, 30);
-    }
-
-    // Legende und Bilanz-Tabelle sind unterschiedlich breit (5 Legende-
-    // Eintraege vs. 2 Tabellenspalten) und dadurch trotz gemeinsamer
-    // Zentrierung nicht buendig (Dietmar, 31.07.2026: "Legende und Tabelle
-    // sollten links und rechts buendig sein") - beide Boxen werden hier
-    // auf die jeweils groessere natuerliche Breite gebracht, danach
-    // sitzen sie ueber die gemeinsame margin:auto-Zentrierung exakt
-    // uebereinander.
-    function alignBalanceBlocks() {
-      var lr = document.getElementById('legendRow');
-      var bw = document.querySelector('#balancePanel .balWrap');
-      if (!lr || !bw) { return; }
-      lr.style.width = ''; bw.style.width = '';
-      var w = Math.max(lr.scrollWidth, bw.scrollWidth);
-      lr.style.width = w + 'px';
-      bw.style.width = w + 'px';
     }
 
     // Energiebilanz (Sankey) - Datengrundlage kommt fertig berechnet von
