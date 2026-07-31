@@ -1502,6 +1502,12 @@
           + '<span></span>'
           + '<span class="val">' + val + ' %</span></div>';
       }
+      // Leerzeile, damit "Direktverbrauchsquote" rechts auf Hoehe von
+      // "Autarkiequote" links landet - hinter "Direktverbrauch" soll
+      // nichts stehen (Dietmar, 31.07.2026).
+      function emptyRow() {
+        return '<div class="balRow"><span></span><span></span><span></span></div>';
+      }
       // Zwei ECHTE Spalten (Verbrauch links, Erzeugung rechts), nicht ein
       // reihenweise fuellendes Grid (Fix, 31.07.2026 - Dietmars Screenshot-
       // Anmerkung: "Tagesertrag" landete durch das reihenweise Grid mitten
@@ -1535,6 +1541,7 @@
         + row(ertragLabel, gradE, ertrag, true)
         + row('Batterieladung', col.batterieladung, totals.batterieladung || 0)
         + row('Netzeinspeisung', col.netzeinspeisung, totals.netzeinspeisung || 0)
+        + emptyRow()
         + quoteRow('Direktverbrauchsquote', quote)
         + '</div>'
         + '</div>'
