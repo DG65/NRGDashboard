@@ -57,6 +57,13 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
+        // Manuelle Angabe statt automatischer Erkennung (Dietmar,
+        // 31.07.2026: Recherche ergab, dass Symcon einer Kachel keinen
+        // Weg anbietet, das aktuelle Hell/Dunkel-Theme der Oberflaeche zu
+        // erkennen - weder CSS-Variable/Klasse noch postMessage/
+        // Query-Parameter, prefers-color-scheme spiegelt nur die
+        // Betriebssystem-Einstellung, nicht Symcons eigenen Umschalter).
+        $this->RegisterPropertyBoolean('LightTheme', false);
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         // Jahresvergleich-Konfiguration (Dietmar, 31.07.2026): spezifischer
@@ -1655,6 +1662,9 @@ class NRGDashboardMonitor extends IPSModule
             // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
             // (localStorage im Frontend) - Muster: InverterHubMonitor.
             'uid'      => (string) $this->InstanceID,
+            // Manuelle Theme-Angabe statt Erkennung (siehe Kommentar bei
+            // RegisterPropertyBoolean('LightTheme',...) in Create()).
+            'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,

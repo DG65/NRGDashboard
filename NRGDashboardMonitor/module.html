@@ -303,14 +303,16 @@
     // auf dunklem Hintergrund Kontrast hat) - mittleres Grau mit Alpha
     // funktioniert auf Hell UND Dunkel, betrifft alle Charts im Modul.
     var GRID_COLOR = 'rgba(128,128,128,.28)';
-    // Echte Theme-Erkennung statt Halo-Trick (Dietmar, 31.07.2026: "Kann
-    // man nicht sagen, dass der Text bei Hell Dunkelgrau und bei Dunkel
-    // Hellgrau sein soll?") - ueber prefers-color-scheme, da die Kachel
-    // keine eigene "ist WebFront gerade hell/dunkel"-Information vom
-    // Backend bekommt. Unklar, ob Symcons Hell/Dunkel-Umschalter das
-    // tatsaechlich setzt - noch unbestaetigt, ggf. Nachbesserung noetig.
+    // Manuelle Theme-Angabe statt Erkennung (Dietmar, 31.07.2026:
+    // prefers-color-scheme spiegelte Symcons eigenen Hell/Dunkel-Umschalter
+    // nachweislich NICHT wider, und Recherche ergab: Symcon bietet einer
+    // Kachel keinen Weg an, das aktuelle Theme zu erkennen - weder
+    // CSS-Variable/Klasse noch postMessage/Query-Parameter). Neue Property
+    // "LightTheme" im Formular (Darstellung), einmalig vom Nutzer gesetzt,
+    // kommt ueber lastData.lightTheme rein - gilt fuer ALLE Charts im
+    // Modul, nicht nur den Sankey.
     function isLightTheme() {
-      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+      return !!(lastData && lastData.lightTheme);
     }
     // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
     // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
@@ -2303,7 +2305,9 @@
           nodeWidth: 16,
           nodePadding: 14,
           borderWidth: 0,
-          dataLabels: { color: '#e8e8e8', style: { textOutline: 'none', fontWeight: 'normal' } },
+          // Theme-abhaengig wie beim ECharts-Sankey (Dietmar, 31.07.2026:
+          // "Deine Korrekturen solltest Du auf alle Charts anwenden").
+          dataLabels: { color: isLightTheme() ? '#333' : '#e8e8e8', style: { textOutline: 'none', fontWeight: 'normal' } },
           linkOpacity: 0.42,
           curveFactor: 0.5,
           animation: false
