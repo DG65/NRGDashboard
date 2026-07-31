@@ -138,12 +138,13 @@
     // Netz greifen die bereits im Sankey etablierten Farben dieses Moduls
     // wieder auf (COL_SOLAR/COL_BAT/COL_GRID aus module.php), Netzbezug/
     // Batterieentladung bekommen zwei neue, aber stimmige Toene.
+    // Exakte Farben von Dietmar vorgegeben (31.07.2026, SEMS-Referenz).
     var BALANCE_SERIES = [
-      { key: 'netzbezug',         name: 'Netzbezug',         color: '#E53935', panel: 'v' },
-      { key: 'batterieentladung', name: 'Batterieentladung', color: '#FFB74D', panel: 'v' },
-      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#F2C230', panel: 'both' },
-      { key: 'batterieladung',    name: 'Batterieladung',    color: '#5FCB6B', panel: 'e' },
-      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#4AA3E0', panel: 'e' }
+      { key: 'netzbezug',         name: 'Netzbezug',         color: '#BB281A', panel: 'v' },
+      { key: 'batterieentladung', name: 'Batterieentladung', color: '#F3B63F', panel: 'v' },
+      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#D1E54A', panel: 'both' },
+      { key: 'batterieladung',    name: 'Batterieladung',    color: '#ED702E', panel: 'e' },
+      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#F5DB55', panel: 'e' }
     ];
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
@@ -1229,29 +1230,44 @@
           { left: 46, right: 16, top: '50%', height: '46%' }
         ],
         title: [
+          // Verbrauch bleibt ueber dem oberen, Erzeugung wandert unter das
+          // untere Chart (Dietmar, 31.07.2026).
           { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '46%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
         tooltip: {
           trigger: 'axis', axisPointer: { type: 'line' },
           backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
           extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          // Tooltip-Box (mit Uhrzeit-Kopf) faengt in der Luecke zwischen
+          // den beiden Charts fest ein, statt dem Cursor auf der y-Achse zu
+          // folgen (Dietmar, 31.07.2026: "Uhrzeit soll in der Mitte der
+          // beiden Charts stehen") - x bleibt an der Maus, y ist fix.
+          position: function (pt, params, dom, rect, size) {
+            var midY = size.viewSize[1] * 0.46 - size.contentSize[1] / 2;
+            var x = pt[0] - size.contentSize[0] / 2;
+            x = Math.max(4, Math.min(x, size.viewSize[0] - size.contentSize[0] - 4));
+            return [x, Math.max(4, midY)];
+          },
           formatter: function (params) {
             if (!params.length) { return ''; }
-            // Je EIN Tooltip fuer oberes/unteres Panel (Dietmars Wunsch,
-            // 31.07.2026) - nur die Serien DESSELBEN Grids wie der erste
-            // Treffer zeigen (axisIndex trennt die beiden Panels zuverlaessig,
-            // auch fuer "Direktverbrauch", das in beiden Panels vorkommt -
-            // Name allein koennte die zwei Instanzen nicht unterscheiden).
-            var axIdx = params[0].axisIndex;
-            var shown = params.filter(function (p) { return p.axisIndex === axIdx; });
-            if (!shown.length) { return ''; }
-            var t = new Date(shown[0].value[0]);
-            var head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
-            return head + shown.map(function (p) {
-              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
-            }).join('');
+            // Beide Panels zeitgleich in einem Tooltip, aber inhaltlich
+            // getrennt (Dietmar, 31.07.2026: "Beide Tooltips sollen schon
+            // zeitgleich angezeigt werden, nur eben separat fuer unten und
+            // oben") - axisIndex trennt Verbrauch (0) von Erzeugung (1)
+            // zuverlaessig, auch fuer "Direktverbrauch", das in beiden
+            // Panels vorkommt und sich am Namen allein nicht unterscheiden liesse.
+            var t = new Date(params[0].value[0]);
+            var head = '<div style="font-weight:600;margin-bottom:4px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+            function block(axIdx, title) {
+              var pts = params.filter(function (p) { return p.axisIndex === axIdx; });
+              if (!pts.length) { return ''; }
+              return '<div style="font-weight:600;color:#9aa4b0;margin:4px 0 2px">' + title + '</div>' + pts.map(function (p) {
+                return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
+              }).join('');
+            }
+            return head + block(0, 'Verbrauch') + block(1, 'Erzeugung');
           }
         },
         xAxis: [
@@ -1363,19 +1379,28 @@
       // in der linken statt am Kopf der rechten Spalte). Jede Gruppe ist
       // jetzt ein eigener Flex-Block, die Reihenfolge bleibt so erhalten,
       // egal wie breit die Kachel gerade ist.
+      // Farben aus BALANCE_SERIES (einzige Quelle, gleiche Farben wie im
+      // Chart) statt hier ein zweites Mal hart zu kodieren.
+      var col = {};
+      BALANCE_SERIES.forEach(function (s) { col[s.key] = s.color; });
+      // Summen-Icons dreifarbig, exakt nach Dietmars Vorgabe (31.07.2026):
+      // Tagesverbrauch = Netzbezug+Batterieentladung+Direktverbrauch,
+      // Tagesertrag = Batterieladung+Netzeinspeisung+Direktverbrauch.
+      var gradV = 'linear-gradient(135deg,' + col.netzbezug + ',' + col.batterieentladung + ',' + col.direktverbrauch + ')';
+      var gradE = 'linear-gradient(135deg,' + col.batterieladung + ',' + col.netzeinspeisung + ',' + col.direktverbrauch + ')';
       panel.innerHTML =
         '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
         + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
         + '<div class="balCol">'
-        + row(verbrauchLabel, 'linear-gradient(135deg,#E53935,#F2C230)', verbrauch, true)
-        + row('Netzbezug', '#E53935', totals.netzbezug || 0)
-        + row('Batterieentladung', '#FFB74D', totals.batterieentladung || 0)
-        + row('Direktverbrauch', '#F2C230', totals.direktverbrauch || 0)
+        + row(verbrauchLabel, gradV, verbrauch, true)
+        + row('Netzbezug', col.netzbezug, totals.netzbezug || 0)
+        + row('Batterieentladung', col.batterieentladung, totals.batterieentladung || 0)
+        + row('Direktverbrauch', col.direktverbrauch, totals.direktverbrauch || 0)
         + '</div>'
         + '<div class="balCol">'
-        + row(ertragLabel, 'linear-gradient(135deg,#5FCB6B,#4AA3E0)', ertrag, true)
-        + row('Batterieladung', '#5FCB6B', totals.batterieladung || 0)
-        + row('Netzeinspeisung', '#4AA3E0', totals.netzeinspeisung || 0)
+        + row(ertragLabel, gradE, ertrag, true)
+        + row('Batterieladung', col.batterieladung, totals.batterieladung || 0)
+        + row('Netzeinspeisung', col.netzeinspeisung, totals.netzeinspeisung || 0)
         + '</div>'
         + '<div class="balQuote"><span>Direktverbrauchsquote</span><span><b>' + quote + ' %</b></span></div>'
         + '</div>';
