@@ -1332,12 +1332,12 @@
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
         tooltip: { show: false },
         xAxis: [
-          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisPointer: { show: true, type: 'line', lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
+          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
           // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
           // 31.07.2026) - die Zeitachse ist bereits einmal ueber dem
           // oberen Chart und im mittig fixierten Tooltip zu sehen, eine
           // zweite Reihe darunter war redundant.
-          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false }, axisPointer: { show: true, type: 'line', lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } }
+          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false }, axisPointer: { show: true, type: 'line', label: { show: false }, lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } }
         ],
         // Fixer 1-kW-Raster statt automatischer Teilung (Dietmar, 31.07.2026:
         // "jede 1 kW ein Strich, fest eingestellt"). Zwei "kW"-Beschriftungen,
