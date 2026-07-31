@@ -52,14 +52,11 @@
      Kopf sollen sich an die Tabelle anpassen, nicht die volle Kachelbreite
      nutzen). */
   .balWrap { width: fit-content; margin: 0 auto; }
-  .balHead { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-weight: 700; opacity: .85; padding: 4px 2px; user-select: none; }
-  .balHead .car { transition: transform .15s; }
-  .balHead.collapsed .car { transform: rotate(-90deg); }
+  .balHead { text-align: center; font-weight: 700; opacity: .85; padding: 4px 2px; }
   /* Buendig-Versuch mit Legende (space-between/alignBalanceBlocks) wieder
      rueckgaengig gemacht (Dietmar, 31.07.2026) - stattdessen Abstand
      zwischen den beiden Tabellenbloecken um 10px vergroessert (40->50). */
   .balBody { display: flex; flex-wrap: wrap; gap: 2px 55px; padding: 4px 2px 8px; justify-content: center; }
-  .balBody.collapsed { display: none; }
   /* Jede Spalte ist ein eigenes Grid mit fixer 50px-Luecke zwischen
      Beschriftung und rechtsbuendigem Wert (Dietmar, 31.07.2026) - die
      Zeilen selbst (.balRow) sind nur noch Gruppierung (display:contents),
@@ -128,15 +125,15 @@
     // ausdrueckliche Entscheidung). Gleiches Nachforder-/Cache-Muster wie
     // flowCache oben, eigener Key-Namensraum ("balance_<granularity>_<start>_<end>").
     var balanceCache = {}, balancePendingKey = null;
-    var balancePanelCollapsed = false;
-    // Chart-Hoehe beim Ein-/Ausklappen von Bilanz fixieren (Dietmar,
-    // 31.07.2026: "oben soll unveraendert stehen bleiben, unten soll sich
-    // das immer aendern") - ohne das wuerde #chart per flex:1 1 auto den
-    // Platz zurueckerobern, den .balBody beim Einklappen freigibt (beide
-    // sind Geschwister in derselben Flex-Spalte #chartcol). Einmalig beim
-    // ersten Bilanz-Rendern die aktuelle, natuerliche Hoehe messen und als
-    // feste Groesse einfrieren; beim Verlassen des Reiters wieder loesen,
-    // damit die anderen Reiter weiter normal wachsen.
+    // Chart-Hoehe waehrend des Bilanz-Reiters fixieren (Dietmar, 31.07.2026:
+    // "oben soll unveraendert stehen bleiben") - #chart und #balancePanel
+    // sind Geschwister in derselben Flex-Spalte #chartcol, #chart hat
+    // flex:1 1 auto und wuerde sonst bei jedem Neu-Rendern der Bilanz-Werte
+    // (unterschiedliche Zeilenanzahl je nach Granularitaet) leicht in der
+    // Hoehe schwanken. Einmalig beim ersten Bilanz-Rendern die aktuelle,
+    // natuerliche Hoehe messen und als feste Groesse einfrieren; beim
+    // Verlassen des Reiters wieder loesen, damit die anderen Reiter weiter
+    // normal wachsen.
     var balanceChartLocked = false;
     function lockChartHeightOnce() {
       if (balanceChartLocked) { return; }
@@ -1405,10 +1402,13 @@
       // Tagesertrag = Batterieladung+Netzeinspeisung+Direktverbrauch.
       var gradV = 'linear-gradient(135deg,' + col.netzbezug + ',' + col.batterieentladung + ',' + col.direktverbrauch + ')';
       var gradE = 'linear-gradient(135deg,' + col.batterieladung + ',' + col.netzeinspeisung + ',' + col.direktverbrauch + ')';
+      // Kein Ein-/Ausklappen mehr (Dietmar, 31.07.2026: "diese Funktion
+      // kann raus") - Bilanz ist immer sichtbar, "Bilanz"-Kopf ist nur
+      // noch eine statische Ueberschrift ohne Pfeil/Klick.
       panel.innerHTML =
         '<div class="balWrap">'
-        + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
-        + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
+        + '<div class="balHead">Bilanz</div>'
+        + '<div class="balBody" id="balBodyRows">'
         + '<div class="balCol">'
         + row(verbrauchLabel, gradV, verbrauch, true)
         + row('Netzbezug', col.netzbezug, totals.netzbezug || 0)
@@ -1423,16 +1423,6 @@
         + '</div>'
         + '</div>'
         + '</div>';
-      var head = document.getElementById('balHeadToggle');
-      head.classList.toggle('collapsed', balancePanelCollapsed);
-      head.onclick = function () {
-        balancePanelCollapsed = !balancePanelCollapsed;
-        document.getElementById('balBodyRows').classList.toggle('collapsed', balancePanelCollapsed);
-        head.classList.toggle('collapsed', balancePanelCollapsed);
-        // Chart-Hoehe bleibt beim Umschalten unangetastet (bereits gesperrt) -
-        // nur #chartcol darf bei Bedarf scrollen, falls die ausgeklappte
-        // Bilanz mehr Platz braucht, als noch uebrig ist.
-      };
       // Hoehe erst NACH dem tatsaechlichen Einfuegen ins DOM sperren (kurz
       // verzoegert, damit Layout/Chart-Groesse sich vorher gesetzt haben) -
       // No-Op, wenn schon gesperrt.
