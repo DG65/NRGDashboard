@@ -63,13 +63,17 @@
   /* Buendig-Versuch mit Legende (space-between/alignBalanceBlocks) wieder
      rueckgaengig gemacht (Dietmar, 31.07.2026) - stattdessen Abstand
      zwischen den beiden Tabellenbloecken um 10px vergroessert (40->50). */
-  .balBody { display: flex; flex-wrap: wrap; gap: 2px 55px; padding: 4px 2px 8px; justify-content: center; }
-  /* Jede Spalte ist ein eigenes Grid mit fixer 50px-Luecke zwischen
-     Beschriftung und rechtsbuendigem Wert (Dietmar, 31.07.2026) - die
-     Zeilen selbst (.balRow) sind nur noch Gruppierung (display:contents),
-     ihre Kinder sind direkte Grid-Items, damit alle Werte einer Spalte
-     auf gleicher Position enden statt je nach Labellaenge zu wandern. */
-  .balCol { display: grid; grid-template-columns: auto 50px auto; align-items: center; }
+  /* EIN gemeinsames Grid statt zwei unabhaengiger Spalten-Grids (Dietmar,
+     31.07.2026: "Die Zeilen sind nicht auf gleicher Hoehe, ich wuensche
+     mir hier mehr Praezision") - zwei unabhaengige Grids sizen ihre
+     Zeilen unabhaengig voneinander, kleinste Unterschiede (z.B. Quote-
+     Zeile ohne Punkt-Icon) verschieben dann die Hoehe. Jetzt bilden
+     pairRow()-Aufrufe (siehe renderBilanzPanel) EINE Grid-Zeile mit
+     7 Spalten: Label/Luecke/Wert links, Zwischenraum, Label/Luecke/Wert
+     rechts - dieselbe Grid-Zeile hoehe fuer beide Seiten ist damit
+     durch die Grid-Engine selbst garantiert, nicht mehr nur angenaehert.
+     55px-Zwischenraum ist die mittlere Spalte statt eines Flex-Gaps. */
+  .balBody { display: grid; grid-template-columns: auto 50px auto 55px auto 50px auto; justify-content: center; align-items: center; padding: 4px 2px 8px; }
   .balRow { display: contents; }
   .balRow > * { padding: 3px 0; border-bottom: 1px solid transparent; }
   .balRow.total > * { border-bottom: none; font-weight: 700; }
@@ -1487,26 +1491,23 @@
       // Autarkiequote: Anteil des Verbrauchs, der OHNE Netzbezug gedeckt
       // wurde (Direktverbrauch + Batterieentladung), Dietmar 31.07.2026.
       var autarkie = verbrauch > 0 ? Math.round(((totals.direktverbrauch || 0) + (totals.batterieentladung || 0)) / verbrauch * 100) : 0;
-      function row(name, color, val, isTotal) {
-        return '<div class="balRow' + (isTotal ? ' total' : '') + '">'
-          + '<span class="lblwrap"><span class="dot" style="background:' + color + '"></span><span class="lbl">' + name + '</span></span>'
-          + '<span></span>'
-          + '<span class="val">' + val.toFixed(2).replace('.', ',') + ' kWh</span></div>';
+      function kwh(val) { return val.toFixed(2).replace('.', ',') + ' kWh'; }
+      // Eine Grid-Zeile bildet IMMER beide Seiten zugleich ab (Dietmar,
+      // 31.07.2026: "ich wuensche mir hier mehr Praezision" - zwei
+      // unabhaengige Spalten-Grids garantierten keine exakt gleiche
+      // Zeilenhoehe). label==null -> leere Haelfte (z.B. hinter
+      // "Direktverbrauch" soll nichts stehen).
+      function half(label, color, valText) {
+        if (label == null) { return '<span class="lblwrap"></span><span></span><span class="val"></span>'; }
+        var dot = color ? '<span class="dot" style="background:' + color + '"></span>' : '';
+        return '<span class="lblwrap">' + dot + '<span class="lbl">' + label + '</span></span><span></span><span class="val">' + valText + '</span>';
       }
-      // Direktverbrauchsquote ist jetzt Teil der rechten Spalte, auf Hoehe
-      // von "Direktverbrauch" links (Dietmar, 31.07.2026), statt einer
-      // eigenen, ueber die volle Breite gespannten Zeile darunter.
-      function quoteRow(name, val) {
-        return '<div class="balRow quote">'
-          + '<span class="lblwrap"><span class="lbl">' + name + '</span></span>'
-          + '<span></span>'
-          + '<span class="val">' + val + ' %</span></div>';
-      }
-      // Leerzeile, damit "Direktverbrauchsquote" rechts auf Hoehe von
-      // "Autarkiequote" links landet - hinter "Direktverbrauch" soll
-      // nichts stehen (Dietmar, 31.07.2026).
-      function emptyRow() {
-        return '<div class="balRow"><span></span><span></span><span></span></div>';
+      function pairRow(leftLabel, leftColor, leftValText, rightLabel, rightColor, rightValText, cls) {
+        return '<div class="balRow' + (cls ? ' ' + cls : '') + '">'
+          + half(leftLabel, leftColor, leftValText)
+          + '<span class="balSpacer"></span>'
+          + half(rightLabel, rightColor, rightValText)
+          + '</div>';
       }
       // Zwei ECHTE Spalten (Verbrauch links, Erzeugung rechts), nicht ein
       // reihenweise fuellendes Grid (Fix, 31.07.2026 - Dietmars Screenshot-
@@ -1530,20 +1531,11 @@
         '<div class="balWrap">'
         + '<div class="balHead">Bilanz</div>'
         + '<div class="balBody" id="balBodyRows">'
-        + '<div class="balCol">'
-        + row(verbrauchLabel, gradV, verbrauch, true)
-        + row('Netzbezug', col.netzbezug, totals.netzbezug || 0)
-        + row('Batterieentladung', col.batterieentladung, totals.batterieentladung || 0)
-        + row('Direktverbrauch', col.direktverbrauch, totals.direktverbrauch || 0)
-        + quoteRow('Autarkiequote', autarkie)
-        + '</div>'
-        + '<div class="balCol">'
-        + row(ertragLabel, gradE, ertrag, true)
-        + row('Batterieladung', col.batterieladung, totals.batterieladung || 0)
-        + row('Netzeinspeisung', col.netzeinspeisung, totals.netzeinspeisung || 0)
-        + emptyRow()
-        + quoteRow('Direktverbrauchsquote', quote)
-        + '</div>'
+        + pairRow(verbrauchLabel, gradV, kwh(verbrauch), ertragLabel, gradE, kwh(ertrag), 'total')
+        + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung', col.batterieladung, kwh(totals.batterieladung || 0))
+        + pairRow('Batterieentladung', col.batterieentladung, kwh(totals.batterieentladung || 0), 'Netzeinspeisung', col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
+        + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), null, null, null)
+        + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
         + '</div>'
         + '</div>';
       // Hoehe erst NACH dem tatsaechlichen Einfuegen ins DOM sperren (kurz
