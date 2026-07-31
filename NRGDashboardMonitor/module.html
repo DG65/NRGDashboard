@@ -1224,17 +1224,26 @@
       }
       return best;
     }
+    // Zeilen mit (gerundet) 0.00 werden weggelassen statt "0.00 kW/kWh"
+    // anzuzeigen (Dietmar, 31.07.2026: Beispiel-Screenshot mit "Netzbezug:
+    // 0.00 kW" etc.) - Schwelle an der Anzeige-Rundung orientiert, nicht
+    // am reinen Vorzeichen-Nullwert, sonst blieben z.B. 0.001-Werte sichtbar,
+    // die als "0.00" angezeigt wuerden.
+    function balanceIsZero(v) { return Math.abs(v) < 0.005; }
     function balancePanelHtml(curve, idx, panelKey, title) {
       var list = BALANCE_SERIES.filter(function (s) { return (s.panel === panelKey || s.panel === 'both') && isVisible(s.name); });
       if (!list.length) { return ''; }
       var ts = null;
-      var lines = list.map(function (s) {
+      var lines = [];
+      list.forEach(function (s) {
         var arr = curve[s.key] || [];
         var pt = arr[idx];
         if (pt && ts === null) { ts = pt[0]; }
         var v = pt ? pt[1] : 0;
-        return '<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kW</b></div>';
+        if (balanceIsZero(v)) { return; }
+        lines.push('<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kW</b></div>');
       });
+      if (!lines.length) { return ''; }
       var head = '';
       if (ts !== null) {
         var t = new Date(ts);
@@ -1251,9 +1260,13 @@
       var list = BALANCE_SERIES.filter(function (s) { return (s.panel === panelKey || s.panel === 'both') && isVisible(s.name); });
       var b = bars[idx];
       if (!list.length || !b) { return ''; }
-      var lines = list.map(function (s) {
-        return '<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(b[s.key] || 0).toFixed(2) + ' kWh</b></div>';
+      var lines = [];
+      list.forEach(function (s) {
+        var v = b[s.key] || 0;
+        if (balanceIsZero(v)) { return; }
+        lines.push('<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kWh</b></div>');
       });
+      if (!lines.length) { return ''; }
       var head = '<div style="font-weight:600;margin-bottom:2px">' + (b.id || b.label) + '</div>';
       var sub = '<div style="font-weight:600;color:#9aa4b0;margin:0 0 2px">' + title + '</div>';
       return head + sub + lines.join('');
