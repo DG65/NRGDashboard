@@ -219,6 +219,17 @@
       b = Math.min(255, Math.round(b + (255 - b) * amt));
       return 'rgb(' + r + ',' + g + ',' + b + ')';
     }
+    // Echtes Glanzlicht statt reinem Verlauf (Dietmar, 31.07.2026: "Diese
+    // Chartflaechen koennen keine Glanzlichter bekommen?") - ein simpler
+    // 2-Stopp-Verlauf (hell oben, Grundfarbe unten) wirkt eher wie eine
+    // gleichmaessige Schattierung; ein Glanzlicht braucht eine klar
+    // abgegrenzte helle Zone, die schnell wieder abklingt. Vier Stopps:
+    // hell, hell (Zone haelt kurz), schneller Abfall, Grundfarbe.
+    function balanceGlossyStops(color) {
+      var hi = balanceLighten(color, 0.65);
+      var mid = balanceLighten(color, 0.12);
+      return [[0, hi], [0.16, hi], [0.4, mid], [1, color]];
+    }
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
     // gewuenschten Zeitraums - bewusst kein natives type=week/month-Feld,
@@ -1130,7 +1141,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0, marker: { enabled: false }, fillOpacity: 0.55,
-              fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, balanceLighten(s.color, 0.45)], [1, s.color]] }
+              fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(s.color) }
             };
           });
       }
@@ -1214,7 +1225,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), yAxis: yIdx, xAxis: xIdx,
-              color: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, balanceLighten(s.color, 0.4)], [1, s.color]] }
+              color: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(s.color) }
             };
           });
       }
@@ -1409,7 +1420,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'line', stack: stackName,
-              areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: balanceLighten(s.color, 0.45) }, { offset: 1, color: s.color }]) },
+              areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(s.color).map(function (p) { return { offset: p[0], color: p[1] }; })) },
               lineStyle: { width: 0 }, symbol: 'none', color: s.color,
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: curve[s.key] || []
@@ -1497,7 +1508,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'bar', stack: stackName,
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: balanceLighten(s.color, 0.4) }, { offset: 1, color: s.color }]),
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(s.color).map(function (p) { return { offset: p[0], color: p[1] }; })),
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: bars.map(function (b) { return b[s.key] || 0; })
             };
