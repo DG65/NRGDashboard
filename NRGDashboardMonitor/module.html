@@ -1167,6 +1167,12 @@
           // erzwingt denselben Plot-Rand fuer beide Panels, wie ECharts'
           // festes grid.left/right (58/16) das schon tat.
           marginLeft: 58, marginRight: 16,
+          // Highcharts reserviert unten sonst automatisch Platz fuer
+          // Achsen-Label/-Titel, die es hier gar nicht mehr gibt (xAxis[1]
+          // ist ohne Label/Linie) - fester, kleiner Rand gibt den Charts
+          // die ungenutzte Reserve zurueck (Dietmar, 31.07.2026: "min.
+          // 50 px mehr Platz nach unten").
+          marginBottom: 8, spacingBottom: 0,
           events: { render: function () { renderBalancePanelTitles(this, 'kW'); } }
         },
         title: { text: null },
