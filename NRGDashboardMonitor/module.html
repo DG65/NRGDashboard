@@ -1032,7 +1032,7 @@
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
-            return { name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0.7, marker: { enabled: false }, fillOpacity: 0.55 };
+            return { name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 1, marker: { enabled: false }, fillOpacity: 0.55 };
           });
       }
       function sumSeries(keys, yIdx, xIdx, nm) {
@@ -1049,15 +1049,20 @@
 
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
-        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: {
+          backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {},
+          events: { render: function () { renderBalancePanelTitles(this); } }
+        },
         title: { text: null },
         xAxis: [
-          { type: 'datetime', top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
-          { type: 'datetime', top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          // KEINE vertikalen Gitterlinien (Muster: ECharts-Variante,
+          // splitLine:{show:false} dort) - nur die horizontalen der y-Achse.
+          { type: 'datetime', top: '4%', height: '40%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
+          { type: 'datetime', top: '50%', height: '40%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ],
         yAxis: [
-          { title: { text: 'Verbrauch (kW)', style: { color: '#9aa4b0' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: 'Erzeugung (kW)', style: { color: '#9aa4b0' } }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: null }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1078,12 +1083,37 @@
       renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
     }
 
+    // Zentrierte "Verbrauch"/"Erzeugung"-Beschriftung ueber jedem Panel -
+    // Highcharts-Pendant zu ECharts' title-Array (Dietmars Wunsch, 31.07.2026:
+    // Highcharts-Variante an die ECharts-Optik angleichen, die ECharts-
+    // Fassung zeigt diese Beschriftung zentriert oberhalb jedes Panels statt
+    // als seitliche Achsenbeschriftung). Alte Labels vor jedem Redraw
+    // entfernen, sonst haeufen sich beim Wiederholen von setOption()/
+    // Resize Karteileichen an.
+    function renderBalancePanelTitles(c) {
+      if (c.__balLabels) { c.__balLabels.forEach(function (el) { el.destroy(); }); }
+      c.__balLabels = [];
+      if (!c.yAxis || c.yAxis.length < 2) { return; }
+      var midX = c.plotLeft + c.plotWidth / 2;
+      var style = { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' };
+      c.__balLabels.push(
+        c.renderer.text('Verbrauch', midX, c.yAxis[0].top + 12, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+      );
+      c.__balLabels.push(
+        c.renderer.text('Erzeugung', midX, c.yAxis[1].top + 12, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+      );
+    }
+
     function renderBalanceBarsHighcharts(el, bars, granularity) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
       renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
 
       var categories = bars.map(function (b) { return b.label; });
       var fullLabels = bars.map(function (b) { return b.id; });
+      // Rotationskriterium an ECharts-Fassung angeglichen (dort: maxLen>2
+      // Zeichen statt Balkenanzahl>12 - Monatsnamen/zweistellige Tage
+      // drehen sich damit in beiden Engines gleich).
+      var maxLen = Math.max.apply(null, categories.map(function (c) { return String(c).length; }).concat([1]));
 
       function seriesFor(panel, yIdx, xIdx) {
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
@@ -1106,15 +1136,18 @@
         .concat(seriesFor('e', 1, 1));
 
       chart = Highcharts.chart(el, {
-        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: {
+          backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {},
+          events: { render: function () { renderBalancePanelTitles(this); } }
+        },
         title: { text: null },
         xAxis: [
-          { categories: categories, top: '4%', height: '40%', labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-          { categories: categories, top: '50%', height: '40%', labels: { rotation: categories.length > 12 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+          { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+          { categories: categories, top: '50%', height: '40%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         yAxis: [
-          { title: { text: 'Verbrauch (kWh)', style: { color: '#9aa4b0' } }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: 'Erzeugung (kWh)', style: { color: '#9aa4b0' } }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
+          { title: { text: null }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
