@@ -15,7 +15,7 @@
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
   button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
   button.tab:disabled { opacity: .3; cursor: default; }
-  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; }
   button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   button.nav:disabled { opacity: .35; cursor: default; }
   #quick { display: flex; gap: 4px; }
@@ -33,7 +33,7 @@
      das sich nicht zuverlaessig von einem rein programmatisch (beim
      Wiederherstellen der Sichtbarkeit) ausgeloesten Zustand unterscheiden
      laesst. Eigene Legende = volle Kontrolle, kein Ereignis-Ratespiel. */
-  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 4px 0 0; font-size: 11px; }
+  #legendRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: -6px; font-size: 11px; }
   .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; }
   .legItem.off { opacity: .35; }
   .legItem .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
@@ -111,6 +111,28 @@
     // flowCache oben, eigener Key-Namensraum ("balance_<granularity>_<start>_<end>").
     var balanceCache = {}, balancePendingKey = null;
     var balancePanelCollapsed = false;
+    // Chart-Hoehe beim Ein-/Ausklappen von Bilanz fixieren (Dietmar,
+    // 31.07.2026: "oben soll unveraendert stehen bleiben, unten soll sich
+    // das immer aendern") - ohne das wuerde #chart per flex:1 1 auto den
+    // Platz zurueckerobern, den .balBody beim Einklappen freigibt (beide
+    // sind Geschwister in derselben Flex-Spalte #chartcol). Einmalig beim
+    // ersten Bilanz-Rendern die aktuelle, natuerliche Hoehe messen und als
+    // feste Groesse einfrieren; beim Verlassen des Reiters wieder loesen,
+    // damit die anderen Reiter weiter normal wachsen.
+    var balanceChartLocked = false;
+    function lockChartHeightOnce() {
+      if (balanceChartLocked) { return; }
+      var elC = document.getElementById('chart');
+      var h = elC.getBoundingClientRect().height;
+      if (h > 40) {
+        elC.style.flex = '0 0 ' + h + 'px';
+        balanceChartLocked = true;
+      }
+    }
+    function unlockChartHeight() {
+      document.getElementById('chart').style.flex = '';
+      balanceChartLocked = false;
+    }
     // Eigene Farbpalette (Dietmars Wunsch: "die Steuerflaechen moechte ich
     // unsere nehmen" - NICHT die GoodWe-SEMS-Farben kopieren). Solar/Batterie/
     // Netz greifen die bereits im Sankey etablierten Farben dieses Moduls
@@ -1192,30 +1214,23 @@
       }
 
       // Summenlinie je Panel - bewusst NICHT ueber isVisible gefiltert, bleibt
-      // immer sichtbar (die Kontur aus den SEMS-Screenshots).
-      function sumSeries(keys, panelIdx) {
-        var byTs = {};
-        keys.forEach(function (k) {
-          (curve[k] || []).forEach(function (p) { byTs[p[0]] = (byTs[p[0]] || 0) + p[1]; });
-        });
-        var pts = Object.keys(byTs).map(function (t) { return [Number(t), byTs[t]]; }).sort(function (a, b) { return a[0] - b[0]; });
-        return {
-          name: panelIdx === 0 ? '__totalV' : '__totalE', type: 'line', symbol: 'none', silent: true,
-          lineStyle: { width: 1.5, color: 'rgba(220,226,232,.6)' },
-          xAxisIndex: panelIdx, yAxisIndex: panelIdx, data: pts, tooltip: { show: false }
-        };
-      }
+      // Summenlinien-Kontur (sumSeries) entfernt (Dietmar, 31.07.2026: "Die
+      // duennen Linien braucht es nicht") - eine voll gestapelte Flaeche
+      // zeigt ihre eigene Summe ohnehin schon als obere Kontur, die
+      // zusaetzliche graue Linie war redundant.
 
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        // Grids bis fast an den unteren Rand gezogen (Dietmar: "Legende
+        // koennte weiter oben stehen") - weniger Leerraum vor #legendRow.
         grid: [
           { left: 46, right: 16, top: 28, height: '40%' },
-          { left: 46, right: 16, top: '52%', height: '40%' }
+          { left: 46, right: 16, top: '50%', height: '46%' }
         ],
         title: [
           { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } },
-          { text: 'Erzeugung', left: 'center', top: '47%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
+          { text: 'Erzeugung', left: 'center', top: '46%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
         tooltip: {
@@ -1223,7 +1238,14 @@
           backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
           extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
           formatter: function (params) {
-            var shown = params.filter(function (p) { return p.seriesName.indexOf('__total') !== 0; });
+            if (!params.length) { return ''; }
+            // Je EIN Tooltip fuer oberes/unteres Panel (Dietmars Wunsch,
+            // 31.07.2026) - nur die Serien DESSELBEN Grids wie der erste
+            // Treffer zeigen (axisIndex trennt die beiden Panels zuverlaessig,
+            // auch fuer "Direktverbrauch", das in beiden Panels vorkommt -
+            // Name allein koennte die zwei Instanzen nicht unterscheiden).
+            var axIdx = params[0].axisIndex;
+            var shown = params.filter(function (p) { return p.axisIndex === axIdx; });
             if (!shown.length) { return ''; }
             var t = new Date(shown[0].value[0]);
             var head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
@@ -1240,10 +1262,7 @@
           { gridIndex: 0, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } },
           { gridIndex: 1, type: 'value', name: 'kW', splitLine: { lineStyle: { color: GRID_COLOR } } }
         ],
-        series: [sumSeries(['netzbezug', 'batterieentladung', 'direktverbrauch'], 0)]
-          .concat(seriesFor('v', 'v'))
-          .concat([sumSeries(['direktverbrauch', 'batterieladung', 'netzeinspeisung'], 1)])
-          .concat(seriesFor('e', 'e'))
+        series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
 
       renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
@@ -1366,7 +1385,14 @@
         balancePanelCollapsed = !balancePanelCollapsed;
         document.getElementById('balBodyRows').classList.toggle('collapsed', balancePanelCollapsed);
         head.classList.toggle('collapsed', balancePanelCollapsed);
+        // Chart-Hoehe bleibt beim Umschalten unangetastet (bereits gesperrt) -
+        // nur #chartcol darf bei Bedarf scrollen, falls die ausgeklappte
+        // Bilanz mehr Platz braucht, als noch uebrig ist.
       };
+      // Hoehe erst NACH dem tatsaechlichen Einfuegen ins DOM sperren (kurz
+      // verzoegert, damit Layout/Chart-Groesse sich vorher gesetzt haben) -
+      // No-Op, wenn schon gesperrt.
+      setTimeout(lockChartHeightOnce, 30);
     }
 
     // Energiebilanz (Sankey) - Datengrundlage kommt fertig berechnet von
@@ -1835,7 +1861,9 @@
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {
         if (btn.disabled) { return; }
+        var leavingBalance = (curTab === 'balance' && btn.getAttribute('data-tab') !== 'balance');
         curTab = btn.getAttribute('data-tab');
+        if (leavingBalance) { unlockChartHeight(); }
         Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) { b.classList.toggle('active', b === btn); });
         // Batterie UND Strompreis haben keine Energie-Ansichten (Woche/
         // Monat/Jahr/Gesamt/Benutzerdefiniert) - die Auswahl ist dort ohne
