@@ -1624,8 +1624,14 @@
         balancePanelCollapsed = !balancePanelCollapsed;
         document.getElementById('balBodyRows').classList.toggle('collapsed', balancePanelCollapsed);
         head.classList.toggle('collapsed', balancePanelCollapsed);
-        // Keine Hoehen-Sperre mehr fuer #chart - es soll sich den frei
-        // werdenden bzw. wieder benoetigten Platz von selbst zurueckholen.
+        // Keine Hoehen-Sperre mehr fuer #chart - die CSS-Box von #chart
+        // waechst/schrumpft zwar sofort mit (flex:1 1 auto), aber ECharts/
+        // Highcharts passen ihre interne Canvas-/SVG-Groesse nicht von
+        // selbst an eine veraenderte Container-Groesse an - dafuer braucht
+        // es explizit chart.resize()/reflow() (sizeChart(), wie beim
+        // Fenster-Resize weiter unten). Kurze Verzoegerung, damit das CSS-
+        // Layout (Flex-Neuverteilung) vorher abgeschlossen ist.
+        if (chart) { setTimeout(sizeChart, 60); }
       };
     }
 
