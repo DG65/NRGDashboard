@@ -1103,28 +1103,26 @@
           // KEINE vertikalen Gitterlinien (Muster: ECharts-Variante,
           // splitLine:{show:false} dort) - nur die horizontalen der y-Achse.
           { type: 'datetime', top: '4%', height: '40%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' }, labels: { enabled: false } },
-          { type: 'datetime', top: '50%', height: '40%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
+          { type: 'datetime', top: '50%', height: '46%', gridLineWidth: 0, crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' } }
         ],
         yAxis: [
           { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
-        tooltip: {
-          shared: true, useHTML: true,
-          formatter: function () {
-            var pts = (this.points || []).filter(function (p) { return p.series.name.indexOf('__total') !== 0; });
-            if (!pts.length) { return false; }
-            var t = new Date(pts[0].x);
-            var lines = ['<b>' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</b>'];
-            pts.forEach(function (p) { lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + Number(p.y).toFixed(2) + ' kW</b></div>'); });
-            return lines.join('');
-          }
-        },
+        // Kein eingebautes Tooltip mehr (Dietmar, 31.07.2026: dasselbe
+        // Mousemove-Tooltip-Paar wie ECharts uebernehmen, siehe
+        // balanceWireHoverHighcharts weiter unten) - crosshair bleibt rein
+        // visuell ueber xAxis.crosshair oben aktiv.
+        tooltip: { enabled: false },
         series: series
       });
       chartEngine = 'highcharts';
+      chart.__balCurve = curve;
+      chart.__balBars = null;
+      chart.__balMode = 'day';
+      balanceWireHoverHighcharts(el, chart);
       renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
     }
 
@@ -1141,11 +1139,14 @@
       if (!c.yAxis || c.yAxis.length < 2) { return; }
       var midX = c.plotLeft + c.plotWidth / 2;
       var style = { color: '#9aa4b0', fontSize: '12px', fontWeight: '600' };
+      // "Verbrauch" bleibt ueber dem oberen, "Erzeugung" wandert unter das
+      // untere Chart (Dietmar, 31.07.2026 - an ECharts angeglichen, wo
+      // "Erzeugung" bereits unterhalb statt oberhalb des Panels steht).
       c.__balLabels.push(
-        c.renderer.text('Verbrauch', midX, c.yAxis[0].top + 12, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+        c.renderer.text('Verbrauch', midX, c.yAxis[0].top - 4, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
       );
       c.__balLabels.push(
-        c.renderer.text('Erzeugung', midX, c.yAxis[1].top + 12, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+        c.renderer.text('Erzeugung', midX, c.yAxis[1].top + c.yAxis[1].len + 16, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
       );
     }
 
@@ -1154,7 +1155,6 @@
       renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
 
       var categories = bars.map(function (b) { return b.label; });
-      var fullLabels = bars.map(function (b) { return b.id; });
       // Rotationskriterium an ECharts-Fassung angeglichen (dort: maxLen>2
       // Zeichen statt Balkenanzahl>12 - Monatsnamen/zweistellige Tage
       // drehen sich damit in beiden Engines gleich).
@@ -1178,28 +1178,24 @@
         title: { text: null },
         xAxis: [
           { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-          { categories: categories, top: '50%', height: '40%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+          { categories: categories, top: '50%', height: '46%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         yAxis: [
           { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR },
-          { title: { text: null }, top: '50%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
+          { title: { text: null }, top: '50%', height: '46%', gridLineWidth: 1, gridLineColor: GRID_COLOR }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
-        tooltip: {
-          shared: true, useHTML: true,
-          formatter: function () {
-            var pts = (this.points || []).filter(function (p) { return p.series.name.indexOf('__total') !== 0; });
-            if (!pts.length) { return false; }
-            var i = pts[0].point.index;
-            var lines = ['<b>' + (fullLabels[i] || categories[i]) + '</b>'];
-            pts.forEach(function (p) { lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + Number(p.y).toFixed(2) + ' kWh</b></div>'); });
-            return lines.join('');
-          }
-        },
+        // Kein eingebautes Tooltip mehr (Dietmar, 31.07.2026), siehe
+        // renderBalanceDayHighcharts weiter oben fuer die Begruendung.
+        tooltip: { enabled: false },
         series: series
       });
       chartEngine = 'highcharts';
+      chart.__balCurve = null;
+      chart.__balBars = bars;
+      chart.__balMode = 'bars';
+      balanceWireHoverHighcharts(el, chart);
 
       var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
       bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
@@ -1269,48 +1265,72 @@
       tipEl.style.left = left + 'px';
       tipEl.style.top = t + 'px';
     }
-    function balanceWireHover(chartEl, chartInst) {
-      if (!chartInst.__balHoverWired) {
-        chartInst.__balHoverWired = true;
-        var tipV = document.createElement('div'); tipV.className = 'balTip';
-        var tipE = document.createElement('div'); tipE.className = 'balTip';
-        chartEl.appendChild(tipV); chartEl.appendChild(tipE);
-        function hide() { tipV.style.display = 'none'; tipE.style.display = 'none'; }
-        function move(e) {
-          // chartInst.__balMode/__balCurve/__balBars werden bei JEDEM
-          // Rendern aktuell gehalten (siehe renderBalanceDay/renderBalanceBars)
-          // - nicht als Closure einfrieren, sonst zeigt der Tooltip nach
-          // einem Tages-/Zeitraumwechsel noch die alten Werte.
-          var mode = chartInst.__balMode;
-          if (!mode) { hide(); return; }
-          var w = chartEl.clientWidth, h = chartEl.clientHeight;
-          var x = e.offsetX, y = e.offsetY;
-          var left = 58, right = w - 16, top = 28, bottom = h * 0.96;
-          if (x < left || x > right || y < top || y > bottom) { hide(); return; }
-          var htmlV = '', htmlE = '';
-          if (mode === 'day') {
-            var curve = chartInst.__balCurve;
-            var refArr = null;
-            if (curve) { Object.keys(curve).some(function (k) { if (curve[k] && curve[k].length) { refArr = curve[k]; return true; } return false; }); }
-            if (!refArr || !refArr.length) { hide(); return; }
-            var ts = chartInst.convertFromPixel({ xAxisIndex: 0 }, x);
-            var idx = balanceNearestIndex(refArr, ts);
-            htmlV = balancePanelHtml(curve, idx, 'v', 'Verbrauch');
-            htmlE = balancePanelHtml(curve, idx, 'e', 'Erzeugung');
-          } else if (mode === 'bars') {
-            var bars = chartInst.__balBars;
-            if (!bars || !bars.length) { hide(); return; }
-            var rawIdx = chartInst.convertFromPixel({ xAxisIndex: 0 }, x);
-            var bidx = Math.max(0, Math.min(bars.length - 1, Math.round(rawIdx)));
-            htmlV = balancePanelHtmlBars(bars, bidx, 'v', 'Verbrauch');
-            htmlE = balancePanelHtmlBars(bars, bidx, 'e', 'Erzeugung');
-          }
-          if (htmlV) { tipV.innerHTML = htmlV; tipV.style.display = 'block'; balancePositionTip(tipV, x, w, top, top + h * 0.40); } else { tipV.style.display = 'none'; }
-          if (htmlE) { tipE.innerHTML = htmlE; tipE.style.display = 'block'; balancePositionTip(tipE, x, w, h * 0.50, h * 0.96); } else { tipE.style.display = 'none'; }
-        }
-        chartInst.getZr().on('mousemove', move);
-        chartInst.getZr().on('globalout', hide);
+    // Gemeinsamer Kern fuer beide Engines: liest chartInst.__balMode/
+    // __balCurve/__balBars (bei JEDEM Rendern aktuell gehalten, siehe
+    // renderBalanceDay(Highcharts)/renderBalanceBars(Highcharts) - nicht
+    // als Closure einfrieren, sonst zeigt der Tooltip nach einem Tages-/
+    // Zeitraumwechsel noch die alten Werte) und befuellt/positioniert die
+    // zwei Schilder. "toValueFn" macht den einzigen Engine-Unterschied
+    // aus: Pixel-x -> Zeitstempel/Kategorie-Index.
+    function balanceHoverAt(chartEl, tipV, tipE, x, y, toValueFn, mode, curve, bars) {
+      var w = chartEl.clientWidth, h = chartEl.clientHeight;
+      var left = 58, right = w - 16, top = 28, bottom = h * 0.96;
+      function hideBoth() { tipV.style.display = 'none'; tipE.style.display = 'none'; }
+      if (!mode || x < left || x > right || y < top || y > bottom) { hideBoth(); return; }
+      var htmlV = '', htmlE = '';
+      if (mode === 'day') {
+        var refArr = null;
+        if (curve) { Object.keys(curve).some(function (k) { if (curve[k] && curve[k].length) { refArr = curve[k]; return true; } return false; }); }
+        if (!refArr || !refArr.length) { hideBoth(); return; }
+        var ts = toValueFn(x);
+        var idx = balanceNearestIndex(refArr, ts);
+        htmlV = balancePanelHtml(curve, idx, 'v', 'Verbrauch');
+        htmlE = balancePanelHtml(curve, idx, 'e', 'Erzeugung');
+      } else if (mode === 'bars') {
+        if (!bars || !bars.length) { hideBoth(); return; }
+        var rawIdx = toValueFn(x);
+        var bidx = Math.max(0, Math.min(bars.length - 1, Math.round(rawIdx)));
+        htmlV = balancePanelHtmlBars(bars, bidx, 'v', 'Verbrauch');
+        htmlE = balancePanelHtmlBars(bars, bidx, 'e', 'Erzeugung');
       }
+      if (htmlV) { tipV.innerHTML = htmlV; tipV.style.display = 'block'; balancePositionTip(tipV, x, w, top, top + h * 0.40); } else { tipV.style.display = 'none'; }
+      if (htmlE) { tipE.innerHTML = htmlE; tipE.style.display = 'block'; balancePositionTip(tipE, x, w, h * 0.50, h * 0.96); } else { tipE.style.display = 'none'; }
+    }
+    function balanceCreateTips(chartEl) {
+      var tipV = document.createElement('div'); tipV.className = 'balTip';
+      var tipE = document.createElement('div'); tipE.className = 'balTip';
+      chartEl.appendChild(tipV); chartEl.appendChild(tipE);
+      return { tipV: tipV, tipE: tipE };
+    }
+    function balanceWireHover(chartEl, chartInst) {
+      if (chartInst.__balHoverWired) { return; }
+      chartInst.__balHoverWired = true;
+      var tips = balanceCreateTips(chartEl);
+      function hide() { tips.tipV.style.display = 'none'; tips.tipE.style.display = 'none'; }
+      chartInst.getZr().on('mousemove', function (e) {
+        balanceHoverAt(chartEl, tips.tipV, tips.tipE, e.offsetX, e.offsetY,
+          function (x) { return chartInst.convertFromPixel({ xAxisIndex: 0 }, x); },
+          chartInst.__balMode, chartInst.__balCurve, chartInst.__balBars);
+      });
+      chartInst.getZr().on('globalout', hide);
+    }
+    // Highcharts-Pendant zu balanceWireHover - eigene Pixel-Normalisierung
+    // (chart.pointer.normalize) und Achsen-Konvertierung (axis.toValue),
+    // sonst identische Logik/Optik (Dietmar, 31.07.2026: "das ganze Design
+    // auf Highcharts uebertragen").
+    function balanceWireHoverHighcharts(chartEl, chartInst) {
+      if (chartInst.__balHoverWired) { return; }
+      chartInst.__balHoverWired = true;
+      var tips = balanceCreateTips(chartEl);
+      function hide() { tips.tipV.style.display = 'none'; tips.tipE.style.display = 'none'; }
+      function move(e) {
+        var n = chartInst.pointer.normalize(e);
+        balanceHoverAt(chartEl, tips.tipV, tips.tipE, n.chartX, n.chartY,
+          function (x) { return chartInst.xAxis[0].toValue(x); },
+          chartInst.__balMode, chartInst.__balCurve, chartInst.__balBars);
+      }
+      Highcharts.addEvent(chartInst.container, 'mousemove', move);
+      Highcharts.addEvent(chartInst.container, 'mouseleave', hide);
     }
 
     function renderBalanceDay(el, curve, totals) {
