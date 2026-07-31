@@ -1208,7 +1208,7 @@
         // geblieben).
         yAxis: [
           { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
-          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 14 } }
+          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 19 } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1259,10 +1259,10 @@
       // zentriert (top + halbe Panelhoehe).
       if (unit) {
         c.__balLabels.push(
-          c.renderer.text(unit, 33, c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, 28,c.yAxis[0].top + c.yAxis[0].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
         c.__balLabels.push(
-          c.renderer.text(unit, 33, c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
+          c.renderer.text(unit, 28,c.yAxis[1].top + c.yAxis[1].len / 2, false).css(style).attr({ align: 'left', zIndex: 6 }).add()
         );
       }
     }
@@ -1327,7 +1327,7 @@
         // angeglichen.
         yAxis: [
           { title: { text: null }, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 5 } },
-          { title: { text: null }, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 14 } }
+          { title: { text: null }, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 19 } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
