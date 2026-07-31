@@ -205,6 +205,20 @@
       { key: 'batterieladung',    name: 'Batterieladung',    color: '#945200', panel: 'e' },
       { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' }
     ];
+    // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
+    // 31.07.2026: "Koennte man die Chartflaechen etwas plastischer
+    // darstellen? Vielleicht auch mit Glanzlichtern?") - je Serie ein
+    // vertikaler Verlauf von einem aufgehellten Ton oben zur Grundfarbe
+    // unten, wie ein leicht glaenzendes Glas/Kunststoff-Band. amt=0..1
+    // steuert, wie stark Richtung Weiss aufgehellt wird.
+    function balanceLighten(hex, amt) {
+      var c = hex.replace('#', '');
+      var r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+      r = Math.min(255, Math.round(r + (255 - r) * amt));
+      g = Math.min(255, Math.round(g + (255 - g) * amt));
+      b = Math.min(255, Math.round(b + (255 - b) * amt));
+      return 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
     // gewuenschten Zeitraums - bewusst kein natives type=week/month-Feld,
@@ -1114,7 +1128,10 @@
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
-            return { name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0, marker: { enabled: false }, fillOpacity: 0.55 };
+            return {
+              name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 0, marker: { enabled: false }, fillOpacity: 0.55,
+              fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, balanceLighten(s.color, 0.45)], [1, s.color]] }
+            };
           });
       }
       // Duenne Summenlinien-Kontur entfernt (Dietmar, 31.07.2026: "Alle
@@ -1195,7 +1212,10 @@
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
-            return { name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), color: s.color, yAxis: yIdx, xAxis: xIdx };
+            return {
+              name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), yAxis: yIdx, xAxis: xIdx,
+              color: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: [[0, balanceLighten(s.color, 0.4)], [1, s.color]] }
+            };
           });
       }
       // Duenne Summenlinien-Kontur entfernt (Dietmar, 31.07.2026).
@@ -1388,7 +1408,8 @@
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
             return {
-              name: s.name, type: 'line', stack: stackName, areaStyle: { opacity: .55 },
+              name: s.name, type: 'line', stack: stackName,
+              areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: balanceLighten(s.color, 0.45) }, { offset: 1, color: s.color }]) },
               lineStyle: { width: 0 }, symbol: 'none', color: s.color,
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: curve[s.key] || []
@@ -1475,7 +1496,8 @@
           .filter(function (s) { return isVisible(s.name); })
           .map(function (s) {
             return {
-              name: s.name, type: 'bar', stack: stackName, color: s.color,
+              name: s.name, type: 'bar', stack: stackName,
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: balanceLighten(s.color, 0.4) }, { offset: 1, color: s.color }]),
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: bars.map(function (b) { return b[s.key] || 0; })
             };
