@@ -297,7 +297,12 @@
     var MPPT_COLORS = ['#e53935', '#43a047', '#1e88e5', '#fb8c00'];
     // Zarte Gitterlinien-Farbe fuer Zeit- und linke Achse (Dietmars Wunsch,
     // 28.07.2026) - in beiden Engines identisch verwendet.
-    var GRID_COLOR = 'rgba(255,255,255,.09)';
+    // Theme-neutrales Grau statt reinem Weiss-mit-Transparenz (Dietmar,
+    // 31.07.2026, Screenshot-Vergleich Hell/Dunkel: die Gitternetzlinien
+    // waren im Hellmodus praktisch unsichtbar, da rgba(255,255,255,.09) nur
+    // auf dunklem Hintergrund Kontrast hat) - mittleres Grau mit Alpha
+    // funktioniert auf Hell UND Dunkel, betrifft alle Charts im Modul.
+    var GRID_COLOR = 'rgba(128,128,128,.28)';
     // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
     // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
     // schmaler sichtbarer Slider unten als "Legende" fuer den Zoom-Zustand
@@ -1346,12 +1351,20 @@
     function renderYearCompareECharts(el, data, unit, values) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      // Jahreslinien ueber (hoeheres z als) Mittelwert/Erwartung zeichnen
+      // (Dietmar, 31.07.2026, Screenshot-Befund: bei nur 1-2 Jahren
+      // Historie faellt der Mittelwert oft exakt mit der einzigen
+      // vorhandenen Jahreslinie zusammen - lag er oben, verdeckte die graue
+      // Linie die bunte komplett, es war nur noch grau zu sehen. Jetzt
+      // liegen die farbigen Jahreslinien vorne, Mittelwert/Erwartung als
+      // duennere Referenz dahinter - "sollte im Hintergrund stehen, damit
+      // man die echten Werte sieht").
       var series = data.years.map(function (y) {
-        return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(y), data: values[y] };
+        return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(y), data: values[y], z: 10 };
       });
-      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 6, lineStyle: { width: 3 }, color: '#8a919c', data: values.mittelwert, z: 10 });
+      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: '#8a919c', data: values.mittelwert, z: 2 });
       if (values.expected) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 2, type: 'dashed' }, color: '#aeb4bd', data: values.expected, z: 9 });
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 1.5, type: 'dashed' }, color: '#aeb4bd', data: values.expected, z: 1 });
       }
       chart.setOption({
         backgroundColor: 'transparent',
@@ -1375,14 +1388,18 @@
     }
     function renderYearCompareHighcharts(el, data, unit, values) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      // Reihenfolge/zIndex wie in der ECharts-Fassung (siehe dortiger
+      // Kommentar): Jahreslinien vorne, Mittelwert/Erwartung als duennere
+      // Referenz dahinter, sonst verdeckt der Mittelwert bei wenigen
+      // Jahren die farbige Jahreslinie komplett (Dietmar, 31.07.2026).
       var series = data.years.filter(function (y) { return isVisible(String(y)); }).map(function (y) {
-        return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(y), data: values[y] };
+        return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(y), data: values[y], zIndex: 10 };
       });
       if (isVisible('Mittelwert')) {
-        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 4 }, lineWidth: 3, color: '#8a919c', data: values.mittelwert, zIndex: 10 });
+        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: '#8a919c', data: values.mittelwert, zIndex: 2 });
       }
       if (values.expected && isVisible('Erwartung')) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 2, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 9 });
+        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 1.5, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 1 });
       }
       chart = Highcharts.chart(el, {
         chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
