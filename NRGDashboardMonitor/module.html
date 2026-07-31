@@ -2099,9 +2099,18 @@
       // Highcharts platziert von sich aus einwaerts, das hier ist das
       // ECharts-Pendant dazu (Dietmars Wunsch, 28.07.2026).
       var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
+      // 'insideLeft' ankert am LINKEN Rand des (schmalen, 16px) Knotens und
+      // laesst den Text davon nach RECHTS auswachsen - bei der letzten
+      // Spalte lief das ueber den Knoten hinaus rechts aus dem Diagramm
+      // heraus, das Chart musste dafuer zusaetzlichen leeren Rand
+      // reservieren (Dietmar, 31.07.2026: "Beschriftung soll innerhalb des
+      // Charts liegen und das Chart soll bis fast zum rechten Kachelrand
+      // gehen"). 'insideRight' ankert stattdessen am RECHTEN Rand des
+      // Knotens, der Text waechst nach LINKS - bleibt damit innerhalb der
+      // bereits genutzten Diagrammflaeche.
       var nodes = sankeyNodesTopDown(flow).map(function (n) {
         var isLast = n.column === maxColumn;
-        return { name: n.key, depth: n.column, itemStyle: { color: n.color }, label: isLast ? { position: 'insideLeft' } : {} };
+        return { name: n.key, depth: n.column, itemStyle: { color: n.color }, label: isLast ? { position: 'insideRight' } : {} };
       });
       var links = (flow.links || []).map(function (l) { return { source: l.from, target: l.to, value: l.value }; });
       chart.setOption({
@@ -2127,10 +2136,20 @@
         },
         series: [{
           type: 'sankey',
+          // Nahezu bis zum Kachelrand statt ECharts' Standard-Rand
+          // (Dietmar, 31.07.2026: "das Chart soll bis fast zum rechten
+          // Kachelrand gehen").
+          left: 4, right: 4, top: 10, bottom: 10,
           data: nodes,
           links: links,
           emphasis: { focus: 'adjacency' },
-          label: { color: '#e8e8e8', formatter: function (p) { return lk.label[p.name] || p.name; } },
+          // Weisser Text MIT dunklem Halo statt reinem Hell-auf-Dunkel-Grau
+          // (Dietmar, 31.07.2026: "Schrift ist auf Weiss schlecht zu
+          // erkennen") - textBorderColor/-Width sorgt fuer Kontrast
+          // unabhaengig davon, ob dahinter eine helle Kachel-Seite oder ein
+          // dunkler/heller Knoten/Fluss liegt, statt auf eine einzelne
+          // Textfarbe zu setzen, die nur auf EINEM Hintergrund funktioniert.
+          label: { color: '#fff', textBorderColor: 'rgba(0,0,0,.55)', textBorderWidth: 3, formatter: function (p) { return lk.label[p.name] || p.name; } },
           lineStyle: { color: 'gradient', opacity: 0.42, curveness: 0.5 },
           // layoutIterations:0 - ECharts' Standard (32 Iterationen) sortiert
           // Knoten zur Kreuzungsminimierung eigenmaechtig um und ignoriert
