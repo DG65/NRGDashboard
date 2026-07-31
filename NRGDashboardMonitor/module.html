@@ -1311,8 +1311,15 @@
         // wie in der Tagesansicht 53.5%/46.5%, Balkenbeschriftung unten
         // bleibt aber sichtbar, anders als die Uhrzeit bei Tag).
         xAxis: [
-          { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-          { categories: categories, top: '53.5%', height: '46.5%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0 }, crosshair: { color: 'rgba(255,255,255,.08)' } }
+          // Beschriftung vom unteren zum oberen Chart verschoben, analog
+          // zur Uhrzeit in der Tagesansicht (Dietmar, 31.07.2026: "Die
+          // Timeline beim unteren Chart entfernen und an das obere Chart
+          // anhaengen") - unteres Panel verliert dafuer Achsenlinie/
+          // Tickmarken komplett (lineWidth/tickLength:0), sonst bliebe
+          // dort eine ungenutzte nackte Achse stehen (wie schon bei der
+          // "Zeitleiste"-Korrektur im Tages-View).
+          { categories: categories, top: '4%', height: '40%', gridLineWidth: 0, labels: { rotation: maxLen > 2 ? -45 : 0, style: { color: '#9aa4b0' } }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+          { categories: categories, top: '53.5%', height: '46.5%', gridLineWidth: 0, lineWidth: 0, tickLength: 0, labels: { enabled: false }, crosshair: { color: 'rgba(255,255,255,.08)' } }
         ],
         // "kWh"-Achsenname kommt jetzt ueber renderBalancePanelTitles()
         // statt yAxis.title (Dietmar, 31.07.2026 - siehe Begruendung in
