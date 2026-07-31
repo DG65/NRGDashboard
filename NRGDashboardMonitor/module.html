@@ -163,17 +163,18 @@
     // Exakte Farben von Dietmar vorgegeben (31.07.2026, SEMS-Referenz).
     // Reihenfolge bestimmt zugleich die Stapel-Position in den Charts
     // (seriesFor() reicht BALANCE_SERIES-Filter direkt an die Chart-Serien
-    // durch) - "direktverbrauch" bewusst ans Ende gestellt, damit
-    // Batterieladung auf der Stapel-Position von Netzbezug landet und
-    // Netzeinspeisung auf der von Batterieentladung (Dietmar, 31.07.2026:
-    // "Batterieladung auf Hoehe Netzbezug, Netzeinspeisung auf Hoehe
-    // Batterieentladung"), Direktverbrauch bleibt oben in beiden Panels.
+    // durch). Die Weisung "Batterieladung auf Hoehe Netzbezug,
+    // Netzeinspeisung auf Hoehe Batterieentladung" (Dietmar, 31.07.2026)
+    // galt NUR fuer den Bilanz-Tabellenblock unten (dort schon so
+    // angeordnet, siehe row()-Aufrufe in renderBilanzPanel) - NICHT fuer
+    // die Chart-Stapelreihenfolge, das war ein Missverstaendnis meinerseits
+    // und wieder auf die urspruengliche Reihenfolge zurueckgesetzt.
     var BALANCE_SERIES = [
       { key: 'netzbezug',         name: 'Netzbezug',         color: '#FF2600', panel: 'v' },
       { key: 'batterieentladung', name: 'Batterieentladung', color: '#FF9300', panel: 'v' },
+      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#4F8F00', panel: 'both' },
       { key: 'batterieladung',    name: 'Batterieladung',    color: '#945200', panel: 'e' },
-      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' },
-      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#4F8F00', panel: 'both' }
+      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' }
     ];
     var curView = 'day';
     // Anker-Datum fuer Woche/Monat/Jahr (irgendein Tag INNERHALB des
