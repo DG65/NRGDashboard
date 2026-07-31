@@ -26,7 +26,14 @@
   input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
-  #chart { width: 100%; flex: 1 1 auto; min-height: 160px; }
+  #chart { width: 100%; flex: 1 1 auto; min-height: 160px; position: relative; }
+  /* Zwei eigene, per JS gesteuerte Tooltip-"Schilder" fuer die Bilanz-
+     Tagesansicht (Dietmar, 31.07.2026) - ECharts' eingebaute Tooltip-
+     Komponenten aktivieren sich nur einzeln je nach gehoverter Achse,
+     auch mit gekoppeltem axisPointer nicht zuverlaessig gleichzeitig;
+     diese beiden Divs werden stattdessen direkt per Mousemove befuellt
+     und positioniert (siehe balanceHoverMove()). */
+  .balTip { position: absolute; pointer-events: none; z-index: 10; background: rgba(30,32,36,0.92); color: #e8e8e8; border-radius: 4px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.4); display: none; white-space: nowrap; }
   .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
   /* Eigene Legende statt der eingebauten von ECharts/Highcharts - beide
      Bibliotheken feuern bei Klicks auf ihre native Legende ein Ereignis,
@@ -1193,28 +1200,82 @@
       renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
     }
 
-    // Gemeinsame Helfer fuer die zwei getrennten Tagesansicht-Tooltips
-    // (Dietmar, 31.07.2026: "2 Schilder, eines fuer das obere Chart, eines
-    // fuer das untere Chart") - siehe tooltip-Array in renderBalanceDay.
-    function balanceTooltipPosition(pt, size, top, bottom) {
-      var gap = 14;
-      var x = pt[0] + gap;
-      if (x + size.contentSize[0] > size.viewSize[0] - 4) {
-        x = pt[0] - gap - size.contentSize[0];
+    // Zwei per Mousemove selbst gesteuerte Tooltip-Schilder fuer die
+    // Bilanz-Tagesansicht (Dietmar, 31.07.2026: "2 Schilder, eines fuer das
+    // obere Chart, eines fuer das untere Chart", zeitgleich bei Hover ueber
+    // eines der beiden Charts). ECharts' eingebaute Tooltip-Komponenten
+    // aktivieren sich - auch mit gekoppeltem axisPointer - nur fuer die
+    // gerade tatsaechlich gehoverte Achse, nicht beide gleichzeitig; daher
+    // volle Eigenregie hier statt tooltip-Option.
+    function balanceNearestIndex(refArr, ts) {
+      var best = 0, bestDiff = Infinity;
+      for (var i = 0; i < refArr.length; i++) {
+        var d = Math.abs(refArr[i][0] - ts);
+        if (d < bestDiff) { bestDiff = d; best = i; }
       }
-      x = Math.max(4, Math.min(x, size.viewSize[0] - size.contentSize[0] - 4));
-      var y = Math.max(top + 4, Math.min(top + 8, bottom - size.contentSize[1] - 4));
-      return [x, y];
+      return best;
     }
-    function balanceTooltipPanel(params, axIdx, title) {
-      var pts = params.filter(function (p) { return p.axisIndex === axIdx; });
-      if (!pts.length) { return ''; }
-      var t = new Date(pts[0].value[0]);
-      var head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+    function balancePanelHtml(curve, idx, panelKey, title) {
+      var list = BALANCE_SERIES.filter(function (s) { return (s.panel === panelKey || s.panel === 'both') && isVisible(s.name); });
+      if (!list.length) { return ''; }
+      var ts = null;
+      var lines = list.map(function (s) {
+        var arr = curve[s.key] || [];
+        var pt = arr[idx];
+        if (pt && ts === null) { ts = pt[0]; }
+        var v = pt ? pt[1] : 0;
+        return '<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kW</b></div>';
+      });
+      var head = '';
+      if (ts !== null) {
+        var t = new Date(ts);
+        head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+      }
       var sub = '<div style="font-weight:600;color:#9aa4b0;margin:0 0 2px">' + title + '</div>';
-      return head + sub + pts.map(function (p) {
-        return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value[1]).toFixed(2) + ' kW</b></div>';
-      }).join('');
+      return head + sub + lines.join('');
+    }
+    // Positioniert ein Schild seitlich vom Zeiger ausweichend (nie darueber,
+    // Dietmar, 31.07.2026), aber innerhalb der Grenzen seines eigenen
+    // Charts (top/bottom in px innerhalb des #chart-Containers).
+    function balancePositionTip(tipEl, x, containerW, top, bottom) {
+      var gap = 14;
+      var w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+      var left = x + gap;
+      if (left + w > containerW - 4) { left = x - gap - w; }
+      left = Math.max(4, Math.min(left, containerW - w - 4));
+      var t = Math.max(top + 4, Math.min(top + 8, bottom - h - 4));
+      tipEl.style.left = left + 'px';
+      tipEl.style.top = t + 'px';
+    }
+    function balanceWireHover(chartEl, chartInst) {
+      if (!chartInst.__balHoverWired) {
+        chartInst.__balHoverWired = true;
+        var tipV = document.createElement('div'); tipV.className = 'balTip';
+        var tipE = document.createElement('div'); tipE.className = 'balTip';
+        chartEl.appendChild(tipV); chartEl.appendChild(tipE);
+        function hide() { tipV.style.display = 'none'; tipE.style.display = 'none'; }
+        function move(e) {
+          // chartInst.__balCurve wird bei JEDEM Rendern aktuell gehalten
+          // (siehe renderBalanceDay) - nicht als Closure einfrieren, sonst
+          // zeigt der Tooltip nach einem Tageswechsel noch die alten Werte.
+          var curve = chartInst.__balCurve;
+          if (!curve) { hide(); return; }
+          var refArr = null;
+          Object.keys(curve).some(function (k) { if (curve[k] && curve[k].length) { refArr = curve[k]; return true; } return false; });
+          var w = chartEl.clientWidth, h = chartEl.clientHeight;
+          var x = e.offsetX, y = e.offsetY;
+          var left = 58, right = w - 16, top = 28, bottom = h * 0.96;
+          if (!refArr || !refArr.length || x < left || x > right || y < top || y > bottom) { hide(); return; }
+          var ts = chartInst.convertFromPixel({ xAxisIndex: 0 }, x);
+          var idx = balanceNearestIndex(refArr, ts);
+          var htmlV = balancePanelHtml(curve, idx, 'v', 'Verbrauch');
+          var htmlE = balancePanelHtml(curve, idx, 'e', 'Erzeugung');
+          if (htmlV) { tipV.innerHTML = htmlV; tipV.style.display = 'block'; balancePositionTip(tipV, x, w, top, top + h * 0.40); } else { tipV.style.display = 'none'; }
+          if (htmlE) { tipE.innerHTML = htmlE; tipE.style.display = 'block'; balancePositionTip(tipE, x, w, h * 0.50, h * 0.96); } else { tipE.style.display = 'none'; }
+        }
+        chartInst.getZr().on('mousemove', move);
+        chartInst.getZr().on('globalout', hide);
+      }
     }
 
     function renderBalanceDay(el, curve, totals) {
@@ -1260,45 +1321,23 @@
           { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: '#9aa4b0' } }
         ],
         legend: { show: false },
-        // Beide x-Achsen gekoppelt (Dietmar, 31.07.2026: "Die beiden
-        // Tooltips sollen bei Mouseover ueber eines der beiden Charts
-        // immer zeitgleich dargestellt werden") - ohne Kopplung aktiviert
-        // ECharts den axisPointer nur auf der gerade gehoverten Achse,
-        // der Tooltip-Formatter unten saehe dann nur ein Panel in params.
+        // Beide x-Achsen gekoppelt, damit die Fadenkreuz-Linie in beiden
+        // Charts gleichzeitig mitwandert. Die eigentlichen Tooltip-Inhalte
+        // kommen NICHT mehr von ECharts' eingebauter Tooltip-Komponente
+        // (die aktiviert sich auch mit Kopplung nur fuer die gerade
+        // gehoverte Achse, nicht zuverlaessig beide zusammen - Dietmar,
+        // 31.07.2026: "es gibt nur ein tooltip schild, nur am oberen
+        // chart"), sondern von zwei per Mousemove selbst gesteuerten
+        // Schildern (siehe balanceWireHover()) - deshalb tooltip:{show:false}.
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
-        // Zwei eigenstaendige "Schilder" statt einer gemeinsamen Box
-        // (Dietmar, 31.07.2026: "2 Schilder, eines fuer das obere Chart,
-        // eines fuer das untere Chart") - dank der axisPointer-Kopplung
-        // oben bekommen BEIDE Tooltip-Komponenten bei jedem Hover die
-        // Serien aus BEIDEN Grids in ihren params, jede zeigt per Filter
-        // (balanceTooltipPanel) aber nur ihr eigenes Panel. Jede haengt
-        // seitlich vom Zeiger ausweichend (nie darueber, Dietmar,
-        // 31.07.2026), aber innerhalb der Grenzen des jeweils EIGENEN
-        // Charts (balanceTooltipPosition), nicht mehr in der Luecke
-        // zwischen beiden.
-        tooltip: [
-          {
-            trigger: 'axis', axisPointer: { type: 'line' },
-            backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
-            extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
-            position: function (pt, params, dom, rect, size) { return balanceTooltipPosition(pt, size, 28, 28 + size.viewSize[1] * 0.40); },
-            formatter: function (params) { return balanceTooltipPanel(params, 0, 'Verbrauch'); }
-          },
-          {
-            trigger: 'axis', axisPointer: { type: 'line' },
-            backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
-            extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
-            position: function (pt, params, dom, rect, size) { return balanceTooltipPosition(pt, size, size.viewSize[1] * 0.50, size.viewSize[1] * 0.96); },
-            formatter: function (params) { return balanceTooltipPanel(params, 1, 'Erzeugung'); }
-          }
-        ],
+        tooltip: { show: false },
         xAxis: [
-          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false } },
+          { gridIndex: 0, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisPointer: { show: true, type: 'line', lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } },
           // Uhrzeit-Beschriftung des unteren Charts entfernt (Dietmar,
           // 31.07.2026) - die Zeitachse ist bereits einmal ueber dem
           // oberen Chart und im mittig fixierten Tooltip zu sehen, eine
           // zweite Reihe darunter war redundant.
-          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false } }
+          { gridIndex: 1, type: 'time', axisLine: { lineStyle: { color: GRID_COLOR } }, splitLine: { show: false }, axisLabel: { show: false }, axisPointer: { show: true, type: 'line', lineStyle: { color: 'rgba(255,255,255,.35)', type: 'dashed' } } }
         ],
         // Fixer 1-kW-Raster statt automatischer Teilung (Dietmar, 31.07.2026:
         // "jede 1 kW ein Strich, fest eingestellt"). Zwei "kW"-Beschriftungen,
@@ -1312,12 +1351,19 @@
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
       }, true);
 
+      chart.__balCurve = curve;
+      balanceWireHover(el, chart);
       renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
     }
 
     function renderBalanceBars(el, bars, granularity) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      // Tagesansicht-Tooltips (balanceWireHover) gehoeren nur zur
+      // Tagesansicht - falls dieselbe Chart-Instanz vorher dort lief,
+      // Kurve leeren, damit kein stehen gebliebener Hover-Tooltip aus dem
+      // Tages-View ueber der Balken-Ansicht haengen bleibt.
+      if (chart.__balCurve) { chart.__balCurve = null; }
 
       renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
 
