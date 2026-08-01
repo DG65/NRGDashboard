@@ -324,6 +324,20 @@
     function themeLabelColor() {
       return isLightTheme() ? '#333' : '#9aa4b0';
     }
+    // Kosten-Tooltip automatisch ct/Euro (Dietmar, 31.07.2026: "sollten
+    // die im Tooltip angezeigten Werte automatisch von ct nach Euro
+    // umgerechnet werden") - ab 100 ct (= 1 Euro) wechselt die Anzeige,
+    // damit z.B. "149.10 ct" als "1,49 €" erscheint statt einer
+    // dreistelligen Cent-Zahl.
+    function formatCost(ct) {
+      // Punkt statt Komma als Dezimaltrenner, passend zu den uebrigen
+      // Tooltip-Zahlen im Modul (z.B. "18.01 ct/kWh") - keine eigene
+      // deutsche Formatierung einfuehren, die dort abweichen wuerde.
+      if (Math.abs(ct) >= 100) {
+        return (ct / 100).toFixed(2) + ' €';
+      }
+      return ct.toFixed(2) + ' ct';
+    }
     // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - 'inside' fuer
     // Mausrad/Pinch/Ziehen direkt in der Zeichenflaeche, zusaetzlich ein
     // schmaler sichtbarer Slider unten als "Legende" fuer den Zoom-Zustand
@@ -890,7 +904,7 @@
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
               // diesen Slot (Dietmars Wunsch, 28.07.2026).
               if (gridV !== null && gridV !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + (gridV * priceVal).toFixed(2) + ' ct</b></div>');
+                lines.push('<div>Kosten: <b>' + formatCost(gridV * priceVal) + '</b></div>');
               }
               return head + lines.join('');
             }
@@ -1065,7 +1079,7 @@
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
               // diesen Slot (Dietmars Wunsch, 28.07.2026).
               if (gridQ && gridQ.y !== null && gridQ.y !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + (gridQ.y * priceVal).toFixed(2) + ' ct</b></div>');
+                lines.push('<div>Kosten: <b>' + formatCost(gridQ.y * priceVal) + '</b></div>');
               }
               return head + lines.join('');
             }
