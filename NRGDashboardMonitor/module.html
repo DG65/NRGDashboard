@@ -324,6 +324,19 @@
     function themeLabelColor() {
       return isLightTheme() ? '#333' : '#9aa4b0';
     }
+    // Fuer Achsen-Beschriftungen, die vorher UEBERHAUPT keine eigene Farbe
+    // gesetzt hatten (liefen auf den jeweiligen Engine-Default) - liefert
+    // im Dunkelmodus ein LEERES Objekt statt eines expliziten Grautons
+    // zurueck (Dietmar, 1.8.2026: "Bei Monitor/Strompreis sieht man die
+    // Uhrzeiten nicht" - das explizite axisLabel/labels-Objekt mit Farbe
+    // hat dort die Zeit-Beschriftung der x-Achse zum Verschwinden gebracht,
+    // vermutlich weil es ECharts'/Highcharts' eigene automatische
+    // Formatierung/Sichtbarkeit fuer diese Achse durcheinanderbrachte).
+    // Ein LEERES Objekt aendert nichts am vorher nachweislich
+    // funktionierenden Verhalten; nur im Hellmodus wird eine Farbe gesetzt.
+    function themeAxisStyle() {
+      return isLightTheme() ? { color: '#333' } : {};
+    }
     // Kosten-Tooltip automatisch ct/Euro (Dietmar, 31.07.2026: "sollten
     // die im Tooltip angezeigten Werte automatisch von ct nach Euro
     // umgerechnet werden") - ab 100 ct (= 1 Euro) wechselt die Anzeige,
@@ -930,16 +943,16 @@
         // 28.07.2026).
         xAxis: Object.assign(
           { type: 'time' }, xAxisRange(tab, d) || {},
-          { splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000, axisLabel: { color: themeLabelColor() } }
+          { splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000, axisLabel: themeAxisStyle() }
         ),
         yAxis: (tab === 'price')
           ? [
-              { type: 'value', name: 'kWh', position: 'left', nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
-              { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() }, splitLine: { show: false } }
+              { type: 'value', name: 'kWh', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
             ]
           : [
-              { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
-              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() }, splitLine: { show: false }, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
+              { type: 'value', name: ax.leftName, position: 'left', interval: ax.leftInterval || null, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: ax.rightName, position: 'right', show: ax.showRight, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false }, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
         // Zoom in allen Charts (Dietmars Wunsch, 28.07.2026) - Mausrad/
         // Pinch/Ziehen auf der Zeitachse, kein sichtbarer Slider (spart
@@ -1014,7 +1027,7 @@
           {
             gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000,
             crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' },
-            labels: { style: { color: themeLabelColor() } },
+            labels: { style: themeAxisStyle() },
             plotLines: (tab === 'price' && d && d.id === fmtDate(new Date()))
               ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }]
               : []
@@ -1022,12 +1035,12 @@
         ),
         yAxis: (tab === 'price')
           ? [
-              { title: { text: 'kWh', style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
-              { title: { text: 'ct/kWh', style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } }, opposite: true, gridLineWidth: 0 }
+              { title: { text: 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, gridLineWidth: 0 }
             ]
           : [
-              { title: { text: ax.leftName, style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
-              { title: { text: ax.rightName, style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } }, opposite: true, visible: ax.showRight, gridLineWidth: 0, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
+              { title: { text: ax.leftName, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: ax.rightName, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, visible: ax.showRight, gridLineWidth: 0, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -1133,8 +1146,8 @@
             }).join('');
           }
         },
-        xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0, color: themeLabelColor() } },
-        yAxis: [{ type: 'value', name: 'kWh', nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() } }],
+        xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0, color: isLightTheme() ? '#333' : undefined } },
+        yAxis: [{ type: 'value', name: 'kWh', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle() }],
         dataZoom: DATA_ZOOM_INSIDE,
         series: visSeries.map(function (s) {
           return { name: s.name, type: 'bar', data: s.data, color: s.color };
@@ -1158,8 +1171,8 @@
         // Breite (kein Strich wie bei einer Zeit-/Werteachse) - genau das
         // Pendant zu ECharts' axisPointer{type:'shadow'} in der Energie-
         // Ansicht (Dietmars Vergleich, 28.07.2026).
-        xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0, style: { color: themeLabelColor() } }, crosshair: { color: 'rgba(255,255,255,.08)' } },
-        yAxis: [{ title: { text: 'kWh', style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } } }],
+        xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0, style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+        yAxis: [{ title: { text: 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } }],
         legend: { enabled: false },
         credits: { enabled: false },
         // Tooltip-Kopf zeigt die volle Bezeichnung statt nur der kurzen
@@ -1422,8 +1435,8 @@
         // themeLabelColor() - beim Hellmodus-Test uebersehen (Dietmar,
         // 31.07.2026: "Bei ECharts hast Du beim Jahresvergleich die Monate
         // vergessen").
-        xAxis: { type: 'category', data: MONTH_NAMES, axisLine: { lineStyle: { color: GRID_COLOR } }, axisLabel: { color: themeLabelColor() } },
-        yAxis: { type: 'value', name: unit, nameTextStyle: { color: themeLabelColor() }, axisLabel: { color: themeLabelColor() }, splitLine: { lineStyle: { color: GRID_COLOR } } },
+        xAxis: { type: 'category', data: MONTH_NAMES, axisLine: { lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
+        yAxis: { type: 'value', name: unit, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { lineStyle: { color: GRID_COLOR } } },
         series: series.filter(function (s) { return isVisible(s.name); })
       }, true);
     }
@@ -1448,8 +1461,8 @@
         // Highcharts hatte hier ueberhaupt keine eigene Textfarbe gesetzt
         // (lief auf Highcharts' fixem Default) - deshalb "gar keine
         // Anpassung" sichtbar (Dietmar, 31.07.2026).
-        xAxis: { categories: MONTH_NAMES, gridLineWidth: 0, labels: { style: { color: themeLabelColor() } } },
-        yAxis: { title: { text: unit, style: { color: themeLabelColor() } }, labels: { style: { color: themeLabelColor() } }, gridLineColor: GRID_COLOR },
+        xAxis: { categories: MONTH_NAMES, gridLineWidth: 0, labels: { style: themeAxisStyle() } },
+        yAxis: { title: { text: unit, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineColor: GRID_COLOR },
         legend: { enabled: false },
         credits: { enabled: false },
         tooltip: {
