@@ -114,6 +114,8 @@
   .node-label { font-size: 12.5px; fill: var(--textmuted); }
   .node-sub { font-size: 10px; font-weight: 700; fill: var(--nc, var(--grey)); opacity: 0.75; }
 
+  .spoke { transition: opacity var(--trans) var(--ease); }
+
   .wire { fill: none; stroke: var(--wire); stroke-width: 2.5; stroke-linecap: round; }
 
   .flow-core {
@@ -283,6 +285,7 @@
 const CX = 280, CY = 301;
 const DESIGN_R = 56;
 const SCALE_INACTIVE = 44 / 56;
+let HIDE_INACTIVE = false;
 const R_MAX = 234;
 const NODE_GAP = 10;
 const CENTER_R = DESIGN_R;
@@ -786,23 +789,28 @@ function createSpoke(angleDeg, layout, layer) {
   const p1 = [CX + r1 * c, CY + r1 * s];
   const p2 = [CX + r2 * c, CY + r2 * s];
   const line = (cls) => el('line', { class: cls, x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1) });
-  layer.appendChild(line('wire'));
+  // Eigene <g> je Speiche (statt aller Elemente direkt im gemeinsamen
+  // wiresLayer) - nur so laesst sich eine einzelne Speiche fuer
+  // HIDE_INACTIVE ein-/ausblenden, ohne alle anderen mitzunehmen.
+  const g = el('g', { class: 'spoke' });
+  layer.appendChild(g);
+  g.appendChild(line('wire'));
   const core = line('flow-core');
-  layer.appendChild(core);
+  g.appendChild(core);
   const bolts = [];
   for (let i = 0; i < BOLT_COUNT; i++) {
     const b = el('path', { class: 'flow-bolt', d: jagPath(p1, p2, 3.4, 9, i + 1) });
-    layer.appendChild(b);
+    g.appendChild(b);
     bolts.push(b);
   }
   const tris = [];
   for (let i = 0; i < TRI_COUNT; i++) {
     const t = el('path', { class: 'flow-tri', d: 'M-3.4,-3.8 L3.8,0 L-3.4,3.8 Z' });
-    layer.appendChild(t);
+    g.appendChild(t);
     tris.push(t);
   }
   return {
-    tris, bolts, core,
+    g, tris, bolts, core,
     dIn:  'M' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1) + ' L' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1),
     dOut: 'M' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1) + ' L' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1),
   };
@@ -900,14 +908,19 @@ function ensureNodes(items) {
   });
 }
 
-function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale) {
-  const scale = baseScale * (active ? 1 : SCALE_INACTIVE);
+function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale, hidden) {
+  // "hidden" nutzt dieselbe CSS-Transition wie active/inactive (transform/
+  // opacity, --trans) - der Knoten schrumpft/verblasst dorthin, statt hart
+  // aus dem DOM zu verschwinden (ensureNodes() baut bei gleichbleibender
+  // Geraeteliste unveraendert alle Knoten, HIDE_INACTIVE wirkt rein optisch).
+  const scale = hidden ? 0 : baseScale * (active ? 1 : SCALE_INACTIVE);
   g.classList.toggle('inactive', !active);
+  g.classList.toggle('hidden-node', !!hidden);
   g.style.transform = `translate(${cx}px, ${cy}px) scale(${scale})`;
-  g.style.opacity = active ? '1' : '0.32';
+  g.style.opacity = hidden ? '0' : (active ? '1' : '0.32');
   g.style.setProperty('--nc', rgb(color));
   g.style.setProperty('--bmax', boltBrightness(magnitude, active).toFixed(2));
-  if (active) { applyGlow(glow, color, magnitude); }
+  if (active && !hidden) { applyGlow(glow, color, magnitude); }
   else { glow.style.opacity = '0'; }
 }
 
@@ -920,9 +933,11 @@ function updateOuterNode(refs, item) {
   // sonst würde ein Fluss angezeigt, wo keiner stattfindet.
   const active = magnitude > 20 || !!item.plugged;
   const flowing = magnitude > 20;
+  const hidden = HIDE_INACTIVE && !active;
   const color = active ? item.color(w) : C_GREY;
 
-  applyNodeState(refs.g, refs.glow, color, magnitude, active, refs.cx, refs.cy, refs.baseScale);
+  applyNodeState(refs.g, refs.glow, color, magnitude, active, refs.cx, refs.cy, refs.baseScale, hidden);
+  refs.spoke.g.style.opacity = hidden ? '0' : '1';
   updateSpoke(refs.spoke, color, magnitude, active, flowing, item.dir(w));
   updateNodeAura(refs, magnitude, active, color);
 
@@ -1080,13 +1095,8 @@ function handleMessage(raw) {
     centerActive ? centerColor : C_GREY, houseW, centerActive, CX, CY, 1);
   setValueText(document.getElementById('lbl-center-val'), houseW, true);
 
-  let items = buildItems(devices);
-  if (d && d.hideInactive) {
-    // "aktiv" exakt wie in updateOuterNode() (magnitude>20 || plugged) -
-    // sonst wuerde ein Knoten hier ausgeblendet, den updateOuterNode() als
-    // aktiv einstufen wuerde (oder umgekehrt).
-    items = items.filter(item => Math.abs(item.value ?? 0) > 20 || !!item.plugged);
-  }
+  HIDE_INACTIVE = !!(d && d.hideInactive);
+  const items = buildItems(devices);
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
