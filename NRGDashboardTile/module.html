@@ -1080,7 +1080,13 @@ function handleMessage(raw) {
     centerActive ? centerColor : C_GREY, houseW, centerActive, CX, CY, 1);
   setValueText(document.getElementById('lbl-center-val'), houseW, true);
 
-  const items = buildItems(devices);
+  let items = buildItems(devices);
+  if (d && d.hideInactive) {
+    // "aktiv" exakt wie in updateOuterNode() (magnitude>20 || plugged) -
+    // sonst wuerde ein Knoten hier ausgeblendet, den updateOuterNode() als
+    // aktiv einstufen wuerde (oder umgekehrt).
+    items = items.filter(item => Math.abs(item.value ?? 0) > 20 || !!item.plugged);
+  }
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';

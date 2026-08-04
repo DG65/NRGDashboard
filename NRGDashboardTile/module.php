@@ -82,6 +82,7 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
         $this->RegisterPropertyInteger('FlowRefW', self::DEF_FLOWREF);
+        $this->RegisterPropertyBoolean('HideInactive', false);
         // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
         // InverterHubTile - die Kachel muss auch OHNE jedes installierte
         // Partnermodul laufen können, rein über manuell zugewiesene
@@ -627,6 +628,7 @@ class NRGDashboardTile extends IPSModule
             'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'transMs'     => $this->TransitionValue(),
             'flowRefW'    => $this->FlowRefValue(),
+            'hideInactive' => $this->ReadPropertyBoolean('HideInactive'),
             'diagnostics' => $this->resolveDiagnostics(),
         ];
     }
