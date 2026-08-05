@@ -113,6 +113,12 @@
   .node-value-unit { font-size: 0.52em; font-weight: 600; fill: var(--nc, var(--grey)); }
   .node-label { font-size: 12.5px; fill: var(--textmuted); }
   .node-sub { font-size: 10px; font-weight: 700; fill: var(--nc, var(--grey)); opacity: 0.75; }
+  /* Zugeordnetes Fahrzeug (z.B. Wallbox+Tessie-Auto): die eigentlich
+     interessante Info (welches Auto laedt) wird die groessere/farbige
+     Zeile, die Geraetebezeichnung (z.B. "WB 2") ruckt klein/grau
+     darunter - Dietmar, 05.08.2026, Layoutvorschlag bestaetigt. */
+  .node-vehicle-name { font-size: 13.5px; font-weight: 700; fill: var(--nc, var(--grey)); }
+  .node-device-name { font-size: 10.5px; fill: var(--textmuted); opacity: 0.85; }
 
   .spoke { transition: opacity var(--trans) var(--ease); }
 
@@ -733,7 +739,7 @@ function createOuterNode(item, angleDeg, layout) {
   const subText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'node-sub' });
   g.appendChild(subText);
 
-  return { g, glow, iconG, valText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  return { g, glow, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -944,6 +950,16 @@ function updateOuterNode(refs, item) {
   refs.iconG.textContent = '';
   ICONS[item.icon](refs.iconG, item.soc ?? null);
   setValueText(refs.valText, magnitude, item.measured);
+
+  // Zugeordnetes Fahrzeug bekannt (item.sub) -> Fahrzeugname wird die
+  // groessere/farbige Zeile, Geraetename ruckt klein/grau darunter (statt
+  // umgekehrt) - identische Regel fuer jeden Knoten, wirkt sich aber nur
+  // dort sichtbar aus, wo item.sub tatsaechlich gesetzt ist.
+  const hasVehicle = !!item.sub;
+  refs.labelText.setAttribute('class', hasVehicle ? 'node-device-name' : 'node-label');
+  refs.labelText.setAttribute('y', hasVehicle ? 53 : 33);
+  refs.subText.setAttribute('class', hasVehicle ? 'node-vehicle-name' : 'node-sub');
+  refs.subText.setAttribute('y', hasVehicle ? 35 : 45);
   refs.subText.textContent = item.sub || '';
 }
 
