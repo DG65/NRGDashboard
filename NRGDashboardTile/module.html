@@ -958,11 +958,33 @@ function updateOuterNode(refs, item) {
   const hasVehicle = !!item.sub;
   // y=47 statt vorher 53 - bei DESIGN_R=56 blieben sonst nur ~3px Abstand
   // zum unteren Ringrand, wirkte gequetscht (Dietmar, 05.08.2026).
+  const labelY = hasVehicle ? 47 : 33;
+  const subY = hasVehicle ? 32 : 45;
   refs.labelText.setAttribute('class', hasVehicle ? 'node-device-name' : 'node-label');
-  refs.labelText.setAttribute('y', hasVehicle ? 47 : 33);
+  refs.labelText.setAttribute('y', labelY);
   refs.subText.setAttribute('class', hasVehicle ? 'node-vehicle-name' : 'node-sub');
-  refs.subText.setAttribute('y', hasVehicle ? 32 : 45);
+  refs.subText.setAttribute('y', subY);
   refs.subText.textContent = item.sub || '';
+  // Lange Namen (z.B. Fahrzeugnamen) sollen nicht ueber den Kreisrand
+  // hinaus/dagegen laufen - Breitenbudget haengt von der Sehnenlaenge des
+  // Kreises an der jeweiligen y-Position ab, je naeher am Rand desto
+  // schmaler. Nur eingreifen, wenn der Text tatsaechlich zu breit ist.
+  fitTextWidth(refs.labelText, labelY);
+  fitTextWidth(refs.subText, subY);
+}
+
+function fitTextWidth(textEl, y) {
+  textEl.removeAttribute('textLength');
+  textEl.removeAttribute('lengthAdjust');
+  const pad = 8; // Rand-/Stroke-Puffer innerhalb des Rings
+  const r = DESIGN_R - pad;
+  const maxW = Math.abs(y) >= r ? 20 : 2 * Math.sqrt(r * r - y * y);
+  let bbox;
+  try { bbox = textEl.getBBox(); } catch (e) { return; }
+  if (bbox.width > maxW) {
+    textEl.setAttribute('textLength', maxW.toFixed(1));
+    textEl.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+  }
 }
 
 // -- Statusanzeige (eigenständig, nicht aus InverterHubTile).
