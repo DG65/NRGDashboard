@@ -956,10 +956,12 @@ function updateOuterNode(refs, item) {
   // umgekehrt) - identische Regel fuer jeden Knoten, wirkt sich aber nur
   // dort sichtbar aus, wo item.sub tatsaechlich gesetzt ist.
   const hasVehicle = !!item.sub;
+  // y=47 statt vorher 53 - bei DESIGN_R=56 blieben sonst nur ~3px Abstand
+  // zum unteren Ringrand, wirkte gequetscht (Dietmar, 05.08.2026).
   refs.labelText.setAttribute('class', hasVehicle ? 'node-device-name' : 'node-label');
-  refs.labelText.setAttribute('y', hasVehicle ? 53 : 33);
+  refs.labelText.setAttribute('y', hasVehicle ? 47 : 33);
   refs.subText.setAttribute('class', hasVehicle ? 'node-vehicle-name' : 'node-sub');
-  refs.subText.setAttribute('y', hasVehicle ? 35 : 45);
+  refs.subText.setAttribute('y', hasVehicle ? 32 : 45);
   refs.subText.textContent = item.sub || '';
 }
 
