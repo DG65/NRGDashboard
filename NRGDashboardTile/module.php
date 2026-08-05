@@ -1325,6 +1325,24 @@ class NRGDashboardTile extends IPSModule
             $usedV[$p['v']] = true;
         }
 
+        // Sonderfall genau eine VERBUNDENE Wallbox / genau ein VERBUNDENES
+        // Fahrzeug (nach Abzug der bereits zeitkorrelierten Paare): auch
+        // ohne zeitliche Naehe eindeutig, wer zu wem gehoert - Dietmar,
+        // 05.08.2026, real aufgetretener Fall: Auto steckt schon Stunden an
+        // der Wallbox, Ladevorgang startet erst spaeter zeitversetzt
+        // (geplantes/preisgesteuertes Laden) - der Wallbox-Verbunden-
+        // Zeitstempel liegt dann weit ausserhalb von MatchToleranceSec,
+        // obwohl die Zuordnung nach Ausschlussverfahren trotzdem eindeutig
+        // ist. Ergaenzt den bestehenden Sonderfall unten (dort: insgesamt
+        // nur 1 Wallbox/1 Fahrzeug konfiguriert), dieser hier greift auch
+        // bei mehreren registrierten Wallboxen/Fahrzeugen, solange gerade
+        // nur je eine(r) davon ueberhaupt verbunden ist.
+        $wbRemaining = array_diff_key($wbConnected, $map);
+        $vRemaining = array_diff_key($vConnected, $usedV);
+        if (count($wbRemaining) === 1 && count($vRemaining) === 1) {
+            $map[array_key_first($wbRemaining)] = array_key_first($vRemaining);
+        }
+
         // Sonderfall genau eine Wallbox / genau ein Fahrzeug: die Lage ist
         // auch ohne Zeitkorrelation eindeutig - hier darf die Verbunden-
         // Bedingung des Fahrzeugs sogar fehlen.
