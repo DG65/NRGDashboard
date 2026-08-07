@@ -635,11 +635,22 @@ class NRGDashboardMonitor extends IPSModule
             $data[(string) $y] = $row;
         }
 
+        // Laufendes Jahr NICHT in den Mittelwert einrechnen (Dietmar,
+        // 05.08.2026: bei Monaten ohne jegliche Vorjahres-Historie - z.B.
+        // kurz nach Inbetriebnahme - waere der "Mittelwert" sonst trivial
+        // identisch mit dem laufenden Jahr selbst, weil es der einzige
+        // eingerechnete Wert ist. Der Mittelwert soll ein Vergleichsmaßstab
+        // aus abgeschlossenen Jahren sein, nicht teilweise sich selbst
+        // enthalten.
+        $currentYear = (int) date('Y', $end);
         $mittelwert = [];
         for ($m = 0; $m < 12; $m++) {
             $sum = 0.0;
             $n = 0;
-            foreach ($data as $row) {
+            foreach ($data as $y => $row) {
+                if ((int) $y === $currentYear) {
+                    continue;
+                }
                 if ($row[$m] !== null) {
                     $sum += $row[$m];
                     $n++;
