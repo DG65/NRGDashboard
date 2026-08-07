@@ -136,7 +136,7 @@
   .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
   .ycFoot { text-align: center; margin-top: 8px; }
-  .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
      gross sein, dass man alles sieht ohne zu scrollen") - als absolute
      Ueberlagerung nur INNERHALB von #yearComparePanel war die verfuegbare
@@ -1287,7 +1287,7 @@
       var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren oder die Anlagenleistung unten manuell eingeben.</div>';
       panel.innerHTML = sub + hint
         + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>'
-        + '<div class="ycFoot"><button id="ycConfigBtn">Erwartete Leistung einstellen</button></div>';
+        + '<div class="ycFoot"><button id="ycHistoryBtn">Vorjahreswerte nachtragen</button><button id="ycConfigBtn">Erwartete Leistung einstellen</button></div>';
       Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button'), function (btn) {
         btn.onclick = function () {
           if (btn.disabled) { return; }
@@ -1296,6 +1296,61 @@
         };
       });
       document.getElementById('ycConfigBtn').onclick = function () { openYearCompareDialog(data); };
+      document.getElementById('ycHistoryBtn').onclick = function () { openManualHistoryDialog(data); };
+    }
+
+    // Dialog fuer manuell nachgetragene Vorjahreswerte (Dietmar, 05.08.2026):
+    // Monate vor Inbetriebnahme des Archivs haben keine Zaehlerhistorie -
+    // hier lassen sich feste kWh-Werte pro Jahr/Monat eintragen. Nur dort
+    // wirksam, wo das Archiv selbst keinen Wert liefert (siehe
+    // BuildYearCompare() im Backend). Ein Jahr auswaehlen/eintippen, das
+    // schon nachgetragen wurde, laedt dessen bisherige Werte zum Bearbeiten.
+    function openManualHistoryDialog(data) {
+      var panel = document.getElementById('yearComparePanel');
+      var overlay = document.createElement('div');
+      overlay.className = 'ycOverlay';
+      var nowYear = new Date().getFullYear();
+      var startYear = (data.manualHistory && Object.keys(data.manualHistory).length)
+        ? Math.max.apply(null, Object.keys(data.manualHistory).map(Number))
+        : (nowYear - 1);
+      function monthInputsHtml(row) {
+        return MONTH_NAMES.map(function (m, i) {
+          var v = (row && row[i + 1] !== undefined) ? String(row[i + 1]).replace('.', ',') : '';
+          return '<div><span>' + m + '</span><input type="number" step="0.01" data-m="' + (i + 1) + '" value="' + v + '"></div>';
+        }).join('');
+      }
+      overlay.innerHTML =
+        '<div class="ycDialog">'
+        + '<h3>Vorjahreswerte nachtragen</h3>'
+        + '<div style="opacity:.7;margin-bottom:4px">Für Monate ohne Zählerhistorie im Archiv (z. B. vor Inbetriebnahme) - wirkt nur dort, wo das Archiv selbst keinen Wert liefert. Leeres Feld = kein Nachtrag für diesen Monat. Jahr wählen/eintippen, das schon einen Nachtrag hat, lädt dessen Werte zum Bearbeiten.</div>'
+        + '<div class="ycRow"><label>Jahr</label><input type="number" step="1" id="ycHistYear" value="' + startYear + '"></div>'
+        + '<div class="ycMonthGrid" id="ycHistGrid">' + monthInputsHtml(data.manualHistory ? data.manualHistory[String(startYear)] : null) + '</div>'
+        + '<div class="ycDialogFoot">'
+        + '<span></span>'
+        + '<span><button id="ycHistCancel">Abbrechen</button> <button id="ycHistSave">Speichern</button></span>'
+        + '</div>'
+        + '</div>';
+      panel.appendChild(overlay);
+
+      var yearEl = overlay.querySelector('#ycHistYear');
+      var gridEl = overlay.querySelector('#ycHistGrid');
+      yearEl.onchange = function () {
+        var y = parseInt(yearEl.value, 10) || nowYear;
+        var row = data.manualHistory ? data.manualHistory[String(y)] : null;
+        gridEl.innerHTML = monthInputsHtml(row);
+      };
+      overlay.querySelector('#ycHistCancel').onclick = function () { overlay.remove(); };
+      overlay.querySelector('#ycHistSave').onclick = function () {
+        var months = {};
+        Array.prototype.forEach.call(gridEl.querySelectorAll('input'), function (inp) {
+          var raw = (inp.value || '').trim();
+          if (raw === '') { return; }
+          months[inp.getAttribute('data-m')] = parseFloat(raw.replace(',', '.'));
+        });
+        overlay.remove();
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Speichere…</div>';
+        requestAction('yearCompareHistory', JSON.stringify({ year: parseInt(yearEl.value, 10) || nowYear, months: months }));
+      };
     }
     function renderYearCompare(el, data) {
       if (!data || !data.years || !data.years.length) {

@@ -70,6 +70,13 @@ class NRGDashboardMonitor extends IPSModule
         // erwarteter Jahresertrag + Anlagenleistung (auto aus Prognose ODER
         // manuell) + 12 Monatsanteile in % - siehe YearCompareConfig().
         $this->RegisterAttributeString('YearCompareConfig', '{}');
+        // Manuell nachgetragene Vorjahreswerte (Dietmar, 05.08.2026): Monate
+        // vor Inbetriebnahme des Archivs/der Anlage haben keine Zaehler-
+        // historie - hier lassen sich pro Jahr/Monat feste kWh-Werte
+        // eintragen, die BuildYearCompare() nur dort einsetzt, wo das
+        // Archiv selbst keinen Wert liefert (echte Messwerte haben immer
+        // Vorrang). Format: {"2025": {"1": 436.0, "2": 464.94, ...}}.
+        $this->RegisterAttributeString('ManualHistory', '{}');
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHMON_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -596,6 +603,60 @@ class NRGDashboardMonitor extends IPSModule
         return $cfg;
     }
 
+    /**
+     * Manuell nachgetragene Vorjahreswerte, siehe RegisterAttributeString()
+     * in Create(). Rueckgabe: [Jahr(string) => [Monat 1-12(int) => kWh]].
+     */
+    private function ManualHistory(): array
+    {
+        $raw = $this->ReadAttributeString('ManualHistory');
+        $data = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $year => $months) {
+            if (!is_array($months)) {
+                continue;
+            }
+            $row = [];
+            foreach ($months as $m => $kwh) {
+                $m = (int) $m;
+                if ($m >= 1 && $m <= 12 && is_numeric($kwh)) {
+                    $row[$m] = (float) $kwh;
+                }
+            }
+            if (count($row) > 0) {
+                $out[(string) (int) $year] = $row;
+            }
+        }
+        return $out;
+    }
+
+    private function SaveManualHistory(array $req): array
+    {
+        $year = (string) (int) ($req['year'] ?? 0);
+        $months = is_array($req['months'] ?? null) ? $req['months'] : [];
+        $history = $this->ManualHistory();
+        if ($year === '0') {
+            return $history;
+        }
+        $row = [];
+        foreach (range(1, 12) as $m) {
+            $v = $months[(string) $m] ?? $months[$m] ?? null;
+            if ($v !== null && $v !== '' && is_numeric($v)) {
+                $row[(string) $m] = round((float) $v, 2);
+            }
+        }
+        if (count($row) > 0) {
+            $history[$year] = $row;
+        } else {
+            unset($history[$year]);
+        }
+        $this->WriteAttributeString('ManualHistory', json_encode($history));
+        return $this->ManualHistory();
+    }
+
     private function SaveYearCompareConfig(array $req): array
     {
         $cfg = [
@@ -648,6 +709,26 @@ class NRGDashboardMonitor extends IPSModule
             $data[(string) $y] = $row;
         }
 
+        // Manuell nachgetragene Vorjahreswerte einmischen - nur dort, wo das
+        // Archiv selbst KEINEN Wert liefert (echte Messwerte haben immer
+        // Vorrang, ein manueller Nachtrag ueberschreibt nie eine reale
+        // Zaehlerablesung). Ergaenzt bei Bedarf auch komplett neue Jahre
+        // (z.B. die Zeit vor Inbetriebnahme des Archivs).
+        foreach ($this->ManualHistory() as $y => $months) {
+            if (!isset($data[$y])) {
+                $data[$y] = array_fill(0, 12, null);
+                if (!in_array((int) $y, $years, true)) {
+                    $years[] = (int) $y;
+                }
+            }
+            foreach ($months as $m => $kwh) {
+                if ($data[$y][$m - 1] === null) {
+                    $data[$y][$m - 1] = $kwh;
+                }
+            }
+        }
+        sort($years);
+
         // Laufendes Jahr NICHT in den Mittelwert einrechnen (Dietmar,
         // 05.08.2026: bei Monaten ohne jegliche Vorjahres-Historie - z.B.
         // kurz nach Inbetriebnahme - waere der "Mittelwert" sonst trivial
@@ -697,6 +778,10 @@ class NRGDashboardMonitor extends IPSModule
             'autoKwp'    => $autoKwp > 0 ? $autoKwp : null,
             'expected'   => $expected,
             'config'     => $cfg,
+            // Fuers Nachtrags-Dialog (Vorbelegung beim erneuten Bearbeiten
+            // eines bereits nachgetragenen Jahres) - NICHT dasselbe wie
+            // 'data', das enthaelt bereits die Archiv-Vorrang-Mischung.
+            'manualHistory' => $this->ManualHistory(),
         ];
     }
 
@@ -1326,6 +1411,16 @@ class NRGDashboardMonitor extends IPSModule
                 'ok'   => true,
                 'type' => 'yearCompareUpdate',
                 'data' => $this->BuildYearCompare($cfg),
+            ]));
+            return;
+        }
+        if ($Ident === 'yearCompareHistory') {
+            $req = json_decode((string) $Value, true);
+            $this->SaveManualHistory(is_array($req) ? $req : []);
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'   => true,
+                'type' => 'yearCompareUpdate',
+                'data' => $this->BuildYearCompare(),
             ]));
             return;
         }
