@@ -548,8 +548,21 @@ class NRGDashboardMonitor extends IPSModule
                 continue;
             }
             $ts = (int) $row['TimeStamp'];
-            $daysInMonth = (int) date('t', $ts);
-            $kwh = round(((float) $row['Avg']) * $daysInMonth * 24.0 / 1000.0, 2);
+            // Hochrechnung mit den TATSAECHLICH abgedeckten Stunden statt
+            // immer den kompletten Kalendertagen des Monats - sonst wird der
+            // noch laufende Monat massiv ueberschaetzt: AC_GetAggregatedValues
+            // mittelt bei einem noch nicht abgeschlossenen Monat nur ueber die
+            // bisher vergangenen Tage, aber date('t', $ts) liefert immer den
+            // vollen Monat (z.B. 31 fuer August), egal ob der erst begonnen
+            // hat. Realer Fund, 05.08.2026: August zeigte 1325 kWh statt der
+            // tatsaechlichen ~299 kWh (Vergleich mit der Tagesansicht) - die
+            // ersten paar sonnenreichen Augusttage wurden auf den ganzen
+            // Monat hochgerechnet.
+            $monthStart = strtotime(date('Y-m-01 00:00:00', $ts));
+            $monthEnd = strtotime('+1 month', $monthStart);
+            $coverageEnd = min($end, $monthEnd);
+            $hours = max(0.0, ($coverageEnd - $monthStart) / 3600.0);
+            $kwh = round(((float) $row['Avg']) * $hours / 1000.0, 2);
             if (is_finite($kwh) && $kwh >= 0) {
                 $out[date('Y-n', $ts)] = $kwh;
             }
