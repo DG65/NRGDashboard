@@ -1276,6 +1276,44 @@ class NRGDashboardMonitor extends IPSModule
     }
 
     /**
+     * Hoechste Netzbezugsleistung (Ø je 15-Minuten-Slot, wie im "Ø kW"-
+     * Anzeigemodus) im Kalendermonat, der $dayStart enthaelt - fuer die
+     * gelbe Monats-Spitzenwert-Linie im Strompreis-Reiter (Dietmar,
+     * 07.08.2026). Nutzt bewusst dieselbe 15-Minuten-Bucketing wie
+     * SlotEnergyBars() (statt einer rohen 5-Minuten-Spitze) - der
+     * angezeigte Spitzenwert muss zum tatsaechlich geplotteten "Ø kW"-Balken
+     * passen, sonst waere die Linie nie exakt von einem Balken erreichbar.
+     * Rueckgabe null, wenn (noch) keine Daten im Monat vorliegen.
+     */
+    private function MonthlyPeakDraw(int $aid, int $vid, int $dayStart): ?array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return null;
+        }
+        $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
+        $monthEnd = min(time(), strtotime('+1 month', $monthStart));
+        if ($monthEnd <= $monthStart) {
+            return null;
+        }
+        $bars = $this->SlotEnergyBars($aid, $vid, $monthStart, $monthEnd);
+        if (count($bars) === 0) {
+            return null;
+        }
+        $best = null;
+        foreach ($bars as $b) {
+            if ($best === null || $b[1] > $best[1]) {
+                $best = $b;
+            }
+        }
+        return [
+            'kw' => round($best[1] * 4.0, 3),
+            // Slot-MITTE in ms, identisch zur Konvention von gridDraw -
+            // Frontend rechnet sich Slot-Start/-Ende (±450s) daraus zurueck.
+            'ts' => $best[0],
+        ];
+    }
+
+    /**
      * Tages-kWh je Kalendertag ueber die letzten SPAN_YEARS Jahre, als
      * ['Y-m-d' => kWh] - EIN Archivdurchlauf pro Serie (Muster:
      * InverterHubMonitor, "eine Tageswerte-Zeitreihe pro Serie über 5 Jahre
@@ -1695,6 +1733,12 @@ class NRGDashboardMonitor extends IPSModule
             // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
             // Preiskurve, gleicher $aid/$end wie die anderen Serien.
             $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $this->GridPowerID(), $start, $end) : [];
+            // Monats-Spitzenwert der Netzbezugsleistung (Dietmar,
+            // 07.08.2026) - je Tag identisch fuer alle Tage desselben
+            // Monats, bewusst pro Tag mitgeschickt statt separat
+            // nachgefordert (ein Archivdurchlauf mehr pro Tageswechsel ist
+            // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
+            $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $this->GridPowerID(), $start) : null;
 
             $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
                 || ($flow !== null && ($flow['hasData'] ?? false));
@@ -1729,6 +1773,7 @@ class NRGDashboardMonitor extends IPSModule
                 'price'    => $price,
                 'flow'     => $flow,
                 'gridDraw' => $gridDraw,
+                'gridMonthPeak' => $gridMonthPeak,
             ];
         }
 

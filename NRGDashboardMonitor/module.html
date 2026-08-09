@@ -781,6 +781,16 @@
       if (!priceUnitKw) { return raw; }
       return raw.map(function (p) { return [p[0], Math.round(p[1] * GRID_KWH_TO_KW * 1000) / 1000]; });
     }
+    // Beschriftung der Monats-Spitzenwert-Linie: Leistung + Tag + die
+    // Viertelstunde, in der die Spitze auftrat (Dietmars Wunsch,
+    // 07.08.2026) - peak.ts liegt wie bei gridDraw in der Slot-MITTE.
+    function gridPeakLabel(peak) {
+      if (!peak) { return ''; }
+      var slotStart = peak.ts - 450000, slotEnd = peak.ts + 450000;
+      var dt = new Date(peak.ts);
+      var dateStr = ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.';
+      return peak.kw.toFixed(2) + ' kW  ' + dateStr + '  ' + fmtHM(slotStart) + '–' + fmtHM(slotEnd) + ' Uhr';
+    }
     function priceStepPoints(d) {
       return ((d && d.price) || []).map(function (slot) {
         var center = slot[0] + (slot[1] - slot[0]) / 2;
@@ -872,6 +882,32 @@
       // vorgefunden).
       if (tab === 'price' && d && d.id === fmtDate(new Date()) && series.length > 0) {
         series[0].markLine = { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: '#ff5252', width: 2, type: 'solid' }, data: [{ xAxis: Date.now() }] };
+      }
+      // Monats-Spitzenwert der Netzbezugsleistung (Dietmars Wunsch,
+      // 07.08.2026) - NUR im "Ø kW"-Anzeigemodus sinnvoll: der Wert ist
+      // eine Leistung (kW), die kWh-Achse haette eine voellig andere
+      // Groessenordnung und die Linie liefe optisch aus dem Ruder. An die
+      // Netzbezug-Balkenserie selbst gehaengt (nicht an eine Hilfsserie),
+      // damit sie zuverlaessig auf Achse 0 (links) landet.
+      // Achsen-Obergrenze muss den Spitzenwert mit einschliessen - ohne das
+      // haette ECharts die Achse nur an den (oft viel niedrigeren) Balken
+      // des gerade angezeigten Tages ausgerichtet, die Linie liefe dann
+      // ausserhalb des sichtbaren Bereichs (live gefunden, 07.08.2026: bei
+      // einem Tag weit unter dem Monats-Rekord blieb von der Linie nichts
+      // zu sehen).
+      var priceLeftAxisMax = null;
+      if (tab === 'price' && priceUnitKw && d && d.gridMonthPeak) {
+        var gridSeriesE = series.filter(function (s) { return s.type === 'bar' && s.yAxisIndex === 0; })[0];
+        if (gridSeriesE) {
+          gridSeriesE.markLine = {
+            symbol: 'none', silent: true,
+            lineStyle: { color: '#ffd54a', width: 1.5, type: 'solid' },
+            label: { show: true, position: 'insideEndTop', color: '#ffd54a', fontSize: 10, formatter: gridPeakLabel(d.gridMonthPeak) },
+            data: [{ yAxis: d.gridMonthPeak.kw }]
+          };
+          var barMaxE = gridSeriesE.data.reduce(function (m, p) { return Math.max(m, p[1] || 0); }, 0);
+          if (d.gridMonthPeak.kw > barMaxE) { priceLeftAxisMax = Math.ceil(d.gridMonthPeak.kw * 1.08 * 10) / 10; }
+        }
       }
       chart.setOption({
         backgroundColor: 'transparent',
@@ -972,7 +1008,7 @@
         ),
         yAxis: (tab === 'price')
           ? [
-              { type: 'value', name: priceUnitKw ? 'kW' : 'kWh', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: priceUnitKw ? 'kW' : 'kWh', position: 'left', max: priceLeftAxisMax, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
               { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
             ]
           : [
@@ -1007,6 +1043,18 @@
         }
         return { name: s.name, type: 'line', step: (s.step === 'center') ? 'center' : (s.step ? 'right' : undefined), data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
       });
+      // Achsen-Obergrenze wie beim ECharts-Pendant explizit anheben, falls
+      // der Monats-Spitzenwert ueber den Balken des angezeigten Tages
+      // liegt - Highcharts' plotLines beeinflussen die Achsen-Extremwerte
+      // sonst ebenfalls nicht automatisch.
+      var priceLeftAxisMaxHC = null;
+      if (tab === 'price' && priceUnitKw && d && d.gridMonthPeak) {
+        var gridSeriesHC = series.filter(function (s) { return s.type === 'column' && s.yAxis === 0; })[0];
+        if (gridSeriesHC) {
+          var barMaxHC = gridSeriesHC.data.reduce(function (m, p) { return Math.max(m, p[1] || 0); }, 0);
+          if (d.gridMonthPeak.kw > barMaxHC) { priceLeftAxisMaxHC = Math.ceil(d.gridMonthPeak.kw * 1.08 * 10) / 10; }
+        }
+      }
       chart = Highcharts.chart(el, {
         // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
         // UTC statt in der Zeitzone des Browsers (live gefunden: Tooltip
@@ -1060,7 +1108,16 @@
         ),
         yAxis: (tab === 'price')
           ? [
-              { title: { text: priceUnitKw ? 'kW' : 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              {
+                title: { text: priceUnitKw ? 'kW' : 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineWidth: 1, gridLineColor: GRID_COLOR, max: priceLeftAxisMaxHC,
+                // Monats-Spitzenwert der Netzbezugsleistung (Dietmars
+                // Wunsch, 07.08.2026) - nur im "Ø kW"-Modus, siehe
+                // Begruendung beim ECharts-Pendant oben.
+                plotLines: (priceUnitKw && d && d.gridMonthPeak)
+                  ? [{ value: d.gridMonthPeak.kw, color: '#ffd54a', width: 1.5, zIndex: 5,
+                      label: { text: gridPeakLabel(d.gridMonthPeak), align: 'right', style: { color: '#ffd54a', fontSize: '10px' } } }]
+                  : []
+              },
               { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, gridLineWidth: 0 }
             ]
           : [
