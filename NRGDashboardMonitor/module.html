@@ -187,6 +187,10 @@
       </div>
       <div id="chartcol">
         <div id="chart"></div>
+        <div id="priceUnitRow" class="ycSubTabs" style="display:none">
+          <button data-unit="kwh">kWh</button>
+          <button data-unit="kw">Ø kW</button>
+        </div>
         <div id="legendRow"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
@@ -217,6 +221,15 @@
     // Zeitraum-Parameter noetig (immer "seit Inbetriebnahme"), deshalb reicht
     // ein einzelner Cache-Slot statt eines Keys wie bei balanceCache.
     var yearCompareCache = null, yearComparePending = false, yearCompareSub = 'total';
+    // Strompreis-Reiter: Netzbezug wahlweise als Energie (kWh je 15-Min-
+    // Balken) oder als Durchschnittsleistung (kW) anzeigen (Dietmars
+    // Wunsch, 07.08.2026). Umrechnung ist ein simpler Faktor 4, weil
+    // SlotEnergyBars() im Backend IMMER auf feste 15-Minuten-Buckets
+    // aggregiert (kWh / 0.25h = kW) - keine zusaetzliche Backend-Abfrage
+    // noetig. Kosten (kWh x ct/kWh) rechnen intern IMMER mit der echten
+    // kWh, unabhaengig vom Anzeige-Modus.
+    var priceUnitKw = false;
+    var GRID_KWH_TO_KW = 4;
     // Ein-/Ausklappen der Bilanz-Tabelle ist zurueck (Dietmar, 31.07.2026:
     // "waere es von Vorteil, wenn man die Bilanztabelle komprimieren und
     // die Charts gleichzeitig expandieren koennte") - diesmal bewusst OHNE
@@ -761,6 +774,13 @@
     // Punkt. slotStart/slotEnd bleiben als Zusatzfelder erhalten, damit der
     // Tooltip die tatsaechliche Slot-Startzeit (nicht die Slot-Mitte)
     // anzeigen kann.
+    // gridDraw liegt IMMER als [ts, kWh] vor - bei priceUnitKw wird daraus
+    // [ts, kW] (Faktor 4, siehe Deklaration von priceUnitKw oben), sonst
+    // unveraendert durchgereicht.
+    function gridDrawForDisplay(raw) {
+      if (!priceUnitKw) { return raw; }
+      return raw.map(function (p) { return [p[0], Math.round(p[1] * GRID_KWH_TO_KW * 1000) / 1000]; });
+    }
     function priceStepPoints(d) {
       return ((d && d.price) || []).map(function (slot) {
         var center = slot[0] + (slot[1] - slot[0]) / 2;
@@ -827,7 +847,7 @@
       var allSeries = (tab === 'price')
         ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }]
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
-            ? [{ name: 'Netzbezug', data: d.gridDraw, color: '#4aa3e0', axis: 0, bar: true }] : [])
+            ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
@@ -911,13 +931,18 @@
               if (gridP) {
                 gridV = (gridP.value && gridP.value[1] !== undefined) ? gridP.value[1] : gridP.value;
                 if (gridV !== null && gridV !== undefined) {
-                  lines.push('<div>' + gridP.marker + ' Netzbezug: <b>' + Number(gridV).toFixed(2) + ' kWh</b></div>');
+                  var gridLabel = priceUnitKw ? 'Ø Leistung' : 'Netzbezug';
+                  var gridUnit = priceUnitKw ? 'kW' : 'kWh';
+                  lines.push('<div>' + gridP.marker + ' ' + gridLabel + ': <b>' + Number(gridV).toFixed(2) + ' ' + gridUnit + '</b></div>');
                 }
               }
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
-              // diesen Slot (Dietmars Wunsch, 28.07.2026).
-              if (gridV !== null && gridV !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + formatCost(gridV * priceVal) + '</b></div>');
+              // diesen Slot (Dietmars Wunsch, 28.07.2026) - IMMER mit der
+              // echten kWh gerechnet, auch wenn gridV gerade als kW
+              // angezeigt wird (Faktor 4 zurueckgerechnet).
+              var gridKwh = (gridV !== null && gridV !== undefined) ? (priceUnitKw ? gridV / GRID_KWH_TO_KW : gridV) : null;
+              if (gridKwh !== null && gridKwh !== undefined && priceVal !== null && priceVal !== undefined) {
+                lines.push('<div>Kosten: <b>' + formatCost(gridKwh * priceVal) + '</b></div>');
               }
               return head + lines.join('');
             }
@@ -947,7 +972,7 @@
         ),
         yAxis: (tab === 'price')
           ? [
-              { type: 'value', name: 'kWh', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+              { type: 'value', name: priceUnitKw ? 'kW' : 'kWh', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
               { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
             ]
           : [
@@ -972,7 +997,7 @@
       var allSeries = (tab === 'price')
         ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }]
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
-            ? [{ name: 'Netzbezug', data: d.gridDraw, color: '#4aa3e0', axis: 0, bar: true }] : [])
+            ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
@@ -1035,7 +1060,7 @@
         ),
         yAxis: (tab === 'price')
           ? [
-              { title: { text: 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: priceUnitKw ? 'kW' : 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, gridLineWidth: 1, gridLineColor: GRID_COLOR },
               { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, gridLineWidth: 0 }
             ]
           : [
@@ -1087,12 +1112,17 @@
                 lines.push('<div><span style="color:#ffb300">●</span> Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
               }
               if (gridQ && gridQ.y !== null && gridQ.y !== undefined) {
-                lines.push('<div><span style="color:' + gridQ.color + '">●</span> Netzbezug: <b>' + Number(gridQ.y).toFixed(2) + ' kWh</b></div>');
+                var gridLabelHc = priceUnitKw ? 'Ø Leistung' : 'Netzbezug';
+                var gridUnitHc = priceUnitKw ? 'kW' : 'kWh';
+                lines.push('<div><span style="color:' + gridQ.color + '">●</span> ' + gridLabelHc + ': <b>' + Number(gridQ.y).toFixed(2) + ' ' + gridUnitHc + '</b></div>');
               }
               // Kosten = Netzbezug (kWh) x Strompreis (ct/kWh) = ct fuer
-              // diesen Slot (Dietmars Wunsch, 28.07.2026).
-              if (gridQ && gridQ.y !== null && gridQ.y !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + formatCost(gridQ.y * priceVal) + '</b></div>');
+              // diesen Slot (Dietmars Wunsch, 28.07.2026) - IMMER mit der
+              // echten kWh gerechnet, auch wenn gridQ.y gerade als kW
+              // angezeigt wird (Faktor 4 zurueckgerechnet).
+              var gridKwhHc = (gridQ && gridQ.y !== null && gridQ.y !== undefined) ? (priceUnitKw ? gridQ.y / GRID_KWH_TO_KW : gridQ.y) : null;
+              if (gridKwhHc !== null && gridKwhHc !== undefined && priceVal !== null && priceVal !== undefined) {
+                lines.push('<div>Kosten: <b>' + formatCost(gridKwhHc * priceVal) + '</b></div>');
               }
               return head + lines.join('');
             }
@@ -2432,6 +2462,11 @@
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
       document.getElementById('legendRow').classList.toggle('legendWrap', curTab === 'yearcompare');
+      var priceUnitRow = document.getElementById('priceUnitRow');
+      priceUnitRow.style.display = (curTab === 'price' && lastData.hasGrid) ? '' : 'none';
+      Array.prototype.forEach.call(priceUnitRow.querySelectorAll('button'), function (btn) {
+        btn.classList.toggle('active', (btn.getAttribute('data-unit') === 'kw') === priceUnitKw);
+      });
 
       if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
         destroyChart();
@@ -2672,6 +2707,12 @@
       curView = e.target.value;
       render();
     };
+    Array.prototype.forEach.call(document.querySelectorAll('#priceUnitRow button'), function (btn) {
+      btn.onclick = function () {
+        priceUnitKw = (btn.getAttribute('data-unit') === 'kw');
+        render();
+      };
+    });
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {
         if (btn.disabled) { return; }
