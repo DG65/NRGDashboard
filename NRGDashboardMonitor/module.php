@@ -1279,10 +1279,16 @@ class NRGDashboardMonitor extends IPSModule
      * Hoechste Netzbezugsleistung (Ø je 15-Minuten-Slot, wie im "Ø kW"-
      * Anzeigemodus) im Kalendermonat, der $dayStart enthaelt - fuer die
      * gelbe Monats-Spitzenwert-Linie im Strompreis-Reiter (Dietmar,
-     * 07.08.2026). Nutzt bewusst dieselbe 15-Minuten-Bucketing wie
-     * SlotEnergyBars() (statt einer rohen 5-Minuten-Spitze) - der
-     * angezeigte Spitzenwert muss zum tatsaechlich geplotteten "Ø kW"-Balken
-     * passen, sonst waere die Linie nie exakt von einem Balken erreichbar.
+     * 07.08.2026). ZWEISTUFIG statt eines einzelnen SlotEnergyBars()-Aufrufs
+     * ueber den ganzen Monat: AC_GetAggregatedValues mit 5-Minuten-Aufloesung
+     * ueber einen kompletten Monat (~30 Tage * 288 Zeilen) liefert schlicht
+     * `false` statt Daten zurueck (Limit=0 bricht den Aufruf hier trotz
+     * anderslautendem Kommentar bei SlotEnergyBars() - real gefunden,
+     * 09.08.2026: die Linie blieb fuer August komplett aus). Erst per
+     * Tagesaggregation (Min-Wert = staerkster Bezug des Tages) den
+     * Spitzentag finden, dann NUR fuer diesen einen Tag die 15-Minuten-
+     * Bucketing ueber SlotEnergyBars() - exakt dieselbe Rechnung wie vorher,
+     * nur mit klein genug gehaltenen Einzelabfragen.
      * Rueckgabe null, wenn (noch) keine Daten im Monat vorliegen.
      */
     private function MonthlyPeakDraw(int $aid, int $vid, int $dayStart): ?array
@@ -1295,7 +1301,27 @@ class NRGDashboardMonitor extends IPSModule
         if ($monthEnd <= $monthStart) {
             return null;
         }
-        $bars = $this->SlotEnergyBars($aid, $vid, $monthStart, $monthEnd);
+        $dailyRows = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $monthStart, $monthEnd, 0);
+        if (!is_array($dailyRows) || count($dailyRows) === 0) {
+            return null;
+        }
+        $peakDayStart = null;
+        $peakDrawW = 0.0;
+        foreach ($dailyRows as $row) {
+            if (!isset($row['Min'])) {
+                continue;
+            }
+            $drawW = max(0.0, -(float) $row['Min']);
+            if ($peakDayStart === null || $drawW > $peakDrawW) {
+                $peakDrawW = $drawW;
+                $peakDayStart = (int) $row['TimeStamp'];
+            }
+        }
+        if ($peakDayStart === null || $peakDrawW <= 0.0) {
+            return null;
+        }
+        $dayEnd = min($monthEnd, $peakDayStart + 86400);
+        $bars = $this->SlotEnergyBars($aid, $vid, $peakDayStart, $dayEnd);
         if (count($bars) === 0) {
             return null;
         }
