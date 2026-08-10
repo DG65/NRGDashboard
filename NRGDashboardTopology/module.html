@@ -267,7 +267,8 @@
      * weiter nach aussen auf, ohne die anderen, kleineren Cluster unnoetig
      * mit nach aussen zu ziehen.
      */
-    function computeLayout(groups) {
+    function computeLayout(groups, rotation) {
+      rotation = rotation || 0;
       var g = groups.length;
       var rType = Math.max(190, (g * MIN_HUB_ARC) / (2 * Math.PI));
       var rMemberBase = rType + 110;
@@ -289,7 +290,7 @@
       extend(0, 0, CENTER_R + CANVAS_MARGIN * 0.6);
 
       var hubs = groups.map(function (grp, i) {
-        var angle = (g > 0) ? (2 * Math.PI * i / g) - Math.PI / 2 : 0;
+        var angle = (g > 0) ? (2 * Math.PI * i / g) - Math.PI / 2 + rotation : rotation;
         var hx = rType * Math.cos(angle), hy = rType * Math.sin(angle);
         var n = grp.members.length;
         var isCluster = n > 1;
@@ -320,6 +321,31 @@
       return { rType: rType, sectorAngle: sectorAngle, hubs: hubs, cx: cx, cy: cy, width: maxX - minX, height: maxY - minY };
     }
 
+    /**
+     * Beste Drehrichtung automatisch finden (Dietmar, 10.08.2026: "die
+     * Visu soll den groessten Massstab abbilden koennen") - die radiale
+     * Anordnung ist bei fester Knotenzahl zwar in ihrer Ausdehnung gleich
+     * gross, ihre Bounding-Box aendert je nach Drehwinkel aber Breite/Hoehe
+     * UND Seitenverhaeltnis (ein Cluster, der z.B. genau nach oben statt
+     * schraeg auffaechert, erzeugt eine andere Box als schraeg nach oben).
+     * "preserveAspectRatio=xMidYMid meet" skaliert auf min(containerW/
+     * bboxW, containerH/bboxH) - je naeher das Bounding-Box-Seitenverhaeltnis
+     * am tatsaechlichen Kachel-Seitenverhaeltnis liegt, desto groesser faellt
+     * diese Skalierung aus (kein "Verschnitt" durch Letterboxing). Probiert
+     * dafuer einfach alle 10 Grad durch - computeLayout() ist reine
+     * Arithmetik ohne DOM-Zugriff, 36 Durchlaeufe sind vernachlaessigbar.
+     */
+    function findBestRotation(groups, containerW, containerH) {
+      var bestRot = 0, bestScale = -1;
+      for (var deg = 0; deg < 360; deg += 10) {
+        var rot = deg * Math.PI / 180;
+        var layout = computeLayout(groups, rot);
+        var scale = Math.min(containerW / layout.width, containerH / layout.height);
+        if (scale > bestScale) { bestScale = scale; bestRot = rot; }
+      }
+      return bestRot;
+    }
+
     function renderTopology(d) {
       var defs = document.querySelector('#svg defs');
       var sectorsG = document.getElementById('sectors');
@@ -337,7 +363,15 @@
         byModule[node.module].members.push(node);
       });
 
-      var layout = computeLayout(groups);
+      // Tatsaechliche Kachelgroesse (nicht die interne SVG-Koordinaten-
+      // groesse) - bestimmt, welches Seitenverhaeltnis der Bounding-Box
+      // den groessten Massstab ergibt. Fallback 1:1, falls die Kachel noch
+      // keine Groesse hat (z.B. erster Aufruf vor dem ersten Layout-Pass).
+      var wrapRect = document.getElementById('wrap').getBoundingClientRect();
+      var containerW = wrapRect.width || 1, containerH = wrapRect.height || containerW;
+      var rotation = findBestRotation(groups, containerW, containerH);
+
+      var layout = computeLayout(groups, rotation);
       var CX = layout.cx, CY = layout.cy;
       document.getElementById('svg').setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height);
 
