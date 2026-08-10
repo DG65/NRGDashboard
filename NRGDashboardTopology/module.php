@@ -143,6 +143,10 @@ class NRGDashboardTopology extends IPSModule
         'heishamon'   => 'HeishaMon',
         'tessie'      => 'Tessie',
         'tibber'      => 'Tibber Grid Rewards',
+        // EMS 0.16.0: reiner Anzeige-Eintrag (kein Steuer-/Situations-
+        // Vertrag, nicht Teil von PartnerCache/Discover()) - Casing 'PVF'
+        // exakt wie von EMS_GetFederationHealth() geliefert.
+        'PVF'         => 'PV-Prognose',
     ];
 
     public function GetVisualizationTile()
