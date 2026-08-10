@@ -71,12 +71,25 @@
   </div>
 
   <script>
-    var CX = 350, CY = 350;
-    var R_TYPE = 190;    // Ring fuer Einzelinstanzen und Cluster-Hubs (z.B. "MeterHub (6)")
-    var R_MEMBER = 300;  // Ring fuer einzelne Instanzen INNERHALB eines Clusters
+    // Knoten-/Kreisgroessen bleiben FEST (immer gleich lesbar, unabhaengig
+    // von der Partneranzahl) - skaliert wird stattdessen der ABSTAND
+    // zwischen den Knoten (Ringradien + Canvas/viewBox), siehe
+    // computeLayout(). Dietmars Wunsch, 10.08.2026: "voll skalierbare
+    // Darstellung" - bei 7 Partnern (urspruengliche Fassung) passte das
+    // feste 700x700-Raster noch, bei 16 (nach EMS' PVF/LoadForecast/
+    // StromGedacht-Ergaenzungen) ueberlappten sich Knoten UND die neuen,
+    // textlaengen-abhaengig breiteren Label-Pillen (siehe addLabelFO())
+    // massiv.
     var CENTER_R = 56;
     var NODE_R = 44;       // Einzelinstanz / Cluster-Hub
     var MEMBER_R = 32;     // Cluster-Mitglied (kleiner, da mehrere pro Sektor)
+    // Mindest-Bogenlaenge (SVG-Einheiten) je Knoten auf seinem Ring - hier
+    // wird die Skalierung tatsaechlich hergeleitet: bei mehr Knoten auf
+    // einem Ring waechst dessen Radius, damit jeder Knoten weiterhin
+    // mindestens so viel Platz um sich hat.
+    var MIN_HUB_ARC = 175;
+    var MIN_MEMBER_ARC = 115;
+    var CANVAS_MARGIN = 150; // Luft fuer die breiteste Label-Pille am aeusseren Rand
     // noresponse (EMS 0.11.0): installiert, aber Vertragsfunktion antwortet
     // nicht - eigener Alarmfall, bewusst amber statt rot/grau, damit er sich
     // von "Fehlerstatus" (rot) und "geloescht" (grau) optisch abhebt.
@@ -196,17 +209,17 @@
      * Verbindungslinien sofort erkennbar bleibt (Dietmars eigener
      * Vorschlag, hier aufgegriffen).
      */
-    function addSectorTint(sectorsG, angle, halfWidth, color, outerR) {
+    function addSectorTint(sectorsG, cx, cy, angle, halfWidth, color, outerR) {
       var innerR = 66;
       var steps = 10;
-      var d = 'M ' + (CX + innerR * Math.cos(angle - halfWidth)) + ' ' + (CY + innerR * Math.sin(angle - halfWidth));
+      var d = 'M ' + (cx + innerR * Math.cos(angle - halfWidth)) + ' ' + (cy + innerR * Math.sin(angle - halfWidth));
       for (var s = 0; s <= steps; s++) {
         var a = angle - halfWidth + (2 * halfWidth) * (s / steps);
-        d += ' L ' + (CX + outerR * Math.cos(a)) + ' ' + (CY + outerR * Math.sin(a));
+        d += ' L ' + (cx + outerR * Math.cos(a)) + ' ' + (cy + outerR * Math.sin(a));
       }
       for (var s2 = steps; s2 >= 0; s2--) {
         var a2 = angle - halfWidth + (2 * halfWidth) * (s2 / steps);
-        d += ' L ' + (CX + innerR * Math.cos(a2)) + ' ' + (CY + innerR * Math.sin(a2));
+        d += ' L ' + (cx + innerR * Math.cos(a2)) + ' ' + (cy + innerR * Math.sin(a2));
       }
       d += ' Z';
       sectorsG.appendChild(svgEl('path', { d: d, fill: color, opacity: 0.07 }));
@@ -245,6 +258,68 @@
      * bekommen einen Cluster-Hub auf dem Hauptring, dessen Mitglieder
      * lokal in einem eigenen Sektor weiter aussen aufgefaechert werden.
      */
+    /**
+     * Layout VORAB berechnen (kein DOM-Zugriff) - Ringradien wachsen mit
+     * der jeweiligen Knotenzahl, damit der Mindestabstand (MIN_HUB_ARC/
+     * MIN_MEMBER_ARC) unabhaengig von der Partneranzahl erhalten bleibt.
+     * Jeder Cluster bekommt seinen EIGENEN Mitglieder-Radius (nicht einen
+     * globalen) - ein Cluster mit vielen Mitgliedern "blueht" dadurch
+     * weiter nach aussen auf, ohne die anderen, kleineren Cluster unnoetig
+     * mit nach aussen zu ziehen.
+     */
+    function computeLayout(groups) {
+      var g = groups.length;
+      var rType = Math.max(190, (g * MIN_HUB_ARC) / (2 * Math.PI));
+      var rMemberBase = rType + 110;
+      var sectorAngle = (g > 0) ? (2 * Math.PI / g) : (2 * Math.PI);
+      var sectorWidthMax = sectorAngle * 0.82;
+
+      // Erst alle Positionen RELATIV ZUM URSPRUNG (EMS bei 0,0) bestimmen -
+      // die tatsaechliche viewBox/Verschiebung nach CX/CY folgt danach aus
+      // der ECHTEN Bounding-Box dieser Positionen (siehe unten), statt
+      // pauschal ein Quadrat um den groessten vorkommenden Radius zu legen.
+      // Ein einzelner breit auffaechernder Cluster soll nicht in JEDER
+      // Richtung Leerraum erzwingen, nur weil ER in EINER Richtung viel
+      // Platz braucht.
+      var minX = 0, maxX = 0, minY = 0, maxY = 0;
+      function extend(x, y, pad) {
+        minX = Math.min(minX, x - pad); maxX = Math.max(maxX, x + pad);
+        minY = Math.min(minY, y - pad); maxY = Math.max(maxY, y + pad);
+      }
+      extend(0, 0, CENTER_R + CANVAS_MARGIN * 0.6);
+
+      var hubs = groups.map(function (grp, i) {
+        var angle = (g > 0) ? (2 * Math.PI * i / g) - Math.PI / 2 : 0;
+        var hx = rType * Math.cos(angle), hy = rType * Math.sin(angle);
+        var n = grp.members.length;
+        var isCluster = n > 1;
+        var rMember = rMemberBase, sectorWidth = 0, members = [];
+
+        if (isCluster) {
+          var neededArc = (n - 1) * MIN_MEMBER_ARC;
+          rMember = Math.max(rMemberBase, neededArc / sectorWidthMax);
+          sectorWidth = Math.min(sectorWidthMax, neededArc / rMember);
+          for (var j = 0; j < n; j++) {
+            var mAngle = (n > 1) ? (angle - sectorWidth / 2 + sectorWidth * (j / (n - 1))) : angle;
+            var mx = rMember * Math.cos(mAngle), my = rMember * Math.sin(mAngle);
+            members.push({ x: mx, y: my });
+            extend(mx, my, MEMBER_R + CANVAS_MARGIN);
+          }
+        } else {
+          extend(hx, hy, NODE_R + CANVAS_MARGIN);
+        }
+        extend(hx, hy, NODE_R + CANVAS_MARGIN * 0.5);
+
+        return { angle: angle, x: hx, y: hy, isCluster: isCluster, rMember: rMember, sectorWidth: sectorWidth, members: members };
+      });
+
+      // Alles um (-minX, -minY) verschieben, damit die Bounding-Box bei
+      // (0,0) beginnt - viewBox deckt dann exakt deren Breite/Hoehe ab,
+      // kein erzwungenes Quadrat und kein unnoetiger Leerraum.
+      var cx = -minX, cy = -minY;
+      return { rType: rType, sectorAngle: sectorAngle, hubs: hubs, cx: cx, cy: cy, width: maxX - minX, height: maxY - minY };
+    }
+
     function renderTopology(d) {
       var defs = document.querySelector('#svg defs');
       var sectorsG = document.getElementById('sectors');
@@ -252,12 +327,6 @@
       var nodesG = document.getElementById('nodes');
       var labelsG = document.getElementById('labels');
       sectorsG.innerHTML = ''; edges.innerHTML = ''; nodesG.innerHTML = ''; labelsG.innerHTML = '';
-
-      // Zentrum (EMS)
-      var centerCircle = svgEl('circle', { cx: CX, cy: CY, r: CENTER_R, fill: 'url(#gCenter)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, class: 'node-face' });
-      nodesG.appendChild(centerCircle);
-      attachTooltip(centerCircle, 'EMS', d.emsLabel || 'Verbund-Koordinator');
-      addLabelFO(labelsG, CX, CY, 90, 34, 'EMS');
 
       var groups = []; var byModule = {};
       d.nodes.forEach(function (node) {
@@ -268,16 +337,25 @@
         byModule[node.module].members.push(node);
       });
 
-      var g = groups.length;
+      var layout = computeLayout(groups);
+      var CX = layout.cx, CY = layout.cy;
+      document.getElementById('svg').setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height);
+
+      // Zentrum (EMS)
+      var centerCircle = svgEl('circle', { cx: CX, cy: CY, r: CENTER_R, fill: 'url(#gCenter)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, class: 'node-face' });
+      nodesG.appendChild(centerCircle);
+      attachTooltip(centerCircle, 'EMS', d.emsLabel || 'Verbund-Koordinator');
+      addLabelFO(labelsG, CX, CY, 90, 34, 'EMS');
+
       groups.forEach(function (grp, i) {
-        var angle = (g > 0) ? (2 * Math.PI * i / g) - Math.PI / 2 : 0;
-        var hx = CX + R_TYPE * Math.cos(angle);
-        var hy = CY + R_TYPE * Math.sin(angle);
-        var isCluster = grp.members.length > 1;
+        var hub = layout.hubs[i];
+        var angle = hub.angle;
+        var hx = CX + hub.x, hy = CY + hub.y;
+        var isCluster = hub.isCluster;
         var hubStatus = isCluster ? aggregateStatus(grp.members) : grp.members[0].status;
         var hubColor = STATUS_COLOR[hubStatus] || STATUS_COLOR.missing;
 
-        addSectorTint(sectorsG, angle, (2 * Math.PI / g) * 0.42, hubColor, isCluster ? R_MEMBER + 40 : R_TYPE + 30);
+        addSectorTint(sectorsG, CX, CY, angle, layout.sectorAngle * 0.42, hubColor, isCluster ? hub.rMember + 40 : layout.rType + 30);
 
         edges.appendChild(svgEl('line', {
           x1: CX, y1: CY, x2: hx, y2: hy,
@@ -299,14 +377,8 @@
           : ('Status: ' + STATUS_TEXT[hubStatus]));
 
         if (isCluster) {
-          var sectorWidth = (2 * Math.PI / g) * 0.7;
-          var n = grp.members.length;
           grp.members.forEach(function (member, j) {
-            var mAngle = (n > 1)
-              ? (angle - sectorWidth / 2 + sectorWidth * (j / (n - 1)))
-              : angle;
-            var mx = CX + R_MEMBER * Math.cos(mAngle);
-            var my = CY + R_MEMBER * Math.sin(mAngle);
+            var mx = CX + hub.members[j].x, my = CY + hub.members[j].y;
             var mColor = STATUS_COLOR[member.status] || STATUS_COLOR.missing;
 
             edges.appendChild(svgEl('line', {
