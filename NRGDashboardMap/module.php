@@ -273,7 +273,16 @@ class NRGDashboardMap extends IPSModule
                 $houseId = $key;
             } elseif ($fn !== '' && $fn !== 'pv' && $fn !== 'battery') {
                 $nodes[] = ['id' => $key, 'label' => $label, 'category' => 'consumer'];
-                $edges[] = ['source' => $houseId ?? ($gridId ?? $centerId), 'target' => $key];
+                // Faellt OHNE 'house'-Knoten NICHT auf einen beliebigen
+                // Netzzaehler zurueck (Dietmar, 10.08.2026: "Verbindungen,
+                // die es gar nicht gibt" - reale Ursache: kein
+                // MeterHub-Eintrag mit function='house' vorhanden, bei
+                // MEHREREN Netzzaehlern (Inexogy + PAC2200) landeten dann
+                // ALLE Verbraucher/Wallboxen/HeishaMon faelschlich am
+                // erstbesten davon, obwohl kein solcher Bezug bekannt ist).
+                // Zentrum statt Netzzaehler ist die ehrlichere Annahme -
+                // "an den Verbund gehaengt", nicht "hinter DIESEM Zaehler".
+                $edges[] = ['source' => $houseId ?? $centerId, 'target' => $key];
             }
         }
 
@@ -282,7 +291,7 @@ class NRGDashboardMap extends IPSModule
         foreach (@IPS_GetInstanceListByModuleID(self::HEISHA_GUID) as $id) {
             $id = (int) $id;
             $nodes[] = ['id' => 'heisha_' . $id, 'label' => IPS_GetName($id), 'category' => 'consumer'];
-            $edges[] = ['source' => $houseId ?? ($gridId ?? $centerId), 'target' => 'heisha_' . $id];
+            $edges[] = ['source' => $houseId ?? $centerId, 'target' => 'heisha_' . $id];
         }
 
         // Wallboxen (ChargerHub)
@@ -299,7 +308,16 @@ class NRGDashboardMap extends IPSModule
             foreach ($entries as $e) {
                 $key = 'wb_' . $id;
                 $nodes[] = ['id' => $key, 'label' => (string) ($e['label'] ?? 'Wallbox'), 'category' => 'wallbox'];
-                $edges[] = ['source' => $houseId ?? ($gridId ?? $centerId), 'target' => $key];
+                // Faellt OHNE 'house'-Knoten NICHT auf einen beliebigen
+                // Netzzaehler zurueck (Dietmar, 10.08.2026: "Verbindungen,
+                // die es gar nicht gibt" - reale Ursache: kein
+                // MeterHub-Eintrag mit function='house' vorhanden, bei
+                // MEHREREN Netzzaehlern (Inexogy + PAC2200) landeten dann
+                // ALLE Verbraucher/Wallboxen/HeishaMon faelschlich am
+                // erstbesten davon, obwohl kein solcher Bezug bekannt ist).
+                // Zentrum statt Netzzaehler ist die ehrlichere Annahme -
+                // "an den Verbund gehaengt", nicht "hinter DIESEM Zaehler".
+                $edges[] = ['source' => $houseId ?? $centerId, 'target' => $key];
                 $wbIds[] = $key;
             }
         }
