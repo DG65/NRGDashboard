@@ -142,10 +142,40 @@
      * automatisch mit der SVG-viewBox mit, ohne eigene Bildschirm-Pixel-
      * Umrechnung.
      */
+    // Textbreite vorab messen (Canvas statt DOM-Reflow) - Beschriftungen
+    // sollen sich der tatsaechlichen Laenge anpassen statt in einer fest
+    // breiten "Pille" abgeschnitten zu werden (Dietmar, 09.08.2026: lange
+    // Namen wie "Messung Netzanschluß - Inexogy" oder "InverterHub WR1
+    // (GoodWe)" waren komplett unlesbar).
+    var _measureCanvas = null;
+    function measureTextWidth(text, fontPx) {
+      if (!_measureCanvas) { _measureCanvas = document.createElement('canvas'); }
+      var ctx = _measureCanvas.getContext('2d');
+      ctx.font = '600 ' + fontPx + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      return ctx.measureText(text).width;
+    }
+    // w/h werden als MINDESTGROESSE behandelt (kurze Namen wie "WB 1"
+    // sehen unveraendert aus) - erst bei laengerem Text waechst die Pille;
+    // jenseits von maxWidth bricht der Text zweizeilig um (echte Pillenform
+    // - volles border-radius - liest sich bei zwei Zeilen schlecht, deshalb
+    // dann etwas eckiger).
     function addLabelFO(parent, x, y, w, h, text, small, subCountText) {
-      var fo = svgEl('foreignObject', { x: x - w / 2, y: y - h / 2, width: w, height: h });
+      var fontPx = small ? 11 : 13;
+      var hPad = small ? 16 : 20; // .label-pill(.small) padding-left+right
+      var maxWidth = small ? 170 : 220;
+      var needed = measureTextWidth(text, fontPx) + hPad + 4;
+      var wraps = needed > maxWidth;
+      var width = Math.max(w, Math.min(needed, maxWidth));
+      var height = wraps ? h + fontPx * 1.3 : h;
+      var fo = svgEl('foreignObject', { x: x - width / 2, y: y - height / 2, width: width, height: height });
       var div = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
       div.setAttribute('class', small ? 'label-pill small' : 'label-pill');
+      if (wraps) {
+        div.style.whiteSpace = 'normal';
+        div.style.wordBreak = 'break-word';
+        div.style.borderRadius = '16px';
+        div.style.lineHeight = '1.2';
+      }
       var textSpan = document.createElementNS('http://www.w3.org/1999/xhtml', 'span');
       textSpan.textContent = text;
       div.appendChild(textSpan);
