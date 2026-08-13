@@ -266,6 +266,34 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed) {
   return g;
 }
 
+// Innengeraet als realistischer Turm nach Panasonics Geraetezeichnung
+// (WH-ADC0309J3E5, Wunsch Dietmar 14.08.2026: "so abbilden wie es
+// tatsaechlich aussieht"): schlankes hohes Standgeraet mit Bedienfeld
+// (Display + Drehknopf) oben, geschlossener Front, Sockelstrich und
+// Standfuessen - KEIN aufgeschnittener Kasten mit sichtbaren Innereien;
+// die inneren Zustaende stehen in der Tabelle darunter.
+function indoorUnit(svg, x, y, w, h) {
+  var g = el('g', {});
+  var C = '#8a9cb8';
+  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: '#16233a', stroke: C, 'stroke-width': 1.5 }));
+  // Standfuesse
+  var footY = y + h;
+  [x + 12, x + w - 20].forEach(function (fx) {
+    g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: '#16233a', stroke: C, 'stroke-width': 1.2 }));
+  });
+  // Sockelstrich (abgesetzte Bodenplatte wie in der Zeichnung)
+  g.appendChild(el('path', { d: 'M' + (x + 4) + ',' + (y + h - 14) + ' L' + (x + w - 4) + ',' + (y + h - 14), fill: 'none', stroke: C, 'stroke-width': 0.9, opacity: 0.7 }));
+  // Bedienfeld oben mittig: Rahmen, Display, Drehknopf
+  var px = x + w / 2, py = y + 34;
+  g.appendChild(el('rect', { x: px - 15, y: py - 18, width: 30, height: 44, rx: 2, fill: 'none', stroke: C, 'stroke-width': 1.1 }));
+  g.appendChild(el('rect', { x: px - 10, y: py - 12, width: 20, height: 14, rx: 1, fill: 'none', stroke: C, 'stroke-width': 1 }));
+  g.appendChild(el('path', { d: 'M' + (px - 10) + ',' + (py - 7) + ' h20 M' + (px - 10) + ',' + (py - 3) + ' h20', fill: 'none', stroke: C, 'stroke-width': 0.7, opacity: 0.8 }));
+  g.appendChild(el('circle', { cx: px, cy: py + 14, r: 5, fill: 'none', stroke: C, 'stroke-width': 1.1 }));
+  g.appendChild(el('path', { d: 'M' + px + ',' + (py + 10) + ' L' + px + ',' + (py + 14), stroke: C, 'stroke-width': 1 }));
+  svg.appendChild(g);
+  return g;
+}
+
 function arrowHead(x, y, dir, color) {
   var pts = { r: [[x - 5, y - 4], [x + 5, y], [x - 5, y + 4]], l: [[x + 5, y - 4], [x - 5, y], [x + 5, y + 4]], d: [[x - 4, y - 5], [x, y + 5], [x + 4, y - 5]], u: [[x - 4, y + 5], [x, y - 5], [x + 4, y + 5]] };
   var p = pts[dir] || pts.r;
@@ -278,7 +306,7 @@ function buildSchema(unit) {
   // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
   // (2. Steuerplatine, Live-Werte seit HeishaMon contractVersion 1.4)
   // zu Radiatoren/Flaechenheizkoerpern (FBH nur Bad).
-  var W = 1000, H = 430;
+  var W = 1000, H = 460;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, class: 'schema-bg' }));
@@ -337,8 +365,8 @@ function buildSchema(unit) {
   // Kaeltemittelleitungen zum Innengeraet
   // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
   // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
-  svg.appendChild(refrigerantLine('M165,160 L230,160', running));
-  svg.appendChild(refrigerantLine('M230,200 L165,200', running));
+  svg.appendChild(refrigerantLine('M165,160 L240,160', running));
+  svg.appendChild(refrigerantLine('M240,200 L165,200', running));
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
     svg.appendChild(chip(195, 138, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
   }
@@ -352,72 +380,70 @@ function buildSchema(unit) {
   // zum Heizkreis), die externe Pumpe (H14) sitzt sekundaerseitig NACH
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
-  svg.appendChild(el('rect', { x: 230, y: 80, width: 210, height: 280, rx: 4, class: 'box' }));
-  var it = el('text', { x: 335, y: 100, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
-  var it2 = el('text', { x: 335, y: 113, class: 'tag' }); it2.textContent = 'Kombi-Hydromodul'; svg.appendChild(it2);
+  var it = el('text', { x: 295, y: 72, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  indoorUnit(svg, 240, 80, 110, 270);
 
-  // 3-Wege-Ventil (Umschaltung Heizen/WW)
-  svg.appendChild(valveSymbol(270, 145, 7, toDhw ? '#e0b93c' : HOT, toDhw ? 'WW' : 'RAUM', true));
-  var twoWayOpen = unit.twoWayValve !== false;
-  svg.appendChild(valveSymbol(270, 192, 7, twoWayOpen ? COLD : '#6f83a3', twoWayOpen ? 'AUF' : 'ZU', twoWayOpen));
-
-  if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(380, 136, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
-  }
-  if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(380, 195, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
-  }
-  // Spreizung (Vorlauf - Ruecklauf) zwischen den beiden Chips - die
-  // eigentlich interessante Betriebskennzahl (Dietmars Frage, 14.08.2026:
-  // "Gibt es zwischen Vor- und Ruecklauf Temperatur Unterschiede die man
-  // darstellen koennte?").
+  // Zustands-/Messwert-Tabelle unter dem Geraet (gleiches Muster wie beim
+  // Aussengeraet: keine Linien, geraetebuendig, Label links / Wert rechts).
   var haveVLRL = unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined
     && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
-  if (haveVLRL) {
-    var dT = unit.mainOutletTemp - unit.mainInletTemp;
-    svg.appendChild(chip(380, 162, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
-  }
-  // interne Pumpe + Messwerte
-  svg.appendChild(pumpIcon(270, 232, running, 0));
-  if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) {
-    svg.appendChild(chip(330, 232, String(Math.round(unit.pumpSpeed)), 'U/min', running ? '#69cf7d' : '#6f83a3', null));
-  }
-  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
-    svg.appendChild(chip(400, 232, fmtTemp1(unit.pumpFlow), 'l/min', running ? '#69cf7d' : '#6f83a3', null));
-  }
+  var twoWayOpen = unit.twoWayValve !== false;
+  var idRows = [];
+  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push(['Pumpe', fmtTemp1(unit.pumpFlow) + ' l/min']); }
+  if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push(['Drehzahl', Math.round(unit.pumpSpeed) + ' U/min']); }
+  if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank 185 l', fmtTemp1(unit.dhwTemp) + ' °C']); }
+  idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
+  idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
+  idRows.forEach(function (row, ri) {
+    var ry = 375 + ri * 16;
+    var lbl = el('text', { x: 240, y: ry, class: 'tag' });
+    lbl.style.textAnchor = 'start';
+    lbl.textContent = row[0];
+    svg.appendChild(lbl);
+    // Wertspalte endet 12px RECHTS der Geraetekante (362 statt 350) -
+    // sonst kollidieren lange Label/Wert-Paare (WW-Tank 185 l / 40,0 °C).
+    var val = el('text', { x: 362, y: ry, class: 'chip-text' });
+    val.style.textAnchor = 'end';
+    val.textContent = row[1];
+    svg.appendChild(val);
+  });
 
-  // Integrierter WW-Tank (185l) unten im Geraet
-  svg.appendChild(pipe('M263,145 L246,145 L246,295 L307,295', 'pipe-hot', running && toDhw));
-  tankShape(svg, 333, 255, 52, 92, unit.dhwTemp, 'WW-Tank', '185 l');
-  if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) {
-    svg.appendChild(chip(400, 330, fmtTemp1(unit.dhwTemp), '°C', tempColor(unit.dhwTemp), null));
-  }
-
-  // Sanitaerseite (Panasonic H21/H22): Kaltwasser von unten in den Tank,
-  // Warmwasser zur Zapfstelle - duenne, statische Leitungen (ob gerade
-  // gezapft wird, ist nicht messbar).
-  svg.appendChild(el('path', { d: 'M333,400 L333,349', fill: 'none', stroke: '#7cc4ee', 'stroke-width': 3 }));
-  var kwTag = el('text', { x: 333, y: 414, class: 'tag' }); kwTag.textContent = 'Kaltwasser'; svg.appendChild(kwTag);
-  svg.appendChild(el('path', { d: 'M359,270 L480,270 L480,300', fill: 'none', stroke: '#e58c7a', 'stroke-width': 3 }));
+  // Sanitaerseite (Panasonic H21/H22): Kaltwasser rein, Warmwasser zur
+  // Zapfstelle - duenne, statische Leitungen (Zapfung nicht messbar),
+  // seitlich am Geraet, damit die Tabelle darunter frei bleibt.
+  svg.appendChild(el('path', { d: 'M470,325 L350,325', fill: 'none', stroke: '#7cc4ee', 'stroke-width': 3 }));
+  svg.appendChild(el('path', { d: 'M350,305 L455,305', fill: 'none', stroke: '#e58c7a', 'stroke-width': 3 }));
   // Zapfstellen-Symbol (Duschkopf)
-  svg.appendChild(el('path', { d: 'M480,300 L480,308 M470,312 L490,312 M473,318 L473,324 M480,318 L480,326 M487,318 L487,324', fill: 'none', stroke: '#7cc4ee', 'stroke-width': 2, 'stroke-linecap': 'round' }));
-  var zTag = el('text', { x: 480, y: 340, class: 'tag' }); zTag.textContent = 'Warmwasser'; svg.appendChild(zTag);
+  svg.appendChild(el('path', { d: 'M470,305 L478,305 L478,313 M468,317 L488,317 M471,323 L471,329 M478,323 L478,331 M485,323 L485,329', fill: 'none', stroke: '#7cc4ee', 'stroke-width': 2, 'stroke-linecap': 'round' }));
+  var zTag = el('text', { x: 478, y: 347, class: 'tag' }); zTag.textContent = 'Zapfstelle'; svg.appendChild(zTag);
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
   // Primaerseite links (Innengeraet), Sekundaerseite rechts (Heizkreis).
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (running && toRoom);
-  svg.appendChild(pipe('M440,120 L546,120', 'pipe-hot', running && toRoom));
+  svg.appendChild(pipe('M350,120 L546,120', 'pipe-hot', running && toRoom));
+  svg.appendChild(pipe('M546,170 L350,170', 'pipe-cold', running && toRoom));
+  // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
+  // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
+  if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
+    svg.appendChild(chip(430, 120, fmtTemp1(unit.mainOutletTemp), '°C', HOT, null));
+  }
+  if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
+    svg.appendChild(chip(430, 170, fmtTemp1(unit.mainInletTemp), '°C', COLD, null));
+  }
+  if (haveVLRL) {
+    var dT = unit.mainOutletTemp - unit.mainInletTemp;
+    svg.appendChild(chip(430, 145, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+  }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
   // therm.". Nur bei realem Umlauf (Durchfluss > 0) angezeigt, sonst
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = (unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(493, 95, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', HOT, 'therm. Leistung'));
+    svg.appendChild(chip(488, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', HOT, 'therm. Leistung'));
   }
   if (running && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', HOT)); }
-  svg.appendChild(pipe('M546,170 L440,170', 'pipe-cold', running && toRoom));
   if (running && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', COLD)); }
   tankShape(svg, 570, 95, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
