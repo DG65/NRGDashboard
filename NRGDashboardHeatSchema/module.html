@@ -120,26 +120,22 @@ function calloutValue(px, py, lx, ly, text, unit, color, tag) {
   return g;
 }
 
-// Ventil-Symbol (Schmetterling/Bowtie) - Standard-Fliessbildsymbol,
-// Kontur wie die Rohre/Kaesten, Fuellung zeigt den Zustand.
-function valveSymbol(x, y, color, tag) {
+// Ventil-Symbol (Schmetterling/Bowtie) - reine Kontur wie im Referenzbild
+// ("Wärmepumpe Visu"), KEIN gefuellter Kreis/Block dahinter (frueherer
+// Entwurf wirkte dadurch zu "grafisch" statt wie ein technisches
+// Liniensymbol - Dietmar, 14.08.2026: "weit entfernt von Professionalität").
+// Praezise, exakt symmetrische Geometrie statt Pi-mal-Daumen-Koordinaten.
+function valveSymbol(x, y, r, color, tag) {
+  r = r || 7;
   var g = el('g', {});
-  g.appendChild(el('circle', { cx: x, cy: y, r: 10, fill: '#14171a', class: 'valve' }));
-  g.appendChild(el('path', { d: 'M' + (x - 6) + ',' + (y - 5) + ' L' + (x + 6) + ',' + (y + 5) + ' L' + (x + 6) + ',' + (y - 5) + ' L' + (x - 6) + ',' + (y + 5) + ' Z', fill: color, class: 'valve-fill' }));
+  g.appendChild(el('path', {
+    d: 'M' + (x - r) + ',' + (y - r) + ' L' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y - r) + ' L' + (x - r) + ',' + (y + r) + ' Z',
+    fill: 'none', stroke: color || '#8a9cb8', 'stroke-width': 1.5, 'stroke-linejoin': 'round'
+  }));
   if (tag) {
-    var t = el('text', { x: x, y: y + 23, class: 'tag', 'text-anchor': 'middle', fill: color }); t.textContent = tag; g.appendChild(t);
+    var t = el('text', { x: x, y: y + r + 15, class: 'tag', 'text-anchor': 'middle', fill: color }); t.textContent = tag; g.appendChild(t);
   }
   return g;
-}
-
-// Grosser, fetter Messwert DIREKT auf der Tankflaeche (Referenz-Vorbild:
-// iDM-Anlagenschema aus der Symcon-Community, 13.08.2026) - der Tank ist
-// breit genug, eine Anfuehrungslinie waere hier ueberfluessig, anders als
-// bei duennen Rohrabschnitten (siehe calloutValue()).
-function tankReadout(x, y, text) {
-  var t = el('text', { x: x, y: y + 4, class: 'val', 'text-anchor': 'middle', fill: '#fff', style: 'font-size:15px' });
-  t.textContent = text + ' °C';
-  return t;
 }
 
 var tankGradSeq = 0;
@@ -205,7 +201,7 @@ function fanIcon(x, y, r, running) {
 // Pulsiert dezent, wenn die Pumpe tatsaechlich foerdert.
 function pumpIcon(x, y, color, active) {
   var g = el('g', {});
-  g.appendChild(el('circle', { cx: x, cy: y, r: 9, fill: '#14171a', stroke: color || '#aab2bc', 'stroke-width': 1.5 }));
+  g.appendChild(el('circle', { cx: x, cy: y, r: 9, fill: 'none', stroke: color || '#8a9cb8', 'stroke-width': 1.5 }));
   var tri = el('path', { d: 'M' + (x - 4) + ',' + (y - 5) + ' L' + (x + 6) + ',' + y + ' L' + (x - 4) + ',' + (y + 5) + ' Z', fill: color || '#aab2bc' });
   if (active) { tri.style.animation = 'pumpspin 1s ease-in-out infinite'; }
   g.appendChild(tri);
@@ -271,9 +267,9 @@ function buildSchema(unit) {
   // Pumpe, Ein-/Austrittstemperatur, 185l-Brauchwassertank fest eingebaut)
   svg.appendChild(el('rect', { x: 165, y: 70, width: 170, height: 160, rx: 3, class: 'box' }));
   var it = el('text', { x: 250, y: 86, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
-  svg.appendChild(valveSymbol(200, 112, toDhw ? '#e0b93c' : HOT, toDhw ? 'WW' : 'RAUM'));
+  svg.appendChild(valveSymbol(200, 112, 7, toDhw ? '#e0b93c' : HOT, toDhw ? 'WW' : 'RAUM'));
   var twoWayOpen = unit.twoWayValve !== false;
-  svg.appendChild(valveSymbol(200, 160, twoWayOpen ? COLD : '#6a6f77', twoWayOpen ? 'AUF' : 'ZU'));
+  svg.appendChild(valveSymbol(200, 160, 7, twoWayOpen ? COLD : '#6a6f77', twoWayOpen ? 'AUF' : 'ZU'));
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
     svg.appendChild(valueText(295, 108, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
   }
@@ -302,7 +298,11 @@ function buildSchema(unit) {
   svg.appendChild(pipe('M200,122 L200,180 L120,180 L120,200', 'pipe-hot', running && toDhw));
   tankShape(svg, 120, 200, 42, 95, unit.dhwTemp, 'WW-Tank 185 l');
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) {
-    svg.appendChild(tankReadout(120, 200 + 95 / 2, fmtTemp1(unit.dhwTemp)));
+    // Wert floatet frei links neben dem Tank statt gross auf der
+    // Tankflaeche (Referenz "Wärmepumpe Visu"-Video, 14.08.2026 - dort
+    // stehen NUR die Liter-Angaben auf dem Tank selbst, alle Temperaturen
+    // schweben aussen mit Anfuehrungspfeil).
+    svg.appendChild(calloutValue(99, 230, 55, 230, fmtTemp1(unit.dhwTemp), '°C', tempColor(unit.dhwTemp), null));
   }
 
   // Heizungszweig vom Innengeraet direkt in den 100l-Pufferspeicher
@@ -312,7 +312,7 @@ function buildSchema(unit) {
   if (running && toRoom) { svg.appendChild(arrowHead(370, 105, 'r', HOT)); }
   tankShape(svg, 420, 45, 46, 130, unit.bufferTemp, 'Puffer 100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(tankReadout(420, 45 + 130 / 2, fmtTemp1(unit.bufferTemp)));
+    svg.appendChild(calloutValue(420, 45, 420, 22, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
 
   // Externe Pumpe + Mischventil an der 2. Steuerplatine - seit HeishaMon
@@ -327,16 +327,15 @@ function buildSchema(unit) {
   if (pumpKnown) {
     svg.appendChild(valueText(478, 80, pumpOn ? 'EIN' : 'AUS', null, pumpOn ? HOT : '#6a6f77', 'Pumpe'));
   }
-  svg.appendChild(el('circle', { cx: 520, cy: 105, r: 9, class: 'valve', fill: '#14171a' }));
   var mv = unit.extMixingValve;
   if (mv === 2) {
+    svg.appendChild(valveSymbol(520, 105, 7, HOT, null));
     svg.appendChild(arrowHead(520, 105, 'u', HOT));
   } else if (mv === 1) {
+    svg.appendChild(valveSymbol(520, 105, 7, COLD, null));
     svg.appendChild(arrowHead(520, 105, 'd', COLD));
-  } else if (mv === 0) {
-    svg.appendChild(el('circle', { cx: 520, cy: 105, r: 2.5, fill: '#aab2bc' }));
   } else {
-    svg.appendChild(el('path', { d: 'M514,100 L526,110 M526,100 L514,110', stroke: '#aab2bc', 'stroke-width': 1.5 }));
+    svg.appendChild(valveSymbol(520, 105, 7, '#8a9cb8', null));
   }
   var mixTag = el('text', { x: 500, y: 128, class: 'tag', 'text-anchor': 'middle' }); mixTag.textContent = 'Externe Pumpe + Mischer'; svg.appendChild(mixTag);
   if (mv !== null && mv !== undefined) {
