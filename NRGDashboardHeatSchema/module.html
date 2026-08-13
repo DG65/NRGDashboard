@@ -305,15 +305,31 @@ function buildSchema(unit) {
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
   var at = el('text', { x: 100, y: 112, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
   outdoorUnit(svg, 35, 122, 130, 110, running, unit.fanSpeed);
-  if (unit.fanSpeed !== null && unit.fanSpeed !== undefined) {
-    svg.appendChild(chip(100, 310, String(Math.round(unit.fanSpeed)), 'U/min', unit.fanSpeed > 0 ? '#69cf7d' : '#6f83a3', 'Lüfter'));
-  }
-  svg.appendChild(chip(100, 260, unit.compressorFreq !== null && unit.compressorFreq !== undefined ? String(Math.round(unit.compressorFreq)) : '–', 'Hz', running ? '#69cf7d' : '#6f83a3', 'Verdichter'));
+
+  // Messwert-Tabelle unter dem Geraet statt einzelner Chips (Dietmar,
+  // 14.08.2026): 3 Zeilen x 2 Spalten, keine sichtbaren Linien, so breit
+  // wie das Aussengeraet (x 35..165). Label links, Wert rechtsbuendig.
   var pw = fmtPower(unit.power);
-  if (pw) { svg.appendChild(chip(100, 88, pw.v, pw.u, '#6f83a3', 'Leistung')); }
+  var odRows = [
+    ['Leistung', pw ? pw.v + ' ' + pw.u : '–'],
+    ['Verdichter', unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–'],
+    ['Lüfter', unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' U/min' : '–']
+  ];
+  odRows.forEach(function (row, ri) {
+    var ry = 262 + ri * 16;
+    var lbl = el('text', { x: 37, y: ry, class: 'tag', 'text-anchor': 'start' });
+    lbl.textContent = row[0];
+    svg.appendChild(lbl);
+    // Inline-Style noetig: die CSS-Klasse .chip-text setzt text-anchor:
+    // middle und wuerde ein blosses Praesentationsattribut ueberschreiben.
+    var val = el('text', { x: 163, y: ry, class: 'chip-text' });
+    val.style.textAnchor = 'end';
+    val.textContent = row[1];
+    svg.appendChild(val);
+  });
   if (unit.defrosting) {
-    svg.appendChild(el('rect', { x: 40, y: 274, width: 120, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: 100, y: 285, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    svg.appendChild(el('rect', { x: 35, y: 300, width: 130, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: 100, y: 311, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
