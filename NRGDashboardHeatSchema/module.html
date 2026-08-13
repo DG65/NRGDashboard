@@ -10,39 +10,45 @@
   .unit-title { font-size: 13px; font-weight: 700; color: #eef2f6; margin-bottom: 4px; }
   svg.schema { width: 100%; height: auto; display: block; }
 
-  /* Anlehnung an klassische Hydraulikschema-Darstellungen (Referenz:
-     aquarea.smallsolutions.de, Anlage skyme, "Online Schema") - schlichte
-     Kontur-Kaesten statt Glas-Optik, dicke durchgezogene Rohre, Werte als
-     reiner fetter Text am Rohr statt Instrumenten-Chips. Dietmar,
-     13.08.2026: "sieht aus wie von einem Anfaenger gebastelt" - der
-     zweite Entwurf mit Farbverlaeufen/Chips/Glow war zu verspielt. */
-  .box { fill: #14171a; stroke: #aab2bc; stroke-width: 1.5; }
+  /* Dunkles Navy-Blau-Bedienpanel statt Fast-Schwarz, Rohre mit dezentem
+     Leuchten (Referenz: Bernhard Baptists "Wärmepumpe Visu"-Video,
+     14.08.2026 - Dietmars klare Ansage: "das hätte ich sehr viel lieber"
+     als der vorherige, flachere Entwurf). */
+  .schema-bg { fill: #101a2c; }
+  .box { fill: #16233a; stroke: #6f83a3; stroke-width: 1.5; }
   .box-title { font-size: 11px; font-weight: 700; fill: #eef2f6; text-anchor: middle; }
 
-  .pipe-hot { stroke: #d94f3c; }
-  .pipe-cold { stroke: #3d7fc4; }
-  .pipe { fill: none; stroke-width: 5; stroke-linecap: butt; }
-  .pipe.dim { stroke: #4a4f57; }
+  .pipe-hot { stroke: #e0503c; }
+  .pipe-cold { stroke: #4a90d9; }
+  .pipe { fill: none; stroke-width: 4; stroke-linecap: butt; }
+  .pipe.dim { stroke: #3a4358; }
+  .pipe.flowing.pipe-hot { filter: drop-shadow(0 0 3px rgba(224,80,60,.8)); }
+  .pipe.flowing.pipe-cold { filter: drop-shadow(0 0 3px rgba(74,144,217,.8)); }
 
   /* Fluss-Animation: kurze helle Chevrons laufen ueber das durchgezogene
-     Rohr - dezent (kein Glow/Blur wie im verworfenen zweiten Entwurf),
-     nur auf tatsaechlich aktiven Leitungen. Richtung ergibt sich allein
-     aus der Zeichenrichtung des jeweiligen Pfad-d (Start=stromaufwaerts),
-     kein manuelles Umdrehen noetig. */
+     Rohr, Richtung ergibt sich allein aus der Zeichenrichtung des
+     jeweiligen Pfad-d (Start=stromaufwaerts), kein manuelles Umdrehen
+     noetig. */
   .pipe.flowing { stroke-dasharray: 3 10; animation: flowdash 0.9s linear infinite; }
   @keyframes flowdash { to { stroke-dashoffset: -26; } }
 
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 
-  .val { font: 700 12px/1 -apple-system, sans-serif; paint-order: stroke; stroke: #0d0f12; stroke-width: 3px; stroke-linejoin: round; }
-  .tag { font-size: 8.5px; font-weight: 600; fill: #9aa1ab; letter-spacing: .3px; text-transform: uppercase; paint-order: stroke; stroke: #0d0f12; stroke-width: 3px; stroke-linejoin: round; }
+  .val { font: 700 12px/1 -apple-system, sans-serif; paint-order: stroke; stroke: #0a1220; stroke-width: 3px; stroke-linejoin: round; }
+  .tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .3px; text-transform: uppercase; paint-order: stroke; stroke: #0a1220; stroke-width: 3px; stroke-linejoin: round; }
 
-  .tank-outline { fill: none; stroke: #aab2bc; stroke-width: 1.5; }
+  .tank-outline { fill: none; stroke: #8a9cb8; stroke-width: 1.5; }
   .tank-label { font-size: 10.5px; font-weight: 700; fill: #eef2f6; text-anchor: middle; }
+  .tank-coil { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 1.2; }
 
-  .valve { fill: none; stroke: #aab2bc; stroke-width: 1.5; }
+  .valve { fill: none; stroke: #8a9cb8; stroke-width: 1.5; }
   .valve-fill { stroke: none; }
+
+  /* Anfuehrungspfeil einheitlich gelb/amber (Referenz-Vorbild) - die
+     Zahl selbst bleibt temperaturfarbig, nur der Zeiger ist neutral. */
+  .callout { stroke: #e0b93c; }
+  .callout-dot { fill: #e0b93c; }
 
   .divider { stroke: #4a4f57; stroke-width: 1; stroke-dasharray: 5 4; }
   .badge { font-size: 9px; font-weight: 700; text-anchor: middle; }
@@ -108,8 +114,8 @@ function valueText(x, y, text, unit, color, tag) {
 // (lx,ly) = Position der Beschriftung.
 function calloutValue(px, py, lx, ly, text, unit, color, tag) {
   var g = el('g', {});
-  g.appendChild(el('circle', { cx: px, cy: py, r: 2.5, fill: color || '#aab2bc' }));
-  g.appendChild(el('line', { x1: px, y1: py, x2: lx, y2: ly - 3, stroke: color || '#aab2bc', 'stroke-width': 1, opacity: 0.7 }));
+  g.appendChild(el('circle', { cx: px, cy: py, r: 2.5, class: 'callout-dot' }));
+  g.appendChild(el('line', { x1: px, y1: py, x2: lx, y2: ly - 3, class: 'callout', 'stroke-width': 1.2 }));
   g.appendChild(valueText(lx, ly, text, unit, color, tag));
   return g;
 }
@@ -162,6 +168,16 @@ function tankShape(svg, x, y, w, h, temp, label) {
   g.appendChild(el('ellipse', { cx: x, cy: y + r, rx: r, ry: r * 0.42, class: 'tank-outline' }));
   g.appendChild(el('path', { d: 'M' + (x - r) + ',' + (y + r) + ' L' + (x - r) + ',' + (y + h - r) + ' M' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y + h - r), class: 'tank-outline' }));
   g.appendChild(el('ellipse', { cx: x, cy: y + h - r, rx: r, ry: r * 0.42, class: 'tank-outline', fill: 'none' }));
+  // Waermetauscher-Spule (Referenz-Vorbild: "Wärmepumpe Visu"-Video,
+  // 14.08.2026) - reines Schmuckdetail, kein eigener Messwert, macht den
+  // Zylinder aber sofort als Speicher statt beliebiger Kapsel erkennbar.
+  var coilY = y + h * 0.62, coilW = r * 1.3, coilSteps = 4, coilStep = (coilW * 2) / coilSteps;
+  var cd = 'M' + (x - coilW) + ',' + coilY;
+  for (var ci = 0; ci < coilSteps; ci++) {
+    cd += ' L' + (x - coilW + coilStep * (ci + 0.5)) + ',' + (coilY + (ci % 2 === 0 ? 7 : -7));
+  }
+  cd += ' L' + (x + coilW) + ',' + coilY;
+  g.appendChild(el('path', { d: cd, class: 'tank-coil' }));
   if (label) {
     var lt = el('text', { x: x, y: y + h + 16, class: 'tank-label' }); lt.textContent = label; g.appendChild(lt);
   }
@@ -217,11 +233,12 @@ function buildSchema(unit) {
   var W = 900, H = 330;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
+  svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, class: 'schema-bg' }));
 
   var running = (unit.compressorFreq || 0) > 0;
   var toDhw = unit.threeWayValve === 1;
   var toRoom = unit.threeWayValve === 0 || unit.threeWayValve === null;
-  var HOT = '#d94f3c', COLD = '#3d7fc4';
+  var HOT = '#e0503c', COLD = '#4a90d9';
 
   function pipe(d, cls, active) {
     return el('path', { d: d, class: 'pipe ' + (active ? cls + ' flowing' : 'dim') });
@@ -348,7 +365,7 @@ function buildSchema(unit) {
 
 function buildBasicCard(unit) {
   var box = document.createElement('div');
-  box.style.cssText = 'padding:14px 16px;border-radius:4px;background:#14171a;border:1.5px solid #aab2bc;color:#eef2f6;font-size:12px;';
+  box.style.cssText = 'padding:14px 16px;border-radius:4px;background:#16233a;border:1.5px solid #6f83a3;color:#eef2f6;font-size:12px;';
   var pw = fmtPower(unit.power);
   box.innerHTML = 'Keine Anlagenschema-Daten (Pumpen/Ventile/Durchfluss) verfügbar - nur Basiswerte.' +
     (pw ? '<div style="margin-top:6px;font-weight:700">Leistung: ' + pw.v + ' ' + pw.u + '</div>' : '');
