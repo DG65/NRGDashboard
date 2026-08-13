@@ -239,13 +239,16 @@ function buildSchema(unit) {
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
     svg.appendChild(valueText(295, 160, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
   }
+  // x=235/300 statt der Ventilspalte (x=200) - dort verlaeuft die
+  // WW-Zweigleitung senkrecht durch den Kasten und schnitt den Text
+  // ("14,5 /min" statt "14,5 l/min") - real gefunden, 13.08.2026.
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
-    svg.appendChild(valueText(200, 218, (Math.round(unit.pumpFlow * 10) / 10).toFixed(1).replace('.', ','), 'l/min', '#eef2f6', 'Pumpe'));
+    svg.appendChild(valueText(235, 218, (Math.round(unit.pumpFlow * 10) / 10).toFixed(1).replace('.', ','), 'l/min', '#eef2f6', 'Pumpe'));
   }
   if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) {
-    svg.appendChild(valueText(295, 218, String(Math.round(unit.pumpSpeed)), 'U/min', '#eef2f6', null));
+    svg.appendChild(valueText(300, 218, String(Math.round(unit.pumpSpeed)), 'U/min', '#eef2f6', null));
   } else if (unit.pumpDuty !== null && unit.pumpDuty !== undefined) {
-    svg.appendChild(valueText(295, 218, String(Math.round(unit.pumpDuty)), '%', '#eef2f6', null));
+    svg.appendChild(valueText(300, 218, String(Math.round(unit.pumpDuty)), '%', '#eef2f6', null));
   }
 
   // 185l-Brauchwassertank, fest im Innengeraet - Zweig zweigt UNTEN vom
