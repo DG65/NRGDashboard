@@ -272,6 +272,10 @@ class NRGDashboardHeatSchema extends IPSModule
                 // Pumpe/Mischventil an der 2. Steuerplatine, additiv. Fehlt
                 // bei aelteren Installationen (contractVersion 1.3) einfach
                 // (Schluessel nicht gesetzt), Felder bleiben dann null.
+                // contractVersion 1.5 (HeishaMon, 14.08.2026): Luefter-
+                // drehzahl des Aussengeraets, additiv - fehlt bei aelteren
+                // Staenden einfach (?? 0 -> null).
+                'fanSpeed'        => $this->num((int) ($e['fan1SpeedID'] ?? 0)),
                 'extPump'         => $this->boolVal((int) ($e['z1PumpID'] ?? 0)),
                 // 0=Aus, 1=Zu (schliesst gerade), 2=Auf (oeffnet gerade) -
                 // Stellrichtung, KEINE absolute Position (HeishaMon-Hinweis).

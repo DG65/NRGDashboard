@@ -214,7 +214,7 @@ function tankShape(svg, x, y, w, h, temp, label, liters) {
 // Luefterkreis HINTER dem Gitter, rechts eine schmale Spalte mit
 // Luftschlitzen, kleine Standfuesse. Der Luefter rotiert hinter den
 // Lamellen weiter, wenn der Verdichter laeuft.
-function outdoorUnit(svg, x, y, w, h, running) {
+function outdoorUnit(svg, x, y, w, h, running, fanSpeed) {
   var g = el('g', {});
   var C = '#8a9cb8';
   // Gehaeuse
@@ -234,7 +234,17 @@ function outdoorUnit(svg, x, y, w, h, running) {
   // im Geraet, 14.08.2026).
   var bladesWrap = el('g', { transform: 'translate(' + fanCx + ',' + fanCy + ')' });
   var blades = el('g', {});
-  if (running) { blades.style.animation = 'fanspin 1.6s linear infinite'; blades.style.transformOrigin = '0px 0px'; }
+  // fanSpeed = echte Lueferdrehzahl (HeishaMon contractVersion 1.5,
+  // fan1SpeedID) - Rotationstempo proportional; ohne den Wert (aeltere
+  // Vertragsversion) Fallback auf laufender-Verdichter mit Fixtempo.
+  var spinning = (typeof fanSpeed === 'number') ? fanSpeed > 0 : running;
+  if (spinning) {
+    var dur = (typeof fanSpeed === 'number' && fanSpeed > 0)
+      ? Math.max(0.35, Math.min(3.0, 900 / fanSpeed)).toFixed(2)
+      : '1.6';
+    blades.style.animation = 'fanspin ' + dur + 's linear infinite';
+    blades.style.transformOrigin = '0px 0px';
+  }
   for (var i = 0; i < 4; i++) {
     blades.appendChild(el('path', { d: 'M0,0 Q' + (fanR * 0.38) + ',' + (-fanR * 0.55) + ' 0,' + (-fanR * 0.85), fill: 'none', stroke: '#9fb0c8', 'stroke-width': 1.3, transform: 'rotate(' + (i * 90) + ')' }));
   }
@@ -294,7 +304,10 @@ function buildSchema(unit) {
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
   var at = el('text', { x: 100, y: 112, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  outdoorUnit(svg, 35, 122, 130, 110, running);
+  outdoorUnit(svg, 35, 122, 130, 110, running, unit.fanSpeed);
+  if (unit.fanSpeed !== null && unit.fanSpeed !== undefined) {
+    svg.appendChild(chip(100, 310, String(Math.round(unit.fanSpeed)), 'U/min', unit.fanSpeed > 0 ? '#69cf7d' : '#6f83a3', 'Lüfter'));
+  }
   svg.appendChild(chip(100, 260, unit.compressorFreq !== null && unit.compressorFreq !== undefined ? String(Math.round(unit.compressorFreq)) : '–', 'Hz', running ? '#69cf7d' : '#6f83a3', 'Verdichter'));
   var pw = fmtPower(unit.power);
   if (pw) { svg.appendChild(chip(100, 88, pw.v, pw.u, '#6f83a3', 'Leistung')); }
@@ -331,10 +344,20 @@ function buildSchema(unit) {
   svg.appendChild(valveSymbol(270, 192, 7, twoWayOpen ? COLD : '#6f83a3', twoWayOpen ? 'AUF' : 'ZU', twoWayOpen));
 
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(380, 140, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
+    svg.appendChild(chip(380, 136, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(380, 185, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
+    svg.appendChild(chip(380, 195, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
+  }
+  // Spreizung (Vorlauf - Ruecklauf) zwischen den beiden Chips - die
+  // eigentlich interessante Betriebskennzahl (Dietmars Frage, 14.08.2026:
+  // "Gibt es zwischen Vor- und Ruecklauf Temperatur Unterschiede die man
+  // darstellen koennte?").
+  var haveVLRL = unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined
+    && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
+  if (haveVLRL) {
+    var dT = unit.mainOutletTemp - unit.mainInletTemp;
+    svg.appendChild(chip(380, 162, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // interne Pumpe + Messwerte
   svg.appendChild(pumpIcon(270, 232, running, 0));
@@ -367,6 +390,14 @@ function buildSchema(unit) {
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (running && toRoom);
   svg.appendChild(pipe('M440,120 L546,120', 'pipe-hot', running && toRoom));
+  // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
+  // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
+  // therm.". Nur bei realem Umlauf (Durchfluss > 0) angezeigt, sonst
+  // waere die Rechnung Rauschen.
+  if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
+    var pTh = (unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp);
+    svg.appendChild(chip(493, 95, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', HOT, 'therm. Leistung'));
+  }
   if (running && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', HOT)); }
   svg.appendChild(pipe('M546,170 L440,170', 'pipe-cold', running && toRoom));
   if (running && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', COLD)); }
