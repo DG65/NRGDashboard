@@ -10,48 +10,54 @@
   .unit-title { font-size: 13px; font-weight: 700; color: #eef2f6; margin-bottom: 4px; }
   svg.schema { width: 100%; height: auto; display: block; }
 
-  /* Dunkles Navy-Blau-Bedienpanel statt Fast-Schwarz, Rohre mit dezentem
-     Leuchten (Referenz: Bernhard Baptists "Wärmepumpe Visu"-Video,
-     14.08.2026 - Dietmars klare Ansage: "das hätte ich sehr viel lieber"
-     als der vorherige, flachere Entwurf). */
+  /* Stil-Essenz aus fuenf Referenzbildern (Aquarea-Wiki, Solvis, iDM,
+     Bernhard Baptists "Wärmepumpe Visu", OekoFEN/Solar-Visu; mit Dietmar
+     am 14.08.2026 destilliert):
+     1. Werte in kleinen umrandeten Chips DIREKT an der Leitung, Randfarbe
+        = Leitungs-/Temperaturfarbe.
+     2. Speicher mit kraeftigem Rot-nach-Blau-Verlauf und sauber
+        geschwungener Rohrschlangen-Wicklung.
+     3. Pumpen als Kreis+Dreieck, Zustand ueber FUELLFARBE (gruen=laeuft).
+     4. Leitungsfarbe = Funktion (rot Vorlauf, blau Ruecklauf, grau
+        inaktiv), rechtwinklige Fuehrung.
+     5. Grosszuegige Flaeche, Luft zwischen den Elementen.
+     Tankgroessen proportional zur REALEN Anlage (Dietmar: 185l WW-Tank
+     muss groesser sein als 100l Puffer - Referenzanlagen mit 800-2000l
+     Speichern sind kein Massstab fuer seine Verhaeltnisse). */
   .schema-bg { fill: #101a2c; }
   .box { fill: #16233a; stroke: #6f83a3; stroke-width: 1.5; }
-  .box-title { font-size: 11px; font-weight: 700; fill: #eef2f6; text-anchor: middle; }
+  .box-title { font-size: 11px; font-weight: 700; fill: #eef2f6; text-anchor: middle; letter-spacing: .4px; }
 
   .pipe-hot { stroke: #e0503c; }
   .pipe-cold { stroke: #4a90d9; }
-  .pipe { fill: none; stroke-width: 4; stroke-linecap: butt; }
-  .pipe.dim { stroke: #3a4358; }
-  .pipe.flowing.pipe-hot { filter: drop-shadow(0 0 3px rgba(224,80,60,.8)); }
-  .pipe.flowing.pipe-cold { filter: drop-shadow(0 0 3px rgba(74,144,217,.8)); }
+  .pipe { fill: none; stroke-width: 5; stroke-linecap: butt; stroke-linejoin: round; }
+  .pipe.dim { stroke: #39435a; }
+  .pipe.flowing.pipe-hot { filter: drop-shadow(0 0 3px rgba(224,80,60,.7)); }
+  .pipe.flowing.pipe-cold { filter: drop-shadow(0 0 3px rgba(74,144,217,.7)); }
 
-  /* Fluss-Animation: kurze helle Chevrons laufen ueber das durchgezogene
-     Rohr, Richtung ergibt sich allein aus der Zeichenrichtung des
-     jeweiligen Pfad-d (Start=stromaufwaerts), kein manuelles Umdrehen
-     noetig. */
-  .pipe.flowing { stroke-dasharray: 3 10; animation: flowdash 0.9s linear infinite; }
-  @keyframes flowdash { to { stroke-dashoffset: -26; } }
-
+  /* Fluss-Animation: helle Punkte wandern ueber dem durchgezogenen Rohr
+     (zweilagig: Basisrohr voll, Punktlage animiert) - Richtung folgt der
+     Zeichenrichtung des Pfads. */
+  .pipe-dots { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0.1 14; animation: flowdots 1s linear infinite; }
+  @keyframes flowdots { to { stroke-dashoffset: -28.2; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
-  @keyframes pumpspin { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 
-  .val { font: 700 12px/1 -apple-system, sans-serif; paint-order: stroke; stroke: #0a1220; stroke-width: 3px; stroke-linejoin: round; }
-  .tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .3px; text-transform: uppercase; paint-order: stroke; stroke: #0a1220; stroke-width: 3px; stroke-linejoin: round; }
+  /* Werte-Chip: dunkle Pille, Randfarbe = Mess-/Leitungsfarbe, Wert in
+     Weiss - kleine, praezise Instrumentenanzeige statt frei schwebendem
+     Text (Prinzip 1). */
+  .chip { fill: #0d1626; stroke-width: 1.5; }
+  .chip-text { font: 700 12px/1 -apple-system, sans-serif; fill: #eef2f6; text-anchor: middle; }
+  .chip-unit { font-weight: 500; font-size: 9.5px; fill: #a8b4c8; }
+  .chip-tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .35px; text-transform: uppercase; text-anchor: middle; }
 
   .tank-outline { fill: none; stroke: #8a9cb8; stroke-width: 1.5; }
   .tank-label { font-size: 10.5px; font-weight: 700; fill: #eef2f6; text-anchor: middle; }
-  .tank-coil { fill: none; stroke: rgba(255,255,255,.55); stroke-width: 1.2; }
+  .tank-liters { font-size: 10px; font-weight: 700; fill: rgba(255,255,255,.9); text-anchor: middle; }
+  .tank-coil { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.6; }
 
-  .valve { fill: none; stroke: #8a9cb8; stroke-width: 1.5; }
-  .valve-fill { stroke: none; }
-
-  /* Anfuehrungspfeil einheitlich gelb/amber (Referenz-Vorbild) - die
-     Zahl selbst bleibt temperaturfarbig, nur der Zeiger ist neutral. */
-  .callout { stroke: #e0b93c; }
-  .callout-dot { fill: #e0b93c; }
-
-  .divider { stroke: #4a4f57; stroke-width: 1; stroke-dasharray: 5 4; }
+  .valve { fill: none; stroke: #8a9cb8; stroke-width: 1.6; stroke-linejoin: round; }
   .badge { font-size: 9px; font-weight: 700; text-anchor: middle; }
+  .tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .3px; text-transform: uppercase; text-anchor: middle; }
 
   .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; color: #ccc; }
 </style>
@@ -80,153 +86,146 @@ function el(tag, attrs) {
   return e;
 }
 
-// Temperatur-Farbskala (15°C blau .. 65°C rot) - jeder Messwert ist damit
-// auch ohne Ablesen der Zahl grob als kalt/warm/heiss erkennbar.
+// Temperatur-Farbskala (15°C blau .. 65°C rot)
 function tempColor(c) {
   if (c === null || c === undefined) { return '#8a919c'; }
   var t = Math.max(0, Math.min(1, (c - 15) / 50));
-  var a = [61, 127, 196], b = [217, 79, 60];
+  var a = [74, 144, 217], b = [224, 80, 60];
   var r = Math.round(a[0] + (b[0] - a[0]) * t);
   var g = Math.round(a[1] + (b[1] - a[1]) * t);
   var bl = Math.round(a[2] + (b[2] - a[2]) * t);
   return 'rgb(' + r + ',' + g + ',' + bl + ')';
 }
 
-// Wert direkt am Rohr/Bauteil, ohne Chip-Hintergrund - reiner fetter Text
-// mit dunklem Konturstrich fuer Lesbarkeit vor Rohren/Linien (Referenz-
-// Vorbild: aquarea.smallsolutions.de).
-function valueText(x, y, text, unit, color, tag) {
+// Werte-Chip an der Leitung (Prinzip 1 der Referenz-Essenz): dunkle
+// Pille, Randfarbe traegt die Information (Leitungs-/Temperaturfarbe),
+// Wert weiss und fett. Optionaler Tag darueber.
+function chip(x, y, text, unit, borderColor, tag) {
   var g = el('g', {});
-  if (tag) {
-    var tg = el('text', { x: x, y: y - 12, class: 'tag', 'text-anchor': 'middle' }); tg.textContent = tag; g.appendChild(tg);
+  var label = text + (unit ? ' ' + unit : '');
+  var w = Math.max(44, label.length * 6.8 + 14);
+  var h = 19;
+  g.appendChild(el('rect', { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: h / 2, class: 'chip', stroke: borderColor || '#6f83a3' }));
+  var t = el('text', { x: x, y: y + 4, class: 'chip-text' });
+  t.textContent = text;
+  if (unit) {
+    var u = el('tspan', { class: 'chip-unit', dx: 2 });
+    u.textContent = unit;
+    t.appendChild(u);
   }
-  var vt = el('text', { x: x, y: y, class: 'val', 'text-anchor': 'middle', fill: color || '#eef2f6' });
-  vt.textContent = text + (unit ? ' ' + unit : '');
-  g.appendChild(vt);
+  g.appendChild(t);
+  if (tag) {
+    var tg = el('text', { x: x, y: y - h / 2 - 4, class: 'chip-tag' });
+    tg.textContent = tag;
+    g.appendChild(tg);
+  }
   return g;
 }
 
-// Wert mit Anfuehrungslinie: Text steht frei im offenen Raum, ein duenner
-// Strich mit Punkt zeigt auf die tatsaechliche Messstelle am Rohr/Bauteil
-// (Referenz-Vorbild: Bernhard Baptists "Wärmepumpe Visu"-Video sowie die
-// Solvis-Anlage aus der Symcon-Community, 13.08.2026 - beide platzieren
-// Werte so, statt sie auf die Leitung zu schreiben). (px,py) = Messpunkt,
-// (lx,ly) = Position der Beschriftung.
-function calloutValue(px, py, lx, ly, text, unit, color, tag) {
-  var g = el('g', {});
-  g.appendChild(el('circle', { cx: px, cy: py, r: 2.5, class: 'callout-dot' }));
-  g.appendChild(el('line', { x1: px, y1: py, x2: lx, y2: ly - 3, class: 'callout', 'stroke-width': 1.2 }));
-  g.appendChild(valueText(lx, ly, text, unit, color, tag));
-  return g;
-}
-
-// Ventil-Symbol (Schmetterling/Bowtie) - reine Kontur wie im Referenzbild
-// ("Wärmepumpe Visu"), KEIN gefuellter Kreis/Block dahinter (frueherer
-// Entwurf wirkte dadurch zu "grafisch" statt wie ein technisches
-// Liniensymbol - Dietmar, 14.08.2026: "weit entfernt von Professionalität").
-// Praezise, exakt symmetrische Geometrie statt Pi-mal-Daumen-Koordinaten.
-function valveSymbol(x, y, r, color, tag) {
+// Ventil (Kontur-Bowtie). Fuellfarbe nur zur Zustandsanzeige.
+function valveSymbol(x, y, r, color, tag, filled) {
   r = r || 7;
   var g = el('g', {});
   g.appendChild(el('path', {
     d: 'M' + (x - r) + ',' + (y - r) + ' L' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y - r) + ' L' + (x - r) + ',' + (y + r) + ' Z',
-    fill: 'none', stroke: color || '#8a9cb8', 'stroke-width': 1.5, 'stroke-linejoin': 'round'
+    fill: filled ? color : 'none', 'fill-opacity': filled ? 0.55 : 0,
+    stroke: color || '#8a9cb8', 'stroke-width': 1.6, 'stroke-linejoin': 'round'
   }));
   if (tag) {
-    var t = el('text', { x: x, y: y + r + 15, class: 'tag', 'text-anchor': 'middle', fill: color }); t.textContent = tag; g.appendChild(t);
+    var t = el('text', { x: x, y: y + r + 14, class: 'tag', fill: color }); t.textContent = tag; g.appendChild(t);
   }
   return g;
 }
 
+// Umwaelzpumpe: Kreis + Richtungsdreieck, Zustand ueber Fuellfarbe
+// (Prinzip 3: gruen gefuellt = laeuft, grau = steht - wie die "100%"-
+// Pumpe im OekoFEN-Referenzbild; KEIN Pulsieren mehr).
+function pumpIcon(x, y, active, dirDeg) {
+  var g = el('g', {});
+  g.appendChild(el('circle', { cx: x, cy: y, r: 10, fill: active ? '#2f9e44' : '#243149', stroke: active ? '#69cf7d' : '#8a9cb8', 'stroke-width': 1.6 }));
+  var tri = el('path', { d: 'M-4,-5.5 L7,0 L-4,5.5 Z', fill: '#ffffff', transform: 'translate(' + x + ',' + y + ') rotate(' + (dirDeg || 0) + ')' });
+  g.appendChild(tri);
+  return g;
+}
+
+// Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
+// Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
+// direkt auf der Flaeche. Groesse proportional zum realen Volumen.
 var tankGradSeq = 0;
-// Hoher Tank mit echtem Temperatur-Verlauf (warm oben, kuehler unten) -
-// Referenz-Vorbild zeigt eine reale Schichtung; wir haben nur EINEN
-// Messpunkt, bilden die Schichtung deshalb symmetrisch um diesen Wert ab
-// (±6°C) statt flach einzufaerben - liest sich auf Anhieb als Speicher,
-// nicht als bunte Kapsel.
-function tankShape(svg, x, y, w, h, temp, label) {
+function tankShape(svg, x, y, w, h, temp, label, liters) {
   var g = el('g', {});
   var defs = svg.querySelector('defs') || svg.insertBefore(el('defs', {}), svg.firstChild);
   var gid = 'tg' + (++tankGradSeq);
   var grad = el('linearGradient', { id: gid, x1: '0', y1: '0', x2: '0', y2: '1' });
-  var topC = temp !== null && temp !== undefined ? tempColor(temp + 6) : '#3a3f47';
-  var botC = temp !== null && temp !== undefined ? tempColor(temp - 6) : '#3a3f47';
+  var topC = temp !== null && temp !== undefined ? tempColor(temp + 8) : '#3a4358';
+  var botC = temp !== null && temp !== undefined ? tempColor(temp - 8) : '#2a3348';
   grad.appendChild(el('stop', { offset: '0%', 'stop-color': topC }));
   grad.appendChild(el('stop', { offset: '100%', 'stop-color': botC }));
   defs.appendChild(grad);
 
+  // Beide Kappen-Boegen mit sweep=0 (gegen den Uhrzeigersinn): unterer
+  // Bogen woelbt nach unten, oberer nach oben. sweep=1 am oberen Bogen
+  // liess den Deckel nach INNEN klappen - der Tank sah aus wie eine
+  // Muschel (real gefunden im Preview, 14.08.2026).
   var r = w / 2;
   var d = 'M' + (x - r) + ',' + (y + r) + ' L' + (x - r) + ',' + (y + h - r)
     + ' A' + r + ',' + r + ' 0 0 0 ' + (x + r) + ',' + (y + h - r)
     + ' L' + (x + r) + ',' + (y + r)
     + ' A' + r + ',' + r + ' 0 0 0 ' + (x - r) + ',' + (y + r) + ' Z';
-  g.appendChild(el('path', { d: d, fill: 'url(#' + gid + ')', 'fill-opacity': 0.85 }));
-  g.appendChild(el('ellipse', { cx: x, cy: y + r, rx: r, ry: r * 0.42, class: 'tank-outline' }));
-  g.appendChild(el('path', { d: 'M' + (x - r) + ',' + (y + r) + ' L' + (x - r) + ',' + (y + h - r) + ' M' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y + h - r), class: 'tank-outline' }));
-  g.appendChild(el('ellipse', { cx: x, cy: y + h - r, rx: r, ry: r * 0.42, class: 'tank-outline', fill: 'none' }));
-  // Waermetauscher-Spule (Referenz-Vorbild: "Wärmepumpe Visu"-Video,
-  // 14.08.2026) - reines Schmuckdetail, kein eigener Messwert, macht den
-  // Zylinder aber sofort als Speicher statt beliebiger Kapsel erkennbar.
-  var coilY = y + h * 0.62, coilW = r * 1.3, coilSteps = 4, coilStep = (coilW * 2) / coilSteps;
-  var cd = 'M' + (x - coilW) + ',' + coilY;
-  for (var ci = 0; ci < coilSteps; ci++) {
-    cd += ' L' + (x - coilW + coilStep * (ci + 0.5)) + ',' + (coilY + (ci % 2 === 0 ? 7 : -7));
+  g.appendChild(el('path', { d: d, fill: 'url(#' + gid + ')' }));
+  g.appendChild(el('path', { d: d, class: 'tank-outline' }));
+
+  // Wicklung: weiche, uebereinanderliegende Boegen im unteren Drittel
+  var coilTop = y + h * 0.5;
+  var cw = r * 1.15;
+  var cd = '';
+  for (var ci = 0; ci < 3; ci++) {
+    var cy2 = coilTop + ci * 9;
+    cd += 'M' + (x - cw) + ',' + cy2
+      + ' C' + (x - cw * 0.5) + ',' + (cy2 + 8) + ' ' + (x + cw * 0.5) + ',' + (cy2 + 8) + ' ' + (x + cw) + ',' + cy2 + ' ';
   }
-  cd += ' L' + (x + coilW) + ',' + coilY;
   g.appendChild(el('path', { d: cd, class: 'tank-coil' }));
+
+  // Name + Liter direkt AUF der Tankflaeche (iDM-Referenzmuster) statt
+  // unterhalb - Rohrleitungen unter dem Tank koennen die Beschriftung
+  // dann nicht mehr anschneiden (real passiert beim Puffer-Ruecklauf).
   if (label) {
-    var lt = el('text', { x: x, y: y + h + 16, class: 'tank-label' }); lt.textContent = label; g.appendChild(lt);
+    var lt = el('text', { x: x, y: y + h * 0.3, class: 'tank-label' }); lt.textContent = label; g.appendChild(lt);
+  }
+  if (liters) {
+    var lt2 = el('text', { x: x, y: y + h * 0.3 + 13, class: 'tank-liters' }); lt2.textContent = liters; g.appendChild(lt2);
   }
   svg.appendChild(g);
   return g;
 }
 
-// Aussengeraet-Luefter (Referenz-Vorbild: Wolf-/Airsole-Anlagenschemata
-// zeigen die Aussentaeinheit als Geraet MIT Luefter, nicht als abstrakte
-// Spule) - dreht sich per CSS-Animation nur, wenn der Verdichter laeuft.
+// Aussengeraet-Luefter - dreht nur bei laufendem Verdichter.
 function fanIcon(x, y, r, running) {
   var g = el('g', { transform: 'translate(' + x + ',' + y + ')' });
-  g.appendChild(el('circle', { cx: 0, cy: 0, r: r, fill: 'none', stroke: '#8a919c', 'stroke-width': 1.5 }));
+  g.appendChild(el('circle', { cx: 0, cy: 0, r: r, fill: 'none', stroke: '#8a9cb8', 'stroke-width': 1.5 }));
   var blades = el('g', {});
   if (running) { blades.style.animation = 'fanspin 1.6s linear infinite'; blades.style.transformOrigin = '0px 0px'; }
   for (var i = 0; i < 4; i++) {
-    blades.appendChild(el('path', { d: 'M0,0 Q' + (r * 0.35) + ',' + (-r * 0.55) + ' 0,' + (-r * 0.85), fill: 'none', stroke: '#8a919c', 'stroke-width': 1.3, transform: 'rotate(' + (i * 90) + ')' }));
+    blades.appendChild(el('path', { d: 'M0,0 Q' + (r * 0.38) + ',' + (-r * 0.55) + ' 0,' + (-r * 0.85), fill: 'none', stroke: '#9fb0c8', 'stroke-width': 1.4, transform: 'rotate(' + (i * 90) + ')' }));
   }
   g.appendChild(blades);
-  return g;
-}
-
-// Umwaelzpumpe (Referenz-Vorbild: Kreis mit Richtungsdreieck, Standard-
-// Fliessbildsymbol - statt der zuvor verwendeten Duesen-/Trichterform).
-// Pulsiert dezent, wenn die Pumpe tatsaechlich foerdert.
-function pumpIcon(x, y, color, active) {
-  var g = el('g', {});
-  g.appendChild(el('circle', { cx: x, cy: y, r: 9, fill: 'none', stroke: color || '#8a9cb8', 'stroke-width': 1.5 }));
-  var tri = el('path', { d: 'M' + (x - 4) + ',' + (y - 5) + ' L' + (x + 6) + ',' + y + ' L' + (x - 4) + ',' + (y + 5) + ' Z', fill: color || '#aab2bc' });
-  if (active) { tri.style.animation = 'pumpspin 1s ease-in-out infinite'; }
-  g.appendChild(tri);
+  g.appendChild(el('circle', { cx: 0, cy: 0, r: 2, fill: '#9fb0c8' }));
   return g;
 }
 
 function arrowHead(x, y, dir, color) {
-  // dir: 'r','l','u','d'
   var pts = { r: [[x - 5, y - 4], [x + 5, y], [x - 5, y + 4]], l: [[x + 5, y - 4], [x - 5, y], [x + 5, y + 4]], d: [[x - 4, y - 5], [x, y + 5], [x + 4, y - 5]], u: [[x - 4, y + 5], [x, y - 5], [x + 4, y + 5]] };
   var p = pts[dir] || pts.r;
   return el('path', { d: 'M' + p[0][0] + ',' + p[0][1] + ' L' + p[1][0] + ',' + p[1][1] + ' L' + p[2][0] + ',' + p[2][1] + ' Z', fill: color });
 }
 
 function buildSchema(unit) {
-  // Reale Anlagentopologie (Dietmar, 13.08.2026 - nicht aus dem Vertrag
-  // ableitbar, nur durch Nachfragen bekannt): Splitgeraet (Aussen-/
-  // Innengeraet getrennt ueber Kaeltemittel), Innengeraet hat den 185l-
-  // Brauchwassertank fest eingebaut. Der Heizkreis-Zweig geht NICHT direkt
-  // zu den Heizkoerpern, sondern erst in einen 100l-Pufferspeicher; von
-  // dort bedient eine EXTERNE Pumpe+Mischventil (kein HeishaMon-Messwert
-  // dafuer, rein statisch dargestellt) den eigentlichen Heizkreis
-  // (Radiatoren/Flaechenheizkoerper ueberall, Fussbodenheizung nur im
-  // Bad). Fruehere Fassung zeigte Heizkreis/Warmwasser als gleichrangige
-  // Y-Verzweigung direkt ab Innengeraet - technisch falsch.
-  var W = 900, H = 330;
+  // Reale Anlagentopologie (Dietmar, 13.08.2026): Splitgeraet, Innengeraet
+  // mit fest eingebautem 185l-Brauchwassertank, Heizkreis laeuft ueber
+  // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
+  // (2. Steuerplatine, Live-Werte seit HeishaMon contractVersion 1.4)
+  // zu Radiatoren/Flaechenheizkoerpern (FBH nur Bad).
+  var W = 1000, H = 430;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, class: 'schema-bg' }));
@@ -236,132 +235,116 @@ function buildSchema(unit) {
   var toRoom = unit.threeWayValve === 0 || unit.threeWayValve === null;
   var HOT = '#e0503c', COLD = '#4a90d9';
 
+  // Rohr zweilagig: Basisrohr voll durchgezogen in Funktionsfarbe (grau
+  // wenn inaktiv), darueber bei aktivem Fluss wandernde helle Punkte.
   function pipe(d, cls, active) {
-    return el('path', { d: d, class: 'pipe ' + (active ? cls + ' flowing' : 'dim') });
+    var g = el('g', {});
+    g.appendChild(el('path', { d: d, class: 'pipe ' + (active ? cls + ' flowing' : 'dim') }));
+    if (active) { g.appendChild(el('path', { d: d, class: 'pipe-dots' })); }
+    return g;
   }
   function refrigerantLine(d) {
-    return el('path', { d: d, fill: 'none', stroke: '#8a919c', 'stroke-width': 3, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' });
+    return el('path', { d: d, fill: 'none', stroke: '#7b8aa3', 'stroke-width': 3, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' });
   }
 
-  // Aussengeraet (Kompressor/Kaeltekreis)
-  svg.appendChild(el('rect', { x: 20, y: 100, width: 100, height: 90, rx: 3, class: 'box' }));
-  var at = el('text', { x: 70, y: 116, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  svg.appendChild(fanIcon(70, 148, 26, running));
-  var freqColor = running ? '#eef2f6' : '#6a6f77';
-  svg.appendChild(valueText(70, 175, unit.compressorFreq !== null && unit.compressorFreq !== undefined ? String(Math.round(unit.compressorFreq)) : '–', 'Hz', freqColor, running ? 'Verdichter' : 'Verdichter (steht)'));
-  if (unit.defrosting) {
-    svg.appendChild(el('rect', { x: 20, y: 83, width: 100, height: 14, class: 'box', stroke: '#3d7fc4' }));
-    var db = el('text', { x: 70, y: 93, class: 'badge', fill: '#3d7fc4' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
-  }
+  // ── Aussengeraet ─────────────────────────────────────────────
+  svg.appendChild(el('rect', { x: 40, y: 120, width: 120, height: 120, rx: 4, class: 'box' }));
+  var at = el('text', { x: 100, y: 140, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
+  svg.appendChild(fanIcon(100, 185, 28, running));
+  svg.appendChild(chip(100, 226, unit.compressorFreq !== null && unit.compressorFreq !== undefined ? String(Math.round(unit.compressorFreq)) : '–', 'Hz', running ? '#69cf7d' : '#6f83a3', null));
   var pw = fmtPower(unit.power);
-  if (pw) { svg.appendChild(valueText(70, 97, pw.v, pw.u, '#eef2f6', 'Leistung')); }
-
-  // Kaeltemittelleitung Aussen- -> Innengeraet (gestrichelt, kein Wasser)
-  svg.appendChild(refrigerantLine('M120,135 L165,135'));
-  svg.appendChild(refrigerantLine('M120,165 L165,165'));
-  if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(calloutValue(142, 135, 142, 55, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
+  if (pw) { svg.appendChild(chip(100, 100, pw.v, pw.u, '#6f83a3', 'Leistung')); }
+  if (unit.defrosting) {
+    svg.appendChild(el('rect', { x: 40, y: 246, width: 120, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: 100, y: 257, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
-  // Innengeraet (Hydraulikmodul: 3-Wege-Ventil, 2-Wege-Ventil, interne
-  // Pumpe, Ein-/Austrittstemperatur, 185l-Brauchwassertank fest eingebaut)
-  svg.appendChild(el('rect', { x: 165, y: 70, width: 170, height: 160, rx: 3, class: 'box' }));
-  var it = el('text', { x: 250, y: 86, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
-  svg.appendChild(valveSymbol(200, 112, 7, toDhw ? '#e0b93c' : HOT, toDhw ? 'WW' : 'RAUM'));
+  // Kaeltemittelleitungen zum Innengeraet
+  svg.appendChild(refrigerantLine('M160,160 L230,160'));
+  svg.appendChild(refrigerantLine('M160,200 L230,200'));
+  if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
+    svg.appendChild(chip(195, 138, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
+  }
+
+  // ── Innengeraet ──────────────────────────────────────────────
+  svg.appendChild(el('rect', { x: 230, y: 90, width: 210, height: 190, rx: 4, class: 'box' }));
+  var it = el('text', { x: 335, y: 110, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+
+  // 3-Wege-Ventil (oben, Umschaltung Raum/WW)
+  svg.appendChild(valveSymbol(270, 145, 7, toDhw ? '#e0b93c' : HOT, toDhw ? 'WW' : 'RAUM', true));
+  // 2-Wege-Ventil
   var twoWayOpen = unit.twoWayValve !== false;
-  svg.appendChild(valveSymbol(200, 160, 7, twoWayOpen ? COLD : '#6a6f77', twoWayOpen ? 'AUF' : 'ZU'));
+  svg.appendChild(valveSymbol(270, 205, 7, twoWayOpen ? COLD : '#6f83a3', twoWayOpen ? 'AUF' : 'ZU', twoWayOpen));
+  // interne Pumpe
+  svg.appendChild(pumpIcon(270, 250, running, 0));
+  var pumpTag = el('text', { x: 270, y: 272, class: 'tag' }); pumpTag.textContent = 'Pumpe'; svg.appendChild(pumpTag);
+
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(valueText(295, 108, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
+    svg.appendChild(chip(380, 145, fmtTemp1(unit.mainOutletTemp), '°C', HOT, 'Vorlauf'));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(valueText(295, 160, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
-  }
-  // x=235/300 statt der Ventilspalte (x=200) - dort verlaeuft die
-  // WW-Zweigleitung senkrecht durch den Kasten und schnitt den Text
-  // ("14,5 /min" statt "14,5 l/min") - real gefunden, 13.08.2026.
-  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
-    svg.appendChild(valueText(235, 218, (Math.round(unit.pumpFlow * 10) / 10).toFixed(1).replace('.', ','), 'l/min', '#eef2f6', 'Pumpe'));
+    svg.appendChild(chip(380, 205, fmtTemp1(unit.mainInletTemp), '°C', COLD, 'Rücklauf'));
   }
   if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) {
-    svg.appendChild(valueText(300, 218, String(Math.round(unit.pumpSpeed)), 'U/min', '#eef2f6', null));
-  } else if (unit.pumpDuty !== null && unit.pumpDuty !== undefined) {
-    svg.appendChild(valueText(300, 218, String(Math.round(unit.pumpDuty)), '%', '#eef2f6', null));
+    svg.appendChild(chip(322, 250, String(Math.round(unit.pumpSpeed)), 'U/min', running ? '#69cf7d' : '#6f83a3', null));
+  }
+  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
+    svg.appendChild(chip(398, 250, fmtTemp1(unit.pumpFlow), 'l/min', running ? '#69cf7d' : '#6f83a3', null));
   }
 
-  // 185l-Brauchwassertank, fest im Innengeraet - Zweig zweigt UNTEN vom
-  // Innengeraet ab, nicht gleichrangig neben dem Heizkreis (der ist ein
-  // eigener, weiter entfernter Kreislauf über den Puffer).
-  // Bis direkt zur Tank-Anschlussstelle (120,200) fuehren, nicht bei
-  // x=165 im Leeren enden - bei aktivem WW-Betrieb (helle, animierte
-  // Leitung statt grau/inaktiv) fiel die Luecke sofort auf, real
-  // gefunden anhand eines Screenshots, 14.08.2026.
-  svg.appendChild(pipe('M200,122 L200,180 L120,180 L120,200', 'pipe-hot', running && toDhw));
-  tankShape(svg, 120, 200, 42, 95, unit.dhwTemp, 'WW-Tank 185 l');
+  // ── WW-Tank (185l, im Innengeraet verrohrt, gezeichnet darunter) ──
+  // EIN durchgehender Pfad vom 3-Wege-Ventil zum Tank (fruehere Fassung
+  // bestand aus drei unverbundenen Teilstuecken mit sichtbaren Luecken).
+  svg.appendChild(pipe('M263,145 L245,145 L245,320 L204,320', 'pipe-hot', running && toDhw));
+  svg.appendChild(pipe('M270,212 L270,238', 'pipe-cold', running));
+  tankShape(svg, 176, 285, 56, 112, unit.dhwTemp, 'WW-Tank', '185 l');
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) {
-    // Wert floatet frei links neben dem Tank statt gross auf der
-    // Tankflaeche (Referenz "Wärmepumpe Visu"-Video, 14.08.2026 - dort
-    // stehen NUR die Liter-Angaben auf dem Tank selbst, alle Temperaturen
-    // schweben aussen mit Anfuehrungspfeil).
-    svg.appendChild(calloutValue(99, 230, 55, 230, fmtTemp1(unit.dhwTemp), '°C', tempColor(unit.dhwTemp), null));
+    svg.appendChild(chip(110, 340, fmtTemp1(unit.dhwTemp), '°C', tempColor(unit.dhwTemp), null));
   }
 
-  // Heizungszweig vom Innengeraet direkt in den 100l-Pufferspeicher
-  // (INLINE, keine Y-Verzweigung zu den Heizkoerpern - Dietmars Korrektur,
-  // 13.08.2026: "Der Heizkreislauf geht in einen 100 ltr. Pufferspeicher").
-  svg.appendChild(pipe('M335,105 L400,105', 'pipe-hot', running && toRoom));
-  if (running && toRoom) { svg.appendChild(arrowHead(370, 105, 'r', HOT)); }
-  tankShape(svg, 420, 45, 46, 130, unit.bufferTemp, 'Puffer 100 l');
+  // ── Heizungszweig: Innengeraet -> Puffer ─────────────────────
+  svg.appendChild(pipe('M440,145 L520,145', 'pipe-hot', running && toRoom));
+  if (running && toRoom) { svg.appendChild(arrowHead(485, 145, 'r', HOT)); }
+  tankShape(svg, 545, 100, 48, 96, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(calloutValue(420, 45, 420, 22, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    svg.appendChild(chip(545, 80, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
 
-  // Externe Pumpe + Mischventil an der 2. Steuerplatine - seit HeishaMon
-  // contractVersion 1.4 (13.08.2026) echte Live-Werte (extPump/
-  // extMixingValve), vorher nur statisches Symbol ohne Werte. extMixingValve
-  // ist eine STELLRICHTUNG (0=Aus/1=Zu/2=Auf), KEINE Position - deshalb als
-  // Text "schließt"/"öffnet"/"steht" statt Fuellstand dargestellt.
+  // ── Externe Pumpe + Mischer (2. Steuerplatine) ───────────────
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
-  var pumpOn = pumpKnown ? unit.extPump : null;
-  svg.appendChild(pipe('M454,105 L500,105', 'pipe-hot', running && toRoom));
-  svg.appendChild(pumpIcon(478, 105, pumpKnown ? (pumpOn ? HOT : '#6a6f77') : '#aab2bc', pumpKnown ? pumpOn : running));
-  if (pumpKnown) {
-    svg.appendChild(valueText(478, 80, pumpOn ? 'EIN' : 'AUS', null, pumpOn ? HOT : '#6a6f77', 'Pumpe'));
-  }
+  var pumpOn = pumpKnown ? !!unit.extPump : (running && toRoom);
+  svg.appendChild(pipe('M570,145 L640,145', 'pipe-hot', running && toRoom));
+  svg.appendChild(pumpIcon(660, 145, pumpOn, 0));
+  var extTag = el('text', { x: 700, y: 178, class: 'tag' }); extTag.textContent = 'Externe Pumpe + Mischer'; svg.appendChild(extTag);
   var mv = unit.extMixingValve;
+  svg.appendChild(pipe('M670,145 L706,145', 'pipe-hot', running && toRoom));
   if (mv === 2) {
-    svg.appendChild(valveSymbol(520, 105, 7, HOT, null));
-    svg.appendChild(arrowHead(520, 105, 'u', HOT));
+    svg.appendChild(valveSymbol(720, 145, 7, HOT, 'öffnet', true));
   } else if (mv === 1) {
-    svg.appendChild(valveSymbol(520, 105, 7, COLD, null));
-    svg.appendChild(arrowHead(520, 105, 'd', COLD));
+    svg.appendChild(valveSymbol(720, 145, 7, COLD, 'schließt', true));
+  } else if (mv === 0) {
+    svg.appendChild(valveSymbol(720, 145, 7, '#8a9cb8', 'steht', false));
   } else {
-    svg.appendChild(valveSymbol(520, 105, 7, '#8a9cb8', null));
+    svg.appendChild(valveSymbol(720, 145, 7, '#8a9cb8', null, false));
   }
-  var mixTag = el('text', { x: 500, y: 128, class: 'tag', 'text-anchor': 'middle' }); mixTag.textContent = 'Externe Pumpe + Mischer'; svg.appendChild(mixTag);
-  if (mv !== null && mv !== undefined) {
-    var mvText = mv === 2 ? 'öffnet' : (mv === 1 ? 'schließt' : 'steht');
-    svg.appendChild(valueText(520, 80, mvText, null, mv === 2 ? HOT : (mv === 1 ? COLD : '#aab2bc'), 'Mischer'));
-  }
-  svg.appendChild(pipe('M529,105 L570,105', 'pipe-hot', running && toRoom));
-  if (running && toRoom) { svg.appendChild(arrowHead(550, 105, 'r', HOT)); }
+  svg.appendChild(pipe('M734,145 L790,145', 'pipe-hot', running && toRoom));
+  if (running && toRoom) { svg.appendChild(arrowHead(765, 145, 'r', HOT)); }
 
-  // Heizkreis: Radiatoren/Flaechenheizkoerper ueberall, FBH nur im Bad
-  // (Dietmars genaue Angabe) - ein Bauteil, keine Zonentrennung, da
-  // hydraulisch EIN gemeinsamer Kreis.
-  svg.appendChild(el('rect', { x: 570, y: 65, width: 160, height: 80, rx: 3, class: 'box' }));
-  var rt = el('text', { x: 650, y: 82, class: 'box-title' }); rt.textContent = 'HEIZKREIS'; svg.appendChild(rt);
-  var rt2 = el('text', { x: 650, y: 97, class: 'tag', 'text-anchor': 'middle' }); rt2.textContent = 'Radiatoren + Flächenheizk.'; svg.appendChild(rt2);
-  var rt3 = el('text', { x: 650, y: 109, class: 'tag', 'text-anchor': 'middle' }); rt3.textContent = 'FBH nur Bad'; svg.appendChild(rt3);
+  // ── Heizkreis ────────────────────────────────────────────────
+  svg.appendChild(el('rect', { x: 790, y: 100, width: 180, height: 95, rx: 4, class: 'box' }));
+  var rt = el('text', { x: 880, y: 122, class: 'box-title' }); rt.textContent = 'HEIZKREIS'; svg.appendChild(rt);
+  var rt2 = el('text', { x: 880, y: 139, class: 'tag' }); rt2.textContent = 'Radiatoren + Flächenheizk.'; svg.appendChild(rt2);
+  var rt3 = el('text', { x: 880, y: 152, class: 'tag' }); rt3.textContent = 'FBH nur Bad'; svg.appendChild(rt3);
   if (unit.z1WaterTemp !== null && unit.z1WaterTemp !== undefined) {
-    svg.appendChild(valueText(650, 130, fmtTemp1(unit.z1WaterTemp), '°C', tempColor(unit.z1WaterTemp), null));
+    svg.appendChild(chip(880, 175, fmtTemp1(unit.z1WaterTemp), '°C', tempColor(unit.z1WaterTemp), null));
   }
 
-  // Ruecklauf: Heizkreis -> (durch Puffer) -> Innengeraet
-  var TRUNK_Y = 200;
-  svg.appendChild(pipe('M650,145 L650,' + TRUNK_Y + ' L437,' + TRUNK_Y, 'pipe-cold', running && toRoom));
-  svg.appendChild(pipe('M437,' + TRUNK_Y + ' L437,165', 'pipe-cold', running && toRoom));
-  svg.appendChild(pipe('M437,' + TRUNK_Y + ' L200,' + TRUNK_Y + ' L200,230', 'pipe-cold', running && toRoom));
-  if (running && toRoom) { svg.appendChild(arrowHead(320, TRUNK_Y, 'l', COLD)); }
+  // ── Ruecklauf: Heizkreis -> Puffer -> Innengeraet ────────────
+  var RY = 320;
+  svg.appendChild(pipe('M880,195 L880,' + RY + ' L560,' + RY, 'pipe-cold', running && toRoom));
+  svg.appendChild(pipe('M560,' + RY + ' L560,196', 'pipe-cold', running && toRoom));
+  svg.appendChild(pipe('M560,' + RY + ' L335,' + RY + ' L335,280', 'pipe-cold', running && toRoom));
+  if (running && toRoom) { svg.appendChild(arrowHead(430, RY, 'l', COLD)); }
 
   return svg;
 }
