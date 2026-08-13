@@ -268,6 +268,14 @@ class NRGDashboardHeatSchema extends IPSModule
                 'compressorFreq'  => $this->num((int) ($e['compressorFreqID'] ?? 0)),
                 'dischargeTemp'   => $this->numTemp((int) ($e['dischargeTempID'] ?? 0)),
                 'defrosting'      => $this->boolVal((int) ($e['defrostingStateID'] ?? 0)),
+                // contractVersion 1.4 (HeishaMon, 13.08.2026) - externe
+                // Pumpe/Mischventil an der 2. Steuerplatine, additiv. Fehlt
+                // bei aelteren Installationen (contractVersion 1.3) einfach
+                // (Schluessel nicht gesetzt), Felder bleiben dann null.
+                'extPump'         => $this->boolVal((int) ($e['z1PumpID'] ?? 0)),
+                // 0=Aus, 1=Zu (schliesst gerade), 2=Auf (oeffnet gerade) -
+                // Stellrichtung, KEINE absolute Position (HeishaMon-Hinweis).
+                'extMixingValve'  => $this->num((int) ($e['z1MixingValveID'] ?? 0)),
             ];
         }
 

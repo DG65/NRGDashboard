@@ -252,14 +252,34 @@ function buildSchema(unit) {
     svg.appendChild(valueText(420, 50, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
 
-  // Externe Pumpe + Mischventil (KEIN Vertrags-Messwert - Dietmars Anlage
-  // hat dafuer keine ueber HeishaMon/WPHub ausgelesene Sensorik, deshalb
-  // rein statisches Symbol ohne Live-Werte).
+  // Externe Pumpe + Mischventil an der 2. Steuerplatine - seit HeishaMon
+  // contractVersion 1.4 (13.08.2026) echte Live-Werte (extPump/
+  // extMixingValve), vorher nur statisches Symbol ohne Werte. extMixingValve
+  // ist eine STELLRICHTUNG (0=Aus/1=Zu/2=Auf), KEINE Position - deshalb als
+  // Text "schließt"/"öffnet"/"steht" statt Fuellstand dargestellt.
+  var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
+  var pumpOn = pumpKnown ? unit.extPump : null;
   svg.appendChild(pipe('M454,105 L500,105', 'pipe-hot', running && toRoom));
-  svg.appendChild(flowSensorIcon(478, 105, HOT));
+  svg.appendChild(flowSensorIcon(478, 105, pumpKnown ? (pumpOn ? HOT : '#6a6f77') : HOT));
+  if (pumpKnown) {
+    svg.appendChild(valueText(478, 80, pumpOn ? 'EIN' : 'AUS', null, pumpOn ? HOT : '#6a6f77', 'Pumpe'));
+  }
   svg.appendChild(el('circle', { cx: 520, cy: 105, r: 9, class: 'valve', fill: '#14171a' }));
-  svg.appendChild(el('path', { d: 'M514,100 L526,110 M526,100 L514,110', stroke: '#aab2bc', 'stroke-width': 1.5 }));
+  var mv = unit.extMixingValve;
+  if (mv === 2) {
+    svg.appendChild(arrowHead(520, 105, 'u', HOT));
+  } else if (mv === 1) {
+    svg.appendChild(arrowHead(520, 105, 'd', COLD));
+  } else if (mv === 0) {
+    svg.appendChild(el('circle', { cx: 520, cy: 105, r: 2.5, fill: '#aab2bc' }));
+  } else {
+    svg.appendChild(el('path', { d: 'M514,100 L526,110 M526,100 L514,110', stroke: '#aab2bc', 'stroke-width': 1.5 }));
+  }
   var mixTag = el('text', { x: 500, y: 128, class: 'tag', 'text-anchor': 'middle' }); mixTag.textContent = 'Externe Pumpe + Mischer'; svg.appendChild(mixTag);
+  if (mv !== null && mv !== undefined) {
+    var mvText = mv === 2 ? 'öffnet' : (mv === 1 ? 'schließt' : 'steht');
+    svg.appendChild(valueText(520, 80, mvText, null, mv === 2 ? HOT : (mv === 1 ? COLD : '#aab2bc'), 'Mischer'));
+  }
   svg.appendChild(pipe('M529,105 L570,105', 'pipe-hot', running && toRoom));
   if (running && toRoom) { svg.appendChild(arrowHead(550, 105, 'r', HOT)); }
 
