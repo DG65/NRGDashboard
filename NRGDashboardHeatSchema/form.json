@@ -1,0 +1,36 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "📖 Dokumentation & Hilfe",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Anlagenschema des Heizkreislaufs (Pumpen, Ventile, Durchfluss, Temperaturen) - Vorbild Gebäudeleittechnik-Visualisierungen. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
+        },
+        {
+          "type": "Label",
+          "caption": "Liefert die jeweilige Datenquelle keine Pumpen-/Ventil-/Durchfluss-Werte (z. B. reine WPHub-Installation ohne HeishaMon-Zusatzplatine), zeigt die Kachel nur die Basiswerte (elektrische Leistung) statt eines unvollständigen Rohrschemas."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Darstellung",
+      "expanded": false,
+      "items": [
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        }
+      ]
+    }
+  ]
+}

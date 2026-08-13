@@ -1,0 +1,14 @@
+{
+  "id": "{424584D6-4402-4A56-BDF3-924DB66DE01D}",
+  "name": "NRGDashboardHeatSchema",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Dashboard Anlagenschema"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHHEAT"
+}
