@@ -42,14 +42,12 @@
   @keyframes flowdots { to { stroke-dashoffset: -28.2; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
 
-  /* Kaeltemittelleitung: gestrichelt in Amber (klar als anderes Medium
-     vom Wasser unterscheidbar), Strichelung WANDERT bei laufendem
-     Verdichter (Dietmar, 14.08.2026: "eigentlich fliesst doch das Gas
-     auch") - Richtung folgt der Zeichenrichtung des Pfads. */
-  .refr { fill: none; stroke: #c9a04a; stroke-width: 3; stroke-dasharray: 3 6; stroke-linecap: round; }
-  .refr.still { stroke: #7b8aa3; }
-  .refr.flowing { animation: refrflow 0.7s linear infinite; }
-  @keyframes refrflow { to { stroke-dashoffset: -18; } }
+  /* Kaeltemittelleitung: gleiche Optik/Animation wie die Wasserrohre
+     (volles Basisrohr + wandernde helle Punkte + Glow), nur in Amber als
+     Medium-Kennfarbe (Dietmar, 14.08.2026: "gleiches visuelles Aussehen
+     und Animation wie die Wasserleitung"). */
+  .pipe-refr { stroke: #c9a04a; }
+  .pipe.flowing.pipe-refr { filter: drop-shadow(0 0 3px rgba(201,160,74,.7)); }
 
   /* Werte-Chip: dunkle Pille, Randfarbe = Mess-/Leitungsfarbe, Wert in
      Weiss - kleine, praezise Instrumentenanzeige statt frei schwebendem
@@ -299,7 +297,7 @@ function buildSchema(unit) {
     return g;
   }
   function refrigerantLine(d, active) {
-    return el('path', { d: d, class: 'refr ' + (active ? 'flowing' : 'still') });
+    return pipe(d, 'pipe-refr', active);
   }
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
@@ -317,7 +315,11 @@ function buildSchema(unit) {
   ];
   odRows.forEach(function (row, ri) {
     var ry = 262 + ri * 16;
-    var lbl = el('text', { x: 37, y: ry, class: 'tag', 'text-anchor': 'start' });
+    // Inline-Style: .tag setzt text-anchor:middle per CSS, das Attribut
+    // allein wuerde ueberschrieben (Labels sollen linksbuendig mit der
+    // Geraetekante x=35 stehen - Dietmar, 14.08.2026).
+    var lbl = el('text', { x: 35, y: ry, class: 'tag' });
+    lbl.style.textAnchor = 'start';
     lbl.textContent = row[0];
     svg.appendChild(lbl);
     // Inline-Style noetig: die CSS-Klasse .chip-text setzt text-anchor:
