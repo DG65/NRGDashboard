@@ -295,7 +295,11 @@ function buildSchema(unit) {
   // 185l-Brauchwassertank, fest im Innengeraet - Zweig zweigt UNTEN vom
   // Innengeraet ab, nicht gleichrangig neben dem Heizkreis (der ist ein
   // eigener, weiter entfernter Kreislauf über den Puffer).
-  svg.appendChild(pipe('M200,122 L200,250 L165,250', 'pipe-hot', running && toDhw));
+  // Bis direkt zur Tank-Anschlussstelle (120,200) fuehren, nicht bei
+  // x=165 im Leeren enden - bei aktivem WW-Betrieb (helle, animierte
+  // Leitung statt grau/inaktiv) fiel die Luecke sofort auf, real
+  // gefunden anhand eines Screenshots, 14.08.2026.
+  svg.appendChild(pipe('M200,122 L200,180 L120,180 L120,200', 'pipe-hot', running && toDhw));
   tankShape(svg, 120, 200, 42, 95, unit.dhwTemp, 'WW-Tank 185 l');
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) {
     svg.appendChild(tankReadout(120, 200 + 95 / 2, fmtTemp1(unit.dhwTemp)));
