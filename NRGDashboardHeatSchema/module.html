@@ -42,6 +42,15 @@
   @keyframes flowdots { to { stroke-dashoffset: -28.2; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
 
+  /* Kaeltemittelleitung: gestrichelt in Amber (klar als anderes Medium
+     vom Wasser unterscheidbar), Strichelung WANDERT bei laufendem
+     Verdichter (Dietmar, 14.08.2026: "eigentlich fliesst doch das Gas
+     auch") - Richtung folgt der Zeichenrichtung des Pfads. */
+  .refr { fill: none; stroke: #c9a04a; stroke-width: 3; stroke-dasharray: 3 6; stroke-linecap: round; }
+  .refr.still { stroke: #7b8aa3; }
+  .refr.flowing { animation: refrflow 0.7s linear infinite; }
+  @keyframes refrflow { to { stroke-dashoffset: -18; } }
+
   /* Werte-Chip: dunkle Pille, Randfarbe = Mess-/Leitungsfarbe, Wert in
      Weiss - kleine, praezise Instrumentenanzeige statt frei schwebendem
      Text (Prinzip 1). */
@@ -279,8 +288,8 @@ function buildSchema(unit) {
     if (active) { g.appendChild(el('path', { d: d, class: 'pipe-dots' })); }
     return g;
   }
-  function refrigerantLine(d) {
-    return el('path', { d: d, fill: 'none', stroke: '#7b8aa3', 'stroke-width': 3, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' });
+  function refrigerantLine(d, active) {
+    return el('path', { d: d, class: 'refr ' + (active ? 'flowing' : 'still') });
   }
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
@@ -295,8 +304,10 @@ function buildSchema(unit) {
   }
 
   // Kaeltemittelleitungen zum Innengeraet
-  svg.appendChild(refrigerantLine('M165,160 L230,160'));
-  svg.appendChild(refrigerantLine('M165,200 L230,200'));
+  // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
+  // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
+  svg.appendChild(refrigerantLine('M165,160 L230,160', running));
+  svg.appendChild(refrigerantLine('M230,200 L165,200', running));
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
     svg.appendChild(chip(195, 138, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
   }
