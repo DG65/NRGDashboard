@@ -100,6 +100,20 @@ function valueText(x, y, text, unit, color, tag) {
   return g;
 }
 
+// Wert mit Anfuehrungslinie: Text steht frei im offenen Raum, ein duenner
+// Strich mit Punkt zeigt auf die tatsaechliche Messstelle am Rohr/Bauteil
+// (Referenz-Vorbild: Bernhard Baptists "Wärmepumpe Visu"-Video sowie die
+// Solvis-Anlage aus der Symcon-Community, 13.08.2026 - beide platzieren
+// Werte so, statt sie auf die Leitung zu schreiben). (px,py) = Messpunkt,
+// (lx,ly) = Position der Beschriftung.
+function calloutValue(px, py, lx, ly, text, unit, color, tag) {
+  var g = el('g', {});
+  g.appendChild(el('circle', { cx: px, cy: py, r: 2.5, fill: color || '#aab2bc' }));
+  g.appendChild(el('line', { x1: px, y1: py, x2: lx, y2: ly - 3, stroke: color || '#aab2bc', 'stroke-width': 1, opacity: 0.7 }));
+  g.appendChild(valueText(lx, ly, text, unit, color, tag));
+  return g;
+}
+
 // Ventil-Symbol (Schmetterling/Bowtie) - Standard-Fliessbildsymbol,
 // Kontur wie die Rohre/Kaesten, Fuellung zeigt den Zustand.
 function valveSymbol(x, y, color, tag) {
@@ -110,6 +124,16 @@ function valveSymbol(x, y, color, tag) {
     var t = el('text', { x: x, y: y + 23, class: 'tag', 'text-anchor': 'middle', fill: color }); t.textContent = tag; g.appendChild(t);
   }
   return g;
+}
+
+// Grosser, fetter Messwert DIREKT auf der Tankflaeche (Referenz-Vorbild:
+// iDM-Anlagenschema aus der Symcon-Community, 13.08.2026) - der Tank ist
+// breit genug, eine Anfuehrungslinie waere hier ueberfluessig, anders als
+// bei duennen Rohrabschnitten (siehe calloutValue()).
+function tankReadout(x, y, text) {
+  var t = el('text', { x: x, y: y + 4, class: 'val', 'text-anchor': 'middle', fill: '#fff', style: 'font-size:15px' });
+  t.textContent = text + ' °C';
+  return t;
 }
 
 var tankGradSeq = 0;
@@ -134,7 +158,7 @@ function tankShape(svg, x, y, w, h, temp, label) {
     + ' A' + r + ',' + r + ' 0 0 0 ' + (x + r) + ',' + (y + h - r)
     + ' L' + (x + r) + ',' + (y + r)
     + ' A' + r + ',' + r + ' 0 0 0 ' + (x - r) + ',' + (y + r) + ' Z';
-  g.appendChild(el('path', { d: d, fill: 'url(#' + gid + ')', 'fill-opacity': 0.55 }));
+  g.appendChild(el('path', { d: d, fill: 'url(#' + gid + ')', 'fill-opacity': 0.85 }));
   g.appendChild(el('ellipse', { cx: x, cy: y + r, rx: r, ry: r * 0.42, class: 'tank-outline' }));
   g.appendChild(el('path', { d: 'M' + (x - r) + ',' + (y + r) + ' L' + (x - r) + ',' + (y + h - r) + ' M' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y + h - r), class: 'tank-outline' }));
   g.appendChild(el('ellipse', { cx: x, cy: y + h - r, rx: r, ry: r * 0.42, class: 'tank-outline', fill: 'none' }));
@@ -223,7 +247,7 @@ function buildSchema(unit) {
   svg.appendChild(refrigerantLine('M120,135 L165,135'));
   svg.appendChild(refrigerantLine('M120,165 L165,165'));
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(valueText(142, 108, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
+    svg.appendChild(calloutValue(142, 135, 142, 55, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
   }
 
   // Innengeraet (Hydraulikmodul: 3-Wege-Ventil, 2-Wege-Ventil, interne
@@ -255,9 +279,9 @@ function buildSchema(unit) {
   // Innengeraet ab, nicht gleichrangig neben dem Heizkreis (der ist ein
   // eigener, weiter entfernter Kreislauf über den Puffer).
   svg.appendChild(pipe('M200,122 L200,250 L165,250', 'pipe-hot', running && toDhw));
-  tankShape(svg, 120, 210, 30, 75, unit.dhwTemp, 'WW-Tank 185 l');
+  tankShape(svg, 120, 200, 42, 95, unit.dhwTemp, 'WW-Tank 185 l');
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) {
-    svg.appendChild(valueText(120, 205, fmtTemp1(unit.dhwTemp), '°C', tempColor(unit.dhwTemp), null));
+    svg.appendChild(tankReadout(120, 200 + 95 / 2, fmtTemp1(unit.dhwTemp)));
   }
 
   // Heizungszweig vom Innengeraet direkt in den 100l-Pufferspeicher
@@ -265,9 +289,9 @@ function buildSchema(unit) {
   // 13.08.2026: "Der Heizkreislauf geht in einen 100 ltr. Pufferspeicher").
   svg.appendChild(pipe('M335,105 L400,105', 'pipe-hot', running && toRoom));
   if (running && toRoom) { svg.appendChild(arrowHead(370, 105, 'r', HOT)); }
-  tankShape(svg, 420, 55, 34, 110, unit.bufferTemp, 'Puffer 100 l');
+  tankShape(svg, 420, 45, 46, 130, unit.bufferTemp, 'Puffer 100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(valueText(420, 50, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    svg.appendChild(tankReadout(420, 45 + 130 / 2, fmtTemp1(unit.bufferTemp)));
   }
 
   // Externe Pumpe + Mischventil an der 2. Steuerplatine - seit HeishaMon
