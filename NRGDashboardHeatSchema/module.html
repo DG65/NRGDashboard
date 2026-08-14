@@ -277,7 +277,7 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     // der Ablauf waagerecht zur mittigen Steigleitung.
     // Zielabstand 9,5 bei 4er-Strichstaerke - so passen sichtbar mehr
     // Windungen hinein als vorher (Dietmar, 14.08.2026).
-    var segs = Math.max(5, Math.round((cBot - cTop) / 9.5) | 1);
+    var segs = Math.max(5, Math.round((cBot - cTop) / 8.5) | 1);
     var step = (cBot - cTop) / segs;
     var cd = 'M' + cIn + ',' + (top - 3) + ' L' + cIn + ',' + cTop;
     for (var i = 1; i <= segs; i++) {
@@ -644,14 +644,14 @@ function buildSchema(unit) {
     return lg;
   }
   if (running) {
-    var hxGlow = el('circle', { cx: 268, cy: 181, r: 20, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
+    var hxGlow = el('circle', { cx: 260, cy: 181, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
     svg.appendChild(hxGlow);
   }
   // WT symmetrisch ueber beiden Anschlussebenen: Leitungen bei y=170
   // (heiss) und y=192 (kalt), Mitte 181 - Rechteck 155..207 hat oben wie
   // unten 15px Abstand zur jeweiligen Leitung (Dietmar, 14.08.2026).
-  svg.appendChild(el('rect', { x: 252, y: 155, width: 32, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
+  svg.appendChild(el('rect', { x: 252, y: 155, width: 16, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
   var gasGradId = 'hxgas' + unit.id, watGradId = 'hxwat' + unit.id;
   var hxDefs = el('defs', {});
   // Im Kuehlbetrieb verdampft das Kaeltemittel HIER (durchgehend kalt) und
@@ -664,13 +664,13 @@ function buildSchema(unit) {
     ? coilGradient(watGradId, '#4a90d9', '#7d9dc4')
     : coilGradient(watGradId, '#e0503c', '#4a90d9'));
   svg.appendChild(hxDefs);
-  svg.appendChild(el('path', { d: coilPath(262, 159, 203, 5, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
-  svg.appendChild(el('path', { d: coilPath(274, 159, 203, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
+  svg.appendChild(el('path', { d: coilPath(257, 159, 203, 3, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
+  svg.appendChild(el('path', { d: coilPath(263, 159, 203, -3, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
   // Nach links gerueckt: die WW-Ruecklaufleitung steigt bei x=276 auf und
   // schnitt die mittige Beschriftung an (14.08.2026).
   // Ueber dem Waermetauscher statt darunter - so hat Dietmar es in seine
   // Zeichnung verschoben (14.08.2026); unten liegt jetzt der Speicher.
-  var hxTag = el('text', { x: 262, y: 150, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  var hxTag = el('text', { x: 260, y: 150, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
   // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
@@ -690,7 +690,7 @@ function buildSchema(unit) {
   // die Flussanimation nicht an ihnen abbricht - die Ventilsymbole liegen
   // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
   // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
-  svg.appendChild(pipe('M284,170 L324,170', SUP, waterFlow));
+  svg.appendChild(pipe('M268,170 L324,170', SUP, waterFlow));
   svg.appendChild(pipe('M324,170 L324,120 L350,120', SUP, waterFlow && toRoom));
 
   // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
@@ -698,12 +698,12 @@ function buildSchema(unit) {
   // leitungen gezeichnet, damit deren Endpunkte aus den zurueck-
   // gegebenen Stutzen stammen statt geraten zu werden.
   var DHW_IN = 324;
-  var dhwPorts = tankShape(svg, 295, 234, 86, 108, unit.dhwTemp, 'WW-Tank', '185 l',
+  var dhwPorts = tankShape(svg, 295, 226, 86, 116, unit.dhwTemp, 'WW-Tank', '185 l',
     { coil: true, inX: DHW_IN });
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
   // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
   var DHW_RISE = dhwPorts ? dhwPorts.riserX : 296;
-  svg.appendChild(pipe('M350,192 L284,192', RET, waterFlow));
+  svg.appendChild(pipe('M350,192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
   svg.appendChild(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
   svg.appendChild(valve3(324, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
