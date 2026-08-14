@@ -61,6 +61,11 @@
      (volles Basisrohr + wandernde helle Punkte + Glow), nur in Amber als
      Medium-Kennfarbe (Dietmar, 14.08.2026: "gleiches visuelles Aussehen
      und Animation wie die Wasserleitung"). */
+  /* Kuehlbetrieb: der Vorlauf ist die KAELTERE Leitung, der Ruecklauf nur
+     leicht waermer - ihn rot zu faerben waere schlicht falsch (Dietmar,
+     14.08.2026: "die WP kuehlt"). */
+  .pipe-cool-return { stroke: #7d9dc4; }
+  .pipe.flowing.pipe-cool-return { filter: drop-shadow(0 0 3px rgba(125,157,196,.7)); }
   .pipe-refr-hot { stroke: #d98a3c; }
   .pipe-refr-cold { stroke: #6e9ab8; }
   .pipe.flowing.pipe-refr-hot { filter: drop-shadow(0 0 3px rgba(217,138,60,.7)); }
@@ -353,7 +358,21 @@ function buildSchema(unit) {
   var running = (unit.compressorFreq || 0) > 0;
   var toDhw = unit.threeWayValve === 1;
   var toRoom = unit.threeWayValve === 0 || unit.threeWayValve === null;
-  var HOT = '#e0503c', COLD = '#4a90d9';
+  var HOT = '#e0503c', COLD = '#4a90d9', COOLRET = '#7d9dc4';
+  // Kuehlbetrieb: Panasonic dreht den Kreis um, der Vorlauf wird KAELTER
+  // als der Ruecklauf. Live nachgewiesen am 14.08.2026 (Instanz 25205,
+  // 33 °C aussen): VL 15,5 °C < RL 16,0 °C, Kaelteleistung 1400 W. Ohne
+  // eigenes Vertragsfeld fuer die Betriebsart wird sie am Vorzeichen der
+  // Spreizung erkannt - das ist quellenunabhaengig und funktioniert auch
+  // bei Modulen, die keine Betriebsart melden.
+  var haveSpread = unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined
+    && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
+  var cooling = haveSpread && !(unit.threeWayValve === 1)
+    && (unit.mainOutletTemp < unit.mainInletTemp - 0.3);
+  var SUP = cooling ? 'pipe-cold' : 'pipe-hot';
+  var RET = cooling ? 'pipe-cool-return' : 'pipe-cold';
+  var SUPC = cooling ? COLD : HOT;
+  var RETC = cooling ? COOLRET : COLD;
   // Der Wasserkreis laeuft nachweislich auch bei stehendem Verdichter
   // (Frostschutz/Nachlauf/Messumlauf) - Dietmars Anlage am 14.08.2026:
   // Verdichter 0 Hz, Luefter 0 U/min, aber 14,09 l/min Durchfluss bei
@@ -432,7 +451,8 @@ function buildSchema(unit) {
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
   if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
-    svg.appendChild(chip(203, 215, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', 'Kaltgas', true));
+    svg.appendChild(chip(203, 215, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8',
+      cooling ? 'Verflüssiger' : 'Kaltgas', true));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -445,6 +465,15 @@ function buildSchema(unit) {
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
   var it = el('text', { x: 295, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  // Betriebsart sichtbar machen - ohne sie sind Vor-/Ruecklauffarben und
+  // die Kaeltemittel-Beschriftung nicht eindeutig lesbar.
+  var modeText, modeColor;
+  if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
+  else if (cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
+  else if (running) { modeText = 'Heizbetrieb'; modeColor = HOT; }
+  else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
+  else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
+  svg.appendChild(chip(352, 60, modeText, null, modeColor, null));
   indoorUnit(svg, 240, 90, 110, 270);
 
   // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
@@ -484,7 +513,7 @@ function buildSchema(unit) {
     return lg;
   }
   if (running) {
-    var hxGlow = el('circle', { cx: 268, cy: 181, r: 20, fill: '#d98a3c', opacity: 0.22 });
+    var hxGlow = el('circle', { cx: 268, cy: 181, r: 20, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
     svg.appendChild(hxGlow);
   }
@@ -494,19 +523,26 @@ function buildSchema(unit) {
   svg.appendChild(el('rect', { x: 252, y: 155, width: 32, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
   var gasGradId = 'hxgas' + unit.id, watGradId = 'hxwat' + unit.id;
   var hxDefs = el('defs', {});
-  hxDefs.appendChild(coilGradient(gasGradId, '#d98a3c', '#6e9ab8'));
-  hxDefs.appendChild(coilGradient(watGradId, '#e0503c', '#4a90d9'));
+  // Im Kuehlbetrieb verdampft das Kaeltemittel HIER (durchgehend kalt) und
+  // das Wasser tritt oben kaelter aus, als es unten eintritt - beide
+  // Verlaeufe drehen sich also um.
+  hxDefs.appendChild(cooling
+    ? coilGradient(gasGradId, '#6e9ab8', '#4a90d9')
+    : coilGradient(gasGradId, '#d98a3c', '#6e9ab8'));
+  hxDefs.appendChild(cooling
+    ? coilGradient(watGradId, '#4a90d9', '#7d9dc4')
+    : coilGradient(watGradId, '#e0503c', '#4a90d9'));
   svg.appendChild(hxDefs);
   svg.appendChild(el('path', { d: coilPath(262, 159, 203, 5, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
   svg.appendChild(el('path', { d: coilPath(274, 159, 203, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
   var hxTag = el('text', { x: 268, y: 219, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
-  svg.appendChild(pipe('M284,170 L306,170', 'pipe-hot', waterFlow));
-  svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', 'pipe-hot', waterFlow && toRoom));
+  svg.appendChild(pipe('M284,170 L306,170', SUP, waterFlow));
+  svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', SUP, waterFlow && toRoom));
   svg.appendChild(pipe('M313,177 L313,240', 'pipe-hot', waterFlow && toDhw));
-  svg.appendChild(pipe('M350,192 L334,192', 'pipe-cold', waterFlow));
-  svg.appendChild(pipe('M320,192 L284,192', 'pipe-cold', waterFlow));
+  svg.appendChild(pipe('M350,192 L334,192', RET, waterFlow));
+  svg.appendChild(pipe('M320,192 L284,192', RET, waterFlow));
   svg.appendChild(valveSymbol(313, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
   svg.appendChild(valveSymbol(327, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
   // Integrierter 185l-WW-Tank
@@ -557,18 +593,21 @@ function buildSchema(unit) {
   // kreis folgt dann ersatzweise dem Wasserumlauf des Primaerkreises.
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
-  svg.appendChild(pipe('M350,120 L546,120', 'pipe-hot', waterFlow && toRoom));
-  svg.appendChild(pipe('M546,170 L350,170', 'pipe-cold', waterFlow && toRoom));
+  svg.appendChild(pipe('M350,120 L546,120', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M546,170 L350,170', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(430, 120, fmtTemp1(unit.mainOutletTemp), '°C', HOT, null));
+    svg.appendChild(chip(430, 120, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(430, 170, fmtTemp1(unit.mainInletTemp), '°C', COLD, null));
+    svg.appendChild(chip(430, 170, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
-    var dT = unit.mainOutletTemp - unit.mainInletTemp;
+    // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
+    // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
+    // die Betriebsart-Kennzeichnung.
+    var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
     svg.appendChild(chip(430, 145, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
@@ -576,11 +615,12 @@ function buildSchema(unit) {
   // therm.". Nur bei realem Umlauf (Durchfluss > 0) angezeigt, sonst
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
-    var pTh = (unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(488, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', HOT, 'therm. Leistung'));
+    var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
+    svg.appendChild(chip(488, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+      cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', HOT)); }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', COLD)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', SUPC)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', RETC)); }
   tankShape(svg, 570, 95, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
     svg.appendChild(chip(570, 75, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
@@ -592,7 +632,7 @@ function buildSchema(unit) {
   var adgTag = el('text', { x: 480, y: 228, class: 'tag' }); adgTag.textContent = 'ADG'; svg.appendChild(adgTag);
 
   // ── Sekundaerkreis: Puffer -> Mischer -> ext. Pumpe -> Heizkreis ──
-  svg.appendChild(pipe('M594,120 L636,120', 'pipe-hot', pumpOn));
+  svg.appendChild(pipe('M594,120 L636,120', SUP, pumpOn));
   var mv = unit.extMixingValve;
   if (mv === 2) {
     svg.appendChild(valveSymbol(650, 120, 7, HOT, 'öffnet', true));
@@ -603,13 +643,13 @@ function buildSchema(unit) {
   } else {
     svg.appendChild(valveSymbol(650, 120, 7, PAL.draw, null, false));
   }
-  svg.appendChild(pipe('M664,120 L696,120', 'pipe-hot', pumpOn));
+  svg.appendChild(pipe('M664,120 L696,120', SUP, pumpOn));
   svg.appendChild(pumpIcon(710, 120, pumpOn, 0));
   var extTag = el('text', { x: 690, y: 95, class: 'tag' });
   extTag.textContent = pumpKnown ? 'Mischer + ext. Pumpe' : 'Mischer + ext. Pumpe (kein Status)';
   svg.appendChild(extTag);
-  svg.appendChild(pipe('M720,120 L790,120', 'pipe-hot', pumpOn));
-  if (pumpOn) { svg.appendChild(arrowHead(760, 120, 'r', HOT)); }
+  svg.appendChild(pipe('M720,120 L790,120', SUP, pumpOn));
+  if (pumpOn) { svg.appendChild(arrowHead(760, 120, 'r', SUPC)); }
 
   // ── Heizkreis ────────────────────────────────────────────────
   svg.appendChild(el('rect', { x: 790, y: 85, width: 180, height: 100, rx: 4, class: 'box' }));
@@ -621,8 +661,8 @@ function buildSchema(unit) {
   }
 
   // Sekundaerer Ruecklauf: Heizkreis -> Puffer (rechts unten)
-  svg.appendChild(pipe('M880,185 L880,240 L620,240 L620,170 L594,170', 'pipe-cold', pumpOn));
-  if (pumpOn) { svg.appendChild(arrowHead(740, 240, 'l', COLD)); }
+  svg.appendChild(pipe('M880,185 L880,240 L620,240 L620,170 L594,170', RET, pumpOn));
+  if (pumpOn) { svg.appendChild(arrowHead(740, 240, 'l', RETC)); }
 
   return svg;
 }
