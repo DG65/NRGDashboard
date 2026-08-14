@@ -715,9 +715,20 @@ function buildSchema(unit) {
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
   // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
   var DHW_RISE = dhwPorts ? dhwPorts.riserX : 296;
-  svg.appendChild(pipe('M350,192 L268,192', RET, waterFlow));
+  // Ruecklauf in ZWEI Abschnitte geteilt (Dietmar, 14.08.2026): vorher war
+  // es eine durchgehende Leitung, die immer floss - dadurch kam bei
+  // Warmwasserbereitung scheinbar auch Wasser aus dem Heizkreis zurueck.
+  // Der Abschnitt vom Puffer bis zur Einmuendung fliesst nur im
+  // Raumheizbetrieb (das 2-Wege-Ventil sperrt den Heizkreis waehrend der
+  // Warmwasserbereitung ab); der Abschnitt von der Einmuendung zum
+  // Waermetauscher fuehrt beide Zweige und fliesst deshalb immer.
+  svg.appendChild(pipe('M350,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
-  svg.appendChild(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
+  // Das Ventil sitzt zwischen Puffer und Einmuendung, denn genau DA
+  // trennt es den Heizkreis ab - saesse es auf der Einmuendung, wuerde es
+  // beim Schliessen auch den Warmwasser-Ruecklauf blockieren.
+  svg.appendChild(valveSymbol(DHW_RISE + 14, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
   svg.appendChild(valve3(324, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
   if (dhwPorts) {
     var dhwOn = waterFlow && toDhw;
