@@ -197,49 +197,83 @@ function pumpIcon(x, y, active, dirDeg) {
 // Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
 // direkt auf der Flaeche. Groesse proportional zum realen Volumen.
 var tankGradSeq = 0;
+// Speicher nach Dietmars Referenzbild (14.08.2026): abgerundetes
+// Rechteck mit doppelter Wandung (aussen Kontur, innen die Wasser-
+// flaeche mit kraeftigem Rot-nach-Blau-Verlauf) und einer echten
+// Rohrschlange als Federprofil - vorher war es eine Kapsel mit drei
+// angedeuteten Boegen.
 function tankShape(svg, x, y, w, h, temp, label, liters) {
   var g = el('g', {});
   var defs = svg.querySelector('defs') || svg.insertBefore(el('defs', {}), svg.firstChild);
-  var gid = 'tg' + (++tankGradSeq);
-  var grad = el('linearGradient', { id: gid, x1: '0', y1: '0', x2: '0', y2: '1' });
-  var topC = temp !== null && temp !== undefined ? tempColor(temp + 8) : '#3a4358';
-  var botC = temp !== null && temp !== undefined ? tempColor(temp - 8) : '#2a3348';
-  grad.appendChild(el('stop', { offset: '0%', 'stop-color': topC }));
-  grad.appendChild(el('stop', { offset: '100%', 'stop-color': botC }));
-  defs.appendChild(grad);
+  var n = ++tankGradSeq;
+  var known = temp !== null && temp !== undefined;
+  // Weiter gespreizt als zuvor (+/-14 K): das Referenzbild zeigt einen
+  // deutlichen Verlauf von warm oben nach kalt unten, keine Toenung.
+  var topC = known ? tempColor(temp + 14) : '#3a4358';
+  var botC = known ? tempColor(temp - 14) : '#2a3348';
 
-  // Beide Kappen-Boegen mit sweep=0 (gegen den Uhrzeigersinn): unterer
-  // Bogen woelbt nach unten, oberer nach oben. sweep=1 am oberen Bogen
-  // liess den Deckel nach INNEN klappen - der Tank sah aus wie eine
-  // Muschel (real gefunden im Preview, 14.08.2026).
-  var r = w / 2;
-  var d = 'M' + (x - r) + ',' + (y + r) + ' L' + (x - r) + ',' + (y + h - r)
-    + ' A' + r + ',' + r + ' 0 0 0 ' + (x + r) + ',' + (y + h - r)
-    + ' L' + (x + r) + ',' + (y + r)
-    + ' A' + r + ',' + r + ' 0 0 0 ' + (x - r) + ',' + (y + r) + ' Z';
-  g.appendChild(el('path', { d: d, fill: 'url(#' + gid + ')' }));
-  g.appendChild(el('path', { d: d, class: 'tank-outline' }));
+  var wgid = 'tw' + n;
+  [[wgid, topC, botC]].forEach(function (spec) {
+    var grad = el('linearGradient', { id: spec[0], x1: '0', y1: '0', x2: '0', y2: '1' });
+    grad.appendChild(el('stop', { offset: '0%', 'stop-color': spec[1] }));
+    grad.appendChild(el('stop', { offset: '100%', 'stop-color': spec[2] }));
+    defs.appendChild(grad);
+  });
 
-  // Wicklung: weiche, uebereinanderliegende Boegen im unteren Drittel
-  var coilTop = y + h * 0.5;
-  var cw = r * 1.15;
-  var cd = '';
-  for (var ci = 0; ci < 3; ci++) {
-    var cy2 = coilTop + ci * 9;
-    cd += 'M' + (x - cw) + ',' + cy2
-      + ' C' + (x - cw * 0.5) + ',' + (cy2 + 8) + ' ' + (x + cw * 0.5) + ',' + (cy2 + 8) + ' ' + (x + cw) + ',' + cy2 + ' ';
+  var left = x - w / 2, top = y;
+  var rad = w * 0.22;
+  // Aussenwand kraeftiger als die uebrigen Konturen - im Referenzbild
+  // ist die Speicherwandung deutlich staerker gezeichnet.
+  g.appendChild(el('rect', { x: left, y: top, width: w, height: h, rx: rad, class: 'tank-outline', 'stroke-width': 2.4 }));
+  // Wasserflaeche, umlaufend eingerueckt
+  var pad = 4;
+  g.appendChild(el('rect', {
+    x: left + pad, y: top + pad, width: w - 2 * pad, height: h - 2 * pad,
+    rx: Math.max(2, rad - pad), fill: 'url(#' + wgid + ')', 'fill-opacity': 0.9
+  }));
+
+  // Rohrschlange als Federprofil: enge Zickzack-Windungen ueber die
+  // Speicherbreite, Vor-/Ruecklaufstutzen links wie im Referenzbild.
+  var cTop = top + h * 0.42, cBot = top + h - pad - 6;
+  var turns = Math.max(5, Math.round((cBot - cTop) / 7));
+  var step = (cBot - cTop) / turns;
+  var cl = left + pad + 5, cr = left + w - pad - 5;
+  var cd = 'M' + cl + ',' + cTop;
+  for (var i = 0; i < turns; i++) {
+    var yy = cTop + i * step;
+    cd += ' L' + cr + ',' + (yy + step / 2) + ' L' + cl + ',' + (yy + step);
   }
-  g.appendChild(el('path', { d: cd, class: 'tank-coil' }));
+  // Zulauf oben links in die Wendel, Ablauf unten links wieder heraus
+  var inY = cTop + (cBot - cTop) * 0.55;
+  g.appendChild(el('path', {
+    d: 'M' + (left - 2) + ',' + inY + ' L' + (cl - 5) + ',' + inY + ' L' + (cl - 5) + ',' + cTop + ' L' + cl + ',' + cTop,
+    fill: 'none', class: 'tank-coil', 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+  }));
+  g.appendChild(el('path', {
+    d: 'M' + cl + ',' + cBot + ' L' + (left - 2) + ',' + cBot,
+    fill: 'none', class: 'tank-coil', 'stroke-width': 2.2, 'stroke-linecap': 'round'
+  }));
+  g.appendChild(el('path', { d: cd, class: 'tank-coil', 'stroke-width': 2.2 }));
 
   // Name + Liter direkt AUF der Tankflaeche (iDM-Referenzmuster) statt
   // unterhalb - Rohrleitungen unter dem Tank koennen die Beschriftung
   // dann nicht mehr anschneiden (real passiert beim Puffer-Ruecklauf).
-  if (label) {
-    var lt = el('text', { x: x, y: y + h * 0.3, class: 'tank-label' }); lt.textContent = label; g.appendChild(lt);
+  // Schriftgroesse an die Speicherbreite koppeln - "WW-Tank" lief bei
+  // 50px Breite sonst ueber die Wandung hinaus.
+  function fitLabel(text, yy, cls, maxFs) {
+    // Faktor 0,70 am gerenderten Text nachgemessen (14.08.2026): mit 0,58
+    // geschaetzt war "WW-Tank" 48,3 breit bei 50 Speicherbreite und lag
+    // damit auf der Wandung.
+    var fs = Math.min(maxFs, (w - 12) / (text.length * 0.70));
+    var t = el('text', { x: x, y: yy, class: cls });
+    t.style.fontSize = fs.toFixed(1) + 'px';
+    t.textContent = text;
+    g.appendChild(t);
+    return fs;
   }
-  if (liters) {
-    var lt2 = el('text', { x: x, y: y + h * 0.3 + 13, class: 'tank-liters' }); lt2.textContent = liters; g.appendChild(lt2);
-  }
+  var usedFs = 10.5;
+  if (label) { usedFs = fitLabel(label, top + h * 0.17, 'tank-label', 10.5); }
+  if (liters) { fitLabel(liters, top + h * 0.17 + usedFs + 3, 'tank-liters', 10); }
   svg.appendChild(g);
   return g;
 }
