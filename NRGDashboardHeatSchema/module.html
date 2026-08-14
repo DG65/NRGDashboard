@@ -367,8 +367,18 @@ function buildSchema(unit) {
   // bei Modulen, die keine Betriebsart melden.
   var haveSpread = unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined
     && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
-  var cooling = haveSpread && !(unit.threeWayValve === 1)
-    && (unit.mainOutletTemp < unit.mainInletTemp - 0.3);
+  // operatingMode ist laut HeishaMon die KONFIGURIERTE Betriebsart, nicht
+  // der Ist-Zustand - sie ersetzt die Messung deshalb NICHT, sondern
+  // entscheidet nur dort, wo die Messung nichts hergibt: bei stehendem
+  // Verdichter ist die Spreizung 0 und das Vorzeichen sagt nichts.
+  // Enum 0-8: 1/5 = Kuehlen(+WW), 7/8 = Auto(Kuehlen)(+WW).
+  var cfgCooling = [1, 5, 7, 8].indexOf(unit.operatingMode) >= 0;
+  var spread = haveSpread ? (unit.mainOutletTemp - unit.mainInletTemp) : 0;
+  var cooling = !(unit.threeWayValve === 1) && (
+    (haveSpread && spread < -0.3) ? true
+      : (haveSpread && spread > 0.3) ? false
+      : cfgCooling
+  );
   var SUP = cooling ? 'pipe-cold' : 'pipe-hot';
   var RET = cooling ? 'pipe-cool-return' : 'pipe-cold';
   var SUPC = cooling ? COLD : HOT;
@@ -469,7 +479,7 @@ function buildSchema(unit) {
   // die Kaeltemittel-Beschriftung nicht eindeutig lesbar.
   var modeText, modeColor;
   if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
-  else if (cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
+  else if (running && cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
   else if (running) { modeText = 'Heizbetrieb'; modeColor = HOT; }
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
@@ -562,6 +572,14 @@ function buildSchema(unit) {
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push(['Pumpe', fmtTemp1(unit.pumpFlow) + ' l/min']); }
   if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push(['Drehzahl', Math.round(unit.pumpSpeed) + ' U/min']); }
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank 185 l', fmtTemp1(unit.dhwTemp) + ' °C']); }
+  if (unit.operatingMode !== null && unit.operatingMode !== undefined) {
+    var MODE_TEXT = {
+      0: 'Nur Heizen', 1: 'Nur Kühlen', 2: 'Auto (Heizen)', 3: 'Nur Warmwasser',
+      4: 'Heizen + WW', 5: 'Kühlen + WW', 6: 'Auto (Heizen) + WW',
+      7: 'Auto (Kühlen)', 8: 'Auto (Kühlen) + WW'
+    };
+    idRows.push(['Modus', MODE_TEXT[unit.operatingMode] || 'unbekannt']);
+  }
   idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
   idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
   idRows.forEach(function (row, ri) {

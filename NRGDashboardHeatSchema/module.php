@@ -300,6 +300,11 @@ class NRGDashboardHeatSchema extends IPSModule
                 // einheit - im KUEHLBETRIEB die tatsaechlich kalte Kaelte-
                 // mittelseite (Eva_Outlet liegt dann am Verfluessiger).
                 // Fehlen die Felder, bleiben sie null und werden nicht gezeigt.
+                // KONFIGURIERTE Betriebsart (Enum 0-8), NICHT der aktuelle
+                // Zustand - ob gerade gelaufen wird, sagt compressorFreq,
+                // ob gerade WW bereitet wird, threeWayValveStateID
+                // (Semantikhinweis HeishaMon, contractVersion 1.7).
+                'operatingMode'   => $this->num((int) ($e['operatingModeID'] ?? 0)),
                 'mixValvePos'     => $this->num((int) ($e['z1MixingValvePositionID'] ?? 0)),
                 'indoorPipeTemp'  => $this->numTemp((int) ($e['indoorPipeTempID'] ?? 0)),
             ];
