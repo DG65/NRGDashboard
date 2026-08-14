@@ -443,28 +443,31 @@ function buildSchema(unit) {
     return lg;
   }
   if (running) {
-    var hxGlow = el('circle', { cx: 268, cy: 178, r: 20, fill: '#d98a3c', opacity: 0.22 });
+    var hxGlow = el('circle', { cx: 268, cy: 181, r: 20, fill: '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
     svg.appendChild(hxGlow);
   }
-  svg.appendChild(el('rect', { x: 252, y: 152, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
+  // WT symmetrisch ueber beiden Anschlussebenen: Leitungen bei y=170
+  // (heiss) und y=192 (kalt), Mitte 181 - Rechteck 155..207 hat oben wie
+  // unten 15px Abstand zur jeweiligen Leitung (Dietmar, 14.08.2026).
+  svg.appendChild(el('rect', { x: 252, y: 155, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
   var gasGradId = 'hxgas' + unit.id, watGradId = 'hxwat' + unit.id;
   var hxDefs = el('defs', {});
   hxDefs.appendChild(coilGradient(gasGradId, '#d98a3c', '#6e9ab8'));
   hxDefs.appendChild(coilGradient(watGradId, '#e0503c', '#4a90d9'));
   svg.appendChild(hxDefs);
-  svg.appendChild(el('path', { d: coilPath(262, 156, 200, 5, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
-  svg.appendChild(el('path', { d: coilPath(274, 156, 200, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
-  var hxTag = el('text', { x: 268, y: 216, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  svg.appendChild(el('path', { d: coilPath(262, 159, 203, 5, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
+  svg.appendChild(el('path', { d: coilPath(274, 159, 203, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
+  var hxTag = el('text', { x: 268, y: 219, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
   svg.appendChild(pipe('M284,170 L306,170', 'pipe-hot', running));
   svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', 'pipe-hot', running && toRoom));
   svg.appendChild(pipe('M313,177 L313,240', 'pipe-hot', running && toDhw));
-  svg.appendChild(pipe('M350,190 L334,190', 'pipe-cold', running));
-  svg.appendChild(pipe('M320,190 L284,190', 'pipe-cold', running));
+  svg.appendChild(pipe('M350,192 L334,192', 'pipe-cold', running));
+  svg.appendChild(pipe('M320,192 L284,192', 'pipe-cold', running));
   svg.appendChild(valveSymbol(313, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
-  svg.appendChild(valveSymbol(327, 190, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  svg.appendChild(valveSymbol(327, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
   // Integrierter 185l-WW-Tank
   tankShape(svg, 296, 235, 50, 90, unit.dhwTemp, 'WW-Tank', '185 l');
 
