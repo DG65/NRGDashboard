@@ -826,17 +826,9 @@ function buildSchema(unit) {
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
     svg.appendChild(chip(570, 75, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
-  // Ausdehnungsgefaess (H6) am primaeren Ruecklauf
-  svg.appendChild(el('path', { d: 'M480,170 L480,196', fill: 'none', stroke: PAL.faint, 'stroke-width': 2 }));
-  svg.appendChild(el('circle', { cx: 480, cy: 205, r: 9, fill: 'none', stroke: PAL.faint, 'stroke-width': 1.5 }));
-  svg.appendChild(el('path', { d: 'M471,205 A9,9 0 0 0 489,205', fill: PAL.faint, 'fill-opacity': 0.4 }));
-  // Ausgeschrieben statt "ADG" - Dietmar musste am 14.08.2026 nachfragen,
-  // was die Abkuerzung bedeutet. Etwas kleiner gesetzt, damit die lange
-  // Bezeichnung nicht an den Puffer stoesst.
-  var adgTag = el('text', { x: 480, y: 228, class: 'tag' });
-  adgTag.style.fontSize = '7px';
-  adgTag.textContent = 'Ausdehnungsgefäß';
-  svg.appendChild(adgTag);
+  // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
+  // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
+  // Schema nur Platz kostet (Dietmar, 14.08.2026).
 
   // ── Sekundaerkreis: Puffer -> Mischer -> ext. Pumpe -> Heizkreis ──
   svg.appendChild(pipe('M594,120 L636,120', SUP, pumpOn));
