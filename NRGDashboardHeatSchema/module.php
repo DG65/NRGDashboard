@@ -294,6 +294,14 @@ class NRGDashboardHeatSchema extends IPSModule
                 // 0=Aus, 1=Zu (schliesst gerade), 2=Auf (oeffnet gerade) -
                 // Stellrichtung, KEINE absolute Position (HeishaMon-Hinweis).
                 'extMixingValve'  => $this->num((int) ($e['z1MixingValveID'] ?? 0)),
+                // contractVersion 1.7 (HeishaMon, 14.08.2026, angefragt nach
+                // Fund im Variablenbaum): echte Mischerstellung 0-100 % statt
+                // blosser Stellrichtung, und die Rohrtemperatur der Innen-
+                // einheit - im KUEHLBETRIEB die tatsaechlich kalte Kaelte-
+                // mittelseite (Eva_Outlet liegt dann am Verfluessiger).
+                // Fehlen die Felder, bleiben sie null und werden nicht gezeigt.
+                'mixValvePos'     => $this->num((int) ($e['z1MixingValvePositionID'] ?? 0)),
+                'indoorPipeTemp'  => $this->numTemp((int) ($e['indoorPipeTempID'] ?? 0)),
             ];
         }
 

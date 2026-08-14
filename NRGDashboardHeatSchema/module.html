@@ -536,6 +536,11 @@ function buildSchema(unit) {
   svg.appendChild(el('path', { d: coilPath(262, 159, 203, 5, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
   svg.appendChild(el('path', { d: coilPath(274, 159, 203, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
   var hxTag = el('text', { x: 268, y: 219, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
+  // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
+  if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
+    svg.appendChild(chip(203, 258, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer', true));
+  }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
   svg.appendChild(pipe('M284,170 L306,170', SUP, waterFlow));
@@ -634,7 +639,13 @@ function buildSchema(unit) {
   // ── Sekundaerkreis: Puffer -> Mischer -> ext. Pumpe -> Heizkreis ──
   svg.appendChild(pipe('M594,120 L636,120', SUP, pumpOn));
   var mv = unit.extMixingValve;
-  if (mv === 2) {
+  var mvPos = unit.mixValvePos;
+  if (mvPos !== null && mvPos !== undefined) {
+    // Echte Stellung schlaegt Stellrichtung: "47 %" sagt mehr aus als
+    // "oeffnet gerade" (contractVersion 1.7).
+    svg.appendChild(valveSymbol(650, 120, 7, mvPos > 0 ? SUPC : PAL.draw,
+      Math.round(mvPos) + ' %', mvPos > 0));
+  } else if (mv === 2) {
     svg.appendChild(valveSymbol(650, 120, 7, HOT, 'öffnet', true));
   } else if (mv === 1) {
     svg.appendChild(valveSymbol(650, 120, 7, COLD, 'schließt', true));
