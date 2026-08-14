@@ -46,8 +46,10 @@
      (volles Basisrohr + wandernde helle Punkte + Glow), nur in Amber als
      Medium-Kennfarbe (Dietmar, 14.08.2026: "gleiches visuelles Aussehen
      und Animation wie die Wasserleitung"). */
-  .pipe-refr { stroke: #c9a04a; }
-  .pipe.flowing.pipe-refr { filter: drop-shadow(0 0 3px rgba(201,160,74,.7)); }
+  .pipe-refr-hot { stroke: #d98a3c; }
+  .pipe-refr-cold { stroke: #6e9ab8; }
+  .pipe.flowing.pipe-refr-hot { filter: drop-shadow(0 0 3px rgba(217,138,60,.7)); }
+  .pipe.flowing.pipe-refr-cold { filter: drop-shadow(0 0 3px rgba(110,154,184,.7)); }
 
   /* Werte-Chip: dunkle Pille, Randfarbe = Mess-/Leitungsfarbe, Wert in
      Weiss - kleine, praezise Instrumentenanzeige statt frei schwebendem
@@ -284,7 +286,9 @@ function indoorUnit(svg, x, y, w, h) {
   // Sockelstrich (abgesetzte Bodenplatte wie in der Zeichnung)
   g.appendChild(el('path', { d: 'M' + (x + 4) + ',' + (y + h - 14) + ' L' + (x + w - 4) + ',' + (y + h - 14), fill: 'none', stroke: C, 'stroke-width': 0.9, opacity: 0.7 }));
   // Bedienfeld oben mittig: Rahmen, Display, Drehknopf
-  var px = x + w / 2, py = y + 34;
+  // Bedienfeld hoch genug, dass die interne Wasserleitung (y=150) und
+  // der Waermetauscher darunter Platz haben
+  var px = x + w / 2, py = y + 28;
   g.appendChild(el('rect', { x: px - 15, y: py - 18, width: 30, height: 44, rx: 2, fill: 'none', stroke: C, 'stroke-width': 1.1 }));
   g.appendChild(el('rect', { x: px - 10, y: py - 12, width: 20, height: 14, rx: 1, fill: 'none', stroke: C, 'stroke-width': 1 }));
   g.appendChild(el('path', { d: 'M' + (px - 10) + ',' + (py - 7) + ' h20 M' + (px - 10) + ',' + (py - 3) + ' h20', fill: 'none', stroke: C, 'stroke-width': 0.7, opacity: 0.8 }));
@@ -324,8 +328,10 @@ function buildSchema(unit) {
     if (active) { g.appendChild(el('path', { d: d, class: 'pipe-dots' })); }
     return g;
   }
-  function refrigerantLine(d, active) {
-    return pipe(d, 'pipe-refr', active);
+  // hot=true: Heissgas (warmes Orange), false: Sauggas/Kaltgas (kuehles
+  // Graublau) - farblich getrennt (Dietmar, 14.08.2026).
+  function refrigerantLine(d, active, hot) {
+    return pipe(d, hot ? 'pipe-refr-hot' : 'pipe-refr-cold', active);
   }
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
@@ -368,10 +374,16 @@ function buildSchema(unit) {
   // Kaeltemittelleitungen zum Innengeraet
   // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
   // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
-  svg.appendChild(refrigerantLine('M165,150 L240,150', running));
-  svg.appendChild(refrigerantLine('M240,185 L165,185', running));
+  svg.appendChild(refrigerantLine('M165,150 L252,150', running, true));
+  svg.appendChild(refrigerantLine('M252,172 L165,172', running, false));
+  // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240)
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(chip(195, 127, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
+    svg.appendChild(chip(203, 127, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
+  }
+  // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
+  // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
+  if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
+    svg.appendChild(chip(203, 197, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', 'Kaltgas'));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -385,6 +397,27 @@ function buildSchema(unit) {
   // Zapfstelle H22) gehoert mit ins Bild.
   var it = el('text', { x: 295, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
   indoorUnit(svg, 240, 90, 110, 270);
+
+  // Innenleben sichtbar (Dietmar, 14.08.2026): Waermetauscher an den
+  // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
+  // Ruecklauf, WW-Tank unten im Geraet.
+  // Plattenwaermetauscher: Rechteck mit Schraffur
+  svg.appendChild(el('rect', { x: 252, y: 132, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
+  var hxHatch = '';
+  for (var hxY = 138; hxY <= 178; hxY += 8) { hxHatch += 'M256,' + hxY + ' L280,' + (hxY - 4) + ' '; }
+  svg.appendChild(el('path', { d: hxHatch, fill: 'none', stroke: '#8a9cb8', 'stroke-width': 1, opacity: 0.8 }));
+  var hxTag = el('text', { x: 268, y: 196, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
+  // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
+  svg.appendChild(pipe('M284,150 L306,150', 'pipe-hot', running));
+  svg.appendChild(pipe('M320,150 L332,150 L332,120 L350,120', 'pipe-hot', running && toRoom));
+  svg.appendChild(pipe('M313,157 L313,240', 'pipe-hot', running && toDhw));
+  svg.appendChild(pipe('M350,170 L334,170', 'pipe-cold', running));
+  svg.appendChild(pipe('M320,170 L284,170', 'pipe-cold', running));
+  svg.appendChild(valveSymbol(313, 150, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
+  svg.appendChild(valveSymbol(327, 170, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  // Integrierter 185l-WW-Tank
+  tankShape(svg, 296, 235, 50, 90, unit.dhwTemp, 'WW-Tank', '185 l');
 
   // Zustands-/Messwert-Tabelle unter dem Geraet (gleiches Muster wie beim
   // Aussengeraet: keine Linien, geraetebuendig, Label links / Wert rechts).

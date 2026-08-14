@@ -276,6 +276,10 @@ class NRGDashboardHeatSchema extends IPSModule
                 // drehzahl des Aussengeraets, additiv - fehlt bei aelteren
                 // Staenden einfach (?? 0 -> null).
                 'fanSpeed'        => $this->num((int) ($e['fan1SpeedID'] ?? 0)),
+                // Sauggas-/Kaltgastemperatur (Gegenstueck zum Heissgas):
+                // additives Feld, bei HeishaMon angefragt (14.08.2026) -
+                // bis der Vertrag es liefert, bleibt das Feld null.
+                'suctionTemp'     => $this->numTemp((int) ($e['suctionTempID'] ?? 0)),
                 'extPump'         => $this->boolVal((int) ($e['z1PumpID'] ?? 0)),
                 // 0=Aus, 1=Zu (schliesst gerade), 2=Auf (oeffnet gerade) -
                 // Stellrichtung, KEINE absolute Position (HeishaMon-Hinweis).
