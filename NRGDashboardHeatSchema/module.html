@@ -269,13 +269,15 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     // Steigleitungs-x gibt das Schema vor, damit sie zu den Ventilen und
     // zur Pumpe passen.
     var cIn = opts.inX;
-    var cl = left + 16, cTop = top + h * 0.18, cBot = top + h - pad - 22;
+    var cl = left + 16, cTop = top + h * 0.15, cBot = top + h - pad - 20;
     // Steigleitung genau in der MITTE der Wendel (Dietmars Zeichnung,
     // 14.08.2026) - nicht mehr am Rand.
     var cRise = Math.round((cl + cIn) / 2);
     // Ungerade Segmentzahl: die Wendel endet unten LINKS, von dort laeuft
     // der Ablauf waagerecht zur mittigen Steigleitung.
-    var segs = Math.max(3, Math.round((cBot - cTop) / 11) | 1);
+    // Zielabstand 9,5 bei 4er-Strichstaerke - so passen sichtbar mehr
+    // Windungen hinein als vorher (Dietmar, 14.08.2026).
+    var segs = Math.max(5, Math.round((cBot - cTop) / 9.5) | 1);
     var step = (cBot - cTop) / segs;
     var cd = 'M' + cIn + ',' + (top - 3) + ' L' + cIn + ',' + cTop;
     for (var i = 1; i <= segs; i++) {
@@ -313,7 +315,7 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
   // einzeilig unter die Wendel (Dietmar, 14.08.2026).
   if (opts.coil) {
     var one = [label, liters].filter(Boolean).join('  ');
-    if (one) { fitLabel(one, x, top + h - 7, 'tank-label', 8.5); }
+    if (one) { fitLabel(one, x, top + h - 8, 'tank-label', 8.5); }
   } else {
     var usedFs = 10.5;
     if (label) { usedFs = fitLabel(label, x, top + h * 0.13, 'tank-label', 10.5); }
@@ -481,13 +483,36 @@ function buildSchema(unit) {
 
   // Rohr zweilagig: Basisrohr voll durchgezogen in Funktionsfarbe (grau
   // wenn inaktiv), darueber bei aktivem Fluss wandernde helle Punkte.
-  function pipe(d, cls, active, strokeOverride) {
+  function pipe(d, cls, active, strokeOverride, width) {
     var g = el('g', {});
     var base = el('path', { d: d, class: 'pipe ' + (active ? cls + ' flowing' : 'dim') });
     // Nur im aktiven Zustand ueberschreiben - inaktiv bleibt alles grau.
     if (active && strokeOverride) { base.style.stroke = strokeOverride; }
+    if (width) { base.style.strokeWidth = width; }
     g.appendChild(base);
-    if (active) { g.appendChild(el('path', { d: d, class: 'pipe-dots' })); }
+    if (active) {
+      var dots = el('path', { d: d, class: 'pipe-dots' });
+      if (width) { dots.style.strokeWidth = Math.max(1.4, width * 0.4); }
+      g.appendChild(dots);
+    }
+    return g;
+  }
+  // 3-Wege-Ventil mit DREI Anschluessen statt der bisherigen
+  // 2-Wege-Fliege (Dietmar, 14.08.2026: "Ventile an die Wege anpassen"):
+  // Zulauf links, Abgang nach oben (Heizkreis) oder unten (Warmwasser).
+  // Der gesperrte Weg bleibt grau, der offene traegt die Wegfarbe.
+  function valve3(x, y, r, downActive, colHot) {
+    var g = el('g', {});
+    function tri(d, col) {
+      return el('path', {
+        d: d, fill: col, 'fill-opacity': 0.55, stroke: col,
+        'stroke-width': 1.6, 'stroke-linejoin': 'round'
+      });
+    }
+    var idle = PAL.draw;
+    g.appendChild(tri('M' + (x - r) + ',' + (y - r) + ' L' + (x - r) + ',' + (y + r) + ' L' + x + ',' + y + ' Z', colHot));
+    g.appendChild(tri('M' + (x - r) + ',' + (y - r) + ' L' + (x + r) + ',' + (y - r) + ' L' + x + ',' + y + ' Z', downActive ? idle : colHot));
+    g.appendChild(tri('M' + (x - r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y + r) + ' L' + x + ',' + y + ' Z', downActive ? colHot : idle));
     return g;
   }
   // hot=true: Heissgas (warmes Orange), false: Sauggas/Kaltgas (kuehles
@@ -661,31 +686,32 @@ function buildSchema(unit) {
   // und die beiden Ventile standen diagonal fast aufeinander. Jetzt:
   // Pumpe im VORLAUF zwischen Waermetauscher und 3-Wege-Ventil - dort ist
   // Platz, und sie foerdert damit beide Zweige (Heizen wie Warmwasser).
-  svg.appendChild(pipe('M284,170 L298,170', SUP, waterFlow));
-  svg.appendChild(pumpIcon(306, 170, waterFlow, 0, 8));
-  svg.appendChild(pipe('M314,170 L318,170', SUP, waterFlow));
-  svg.appendChild(valveSymbol(324, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
-  svg.appendChild(pipe('M330,170 L344,170 L344,120 L350,120', SUP, waterFlow && toRoom));
+  // Leitungen laufen DURCH die Ventile hindurch (kein Spalt mehr), damit
+  // die Flussanimation nicht an ihnen abbricht - die Ventilsymbole liegen
+  // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
+  // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
+  svg.appendChild(pipe('M284,170 L324,170', SUP, waterFlow));
+  svg.appendChild(pipe('M324,170 L324,120 L350,120', SUP, waterFlow && toRoom));
 
   // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
   // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
   // leitungen gezeichnet, damit deren Endpunkte aus den zurueck-
   // gegebenen Stutzen stammen statt geraten zu werden.
   var DHW_IN = 324;
-  var dhwPorts = tankShape(svg, 295, 246, 86, 96, unit.dhwTemp, 'WW-Tank', '185 l',
+  var dhwPorts = tankShape(svg, 295, 234, 86, 108, unit.dhwTemp, 'WW-Tank', '185 l',
     { coil: true, inX: DHW_IN });
-  // Ruecklaufleitung: das 2-Wege-Ventil sitzt jetzt genau dort, wo die
-  // WW-Steigleitung einmuendet (Dietmars Zeichnung) - die Leitung wird
-  // deshalb um diesen Punkt herum gezeichnet.
+  // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
+  // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
   var DHW_RISE = dhwPorts ? dhwPorts.riserX : 296;
-  svg.appendChild(pipe('M350,192 L' + (DHW_RISE + 6) + ',192', RET, waterFlow));
-  svg.appendChild(pipe('M' + (DHW_RISE - 6) + ',192 L284,192', RET, waterFlow));
-  svg.appendChild(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  svg.appendChild(pipe('M350,192 L284,192', RET, waterFlow));
+  svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
+  svg.appendChild(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
+  svg.appendChild(valve3(324, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
   if (dhwPorts) {
     var dhwOn = waterFlow && toDhw;
     // Zulauf faellt vom 3-Wege-Ventil senkrecht in den Speicher.
     // Warmwasser wird auch im Kuehlbetrieb geheizt - hier immer Heizfarbe.
-    svg.appendChild(pipe('M' + DHW_IN + ',177 L' + DHW_IN + ',' + dhwPorts.topY, 'pipe-hot', dhwOn));
+    svg.appendChild(pipe('M' + DHW_IN + ',170 L' + DHW_IN + ',' + dhwPorts.topY, 'pipe-hot', dhwOn));
     // Wendel mit Verlauf heiss oben -> kalt unten: das Wasser gibt seine
     // Waerme auf dem Weg nach unten an den Speicher ab (Dietmars Skizze).
     var coilGid = 'dhwcoil' + unit.id;
@@ -697,11 +723,11 @@ function buildSchema(unit) {
     var cs1 = el('stop', { offset: '100%' }); cs1.setAttribute('stop-color', COLD);
     cg.appendChild(cs0); cg.appendChild(cs1);
     var cdefs = el('defs', {}); cdefs.appendChild(cg); svg.appendChild(cdefs);
-    svg.appendChild(pipe(dhwPorts.coilPath, 'pipe-hot', dhwOn, 'url(#' + coilGid + ')'));
+    svg.appendChild(pipe(dhwPorts.coilPath, 'pipe-hot', dhwOn, 'url(#' + coilGid + ')', 4));
     // Ablauf: von der Wendel mittig durch den Speicher hoch in den
     // gemeinsamen Ruecklauf - hinter dem 2-Wege-Ventil und VOR der Pumpe,
     // damit sie beide Zweige foerdert.
-    svg.appendChild(pipe(dhwPorts.risePath, 'pipe-cold', dhwOn));
+    svg.appendChild(pipe(dhwPorts.risePath, 'pipe-cold', dhwOn, null, 4));
     svg.appendChild(pipe('M' + DHW_RISE + ',' + dhwPorts.topY + ' L' + DHW_RISE + ',192', 'pipe-cold', dhwOn));
 
   }
