@@ -306,7 +306,7 @@ function buildSchema(unit) {
   // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
   // (2. Steuerplatine, Live-Werte seit HeishaMon contractVersion 1.4)
   // zu Radiatoren/Flaechenheizkoerpern (FBH nur Bad).
-  var W = 1000, H = 460;
+  var W = 1000, H = 470;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, class: 'schema-bg' }));
@@ -329,8 +329,8 @@ function buildSchema(unit) {
   }
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
-  var at = el('text', { x: 100, y: 112, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  outdoorUnit(svg, 35, 122, 130, 110, running, unit.fanSpeed);
+  var at = el('text', { x: 100, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
+  outdoorUnit(svg, 35, 90, 130, 110, running, unit.fanSpeed);
 
   // Messwert-Tabelle unter dem Geraet statt einzelner Chips (Dietmar,
   // 14.08.2026): 3 Zeilen x 2 Spalten, keine sichtbaren Linien, so breit
@@ -342,33 +342,36 @@ function buildSchema(unit) {
     ['Lüfter', unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' U/min' : '–']
   ];
   odRows.forEach(function (row, ri) {
-    var ry = 262 + ri * 16;
+    var ry = 220 + ri * 15;
     // Inline-Style: .tag setzt text-anchor:middle per CSS, das Attribut
     // allein wuerde ueberschrieben (Labels sollen linksbuendig mit der
     // Geraetekante x=35 stehen - Dietmar, 14.08.2026).
     var lbl = el('text', { x: 35, y: ry, class: 'tag' });
     lbl.style.textAnchor = 'start';
+    lbl.style.fontSize = '7.5px';
     lbl.textContent = row[0];
     svg.appendChild(lbl);
-    // Inline-Style noetig: die CSS-Klasse .chip-text setzt text-anchor:
-    // middle und wuerde ein blosses Praesentationsattribut ueberschreiben.
-    var val = el('text', { x: 163, y: ry, class: 'chip-text' });
+    // Inline-Styles noetig: .chip-text setzt text-anchor:middle per CSS;
+    // Schrift klein genug, dass die Zeile in der Geraetebreite bleibt
+    // (Dietmar, 14.08.2026).
+    var val = el('text', { x: 165, y: ry, class: 'chip-text' });
     val.style.textAnchor = 'end';
+    val.style.fontSize = '10.5px';
     val.textContent = row[1];
     svg.appendChild(val);
   });
   if (unit.defrosting) {
-    svg.appendChild(el('rect', { x: 35, y: 300, width: 130, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: 100, y: 311, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    svg.appendChild(el('rect', { x: 35, y: 262, width: 130, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: 100, y: 273, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
   // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
   // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
-  svg.appendChild(refrigerantLine('M165,160 L240,160', running));
-  svg.appendChild(refrigerantLine('M240,200 L165,200', running));
+  svg.appendChild(refrigerantLine('M165,150 L240,150', running));
+  svg.appendChild(refrigerantLine('M240,185 L165,185', running));
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(chip(195, 138, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
+    svg.appendChild(chip(195, 127, fmtTemp1(unit.dischargeTemp), '°C', tempColor(unit.dischargeTemp), 'Heissgas'));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -380,8 +383,8 @@ function buildSchema(unit) {
   // zum Heizkreis), die externe Pumpe (H14) sitzt sekundaerseitig NACH
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
-  var it = el('text', { x: 295, y: 72, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
-  indoorUnit(svg, 240, 80, 110, 270);
+  var it = el('text', { x: 295, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  indoorUnit(svg, 240, 90, 110, 270);
 
   // Zustands-/Messwert-Tabelle unter dem Geraet (gleiches Muster wie beim
   // Aussengeraet: keine Linien, geraetebuendig, Label links / Wert rechts).
@@ -395,15 +398,17 @@ function buildSchema(unit) {
   idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
   idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
   idRows.forEach(function (row, ri) {
-    var ry = 375 + ri * 16;
+    var ry = 385 + ri * 15;
     var lbl = el('text', { x: 240, y: ry, class: 'tag' });
     lbl.style.textAnchor = 'start';
+    lbl.style.fontSize = '7.5px';
     lbl.textContent = row[0];
     svg.appendChild(lbl);
-    // Wertspalte endet 12px RECHTS der Geraetekante (362 statt 350) -
-    // sonst kollidieren lange Label/Wert-Paare (WW-Tank 185 l / 40,0 °C).
-    var val = el('text', { x: 362, y: ry, class: 'chip-text' });
+    // Schrift klein genug, dass Label+Wert zusammen die Geraetebreite
+    // (240..350) nicht ueberschreiten (Dietmar, 14.08.2026).
+    var val = el('text', { x: 350, y: ry, class: 'chip-text' });
     val.style.textAnchor = 'end';
+    val.style.fontSize = '10.5px';
     val.textContent = row[1];
     svg.appendChild(val);
   });
