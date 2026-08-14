@@ -402,10 +402,26 @@ function buildSchema(unit) {
   // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
   // Ruecklauf, WW-Tank unten im Geraet.
   // Plattenwaermetauscher: Rechteck mit Schraffur
+  // Zwei gegenlaeufige Wendeln statt abstrakter Schraffur (Referenz
+  // "Aufbau Luft/Wasser Waermepumpe", Dietmar 14.08.2026): links das
+  // Kaeltemittel (Amber), rechts das Wasser - dazu ein warmes Gluehen,
+  // wenn der Verdichter Waerme uebergibt.
+  function coilPath(cx, y0, y1, amp, step) {
+    var d = 'M' + cx + ',' + y0, sgn = 1;
+    for (var cy = y0; cy < y1; cy += step) {
+      d += ' Q' + (cx + amp * sgn) + ',' + (cy + step / 2) + ' ' + cx + ',' + (cy + step);
+      sgn = -sgn;
+    }
+    return d;
+  }
+  if (running) {
+    var hxGlow = el('circle', { cx: 268, cy: 158, r: 20, fill: '#d98a3c', opacity: 0.22 });
+    hxGlow.style.filter = 'blur(6px)';
+    svg.appendChild(hxGlow);
+  }
   svg.appendChild(el('rect', { x: 252, y: 132, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
-  var hxHatch = '';
-  for (var hxY = 138; hxY <= 178; hxY += 8) { hxHatch += 'M256,' + hxY + ' L280,' + (hxY - 4) + ' '; }
-  svg.appendChild(el('path', { d: hxHatch, fill: 'none', stroke: '#8a9cb8', 'stroke-width': 1, opacity: 0.8 }));
+  svg.appendChild(el('path', { d: coilPath(262, 136, 180, 5, 8), fill: 'none', stroke: '#d98a3c', 'stroke-width': 1.6 }));
+  svg.appendChild(el('path', { d: coilPath(274, 136, 180, -5, 8), fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 1.6 }));
   var hxTag = el('text', { x: 268, y: 196, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
