@@ -314,9 +314,10 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
   // die Wendel fuellt die Flaeche - die Beschriftung passt dort nur noch
   // einzeilig unter die Wendel (Dietmar, 14.08.2026).
   if (opts.coil) {
-    var one = [label, liters].filter(Boolean).join('  ');
-    // Etwas hoeher: darunter laeuft die Kaltwasserleitung in den Speicher.
-    if (one) { fitLabel(one, x, top + h - 18, 'tank-label', 8.5); }
+    // Bewusst KEINE Beschriftung auf der Speicherflaeche: die Wendel
+    // fuellt sie aus, deshalb setzt der Aufrufer den Text in den Sockel
+    // des Innengeraets (Dietmar, 14.08.2026).
+    void 0;
   } else {
     var usedFs = 10.5;
     if (label) { usedFs = fitLabel(label, x, top + h * 0.13, 'tank-label', 10.5); }
@@ -704,6 +705,13 @@ function buildSchema(unit) {
   var DHW_IN = 324;
   var dhwPorts = tankShape(svg, 295, 226, 86, 116, unit.dhwTemp, 'WW-Tank', '185 l',
     { coil: true, inX: DHW_IN });
+  // Speicherbezeichnung in den Sockel des Innengeraets (Gehaeuse bis 360,
+  // Sockelstrich bei 346) statt auf die von der Wendel gefuellte
+  // Speicherflaeche.
+  var dhwTag = el('text', { x: 295, y: 356, class: 'chip-text' });
+  dhwTag.style.fontSize = '8.5px';
+  dhwTag.textContent = 'WW-Tank 185 l';
+  svg.appendChild(dhwTag);
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
   // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
   var DHW_RISE = dhwPorts ? dhwPorts.riserX : 296;
@@ -786,29 +794,28 @@ function buildSchema(unit) {
   // Innere des Speichers, Warmwasser geht oben ab zu Badewanne und
   // Dusche rechts neben dem Innengeraet (Dietmar, 14.08.2026).
   var CW = '#7cc4ee', HW = '#e58c7a';
-  svg.appendChild(el('path', { d: 'M158,336 L282,336', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
-  var cwTag = el('text', { x: 186, y: 328, class: 'tag' }); cwTag.textContent = 'Kaltwasser'; svg.appendChild(cwTag);
+  svg.appendChild(el('path', { d: 'M158,331 L270,331', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  var cwTag = el('text', { x: 186, y: 323, class: 'tag' }); cwTag.textContent = 'Kaltwasser'; svg.appendChild(cwTag);
 
-  // Warmwasser oben aus dem Speicher heraus zu den Zapfstellen
-  svg.appendChild(el('path', { d: 'M338,244 L470,244', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
-  var hwTag = el('text', { x: 404, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
+  // Warmwasser oben aus dem Speicher heraus zum Bad
+  svg.appendChild(el('path', { d: 'M338,244 L445,244 L445,296', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linejoin': 'round' }));
+  var hwTag = el('text', { x: 392, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
 
-  // Dusche: Fallrohr, Brausekopf, Strahlen, Duschtasse
-  svg.appendChild(el('path', { d: 'M400,244 L400,272', fill: 'none', stroke: HW, 'stroke-width': 3 }));
+  // Dusche UND Badewanne als EIN Sanitaerobjekt (Dietmar, 14.08.2026):
+  // Brause ueber der Wanne, stehend auf derselben Hoehe wie die Fuesse
+  // des Innengeraets (Sohle 360, Fuesse bis 366).
   svg.appendChild(el('path', {
-    d: 'M388,274 L412,274 M392,280 L390,292 M400,280 L400,296 M408,280 L410,292 M384,308 L416,308',
+    d: 'M432,298 L458,298 M437,302 L435,322 M445,302 L445,326 M453,302 L455,322',
     fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round'
   }));
-  var dTag = el('text', { x: 400, y: 322, class: 'tag' }); dTag.textContent = 'Dusche'; svg.appendChild(dTag);
-
-  // Badewanne: Armatur, Wannenkoerper mit gerundetem Boden, Fuesse
-  svg.appendChild(el('path', { d: 'M470,244 L470,284 L478,284', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linejoin': 'round' }));
   svg.appendChild(el('path', {
-    d: 'M466,292 L466,306 Q466,314 474,314 L512,314 Q520,314 520,306 L520,292',
+    d: 'M425,336 L425,352 Q425,360 435,360 L515,360 Q525,360 525,352 L525,336',
     fill: 'none', stroke: CW, 'stroke-width': 2.2, 'stroke-linejoin': 'round'
   }));
-  svg.appendChild(el('path', { d: 'M474,314 L474,320 M512,314 L512,320', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
-  var bTag = el('text', { x: 493, y: 332, class: 'tag' }); bTag.textContent = 'Badewanne'; svg.appendChild(bTag);
+  ['M437,360 l-3,6 h12 l-3,-6 Z', 'M509,360 l-3,6 h12 l-3,-6 Z'].forEach(function (fd) {
+    svg.appendChild(el('path', { d: fd, fill: 'none', stroke: CW, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
+  });
+  var bTag = el('text', { x: 475, y: 380, class: 'tag' }); bTag.textContent = 'Dusche + Badewanne'; svg.appendChild(bTag);
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
   // Primaerseite links (Innengeraet), Sekundaerseite rechts (Heizkreis).
