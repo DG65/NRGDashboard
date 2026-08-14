@@ -725,13 +725,12 @@ function buildSchema(unit) {
   svg.appendChild(pipe('M350,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
-  // Das Ventil sitzt AUF der Steigleitung, kurz unter deren Einmuendung -
-  // dort, wo Dietmar es haben will ("mit einem Ventil am Sekundaerkreis-
-  // lauf enden", 14.08.2026). Zwischenzeitlich stand es auf dem
-  // Heizkreis-Ruecklauf, weil ich die Absperrung ueber die Ventillage
-  // erzaehlen wollte; das ist nicht noetig, denn welcher Abschnitt
-  // fliesst, entscheiden inzwischen die Leitungsabschnitte selbst.
-  svg.appendChild(valveSymbol(DHW_RISE, 205, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
+  // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
+  // auf den Ruecklauf trifft (DHW_RISE, 192) - dort, wo Dietmar es haben
+  // will (14.08.2026, dritter Anlauf). Vorher stand es einmal auf dem
+  // Heizkreis-Ruecklauf, dann knapp darunter auf der Steigleitung; beides
+  // war nicht der T-Punkt selbst.
+  svg.appendChild(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
   svg.appendChild(valve3(324, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
   if (dhwPorts) {
     var dhwOn = waterFlow && toDhw;
