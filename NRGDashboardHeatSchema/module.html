@@ -376,11 +376,12 @@ function buildSchema(unit) {
   // Kaeltemittelleitungen zum Innengeraet
   // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
   // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
-  // Tiefer gelegt (175/197), damit der Waermetauscher im Innengeraet
-  // nicht mehr mit dem Bedienfeld kollidiert; beide Leitungen laufen bis
-  // an die WT-Kante (x=252).
-  svg.appendChild(refrigerantLine('M165,170 L252,170', running, true));
-  svg.appendChild(refrigerantLine('M252,192 L165,192', running, false));
+  // Tiefer gelegt (170/192), damit der Waermetauscher im Innengeraet
+  // nicht mehr mit dem Bedienfeld kollidiert. Die Leitungen SELBST werden
+  // erst NACH dem Innengeraet gezeichnet (siehe unten) - dessen deckendes
+  // Gehaeuse-Rechteck ab x=240 wuerde sonst die letzten 12px bis zur
+  // WT-Kante uebermalen, sodass sie an der Gehaeusekante zu enden
+  // scheinen (Dietmar, 14.08.2026).
   // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240),
   // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
   // Beschriftung oben, Kaltgas darunter mit Beschriftung unten.
@@ -404,6 +405,11 @@ function buildSchema(unit) {
   // Zapfstelle H22) gehoert mit ins Bild.
   var it = el('text', { x: 295, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
   indoorUnit(svg, 240, 90, 110, 270);
+
+  // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
+  // WT-Kante (x=252) laufen statt vom Gehaeuse verdeckt zu werden.
+  svg.appendChild(refrigerantLine('M165,170 L252,170', running, true));
+  svg.appendChild(refrigerantLine('M252,192 L165,192', running, false));
 
   // Innenleben sichtbar (Dietmar, 14.08.2026): Waermetauscher an den
   // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
