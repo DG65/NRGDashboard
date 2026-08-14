@@ -44,6 +44,11 @@ class NRGDashboardHeatSchema extends IPSModule
         // an, deshalb stellt der Nutzer die Oberflaechenhelligkeit
         // einmalig selbst ein - gleiche Konvention wie im Monitor.
         $this->RegisterPropertyBoolean('LightTheme', false);
+        // Freitext je Heizkreis (z. B. "Radiatoren", "Fussbodenheizung").
+        // Leer = es wird nur "Heizkreis" bzw. "Heizkreis 1/2" angezeigt -
+        // die Heizflaechen unterscheiden sich von Anlage zu Anlage.
+        $this->RegisterPropertyString('Zone1Caption', '');
+        $this->RegisterPropertyString('Zone2Caption', '');
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -313,6 +318,12 @@ class NRGDashboardHeatSchema extends IPSModule
                 // Roher Herstellerwert, nur fuer die Diagnose
                 'operatingMode'   => $this->num((int) ($e['operatingModeID'] ?? 0)),
                 'mixValvePos'     => $this->num((int) ($e['z1MixingValvePositionID'] ?? 0)),
+                // Zone 2 - gleiche Felder wie Zone 1. Anlagen ohne zweiten
+                // Heizkreis liefern hier nichts (oder die bekannte
+                // Sentinel-Temperatur), dann bleibt Zone 2 im Schema aus.
+                'z2Pump'          => $this->boolVal((int) ($e['z2PumpID'] ?? 0)),
+                'z2MixingValve'   => $this->num((int) ($e['z2MixingValveID'] ?? 0)),
+                'z2MixValvePos'   => $this->num((int) ($e['z2MixingValvePositionID'] ?? 0)),
                 'indoorPipeTemp'  => $this->numTemp((int) ($e['indoorPipeTempID'] ?? 0)),
             ];
         }
@@ -323,6 +334,8 @@ class NRGDashboardHeatSchema extends IPSModule
             'bg'          => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'lightTheme'  => $this->readBoolProperty('LightTheme', false),
+            'zone1Caption' => $this->readStringProperty('Zone1Caption', ''),
+            'zone2Caption' => $this->readStringProperty('Zone2Caption', ''),
             'renderedAt'  => time(),
             'units'       => $units,
         ];

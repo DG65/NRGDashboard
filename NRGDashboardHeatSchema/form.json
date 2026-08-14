@@ -34,6 +34,16 @@
           "type": "CheckBox",
           "name": "LightTheme",
           "caption": "Symcon-Oberfläche ist auf Hell gestellt (Symcon bietet der Kachel keine automatische Erkennung an)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "Zone1Caption",
+          "caption": "Beschriftung Heizkreis 1 (z. B. „Radiatoren“ – leer lassen für keine)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "Zone2Caption",
+          "caption": "Beschriftung Heizkreis 2 (nur sichtbar, wenn die Wärmepumpe eine zweite Zone meldet)"
         }
       ]
     }

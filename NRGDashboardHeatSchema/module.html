@@ -422,6 +422,9 @@ function arrowHead(x, y, dir, color) {
 }
 
 function buildSchema(unit) {
+  // Kachelweite Einstellungen (Freitexte je Heizkreis) liegen im Payload,
+  // nicht an der einzelnen Waermepumpe.
+  var cfg = lastData || {};
   // Reale Anlagentopologie (Dietmar, 13.08.2026): Splitgeraet, Innengeraet
   // mit fest eingebautem 185l-Brauchwassertank, Heizkreis laeuft ueber
   // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
@@ -830,44 +833,85 @@ function buildSchema(unit) {
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
   // Schema nur Platz kostet (Dietmar, 14.08.2026).
 
-  // ── Sekundaerkreis: Puffer -> Mischer -> ext. Pumpe -> Heizkreis ──
-  svg.appendChild(pipe('M594,120 L636,120', SUP, pumpOn));
-  var mv = unit.extMixingValve;
-  var mvPos = unit.mixValvePos;
-  if (mvPos !== null && mvPos !== undefined) {
-    // Echte Stellung schlaegt Stellrichtung: "47 %" sagt mehr aus als
-    // "oeffnet gerade" (contractVersion 1.7).
-    svg.appendChild(valveSymbol(650, 120, 7, mvPos > 0 ? SUPC : PAL.draw,
-      Math.round(mvPos) + ' %', mvPos > 0));
-  } else if (mv === 2) {
-    svg.appendChild(valveSymbol(650, 120, 7, HOT, 'öffnet', true));
-  } else if (mv === 1) {
-    svg.appendChild(valveSymbol(650, 120, 7, COLD, 'schließt', true));
-  } else if (mv === 0) {
-    svg.appendChild(valveSymbol(650, 120, 7, PAL.draw, 'steht', false));
-  } else {
-    svg.appendChild(valveSymbol(650, 120, 7, PAL.draw, null, false));
-  }
-  svg.appendChild(pipe('M664,120 L696,120', SUP, pumpOn));
-  svg.appendChild(pumpIcon(710, 120, pumpOn, 0));
-  var extTag = el('text', { x: 690, y: 95, class: 'tag' });
-  extTag.textContent = pumpKnown ? 'Mischer + ext. Pumpe' : 'Mischer + ext. Pumpe (kein Status)';
-  svg.appendChild(extTag);
-  svg.appendChild(pipe('M720,120 L790,120', SUP, pumpOn));
-  if (pumpOn) { svg.appendChild(arrowHead(760, 120, 'r', SUPC)); }
+  // ── Sekundaerkreis: Puffer -> Mischer -> Pumpe -> Heizkreis(e) ──
+  // Zweiter Heizkreis vorgedacht (Dietmar, 14.08.2026: "wir bauen das
+  // nicht nur fuer mich"): Zone 2 wird NUR gezeichnet, wenn die Quelle
+  // sie auch meldet. Dietmars Anlage hat nur eine Zone - dort meldet
+  // HeishaMon fuer Zone 2 die Sentinel-Temperatur, die numTemp() bereits
+  // zu null filtert, sodass der zweite Kreis gar nicht erst erscheint.
+  var hasZone2 = (unit.z2WaterTemp !== null && unit.z2WaterTemp !== undefined)
+    || unit.z2Pump === true
+    || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
 
-  // ── Heizkreis ────────────────────────────────────────────────
-  svg.appendChild(el('rect', { x: 790, y: 85, width: 180, height: 100, rx: 4, class: 'box' }));
-  var rt = el('text', { x: 880, y: 107, class: 'box-title' }); rt.textContent = 'HEIZKREIS'; svg.appendChild(rt);
-  var rt2 = el('text', { x: 880, y: 124, class: 'tag' }); rt2.textContent = 'Radiatoren + Flächenheizk.'; svg.appendChild(rt2);
-  var rt3 = el('text', { x: 880, y: 137, class: 'tag' }); rt3.textContent = 'FBH nur Bad'; svg.appendChild(rt3);
-  if (unit.z1WaterTemp !== null && unit.z1WaterTemp !== undefined) {
-    svg.appendChild(chip(880, 162, fmtTemp1(unit.z1WaterTemp), '°C', tempColor(unit.z1WaterTemp), null));
+  var zones = [{
+    n: 1, y: 120, boxY: 85, retY: 215, temp: unit.z1WaterTemp,
+    caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
+    mv: unit.extMixingValve, mvPos: unit.mixValvePos
+  }];
+  if (hasZone2) {
+    var p2Known = unit.z2Pump !== null && unit.z2Pump !== undefined;
+    zones.push({
+      n: 2, y: 300, boxY: 265, retY: 400, temp: unit.z2WaterTemp,
+      caption: cfg.zone2Caption,
+      pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
+      mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos
+    });
   }
 
-  // Sekundaerer Ruecklauf: Heizkreis -> Puffer (rechts unten)
-  svg.appendChild(pipe('M880,185 L880,240 L620,240 L620,170 L594,170', RET, pumpOn));
-  if (pumpOn) { svg.appendChild(arrowHead(740, 240, 'l', RETC)); }
+  // Sammelleitungen: beide Kreise haengen an derselben Sekundaerseite des
+  // Puffers - Vorlauf faellt bei x=606 ab, Ruecklauf sammelt bei x=628.
+  var anyOn = zones.some(function (z) { return z.pumpOn; });
+  if (hasZone2) {
+    svg.appendChild(pipe('M606,120 L606,300 L636,300', SUP, zones[1].pumpOn));
+    svg.appendChild(pipe('M628,400 L628,215', RET, zones[1].pumpOn));
+  }
+  svg.appendChild(pipe('M594,120 L636,120', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M628,215 L616,215 L616,170 L594,170', RET, anyOn));
+
+  zones.forEach(function (z) {
+    var on = z.pumpOn;
+    // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
+    if (z.mvPos !== null && z.mvPos !== undefined) {
+      svg.appendChild(valveSymbol(650, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
+        Math.round(z.mvPos) + ' %', z.mvPos > 0));
+    } else if (z.mv === 2) {
+      svg.appendChild(valveSymbol(650, z.y, 7, HOT, 'öffnet', true));
+    } else if (z.mv === 1) {
+      svg.appendChild(valveSymbol(650, z.y, 7, COLD, 'schließt', true));
+    } else if (z.mv === 0) {
+      svg.appendChild(valveSymbol(650, z.y, 7, PAL.draw, 'steht', false));
+    } else {
+      svg.appendChild(valveSymbol(650, z.y, 7, PAL.draw, null, false));
+    }
+    svg.appendChild(pipe('M664,' + z.y + ' L696,' + z.y, SUP, on));
+    svg.appendChild(pumpIcon(710, z.y, on, 0));
+    var et = el('text', { x: 690, y: z.y - 25, class: 'tag' });
+    et.textContent = z.pumpKnown ? 'Mischer + Pumpe' : 'Mischer + Pumpe (kein Status)';
+    svg.appendChild(et);
+    svg.appendChild(pipe('M720,' + z.y + ' L790,' + z.y, SUP, on));
+    if (on) { svg.appendChild(arrowHead(760, z.y, 'r', SUPC)); }
+
+    // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
+    // verdrahtet - sie unterscheidet sich von Anlage zu Anlage und kommt
+    // aus einer Freitext-Eigenschaft (vorher standen hier Dietmars
+    // Radiatoren fuer alle Nutzer).
+    svg.appendChild(el('rect', { x: 790, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
+    var rt = el('text', { x: 880, y: z.boxY + 24, class: 'box-title' });
+    rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
+    svg.appendChild(rt);
+    if (z.caption) {
+      var rc = el('text', { x: 880, y: z.boxY + 40, class: 'tag' });
+      rc.textContent = z.caption;
+      svg.appendChild(rc);
+    }
+    if (z.temp !== null && z.temp !== undefined) {
+      svg.appendChild(chip(880, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+    }
+
+    // Ruecklauf des Kreises hinunter auf die Sammelleitung
+    svg.appendChild(pipe('M880,' + (z.boxY + 100) + ' L880,' + z.retY + ' L628,' + z.retY, RET, on));
+    if (on) { svg.appendChild(arrowHead(750, z.retY, 'l', RETC)); }
+  });
 
   return svg;
 }
