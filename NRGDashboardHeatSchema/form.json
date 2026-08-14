@@ -29,6 +29,11 @@
           "type": "ValidationTextBox",
           "name": "FontFamily",
           "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        },
+        {
+          "type": "CheckBox",
+          "name": "LightTheme",
+          "caption": "Symcon-Oberfläche ist auf Hell gestellt (Symcon bietet der Kachel keine automatische Erkennung an)"
         }
       ]
     }

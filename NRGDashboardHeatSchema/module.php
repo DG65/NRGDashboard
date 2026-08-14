@@ -40,6 +40,10 @@ class NRGDashboardHeatSchema extends IPSModule
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
+        // Symcon bietet einer Kachel keine automatische Theme-Erkennung
+        // an, deshalb stellt der Nutzer die Oberflaechenhelligkeit
+        // einmalig selbst ein - gleiche Konvention wie im Monitor.
+        $this->RegisterPropertyBoolean('LightTheme', false);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -68,6 +72,12 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         $v = @$this->ReadPropertyString($name);
         return is_string($v) && $v !== '' ? $v : $default;
+    }
+
+    private function readBoolProperty(string $name, bool $default): bool
+    {
+        $v = @$this->ReadPropertyBoolean($name);
+        return is_bool($v) ? $v : $default;
     }
 
     private function ColorOrEmpty(int $v): string
@@ -292,6 +302,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'uid'         => (string) $this->InstanceID,
             'bg'          => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            'lightTheme'  => $this->readBoolProperty('LightTheme', false),
             'renderedAt'  => time(),
             'units'       => $units,
         ];

@@ -7,7 +7,7 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   #wrap { position: relative; width: 100%; height: 100vh; overflow-y: auto; overflow-x: hidden; }
   .unit { padding: 10px 12px; }
-  .unit-title { font-size: 13px; font-weight: 700; color: #eef2f6; margin-bottom: 4px; }
+  .unit-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
   svg.schema { width: 100%; height: auto; display: block; }
 
   /* Stil-Essenz aus fuenf Referenzbildern (Aquarea-Wiki, Solvis, iDM,
@@ -24,21 +24,37 @@
      Tankgroessen proportional zur REALEN Anlage (Dietmar: 185l WW-Tank
      muss groesser sein als 100l Puffer - Referenzanlagen mit 800-2000l
      Speichern sind kein Massstab fuer seine Verhaeltnisse). */
-  .schema-bg { fill: #101a2c; }
-  .box { fill: #16233a; stroke: #6f83a3; stroke-width: 1.5; }
-  .box-title { font-size: 11px; font-weight: 700; fill: #eef2f6; text-anchor: middle; letter-spacing: .4px; }
+  /* Hell/Dunkel wie bei den uebrigen Kacheln: Symcon bietet der Kachel
+     KEINE Theme-Erkennung an, deshalb setzt der Nutzer "LightTheme" im
+     Formular (Darstellung) - identisch zu NRGDashboardMonitor. Alle
+     flaechigen Farben liegen als Variablen vor, die Medienfarben (rot
+     Vorlauf, blau Ruecklauf, Amber Kaeltemittel) bleiben in beiden
+     Themes gleich, damit die Ableselogik identisch bleibt. */
+  :root {
+    --bg: #101a2c; --surface: #16233a; --surface-deep: #0d1626;
+    --line: #6f83a3; --draw: #8a9cb8; --ink: #eef2f6; --ink-dim: #93a3bd;
+    --ink-unit: #a8b4c8; --pipe-off: #39435a; --pump-off: #243149;
+  }
+  body.light {
+    --bg: #f4f7fb; --surface: #ffffff; --surface-deep: #ffffff;
+    --line: #9aa8bd; --draw: #6b7d96; --ink: #1a2536; --ink-dim: #5c6a80;
+    --ink-unit: #5c6a80; --pipe-off: #c8d1de; --pump-off: #e4e9f0;
+  }
+  .schema-bg { fill: var(--bg); }
+  .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .box-title { font-size: 11px; font-weight: 700; fill: var(--ink); text-anchor: middle; letter-spacing: .4px; }
 
   .pipe-hot { stroke: #e0503c; }
   .pipe-cold { stroke: #4a90d9; }
   .pipe { fill: none; stroke-width: 5; stroke-linecap: butt; stroke-linejoin: round; }
-  .pipe.dim { stroke: #39435a; }
+  .pipe.dim { stroke: var(--pipe-off); }
   .pipe.flowing.pipe-hot { filter: drop-shadow(0 0 3px rgba(224,80,60,.7)); }
   .pipe.flowing.pipe-cold { filter: drop-shadow(0 0 3px rgba(74,144,217,.7)); }
 
   /* Fluss-Animation: helle Punkte wandern ueber dem durchgezogenen Rohr
      (zweilagig: Basisrohr voll, Punktlage animiert) - Richtung folgt der
      Zeichenrichtung des Pfads. */
-  .pipe-dots { fill: none; stroke: rgba(255,255,255,.85); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0.1 14; animation: flowdots 1s linear infinite; }
+  .pipe-dots { fill: none; stroke: var(--dots, rgba(255,255,255,.85)); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0.1 14; animation: flowdots 1s linear infinite; }
   @keyframes flowdots { to { stroke-dashoffset: -28.2; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
 
@@ -54,21 +70,21 @@
   /* Werte-Chip: dunkle Pille, Randfarbe = Mess-/Leitungsfarbe, Wert in
      Weiss - kleine, praezise Instrumentenanzeige statt frei schwebendem
      Text (Prinzip 1). */
-  .chip { fill: #0d1626; stroke-width: 1.5; }
-  .chip-text { font: 700 12px/1 -apple-system, sans-serif; fill: #eef2f6; text-anchor: middle; }
-  .chip-unit { font-weight: 500; font-size: 9.5px; fill: #a8b4c8; }
-  .chip-tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .35px; text-transform: uppercase; text-anchor: middle; }
+  .chip { fill: var(--surface-deep); stroke-width: 1.5; }
+  .chip-text { font: 700 12px/1 -apple-system, sans-serif; fill: var(--ink); text-anchor: middle; }
+  .chip-unit { font-weight: 500; font-size: 9.5px; fill: var(--ink-unit); }
+  .chip-tag { font-size: 8.5px; font-weight: 600; fill: var(--ink-dim); letter-spacing: .35px; text-transform: uppercase; text-anchor: middle; }
 
-  .tank-outline { fill: none; stroke: #8a9cb8; stroke-width: 1.5; }
-  .tank-label { font-size: 10.5px; font-weight: 700; fill: #eef2f6; text-anchor: middle; }
+  .tank-outline { fill: none; stroke: var(--draw); stroke-width: 1.5; }
+  .tank-label { font-size: 10.5px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
   .tank-liters { font-size: 10px; font-weight: 700; fill: rgba(255,255,255,.9); text-anchor: middle; }
   .tank-coil { fill: none; stroke: rgba(255,255,255,.75); stroke-width: 1.6; }
 
-  .valve { fill: none; stroke: #8a9cb8; stroke-width: 1.6; stroke-linejoin: round; }
+  .valve { fill: none; stroke: var(--draw); stroke-width: 1.6; stroke-linejoin: round; }
   .badge { font-size: 9px; font-weight: 700; text-anchor: middle; }
-  .tag { font-size: 8.5px; font-weight: 600; fill: #93a3bd; letter-spacing: .3px; text-transform: uppercase; text-anchor: middle; }
+  .tag { font-size: 8.5px; font-weight: 600; fill: var(--ink-dim); letter-spacing: .3px; text-transform: uppercase; text-anchor: middle; }
 
-  .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; color: #ccc; }
+  .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; color: var(--ink-dim); }
 </style>
 </head>
 <body>
@@ -79,6 +95,20 @@
 
 <script>
 var lastData = null;
+
+// Zeichenfarben fuer inline gesetzte SVG-Attribute. Die CSS-Variablen
+// oben decken nur die klassenbasierten Elemente ab; Gehaeuse, Luefter,
+// Pumpen und Ventile bekommen ihre Farben als Attribut und brauchen
+// deshalb eine JS-Palette. Medienfarben (rot/blau/amber, Temperatur-
+// skala) sind bewusst NICHT enthalten - sie gelten in beiden Themes.
+var PAL = {};
+function setTheme(light) {
+  document.body.classList.toggle('light', !!light);
+  PAL = light
+    ? { draw: '#6b7d96', surface: '#ffffff', deep: '#ffffff', blade: '#7a8ba3', pumpOff: '#e4e9f0', faint: '#8a97ab' }
+    : { draw: '#8a9cb8', surface: '#16233a', deep: '#0d1626', blade: '#9fb0c8', pumpOff: '#243149', faint: '#7b8aa3' };
+}
+setTheme(false);
 
 function fmtTemp1(v) {
   return (v === null || v === undefined) ? null : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
@@ -140,7 +170,7 @@ function valveSymbol(x, y, r, color, tag, filled) {
   g.appendChild(el('path', {
     d: 'M' + (x - r) + ',' + (y - r) + ' L' + (x + r) + ',' + (y + r) + ' L' + (x + r) + ',' + (y - r) + ' L' + (x - r) + ',' + (y + r) + ' Z',
     fill: filled ? color : 'none', 'fill-opacity': filled ? 0.55 : 0,
-    stroke: color || '#8a9cb8', 'stroke-width': 1.6, 'stroke-linejoin': 'round'
+    stroke: color || PAL.draw, 'stroke-width': 1.6, 'stroke-linejoin': 'round'
   }));
   if (tag) {
     var t = el('text', { x: x, y: y + r + 14, class: 'tag', fill: color }); t.textContent = tag; g.appendChild(t);
@@ -153,7 +183,7 @@ function valveSymbol(x, y, r, color, tag, filled) {
 // Pumpe im OekoFEN-Referenzbild; KEIN Pulsieren mehr).
 function pumpIcon(x, y, active, dirDeg) {
   var g = el('g', {});
-  g.appendChild(el('circle', { cx: x, cy: y, r: 10, fill: active ? '#2f9e44' : '#243149', stroke: active ? '#69cf7d' : '#8a9cb8', 'stroke-width': 1.6 }));
+  g.appendChild(el('circle', { cx: x, cy: y, r: 10, fill: active ? '#2f9e44' : PAL.pumpOff, stroke: active ? '#69cf7d' : PAL.draw, 'stroke-width': 1.6 }));
   var tri = el('path', { d: 'M-4,-5.5 L7,0 L-4,5.5 Z', fill: '#ffffff', transform: 'translate(' + x + ',' + y + ') rotate(' + (dirDeg || 0) + ')' });
   g.appendChild(tri);
   return g;
@@ -218,13 +248,13 @@ function tankShape(svg, x, y, w, h, temp, label, liters) {
 // Lamellen weiter, wenn der Verdichter laeuft.
 function outdoorUnit(svg, x, y, w, h, running, fanSpeed) {
   var g = el('g', {});
-  var C = '#8a9cb8';
+  var C = PAL.draw;
   // Gehaeuse
-  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: '#16233a', stroke: C, 'stroke-width': 1.5 }));
+  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: PAL.surface, stroke: C, 'stroke-width': 1.5 }));
   // Standfuesse
   var footY = y + h;
   [x + 14, x + w - 22].forEach(function (fx) {
-    g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: '#16233a', stroke: C, 'stroke-width': 1.2 }));
+    g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: PAL.surface, stroke: C, 'stroke-width': 1.2 }));
   });
   // Luefter (hinter dem Gitter): Kreis + rotierende Blaetter
   var fanCx = x + w * 0.40, fanCy = y + h / 2, fanR = h * 0.38;
@@ -248,9 +278,9 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed) {
     blades.style.transformOrigin = '0px 0px';
   }
   for (var i = 0; i < 4; i++) {
-    blades.appendChild(el('path', { d: 'M0,0 Q' + (fanR * 0.38) + ',' + (-fanR * 0.55) + ' 0,' + (-fanR * 0.85), fill: 'none', stroke: '#9fb0c8', 'stroke-width': 1.3, transform: 'rotate(' + (i * 90) + ')' }));
+    blades.appendChild(el('path', { d: 'M0,0 Q' + (fanR * 0.38) + ',' + (-fanR * 0.55) + ' 0,' + (-fanR * 0.85), fill: 'none', stroke: PAL.blade, 'stroke-width': 1.3, transform: 'rotate(' + (i * 90) + ')' }));
   }
-  blades.appendChild(el('circle', { cx: 0, cy: 0, r: 2, fill: '#9fb0c8' }));
+  blades.appendChild(el('circle', { cx: 0, cy: 0, r: 2, fill: PAL.blade }));
   bladesWrap.appendChild(blades);
   g.appendChild(bladesWrap);
   // Lamellengitter ueber dem Lueferbereich (linke ~72% der Front)
@@ -278,12 +308,12 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed) {
 // die inneren Zustaende stehen in der Tabelle darunter.
 function indoorUnit(svg, x, y, w, h) {
   var g = el('g', {});
-  var C = '#8a9cb8';
-  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: '#16233a', stroke: C, 'stroke-width': 1.5 }));
+  var C = PAL.draw;
+  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, rx: 3, fill: PAL.surface, stroke: C, 'stroke-width': 1.5 }));
   // Standfuesse
   var footY = y + h;
   [x + 12, x + w - 20].forEach(function (fx) {
-    g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: '#16233a', stroke: C, 'stroke-width': 1.2 }));
+    g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: PAL.surface, stroke: C, 'stroke-width': 1.2 }));
   });
   // Sockelstrich (abgesetzte Bodenplatte wie in der Zeichnung)
   g.appendChild(el('path', { d: 'M' + (x + 4) + ',' + (y + h - 14) + ' L' + (x + w - 4) + ',' + (y + h - 14), fill: 'none', stroke: C, 'stroke-width': 0.9, opacity: 0.7 }));
@@ -321,6 +351,14 @@ function buildSchema(unit) {
   var toDhw = unit.threeWayValve === 1;
   var toRoom = unit.threeWayValve === 0 || unit.threeWayValve === null;
   var HOT = '#e0503c', COLD = '#4a90d9';
+  // Der Wasserkreis laeuft nachweislich auch bei stehendem Verdichter
+  // (Frostschutz/Nachlauf/Messumlauf) - Dietmars Anlage am 14.08.2026:
+  // Verdichter 0 Hz, Luefter 0 U/min, aber 14,09 l/min Durchfluss bei
+  // VL=RL=17,75 °C. Die Wasseranimation folgt daher dem gemessenen
+  // Durchfluss, nicht dem Verdichter; nur wo kein Durchfluss gemeldet
+  // wird, bleibt der Verdichter die Ersatzangabe.
+  var waterFlow = (unit.pumpFlow !== null && unit.pumpFlow !== undefined)
+    ? unit.pumpFlow > 0 : running;
 
   // Rohr zweilagig: Basisrohr voll durchgezogen in Funktionsfarbe (grau
   // wenn inaktiv), darueber bei aktivem Fluss wandernde helle Punkte.
@@ -450,7 +488,7 @@ function buildSchema(unit) {
   // WT symmetrisch ueber beiden Anschlussebenen: Leitungen bei y=170
   // (heiss) und y=192 (kalt), Mitte 181 - Rechteck 155..207 hat oben wie
   // unten 15px Abstand zur jeweiligen Leitung (Dietmar, 14.08.2026).
-  svg.appendChild(el('rect', { x: 252, y: 155, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
+  svg.appendChild(el('rect', { x: 252, y: 155, width: 32, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
   var gasGradId = 'hxgas' + unit.id, watGradId = 'hxwat' + unit.id;
   var hxDefs = el('defs', {});
   hxDefs.appendChild(coilGradient(gasGradId, '#d98a3c', '#6e9ab8'));
@@ -461,11 +499,11 @@ function buildSchema(unit) {
   var hxTag = el('text', { x: 268, y: 219, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
-  svg.appendChild(pipe('M284,170 L306,170', 'pipe-hot', running));
-  svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', 'pipe-hot', running && toRoom));
-  svg.appendChild(pipe('M313,177 L313,240', 'pipe-hot', running && toDhw));
-  svg.appendChild(pipe('M350,192 L334,192', 'pipe-cold', running));
-  svg.appendChild(pipe('M320,192 L284,192', 'pipe-cold', running));
+  svg.appendChild(pipe('M284,170 L306,170', 'pipe-hot', waterFlow));
+  svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', 'pipe-hot', waterFlow && toRoom));
+  svg.appendChild(pipe('M313,177 L313,240', 'pipe-hot', waterFlow && toDhw));
+  svg.appendChild(pipe('M350,192 L334,192', 'pipe-cold', waterFlow));
+  svg.appendChild(pipe('M320,192 L284,192', 'pipe-cold', waterFlow));
   svg.appendChild(valveSymbol(313, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
   svg.appendChild(valveSymbol(327, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
   // Integrierter 185l-WW-Tank
@@ -509,10 +547,15 @@ function buildSchema(unit) {
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
   // Primaerseite links (Innengeraet), Sekundaerseite rechts (Heizkreis).
+  // z1PumpID/z1MixingValveID liefert HeishaMon nur, wenn die 2. Steuer-
+  // platine ihre Datenpunkte meldet - auf Dietmars Instanz fehlen sie
+  // (Vertrag 1.6, 14.08.2026 geprueft). Ohne Meldung ist der Zustand
+  // UNBEKANNT und darf nicht als "aus" ausgegeben werden; der Sekundaer-
+  // kreis folgt dann ersatzweise dem Wasserumlauf des Primaerkreises.
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
-  var pumpOn = pumpKnown ? !!unit.extPump : (running && toRoom);
-  svg.appendChild(pipe('M350,120 L546,120', 'pipe-hot', running && toRoom));
-  svg.appendChild(pipe('M546,170 L350,170', 'pipe-cold', running && toRoom));
+  var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
+  svg.appendChild(pipe('M350,120 L546,120', 'pipe-hot', waterFlow && toRoom));
+  svg.appendChild(pipe('M546,170 L350,170', 'pipe-cold', waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
@@ -533,16 +576,16 @@ function buildSchema(unit) {
     var pTh = (unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp);
     svg.appendChild(chip(488, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', HOT, 'therm. Leistung'));
   }
-  if (running && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', HOT)); }
-  if (running && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', COLD)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', HOT)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', COLD)); }
   tankShape(svg, 570, 95, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
     svg.appendChild(chip(570, 75, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
   // Ausdehnungsgefaess (H6) am primaeren Ruecklauf
-  svg.appendChild(el('path', { d: 'M480,170 L480,196', fill: 'none', stroke: '#7b8aa3', 'stroke-width': 2 }));
-  svg.appendChild(el('circle', { cx: 480, cy: 205, r: 9, fill: 'none', stroke: '#7b8aa3', 'stroke-width': 1.5 }));
-  svg.appendChild(el('path', { d: 'M471,205 A9,9 0 0 0 489,205', fill: '#7b8aa3', 'fill-opacity': 0.4 }));
+  svg.appendChild(el('path', { d: 'M480,170 L480,196', fill: 'none', stroke: PAL.faint, 'stroke-width': 2 }));
+  svg.appendChild(el('circle', { cx: 480, cy: 205, r: 9, fill: 'none', stroke: PAL.faint, 'stroke-width': 1.5 }));
+  svg.appendChild(el('path', { d: 'M471,205 A9,9 0 0 0 489,205', fill: PAL.faint, 'fill-opacity': 0.4 }));
   var adgTag = el('text', { x: 480, y: 228, class: 'tag' }); adgTag.textContent = 'ADG'; svg.appendChild(adgTag);
 
   // ── Sekundaerkreis: Puffer -> Mischer -> ext. Pumpe -> Heizkreis ──
@@ -553,13 +596,15 @@ function buildSchema(unit) {
   } else if (mv === 1) {
     svg.appendChild(valveSymbol(650, 120, 7, COLD, 'schließt', true));
   } else if (mv === 0) {
-    svg.appendChild(valveSymbol(650, 120, 7, '#8a9cb8', 'steht', false));
+    svg.appendChild(valveSymbol(650, 120, 7, PAL.draw, 'steht', false));
   } else {
-    svg.appendChild(valveSymbol(650, 120, 7, '#8a9cb8', null, false));
+    svg.appendChild(valveSymbol(650, 120, 7, PAL.draw, null, false));
   }
   svg.appendChild(pipe('M664,120 L696,120', 'pipe-hot', pumpOn));
   svg.appendChild(pumpIcon(710, 120, pumpOn, 0));
-  var extTag = el('text', { x: 690, y: 95, class: 'tag' }); extTag.textContent = 'Mischer + ext. Pumpe'; svg.appendChild(extTag);
+  var extTag = el('text', { x: 690, y: 95, class: 'tag' });
+  extTag.textContent = pumpKnown ? 'Mischer + ext. Pumpe' : 'Mischer + ext. Pumpe (kein Status)';
+  svg.appendChild(extTag);
   svg.appendChild(pipe('M720,120 L790,120', 'pipe-hot', pumpOn));
   if (pumpOn) { svg.appendChild(arrowHead(760, 120, 'r', HOT)); }
 
@@ -581,7 +626,7 @@ function buildSchema(unit) {
 
 function buildBasicCard(unit) {
   var box = document.createElement('div');
-  box.style.cssText = 'padding:14px 16px;border-radius:4px;background:#16233a;border:1.5px solid #6f83a3;color:#eef2f6;font-size:12px;';
+  box.style.cssText = 'padding:14px 16px;border-radius:4px;background:var(--surface);border:1.5px solid var(--line);color:var(--ink);font-size:12px;';
   var pw = fmtPower(unit.power);
   box.innerHTML = 'Keine Anlagenschema-Daten (Pumpen/Ventile/Durchfluss) verfügbar - nur Basiswerte.' +
     (pw ? '<div style="margin-top:6px;font-weight:700">Leistung: ' + pw.v + ' ' + pw.u + '</div>' : '');
@@ -593,6 +638,7 @@ function handleMessage(raw) {
   lastData = d;
   var empty = document.getElementById('empty');
   var unitsEl = document.getElementById('units');
+  setTheme(d && d.lightTheme);
   if (d && d.bg) { document.body.style.background = d.bg; }
   if (d && d.font) { document.body.style.fontFamily = d.font; }
 
@@ -606,18 +652,29 @@ function handleMessage(raw) {
   unitsEl.style.display = '';
   unitsEl.innerHTML = '';
 
-  (d.units || []).forEach(function (unit) {
+  // Zeigt schon eine Quelle das volle Schema, sind die Basiswert-Karten
+  // der uebrigen Quellen reine Dopplung: HeishaMon und WPHub berichten
+  // ueber DIESELBE physische Waermepumpe, WPHub aber ohne Pumpen-/Ventil-
+  // /Durchflussdaten (Cloud-API). Nur wenn es GAR kein Schema gibt,
+  // bleiben die Basiswerte als einzige Information stehen.
+  var units = d.units || [];
+  var anySchema = units.some(function (u) { return u.hasPipeSchema; });
+  if (anySchema) { units = units.filter(function (u) { return u.hasPipeSchema; }); }
+
+  units.forEach(function (unit) {
     var row = document.createElement('div');
     row.className = 'unit';
-    var title = document.createElement('div');
-    title.className = 'unit-title';
-    title.textContent = unit.label;
-    row.appendChild(title);
-    if (unit.hasPipeSchema) {
-      row.appendChild(buildSchema(unit));
-    } else {
-      row.appendChild(buildBasicCard(unit));
+    // KEIN eigener Titel: die Kachel traegt in IP-Symcon bereits ihren
+    // Instanznamen in der Kopfzeile, ein zweiter Titel im Inhalt
+    // ueberlagert diesen optisch (Dietmar, 14.08.2026). Der Geraetename
+    // wird nur bei MEHREREN Waermepumpen zur Unterscheidung gebraucht.
+    if (units.length > 1) {
+      var title = document.createElement('div');
+      title.className = 'unit-title';
+      title.textContent = unit.label;
+      row.appendChild(title);
     }
+    row.appendChild(unit.hasPipeSchema ? buildSchema(unit) : buildBasicCard(unit));
     unitsEl.appendChild(row);
   });
 }
