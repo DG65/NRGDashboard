@@ -236,33 +236,30 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
   // Rohrschlange als Federprofil. NUR fuer Speicher mit Waermetauscher -
   // eine hydraulische Weiche (Puffer) hat keine Wendel, die stand dort
   // seit dem Umbau faelschlich drin (14.08.2026).
-  var lx = left + pad + 3, cl = left + pad + 8, cr = left + w - pad - 8;
+  // Die Wendel wird NICHT hier gezeichnet, sondern als Pfad zurueck-
+  // gegeben: das Schema zeichnet sie mit derselben pipe()-Funktion wie
+  // jede andere Wasserleitung, damit Optik UND Flussanimation
+  // uebereinstimmen (Dietmar, 14.08.2026). Nur fuer Speicher mit
+  // Waermetauscher - eine hydraulische Weiche hat keine Wendel.
   var ports = null;
   if (opts.coil) {
-    var cTop = top + h * 0.34, cBot = top + h - pad - 7;
-    // Ungerade Segmentzahl, damit die Schlange oben RECHTS beginnt und
-    // unten LINKS endet - so liegen Zu- und Ablauf auf getrennten Seiten
-    // und die Stutzen kreuzen einander nicht.
-    var segs = Math.max(7, Math.round((cBot - cTop) / 6) | 1);
+    // Zulauf LINKS, Ablauf RECHTS: so laesst sich der Zulauf vom
+    // 3-Wege-Ventil kreuzungsfrei heranfuehren und der Ablauf senkrecht
+    // in den Ruecklauf hochziehen (Dietmar, 14.08.2026).
+    var li = left + 10, cl = left + 22, cr = left + w - 22, ro = left + w - 10;
+    var cTop = top + h * 0.34, cBot = top + h - pad - 12;
+    // Ungerade Segmentzahl: die Schlange beginnt oben LINKS und endet
+    // unten RECHTS, Zu- und Ablauf liegen dadurch auf getrennten Seiten.
+    var segs = Math.max(3, Math.round((cBot - cTop) / 10) | 1);
     var step = (cBot - cTop) / segs;
-    var cd = '';
-    for (var i = 0; i <= segs; i++) {
-      cd += (i === 0 ? 'M' : ' L') + (i % 2 === 0 ? cr : cl) + ',' + (cTop + i * step);
+    // EIN durchgehender Pfad: Zulaufstutzen, Wendel, Ablaufstutzen - so
+    // laeuft die Flussanimation ohne Unterbrechung hindurch.
+    var cd = 'M' + li + ',' + (top - 3) + ' L' + li + ',' + cTop + ' L' + cl + ',' + cTop;
+    for (var i = 1; i <= segs; i++) {
+      cd += ' L' + (i % 2 === 0 ? cl : cr) + ',' + (cTop + i * step);
     }
-    // Stutzen beider Enden nach OBEN aus dem Speicher heraus, damit sie
-    // an den Sekundaerkreis angeschlossen werden koennen (Dietmar).
-    g.appendChild(el('path', {
-      d: 'M' + cr + ',' + (top - 3) + ' L' + cr + ',' + cTop,
-      fill: 'none', class: 'tank-coil', 'stroke-width': 2.2, 'stroke-linecap': 'round'
-    }));
-    g.appendChild(el('path', {
-      d: 'M' + cl + ',' + (cTop + segs * step) + ' L' + lx + ',' + (cTop + segs * step)
-        + ' L' + lx + ',' + (top - 3),
-      fill: 'none', class: 'tank-coil', 'stroke-width': 2.2,
-      'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-    }));
-    g.appendChild(el('path', { d: cd, class: 'tank-coil', 'stroke-width': 2.2 }));
-    ports = { inX: cr, outX: lx, topY: top - 3 };
+    cd += ' L' + ro + ',' + cBot + ' L' + ro + ',' + (top - 3);
+    ports = { coilPath: cd, inX: li, outX: ro, topY: top - 3 };
   }
 
   // Name + Liter direkt AUF der Tankflaeche (iDM-Referenzmuster) statt
@@ -282,7 +279,7 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     return fs;
   }
   var usedFs = 10.5;
-  if (label) { usedFs = fitLabel(label, top + h * 0.17, 'tank-label', 10.5); }
+  if (label) { usedFs = fitLabel(label, top + h * 0.13, 'tank-label', 10.5); }
   if (liters) { fitLabel(liters, top + h * 0.17 + usedFs + 3, 'tank-liters', 10); }
   svg.appendChild(g);
   return ports;
@@ -597,7 +594,7 @@ function buildSchema(unit) {
   svg.appendChild(el('path', { d: coilPath(274, 159, 203, -5, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
   // Nach links gerueckt: die WW-Ruecklaufleitung steigt bei x=276 auf und
   // schnitt die mittige Beschriftung an (14.08.2026).
-  var hxTag = el('text', { x: 258, y: 219, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  var hxTag = el('text', { x: 262, y: 231, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
   // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
@@ -605,27 +602,37 @@ function buildSchema(unit) {
   }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
-  svg.appendChild(pipe('M284,170 L306,170', SUP, waterFlow));
-  svg.appendChild(pipe('M320,170 L332,170 L332,120 L350,120', SUP, waterFlow && toRoom));
-  svg.appendChild(pipe('M350,192 L334,192', RET, waterFlow));
-  svg.appendChild(pipe('M320,192 L284,192', RET, waterFlow));
-  svg.appendChild(valveSymbol(313, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
-  svg.appendChild(valveSymbol(327, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  // Ventile weiter auseinander (3-Wege 308, 2-Wege 332), damit zwischen
+  // Waermetauscher und Ventil die Umwaelzpumpe Platz findet und die
+  // WW-Ruecklaufleitung dazwischen einmuenden kann.
+  svg.appendChild(pipe('M284,170 L302,170', SUP, waterFlow));
+  svg.appendChild(pipe('M314,170 L332,170 L332,120 L350,120', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M350,192 L339,192', RET, waterFlow));
+  svg.appendChild(pipe('M325,192 L284,192', RET, waterFlow));
+  svg.appendChild(valveSymbol(308, 170, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
+  svg.appendChild(valveSymbol(332, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  // Interne Umwaelzpumpe im Wasserkreis: laeuft nach gemessenem
+  // Durchfluss, nicht nach Verdichter (Dietmar, 14.08.2026 - sie laeuft
+  // nachweislich auch bei stehendem Verdichter).
+  svg.appendChild(pumpIcon(294, 192, waterFlow, 180));
 
-  // Integrierter 185l-WW-Tank: breiter und tiefer beginnend, Wendel an den
-  // Sekundaerkreis angeschlossen (Dietmar, 14.08.2026). Der Speicher wird
-  // VOR den Anschlussleitungen gezeichnet, damit deren Endpunkte aus den
-  // zurueckgegebenen Stutzen stammen statt geraten zu werden.
-  var dhwPorts = tankShape(svg, 300, 250, 62, 88, unit.dhwTemp, 'WW-Tank', '185 l', { coil: true });
+  // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
+  // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
+  // leitungen gezeichnet, damit deren Endpunkte aus den zurueck-
+  // gegebenen Stutzen stammen statt geraten zu werden.
+  var dhwPorts = tankShape(svg, 295, 246, 86, 96, unit.dhwTemp, 'WW-Tank', '185 l', { coil: true });
   if (dhwPorts) {
-    // Zulauf: 3-Wege-Ventil -> Wendel oben. Warmwasser wird auch im
+    // Zulauf: 3-Wege-Ventil -> Wendel-Stutzen. Warmwasser wird auch im
     // Kuehlbetrieb geheizt, deshalb hier fest die Heizfarbe.
-    svg.appendChild(pipe('M313,177 L313,228 L' + dhwPorts.inX + ',228 L' + dhwPorts.inX + ',' + dhwPorts.topY,
+    svg.appendChild(pipe('M308,177 L308,238 L' + dhwPorts.inX + ',238 L' + dhwPorts.inX + ',' + dhwPorts.topY,
       'pipe-hot', waterFlow && toDhw));
-    // Ablauf: Wendel unten -> gemeinsamer Ruecklauf, hinter dem
-    // 2-Wege-Ventil Richtung Waermetauscher (x 284..320).
-    svg.appendChild(pipe('M' + dhwPorts.outX + ',' + dhwPorts.topY + ' L' + dhwPorts.outX + ',205 L294,205 L294,192',
+    // Die Wendel selbst als normale Wasserleitung inklusive Flussanimation
+    svg.appendChild(pipe(dhwPorts.coilPath, 'pipe-hot', waterFlow && toDhw));
+    // Ablauf: Wendel-Stutzen -> gemeinsamer Ruecklauf, hinter dem
+    // 2-Wege-Ventil und VOR der Pumpe, damit sie beide Zweige foerdert.
+    svg.appendChild(pipe('M' + dhwPorts.outX + ',' + dhwPorts.topY + ' L' + dhwPorts.outX + ',215 L318,215 L318,192',
       'pipe-cold', waterFlow && toDhw));
+
   }
 
   // Zustands-/Messwert-Tabelle unter dem Geraet (gleiches Muster wie beim
