@@ -304,6 +304,13 @@ class NRGDashboardHeatSchema extends IPSModule
                 // Zustand - ob gerade gelaufen wird, sagt compressorFreq,
                 // ob gerade WW bereitet wird, threeWayValveStateID
                 // (Semantikhinweis HeishaMon, contractVersion 1.7).
+                // Verbund-Enum (contractVersion 1.8, in EMS/SUITE.md
+                // festgeschrieben): 0=standby, 1=heating, 2=cooling,
+                // 3=dhw, 4=heating+dhw, 5=cooling+dhw, -1=unbekannt.
+                // Herstellerneutral - jedes heatpump-Modul mappt seinen
+                // eigenen Enum darauf.
+                'operatingModeNorm' => $this->num((int) ($e['operatingModeNormID'] ?? 0)),
+                // Roher Herstellerwert, nur fuer die Diagnose
                 'operatingMode'   => $this->num((int) ($e['operatingModeID'] ?? 0)),
                 'mixValvePos'     => $this->num((int) ($e['z1MixingValvePositionID'] ?? 0)),
                 'indoorPipeTemp'  => $this->numTemp((int) ($e['indoorPipeTempID'] ?? 0)),

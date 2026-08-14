@@ -408,15 +408,23 @@ function buildSchema(unit) {
   // bei Modulen, die keine Betriebsart melden.
   var haveSpread = unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined
     && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
-  // operatingMode ist laut HeishaMon die KONFIGURIERTE Betriebsart, nicht
-  // der Ist-Zustand - sie ersetzt die Messung deshalb NICHT, sondern
-  // entscheidet nur dort, wo die Messung nichts hergibt: bei stehendem
-  // Verdichter ist die Spreizung 0 und das Vorzeichen sagt nichts.
-  // Enum 0-8: 1/5 = Kuehlen(+WW), 7/8 = Auto(Kuehlen)(+WW).
+  // Heiz-/Kuehlrichtung: bevorzugt aus dem VERBUND-Enum
+  // operatingModeNorm (contractVersion 1.8 HeishaMon / 1.4 WPHub, in
+  // EMS/SUITE.md festgeschrieben) - 0=standby, 1=heating, 2=cooling,
+  // 3=dhw, 4=heating+dhw, 5=cooling+dhw, -1=unbekannt. Herstellerneutral,
+  // also fuer JEDE Waermepumpenquelle gleich zu lesen.
+  var NORM_DIR = { 1: false, 2: true, 4: false, 5: true };
+  var normMode = unit.operatingModeNorm;
+  var modeDir = (normMode !== null && normMode !== undefined) ? NORM_DIR[normMode] : undefined;
+  // Nur 1/2/4/5 nennen eine Richtung. Bei standby, reinem Warmwasser
+  // oder "unbekannt" (-1) sagt der Enum nichts ueber Heizen/Kuehlen -
+  // dann entscheidet weiter die Messung, ersatzweise der rohe
+  // Herstellerenum (0-8: 1/5 = Kuehlen(+WW), 7/8 = Auto(Kuehlen)).
   var cfgCooling = [1, 5, 7, 8].indexOf(unit.operatingMode) >= 0;
   var spread = haveSpread ? (unit.mainOutletTemp - unit.mainInletTemp) : 0;
   var cooling = !(unit.threeWayValve === 1) && (
-    (haveSpread && spread < -0.3) ? true
+    modeDir !== undefined ? modeDir
+      : (haveSpread && spread < -0.3) ? true
       : (haveSpread && spread > 0.3) ? false
       : cfgCooling
   );
@@ -644,13 +652,21 @@ function buildSchema(unit) {
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push(['Pumpe', fmtTemp1(unit.pumpFlow) + ' l/min']); }
   if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push(['Drehzahl', Math.round(unit.pumpSpeed) + ' U/min']); }
   if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank 185 l', fmtTemp1(unit.dhwTemp) + ' °C']); }
-  if (unit.operatingMode !== null && unit.operatingMode !== undefined) {
-    var MODE_TEXT = {
-      0: 'Nur Heizen', 1: 'Nur Kühlen', 2: 'Auto (Heizen)', 3: 'Nur Warmwasser',
-      4: 'Heizen + WW', 5: 'Kühlen + WW', 6: 'Auto (Heizen) + WW',
-      7: 'Auto (Kühlen)', 8: 'Auto (Kühlen) + WW'
-    };
-    idRows.push(['Modus', MODE_TEXT[unit.operatingMode] || 'unbekannt']);
+  // Verbund-Enum bevorzugen; nur wo er fehlt, den rohen Herstellerenum
+  // uebersetzen (aeltere Modulstaende).
+  var NORM_TEXT = {
+    '-1': 'unbekannt', 0: 'Standby', 1: 'Heizen', 2: 'Kühlen',
+    3: 'Warmwasser', 4: 'Heizen + WW', 5: 'Kühlen + WW'
+  };
+  var RAW_TEXT = {
+    0: 'Nur Heizen', 1: 'Nur Kühlen', 2: 'Auto (Heizen)', 3: 'Nur Warmwasser',
+    4: 'Heizen + WW', 5: 'Kühlen + WW', 6: 'Auto (Heizen) + WW',
+    7: 'Auto (Kühlen)', 8: 'Auto (Kühlen) + WW'
+  };
+  if (normMode !== null && normMode !== undefined && NORM_TEXT[normMode] !== undefined) {
+    idRows.push(['Modus', NORM_TEXT[normMode]]);
+  } else if (unit.operatingMode !== null && unit.operatingMode !== undefined) {
+    idRows.push(['Modus', RAW_TEXT[unit.operatingMode] || 'unbekannt']);
   }
   idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
   idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
