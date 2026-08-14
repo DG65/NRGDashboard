@@ -31,16 +31,15 @@
      Vorlauf, blau Ruecklauf, Amber Kaeltemittel) bleiben in beiden
      Themes gleich, damit die Ableselogik identisch bleibt. */
   :root {
-    --bg: #101a2c; --surface: #16233a; --surface-deep: #0d1626;
+    --surface: rgba(255,255,255,.05); --surface-deep: rgba(0,0,0,.42);
     --line: #6f83a3; --draw: #8a9cb8; --ink: #eef2f6; --ink-dim: #93a3bd;
-    --ink-unit: #a8b4c8; --pipe-off: #39435a; --pump-off: #243149;
+    --ink-unit: #a8b4c8; --pipe-off: #4a556e; --pump-off: #2c3a52;
   }
   body.light {
-    --bg: #f4f7fb; --surface: #ffffff; --surface-deep: #ffffff;
+    --surface: rgba(0,0,0,.035); --surface-deep: rgba(255,255,255,.88);
     --line: #9aa8bd; --draw: #6b7d96; --ink: #1a2536; --ink-dim: #5c6a80;
-    --ink-unit: #5c6a80; --pipe-off: #c8d1de; --pump-off: #e4e9f0;
+    --ink-unit: #5c6a80; --pipe-off: #c0cad8; --pump-off: #e4e9f0;
   }
-  .schema-bg { fill: var(--bg); }
   .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
   .box-title { font-size: 11px; font-weight: 700; fill: var(--ink); text-anchor: middle; letter-spacing: .4px; }
 
@@ -105,8 +104,8 @@ var PAL = {};
 function setTheme(light) {
   document.body.classList.toggle('light', !!light);
   PAL = light
-    ? { draw: '#6b7d96', surface: '#ffffff', deep: '#ffffff', blade: '#7a8ba3', pumpOff: '#e4e9f0', faint: '#8a97ab' }
-    : { draw: '#8a9cb8', surface: '#16233a', deep: '#0d1626', blade: '#9fb0c8', pumpOff: '#243149', faint: '#7b8aa3' };
+    ? { draw: '#6b7d96', surface: 'rgba(0,0,0,.035)', deep: 'rgba(255,255,255,.88)', blade: '#7a8ba3', pumpOff: '#e4e9f0', faint: '#8a97ab' }
+    : { draw: '#8a9cb8', surface: 'rgba(255,255,255,.05)', deep: 'rgba(0,0,0,.42)', blade: '#9fb0c8', pumpOff: '#2c3a52', faint: '#7b8aa3' };
 }
 setTheme(false);
 
@@ -345,7 +344,11 @@ function buildSchema(unit) {
   var W = 1000, H = 470;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
-  svg.appendChild(el('rect', { x: 0, y: 0, width: W, height: H, class: 'schema-bg' }));
+  // KEIN eigener Hintergrund: die Kachel soll sich in den Symcon-
+  // Untergrund einfuegen, ein gefuelltes Rechteck saesse sonst als
+  // sichtbarer Kasten in der Kachel (Dietmar, 14.08.2026). Eine vom
+  // Nutzer gesetzte Hintergrundfarbe (Property ColorBackground) wird
+  // weiterhin auf <body> angewandt.
 
   var running = (unit.compressorFreq || 0) > 0;
   var toDhw = unit.threeWayValve === 1;
