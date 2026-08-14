@@ -109,7 +109,7 @@ function tempColor(c) {
 // Werte-Chip an der Leitung (Prinzip 1 der Referenz-Essenz): dunkle
 // Pille, Randfarbe traegt die Information (Leitungs-/Temperaturfarbe),
 // Wert weiss und fett. Optionaler Tag darueber.
-function chip(x, y, text, unit, borderColor, tag) {
+function chip(x, y, text, unit, borderColor, tag, tagBelow) {
   var g = el('g', {});
   var label = text + (unit ? ' ' + unit : '');
   var w = Math.max(44, label.length * 6.8 + 14);
@@ -124,7 +124,9 @@ function chip(x, y, text, unit, borderColor, tag) {
   }
   g.appendChild(t);
   if (tag) {
-    var tg = el('text', { x: x, y: y - h / 2 - 4, class: 'chip-tag' });
+    // tagBelow spiegelt die Beschriftung unter den Chip - gleicher
+    // Abstand wie oberhalb (Kaltgas-Gruppe, Dietmar 14.08.2026).
+    var tg = el('text', { x: x, y: tagBelow ? (y + h / 2 + 11) : (y - h / 2 - 4), class: 'chip-tag' });
     tg.textContent = tag;
     g.appendChild(tg);
   }
@@ -374,16 +376,21 @@ function buildSchema(unit) {
   // Kaeltemittelleitungen zum Innengeraet
   // Heissgas hin (oben), Fluessigkeit zurueck (unten - Zeichenrichtung
   // umgekehrt, damit die wandernde Strichelung zuruecklaeuft).
-  svg.appendChild(refrigerantLine('M165,150 L252,150', running, true));
-  svg.appendChild(refrigerantLine('M252,172 L165,172', running, false));
-  // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240)
+  // Tiefer gelegt (175/197), damit der Waermetauscher im Innengeraet
+  // nicht mehr mit dem Bedienfeld kollidiert; beide Leitungen laufen bis
+  // an die WT-Kante (x=252).
+  svg.appendChild(refrigerantLine('M165,175 L252,175', running, true));
+  svg.appendChild(refrigerantLine('M252,197 L165,197', running, false));
+  // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240),
+  // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
+  // Beschriftung oben, Kaltgas darunter mit Beschriftung unten.
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(chip(203, 127, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
+    svg.appendChild(chip(203, 152, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
   }
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
   if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
-    svg.appendChild(chip(203, 197, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', 'Kaltgas'));
+    svg.appendChild(chip(203, 220, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', 'Kaltgas', true));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -415,23 +422,23 @@ function buildSchema(unit) {
     return d;
   }
   if (running) {
-    var hxGlow = el('circle', { cx: 268, cy: 158, r: 20, fill: '#d98a3c', opacity: 0.22 });
+    var hxGlow = el('circle', { cx: 268, cy: 183, r: 20, fill: '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
     svg.appendChild(hxGlow);
   }
-  svg.appendChild(el('rect', { x: 252, y: 132, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
-  svg.appendChild(el('path', { d: coilPath(262, 136, 180, 5, 8), fill: 'none', stroke: '#d98a3c', 'stroke-width': 1.6 }));
-  svg.appendChild(el('path', { d: coilPath(274, 136, 180, -5, 8), fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 1.6 }));
-  var hxTag = el('text', { x: 268, y: 196, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  svg.appendChild(el('rect', { x: 252, y: 157, width: 32, height: 52, rx: 2, fill: '#0d1626', stroke: '#8a9cb8', 'stroke-width': 1.4 }));
+  svg.appendChild(el('path', { d: coilPath(262, 161, 205, 5, 8), fill: 'none', stroke: '#d98a3c', 'stroke-width': 1.6 }));
+  svg.appendChild(el('path', { d: coilPath(274, 161, 205, -5, 8), fill: 'none', stroke: 'rgba(255,255,255,.75)', 'stroke-width': 1.6 }));
+  var hxTag = el('text', { x: 268, y: 221, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
-  svg.appendChild(pipe('M284,150 L306,150', 'pipe-hot', running));
-  svg.appendChild(pipe('M320,150 L332,150 L332,120 L350,120', 'pipe-hot', running && toRoom));
-  svg.appendChild(pipe('M313,157 L313,240', 'pipe-hot', running && toDhw));
-  svg.appendChild(pipe('M350,170 L334,170', 'pipe-cold', running));
-  svg.appendChild(pipe('M320,170 L284,170', 'pipe-cold', running));
-  svg.appendChild(valveSymbol(313, 150, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
-  svg.appendChild(valveSymbol(327, 170, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
+  svg.appendChild(pipe('M284,175 L306,175', 'pipe-hot', running));
+  svg.appendChild(pipe('M320,175 L332,175 L332,120 L350,120', 'pipe-hot', running && toRoom));
+  svg.appendChild(pipe('M313,182 L313,240', 'pipe-hot', running && toDhw));
+  svg.appendChild(pipe('M350,195 L334,195', 'pipe-cold', running));
+  svg.appendChild(pipe('M320,195 L284,195', 'pipe-cold', running));
+  svg.appendChild(valveSymbol(313, 175, 6, toDhw ? '#e0b93c' : '#e0503c', null, true));
+  svg.appendChild(valveSymbol(327, 195, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, unit.twoWayValve !== false));
   // Integrierter 185l-WW-Tank
   tankShape(svg, 296, 235, 50, 90, unit.dhwTemp, 'WW-Tank', '185 l');
 
