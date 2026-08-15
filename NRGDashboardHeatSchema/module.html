@@ -853,14 +853,14 @@ function buildSchema(unit) {
   // allen Heizungsleitungen. Kaltwasser kommt unten von links bis ins
   // Innere des Speichers, Warmwasser geht oben ab zu Badewanne und
   // Dusche rechts neben dem Innengeraet (Dietmar, 14.08.2026).
-  var CW = '#7cc4ee', HW = '#e58c7a';
+  var CW = '#7cc4ee', HW = HOT;
   svg.appendChild(el('path', { d: 'M158,331 L320,331', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
   var cwTag = el('text', { x: 186, y: 323, class: 'tag' }); cwTag.textContent = 'Kaltwasser'; svg.appendChild(cwTag);
 
   // Warmwasser oben aus dem Speicher heraus zum Bad. Zwei Abgaenge:
   // links der Wanneneinlauf, rechts die Brause (Dietmar, 14.08.2026).
   svg.appendChild(el('path', { d: 'M388,244 L530,244', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
-  var hwTag = el('text', { x: 442, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
+  var hwTag = el('text', { x: 459, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
   // Wanneneinlauf: Fallrohr mit abgewinkeltem Auslauf ueber dem Wannenrand
   svg.appendChild(el('path', {
     d: 'M450,244 L450,312 Q450,321 459,321',
