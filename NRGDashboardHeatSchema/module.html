@@ -295,25 +295,28 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
       cd += ' L' + (i % 2 === 1 ? cl : cIn) + ',' + (cTop + i * step);
     }
     var cEnd = cTop + segs * step;
-    // Der erste Abschnitt des Ablaufs (von der Wendel zur mittigen
-    // Steigleitung) soll dieselbe Neigung wie die Wendelsegmente selbst
-    // haben statt waagerecht zu wirken (Dietmar, 15.08.2026) - dieselbe
-    // Steigung (step je Wendelbreite), nur ueber die kuerzere Distanz bis
-    // cRise angewandt.
-    var riseTilt = step * (cRise - cl) / (cIn - cl);
+    // Letztes Wendelstueck von LINKS bis zur MITTE (Dietmar, 15.08.2026):
+    // die Windungen enden sonst mitten in der Luft bei (cl, cEnd), ohne
+    // dass die Reihe bis zur Steigleitung weitergefuehrt wird. Dieses
+    // Teilstueck bekommt dieselbe Neigung (Steigung je Wendelbreite) wie
+    // jedes andere Segment, nur ueber die kuerzere Distanz bis cRise -
+    // und gehoert zur Wendel selbst (gleiche Farbe/Gradient), nicht zum
+    // separaten Ablaufrohr.
+    var cEnd2 = cEnd + step * (cRise - cl) / (cIn - cl);
+    cd += ' L' + cRise + ',' + cEnd2;
     ports = {
       coilPath: cd,
-      // Ablauf getrennt gefuehrt, damit er durchgaengig kalt eingefaerbt
-      // werden kann - ein gemeinsamer Pfad wuerde den Verlauf beim
-      // Aufsteigen wieder ins Rote drehen.
-      risePath: 'M' + cl + ',' + cEnd + ' L' + cRise + ',' + (cEnd - riseTilt) + ' L' + cRise + ',' + (top - 3),
-      coilTop: cTop, coilBot: cEnd, topY: top - 3, riserX: cRise,
-      // Alternative zum Ablauf oben: die Wendel endet unten links (cl,
-      // cEnd) - wer den Ablauf lieber dort direkt nach AUSSEN fuehrt
+      // Ablauf jetzt ein reines Steigrohr, verlaengert bis zum neuen
+      // untersten Punkt der Wendel (cRise, cEnd2) - kein eigener Knick
+      // mehr, der faelschlich wie ein zusaetzliches Wendelstueck aussah.
+      risePath: 'M' + cRise + ',' + cEnd2 + ' L' + cRise + ',' + (top - 3),
+      coilTop: cTop, coilBot: cEnd2, topY: top - 3, riserX: cRise,
+      // Alternative zum Ablauf oben: die Wendel endet unten mittig (cRise,
+      // cEnd2) - wer den Ablauf lieber dort direkt nach AUSSEN fuehrt
       // (kein zusaetzlicher Fuss+Steigrohr-Umweg durch den Tank) nutzt
       // exitX/exitY statt riserX/risePath (Dietmar, 14.08.2026: "die
       // mittlere senkrechte Leitung gibt es auch nicht").
-      exitX: cl, exitY: cEnd
+      exitX: cRise, exitY: cEnd2
     };
   }
 
@@ -801,11 +804,11 @@ function buildSchema(unit) {
     var cs1 = el('stop', { offset: '100%' }); cs1.setAttribute('stop-color', COLD);
     cg.appendChild(cs0); cg.appendChild(cs1);
     var cdefs = el('defs', {}); cdefs.appendChild(cg); svg.appendChild(cdefs);
-    svg.appendChild(pipe(dhwPorts.coilPath, 'pipe-hot', dhwOn, 'url(#' + coilGid + ')', 4));
+    svg.appendChild(pipe(dhwPorts.coilPath, 'pipe-hot', dhwOn, 'url(#' + coilGid + ')'));
     // Ablauf: von der Wendel mittig durch den Speicher hoch in den
     // gemeinsamen Ruecklauf - hinter dem 2-Wege-Ventil und VOR der Pumpe,
     // damit sie beide Zweige foerdert.
-    svg.appendChild(pipe(dhwPorts.risePath, 'pipe-cold', dhwOn, null, 4));
+    svg.appendChild(pipe(dhwPorts.risePath, 'pipe-cold', dhwOn));
     svg.appendChild(pipe('M' + DHW_RISE + ',' + dhwPorts.topY + ' L' + DHW_RISE + ',192', 'pipe-cold', dhwOn));
 
   }
