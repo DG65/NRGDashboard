@@ -955,16 +955,20 @@ function buildSchema(unit) {
     svg.appendChild(chip(570, 97, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
 
-  // Wendel fuer den Sekundaerkreis: tritt rechts bei y=192 (Ruecklauf,
-  // kuehler) in den Tank ein, schlaengelt sich (wiederverwendete
-  // coilPath()-Wellenform wie bei WT/WW-Tank) durch die umgebende
-  // Fluessigkeit nach oben und tritt bei y=142 (Vorlauf, jetzt erwaermt/
-  // gekuehlt) wieder rechts aus - direkt an den beiden bestehenden
-  // Sekundaerleitungen, kein Umweg noetig.
+  // Wendel fuer die PRIMAERSEITE (Innengeraet), nicht den Heizkreis
+  // (Dietmar, 14.08.2026: "wenn das die Sekundaerleitungen sind, dann
+  // haenge die Wendel an die Primaerleitungen") - genau wie beim
+  // WW-Tank laeuft dort das Medium der Waermepumpe selbst durch die
+  // Wendel, der Verbraucher (hier: Heizkreis) ist nur ueber die
+  // umgebende Fluessigkeit angebunden. Tritt links bei y=192
+  // (Ruecklauf zum Innengeraet, kuehler) in den Tank ein, schlaengelt
+  // sich nach oben und tritt bei y=142 (Vorlauf vom Innengeraet) wieder
+  // links aus - direkt an den beiden bestehenden Primaerleitungen
+  // (400,142 / 546,192), die schon exakt dort enden.
   var pufWig = coilPath(PUF_CX, 192, 142, 9, 4);
-  var pufCoilD = 'M' + PUF_RIGHT + ',192 ' +
+  var pufCoilD = 'M' + PUF_LEFT + ',192 ' +
     pufWig.replace('M' + PUF_CX + ',192', 'L' + PUF_CX + ',192') +
-    ' L' + PUF_RIGHT + ',142';
+    ' L' + PUF_LEFT + ',142';
   var pufCoilGid = 'pufcoil' + unit.id;
   var pcg = el('linearGradient', {
     id: pufCoilGid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 192, x2: 0, y2: 142
@@ -973,10 +977,10 @@ function buildSchema(unit) {
   var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', SUPC);
   pcg.appendChild(pcs0); pcg.appendChild(pcs1);
   var pcdefs = el('defs', {}); pcdefs.appendChild(pcg); svg.appendChild(pcdefs);
-  // zones[] existiert an dieser Stelle noch nicht (wird erst weiter unten
-  // aufgebaut) - pumpOn (Zone 1) ist zu diesem Zeitpunkt bereits bekannt
-  // und reicht als Naeherung, ob durch die Wendel Umlauf ist.
-  svg.appendChild(pipe(pufCoilD, 'pipe-hot', pumpOn, 'url(#' + pufCoilGid + ')', 4));
+  // Fliesst mit dem Primaerkreis (Innengeraet -> Puffer), nicht mit der
+  // Sekundaerpumpe - dieselbe Bedingung wie die beiden Primaerleitungen
+  // selbst.
+  svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')', 4));
   // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
   // Schema nur Platz kostet (Dietmar, 14.08.2026).
@@ -1006,10 +1010,10 @@ function buildSchema(unit) {
     });
   }
 
-  // Sammelleitungen haengen wieder direkt an der Puffer-Seitenwand
-  // (x=594, y=142/192) - die Wendel schliesst dort bereits an, kein
-  // Umweg mehr noetig (Dietmar, 14.08.2026). Vorlauf zweigt bei x=606
-  // fuer Zone 2 ab, Ruecklauf sammelt bei x=628.
+  // Sekundaerseite (Heizkreise) beruehrt die umgebende Fluessigkeit nur
+  // an der rechten Tankwand (x=594, y=142/192) - keine eigene Wendel,
+  // die traegt jetzt die Primaerseite links (Dietmar, 14.08.2026).
+  // Vorlauf zweigt bei x=606 fuer Zone 2 ab, Ruecklauf sammelt bei x=628.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
     svg.appendChild(pipe('M606,142 L606,322 L636,322', SUP, zones[1].pumpOn));
