@@ -1084,55 +1084,55 @@ function buildSchema(unit) {
   // Vorlauf zweigt bei x=606 fuer Zone 2 ab, Ruecklauf sammelt bei x=628.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(pipe('M606,142 L606,322 L636,322', SUP, zones[1].pumpOn));
-    svg.appendChild(pipe('M628,422 L628,237', RET, zones[1].pumpOn));
+    svg.appendChild(pipe('M656,142 L656,322 L686,322', SUP, zones[1].pumpOn));
+    svg.appendChild(pipe('M678,422 L678,237', RET, zones[1].pumpOn));
   }
-  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L636,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  svg.appendChild(pipe('M628,237 L616,237 L616,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L686,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M678,237 L616,237 L616,192 L' + PUF_RIGHT + ',192', RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
     // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
     if (z.mvPos !== null && z.mvPos !== undefined) {
-      drawValve(valveSymbol(650, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
+      drawValve(valveSymbol(700, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
         Math.round(z.mvPos) + ' %', z.mvPos > 0));
     } else if (z.mv === 2) {
-      drawValve(valveSymbol(650, z.y, 7, HOT, 'öffnet', true));
+      drawValve(valveSymbol(700, z.y, 7, HOT, 'öffnet', true));
     } else if (z.mv === 1) {
-      drawValve(valveSymbol(650, z.y, 7, COLD, 'schließt', true));
+      drawValve(valveSymbol(700, z.y, 7, COLD, 'schließt', true));
     } else if (z.mv === 0) {
-      drawValve(valveSymbol(650, z.y, 7, PAL.draw, 'steht', false));
+      drawValve(valveSymbol(700, z.y, 7, PAL.draw, 'steht', false));
     } else {
-      drawValve(valveSymbol(650, z.y, 7, PAL.draw, null, false));
+      drawValve(valveSymbol(700, z.y, 7, PAL.draw, null, false));
     }
-    svg.appendChild(pipe('M664,' + z.y + ' L696,' + z.y, SUP, on));
-    svg.appendChild(pumpIcon(710, z.y, on, 0));
-    var et = el('text', { x: 690, y: z.y - 25, class: 'tag' });
+    svg.appendChild(pipe('M714,' + z.y + ' L746,' + z.y, SUP, on));
+    svg.appendChild(pumpIcon(760, z.y, on, 0));
+    var et = el('text', { x: 740, y: z.y - 25, class: 'tag' });
     et.textContent = z.pumpKnown ? 'Mischer + Pumpe' : 'Mischer + Pumpe (kein Status)';
     svg.appendChild(et);
-    svg.appendChild(pipe('M720,' + z.y + ' L790,' + z.y, SUP, on));
-    if (on) { svg.appendChild(arrowHead(760, z.y, 'r', SUPC)); }
+    svg.appendChild(pipe('M770,' + z.y + ' L840,' + z.y, SUP, on));
+    if (on) { svg.appendChild(arrowHead(810, z.y, 'r', SUPC)); }
 
     // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
     // verdrahtet - sie unterscheidet sich von Anlage zu Anlage und kommt
     // aus einer Freitext-Eigenschaft (vorher standen hier Dietmars
     // Radiatoren fuer alle Nutzer).
-    svg.appendChild(el('rect', { x: 790, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
-    var rt = el('text', { x: 880, y: z.boxY + 24, class: 'box-title' });
+    svg.appendChild(el('rect', { x: 840, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
+    var rt = el('text', { x: 930, y: z.boxY + 24, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: 880, y: z.boxY + 40, class: 'tag' });
+      var rc = el('text', { x: 930, y: z.boxY + 40, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(880, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(930, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises hinunter auf die Sammelleitung
-    svg.appendChild(pipe('M880,' + (z.boxY + 100) + ' L880,' + z.retY + ' L628,' + z.retY, RET, on));
-    if (on) { svg.appendChild(arrowHead(750, z.retY, 'l', RETC)); }
+    svg.appendChild(pipe('M930,' + (z.boxY + 100) + ' L930,' + z.retY + ' L678,' + z.retY, RET, on));
+    if (on) { svg.appendChild(arrowHead(800, z.retY, 'l', RETC)); }
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
