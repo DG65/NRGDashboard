@@ -1063,15 +1063,22 @@ function buildSchema(unit) {
     || unit.z2Pump === true
     || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
 
+  // retY = Ruecklauf-Austrittshoehe am Kasten = Vorlaufhoehe + 50, exakt
+  // dasselbe Rastermass wie der Puffer selbst zwischen seinen eigenen
+  // Vor-/Ruecklaufanschluessen (142/192). Fuer Zone 1 trifft das GENAU
+  // die Ankunftshoehe am Puffer (192) - der Ruecklauf ist dadurch eine
+  // einzige gerade Linie ohne jeden Knick, statt der vorherigen
+  // Umwegfuehrung mit vier Knicken (Dietmar, 16.08.2026: "eine Gerade
+  // aus 4 Knicken?").
   var zones = [{
-    n: 1, y: 142, boxY: 107, retY: 237, temp: unit.z1WaterTemp,
+    n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos
   }];
   if (hasZone2) {
     var p2Known = unit.z2Pump !== null && unit.z2Pump !== undefined;
     zones.push({
-      n: 2, y: 322, boxY: 287, retY: 422, temp: unit.z2WaterTemp,
+      n: 2, y: 322, boxY: 287, retY: 372, temp: unit.z2WaterTemp,
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos
@@ -1085,16 +1092,18 @@ function buildSchema(unit) {
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
     svg.appendChild(pipe('M656,142 L656,322 L686,322', SUP, zones[1].pumpOn));
-    svg.appendChild(pipe('M678,422 L678,237', RET, zones[1].pumpOn));
+    // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
+    // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
+    // Ankunftshoehe) - EIN Knick, dann trifft sie ohne weiteren Umweg auf
+    // die gemeinsame Leitung.
+    svg.appendChild(pipe('M678,372 L678,192', RET, zones[1].pumpOn));
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L686,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  // Der Ruecklauf-Sammler bog bisher direkt AN der Tankwand (x=616=
-  // PUF_RIGHT) nach oben ab und lief dadurch 45px lang parallel zur
-  // Wandkontur, statt sauber an einem Punkt anzuschliessen (Dietmar,
-  // 16.08.2026: "wie der Ruecklauf des HK1 auf den Puffer stoesst").
-  // Der Knick liegt jetzt 24px VOR der Wand, danach nur noch ein kurzes
-  // waagerechtes Anschlussstueck.
-  svg.appendChild(pipe('M678,237 L' + (PUF_RIGHT + 24) + ',237 L' + (PUF_RIGHT + 24) + ',192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
+  // Sammelstelle (678,192) bis zum Puffer (Dietmar, 16.08.2026 - die
+  // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
+  // nicht die einzelnen Knicke fuer sich).
+  svg.appendChild(pipe('M678,192 L' + PUF_RIGHT + ',192', RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
@@ -1136,16 +1145,11 @@ function buildSchema(unit) {
       svg.appendChild(chip(930, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
-    // Ruecklauf des Kreises: bisher unten aus einem beliebigen Punkt
-    // MITTEN im Kasten (x=930, geteilt mit dem Temperatur-Chip) heraus,
-    // dadurch wirkte die Leitung wie eine einzige Gerade Richtung Puffer,
-    // die seitlich auf den Kasten trifft (Dietmar, 16.08.2026 - fuer HK1
-    // UND HK2). Jetzt verlaesst er den Kasten sauber an der LINKEN Seite
-    // (wie schon der Vorlauf), unterhalb von dessen Anschlusshoehe, mit
-    // Abstand zur Kastenwand statt daran entlangzulaufen.
-    var retExitY = z.boxY + 75, retElbowX = 840 - 24;
-    svg.appendChild(pipe('M840,' + retExitY + ' L' + retElbowX + ',' + retExitY +
-      ' L' + retElbowX + ',' + z.retY + ' L678,' + z.retY, RET, on));
+    // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
+    // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50 - direkt auf der
+    // Sammelhoehe, dadurch nur diese EINE gerade Strecke bis zur
+    // Sammelstelle noetig, kein zusaetzlicher Knick am Kasten.
+    svg.appendChild(pipe('M840,' + z.retY + ' L678,' + z.retY, RET, on));
     if (on) { svg.appendChild(arrowHead(800, z.retY, 'l', RETC)); }
   });
 
