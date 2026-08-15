@@ -894,17 +894,14 @@ function buildSchema(unit) {
   // kreis folgt dann ersatzweise dem Wasserumlauf des Primaerkreises.
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
-  svg.appendChild(pipe('M400,142 L546,142', SUP, waterFlow && toRoom));
-  // Ruecklauf jetzt KNICKFREI: der Puffer-Bereich liegt komplett 22
-  // Einheiten tiefer (Dietmar, 14.08.2026 - er hatte selbst nachgefragt,
-  // wie hoch der Knick ist, und dann genau diesen Wert als Versatz
-  // vorgeschlagen). Aussen y=192 trifft jetzt exakt die interne
-  // Ruecklaufhoehe (ebenfalls 192) - keine Ebene, kein Knick mehr.
-  // Ruecklauf jetzt EIN gerades Stueck von Puffer bis zur WW-Einmuendung
-  // (DHW_RISE) - fliesst nur im Raumheizbetrieb, wie zuvor; der Abschnitt
-  // von dort zum Waermetauscher (immer aktiv) steht schon im Innengeraet-
-  // Abschnitt weiter oben.
-  svg.appendChild(pipe('M546,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  // Primaerleitungen zum Puffer: die Ziel-Stutzen (PUF_IN/PUF_RISE_X,
+  // PUF_TOPY) werden erst beim Puffer-Aufbau weiter unten berechnet -
+  // hier feste Naeherungswerte, die exakt dorthin fuehren (Dietmar,
+  // 14.08.2026: Puffer breiter/niedriger und samt Vorlaufleitung etwas
+  // hoeher, damit die Wendel wie beim WW-Tank von OBEN einspeist statt
+  // seitlich).
+  svg.appendChild(pipe('M400,142 L578,142 L578,138', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M556,138 L556,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
@@ -932,19 +929,24 @@ function buildSchema(unit) {
     svg.appendChild(chip(473, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  // Puffer wie der WW-Tank aufgebaut (Dietmar, 14.08.2026): eine Wendel
-  // traegt den SEKUNDAERKREIS (Heizkreise), die Primaerseite (Innengeraet)
-  // ist die umgebende Fluessigkeit selbst. Die Wendel haengt DIREKT an
-  // den beiden bereits vorhandenen Sekundaerleitungen (594,142 Vorlauf zu
-  // den Heizkreisen / 594,192 Ruecklauf von dort) statt ueber einen
-  // Umweg ueber die Tankoberkante zu fuehren (Dietmar, 14.08.2026: "an
-  // den anderen beiden Leitungen haengen") - die Tankbreite bleibt daher
-  // wieder bei 48, sodass die rechte Kante exakt bei x=594 liegt, wo
-  // diese beiden Leitungen ohnehin enden.
-  var PUF_LEFT = 546, PUF_W = 48, PUF_CX = PUF_LEFT + PUF_W / 2, PUF_TOP = 117, PUF_H = 110;
-  var PUF_RIGHT = PUF_LEFT + PUF_W;
-  tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
-    topColor: SUPC, botColor: RETC
+  // Puffer wie der WW-Tank aufgebaut (Dietmar, 14.08.2026, mehrfach
+  // nachgebessert): dieselbe Wendel-Technik wie dort - EIN Doppelstutzen
+  // oben (Zulauf + Steigrohr, per tankShape()-eigenem opts.coil erzeugt),
+  // nicht die selbstgebaute seitliche Schlaufe von zuvor. Breiter (76
+  // statt 48) und niedriger (76 statt 110) gemacht, damit die Wendel
+  // sichtbar mehr Flaeche einnimmt; dafuer samt Vorlaufleitung etwas
+  // hoeher gesetzt (Boden bleibt bei 217, wo die Sekundaerseite noch
+  // beruehrt wird). Primaerseite (Innengeraet) traegt jetzt die Wendel,
+  // die Sekundaerseite (Heizkreise) ist nur die umgebende Fluessigkeit -
+  // siehe vorheriger Umbau, unveraendert.
+  var PUF_W = 76, PUF_H = 76, PUF_RIGHT = 594, PUF_LEFT = PUF_RIGHT - PUF_W;
+  var PUF_BOTTOM = 217, PUF_TOP = PUF_BOTTOM - PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
+  // Zulauf-Stutzen nah an der rechten Innenkante statt links (nur 4px
+  // vom linken Wendel-Rand entfernt) - das ergab eine kaum sichtbare
+  // Wellenform. Jetzt volle Tankbreite genutzt (Dietmar, 14.08.2026).
+  var PUF_IN = PUF_LEFT + PUF_W - 16;
+  var pufPorts = tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
+    coil: true, inX: PUF_IN, topColor: SUPC, botColor: RETC
   });
   // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
   // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
@@ -952,35 +954,31 @@ function buildSchema(unit) {
   pufTag.textContent = 'Puffer 100 l';
   svg.appendChild(pufTag);
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(chip(570, 97, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
 
-  // Wendel fuer die PRIMAERSEITE (Innengeraet), nicht den Heizkreis
-  // (Dietmar, 14.08.2026: "wenn das die Sekundaerleitungen sind, dann
-  // haenge die Wendel an die Primaerleitungen") - genau wie beim
-  // WW-Tank laeuft dort das Medium der Waermepumpe selbst durch die
-  // Wendel, der Verbraucher (hier: Heizkreis) ist nur ueber die
-  // umgebende Fluessigkeit angebunden. Tritt links bei y=192
-  // (Ruecklauf zum Innengeraet, kuehler) in den Tank ein, schlaengelt
-  // sich nach oben und tritt bei y=142 (Vorlauf vom Innengeraet) wieder
-  // links aus - direkt an den beiden bestehenden Primaerleitungen
-  // (400,142 / 546,192), die schon exakt dort enden.
-  var pufWig = coilPath(PUF_CX, 192, 142, 9, 4);
-  var pufCoilD = 'M' + PUF_LEFT + ',192 ' +
-    pufWig.replace('M' + PUF_CX + ',192', 'L' + PUF_CX + ',192') +
-    ' L' + PUF_LEFT + ',142';
-  var pufCoilGid = 'pufcoil' + unit.id;
-  var pcg = el('linearGradient', {
-    id: pufCoilGid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 192, x2: 0, y2: 142
-  });
-  var pcs0 = el('stop', { offset: '0%' }); pcs0.setAttribute('stop-color', RETC);
-  var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', SUPC);
-  pcg.appendChild(pcs0); pcg.appendChild(pcs1);
-  var pcdefs = el('defs', {}); pcdefs.appendChild(pcg); svg.appendChild(pcdefs);
-  // Fliesst mit dem Primaerkreis (Innengeraet -> Puffer), nicht mit der
-  // Sekundaerpumpe - dieselbe Bedingung wie die beiden Primaerleitungen
-  // selbst.
-  svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')', 4));
+  // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet) faellt
+  // oben ein, gibt auf dem Weg nach unten Waerme an die umgebende
+  // Fluessigkeit ab (Gradient SUPC -> RETC, wie beim WW-Tank-Zulauf),
+  // das Steigrohr traegt das jetzt abgekuehlte Wasser einfarbig RETC
+  // zurueck nach oben - RICHTIG HERUM diesmal (Dietmar, 14.08.2026: "die
+  // Wendel hat derzeit die umgekehrte Flussrichtung" - der vorige Versuch
+  // liess es unten kalt eintreten und oben heiss austreten, physikalisch
+  // falsch).
+  if (pufPorts) {
+    var pufCoilGid = 'pufcoil' + unit.id;
+    var pcg = el('linearGradient', {
+      id: pufCoilGid, gradientUnits: 'userSpaceOnUse',
+      x1: 0, y1: pufPorts.coilTop, x2: 0, y2: pufPorts.coilBot
+    });
+    var pcs0 = el('stop', { offset: '0%' }); pcs0.setAttribute('stop-color', SUPC);
+    var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', RETC);
+    pcg.appendChild(pcs0); pcg.appendChild(pcs1);
+    var pcdefs = el('defs', {}); pcdefs.appendChild(pcg); svg.appendChild(pcdefs);
+    var pufOn = waterFlow && toRoom;
+    svg.appendChild(pipe(pufPorts.coilPath, 'pipe-hot', pufOn, 'url(#' + pufCoilGid + ')', 4));
+    svg.appendChild(pipe(pufPorts.risePath, 'pipe-cold', pufOn, null, 4));
+  }
   // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
   // Schema nur Platz kostet (Dietmar, 14.08.2026).
