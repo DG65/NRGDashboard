@@ -295,12 +295,18 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
       cd += ' L' + (i % 2 === 1 ? cl : cIn) + ',' + (cTop + i * step);
     }
     var cEnd = cTop + segs * step;
+    // Der erste Abschnitt des Ablaufs (von der Wendel zur mittigen
+    // Steigleitung) soll dieselbe Neigung wie die Wendelsegmente selbst
+    // haben statt waagerecht zu wirken (Dietmar, 15.08.2026) - dieselbe
+    // Steigung (step je Wendelbreite), nur ueber die kuerzere Distanz bis
+    // cRise angewandt.
+    var riseTilt = step * (cRise - cl) / (cIn - cl);
     ports = {
       coilPath: cd,
       // Ablauf getrennt gefuehrt, damit er durchgaengig kalt eingefaerbt
       // werden kann - ein gemeinsamer Pfad wuerde den Verlauf beim
       // Aufsteigen wieder ins Rote drehen.
-      risePath: 'M' + cl + ',' + cEnd + ' L' + cRise + ',' + cEnd + ' L' + cRise + ',' + (top - 3),
+      risePath: 'M' + cl + ',' + cEnd + ' L' + cRise + ',' + (cEnd - riseTilt) + ' L' + cRise + ',' + (top - 3),
       coilTop: cTop, coilBot: cEnd, topY: top - 3, riserX: cRise,
       // Alternative zum Ablauf oben: die Wendel endet unten links (cl,
       // cEnd) - wer den Ablauf lieber dort direkt nach AUSSEN fuehrt
