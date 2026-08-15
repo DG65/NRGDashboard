@@ -917,17 +917,20 @@ function buildSchema(unit) {
   // (Dietmar, 14.08.2026, nach Referenzbild). Bei einer ungeraden
   // Segmentzahl (vorher 5) endete der Pfad rechts statt wieder links -
   // dadurch war die Wendel nicht mehr mit dem Ruecklauf verbunden.
-  // PUF_ZIG_L = die Wand selbst (546), NICHT ein eingerueckter Punkt -
-  // "an der linken Seite angeschlossen" heisst die Wendel LAEUFT an der
-  // Wand entlang und wirft nur nach rechts Zacken, statt innen zu
-  // schweben (Dietmar, 14.08.2026 - der letzte Punkt lag bei 560 statt
-  // 546 und haengte damit den Ruecklauf-Anschluss in der Luft auf).
-  var PUF_ZIG_R = PUF_RIGHT - 14, PUF_ZIG_L = PUF_LEFT;
+  // PUF_ZIG_L/PUF_ZIG_R liegen symmetrisch je 14 Einheiten von der
+  // jeweiligen Tankwand entfernt (Dietmar, 15.08.2026: die Wendel soll
+  // links genauso viel Abstand zur Wand haben wie rechts). Die eigentliche
+  // Anbindung an die aussen ankommenden Primaerleitungen (die weiterhin
+  // exakt an der Wand, x=546, enden) erfolgt ueber kurze waagrechte
+  // Stichleitungen von der Wand zum ersten/letzten Wendelpunkt.
+  var PUF_MARGIN = 14;
+  var PUF_ZIG_R = PUF_RIGHT - PUF_MARGIN, PUF_ZIG_L = PUF_LEFT + PUF_MARGIN;
   var pufZigSteps = 6, pufZigStep = (192 - 142) / pufZigSteps;
-  var pufCoilD = 'M546,142';
+  var pufCoilD = 'M546,142 L' + PUF_ZIG_L + ',142';
   for (var pzi = 1; pzi <= pufZigSteps; pzi++) {
     pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (142 + pzi * pufZigStep);
   }
+  pufCoilD += ' L546,192';
   // Primaerleitungen: unveraendert, enden direkt an der Tankwand - kein
   // Knick, kein Umweg (Dietmar, 14.08.2026: "die Leitungen gibt es so
   // nicht" - vorher fuehrten sie ueber Stutzen zur Tankoberkante).
@@ -990,7 +993,7 @@ function buildSchema(unit) {
   var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', RETC);
   pcg.appendChild(pcs0); pcg.appendChild(pcs1);
   pufDefs.appendChild(pcg);
-  svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')', 4));
+  svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')'));
   // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
   // Schema nur Platz kostet (Dietmar, 14.08.2026).
