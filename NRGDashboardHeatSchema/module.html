@@ -1107,6 +1107,12 @@ function buildSchema(unit) {
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
+    // Leitung laeuft DURCHGEHEND (kein Spalt) von der Abzweigung bis zum
+    // Kasten, genau wie beim Innengeraet ("Leitungen laufen DURCH die
+    // Ventile hindurch"): Ventil- und Pumpensymbol liegen als Kontur
+    // darueber, statt dass die Leitung an ihnen aufhoert (Dietmar,
+    // 16.08.2026).
+    svg.appendChild(pipe('M686,' + z.y + ' L840,' + z.y, SUP, on));
     // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
     if (z.mvPos !== null && z.mvPos !== undefined) {
       drawValve(valveSymbol(700, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
@@ -1120,12 +1126,10 @@ function buildSchema(unit) {
     } else {
       drawValve(valveSymbol(700, z.y, 7, PAL.draw, null, false));
     }
-    svg.appendChild(pipe('M714,' + z.y + ' L746,' + z.y, SUP, on));
     svg.appendChild(pumpIcon(760, z.y, on, 0));
     var et = el('text', { x: 740, y: z.y - 25, class: 'tag' });
     et.textContent = z.pumpKnown ? 'Mischer + Pumpe' : 'Mischer + Pumpe (kein Status)';
     svg.appendChild(et);
-    svg.appendChild(pipe('M770,' + z.y + ' L840,' + z.y, SUP, on));
     if (on) { svg.appendChild(arrowHead(810, z.y, 'r', SUPC)); }
 
     // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
