@@ -159,12 +159,16 @@ function chip(x, y, text, unit, borderColor, tag, tagBelow) {
   }
   g.appendChild(t);
   if (tag) {
-    // tagBelow spiegelt die Beschriftung unter den Chip - der Kommentar
-    // behauptete bereits "gleicher Abstand wie oberhalb", die Zahl war es
-    // aber nicht (11 statt 4) - Dietmar, 14.08.2026, fiel das am
-    // Verdampfer-Chip auf. Jetzt wirklich symmetrisch: h/2+4 auf beiden
-    // Seiten.
-    var tg = el('text', { x: x, y: tagBelow ? (y + h / 2 + 4) : (y - h / 2 - 4), class: 'chip-tag' });
+    // tagBelow: 4 (oben) und 11 (unten) sehen im Code asymmetrisch aus,
+    // sind es aber NICHT visuell - SVG-Text haengt an seiner Grundlinie
+    // und waechst nach OBEN, ohne Unterlaengen bei Grossbuchstaben. Bei
+    // "oberhalb" ist die Grundlinie das unterste Text-Pixel (Abstand zum
+    // Chip = 4 direkt). Bei "unterhalb" liegt das oberste sichtbare
+    // Pixel um die Schrifthoehe UEBER der Grundlinie, also Richtung Chip -
+    // der zusaetzliche Puffer (11 statt 4) gleicht das aus. Faelschlich
+    // auf 4/4 vereinheitlicht (14.08.2026), wodurch der Buchstabenkoerper
+    // in den Chip hineinragte - am gerenderten getBBox() zurueckgeprueft.
+    var tg = el('text', { x: x, y: tagBelow ? (y + h / 2 + 11) : (y - h / 2 - 4), class: 'chip-tag' });
     tg.textContent = tag;
     g.appendChild(tg);
   }
@@ -692,7 +696,10 @@ function buildSchema(unit) {
   // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
   // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
-    svg.appendChild(chip(228, 258, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer', true));
+    // Ueber den Gasleitungen statt darunter (Dietmar, 14.08.2026) - an
+    // der Stelle, an der frueher der Heissgas-Tag stand, bevor die
+    // Gas-Chips direkt auf die Leitungen wanderten.
+    svg.appendChild(chip(228, 147, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer'));
   }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
@@ -908,7 +915,10 @@ function buildSchema(unit) {
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    svg.appendChild(chip(473, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    // y=117 statt 114: gleicher Abstand (25) zum Vorlauf-Chip wie zwischen
+    // Vorlauf/ΔT/Ruecklauf untereinander - vorher 28 statt 25 (Dietmar,
+    // 14.08.2026).
+    svg.appendChild(chip(473, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   // Puffer jetzt wie der WW-Tank aufgebaut (Dietmar, 14.08.2026): eine
