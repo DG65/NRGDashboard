@@ -884,17 +884,17 @@ function buildSchema(unit) {
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(430, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    svg.appendChild(chip(448, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(430, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    svg.appendChild(chip(448, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(430, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    svg.appendChild(chip(448, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -902,7 +902,7 @@ function buildSchema(unit) {
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    svg.appendChild(chip(488, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    svg.appendChild(chip(448, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 142, 'r', SUPC)); }
