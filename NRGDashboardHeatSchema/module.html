@@ -583,13 +583,12 @@ function buildSchema(unit) {
   // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
   // Beschriftung oben, Kaltgas darunter mit Beschriftung unten.
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(chip(228, 147, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
+    svg.appendChild(chip(228, 170, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', null));
   }
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
   if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
-    svg.appendChild(chip(228, 215, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8',
-      cooling ? 'Verflüssiger' : 'Kaltgas', true));
+    svg.appendChild(chip(228, 192, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8', null));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -905,8 +904,6 @@ function buildSchema(unit) {
     svg.appendChild(chip(473, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 142, 'r', SUPC)); }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 192, 'l', RETC)); }
   // bewusst OHNE coil: die hydraulische Weiche hat keinen Waermetauscher
   tankShape(svg, 570, 117, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
