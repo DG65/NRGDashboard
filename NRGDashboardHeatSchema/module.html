@@ -185,7 +185,10 @@ function valveSymbol(x, y, r, color, tag, filled) {
     stroke: color || PAL.draw, 'stroke-width': 1.6, 'stroke-linejoin': 'round'
   }));
   if (tag) {
-    var t = el('text', { x: x, y: y + r + 14, class: 'tag', fill: color }); t.textContent = tag; g.appendChild(t);
+    // Ueber dem Ventil statt darunter (Dietmar, 16.08.2026): der Mischer
+    // hat inzwischen einen Ruecklauf-Bypass, der genau unter dem Symbol
+    // durchlaeuft und die Prozentangabe sonst ueberdeckt.
+    var t = el('text', { x: x, y: y - r - 8, class: 'tag', fill: color }); t.textContent = tag; g.appendChild(t);
   }
   return g;
 }
