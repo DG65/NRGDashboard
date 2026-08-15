@@ -882,9 +882,17 @@ function buildSchema(unit) {
   }));
   // Wanne: groesser und naeher ans Innengeraet gerueckt; steht mit ihren
   // Fuessen auf derselben Sohle wie das Innengeraet (360, Fuesse bis 366).
+  // Rechte Seite oben um ~20 Grad nach aussen geneigt (Dietmar,
+  // 15.08.2026): Wandhoehe 24 (350->326), tan(20 Grad)*24 ~ 9, also
+  // Neigepunkt bei x=579 statt 570.
   svg.appendChild(el('path', {
-    d: 'M435,326 L435,350 Q435,360 446,360 L559,360 Q570,360 570,350 L570,326',
+    d: 'M435,326 L435,350 Q435,360 446,360 L559,360 Q570,360 570,350 L579,326',
     fill: 'none', stroke: CW, 'stroke-width': 2.2, 'stroke-linejoin': 'round'
+  }));
+  // Oberer Wannenrand: leicht ueberstehende Lippe von der linken Wand bis
+  // zur geneigten rechten Wand.
+  svg.appendChild(el('path', {
+    d: 'M429,326 L585,326', fill: 'none', stroke: CW, 'stroke-width': 2.2, 'stroke-linecap': 'round'
   }));
   ['M448,360 l-3,6 h12 l-3,-6 Z', 'M555,360 l-3,6 h12 l-3,-6 Z'].forEach(function (fd) {
     svg.appendChild(el('path', { d: fd, fill: 'none', stroke: CW, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
