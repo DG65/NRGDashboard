@@ -159,9 +159,12 @@ function chip(x, y, text, unit, borderColor, tag, tagBelow) {
   }
   g.appendChild(t);
   if (tag) {
-    // tagBelow spiegelt die Beschriftung unter den Chip - gleicher
-    // Abstand wie oberhalb (Kaltgas-Gruppe, Dietmar 14.08.2026).
-    var tg = el('text', { x: x, y: tagBelow ? (y + h / 2 + 11) : (y - h / 2 - 4), class: 'chip-tag' });
+    // tagBelow spiegelt die Beschriftung unter den Chip - der Kommentar
+    // behauptete bereits "gleicher Abstand wie oberhalb", die Zahl war es
+    // aber nicht (11 statt 4) - Dietmar, 14.08.2026, fiel das am
+    // Verdampfer-Chip auf. Jetzt wirklich symmetrisch: h/2+4 auf beiden
+    // Seiten.
+    var tg = el('text', { x: x, y: tagBelow ? (y + h / 2 + 4) : (y - h / 2 - 4), class: 'chip-tag' });
     tg.textContent = tag;
     g.appendChild(tg);
   }
