@@ -231,10 +231,14 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
   var defs = svg.querySelector('defs') || svg.insertBefore(el('defs', {}), svg.firstChild);
   var n = ++tankGradSeq;
   var known = temp !== null && temp !== undefined;
+  // Fuellfarben ueberschreibbar: der Puffer (Sekundaerkreislauf im
+  // Betrieb) faerbt sich nach Vor-/Ruecklauffarbe statt nach der
+  // Temperaturskala - Rot oben/Blau unten im Heizbetrieb, kraeftiges
+  // Blau oben/schwaches Blau unten im Kuehlbetrieb (Dietmar, 14.08.2026).
   // Weiter gespreizt als zuvor (+/-14 K): das Referenzbild zeigt einen
   // deutlichen Verlauf von warm oben nach kalt unten, keine Toenung.
-  var topC = known ? tempColor(temp + 14) : '#3a4358';
-  var botC = known ? tempColor(temp - 14) : '#2a3348';
+  var topC = opts.topColor || (known ? tempColor(temp + 14) : '#3a4358');
+  var botC = opts.botColor || (known ? tempColor(temp - 14) : '#2a3348');
 
   var wgid = 'tw' + n;
   [[wgid, topC, botC]].forEach(function (spec) {
@@ -907,10 +911,52 @@ function buildSchema(unit) {
     svg.appendChild(chip(473, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  // bewusst OHNE coil: die hydraulische Weiche hat keinen Waermetauscher
-  tankShape(svg, 570, 117, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
+  // Puffer jetzt wie der WW-Tank aufgebaut (Dietmar, 14.08.2026): eine
+  // Wendel traegt den SEKUNDAERKREIS (Heizkreise), die Primaerseite
+  // (Innengeraet) ist die umgebende Fluessigkeit selbst - der Heizkreis
+  // ist damit "lediglich mit der umgebenden Fluessigkeit verbunden",
+  // genau wie das Warmwasser im WW-Tank nur ueber die Wendel angebunden
+  // ist, nicht direkt verrohrt. Linke Kante bleibt bei x=546 (Anschluss
+  // vom Innengeraet unveraendert), die Wendel-Stutzen liegen rechts oben.
+  var PUF_LEFT = 546, PUF_W = 56, PUF_CX = PUF_LEFT + PUF_W / 2, PUF_TOP = 117, PUF_H = 110;
+  var PUF_IN = PUF_LEFT + PUF_W - 14;
+  var pufPorts = tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
+    coil: true, inX: PUF_IN, topColor: SUPC, botColor: RETC
+  });
+  // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
+  // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
+  var pufTag = el('text', { x: PUF_CX, y: PUF_TOP + PUF_H + 14, class: 'tag' });
+  pufTag.textContent = 'Puffer 100 l';
+  svg.appendChild(pufTag);
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
     svg.appendChild(chip(570, 97, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+  }
+
+  // Sekundaerkreis (Heizkreise) durch die Wendel: Eintritt = Ruecklauf
+  // (kuehler, wird von der umgebenden Fluessigkeit erwaermt/gekuehlt),
+  // Austritt am Steigrohr = Vorlauf zu den Heizkreisen. Gradient von
+  // RETC (Eintritt) nach SUPC (Austritt) - spiegelbildlich zur WW-Tank-
+  // Wendel, wo das PRIMAERmedium eintritt und abkuehlt.
+  var PUF_SUP_X, PUF_RET_X;
+  if (pufPorts) {
+    PUF_SUP_X = pufPorts.riserX; PUF_RET_X = PUF_IN;
+    var pufCoilGid = 'pufcoil' + unit.id;
+    var pcg = el('linearGradient', {
+      id: pufCoilGid, gradientUnits: 'userSpaceOnUse',
+      x1: 0, y1: pufPorts.coilBot, x2: 0, y2: pufPorts.coilTop
+    });
+    var pcs0 = el('stop', { offset: '0%' }); pcs0.setAttribute('stop-color', RETC);
+    var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', SUPC);
+    pcg.appendChild(pcs0); pcg.appendChild(pcs1);
+    var pcdefs = el('defs', {}); pcdefs.appendChild(pcg); svg.appendChild(pcdefs);
+    // zones[] existiert an dieser Stelle noch nicht (wird erst weiter
+    // unten aufgebaut) - pumpOn (Zone 1) ist zu diesem Zeitpunkt bereits
+    // bekannt und reicht als Naeherung, ob durch die Wendel Umlauf ist.
+    var pufOn = pumpOn;
+    svg.appendChild(pipe(pufPorts.coilPath, 'pipe-cold', pufOn, 'url(#' + pufCoilGid + ')', 4));
+    svg.appendChild(pipe(pufPorts.risePath, 'pipe-hot', pufOn, null, 4));
+  } else {
+    PUF_SUP_X = PUF_LEFT + PUF_W - 28; PUF_RET_X = PUF_IN;
   }
   // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
@@ -941,15 +987,23 @@ function buildSchema(unit) {
     });
   }
 
-  // Sammelleitungen: beide Kreise haengen an derselben Sekundaerseite des
-  // Puffers - Vorlauf faellt bei x=606 ab, Ruecklauf sammelt bei x=628.
+  // Sammelleitungen haengen jetzt an den WENDEL-Stutzen oben am Puffer
+  // (PUF_SUP_X/PUF_RET_X, y=pufPorts.topY) statt an dessen Seitenwand -
+  // der Puffer ist kein reiner Durchgangs-Vierwegeverteiler mehr, siehe
+  // Umbau oben (Dietmar, 14.08.2026). Vorlauf zweigt bei x=636 fuer
+  // Zone 2 ab, Ruecklauf sammelt bei x=628.
+  var PUF_TOPY = pufPorts ? pufPorts.topY : PUF_TOP - 3;
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(pipe('M606,142 L606,322 L636,322', SUP, zones[1].pumpOn));
+    // Abzweig jetzt bei x=636 statt 606: die Hauptleitung beruehrt y=142
+    // nur noch genau dort (der neue Weg fuehrt oben um den Puffer herum),
+    // ein Abzweig bei 606 haette keinen Anschluss mehr gehabt.
+    svg.appendChild(pipe('M636,142 L636,322', SUP, zones[1].pumpOn));
     svg.appendChild(pipe('M628,422 L628,237', RET, zones[1].pumpOn));
   }
-  svg.appendChild(pipe('M594,142 L636,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  svg.appendChild(pipe('M628,237 L616,237 L616,192 L594,192', RET, anyOn));
+  svg.appendChild(pipe('M' + PUF_SUP_X + ',' + PUF_TOPY + ' L636,' + PUF_TOPY + ' L636,142',
+    SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M628,237 L616,237 L616,' + PUF_TOPY + ' L' + PUF_RET_X + ',' + PUF_TOPY, RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
