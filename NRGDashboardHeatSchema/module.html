@@ -599,7 +599,12 @@ function buildSchema(unit) {
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
   if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
-    drawValve(chip(228, 192, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8', null));
+    // Rahmenfarbe fest wie die Leitung selbst (pipe-refr-cold, #6e9ab8) -
+    // die Leitung wechselt NIE die Farbe mit der Betriebsart (nur ihre
+    // Beschriftung tut das: Kaltgas/Verfluessiger). Der Rahmen wechselte
+    // bisher faelschlich auf Amber im Kuehlbetrieb, obwohl die Leitung
+    // darunter unveraendert blau blieb (Dietmar, 14.08.2026).
+    drawValve(chip(228, 192, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', null));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -698,8 +703,14 @@ function buildSchema(unit) {
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
     // Ueber den Gasleitungen statt darunter (Dietmar, 14.08.2026) - an
     // der Stelle, an der frueher der Heissgas-Tag stand, bevor die
-    // Gas-Chips direkt auf die Leitungen wanderten.
-    svg.appendChild(chip(228, 147, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer'));
+    // Gas-Chips direkt auf die Leitungen wanderten. Abstand zum
+    // darunterliegenden Chip (Heissgas, y=170) auf 25 gesetzt - genau
+    // wie beim Kaelteleistung-Chip zu seinem darunterliegenden Chip
+    // (Vorlauf, y=142: 142-117=25). 170-25=145.
+    // Rahmenfarbe wie die Kaeltemittelleitung (#6e9ab8, pipe-refr-cold),
+    // nicht das Wasser-Blau (COLD) - der Verdampfer misst die
+    // Kaeltemittelseite, keine Wasserleitung (Dietmar, 14.08.2026).
+    svg.appendChild(chip(228, 145, fmtTemp1(unit.indoorPipeTemp), '°C', '#6e9ab8', 'Verdampfer'));
   }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
