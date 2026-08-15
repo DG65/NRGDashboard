@@ -703,7 +703,7 @@ function buildSchema(unit) {
   // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
   // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
   svg.appendChild(pipe('M268,170 L324,170', SUP, waterFlow));
-  svg.appendChild(pipe('M324,170 L324,120 L350,120', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M324,170 L324,142 L350,142', SUP, waterFlow && toRoom));
 
   // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
   // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
@@ -736,7 +736,10 @@ function buildSchema(unit) {
   // 310..324 lagen Vor- und Ruecklauf dadurch beide auf y=170 uebereinander
   // (Dietmar, 14.08.2026: "den Ruecklauf auf Hoehe des Vorlaufes
   // gezeichnet" - zutreffend, echter Ueberlappungsfehler).
-  svg.appendChild(pipe('M333,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  // Der toRoom-Abschnitt (Puffer -> Einmuendung) wird jetzt AUSSEN
+  // gezeichnet (ein einziges gerades Stueck von 546 bis DHW_RISE, siehe
+  // Sekundaerkreis-Abschnitt) - hier bleibt nur der IMMER fliessende Teil
+  // von der Einmuendung zum Waermetauscher.
   svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
   // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
@@ -867,30 +870,31 @@ function buildSchema(unit) {
   // kreis folgt dann ersatzweise dem Wasserumlauf des Primaerkreises.
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
-  svg.appendChild(pipe('M350,120 L546,120', SUP, waterFlow && toRoom));
-  // Der Ruecklauf liegt AUSSERHALB des Innengeraets auf y=170 (Abstand
-  // 50 zur Vorlaufhoehe 120, wie auf der Puffer-Sekundaerseite), INNEN
-  // aber auf y=192 (Abstand 22 zur internen Vorlaufhoehe 170 - dort ist
-  // der Platz durch WT/Pumpe/Ventil begrenzt). Ohne Verbindungsstueck
-  // klaffte an der Geraetekante (x=350) eine Luecke zwischen beiden Hoehen
-  // - genau das hatte Dietmar am 14.08.2026 bemerkt. Der Versatz wird
-  // jetzt als sichtbarer Knick IM Rueck-lauf selbst gezeichnet, statt
-  // eine Ebene stillschweigend zu wechseln.
-  svg.appendChild(pipe('M546,170 L333,170 L333,192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M350,142 L546,142', SUP, waterFlow && toRoom));
+  // Ruecklauf jetzt KNICKFREI: der Puffer-Bereich liegt komplett 22
+  // Einheiten tiefer (Dietmar, 14.08.2026 - er hatte selbst nachgefragt,
+  // wie hoch der Knick ist, und dann genau diesen Wert als Versatz
+  // vorgeschlagen). Aussen y=192 trifft jetzt exakt die interne
+  // Ruecklaufhoehe (ebenfalls 192) - keine Ebene, kein Knick mehr.
+  // Ruecklauf jetzt EIN gerades Stueck von Puffer bis zur WW-Einmuendung
+  // (DHW_RISE) - fliesst nur im Raumheizbetrieb, wie zuvor; der Abschnitt
+  // von dort zum Waermetauscher (immer aktiv) steht schon im Innengeraet-
+  // Abschnitt weiter oben.
+  svg.appendChild(pipe('M546,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(430, 120, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    svg.appendChild(chip(430, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(430, 170, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    svg.appendChild(chip(430, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(430, 145, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    svg.appendChild(chip(430, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -898,15 +902,15 @@ function buildSchema(unit) {
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    svg.appendChild(chip(488, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    svg.appendChild(chip(488, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 120, 'r', SUPC)); }
-  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 170, 'l', RETC)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 142, 'r', SUPC)); }
+  if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 192, 'l', RETC)); }
   // bewusst OHNE coil: die hydraulische Weiche hat keinen Waermetauscher
-  tankShape(svg, 570, 95, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
+  tankShape(svg, 570, 117, 48, 100, unit.bufferTemp, 'Puffer', '100 l');
   if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(chip(570, 75, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    svg.appendChild(chip(570, 97, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
   }
   // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
   // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
@@ -923,14 +927,14 @@ function buildSchema(unit) {
     || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
 
   var zones = [{
-    n: 1, y: 120, boxY: 85, retY: 215, temp: unit.z1WaterTemp,
+    n: 1, y: 142, boxY: 107, retY: 237, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos
   }];
   if (hasZone2) {
     var p2Known = unit.z2Pump !== null && unit.z2Pump !== undefined;
     zones.push({
-      n: 2, y: 300, boxY: 265, retY: 400, temp: unit.z2WaterTemp,
+      n: 2, y: 322, boxY: 287, retY: 422, temp: unit.z2WaterTemp,
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos
@@ -941,11 +945,11 @@ function buildSchema(unit) {
   // Puffers - Vorlauf faellt bei x=606 ab, Ruecklauf sammelt bei x=628.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(pipe('M606,120 L606,300 L636,300', SUP, zones[1].pumpOn));
-    svg.appendChild(pipe('M628,400 L628,215', RET, zones[1].pumpOn));
+    svg.appendChild(pipe('M606,142 L606,322 L636,322', SUP, zones[1].pumpOn));
+    svg.appendChild(pipe('M628,422 L628,237', RET, zones[1].pumpOn));
   }
-  svg.appendChild(pipe('M594,120 L636,120', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  svg.appendChild(pipe('M628,215 L616,215 L616,170 L594,170', RET, anyOn));
+  svg.appendChild(pipe('M594,142 L636,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M628,237 L616,237 L616,192 L594,192', RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
