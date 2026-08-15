@@ -583,12 +583,12 @@ function buildSchema(unit) {
   // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
   // Beschriftung oben, Kaltgas darunter mit Beschriftung unten.
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    svg.appendChild(chip(203, 147, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
+    svg.appendChild(chip(228, 147, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', 'Heissgas'));
   }
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
   if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) {
-    svg.appendChild(chip(203, 215, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8',
+    svg.appendChild(chip(228, 215, fmtTemp1(unit.suctionTemp), '°C', cooling ? '#d98a3c' : '#6e9ab8',
       cooling ? 'Verflüssiger' : 'Kaltgas', true));
   }
 
@@ -601,7 +601,7 @@ function buildSchema(unit) {
   // zum Heizkreis), die externe Pumpe (H14) sitzt sekundaerseitig NACH
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
-  var it = el('text', { x: 295, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
   // Betriebsart sichtbar machen - ohne sie sind Vor-/Ruecklauffarben und
   // die Kaeltemittel-Beschriftung nicht eindeutig lesbar. Sie gilt fuer
   // die GANZE Anlage und sitzt deshalb linksbuendig als Kopfzeile am
@@ -617,12 +617,12 @@ function buildSchema(unit) {
   // mit derselben Formel vorausberechnen und den Mittelpunkt versetzen.
   var modeW = Math.max(44, modeText.length * 6.8 + 14);
   svg.appendChild(chip(35 + modeW / 2, 44, modeText, null, modeColor, 'Betriebszustand'));
-  indoorUnit(svg, 240, 90, 110, 270);
+  indoorUnit(svg, 290, 90, 110, 270);
 
   // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
   // WT-Kante (x=252) laufen statt vom Gehaeuse verdeckt zu werden.
-  svg.appendChild(refrigerantLine('M165,170 L252,170', running, true));
-  svg.appendChild(refrigerantLine('M252,192 L165,192', running, false));
+  svg.appendChild(refrigerantLine('M165,170 L302,170', running, true));
+  svg.appendChild(refrigerantLine('M302,192 L165,192', running, false));
 
   // Innenleben sichtbar (Dietmar, 14.08.2026): Waermetauscher an den
   // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
@@ -656,14 +656,14 @@ function buildSchema(unit) {
     return lg;
   }
   if (running) {
-    var hxGlow = el('circle', { cx: 260, cy: 181, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
+    var hxGlow = el('circle', { cx: 310, cy: 181, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
     svg.appendChild(hxGlow);
   }
   // WT symmetrisch ueber beiden Anschlussebenen: Leitungen bei y=170
   // (heiss) und y=192 (kalt), Mitte 181 - Rechteck 155..207 hat oben wie
   // unten 15px Abstand zur jeweiligen Leitung (Dietmar, 14.08.2026).
-  svg.appendChild(el('rect', { x: 252, y: 155, width: 16, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
+  svg.appendChild(el('rect', { x: 302, y: 155, width: 16, height: 52, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
   var gasGradId = 'hxgas' + unit.id, watGradId = 'hxwat' + unit.id;
   var hxDefs = el('defs', {});
   // Im Kuehlbetrieb verdampft das Kaeltemittel HIER (durchgehend kalt) und
@@ -676,17 +676,17 @@ function buildSchema(unit) {
     ? coilGradient(watGradId, '#4a90d9', '#7d9dc4')
     : coilGradient(watGradId, '#e0503c', '#4a90d9'));
   svg.appendChild(hxDefs);
-  svg.appendChild(el('path', { d: coilPath(257, 159, 203, 3, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
-  svg.appendChild(el('path', { d: coilPath(263, 159, 203, -3, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
+  svg.appendChild(el('path', { d: coilPath(307, 159, 203, 3, 5), fill: 'none', stroke: 'url(#' + gasGradId + ')', 'stroke-width': 1.8 }));
+  svg.appendChild(el('path', { d: coilPath(313, 159, 203, -3, 5), fill: 'none', stroke: 'url(#' + watGradId + ')', 'stroke-width': 1.8 }));
   // Nach links gerueckt: die WW-Ruecklaufleitung steigt bei x=276 auf und
   // schnitt die mittige Beschriftung an (14.08.2026).
   // Ueber dem Waermetauscher statt darunter - so hat Dietmar es in seine
   // Zeichnung verschoben (14.08.2026); unten liegt jetzt der Speicher.
-  var hxTag = el('text', { x: 260, y: 150, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  var hxTag = el('text', { x: 310, y: 150, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
   // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
   // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
-    svg.appendChild(chip(203, 258, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer', true));
+    svg.appendChild(chip(228, 258, fmtTemp1(unit.indoorPipeTemp), '°C', COLD, 'Verdampfer', true));
   }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
@@ -702,26 +702,26 @@ function buildSchema(unit) {
   // die Flussanimation nicht an ihnen abbricht - die Ventilsymbole liegen
   // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
   // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
-  svg.appendChild(pipe('M268,170 L324,170', SUP, waterFlow));
-  svg.appendChild(pipe('M324,170 L324,142 L350,142', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M318,170 L374,170', SUP, waterFlow));
+  svg.appendChild(pipe('M374,170 L374,142 L400,142', SUP, waterFlow && toRoom));
 
   // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
   // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
   // leitungen gezeichnet, damit deren Endpunkte aus den zurueck-
   // gegebenen Stutzen stammen statt geraten zu werden.
-  var DHW_IN = 324;
-  var dhwPorts = tankShape(svg, 295, 226, 86, 116, unit.dhwTemp, 'WW-Tank', '185 l',
+  var DHW_IN = 374;
+  var dhwPorts = tankShape(svg, 345, 226, 86, 116, unit.dhwTemp, 'WW-Tank', '185 l',
     { coil: true, inX: DHW_IN });
   // Speicherbezeichnung in den Sockel des Innengeraets (Gehaeuse bis 360,
   // Sockelstrich bei 346) statt auf die von der Wendel gefuellte
   // Speicherflaeche.
-  var dhwTag = el('text', { x: 295, y: 356, class: 'chip-text' });
+  var dhwTag = el('text', { x: 345, y: 356, class: 'chip-text' });
   dhwTag.style.fontSize = '8.5px';
   dhwTag.textContent = 'WW-Tank 185 l';
   svg.appendChild(dhwTag);
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
   // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
-  var DHW_RISE = dhwPorts ? dhwPorts.riserX : 296;
+  var DHW_RISE = dhwPorts ? dhwPorts.riserX : 346;
   // Ruecklauf in ZWEI Abschnitte geteilt (Dietmar, 14.08.2026): vorher war
   // es eine durchgehende Leitung, die immer floss - dadurch kam bei
   // Warmwasserbereitung scheinbar auch Wasser aus dem Heizkreis zurueck.
@@ -740,7 +740,7 @@ function buildSchema(unit) {
   // gezeichnet (ein einziges gerades Stueck von 546 bis DHW_RISE, siehe
   // Sekundaerkreis-Abschnitt) - hier bleibt nur der IMMER fliessende Teil
   // von der Einmuendung zum Waermetauscher.
-  svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
+  svg.appendChild(pipe('M' + DHW_RISE + ',192 L318,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
   // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
   // auf den Ruecklauf trifft (DHW_RISE, 192) - dort, wo Dietmar es haben
@@ -748,7 +748,7 @@ function buildSchema(unit) {
   // Heizkreis-Ruecklauf, dann knapp darunter auf der Steigleitung; beides
   // war nicht der T-Punkt selbst.
   drawValve(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
-  drawValve(valve3(324, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
+  drawValve(valve3(374, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
   if (dhwPorts) {
     var dhwOn = waterFlow && toDhw;
     // Zulauf faellt vom 3-Wege-Ventil senkrecht in den Speicher.
@@ -803,14 +803,14 @@ function buildSchema(unit) {
   idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
   idRows.forEach(function (row, ri) {
     var ry = 385 + ri * 15;
-    var lbl = el('text', { x: 240, y: ry, class: 'tag' });
+    var lbl = el('text', { x: 290, y: ry, class: 'tag' });
     lbl.style.textAnchor = 'start';
     lbl.style.fontSize = '7.5px';
     lbl.textContent = row[0];
     svg.appendChild(lbl);
     // Schrift klein genug, dass Label+Wert zusammen die Geraetebreite
-    // (240..350) nicht ueberschreiten (Dietmar, 14.08.2026).
-    var val = el('text', { x: 350, y: ry, class: 'chip-text' });
+    // (290..400) nicht ueberschreiten (Dietmar, 14.08.2026).
+    var val = el('text', { x: 400, y: ry, class: 'chip-text' });
     val.style.textAnchor = 'end';
     val.style.fontSize = '10.5px';
     val.textContent = row[1];
@@ -824,42 +824,42 @@ function buildSchema(unit) {
   // Innere des Speichers, Warmwasser geht oben ab zu Badewanne und
   // Dusche rechts neben dem Innengeraet (Dietmar, 14.08.2026).
   var CW = '#7cc4ee', HW = '#e58c7a';
-  svg.appendChild(el('path', { d: 'M158,331 L270,331', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  svg.appendChild(el('path', { d: 'M158,331 L320,331', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
   var cwTag = el('text', { x: 186, y: 323, class: 'tag' }); cwTag.textContent = 'Kaltwasser'; svg.appendChild(cwTag);
 
   // Warmwasser oben aus dem Speicher heraus zum Bad. Zwei Abgaenge:
   // links der Wanneneinlauf, rechts die Brause (Dietmar, 14.08.2026).
-  svg.appendChild(el('path', { d: 'M338,244 L480,244', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
-  var hwTag = el('text', { x: 392, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
+  svg.appendChild(el('path', { d: 'M388,244 L530,244', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  var hwTag = el('text', { x: 442, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
   // Wanneneinlauf: Fallrohr mit abgewinkeltem Auslauf ueber dem Wannenrand
   svg.appendChild(el('path', {
-    d: 'M400,244 L400,312 Q400,321 409,321',
+    d: 'M450,244 L450,312 Q450,321 459,321',
     fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round'
   }));
   // Brause: hoeher gehaengt, Strahlen enden deutlich ueber dem Wannenrand
   // Brausekopf dicht unter die Warmwasserleitung gehaengt (Dietmar,
   // 14.08.2026 - zweimal hoeher gerueckt); die Strahlen reichen dafuer
   // laenger hinunter, damit der Abstand zum Wannenrand gefuellt bleibt.
-  svg.appendChild(el('path', { d: 'M480,244 L480,256', fill: 'none', stroke: HW, 'stroke-width': 3 }));
-  svg.appendChild(el('path', { d: 'M466,258 L494,258', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
+  svg.appendChild(el('path', { d: 'M530,244 L530,256', fill: 'none', stroke: HW, 'stroke-width': 3 }));
+  svg.appendChild(el('path', { d: 'M516,258 L544,258', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
   // Strahlen gepunktet als Wassertropfen (Dietmar, 14.08.2026). Bewusst
   // NICHT animiert - wie die uebrige Sanitaerseite, denn ob gezapft wird,
   // ist nicht messbar.
   svg.appendChild(el('path', {
-    d: 'M471,262 L466,300 M480,262 L480,306 M489,262 L494,300',
+    d: 'M521,262 L516,300 M530,262 L530,306 M539,262 L544,300',
     fill: 'none', stroke: CW, 'stroke-width': 2,
     'stroke-linecap': 'round', 'stroke-dasharray': '0.1 6'
   }));
   // Wanne: groesser und naeher ans Innengeraet gerueckt; steht mit ihren
   // Fuessen auf derselben Sohle wie das Innengeraet (360, Fuesse bis 366).
   svg.appendChild(el('path', {
-    d: 'M385,326 L385,350 Q385,360 396,360 L509,360 Q520,360 520,350 L520,326',
+    d: 'M435,326 L435,350 Q435,360 446,360 L559,360 Q570,360 570,350 L570,326',
     fill: 'none', stroke: CW, 'stroke-width': 2.2, 'stroke-linejoin': 'round'
   }));
-  ['M398,360 l-3,6 h12 l-3,-6 Z', 'M505,360 l-3,6 h12 l-3,-6 Z'].forEach(function (fd) {
+  ['M448,360 l-3,6 h12 l-3,-6 Z', 'M555,360 l-3,6 h12 l-3,-6 Z'].forEach(function (fd) {
     svg.appendChild(el('path', { d: fd, fill: 'none', stroke: CW, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
   });
-  var bTag = el('text', { x: 452, y: 380, class: 'tag' }); bTag.textContent = 'Dusche + Badewanne'; svg.appendChild(bTag);
+  var bTag = el('text', { x: 502, y: 380, class: 'tag' }); bTag.textContent = 'Dusche + Badewanne'; svg.appendChild(bTag);
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
   // Primaerseite links (Innengeraet), Sekundaerseite rechts (Heizkreis).
@@ -870,7 +870,7 @@ function buildSchema(unit) {
   // kreis folgt dann ersatzweise dem Wasserumlauf des Primaerkreises.
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
-  svg.appendChild(pipe('M350,142 L546,142', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M400,142 L546,142', SUP, waterFlow && toRoom));
   // Ruecklauf jetzt KNICKFREI: der Puffer-Bereich liegt komplett 22
   // Einheiten tiefer (Dietmar, 14.08.2026 - er hatte selbst nachgefragt,
   // wie hoch der Knick ist, und dann genau diesen Wert als Versatz
@@ -884,17 +884,17 @@ function buildSchema(unit) {
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(448, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    svg.appendChild(chip(473, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(448, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    svg.appendChild(chip(473, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(448, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    svg.appendChild(chip(473, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -902,7 +902,7 @@ function buildSchema(unit) {
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    svg.appendChild(chip(448, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    svg.appendChild(chip(473, 114, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   if (waterFlow && toRoom) { svg.appendChild(arrowHead(495, 142, 'r', SUPC)); }
