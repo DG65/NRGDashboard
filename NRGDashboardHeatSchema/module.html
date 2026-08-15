@@ -1088,7 +1088,13 @@ function buildSchema(unit) {
     svg.appendChild(pipe('M678,422 L678,237', RET, zones[1].pumpOn));
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L686,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  svg.appendChild(pipe('M678,237 L616,237 L616,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  // Der Ruecklauf-Sammler bog bisher direkt AN der Tankwand (x=616=
+  // PUF_RIGHT) nach oben ab und lief dadurch 45px lang parallel zur
+  // Wandkontur, statt sauber an einem Punkt anzuschliessen (Dietmar,
+  // 16.08.2026: "wie der Ruecklauf des HK1 auf den Puffer stoesst").
+  // Der Knick liegt jetzt 24px VOR der Wand, danach nur noch ein kurzes
+  // waagerechtes Anschlussstueck.
+  svg.appendChild(pipe('M678,237 L' + (PUF_RIGHT + 24) + ',237 L' + (PUF_RIGHT + 24) + ',192 L' + PUF_RIGHT + ',192', RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
