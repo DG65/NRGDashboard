@@ -1113,6 +1113,13 @@ function buildSchema(unit) {
     // darueber, statt dass die Leitung an ihnen aufhoert (Dietmar,
     // 16.08.2026).
     svg.appendChild(pipe('M686,' + z.y + ' L840,' + z.y, SUP, on));
+    // Bypass: der Mischer ist ein ECHTER Mischerkreis, kein reines
+    // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
+    // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
+    // Vorlauftemperatur fuer den Kreis abzusenken. Zapfstelle direkt bei
+    // x=700 auf der Ruecklaufleitung (liegt zwischen 678 und 840 auf
+    // deren Weg zum Puffer), senkrecht hoch bis zum Mischer.
+    svg.appendChild(pipe('M700,' + z.retY + ' L700,' + z.y, RET, on));
     // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
     if (z.mvPos !== null && z.mvPos !== undefined) {
       drawValve(valveSymbol(700, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
