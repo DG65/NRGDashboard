@@ -290,6 +290,16 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     // Windungen hinein als vorher (Dietmar, 14.08.2026).
     var segs = Math.max(5, Math.round((cBot - cTop) / 8.5) | 1);
     var step = (cBot - cTop) / segs;
+    // Enger Rundungsradius fuer die beiden Uebergaenge zwischen dem
+    // geraden Rohrstueck und der Wendel (Dietmar, 15.08.2026) - oben beim
+    // Eintritt, unten beim Uebergang ins Steigrohr. Die Zacken der Wendel
+    // selbst bleiben scharf, nur diese zwei Stellen werden verrundet.
+    var bendR = 3;
+    // Oben: vom senkrechten Zulaufstueck (Richtung 0,1) in das erste
+    // Wendelsegment (Richtung cl-cIn, step) - Rundung als Quadratbezier
+    // mit der Ecke selbst als Kontrollpunkt.
+    var d1x = cl - cIn, d1y = step, l1 = Math.sqrt(d1x * d1x + d1y * d1y);
+    var topBendEndX = cIn + bendR * d1x / l1, topBendEndY = cTop + bendR * d1y / l1;
     // Die Wendel wird in ZWEI Gruppen aufgeteilt statt als ein einziger
     // Pfad (Dietmar, 15.08.2026: der Uebergang in das senkrechte Steig-
     // rohr sah unschoen aus, weil die Wendel immer HINTER dem Rohr lag).
@@ -297,9 +307,10 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     // dem Steigrohr gezeichnet (also davor gerendert) - wie bei einer
     // echten gewickelten Leitung, die abwechselnd vor und hinter dem
     // geraden Rohr durchtaucht. Die Gegenrichtung bleibt dahinter.
-    var backD = 'M' + cIn + ',' + (top - 3) + ' L' + cIn + ',' + cTop;
+    var backD = 'M' + cIn + ',' + (top - 3) + ' L' + cIn + ',' + (cTop - bendR) +
+      ' Q' + cIn + ',' + cTop + ' ' + topBendEndX + ',' + topBendEndY;
     var frontD = '';
-    var px = cIn, py = cTop;
+    var px = topBendEndX, py = topBendEndY;
     for (var i = 1; i <= segs; i++) {
       var nx = (i % 2 === 1 ? cl : cIn), ny = cTop + i * step;
       var seg = 'M' + px + ',' + py + ' L' + nx + ',' + ny;
@@ -317,14 +328,20 @@ function tankShape(svg, x, y, w, h, temp, label, liters, opts) {
     // separaten Ablaufrohr. Laeuft von links nach rechts (nx > px), bleibt
     // also in der "back"-Gruppe.
     var cEnd2 = cEnd + step * (cRise - cl) / (cIn - cl);
-    backD += ' M' + px + ',' + py + ' L' + cRise + ',' + cEnd2;
+    // Unten: von der letzten Wendelrichtung (px,py -> cRise,cEnd2) glatt in
+    // das senkrechte Steigrohr (Richtung 0,-1) - gleiche Rundungstechnik.
+    var d2x = cRise - px, d2y = cEnd2 - py, l2 = Math.sqrt(d2x * d2x + d2y * d2y);
+    var botBendStartX = cRise - bendR * d2x / l2, botBendStartY = cEnd2 - bendR * d2y / l2;
+    var botBendEndY = cEnd2 - bendR;
+    backD += ' M' + px + ',' + py + ' L' + botBendStartX + ',' + botBendStartY +
+      ' Q' + cRise + ',' + cEnd2 + ' ' + cRise + ',' + botBendEndY;
     ports = {
       coilPathBack: backD,
       coilPathFront: frontD,
       // Ablauf jetzt ein reines Steigrohr, verlaengert bis zum neuen
       // untersten Punkt der Wendel (cRise, cEnd2) - kein eigener Knick
       // mehr, der faelschlich wie ein zusaetzliches Wendelstueck aussah.
-      risePath: 'M' + cRise + ',' + cEnd2 + ' L' + cRise + ',' + (top - 3),
+      risePath: 'M' + cRise + ',' + botBendEndY + ' L' + cRise + ',' + (top - 3),
       coilTop: cTop, coilBot: cEnd2, topY: top - 3, riserX: cRise,
       // Alternative zum Ablauf oben: die Wendel endet unten mittig (cRise,
       // cEnd2) - wer den Ablauf lieber dort direkt nach AUSSEN fuehrt
