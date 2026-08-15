@@ -911,10 +911,19 @@ function buildSchema(unit) {
   var PUF_LEFT = 546, PUF_W = 70, PUF_RIGHT = PUF_LEFT + PUF_W;
   var PUF_TOP = 125, PUF_H = 85, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
   // Zwei feste innere x-Positionen, an denen die Wendel abwechselnd
-  // "andockt"; 5 Segmente zwischen 142 und 192 ergeben eine klare,
-  // grosszuegige Zickzack-Form.
-  var PUF_ZIG_R = PUF_RIGHT - 14, PUF_ZIG_L = PUF_LEFT + 14;
-  var pufZigSteps = 5, pufZigStep = (192 - 142) / pufZigSteps;
+  // "andockt". GERADE Segmentzahl (6) ist entscheidend: die Wendel muss
+  // an BEIDEN Enden links an der Wand anschliessen (Vorlauf UND
+  // Ruecklauf des Primaerkreises), mit genau 3 Zacken rechts dazwischen
+  // (Dietmar, 14.08.2026, nach Referenzbild). Bei einer ungeraden
+  // Segmentzahl (vorher 5) endete der Pfad rechts statt wieder links -
+  // dadurch war die Wendel nicht mehr mit dem Ruecklauf verbunden.
+  // PUF_ZIG_L = die Wand selbst (546), NICHT ein eingerueckter Punkt -
+  // "an der linken Seite angeschlossen" heisst die Wendel LAEUFT an der
+  // Wand entlang und wirft nur nach rechts Zacken, statt innen zu
+  // schweben (Dietmar, 14.08.2026 - der letzte Punkt lag bei 560 statt
+  // 546 und haengte damit den Ruecklauf-Anschluss in der Luft auf).
+  var PUF_ZIG_R = PUF_RIGHT - 14, PUF_ZIG_L = PUF_LEFT;
+  var pufZigSteps = 6, pufZigStep = (192 - 142) / pufZigSteps;
   var pufCoilD = 'M546,142';
   for (var pzi = 1; pzi <= pufZigSteps; pzi++) {
     pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (142 + pzi * pufZigStep);
