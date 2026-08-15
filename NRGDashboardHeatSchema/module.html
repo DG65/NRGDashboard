@@ -1136,8 +1136,16 @@ function buildSchema(unit) {
       svg.appendChild(chip(930, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
-    // Ruecklauf des Kreises hinunter auf die Sammelleitung
-    svg.appendChild(pipe('M930,' + (z.boxY + 100) + ' L930,' + z.retY + ' L678,' + z.retY, RET, on));
+    // Ruecklauf des Kreises: bisher unten aus einem beliebigen Punkt
+    // MITTEN im Kasten (x=930, geteilt mit dem Temperatur-Chip) heraus,
+    // dadurch wirkte die Leitung wie eine einzige Gerade Richtung Puffer,
+    // die seitlich auf den Kasten trifft (Dietmar, 16.08.2026 - fuer HK1
+    // UND HK2). Jetzt verlaesst er den Kasten sauber an der LINKEN Seite
+    // (wie schon der Vorlauf), unterhalb von dessen Anschlusshoehe, mit
+    // Abstand zur Kastenwand statt daran entlangzulaufen.
+    var retExitY = z.boxY + 75, retElbowX = 840 - 24;
+    svg.appendChild(pipe('M840,' + retExitY + ' L' + retElbowX + ',' + retExitY +
+      ' L' + retElbowX + ',' + z.retY + ' L678,' + z.retY, RET, on));
     if (on) { svg.appendChild(arrowHead(800, z.retY, 'l', RETC)); }
   });
 
