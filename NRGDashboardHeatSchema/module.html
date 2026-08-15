@@ -861,7 +861,15 @@ function buildSchema(unit) {
   var pumpKnown = unit.extPump !== null && unit.extPump !== undefined;
   var pumpOn = pumpKnown ? !!unit.extPump : (waterFlow && toRoom);
   svg.appendChild(pipe('M350,120 L546,120', SUP, waterFlow && toRoom));
-  svg.appendChild(pipe('M546,170 L350,170', RET, waterFlow && toRoom));
+  // Der Ruecklauf liegt AUSSERHALB des Innengeraets auf y=170 (Abstand
+  // 50 zur Vorlaufhoehe 120, wie auf der Puffer-Sekundaerseite), INNEN
+  // aber auf y=192 (Abstand 22 zur internen Vorlaufhoehe 170 - dort ist
+  // der Platz durch WT/Pumpe/Ventil begrenzt). Ohne Verbindungsstueck
+  // klaffte an der Geraetekante (x=350) eine Luecke zwischen beiden Hoehen
+  // - genau das hatte Dietmar am 14.08.2026 bemerkt. Der Versatz wird
+  // jetzt als sichtbarer Knick IM Rueck-lauf selbst gezeichnet, statt
+  // eine Ebene stillschweigend zu wechseln.
+  svg.appendChild(pipe('M546,170 L350,170 L350,192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
