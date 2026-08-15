@@ -729,14 +729,14 @@ function buildSchema(unit) {
   // Raumheizbetrieb (das 2-Wege-Ventil sperrt den Heizkreis waehrend der
   // Warmwasserbereitung ab); der Abschnitt von der Einmuendung zum
   // Waermetauscher fuehrt beide Zweige und fliesst deshalb immer.
-  // Der Ebenenwechsel (170 -> 192) sitzt bei x=310, direkt neben der
-  // Pumpe/dem 2-Wege-Ventil - NICHT erst kurz vor der Geraetekante wie im
-  // ersten Anlauf (x=338, nur 12px Abstand). Der Vorlauf macht es genauso:
-  // sein Sprung liegt bei x=324 am 3-Wege-Ventil, 26px von der Kante
-  // entfernt, danach eine lange gerade Strecke. Dietmars Referenzbild
-  // (14.08.2026, handmanipuliert) zeigt denselben Grundsatz fuer den
-  // Ruecklauf - der Knick gehoert zum Bauteil-Cluster, nicht zur Kante.
-  svg.appendChild(pipe('M310,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  // Der Ebenenwechsel (170 -> 192) sitzt bei x=333: knapp rechts vom
+  // 3-Wege-Ventil (x=324, Bauteilbreite bis ~330) und damit so nah wie
+  // moeglich am Cluster, OHNE den Vorlauf zu ueberlappen. x=310 (voriger
+  // Versuch) lag LINKS vom Vorlauf-Endpunkt bei x=324 - im Bereich
+  // 310..324 lagen Vor- und Ruecklauf dadurch beide auf y=170 uebereinander
+  // (Dietmar, 14.08.2026: "den Ruecklauf auf Hoehe des Vorlaufes
+  // gezeichnet" - zutreffend, echter Ueberlappungsfehler).
+  svg.appendChild(pipe('M333,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
   // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
@@ -876,7 +876,7 @@ function buildSchema(unit) {
   // - genau das hatte Dietmar am 14.08.2026 bemerkt. Der Versatz wird
   // jetzt als sichtbarer Knick IM Rueck-lauf selbst gezeichnet, statt
   // eine Ebene stillschweigend zu wechseln.
-  svg.appendChild(pipe('M546,170 L310,170 L310,192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M546,170 L333,170 L333,192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
