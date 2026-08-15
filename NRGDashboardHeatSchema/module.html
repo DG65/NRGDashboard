@@ -729,15 +729,14 @@ function buildSchema(unit) {
   // Raumheizbetrieb (das 2-Wege-Ventil sperrt den Heizkreis waehrend der
   // Warmwasserbereitung ab); der Abschnitt von der Einmuendung zum
   // Waermetauscher fuehrt beide Zweige und fliesst deshalb immer.
-  // Der Ebenenwechsel (170 -> 192) sitzt bewusst bei x=338, also INNERHALB
-  // der Geraetesilhouette (240..350) statt sichtbar auf der Kante - genau
-  // wie beim Vorlauf, dessen Sprung (170 -> 120) bei x=324 am 3-Wege-
-  // Ventil verborgen liegt. Volles Angleichen der Puffer-Seite auf die
-  // engen 22px des Innengeraets wuerde dort die drei gestapelten Chips
-  // (Vorlauf/ΔT/Ruecklauf, je ~20px hoch) ineinander schieben - deshalb
-  // bleibt der Kompromiss ein verdeckter Knick statt zweier Layouts mit
-  // demselben Rasterabstand (Dietmar, 14.08.2026).
-  svg.appendChild(pipe('M338,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  // Der Ebenenwechsel (170 -> 192) sitzt bei x=310, direkt neben der
+  // Pumpe/dem 2-Wege-Ventil - NICHT erst kurz vor der Geraetekante wie im
+  // ersten Anlauf (x=338, nur 12px Abstand). Der Vorlauf macht es genauso:
+  // sein Sprung liegt bei x=324 am 3-Wege-Ventil, 26px von der Kante
+  // entfernt, danach eine lange gerade Strecke. Dietmars Referenzbild
+  // (14.08.2026, handmanipuliert) zeigt denselben Grundsatz fuer den
+  // Ruecklauf - der Knick gehoert zum Bauteil-Cluster, nicht zur Kante.
+  svg.appendChild(pipe('M310,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   svg.appendChild(pipe('M' + DHW_RISE + ',192 L268,192', RET, waterFlow));
   svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
   // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
@@ -877,7 +876,7 @@ function buildSchema(unit) {
   // - genau das hatte Dietmar am 14.08.2026 bemerkt. Der Versatz wird
   // jetzt als sichtbarer Knick IM Rueck-lauf selbst gezeichnet, statt
   // eine Ebene stillschweigend zu wechseln.
-  svg.appendChild(pipe('M546,170 L338,170 L338,192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M546,170 L310,170 L310,192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
