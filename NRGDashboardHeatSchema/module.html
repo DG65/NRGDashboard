@@ -81,6 +81,25 @@
     filter: blur(0.5px); animation: flowwave 2.2s ease-in-out infinite;
   }
   @keyframes flowwave { to { stroke-dashoffset: -44; } }
+  /* Mehrere Wasserfluss-Darstellungen zur Auswahl (Dietmar, 16.08.2026)
+     - ueber die Variable "FlowStyle" (Schalter/Auswahl in der
+     aufgezogenen Kachelansicht, siehe module.php) statt Formular-
+     Property, gleicher Grund wie bei den Emitter-Schaltern: das
+     Aufziehen zeigt nur Instanz-Variablen, kein eigenes HTML. Default
+     (keine body-Klasse) bleibt die bisherige organische Welle.
+     "flow-dots": die urspruengliche, gleichfoermige Punktreihe vor der
+     Welle. "flow-dash": kurze durchgehende Striche, schnellere,
+     "technischere" Anmutung. */
+  body.flow-dots .pipe-dots {
+    stroke-dasharray: 0.1 14; opacity: 1; filter: none;
+    animation: flowdots 1s linear infinite;
+  }
+  @keyframes flowdots { to { stroke-dashoffset: -28; } }
+  body.flow-dash .pipe-dots {
+    stroke-dasharray: 6 6; opacity: 0.9; filter: none;
+    animation: flowdash 0.9s linear infinite;
+  }
+  @keyframes flowdash { to { stroke-dashoffset: -24; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { to { transform: rotate(360deg); } }
 
@@ -1529,6 +1548,12 @@ function handleMessage(raw) {
   var empty = document.getElementById('empty');
   var unitsEl = document.getElementById('units');
   setTheme(d && d.lightTheme);
+  // Wasserfluss-Darstellung (siehe ".pipe-dots"-Varianten in <style>):
+  // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche.
+  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash'];
+  FLOW_CLASSES.forEach(function (c) { if (c) { document.body.classList.remove(c); } });
+  var flowClass = FLOW_CLASSES[(d && d.flowStyle) || 0];
+  if (flowClass) { document.body.classList.add(flowClass); }
   if (d && d.bg) { document.body.style.background = d.bg; }
   if (d && d.font) { document.body.style.fontFamily = d.font; }
 

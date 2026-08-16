@@ -94,6 +94,26 @@ class NRGDashboardHeatSchema extends IPSModule
             $pos += 10;
         }
 
+        // Wasserfluss-Darstellung waehlbar (Dietmar, 16.08.2026: "kannst
+        // du mehrere Wasserflussmechanismen zur Auswahl hinter dem
+        // Doppelpfeil stellen?") - gleicher Grund wie bei den Emitter-
+        // Schaltern: eine Auswahl-Variable mit Profil-Assoziationen statt
+        // Formular-Property, damit sie in der aufgezogenen Kachelansicht
+        // als Dropdown erscheint. Optionen und deren CSS-Umsetzung siehe
+        // module.html (".pipe-dots"-Varianten).
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowStyle')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.FlowStyle', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 0, 'Organische Welle', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 1, 'Gleichmäßige Punkte', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 2, 'Fließende Striche', '', -1);
+        $flowIsNew = @IPS_GetObjectIDByIdent('FlowStyle', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('FlowStyle', 'Wasserfluss-Darstellung', 'NRGDASHHEAT.FlowStyle', 50);
+        $this->EnableAction('FlowStyle');
+        if ($flowIsNew) {
+            $this->SetValue('FlowStyle', 0);
+        }
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
@@ -171,6 +191,11 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         if (in_array($Ident, ['Zone1ShowRadiator', 'Zone1ShowFloor', 'Zone2ShowRadiator', 'Zone2ShowFloor'], true)) {
             $this->SetValue($Ident, (bool) $Value);
+            $this->Render();
+            return;
+        }
+        if ($Ident === 'FlowStyle') {
+            $this->SetValue($Ident, (int) $Value);
             $this->Render();
         }
     }
@@ -404,6 +429,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'zone1ShowFloor'    => (bool) $this->GetValue('Zone1ShowFloor'),
             'zone2ShowRadiator' => (bool) $this->GetValue('Zone2ShowRadiator'),
             'zone2ShowFloor'    => (bool) $this->GetValue('Zone2ShowFloor'),
+            'flowStyle'   => (int) $this->GetValue('FlowStyle'),
             'renderedAt'  => time(),
             'units'       => $units,
         ];
