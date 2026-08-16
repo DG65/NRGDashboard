@@ -1252,6 +1252,13 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 829;
+    // Anfangspunkte des Ruecklaufs aus dem Heizkoerper - werden weiter
+    // unten MIT der Ruecklaufleitung zum Puffer zu einem einzigen
+    // bentPath()-Aufruf zusammengefuehrt (Dietmar, 16.08.2026: "verbinde
+    // die Ruecklaufleitungen aus den Radiatoren mit den Ruecklauf-
+    // leitungen die in den Puffer gehen ... Bogen statt Knick"), statt
+    // wie zuvor an (boxR+20, iconBot) unverbunden zu enden.
+    var radReturnLead = null;
     // Fussbodenheizungs-Icon entfernt (Dietmar, 16.08.2026: "die
     // Fussbodenheizungen ganz rechts kannst Du entfernen") - nur noch
     // der Heizkoerper bleibt als Emitter-Icon.
@@ -1323,7 +1330,7 @@ function buildSchema(unit) {
           // dadurch TEIL desselben gerundeten Pfads statt einer scharfen
           // Ecke zwischen zwei getrennten Leitungen.
           svg.appendChild(bentPipe([[675, z.y], [boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
-          svg.appendChild(bentPipe([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]], RET, on));
+          radReturnLead = [[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]];
           curX += radW;
         }
       });
@@ -1367,12 +1374,17 @@ function buildSchema(unit) {
     // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
     // (620,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
     // (Dietmar, 16.08.2026). Die Steigleitung liegt bei x=620, zwischen der
-    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595).
-    if (z.retY === 192) {
-      svg.appendChild(pipe('M829,' + z.retY + ' L620,' + z.retY, RET, on));
-    } else {
-      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192]], RET, on));
-    }
+    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595). Kommt
+    // die Leitung vom Heizkoerper her (radReturnLead), wird sie MIT
+    // dieser Austrittsstrecke zu einem einzigen bentPath()-Aufruf
+    // zusammengefuehrt statt bei (boxR+20, iconBot) unverbunden zu enden
+    // (Dietmar, 16.08.2026: "verbinde die Ruecklaufleitungen aus den
+    // Radiatoren mit den Ruecklaufleitungen die in den Puffer gehen ...
+    // Bogen statt Knick") - der bisherige Knick rechts unten am
+    // Heizkoerper wird dadurch zu einem gerundeten Bogen.
+    var retPts = (radReturnLead || [[829, z.retY]]).concat([[620, z.retY]]);
+    if (z.retY !== 192) { retPts.push([620, 192]); }
+    svg.appendChild(bentPipe(retPts, RET, on));
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
