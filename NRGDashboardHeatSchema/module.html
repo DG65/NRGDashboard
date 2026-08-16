@@ -316,23 +316,33 @@ function pumpIcon(x, y, active, dirDeg, r) {
 //
 // Der KERN ist nach Dietmars zweiter Skizze (17.08.2026) geformt:
 // der Vorlauf endet mit einem U-Haken, dessen letztes Stueck
-// horizontal nach rechts laeuft; der Ruecklauf setzt GENAU an diesem
-// Endpunkt rechtwinklig an (Farbwechsel als direkter Stoss, kein
-// schraeges Verbindungsstueck) und bildet ein haengendes U, bevor er
-// gegenlaeufig nach aussen spiralt. Die Punktlisten sind fuer genau
-// ZWEI Vorlauf-Windungen ausgeschrieben (Raster h = gap/2); der
+// horizontal nach rechts laeuft; der Ruecklauf uebernimmt das ENDE
+// dieses horizontalen Stuecks (der Vorlauf-Pfad hoert 12px frueher
+// auf, der Ruecklauf-Pfad beginnt dort) - die Kern-Ecke liegt dadurch
+// als INNERER Knick im Ruecklauf-Pfad und bekommt denselben engen
+// Bogen wie alle anderen Ecken (Dietmar, 17.08.2026: "am Kern beim
+// Uebergang von Rot nach Blau fehlt ein Bogen"); die Nahtstelle der
+// beiden Pfade liegt mitten auf einer Geraden und ist dank des
+// Farbverlaufs (beide Pfade sind dort gleich violett, siehe
+// Zeichencode) unsichtbar. Danach bildet der Ruecklauf ein haengendes
+// U und spiralt gegenlaeufig nach aussen. Die Punktlisten sind fuer
+// genau ZWEI Vorlauf-Windungen ausgeschrieben (Raster h = gap/2); der
 // Ruecklauf ist vom Kern nach aussen gerichtet, damit die
 // Flussanimation von innen nach aussen laeuft.
 function counterSpiral(left, top, side, gap) {
   var L = left, T = top, R = left + side, B = top + side, g = gap, h = gap / 2;
+  // Die senkrechte Kern-Leitung (Abgang des haengenden U) liegt 10px
+  // links der Rasterposition L+2g (Dietmar, 17.08.2026: "die
+  // kernsenkrechte Leitung um 10px nach links").
+  var coreX = L + 2 * g - 10;
   var supPts = [
     [L, T], [R, T], [R, B], [L, B], [L, T + g],
     [R - g, T + g], [R - g, B - g], [L + g, B - g], [L + g, T + 2 * g],
-    [L + 2 * g, T + 2 * g]
+    [coreX - 12, T + 2 * g]
   ];
   var retPts = [
-    [L + 2 * g, T + 2 * g],
-    [L + 2 * g, B - g - h], [R - g - h, B - g - h], [R - g - h, T + g + h],
+    [coreX - 12, T + 2 * g], [coreX, T + 2 * g],
+    [coreX, B - g - h], [R - g - h, B - g - h], [R - g - h, T + g + h],
     [L + h, T + g + h], [L + h, B - h], [R - h, B - h], [R - h, T + h]
   ];
   return {
@@ -1435,6 +1445,12 @@ function buildSchema(unit) {
     // gezeichnete Icon den Ruecklauf-Anschluss des vorherigen, der
     // dadurch unsichtbar unverbunden blieb.
     var radReturnLeads = [];
+    // Die Fussbodenheizung zeichnet ihren Ruecklauf komplett selbst
+    // (ein durchgehender Verlaufspfad bis zur Sammelstelle, siehe
+    // unten) statt ueber radReturnLeads - dieses Flag verhindert, dass
+    // die Rueckfall-Leitung [[829, retY]] faelschlich zusaetzlich
+    // gezeichnet wird, wenn NUR die Fussbodenheizung gezeigt wird.
+    var floorReturnDrawn = false;
     // iconTypes ist nie leer: der ganze Kreis wird oben per z.active
     // uebersprungen, wenn weder Heizkoerper noch Fussbodenheizung
     // gewaehlt ist - kein Platzhalter-Kasten mehr noetig.
@@ -1519,24 +1535,48 @@ function buildSchema(unit) {
           // Fallleitung 18px links der Spiralkante.
           var fLeft = curX + 40;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
+          // Farbverlauf statt hartem Rot/Blau-Wechsel (Dietmar,
+          // 17.08.2026: "dann sollte das Ganze auch ein Farbverlauf
+          // sein"): zwei Radialverlaeufe um den Spiralmittelpunkt -
+          // der Vorlauf laeuft von Rot (aussen) nach Violett (Kern),
+          // der Ruecklauf von Violett (Kern) nach Blau (aussen). Am
+          // Kern treffen beide mit demselben Violett aufeinander, der
+          // Uebergang ist dadurch fliessend; der Radius korreliert mit
+          // dem Weg des Wassers durch die Spirale (je weiter innen,
+          // desto weiter abgekuehlt bzw. noch nicht wieder draussen).
+          var FBH_MID = 'rgb(149,112,139)';
+          var fcx = fLeft + fSide / 2, fcy = fTop + fSide / 2;
+          ['sup', 'ret'].forEach(function (armKey) {
+            var gr = el('radialGradient', {
+              id: 'fbh' + armKey + z.n + unit.id, gradientUnits: 'userSpaceOnUse',
+              cx: fcx, cy: fcy, r: fSide / 2
+            });
+            var s0 = el('stop', { offset: '0%' }); s0.setAttribute('stop-color', FBH_MID);
+            var s1 = el('stop', { offset: '100%' }); s1.setAttribute('stop-color', armKey === 'sup' ? SUPC : RETC);
+            gr.appendChild(s0); gr.appendChild(s1);
+            svg.querySelector('defs').appendChild(gr);
+          });
           // Vorlauf: ab dem Mischer (675) durchgehend gezeichnet -
           // laeuft bei gezeigtem Heizkoerper unter diesem hindurch,
           // steigt links der Spirale senkrecht hoch und tritt oben
           // links in die aeusserste Windung ein.
           svg.appendChild(bentPipe([[675, iconTop], [fLeft - 36, iconTop], [fLeft - 36, fTop], [fLeft, fTop]], SUP, on));
-          // Beide Spiralen mit gerundeten Ecken (Dietmar, 17.08.2026:
-          // "die Ecken sind mit einem engen Bogen versehen"). Der
-          // Farbwechsel im Kern ist ein direkter Stoss: der Ruecklauf-
-          // Pfad beginnt exakt am Endpunkt des Vorlauf-Pfads (siehe
-          // counterSpiral()), ein eigenes Verbindungsstueck entfaellt.
-          svg.appendChild(bentPipe(cs.supPts, SUP, on, 7));
-          svg.appendChild(bentPipe(cs.retPts, RET, on, 7));
-          // Ruecklauf-Austritt: die aeusserste blaue Windung endet oben
-          // rechts; die Ableitung laeuft oberhalb der roten linken
-          // Windung (die erst eine Ganghoehe tiefer beginnt - kein
-          // Kreuzen) nach links aus der Spirale heraus und faellt dann
-          // senkrecht zur Ruecklauf-Sammelleitung.
-          radReturnLeads.push([[cs.retExit[0], cs.retExit[1]], [fLeft - 18, cs.retExit[1]], [fLeft - 18, iconBot]]);
+          svg.appendChild(bentPipe(cs.supPts, SUP, on, 7, 'url(#fbhsup' + z.n + unit.id + ')'));
+          // Ruecklauf ALS EIN durchgehender Pfad: Spirale, Austritt oben
+          // links (die Ecke oben rechts auf der aeussersten blauen
+          // Windung liegt dadurch als innerer Knick im Pfad und bekommt
+          // denselben Bogen wie alle anderen - Dietmar, 17.08.2026:
+          // "rechts oben auf der aeussersten blauen Windung fehlt auch
+          // der Bogen"), Fallleitung und Sammelleitung bis zur
+          // Sammelstelle (620) - ausserhalb des Verlaufsradius liefert
+          // der Radialverlauf konstant Blau, die Leitung ist dort also
+          // eine normale blaue Ruecklaufleitung. Die Austritts-Ableitung
+          // laeuft oberhalb der roten linken Windung (die beginnt erst
+          // eine Ganghoehe tiefer - kein Kreuzen).
+          var fRet = cs.retPts.concat([[fLeft - 18, cs.retExit[1]], [fLeft - 18, z.retY], [620, z.retY]]);
+          if (z.retY !== 192) { fRet.push([620, 192]); }
+          svg.appendChild(bentPipe(fRet, RET, on, 7, 'url(#fbhret' + z.n + unit.id + ')'));
+          floorReturnDrawn = true;
           curX += 40 + fSide + 16;
         }
       });
@@ -1590,7 +1630,7 @@ function buildSchema(unit) {
     // gleichzeitig ueberschrieb bisher das zuletzt gezeichnete Icon den
     // Anschluss des vorherigen - der blieb dadurch unsichtbar in der
     // Luft haengen) statt nur eine gemeinsame, zuletzt gewonnene Leitung.
-    var leads = radReturnLeads.length ? radReturnLeads : [[[829, z.retY]]];
+    var leads = radReturnLeads.length ? radReturnLeads : (floorReturnDrawn ? [] : [[[829, z.retY]]]);
     leads.forEach(function (lead) {
       var retPts = lead.concat([[620, z.retY]]);
       if (z.retY !== 192) { retPts.push([620, 192]); }
