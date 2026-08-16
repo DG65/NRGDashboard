@@ -326,6 +326,26 @@ function squareSpiralPath(cx, cy, w, h, gap) {
   return { startX: startX, startY: startY, d: d, endX: x, endY: y };
 }
 
+// Fussbodenheizung als ZWEI ineinander verwundene Spiralen statt einer
+// einzelnen mit Farbverlauf (Dietmar, 16.08.2026: "die Fussboden-
+// heizung sind tatsaechlich 2 ineinander verwundene Spiralen. Die
+// Vorlauf-Spirale geht im Kern in den Ruecklauf ueber" - reale
+// Zweirohr-Verlegung, bei der Vor- und Ruecklauf durchgehend parallel
+// nebeneinander liegen statt Vorlauf allein einzuspiralen). Die
+// Ruecklauf-Spirale ist exakt um eine halbe Ganghoehe (gap/2) nach
+// innen versetzt gestartet - dadurch liegen ihre Windungen genau
+// zwischen denen der Vorlauf-Spirale (verschachtelt, nicht
+// uebereinander). Beide enden nahe der Mitte; ein kurzes Verbindungs-
+// stueck dort stellt den Uebergang Vorlauf->Ruecklauf dar. Die
+// Ruecklauf-Spirale beginnt (wie die Vorlauf-Spirale) oben links,
+// liegt dort aber um gap/2 nach innen versetzt - ein kurzer Steg
+// fuehrt von dort zur eigentlichen Ruecklaufschiene (iconBot).
+function doubleSquareSpiralPath(cx, cy, w, h, gap) {
+  var supply = squareSpiralPath(cx, cy, w, h, gap);
+  var ret = squareSpiralPath(cx, cy, w - gap, h - gap, gap);
+  return { supply: supply, ret: ret };
+}
+
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
 // Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
 // direkt auf der Flaeche. Groesse proportional zum realen Volumen.
@@ -1406,13 +1426,18 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 829;
-    // Anfangspunkte des Ruecklaufs aus dem LETZTEN gezeichneten Emitter-
-    // Icon - werden weiter unten MIT der Ruecklaufleitung zum Puffer zu
-    // einem einzigen bentPath()-Aufruf zusammengefuehrt (Dietmar,
-    // 16.08.2026: "verbinde die Ruecklaufleitungen aus den Radiatoren
-    // mit den Ruecklaufleitungen die in den Puffer gehen ... Bogen statt
-    // Knick"), statt unverbunden zu enden.
-    var radReturnLead = null;
+    // Anfangspunkte des Ruecklaufs aus JEDEM gezeichneten Emitter-Icon -
+    // werden weiter unten je EINZELN mit einer eigenen Ruecklaufleitung
+    // zum Puffer verbunden (Dietmar, 16.08.2026: "verbinde die
+    // Ruecklaufleitungen aus den Radiatoren mit den Ruecklaufleitungen
+    // die in den Puffer gehen ... Bogen statt Knick"), statt unverbunden
+    // zu enden. Eine Liste statt einer einzelnen Variable (Dietmar,
+    // 16.08.2026: "Rücklauf verlässt den Heizkörper unten rechts und
+    // geht direkt senkrecht runter zur Sammelleitung") - bei Heizkoerper
+    // UND Fussbodenheizung gleichzeitig ueberschrieb bisher das zuletzt
+    // gezeichnete Icon den Ruecklauf-Anschluss des vorherigen, der
+    // dadurch unsichtbar unverbunden blieb.
+    var radReturnLeads = [];
     // iconTypes ist nie leer: der ganze Kreis wird oben per z.active
     // uebersprungen, wenn weder Heizkoerper noch Fussbodenheizung
     // gewaehlt ist - kein Platzhalter-Kasten mehr noetig.
@@ -1480,29 +1505,30 @@ function buildSchema(unit) {
           // dadurch TEIL desselben gerundeten Pfads statt einer scharfen
           // Ecke zwischen zwei getrennten Leitungen.
           svg.appendChild(bentPipe([[675, z.y], [boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
-          radReturnLead = [[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]];
+          radReturnLeads.push([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]]);
           curX += radW;
         } else if (t === 'floor') {
-          // Fussbodenheizung als quadratische Rohrspirale (Dietmar,
-          // 16.08.2026: "manche haben nur Fussbodenheizung ... wie
-          // sollen wir das realisieren" -> je Kreis unabhaengig
-          // zuschaltbar, wie schon der Heizkoerper).
-          var gid = 'emitfloor' + z.n + unit.id;
-          var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
-          var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
-          var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
-          gr.appendChild(gs0); gr.appendChild(gs1);
-          svg.querySelector('defs').appendChild(gr);
+          // Fussbodenheizung als ZWEI ineinander verwundene Spiralen
+          // (Dietmar, 16.08.2026: "die Fussbodenheizung sind tatsaechlich
+          // 2 ineinander verwundene Spiralen. Die Vorlauf-Spirale geht im
+          // Kern in den Ruecklauf ueber") statt einer einzelnen Spirale
+          // mit Farbverlauf - siehe doubleSquareSpiralPath().
           var floorStartX = curX;
           var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
-          var sres = squareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
-          svg.appendChild(pipe('M' + sres.startX + ',' + sres.startY + sres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
-          // Das Spiralende liegt innen, nicht an der Schiene - wird MIT
-          // einem kurzen Bogen zur Ruecklaufhoehe und zurueck zur
-          // eigenen Anschlussposition gefuehrt statt unverbunden zu
-          // enden (Dietmar, 16.08.2026: "verbinde die Ruecklaufleitungen
-          // ... Bogen statt Knick" - gilt fuer jeden Emitter-Typ).
-          radReturnLead = [[sres.endX, sres.endY], [sres.endX, iconBot], [floorStartX, iconBot]];
+          var dres = doubleSquareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
+          svg.appendChild(pipe('M' + dres.supply.startX + ',' + dres.supply.startY + dres.supply.d, SUP, on));
+          svg.appendChild(pipe('M' + dres.ret.startX + ',' + dres.ret.startY + dres.ret.d, RET, on));
+          // Kern-Uebergang: die Vorlauf-Spirale endet nahe der Mitte, die
+          // Ruecklauf-Spirale beginnt (an ihrem eigenen "Start"-Punkt,
+          // der geometrisch ebenfalls nahe der Mitte liegt) dort - ein
+          // kurzes Verbindungsstueck stellt den Uebergang dar.
+          svg.appendChild(bentPipe([[dres.supply.endX, dres.supply.endY], [dres.ret.startX, dres.ret.startY]], RET, on));
+          // Die Ruecklauf-Spirale beginnt (ihr eigener "Start"-Punkt, oben
+          // links) um gap/2 nach innen versetzt (Verschachtelung) statt
+          // exakt auf der Schiene - ein kurzer Steg fuehrt von dort zur
+          // eigentlichen Ruecklaufhoehe (iconBot), analog zum Heizkoerper-
+          // Anschluss.
+          radReturnLeads.push([[dres.ret.startX, dres.ret.startY], [dres.ret.startX, iconBot], [floorStartX, iconBot]]);
           curX += spiralSide;
         }
       });
@@ -1541,22 +1567,27 @@ function buildSchema(unit) {
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
     // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50. Bei Zone 1
     // deckt sich das mit der gemeinsamen Sammelhoehe (192) - eine einzige
-    // gerade Strecke reicht. Bei Zone 2 (retY=372) muss die Leitung erst
-    // zur Sammelhoehe hochsteigen - dieser Knick wird MIT der
-    // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
-    // (620,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
-    // (Dietmar, 16.08.2026). Die Steigleitung liegt bei x=620, zwischen der
-    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595). Kommt
-    // die Leitung vom Heizkoerper her (radReturnLead), wird sie MIT
-    // dieser Austrittsstrecke zu einem einzigen bentPath()-Aufruf
-    // zusammengefuehrt statt bei (boxR+20, iconBot) unverbunden zu enden
-    // (Dietmar, 16.08.2026: "verbinde die Ruecklaufleitungen aus den
-    // Radiatoren mit den Ruecklaufleitungen die in den Puffer gehen ...
-    // Bogen statt Knick") - der bisherige Knick rechts unten am
-    // Heizkoerper wird dadurch zu einem gerundeten Bogen.
-    var retPts = (radReturnLead || [[829, z.retY]]).concat([[620, z.retY]]);
-    if (z.retY !== 192) { retPts.push([620, 192]); }
-    svg.appendChild(bentPipe(retPts, RET, on));
+    // gerade Strecke reicht, die Leitung geht dadurch direkt senkrecht
+    // vom Emitter-Anschluss zur Sammelleitung (Dietmar, 16.08.2026:
+    // "Ruecklauf verlaesst den Heizkoerper unten rechts und geht direkt
+    // senkrecht runter zur Sammelleitung"). Bei Zone 2 (retY=372) muss
+    // die Leitung erst zur Sammelhoehe hochsteigen - dieser Knick wird
+    // MIT der Austrittsstrecke zu einem gerundeten Pfad zusammengefasst
+    // statt als scharfe Ecke aufeinanderzutreffen (Dietmar, 16.08.2026).
+    // Die Steigleitung liegt bei x=620, zwischen der Vorlauf-Steigleitung
+    // (645) und dem Puffer (PUF_RIGHT=595).
+    //
+    // JEDES Emitter-Icon bekommt seine EIGENE komplette Ruecklaufleitung
+    // (Dietmar, 16.08.2026: bei Heizkoerper UND Fussbodenheizung
+    // gleichzeitig ueberschrieb bisher das zuletzt gezeichnete Icon den
+    // Anschluss des vorherigen - der blieb dadurch unsichtbar in der
+    // Luft haengen) statt nur eine gemeinsame, zuletzt gewonnene Leitung.
+    var leads = radReturnLeads.length ? radReturnLeads : [[[829, z.retY]]];
+    leads.forEach(function (lead) {
+      var retPts = lead.concat([[620, z.retY]]);
+      if (z.retY !== 192) { retPts.push([620, 192]); }
+      svg.appendChild(bentPipe(retPts, RET, on));
+    });
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
