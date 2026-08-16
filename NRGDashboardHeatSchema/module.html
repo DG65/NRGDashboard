@@ -1215,14 +1215,17 @@ function buildSchema(unit) {
     // Ankunftshoehe). Wird weiter unten, im per-Zone Ruecklauf-Abschnitt,
     // MIT der Austrittsleitung aus dem Kasten zu einem einzigen
     // gerundeten Pfad zusammengefuehrt (Dietmar, 16.08.2026) - hier
-    // separat gezeichnet haette an (667,372) eine scharfe Ecke ergeben.
+    // separat gezeichnet haette an (620,372) eine scharfe Ecke ergeben.
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
   // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
-  // Sammelstelle (667,192) bis zum Puffer (Dietmar, 16.08.2026 - die
+  // Sammelstelle (620,192) bis zum Puffer (Dietmar, 16.08.2026 - die
   // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
   // nicht die einzelnen Knicke fuer sich).
-  svg.appendChild(pipe('M667,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  // Ruecklauf-Steigleitung (Zone 2) 47px nach links, zwischen die
+  // Vorlauf-Steigleitung (645) und den Puffer geschoben, statt rechts
+  // davon zu liegen (Dietmar, 16.08.2026).
+  svg.appendChild(pipe('M620,192 L' + PUF_RIGHT + ',192', RET, anyOn));
   // Vorlauf-Chip mittig zwischen Puffer (PUF_RIGHT) und Mischer (694) - zeigt
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
   // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar).
@@ -1253,7 +1256,7 @@ function buildSchema(unit) {
     // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
     // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
     // Vorlauftemperatur fuer den Kreis abzusenken. Zapfstelle direkt bei
-    // x=694 auf der Ruecklaufleitung (liegt zwischen 667 und 829 auf
+    // x=694 auf der Ruecklaufleitung (liegt zwischen 620 und 829 auf
     // deren Weg zum Puffer), senkrecht hoch bis zum Mischer. Mischer +
     // alles daran Haengende nochmal 40px nach rechts (Dietmar,
     // 16.08.2026), damit zwischen Puffer und Mischer Platz fuer den
@@ -1276,7 +1279,7 @@ function buildSchema(unit) {
     // Getrennte Beschriftungen statt einer gemeinsamen Mitte (Dietmar,
     // 16.08.2026): "Mischer" steht mittig ueber dem Ventil (694),
     // "Pumpe" mittig ueber der Pumpe (754) - deckt bei HK2 keine
-    // Leitungen, da die Zone-2-Abzweige bei x=645/667 liegen, ausserhalb
+    // Leitungen, da die Zone-2-Abzweige bei x=645/620 liegen, ausserhalb
     // beider Wortbreiten.
     var mischerTag = el('text', { x: 694, y: z.y - 25, class: 'tag' });
     mischerTag.textContent = 'Mischer';
@@ -1410,9 +1413,10 @@ function buildSchema(unit) {
       // (645) keine echte Leitung - der Chip sass dort im Leeren, und auf
       // der gemeinsamen Sammelleitung (y=192) kollidiert er mit dem
       // Zone-1-Chip (beide landen zu nah beieinander). Sitzt jetzt auf
-      // der Zone-2-eigenen Steigleitung (x=667), mittig zwischen deren
-      // Ansatz an der Sammelleitung (192) und dem Kasten-Austritt (372).
-      var retChipX = z.retY === 192 ? (PUF_RIGHT + z.vorlaufX) / 2 : 667;
+      // der Zone-2-eigenen Steigleitung (x=620, zwischen Vorlauf-Steigleitung
+      // und Puffer), mittig zwischen deren Ansatz an der Sammelleitung (192)
+      // und dem Kasten-Austritt (372).
+      var retChipX = z.retY === 192 ? (PUF_RIGHT + z.vorlaufX) / 2 : 620;
       var retChipY = z.retY === 192 ? z.retY : (192 + z.retY) / 2;
       drawValve(chip(retChipX, retChipY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
@@ -1423,12 +1427,13 @@ function buildSchema(unit) {
     // gerade Strecke reicht. Bei Zone 2 (retY=372) muss die Leitung erst
     // zur Sammelhoehe hochsteigen - dieser Knick wird MIT der
     // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
-    // (667,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
-    // (Dietmar, 16.08.2026).
+    // (620,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
+    // (Dietmar, 16.08.2026). Die Steigleitung liegt bei x=620, zwischen der
+    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595).
     if (z.retY === 192) {
-      svg.appendChild(pipe('M829,' + z.retY + ' L667,' + z.retY, RET, on));
+      svg.appendChild(pipe('M829,' + z.retY + ' L620,' + z.retY, RET, on));
     } else {
-      svg.appendChild(bentPipe([[829, z.retY], [667, z.retY], [667, 192]], RET, on));
+      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192]], RET, on));
     }
     if (on && z.n !== 1) { svg.appendChild(arrowHead(789, z.retY, 'l', RETC)); }
   });
