@@ -230,6 +230,27 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
+// Fussbodenheizung als quadratische Rohrspirale, Start-/Endpunkt fuer
+// den Anschluss an Vor-/Ruecklauf. Startet oben LINKS, damit sie von
+// derselben Seite gespeist werden kann wie der Heizkoerper.
+function squareSpiralPath(cx, cy, w, h, gap) {
+  var left = cx - w / 2, right = cx + w / 2, top = cy - h / 2, bot = cy + h / 2;
+  var startX = left, startY = top;
+  var d = '';
+  var x = left, y = top;
+  while (right - left > gap && bot - top > gap) {
+    y = bot; d += ' L' + x + ',' + y;
+    left += gap;
+    x = right; d += ' L' + x + ',' + y;
+    bot -= gap;
+    y = top; d += ' L' + x + ',' + y;
+    right -= gap;
+    x = left; d += ' L' + x + ',' + y;
+    top += gap;
+  }
+  return { startX: startX, startY: startY, d: d, endX: x, endY: y };
+}
+
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
 // Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
 // direkt auf der Flaeche. Groesse proportional zum realen Volumen.
@@ -507,10 +528,34 @@ function buildSchema(unit) {
   // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
   // (2. Steuerplatine, Live-Werte seit HeishaMon contractVersion 1.4)
   // zu Radiatoren/Flaechenheizkoerpern (FBH nur Bad).
-  // Breiter als zuvor (Dietmar, 16.08.2026): wenn Heizkoerper UND
-  // Fussbodenheizung gleichzeitig gezeigt werden, brauchen beide Icons
-  // in Reihe mehr Platz als der bisherige einzelne Kasten.
-  var W = 1090, H = 470;
+  // hasZone2 + die ShowRadiator/ShowFloor-Flags werden HIER vorgezogen
+  // (statt erst beim Zeichnen der Heizkreise weiter unten), damit die
+  // Canvas-Breite (W) schon VOR dem Erzeugen des <svg>-Elements an die
+  // tatsaechlich gezeigten Emitter-Icons angepasst werden kann (Dietmar,
+  // 16.08.2026: "wenn keine Fussbodenheizung dargestellt werden muss,
+  // koennte man die Darstellung anders skalieren") - ein schmaleres
+  // viewBox macht die Zeichnung dank preserveAspectRatio="xMidYMid meet"
+  // in der Kachel automatisch GROESSER, statt ungenutzten Platz rechts
+  // freizulassen. Die spaetere zones[]-Konstruktion liest dieselben
+  // Werte wieder, damit sie nicht doppelt berechnet werden.
+  var hasZone2 = (unit.z2WaterTemp !== null && unit.z2WaterTemp !== undefined)
+    || unit.z2Pump === true
+    || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
+  var z1ShowRadiator = cfg.zone1ShowRadiator !== false, z1ShowFloor = cfg.zone1ShowFloor !== false;
+  var z2ShowRadiator = cfg.zone2ShowRadiator !== false, z2ShowFloor = cfg.zone2ShowFloor !== false;
+  // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 50px
+  // (= iconBot-iconTop, bei beiden Zonen konstant), 24px Abstand
+  // zwischen zwei Icons derselben Zone, 140px leerer Kasten als
+  // Rueckfallebene, wenn gar kein Emitter gewaehlt ist.
+  function zoneContentWidth(showRad, showFloor) {
+    var w = 0, n = 0;
+    if (showRad) { w += 110; n++; }
+    if (showFloor) { w += (n > 0 ? 24 : 0) + 50; n++; }
+    return n === 0 ? 140 : w;
+  }
+  var zone1W = zoneContentWidth(z1ShowRadiator, z1ShowFloor);
+  var zone2W = hasZone2 ? zoneContentWidth(z2ShowRadiator, z2ShowFloor) : 0;
+  var W = 829 + Math.max(zone1W, zone2W) + 80, H = 470;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   // KEIN eigener Hintergrund: die Kachel soll sich in den Symcon-
@@ -1115,9 +1160,8 @@ function buildSchema(unit) {
   // sie auch meldet. Dietmars Anlage hat nur eine Zone - dort meldet
   // HeishaMon fuer Zone 2 die Sentinel-Temperatur, die numTemp() bereits
   // zu null filtert, sodass der zweite Kreis gar nicht erst erscheint.
-  var hasZone2 = (unit.z2WaterTemp !== null && unit.z2WaterTemp !== undefined)
-    || unit.z2Pump === true
-    || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
+  // hasZone2 wurde bereits oben (vor dem <svg>-Element) fuer die
+  // Canvas-Breite berechnet, hier nur weiterverwendet.
 
   // retY = Ruecklauf-Austrittshoehe am Kasten = Vorlaufhoehe + 50, exakt
   // dasselbe Rastermass wie der Puffer selbst zwischen seinen eigenen
@@ -1135,7 +1179,7 @@ function buildSchema(unit) {
     n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos,
-    showRadiator: cfg.zone1ShowRadiator !== false,
+    showRadiator: z1ShowRadiator, showFloor: z1ShowFloor,
     vorlaufX: 694
   }];
   if (hasZone2) {
@@ -1145,7 +1189,7 @@ function buildSchema(unit) {
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos,
-      showRadiator: cfg.zone2ShowRadiator !== false,
+      showRadiator: z2ShowRadiator, showFloor: z2ShowFloor,
       vorlaufX: 645
     });
   }
@@ -1251,18 +1295,16 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 829;
-    // Anfangspunkte des Ruecklaufs aus dem Heizkoerper - werden weiter
-    // unten MIT der Ruecklaufleitung zum Puffer zu einem einzigen
-    // bentPath()-Aufruf zusammengefuehrt (Dietmar, 16.08.2026: "verbinde
-    // die Ruecklaufleitungen aus den Radiatoren mit den Ruecklauf-
-    // leitungen die in den Puffer gehen ... Bogen statt Knick"), statt
-    // wie zuvor an (boxR+20, iconBot) unverbunden zu enden.
+    // Anfangspunkte des Ruecklaufs aus dem LETZTEN gezeichneten Emitter-
+    // Icon - werden weiter unten MIT der Ruecklaufleitung zum Puffer zu
+    // einem einzigen bentPath()-Aufruf zusammengefuehrt (Dietmar,
+    // 16.08.2026: "verbinde die Ruecklaufleitungen aus den Radiatoren
+    // mit den Ruecklaufleitungen die in den Puffer gehen ... Bogen statt
+    // Knick"), statt unverbunden zu enden.
     var radReturnLead = null;
-    // Fussbodenheizungs-Icon entfernt (Dietmar, 16.08.2026: "die
-    // Fussbodenheizungen ganz rechts kannst Du entfernen") - nur noch
-    // der Heizkoerper bleibt als Emitter-Icon.
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
+    if (z.showFloor) { iconTypes.push('floor'); }
     if (iconTypes.length === 0) {
       // Kein Heizkoerper gewaehlt: leerer Kasten als Rueckfallebene,
       // damit die Leitungen nicht ins Leere laufen.
@@ -1331,6 +1373,28 @@ function buildSchema(unit) {
           svg.appendChild(bentPipe([[675, z.y], [boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
           radReturnLead = [[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]];
           curX += radW;
+        } else if (t === 'floor') {
+          // Fussbodenheizung als quadratische Rohrspirale (Dietmar,
+          // 16.08.2026: "manche haben nur Fussbodenheizung ... wie
+          // sollen wir das realisieren" -> je Kreis unabhaengig
+          // zuschaltbar, wie schon der Heizkoerper).
+          var gid = 'emitfloor' + z.n + unit.id;
+          var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
+          var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
+          var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
+          gr.appendChild(gs0); gr.appendChild(gs1);
+          svg.querySelector('defs').appendChild(gr);
+          var floorStartX = curX;
+          var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
+          var sres = squareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
+          svg.appendChild(pipe('M' + sres.startX + ',' + sres.startY + sres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
+          // Das Spiralende liegt innen, nicht an der Schiene - wird MIT
+          // einem kurzen Bogen zur Ruecklaufhoehe und zurueck zur
+          // eigenen Anschlussposition gefuehrt statt unverbunden zu
+          // enden (Dietmar, 16.08.2026: "verbinde die Ruecklaufleitungen
+          // ... Bogen statt Knick" - gilt fuer jeden Emitter-Typ).
+          radReturnLead = [[sres.endX, sres.endY], [sres.endX, iconBot], [floorStartX, iconBot]];
+          curX += spiralSide;
         }
       });
     }
