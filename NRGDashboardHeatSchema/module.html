@@ -1092,21 +1092,24 @@ function buildSchema(unit) {
   // an der rechten Tankwand (x=594, y=142/192) - keine eigene Wendel,
   // die traegt jetzt die Primaerseite links (Dietmar, 14.08.2026).
   // Vorlauf zweigt bei x=606 fuer Zone 2 ab, Ruecklauf sammelt bei x=628.
+  // Alles rechts vom Puffer 50px nach links gerueckt (Dietmar,
+  // 16.08.2026); der Puffer-seitige Anschlusspunkt (PUF_RIGHT) bleibt
+  // fix, nur die Koordinaten jenseits davon verschieben sich.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(pipe('M656,142 L656,322 L686,322', SUP, zones[1].pumpOn));
+    svg.appendChild(pipe('M606,142 L606,322 L636,322', SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
     // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
     // Ankunftshoehe) - EIN Knick, dann trifft sie ohne weiteren Umweg auf
     // die gemeinsame Leitung.
-    svg.appendChild(pipe('M678,372 L678,192', RET, zones[1].pumpOn));
+    svg.appendChild(pipe('M628,372 L628,192', RET, zones[1].pumpOn));
   }
-  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L686,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L636,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
   // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
-  // Sammelstelle (678,192) bis zum Puffer (Dietmar, 16.08.2026 - die
+  // Sammelstelle (628,192) bis zum Puffer (Dietmar, 16.08.2026 - die
   // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
   // nicht die einzelnen Knicke fuer sich).
-  svg.appendChild(pipe('M678,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  svg.appendChild(pipe('M628,192 L' + PUF_RIGHT + ',192', RET, anyOn));
 
   zones.forEach(function (z) {
     var on = z.pumpOn;
@@ -1115,56 +1118,56 @@ function buildSchema(unit) {
     // Ventile hindurch"): Ventil- und Pumpensymbol liegen als Kontur
     // darueber, statt dass die Leitung an ihnen aufhoert (Dietmar,
     // 16.08.2026).
-    svg.appendChild(pipe('M686,' + z.y + ' L840,' + z.y, SUP, on));
+    svg.appendChild(pipe('M636,' + z.y + ' L790,' + z.y, SUP, on));
     // Bypass: der Mischer ist ein ECHTER Mischerkreis, kein reines
     // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
     // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
     // Vorlauftemperatur fuer den Kreis abzusenken. Zapfstelle direkt bei
-    // x=700 auf der Ruecklaufleitung (liegt zwischen 678 und 840 auf
+    // x=650 auf der Ruecklaufleitung (liegt zwischen 628 und 790 auf
     // deren Weg zum Puffer), senkrecht hoch bis zum Mischer.
-    svg.appendChild(pipe('M700,' + z.retY + ' L700,' + z.y, RET, on));
+    svg.appendChild(pipe('M650,' + z.retY + ' L650,' + z.y, RET, on));
     // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
     if (z.mvPos !== null && z.mvPos !== undefined) {
-      drawValve(valveSymbol(700, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
+      drawValve(valveSymbol(650, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
         Math.round(z.mvPos) + ' %', z.mvPos > 0));
     } else if (z.mv === 2) {
-      drawValve(valveSymbol(700, z.y, 7, HOT, 'öffnet', true));
+      drawValve(valveSymbol(650, z.y, 7, HOT, 'öffnet', true));
     } else if (z.mv === 1) {
-      drawValve(valveSymbol(700, z.y, 7, COLD, 'schließt', true));
+      drawValve(valveSymbol(650, z.y, 7, COLD, 'schließt', true));
     } else if (z.mv === 0) {
-      drawValve(valveSymbol(700, z.y, 7, PAL.draw, 'steht', false));
+      drawValve(valveSymbol(650, z.y, 7, PAL.draw, 'steht', false));
     } else {
-      drawValve(valveSymbol(700, z.y, 7, PAL.draw, null, false));
+      drawValve(valveSymbol(650, z.y, 7, PAL.draw, null, false));
     }
-    svg.appendChild(pumpIcon(760, z.y, on, 0));
-    var et = el('text', { x: 740, y: z.y - 25, class: 'tag' });
+    svg.appendChild(pumpIcon(710, z.y, on, 0));
+    var et = el('text', { x: 690, y: z.y - 25, class: 'tag' });
     et.textContent = z.pumpKnown ? 'Mischer + Pumpe' : 'Mischer + Pumpe (kein Status)';
     svg.appendChild(et);
-    if (on) { svg.appendChild(arrowHead(810, z.y, 'r', SUPC)); }
+    if (on) { svg.appendChild(arrowHead(760, z.y, 'r', SUPC)); }
 
     // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
     // verdrahtet - sie unterscheidet sich von Anlage zu Anlage und kommt
     // aus einer Freitext-Eigenschaft (vorher standen hier Dietmars
     // Radiatoren fuer alle Nutzer).
-    svg.appendChild(el('rect', { x: 840, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
-    var rt = el('text', { x: 930, y: z.boxY + 24, class: 'box-title' });
+    svg.appendChild(el('rect', { x: 790, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
+    var rt = el('text', { x: 880, y: z.boxY + 24, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: 930, y: z.boxY + 40, class: 'tag' });
+      var rc = el('text', { x: 880, y: z.boxY + 40, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(930, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(880, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
     // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50 - direkt auf der
     // Sammelhoehe, dadurch nur diese EINE gerade Strecke bis zur
     // Sammelstelle noetig, kein zusaetzlicher Knick am Kasten.
-    svg.appendChild(pipe('M840,' + z.retY + ' L678,' + z.retY, RET, on));
-    if (on) { svg.appendChild(arrowHead(800, z.retY, 'l', RETC)); }
+    svg.appendChild(pipe('M790,' + z.retY + ' L628,' + z.retY, RET, on));
+    if (on) { svg.appendChild(arrowHead(750, z.retY, 'l', RETC)); }
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
