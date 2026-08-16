@@ -1043,7 +1043,10 @@ function buildSchema(unit) {
   // zwischen diesen beiden Punkten - dieselbe Technik wie tankShape()s
   // eigener DHW-Zickzack (alternierende Geradenstuecke), nur seitlich
   // orientiert statt von oben.
-  var PUF_LEFT = 546, PUF_W = 70, PUF_RIGHT = PUF_LEFT + PUF_W;
+  // 21px nach links (Dietmar, 16.08.2026), damit der Abstand
+  // Innengeraet-Puffer (vorher 146) genauso gross ist wie
+  // Aussengeraet-Innengeraet (125): 400 (Innengeraet-Rand) + 125 = 525.
+  var PUF_LEFT = 525, PUF_W = 70, PUF_RIGHT = PUF_LEFT + PUF_W;
   var PUF_TOP = 125, PUF_H = 85, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
   // Zwei feste innere x-Positionen, an denen die Wendel abwechselnd
   // "andockt". GERADE Segmentzahl (6) ist entscheidend: die Wendel muss
@@ -1061,16 +1064,16 @@ function buildSchema(unit) {
   var PUF_MARGIN = 14;
   var PUF_ZIG_R = PUF_RIGHT - PUF_MARGIN, PUF_ZIG_L = PUF_LEFT + PUF_MARGIN;
   var pufZigSteps = 6, pufZigStep = (192 - 142) / pufZigSteps;
-  var pufCoilD = 'M546,142 L' + PUF_ZIG_L + ',142';
+  var pufCoilD = 'M' + PUF_LEFT + ',142 L' + PUF_ZIG_L + ',142';
   for (var pzi = 1; pzi <= pufZigSteps; pzi++) {
     pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (142 + pzi * pufZigStep);
   }
-  pufCoilD += ' L546,192';
+  pufCoilD += ' L' + PUF_LEFT + ',192';
   // Primaerleitungen: unveraendert, enden direkt an der Tankwand - kein
   // Knick, kein Umweg (Dietmar, 14.08.2026: "die Leitungen gibt es so
   // nicht" - vorher fuehrten sie ueber Stutzen zur Tankoberkante).
-  svg.appendChild(pipe('M400,142 L546,142', SUP, waterFlow && toRoom));
-  svg.appendChild(pipe('M546,192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M400,142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
@@ -1150,11 +1153,17 @@ function buildSchema(unit) {
   // einzige gerade Linie ohne jeden Knick, statt der vorherigen
   // Umwegfuehrung mit vier Knicken (Dietmar, 16.08.2026: "eine Gerade
   // aus 4 Knicken?").
+  // vorlaufX = x-Position, an der der jeweilige Zonen-Vorlauf beginnt -
+  // Zone 1 direkt am Mischer (694, da sie den gemeinsamen Trunk bis
+  // dorthin durchlaeuft), Zone 2 an ihrem eigenen Abzweigpunkt (645).
+  // Dient dazu, den Ruecklauf-Chip mittig zwischen Puffer und dem
+  // JEWEILIGEN Vorlauf zu platzieren (Dietmar, 16.08.2026).
   var zones = [{
     n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos,
-    showRadiator: cfg.zone1ShowRadiator !== false, showFloor: cfg.zone1ShowFloor !== false
+    showRadiator: cfg.zone1ShowRadiator !== false, showFloor: cfg.zone1ShowFloor !== false,
+    vorlaufX: 694
   }];
   if (hasZone2) {
     var p2Known = unit.z2Pump !== null && unit.z2Pump !== undefined;
@@ -1163,7 +1172,8 @@ function buildSchema(unit) {
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos,
-      showRadiator: cfg.zone2ShowRadiator !== false, showFloor: cfg.zone2ShowFloor !== false
+      showRadiator: cfg.zone2ShowRadiator !== false, showFloor: cfg.zone2ShowFloor !== false,
+      vorlaufX: 645
     });
   }
 
@@ -1180,24 +1190,24 @@ function buildSchema(unit) {
   // Mischer zu schaffen - PUF_RIGHT bleibt der feste Anschlusspunkt.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(bentPipe([[666, 142], [666, 322], [696, 322]], SUP, zones[1].pumpOn));
+    svg.appendChild(bentPipe([[645, 142], [645, 322], [675, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
     // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
     // Ankunftshoehe) - EIN Knick, dann trifft sie ohne weiteren Umweg auf
     // die gemeinsame Leitung.
-    svg.appendChild(pipe('M688,372 L688,192', RET, zones[1].pumpOn));
+    svg.appendChild(pipe('M667,372 L667,192', RET, zones[1].pumpOn));
   }
-  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L696,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
   // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
-  // Sammelstelle (688,192) bis zum Puffer (Dietmar, 16.08.2026 - die
+  // Sammelstelle (667,192) bis zum Puffer (Dietmar, 16.08.2026 - die
   // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
   // nicht die einzelnen Knicke fuer sich).
-  svg.appendChild(pipe('M688,192 L' + PUF_RIGHT + ',192', RET, anyOn));
-  // Vorlauf-Chip mittig zwischen Puffer (616) und Mischer (715) - zeigt
+  svg.appendChild(pipe('M667,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  // Vorlauf-Chip mittig zwischen Puffer (PUF_RIGHT) und Mischer (694) - zeigt
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
   // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar).
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    drawValve(chip((PUF_RIGHT + 715) / 2, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    drawValve(chip((PUF_RIGHT + 694) / 2, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
 
   zones.forEach(function (z) {
@@ -1209,65 +1219,65 @@ function buildSchema(unit) {
     // 16.08.2026).
     // Endet bei der Steigleitung des Heizkoerpers (falls vorhanden) -
     // die liegt seit 16.08.2026 20px links von dessen Kontur statt genau
-    // auf x=810, sonst entstuende eine Luecke zur verschobenen Leitung.
-    svg.appendChild(pipe('M696,' + z.y + ' L' + (z.showRadiator ? 810 : 850) + ',' + z.y, SUP, on));
+    // auf x=789, sonst entstuende eine Luecke zur verschobenen Leitung.
+    svg.appendChild(pipe('M675,' + z.y + ' L' + (z.showRadiator ? 789 : 829) + ',' + z.y, SUP, on));
     // Bypass: der Mischer ist ein ECHTER Mischerkreis, kein reines
     // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
     // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
     // Vorlauftemperatur fuer den Kreis abzusenken. Zapfstelle direkt bei
-    // x=715 auf der Ruecklaufleitung (liegt zwischen 688 und 850 auf
+    // x=694 auf der Ruecklaufleitung (liegt zwischen 667 und 829 auf
     // deren Weg zum Puffer), senkrecht hoch bis zum Mischer. Mischer +
     // alles daran Haengende nochmal 40px nach rechts (Dietmar,
     // 16.08.2026), damit zwischen Puffer und Mischer Platz fuer den
     // Vorlauf-Chip entsteht.
-    svg.appendChild(pipe('M715,' + z.retY + ' L715,' + z.y, RET, on));
+    svg.appendChild(pipe('M694,' + z.retY + ' L694,' + z.y, RET, on));
     // Mischer: echte Stellung in Prozent schlaegt die Stellrichtung.
     if (z.mvPos !== null && z.mvPos !== undefined) {
-      drawValve(valveSymbol(715, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
+      drawValve(valveSymbol(694, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
         Math.round(z.mvPos) + ' %', z.mvPos > 0));
     } else if (z.mv === 2) {
-      drawValve(valveSymbol(715, z.y, 7, HOT, 'öffnet', true));
+      drawValve(valveSymbol(694, z.y, 7, HOT, 'öffnet', true));
     } else if (z.mv === 1) {
-      drawValve(valveSymbol(715, z.y, 7, COLD, 'schließt', true));
+      drawValve(valveSymbol(694, z.y, 7, COLD, 'schließt', true));
     } else if (z.mv === 0) {
-      drawValve(valveSymbol(715, z.y, 7, PAL.draw, 'steht', false));
+      drawValve(valveSymbol(694, z.y, 7, PAL.draw, 'steht', false));
     } else {
-      drawValve(valveSymbol(715, z.y, 7, PAL.draw, null, false));
+      drawValve(valveSymbol(694, z.y, 7, PAL.draw, null, false));
     }
-    svg.appendChild(pumpIcon(775, z.y, on, 0));
+    svg.appendChild(pumpIcon(754, z.y, on, 0));
     // Getrennte Beschriftungen statt einer gemeinsamen Mitte (Dietmar,
-    // 16.08.2026): "Mischer" steht mittig ueber dem Ventil (715),
-    // "Pumpe" mittig ueber der Pumpe (775) - deckt bei HK2 keine
-    // Leitungen, da die Zone-2-Abzweige bei x=666/688 liegen, ausserhalb
+    // 16.08.2026): "Mischer" steht mittig ueber dem Ventil (694),
+    // "Pumpe" mittig ueber der Pumpe (754) - deckt bei HK2 keine
+    // Leitungen, da die Zone-2-Abzweige bei x=645/667 liegen, ausserhalb
     // beider Wortbreiten.
-    var mischerTag = el('text', { x: 715, y: z.y - 25, class: 'tag' });
+    var mischerTag = el('text', { x: 694, y: z.y - 25, class: 'tag' });
     mischerTag.textContent = 'Mischer';
     svg.appendChild(mischerTag);
-    var pumpeTag = el('text', { x: 775, y: z.y - 25, class: 'tag' });
+    var pumpeTag = el('text', { x: 754, y: z.y - 25, class: 'tag' });
     pumpeTag.textContent = z.pumpKnown ? 'Pumpe' : 'Pumpe (kein Status)';
     svg.appendChild(pumpeTag);
     // Pfeile im Vor-/Ruecklauf nur bei HK2 - bei HK1 auf Dietmars Wunsch
     // entfernt (16.08.2026), die Flussanimation (Punkte) zeigt die
     // Richtung dort bereits.
-    if (on && z.n !== 1) { svg.appendChild(arrowHead(825, z.y, 'r', SUPC)); }
+    if (on && z.n !== 1) { svg.appendChild(arrowHead(804, z.y, 'r', SUPC)); }
 
     // Heizkoerper + Fussbodenheizung als ECHTE gefaerbte Leitung, parallel
     // gespeist (Dietmar, 16.08.2026, nach dem zweiten Referenzbild): beide
     // haengen unabhaengig an derselben Vor-/Ruecklaufschiene statt in
     // Reihe hintereinander. Anschlusshoehen (z.y oben, z.retY unten)
     // bleiben exakt wie beim Kasten zuvor. Linke Kante des ersten Icons
-    // bei x=850, flucht mit dem Vorlauf-Ankunftspunkt.
+    // bei x=829, flucht mit dem Vorlauf-Ankunftspunkt.
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
-    var curX = 850;
+    var curX = 829;
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
     if (z.showFloor) { iconTypes.push('floor'); }
     if (iconTypes.length === 0) {
       // Weder Heizkoerper noch Fussbodenheizung gewaehlt: leerer Kasten
       // als Rueckfallebene, damit die Leitungen nicht ins Leere laufen.
-      svg.appendChild(el('rect', { x: 850, y: iconTop - 15, width: 140, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
-      curX = 850 + 140;
+      svg.appendChild(el('rect', { x: 829, y: iconTop - 15, width: 140, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
+      curX = 829 + 140;
     } else {
       iconTypes.forEach(function (t, i) {
         if (i > 0) {
@@ -1341,11 +1351,11 @@ function buildSchema(unit) {
         }
       });
     }
-    // "HEIZKREIS N" mittig UEBER Mischer (715) + Pumpe (775) statt ueber
+    // "HEIZKREIS N" mittig UEBER Mischer (694) + Pumpe (754) statt ueber
     // der ganzen Icon-Gruppe (Dietmar, 16.08.2026) - x=745 ist deren
     // Mittelpunkt. Ueberdeckt weder Mischer/Pumpe-Beschriftung (25px
     // darunter) noch den Heizkoerper (der beginnt erst bei x=830+).
-    var hkCX = (715 + 775) / 2;
+    var hkCX = (694 + 754) / 2;
     var rt = el('text', { x: hkCX, y: z.y - 53, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
@@ -1361,17 +1371,20 @@ function buildSchema(unit) {
     // 16.08.2026: "die 18° sollen vermutlich der Ruecklauf sein" +
     // "der Ruecklauf Chip auf der Ruecklaufleitung darunter").
     if (z.temp !== null && z.temp !== undefined) {
-      // Direkt unter dem Vorlauf-Chip (Dietmar, 16.08.2026) - gleiche x
-      // wie dessen Mittelpunkt (PUF_RIGHT+715)/2.
-      drawValve(chip((PUF_RIGHT + 715) / 2, z.retY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      // Mittig zwischen Puffer und dem jeweiligen Zonen-Vorlauf (Dietmar,
+      // 16.08.2026) - fuer Zone 1 deckt sich das mit der Position des
+      // Vorlauf-Chips (der ohnehin auf ihrem Trunk sitzt), fuer Zone 2
+      // liegt es naeher am eigenen Abzweigpunkt statt am Vorlauf-Chip
+      // der Zone 1.
+      drawValve(chip((PUF_RIGHT + z.vorlaufX) / 2, z.retY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
     // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50 - direkt auf der
     // Sammelhoehe, dadurch nur diese EINE gerade Strecke bis zur
     // Sammelstelle noetig, kein zusaetzlicher Knick am Kasten.
-    svg.appendChild(pipe('M850,' + z.retY + ' L688,' + z.retY, RET, on));
-    if (on && z.n !== 1) { svg.appendChild(arrowHead(810, z.retY, 'l', RETC)); }
+    svg.appendChild(pipe('M829,' + z.retY + ' L667,' + z.retY, RET, on));
+    if (on && z.n !== 1) { svg.appendChild(arrowHead(789, z.retY, 'l', RETC)); }
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
