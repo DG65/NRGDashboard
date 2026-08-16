@@ -231,16 +231,20 @@ function pumpIcon(x, y, active, dirDeg, r) {
 // mit SUPC->RETC-Verlauf. Radiator- und Spiralpfad geben Start-/
 // Endpunkt zurueck, damit der Aufrufer sie sauber an die Vor-/
 // Ruecklaufleitung anschliessen kann.
-function radiatorZigzagPath(left, right, top, bot, folds) {
-  var d = 'M' + left + ',' + top;
+function zigzagPoints(left, right, top, bot, folds) {
+  var pts = [[left, top]];
   var x = left, stepX = (right - left) / folds;
   for (var i = 1; i <= folds; i++) {
     var y = (i % 2 === 1) ? bot : top;
-    d += ' L' + x + ',' + y;
+    pts.push([x, y]);
     x += stepX;
-    d += ' L' + x + ',' + y;
+    pts.push([x, y]);
   }
-  return { d: d, endX: x, endY: (folds % 2 === 1) ? bot : top };
+  return pts;
+}
+function pointsToD(pts) {
+  return 'M' + pts[0][0] + ',' + pts[0][1] +
+    pts.slice(1).map(function (p) { return ' L' + p[0] + ',' + p[1]; }).join('');
 }
 function squareSpiralPath(cx, cy, w, h, gap) {
   // Startet oben LINKS (nicht oben rechts) - muss von derselben Seite
@@ -1214,6 +1218,7 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 810;
+    var topMostY = iconTop;
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
     if (z.showFloor) { iconTypes.push('floor'); }
@@ -1232,18 +1237,32 @@ function buildSchema(unit) {
           svg.appendChild(pipe('M' + curX + ',' + iconBot + ' L' + (curX + iconGap) + ',' + iconBot, RET, on));
           curX += iconGap;
         }
-        var gid = 'emit' + t + z.n + unit.id;
-        var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
-        var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
-        var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
-        gr.appendChild(gs0); gr.appendChild(gs1);
-        svg.querySelector('defs').appendChild(gr);
         if (t === 'radiator') {
-          svg.appendChild(el('rect', { x: curX, y: iconTop - 15, width: radW, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
-          var zres = radiatorZigzagPath(curX + 10, curX + radW - 10, iconTop, iconBot, 5);
-          svg.appendChild(pipe(zres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
+          // Heizkoerper sitzt ERHOEHT ueber der Anschlussschiene (wie im
+          // Detailbild, 16.08.2026): Vorlauf steigt aussen als eigenes,
+          // gerades rotes Steigrohr zum Heizkoerper hoch, Ruecklauf faellt
+          // spiegelbildlich als blaues Fallrohr wieder herunter. Innerhalb
+          // des Heizkoerpers HARTE Farbtrennung Rot/Blau (kein Verlauf) -
+          // erste Haelfte der Falten rot, zweite Haelfte blau.
+          var boxBot = iconTop - 15, boxTop = boxBot - 80;
+          var boxL = curX + 10, boxR = curX + radW - 10;
+          svg.appendChild(el('rect', { x: curX, y: boxTop - 8, width: radW, height: (boxBot - boxTop) + 16, rx: 4, class: 'box', fill: 'none' }));
+          topMostY = Math.min(topMostY, boxTop - 8);
+          var folds = 5, splitFold = 3;
+          var pts = zigzagPoints(boxL, boxR, boxTop + 6, boxBot - 6, folds);
+          var splitIdx = splitFold * 2;
+          var redPts = [[boxL, iconTop]].concat(pts.slice(0, splitIdx + 1));
+          var bluePts = pts.slice(splitIdx).concat([[pts[pts.length - 1][0], iconBot]]);
+          svg.appendChild(pipe(pointsToD(redPts), SUP, on));
+          svg.appendChild(pipe(pointsToD(bluePts), RET, on));
           curX += radW;
         } else {
+          var gid = 'emitfloor' + z.n + unit.id;
+          var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
+          var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
+          var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
+          gr.appendChild(gs0); gr.appendChild(gs1);
+          svg.querySelector('defs').appendChild(gr);
           var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
           var sres = squareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
           svg.appendChild(pipe('M' + sres.startX + ',' + sres.startY + sres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
@@ -1252,11 +1271,11 @@ function buildSchema(unit) {
       });
     }
     var groupCX = (810 + curX) / 2;
-    var rt = el('text', { x: groupCX, y: iconTop - 20, class: 'box-title' });
+    var rt = el('text', { x: groupCX, y: topMostY - 14, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: groupCX, y: iconTop - 6, class: 'tag' });
+      var rc = el('text', { x: groupCX, y: topMostY, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
