@@ -54,10 +54,34 @@ class NRGDashboardHeatSchema extends IPSModule
         // Fussbodenheizung ... auch in den Versionen mit nur einem HK
         // oder mit 2 HK" - eine Kachel mit Schaltern statt mehrerer
         // Kachel-Varianten). Default beide an.
-        $this->RegisterPropertyBoolean('Zone1ShowRadiator', true);
-        $this->RegisterPropertyBoolean('Zone1ShowFloor', true);
-        $this->RegisterPropertyBoolean('Zone2ShowRadiator', true);
-        $this->RegisterPropertyBoolean('Zone2ShowFloor', true);
+        //
+        // ALS ECHTE VARIABLEN statt Properties (Dietmar, 16.08.2026: "ich
+        // haette sie gerne wie bei den Eurotronic Comet WiFi auf der
+        // vergroesserten Kachelseite") - Befund aus der CometWiFi-Sitzung
+        // (Cross-Session-Nachricht, 16.08.2026): das Aufziehen einer
+        // Kachel zeigt NIE das eigene Kachel-HTML, sondern immer die
+        // Standardansicht der Instanz-KINDER (Variablen/Verknuepfungen).
+        // Ein per ResizeObserver im Kachel-HTML versteckter/gezeigter
+        // Schalter (erster, verworfener Versuch) wuerde dort nie
+        // erscheinen. Eigene Boolean-Variablen mit EnableAction()
+        // rendern dagegen als normale Schalter in genau dieser
+        // aufgezogenen Ansicht - gleiches Muster wie EMS_GridRewards im
+        // EMS-Modul.
+        $this->RegisterVariableBoolean('Zone1ShowRadiator', 'Heizkreis 1: Heizkörper', '', 10);
+        $this->RegisterVariableBoolean('Zone1ShowFloor', 'Heizkreis 1: Fußbodenheizung', '', 11);
+        $this->RegisterVariableBoolean('Zone2ShowRadiator', 'Heizkreis 2: Heizkörper', '', 20);
+        $this->RegisterVariableBoolean('Zone2ShowFloor', 'Heizkreis 2: Fußbodenheizung', '', 21);
+        $this->EnableAction('Zone1ShowRadiator');
+        $this->EnableAction('Zone1ShowFloor');
+        $this->EnableAction('Zone2ShowRadiator');
+        $this->EnableAction('Zone2ShowFloor');
+        // Create() laeuft nur EINMAL beim Anlegen der Instanz - der
+        // Default (beide an) muss deshalb nicht gegen spaetere manuelle
+        // Umschaltungen abgesichert werden.
+        $this->SetValue('Zone1ShowRadiator', true);
+        $this->SetValue('Zone1ShowFloor', true);
+        $this->SetValue('Zone2ShowRadiator', true);
+        $this->SetValue('Zone2ShowFloor', true);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -121,26 +145,22 @@ class NRGDashboardHeatSchema extends IPSModule
     }
 
     /**
-     * Emitter-Schalter direkt in der Kachel (Dietmar, 16.08.2026: "die
-     * Schalter sollten auftauchen wenn man bei der Kachel oben rechts den
-     * Doppelpfeil drueckt") - der Doppelpfeil oeffnet nur die vergroesserte
-     * Standardansicht derselben Kachel, keinen Zugriff auf die Instanz-
-     * Properties. Die Schalter im SVG (siehe module.html, emitterToggle())
-     * rufen deshalb per WebFront-Bruecke requestAction() diese Methode auf,
-     * die die Property direkt umschaltet - genau wie requestAction() im
-     * NRGDashboardMonitor-Modul (Energiebilanz-Zeitraum) bereits vorgemacht.
+     * Emitter-Schalter (Dietmar, 16.08.2026: "ich haette sie gerne wie
+     * bei den Eurotronic Comet WiFi auf der vergroesserten Kachelseite").
+     * Ein erster Versuch zeichnete eigene Schalter INS Kachel-HTML und
+     * blendete sie per ResizeObserver ein - Fehlschlag, siehe
+     * Cross-Session-Befund aus der CometWiFi-Sitzung (16.08.2026): das
+     * Aufziehen einer Kachel zeigt NIE das eigene HTML, sondern immer
+     * die Standardansicht der Instanz-Kinder. Die vier Boolean-
+     * Variablen (siehe Create()) erscheinen dort deshalb als normale
+     * Schalter; WebFront ruft beim Bedienen automatisch RequestAction()
+     * mit dem Variablen-Ident auf.
      */
     public function RequestAction($Ident, $Value)
     {
-        $map = [
-            'zone1ShowRadiator' => 'Zone1ShowRadiator',
-            'zone1ShowFloor'    => 'Zone1ShowFloor',
-            'zone2ShowRadiator' => 'Zone2ShowRadiator',
-            'zone2ShowFloor'    => 'Zone2ShowFloor',
-        ];
-        if (isset($map[$Ident])) {
-            IPS_SetProperty($this->InstanceID, $map[$Ident], (bool) $Value);
-            IPS_ApplyChanges($this->InstanceID);
+        if (in_array($Ident, ['Zone1ShowRadiator', 'Zone1ShowFloor', 'Zone2ShowRadiator', 'Zone2ShowFloor'], true)) {
+            $this->SetValue($Ident, (bool) $Value);
+            $this->Render();
         }
     }
 
@@ -369,10 +389,10 @@ class NRGDashboardHeatSchema extends IPSModule
             'lightTheme'  => $this->readBoolProperty('LightTheme', false),
             'zone1Caption' => $this->readStringProperty('Zone1Caption', ''),
             'zone2Caption' => $this->readStringProperty('Zone2Caption', ''),
-            'zone1ShowRadiator' => $this->readBoolProperty('Zone1ShowRadiator', true),
-            'zone1ShowFloor'    => $this->readBoolProperty('Zone1ShowFloor', true),
-            'zone2ShowRadiator' => $this->readBoolProperty('Zone2ShowRadiator', true),
-            'zone2ShowFloor'    => $this->readBoolProperty('Zone2ShowFloor', true),
+            'zone1ShowRadiator' => (bool) $this->GetValue('Zone1ShowRadiator'),
+            'zone1ShowFloor'    => (bool) $this->GetValue('Zone1ShowFloor'),
+            'zone2ShowRadiator' => (bool) $this->GetValue('Zone2ShowRadiator'),
+            'zone2ShowFloor'    => (bool) $this->GetValue('Zone2ShowFloor'),
             'renderedAt'  => time(),
             'units'       => $units,
         ];
