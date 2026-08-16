@@ -1361,7 +1361,9 @@ function buildSchema(unit) {
     // 16.08.2026: "die 18° sollen vermutlich der Ruecklauf sein" +
     // "der Ruecklauf Chip auf der Ruecklaufleitung darunter").
     if (z.temp !== null && z.temp !== undefined) {
-      drawValve(chip(769, z.retY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      // Direkt unter dem Vorlauf-Chip (Dietmar, 16.08.2026) - gleiche x
+      // wie dessen Mittelpunkt (PUF_RIGHT+715)/2.
+      drawValve(chip((PUF_RIGHT + 715) / 2, z.retY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
