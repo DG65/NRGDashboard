@@ -1141,9 +1141,17 @@ function buildSchema(unit) {
       drawValve(valveSymbol(670, z.y, 7, PAL.draw, null, false));
     }
     svg.appendChild(pumpIcon(730, z.y, on, 0));
-    var et = el('text', { x: 710, y: z.y - 25, class: 'tag' });
-    et.textContent = z.pumpKnown ? 'Mischer + Pumpe' : 'Mischer + Pumpe (kein Status)';
-    svg.appendChild(et);
+    // Getrennte Beschriftungen statt einer gemeinsamen Mitte (Dietmar,
+    // 16.08.2026): "Mischer" steht mittig ueber dem Ventil (670),
+    // "Pumpe" mittig ueber der Pumpe (730) - deckt bei HK2 keine
+    // Leitungen, da die Zone-2-Abzweige bei x=626/648 liegen, ausserhalb
+    // beider Wortbreiten.
+    var mischerTag = el('text', { x: 670, y: z.y - 25, class: 'tag' });
+    mischerTag.textContent = 'Mischer';
+    svg.appendChild(mischerTag);
+    var pumpeTag = el('text', { x: 730, y: z.y - 25, class: 'tag' });
+    pumpeTag.textContent = z.pumpKnown ? 'Pumpe' : 'Pumpe (kein Status)';
+    svg.appendChild(pumpeTag);
     if (on) { svg.appendChild(arrowHead(780, z.y, 'r', SUPC)); }
 
     // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
