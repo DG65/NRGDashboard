@@ -49,6 +49,12 @@ class NRGDashboardHeatSchema extends IPSModule
         // die Heizflaechen unterscheiden sich von Anlage zu Anlage.
         $this->RegisterPropertyString('Zone1Caption', '');
         $this->RegisterPropertyString('Zone2Caption', '');
+        // Heizflaechenart je Kreis (Dietmar, 16.08.2026): 0=Heizkoerper,
+        // 1=Fussbodenheizung - waehlt das passende Symbol statt eines
+        // generischen Platzhalters. Default 0, damit bestehende
+        // Installationen optisch unveraendert bleiben.
+        $this->RegisterPropertyInteger('Zone1EmitterType', 0);
+        $this->RegisterPropertyInteger('Zone2EmitterType', 0);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -336,6 +342,8 @@ class NRGDashboardHeatSchema extends IPSModule
             'lightTheme'  => $this->readBoolProperty('LightTheme', false),
             'zone1Caption' => $this->readStringProperty('Zone1Caption', ''),
             'zone2Caption' => $this->readStringProperty('Zone2Caption', ''),
+            'zone1EmitterType' => $this->readIntProperty('Zone1EmitterType', 0),
+            'zone2EmitterType' => $this->readIntProperty('Zone2EmitterType', 0),
             'renderedAt'  => time(),
             'units'       => $units,
         ];

@@ -41,9 +41,27 @@
           "caption": "Beschriftung Heizkreis 1 (z. B. „Radiatoren“ – leer lassen für keine)"
         },
         {
+          "type": "Select",
+          "name": "Zone1EmitterType",
+          "caption": "Heizflächenart Heizkreis 1",
+          "options": [
+            { "value": 0, "caption": "Heizkörper" },
+            { "value": 1, "caption": "Fußbodenheizung" }
+          ]
+        },
+        {
           "type": "ValidationTextBox",
           "name": "Zone2Caption",
           "caption": "Beschriftung Heizkreis 2 (nur sichtbar, wenn die Wärmepumpe eine zweite Zone meldet)"
+        },
+        {
+          "type": "Select",
+          "name": "Zone2EmitterType",
+          "caption": "Heizflächenart Heizkreis 2",
+          "options": [
+            { "value": 0, "caption": "Heizkörper" },
+            { "value": 1, "caption": "Fußbodenheizung" }
+          ]
         }
       ]
     }
