@@ -9,6 +9,25 @@
   .unit { padding: 10px 12px; }
   .unit-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
   svg.schema { width: 100%; height: auto; display: block; }
+  /* Bei GENAU einer Waermepumpe (der uebliche Fall) soll die Zeichnung
+     die Kachel komplett ausfuellen und mittig sitzen, egal wie die
+     Kachel selbst gerade zugeschnitten ist (Dietmar, 16.08.2026: "die
+     Darstellung ist nicht in der Kachelmitte ... skaliert nur in
+     horizontaler Richtung ... am unteren Kachelrand wird die
+     Darstellung ausgeblendet"). "width:100%; height:auto" (oben)
+     berechnet die Hoehe NUR aus der Breite - passt das Kachel-
+     Seitenverhaeltnis nicht zum viewBox-Seitenverhaeltnis, ragt die
+     Zeichnung entweder ueber den unteren Rand hinaus (abgeschnitten,
+     #wrap hat overflow-y) oder haengt oben/links statt mittig. "single"
+     schaltet stattdessen auf volle Breite UND Hoehe um, das SVG selbst
+     regelt dank viewBox + preserveAspectRatio="xMidYMid meet" die
+     Skalierung UND Zentrierung in beiden Richtungen. Bei MEHREREN
+     Waermepumpen bleibt die bisherige scrollende Stapel-Darstellung
+     (mehrere Diagramme untereinander koennen nicht gleichzeitig beide
+     Kachel-Dimensionen ausfuellen). */
+  #units.single { height: 100%; }
+  .unit.fill { padding: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .unit.fill svg.schema { width: 100%; height: 100%; }
 
   /* Stil-Essenz aus fuenf Referenzbildern (Aquarea-Wiki, Solvis, iDM,
      Bernhard Baptists "Wärmepumpe Visu", OekoFEN/Solar-Visu; mit Dietmar
@@ -1528,9 +1547,15 @@ function handleMessage(raw) {
   var anySchema = units.some(function (u) { return u.hasPipeSchema; });
   if (anySchema) { units = units.filter(function (u) { return u.hasPipeSchema; }); }
 
+  // Bei genau einer Waermepumpe MIT Rohrschema soll die Zeichnung die
+  // ganze Kachel ausfuellen und mittig sitzen statt nur in der Breite
+  // zu skalieren (siehe ".unit.fill" in <style>, Dietmar, 16.08.2026).
+  var single = units.length === 1 && units[0].hasPipeSchema;
+  unitsEl.classList.toggle('single', single);
+
   units.forEach(function (unit) {
     var row = document.createElement('div');
-    row.className = 'unit';
+    row.className = 'unit' + (single ? ' fill' : '');
     // KEIN eigener Titel: die Kachel traegt in IP-Symcon bereits ihren
     // Instanznamen in der Kopfzeile, ein zweiter Titel im Inhalt
     // ueberlagert diesen optisch (Dietmar, 14.08.2026). Der Geraetename
