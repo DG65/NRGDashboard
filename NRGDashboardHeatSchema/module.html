@@ -230,51 +230,6 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
-// Heizkoerper/Fussbodenheizung als ECHTE gefaerbte Leitung, genau wie
-// Dietmars zweites Referenzbild (16.08.2026): kein neutrales Symbol
-// mit Fuellung, sondern derselbe Rot-nach-Blau-Wendel-Ansatz wie schon
-// beim WW-Tank-Wendel/Puffer-Wendel - der Heizkoerper ist ein
-// Zickzack-Rohr, die Fussbodenheizung eine quadratische Spirale, beide
-// mit SUPC->RETC-Verlauf. Radiator- und Spiralpfad geben Start-/
-// Endpunkt zurueck, damit der Aufrufer sie sauber an die Vor-/
-// Ruecklaufleitung anschliessen kann.
-function zigzagPoints(left, right, top, bot, folds) {
-  var pts = [[left, top]];
-  var x = left, stepX = (right - left) / folds;
-  for (var i = 1; i <= folds; i++) {
-    var y = (i % 2 === 1) ? bot : top;
-    pts.push([x, y]);
-    x += stepX;
-    pts.push([x, y]);
-  }
-  return pts;
-}
-function pointsToD(pts) {
-  return 'M' + pts[0][0] + ',' + pts[0][1] +
-    pts.slice(1).map(function (p) { return ' L' + p[0] + ',' + p[1]; }).join('');
-}
-function squareSpiralPath(cx, cy, w, h, gap) {
-  // Startet oben LINKS (nicht oben rechts) - muss von derselben Seite
-  // gespeist werden koennen wie der Heizkoerper-Zickzack, damit beide
-  // Komponenten an ihrer LINKEN Kante an die gemeinsame Vorlaufschiene
-  // anschliessen.
-  var left = cx - w / 2, right = cx + w / 2, top = cy - h / 2, bot = cy + h / 2;
-  var startX = left, startY = top;
-  var d = '';
-  var x = left, y = top;
-  while (right - left > gap && bot - top > gap) {
-    y = bot; d += ' L' + x + ',' + y;
-    left += gap;
-    x = right; d += ' L' + x + ',' + y;
-    bot -= gap;
-    y = top; d += ' L' + x + ',' + y;
-    right -= gap;
-    x = left; d += ' L' + x + ',' + y;
-    top += gap;
-  }
-  return { startX: startX, startY: startY, d: d, endX: x, endY: y };
-}
-
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
 // Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
 // direkt auf der Flaeche. Groesse proportional zum realen Volumen.
@@ -1181,7 +1136,7 @@ function buildSchema(unit) {
     n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos,
-    showRadiator: cfg.zone1ShowRadiator !== false, showFloor: cfg.zone1ShowFloor !== false,
+    showRadiator: cfg.zone1ShowRadiator !== false,
     vorlaufX: 694
   }];
   if (hasZone2) {
@@ -1191,7 +1146,7 @@ function buildSchema(unit) {
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos,
-      showRadiator: cfg.zone2ShowRadiator !== false, showFloor: cfg.zone2ShowFloor !== false,
+      showRadiator: cfg.zone2ShowRadiator !== false,
       vorlaufX: 645
     });
   }
@@ -1207,7 +1162,6 @@ function buildSchema(unit) {
   // Alles rechts vom Puffer nochmal 40px nach rechts (Dietmar,
   // 16.08.2026), um Platz fuer den Vorlauf-Chip zwischen Puffer und
   // Mischer zu schaffen - PUF_RIGHT bleibt der feste Anschlusspunkt.
-  var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
     svg.appendChild(bentPipe([[645, 142], [645, 322], [675, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
@@ -1218,14 +1172,12 @@ function buildSchema(unit) {
     // separat gezeichnet haette an (620,372) eine scharfe Ecke ergeben.
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
-  // Sammelstelle (620,192) bis zum Puffer (Dietmar, 16.08.2026 - die
-  // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
-  // nicht die einzelnen Knicke fuer sich).
-  // Ruecklauf-Steigleitung (Zone 2) 47px nach links, zwischen die
-  // Vorlauf-Steigleitung (645) und den Puffer geschoben, statt rechts
-  // davon zu liegen (Dietmar, 16.08.2026).
-  svg.appendChild(pipe('M620,192 L' + PUF_RIGHT + ',192', RET, anyOn));
+  // Keine eigene "Sammelleitung" mehr getrennt gezeichnet (Dietmar,
+  // 16.08.2026: "die Ruecklaeufe kannst du nun verbinden") - jede Zone
+  // zieht ihren eigenen Ruecklauf jetzt durchgehend bis zum Puffer
+  // (siehe weiter unten), die Strecke ab x=620 wird dadurch von
+  // derjenigen Zone animiert, die gerade foerdert, statt von einer
+  // separaten anyOn-Linie ueberzeichnet zu werden.
   // Vorlauf-Chip mittig zwischen Puffer (PUF_RIGHT) und Mischer (694) - zeigt
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
   // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar).
@@ -1275,7 +1227,7 @@ function buildSchema(unit) {
     } else {
       drawValve(valveSymbol(694, z.y, 7, PAL.draw, null, false));
     }
-    svg.appendChild(pumpIcon(754, z.y, on, 0));
+    drawValve(pumpIcon(754, z.y, on, 0));
     // Getrennte Beschriftungen statt einer gemeinsamen Mitte (Dietmar,
     // 16.08.2026): "Mischer" steht mittig ueber dem Ventil (694),
     // "Pumpe" mittig ueber der Pumpe (754) - deckt bei HK2 keine
@@ -1300,12 +1252,14 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 829;
+    // Fussbodenheizungs-Icon entfernt (Dietmar, 16.08.2026: "die
+    // Fussbodenheizungen ganz rechts kannst Du entfernen") - nur noch
+    // der Heizkoerper bleibt als Emitter-Icon.
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
-    if (z.showFloor) { iconTypes.push('floor'); }
     if (iconTypes.length === 0) {
-      // Weder Heizkoerper noch Fussbodenheizung gewaehlt: leerer Kasten
-      // als Rueckfallebene, damit die Leitungen nicht ins Leere laufen.
+      // Kein Heizkoerper gewaehlt: leerer Kasten als Rueckfallebene,
+      // damit die Leitungen nicht ins Leere laufen.
       svg.appendChild(el('rect', { x: 829, y: iconTop - 15, width: 140, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
       curX = 829 + 140;
     } else {
@@ -1371,17 +1325,6 @@ function buildSchema(unit) {
           svg.appendChild(bentPipe([[675, z.y], [boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
           svg.appendChild(bentPipe([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]], RET, on));
           curX += radW;
-        } else {
-          var gid = 'emitfloor' + z.n + unit.id;
-          var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
-          var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
-          var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
-          gr.appendChild(gs0); gr.appendChild(gs1);
-          svg.querySelector('defs').appendChild(gr);
-          var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
-          var sres = squareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
-          svg.appendChild(pipe('M' + sres.startX + ',' + sres.startY + sres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
-          curX += spiralSide;
         }
       });
     }
@@ -1424,11 +1367,17 @@ function buildSchema(unit) {
     // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
     // (620,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
     // (Dietmar, 16.08.2026). Die Steigleitung liegt bei x=620, zwischen der
-    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595).
+    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595). Jede Zone
+    // zieht ihren Ruecklauf jetzt DURCHGEHEND bis zum Puffer statt an der
+    // vormals separat gezeichneten Sammelleitung zu enden (Dietmar,
+    // 16.08.2026: "die Ruecklaeufe kannst du nun verbinden ... Boegen
+    // anstatt Knicke") - der Knick am Zusammentreffen (620,192) war bisher
+    // ein scharfer T-Stoss zwischen zwei getrennten Pfaden, jetzt ein
+    // gerundeter Bogen INNERHALB eines einzigen bentPath()-Aufrufs.
     if (z.retY === 192) {
-      svg.appendChild(pipe('M829,' + z.retY + ' L620,' + z.retY, RET, on));
+      svg.appendChild(pipe('M829,' + z.retY + ' L' + PUF_RIGHT + ',' + z.retY, RET, on));
     } else {
-      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192]], RET, on));
+      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192], [PUF_RIGHT, 192]], RET, on));
     }
   });
 

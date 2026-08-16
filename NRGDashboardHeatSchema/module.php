@@ -49,16 +49,11 @@ class NRGDashboardHeatSchema extends IPSModule
         // die Heizflaechen unterscheiden sich von Anlage zu Anlage.
         $this->RegisterPropertyString('Zone1Caption', '');
         $this->RegisterPropertyString('Zone2Caption', '');
-        // Heizflaechen je Kreis unabhaengig ein-/ausblendbar (Dietmar,
-        // 16.08.2026: "an jedem Heizkreis einen stilisierten Fussboden-
-        // heizkreis und mindestens einen stilisierten Heizkörper...
-        // Beides sollte unabhängig ein- und ausblendbar sein") - eine
-        // Anlage kann beide Typen am selben Kreis haben (Heizkoerper +
-        // Fussbodenheizung in Reihe). Default beide an.
+        // Heizkoerper je Kreis unabhaengig ein-/ausblendbar. Default an.
+        // Fussbodenheizungs-Icon wieder entfernt (Dietmar, 16.08.2026:
+        // "die Fussbodenheizungen ganz rechts kannst Du entfernen").
         $this->RegisterPropertyBoolean('Zone1ShowRadiator', true);
-        $this->RegisterPropertyBoolean('Zone1ShowFloor', true);
         $this->RegisterPropertyBoolean('Zone2ShowRadiator', true);
-        $this->RegisterPropertyBoolean('Zone2ShowFloor', true);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -347,9 +342,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'zone1Caption' => $this->readStringProperty('Zone1Caption', ''),
             'zone2Caption' => $this->readStringProperty('Zone2Caption', ''),
             'zone1ShowRadiator' => $this->readBoolProperty('Zone1ShowRadiator', true),
-            'zone1ShowFloor'    => $this->readBoolProperty('Zone1ShowFloor', true),
             'zone2ShowRadiator' => $this->readBoolProperty('Zone2ShowRadiator', true),
-            'zone2ShowFloor'    => $this->readBoolProperty('Zone2ShowFloor', true),
             'renderedAt'  => time(),
             'units'       => $units,
         ];
