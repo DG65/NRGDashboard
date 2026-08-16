@@ -305,45 +305,52 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
-// Fussbodenheizung als quadratische Rohrspirale, Start-/Endpunkt fuer
-// den Anschluss an Vor-/Ruecklauf. Startet oben LINKS, damit sie von
-// derselben Seite gespeist werden kann wie der Heizkoerper.
-function squareSpiralPath(cx, cy, w, h, gap) {
-  var left = cx - w / 2, right = cx + w / 2, top = cy - h / 2, bot = cy + h / 2;
-  var startX = left, startY = top;
-  var d = '';
+// Quadratische Spirale IM UHRZEIGERSINN von aussen nach innen, als
+// Punktliste: Start oben links, erste Strecke laeuft nach RECHTS die
+// Oberkante entlang (wie in Dietmars Referenzzeichnung) - die linke
+// Seite der aeussersten Windung beginnt dadurch erst eine Ganghoehe
+// UNTER der Oberkante, dort entsteht die natuerliche Oeffnung, durch
+// die die Ruecklauf-Spirale die Flaeche verlassen kann, ohne den
+// Vorlauf zu kreuzen.
+function squareSpiralPts(left, top, side, gap) {
+  var right = left + side, bot = top + side;
+  var pts = [[left, top]];
   var x = left, y = top;
   while (right - left > gap && bot - top > gap) {
-    y = bot; d += ' L' + x + ',' + y;
-    left += gap;
-    x = right; d += ' L' + x + ',' + y;
-    bot -= gap;
-    y = top; d += ' L' + x + ',' + y;
-    right -= gap;
-    x = left; d += ' L' + x + ',' + y;
-    top += gap;
+    x = right; pts.push([x, y]);
+    y = bot; pts.push([x, y]);
+    x = left; pts.push([x, y]);
+    top += gap; y = top; pts.push([x, y]);
+    right -= gap; bot -= gap; left += gap;
   }
-  return { startX: startX, startY: startY, d: d, endX: x, endY: y };
+  return pts;
+}
+function ptsToPathD(pts) {
+  return 'M' + pts[0][0] + ',' + pts[0][1] +
+    pts.slice(1).map(function (p) { return ' L' + p[0] + ',' + p[1]; }).join('');
 }
 
-// Fussbodenheizung als ZWEI ineinander verwundene Spiralen statt einer
-// einzelnen mit Farbverlauf (Dietmar, 16.08.2026: "die Fussboden-
-// heizung sind tatsaechlich 2 ineinander verwundene Spiralen. Die
-// Vorlauf-Spirale geht im Kern in den Ruecklauf ueber" - reale
-// Zweirohr-Verlegung, bei der Vor- und Ruecklauf durchgehend parallel
-// nebeneinander liegen statt Vorlauf allein einzuspiralen). Die
-// Ruecklauf-Spirale ist exakt um eine halbe Ganghoehe (gap/2) nach
-// innen versetzt gestartet - dadurch liegen ihre Windungen genau
-// zwischen denen der Vorlauf-Spirale (verschachtelt, nicht
-// uebereinander). Beide enden nahe der Mitte; ein kurzes Verbindungs-
-// stueck dort stellt den Uebergang Vorlauf->Ruecklauf dar. Die
-// Ruecklauf-Spirale beginnt (wie die Vorlauf-Spirale) oben links,
-// liegt dort aber um gap/2 nach innen versetzt - ein kurzer Steg
-// fuehrt von dort zur eigentlichen Ruecklaufschiene (iconBot).
-function doubleSquareSpiralPath(cx, cy, w, h, gap) {
-  var supply = squareSpiralPath(cx, cy, w, h, gap);
-  var ret = squareSpiralPath(cx, cy, w - gap, h - gap, gap);
-  return { supply: supply, ret: ret };
+// Fussbodenheizung als GEGENSTROM-Doppelspirale (Tichelmann-Prinzip),
+// exakt nach Dietmars Inkscape-Referenzzeichnung (16.08.2026,
+// gemeinsam praezisiert): die rote Vorlauf-Spirale laeuft von aussen
+// nach innen, die blaue Ruecklauf-Spirale laeuft PARALLEL DAZWISCHEN
+// verschachtelt wieder von innen nach aussen - Rot und Blau wechseln
+// sich als Ringe ab, bis zum Kern, wo beide ineinander uebergehen.
+// Die Ruecklauf-Spirale ist um eine halbe Ganghoehe versetzt (gleiches
+// gap, Kantenlaenge um gap kleiner), ihre Windungen liegen dadurch
+// mittig zwischen den Vorlauf-Windungen. Ihr Pfad wird RUECKWAERTS
+// serialisiert, damit die Flussanimation von innen nach aussen
+// laeuft (das Wasser kommt aus dem Kern zurueck).
+function counterSpiral(left, top, side, gap) {
+  var supPts = squareSpiralPts(left, top, side, gap);
+  var retPts = squareSpiralPts(left + gap / 2, top + gap / 2, side - gap, gap);
+  return {
+    supD: ptsToPathD(supPts),
+    retD: ptsToPathD(retPts.slice().reverse()),
+    supEnd: supPts[supPts.length - 1],
+    retCore: retPts[retPts.length - 1],
+    retExit: retPts[0]
+  };
 }
 
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
@@ -646,13 +653,15 @@ function buildSchema(unit) {
   // oder 2 nicht vorhanden ist, dann ist er eben nicht mehr vorhanden").
   var z1Active = z1ShowRadiator || z1ShowFloor;
   var z2Active = hasZone2 && (z2ShowRadiator || z2ShowFloor);
-  // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 50px
-  // (= iconBot-iconTop, bei beiden Zonen konstant), 24px Abstand
+  // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 110px
+  // plus je 16px Anschlussrand links/rechts (in der Groessenordnung des
+  // Heizkoerpers, Dietmar 16.08.2026: "schau auch mal die Groesse der
+  // Fussbodenheizung in Relation zum Radiator an"), 24px Abstand
   // zwischen zwei Icons derselben Zone.
   function zoneContentWidth(showRad, showFloor) {
     var w = 0, n = 0;
     if (showRad) { w += 110; n++; }
-    if (showFloor) { w += (n > 0 ? 24 : 0) + 50; n++; }
+    if (showFloor) { w += (n > 0 ? 24 : 0) + 142; n++; }
     return w;
   }
   var zone1W = z1Active ? zoneContentWidth(z1ShowRadiator, z1ShowFloor) : 0;
@@ -1424,7 +1433,7 @@ function buildSchema(unit) {
     // bleiben exakt wie beim Kasten zuvor. Linke Kante des ersten Icons
     // bei x=829, flucht mit dem Vorlauf-Ankunftspunkt.
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
-    var radW = 110, spiralSide = iconBot - iconTop;
+    var radW = 110;
     var curX = 829;
     // Anfangspunkte des Ruecklaufs aus JEDEM gezeichneten Emitter-Icon -
     // werden weiter unten je EINZELN mit einer eigenen Ruecklaufleitung
@@ -1447,11 +1456,11 @@ function buildSchema(unit) {
     {
       iconTypes.forEach(function (t, i) {
         if (i > 0) {
-          // Verbindungsschienen zur gemeinsamen Vor-/Ruecklaufhoehe -
-          // beide Icons haengen PARALLEL an derselben Schiene, nicht
-          // hintereinander in Reihe.
-          svg.appendChild(pipe('M' + curX + ',' + iconTop + ' L' + (curX + iconGap) + ',' + iconTop, SUP, on));
-          svg.appendChild(pipe('M' + curX + ',' + iconBot + ' L' + (curX + iconGap) + ',' + iconBot, RET, on));
+          // Beide Icons haengen PARALLEL an derselben Vor-/Ruecklauf-
+          // schiene, nicht hintereinander in Reihe - die Zuleitungen
+          // selbst zeichnet jedes Icon durchgehend ab dem Mischer (675)
+          // bzw. bis zur Sammelstelle (620), hier nur den Abstand
+          // vorruecken.
           curX += iconGap;
         }
         if (t === 'radiator') {
@@ -1508,28 +1517,42 @@ function buildSchema(unit) {
           radReturnLeads.push([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]]);
           curX += radW;
         } else if (t === 'floor') {
-          // Fussbodenheizung als ZWEI ineinander verwundene Spiralen
-          // (Dietmar, 16.08.2026: "die Fussbodenheizung sind tatsaechlich
-          // 2 ineinander verwundene Spiralen. Die Vorlauf-Spirale geht im
-          // Kern in den Ruecklauf ueber") statt einer einzelnen Spirale
-          // mit Farbverlauf - siehe doubleSquareSpiralPath().
-          var floorStartX = curX;
-          var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
-          var dres = doubleSquareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
-          svg.appendChild(pipe('M' + dres.supply.startX + ',' + dres.supply.startY + dres.supply.d, SUP, on));
-          svg.appendChild(pipe('M' + dres.ret.startX + ',' + dres.ret.startY + dres.ret.d, RET, on));
-          // Kern-Uebergang: die Vorlauf-Spirale endet nahe der Mitte, die
-          // Ruecklauf-Spirale beginnt (an ihrem eigenen "Start"-Punkt,
-          // der geometrisch ebenfalls nahe der Mitte liegt) dort - ein
-          // kurzes Verbindungsstueck stellt den Uebergang dar.
-          svg.appendChild(bentPipe([[dres.supply.endX, dres.supply.endY], [dres.ret.startX, dres.ret.startY]], RET, on));
-          // Die Ruecklauf-Spirale beginnt (ihr eigener "Start"-Punkt, oben
-          // links) um gap/2 nach innen versetzt (Verschachtelung) statt
-          // exakt auf der Schiene - ein kurzer Steg fuehrt von dort zur
-          // eigentlichen Ruecklaufhoehe (iconBot), analog zum Heizkoerper-
-          // Anschluss.
-          radReturnLeads.push([[dres.ret.startX, dres.ret.startY], [dres.ret.startX, iconBot], [floorStartX, iconBot]]);
-          curX += spiralSide;
+          // Fussbodenheizung als Gegenstrom-Doppelspirale nach Dietmars
+          // Referenzzeichnung (16.08.2026) - siehe counterSpiral().
+          // Groesse BEWUSST in der Groessenordnung des Heizkoerpers
+          // (Dietmar: "schau auch mal die Groesse der Fussbodenheizung
+          // in Relation zum Radiator an" - vorher war sie mit 50x50
+          // weniger als halb so gross wie der Heizkoerper); nach oben
+          // ueber die Vorlaufschiene hinausgezogen, nach unten begrenzt
+          // durch den Heizkoerper eines eventuellen zweiten Kreises
+          // (dessen Oberkante liegt bei z.y+85).
+          var fSide = 110, fGap = 14;
+          var fLeft = curX + 16, fTop = iconTop - 30;
+          var cs = counterSpiral(fLeft, fTop, fSide, fGap);
+          // Vorlauf: von der Schiene (iconTop) kurz vor der Spirale
+          // senkrecht hoch zur Oberkante, dort oben links in die
+          // aeusserste Windung einbiegen (Dietmars Zeichnung: "die
+          // Vorlaufleitung steigt senkrecht hoch und tritt oben links
+          // ein").
+          // Ab dem Mischer (675) durchgehend gezeichnet - laeuft bei
+          // gezeigtem Heizkoerper unter diesem hindurch weiter zur
+          // Spirale (wie in Dietmars Zeichnung, wo der Vorlauf-Trunk
+          // unterhalb des Heizkoerpers bis zur Spirale durchlaeuft).
+          svg.appendChild(bentPipe([[675, iconTop], [fLeft - 14, iconTop], [fLeft - 14, fTop], [fLeft, fTop]], SUP, on));
+          svg.appendChild(pipe(cs.supD, SUP, on));
+          svg.appendChild(pipe(cs.retD, RET, on));
+          // Kern-Uebergang: Ende der Vorlauf-Spirale mit dem inneren
+          // Ende der Ruecklauf-Spirale verbinden - hier geht der
+          // Vorlauf in den Ruecklauf ueber.
+          svg.appendChild(bentPipe([cs.supEnd, cs.retCore], RET, on, 4));
+          // Ruecklauf-Austritt: die aeusserste blaue Windung verlaesst
+          // die Spirale oben links durch die natuerliche Oeffnung der
+          // Vorlauf-Spirale (deren linke Seite beginnt erst eine
+          // Ganghoehe tiefer - kein Kreuzen), laeuft kurz nach links
+          // und faellt dann senkrecht zur Ruecklauf-Sammelleitung
+          // (Dietmars Zeichnung).
+          radReturnLeads.push([[cs.retExit[0], cs.retExit[1]], [fLeft - 7, cs.retExit[1]], [fLeft - 7, iconBot]]);
+          curX += 16 + fSide + 16;
         }
       });
     }
