@@ -708,19 +708,18 @@ function buildSchema(unit) {
   var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
   // Betriebsart sichtbar machen - ohne sie sind Vor-/Ruecklauffarben und
   // die Kaeltemittel-Beschriftung nicht eindeutig lesbar. Sie gilt fuer
-  // die GANZE Anlage und sitzt deshalb linksbuendig als Kopfzeile am
-  // oberen Rand, statt beziehungslos zwischen den Geraetetiteln zu
-  // schweben (Dietmar, 14.08.2026).
+  // die GANZE Anlage und sitzt deshalb oben mittig im Canvas, wo sie
+  // nichts ueberdeckt, OHNE das Wortlabel "Betriebszustand" darueber
+  // (Dietmar, 16.08.2026: "das Wort 'Betriebszustand' entfernst du
+  // bitte. Den Chip ... stellst Du oben in die Mitte wo er nichts
+  // stoert").
   var modeText, modeColor;
   if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
   else if (running && cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
   else if (running) { modeText = 'Heizbetrieb'; modeColor = HOT; }
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
-  // chip() zentriert um x - fuer die linksbuendige Kopfzeile die Breite
-  // mit derselben Formel vorausberechnen und den Mittelpunkt versetzen.
-  var modeW = Math.max(44, modeText.length * 6.8 + 14);
-  svg.appendChild(chip(35 + modeW / 2, 44, modeText, null, modeColor, 'Betriebszustand'));
+  svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
   indoorUnit(svg, 290, 90, 110, 270);
 
   // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
