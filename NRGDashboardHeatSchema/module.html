@@ -1244,12 +1244,22 @@ function buildSchema(unit) {
           // spiegelbildlich als blaues Fallrohr wieder herunter. Innerhalb
           // des Heizkoerpers HARTE Farbtrennung Rot/Blau (kein Verlauf) -
           // erste Haelfte der Falten rot, zweite Haelfte blau.
-          var boxBot = iconTop - 15, boxTop = boxBot - 80;
+          // WICHTIG (Dietmar, 16.08.2026, nach genauem Nachmessen des
+          // gerenderten Pfads): Ein-/Austritt MUESSEN beide an der
+          // UNTEREN Kante des Heizkoerpers liegen, nicht einer oben und
+          // einer unten - sonst durchquert das Steigrohr von der
+          // Anschlussschiene aus zwangslaeufig den eigenen Faltenbereich
+          // (beide liegen zwischen Schiene und Kastenoberkante) und
+          // ueberzeichnet die erste Falte unsichtbar (Ein-/Austritts-
+          // strecke lag deckungsgleich auf der ersten Falte). Jetzt
+          // steigen beide Anschluesse nur bis zur UNTERKANTE des
+          // Heizkoerpers, die Falten liegen komplett DARUEBER.
+          var connectY = iconTop - 15, peakY = connectY - 80;
           var boxL = curX + 10, boxR = curX + radW - 10;
-          svg.appendChild(el('rect', { x: curX, y: boxTop - 8, width: radW, height: (boxBot - boxTop) + 16, rx: 4, class: 'box', fill: 'none' }));
-          topMostY = Math.min(topMostY, boxTop - 8);
-          var folds = 5, splitFold = 3;
-          var pts = zigzagPoints(boxL, boxR, boxTop + 6, boxBot - 6, folds);
+          svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
+          topMostY = Math.min(topMostY, peakY - 8);
+          var folds = 6, splitFold = 3;
+          var pts = zigzagPoints(boxL, boxR, connectY - 6, peakY + 6, folds);
           var splitIdx = splitFold * 2;
           var redPts = [[boxL, iconTop]].concat(pts.slice(0, splitIdx + 1));
           var bluePts = pts.slice(splitIdx).concat([[pts[pts.length - 1][0], iconBot]]);
