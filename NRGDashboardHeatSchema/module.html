@@ -1490,6 +1490,14 @@ function buildSchema(unit) {
           // 20px Abstand, nur auf der anderen Seite).
           var boxL = curX + 10 - 30, boxR = curX + radW - 10 - 30;
           svg.appendChild(el('rect', { x: curX - 30, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
+          // Beschriftung mittig ueber der Kontur (Dietmar, 17.08.2026:
+          // "ueber dem Radiator sollte Radiatoren stehen ... gleicher
+          // Schriftgrad, keine Bezeichnung breiter als das zugehoerige
+          // Element") - class "tag" (8.5px) haelt "RADIATOREN" bei
+          // ~60px deutlich unter den 110px der Kontur.
+          var radLabel = el('text', { x: curX - 30 + radW / 2, y: peakY - 14, class: 'tag' });
+          radLabel.textContent = 'Radiatoren';
+          svg.appendChild(radLabel);
           var fgid = 'radfill' + z.n + unit.id;
           var manifoldH = 8;
           var finTop = peakY + manifoldH, finBot = connectY - manifoldH;
@@ -1536,6 +1544,13 @@ function buildSchema(unit) {
           // Fallleitung 18px links der Spiralkante.
           var fLeft = curX + 40;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
+          // Beschriftung mittig ueber der Spirale, gleicher Schriftgrad
+          // wie beim Heizkoerper (Dietmar, 17.08.2026) - class "tag"
+          // (8.5px) haelt "FUSSBODENHEIZUNGEN" bei ~105px unter den
+          // 145px der Spirale.
+          var floorLabel = el('text', { x: fLeft + fSide / 2, y: fTop - 8, class: 'tag' });
+          floorLabel.textContent = 'Fußbodenheizungen';
+          svg.appendChild(floorLabel);
           // Farbverlauf statt hartem Rot/Blau-Wechsel (Dietmar,
           // 17.08.2026: "dann sollte das Ganze auch ein Farbverlauf
           // sein"): zwei Radialverlaeufe um den Spiralmittelpunkt -
