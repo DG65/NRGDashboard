@@ -49,12 +49,16 @@ class NRGDashboardHeatSchema extends IPSModule
         // die Heizflaechen unterscheiden sich von Anlage zu Anlage.
         $this->RegisterPropertyString('Zone1Caption', '');
         $this->RegisterPropertyString('Zone2Caption', '');
-        // Heizflaechenart je Kreis (Dietmar, 16.08.2026): 0=Heizkoerper,
-        // 1=Fussbodenheizung - waehlt das passende Symbol statt eines
-        // generischen Platzhalters. Default 0, damit bestehende
-        // Installationen optisch unveraendert bleiben.
-        $this->RegisterPropertyInteger('Zone1EmitterType', 0);
-        $this->RegisterPropertyInteger('Zone2EmitterType', 0);
+        // Heizflaechen je Kreis unabhaengig ein-/ausblendbar (Dietmar,
+        // 16.08.2026: "an jedem Heizkreis einen stilisierten Fussboden-
+        // heizkreis und mindestens einen stilisierten Heizkörper...
+        // Beides sollte unabhängig ein- und ausblendbar sein") - eine
+        // Anlage kann beide Typen am selben Kreis haben (Heizkoerper +
+        // Fussbodenheizung in Reihe). Default beide an.
+        $this->RegisterPropertyBoolean('Zone1ShowRadiator', true);
+        $this->RegisterPropertyBoolean('Zone1ShowFloor', true);
+        $this->RegisterPropertyBoolean('Zone2ShowRadiator', true);
+        $this->RegisterPropertyBoolean('Zone2ShowFloor', true);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -342,8 +346,10 @@ class NRGDashboardHeatSchema extends IPSModule
             'lightTheme'  => $this->readBoolProperty('LightTheme', false),
             'zone1Caption' => $this->readStringProperty('Zone1Caption', ''),
             'zone2Caption' => $this->readStringProperty('Zone2Caption', ''),
-            'zone1EmitterType' => $this->readIntProperty('Zone1EmitterType', 0),
-            'zone2EmitterType' => $this->readIntProperty('Zone2EmitterType', 0),
+            'zone1ShowRadiator' => $this->readBoolProperty('Zone1ShowRadiator', true),
+            'zone1ShowFloor'    => $this->readBoolProperty('Zone1ShowFloor', true),
+            'zone2ShowRadiator' => $this->readBoolProperty('Zone2ShowRadiator', true),
+            'zone2ShowFloor'    => $this->readBoolProperty('Zone2ShowFloor', true),
             'renderedAt'  => time(),
             'units'       => $units,
         ];

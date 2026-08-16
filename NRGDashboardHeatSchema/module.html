@@ -566,7 +566,10 @@ function buildSchema(unit) {
   // einen 100l-Pufferspeicher, dahinter externe Pumpe + Mischventil
   // (2. Steuerplatine, Live-Werte seit HeishaMon contractVersion 1.4)
   // zu Radiatoren/Flaechenheizkoerpern (FBH nur Bad).
-  var W = 1000, H = 470;
+  // Breiter als zuvor (Dietmar, 16.08.2026): wenn Heizkoerper UND
+  // Fussbodenheizung gleichzeitig gezeigt werden, brauchen beide Icons
+  // in Reihe mehr Platz als der bisherige einzelne Kasten.
+  var W = 1090, H = 470;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   // KEIN eigener Hintergrund: die Kachel soll sich in den Symcon-
@@ -1143,7 +1146,7 @@ function buildSchema(unit) {
     n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos,
-    emitterType: cfg.zone1EmitterType || 0
+    showRadiator: cfg.zone1ShowRadiator !== false, showFloor: cfg.zone1ShowFloor !== false
   }];
   if (hasZone2) {
     var p2Known = unit.z2Pump !== null && unit.z2Pump !== undefined;
@@ -1152,7 +1155,7 @@ function buildSchema(unit) {
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos,
-      emitterType: cfg.zone2EmitterType || 0
+      showRadiator: cfg.zone2ShowRadiator !== false, showFloor: cfg.zone2ShowFloor !== false
     });
   }
 
@@ -1227,28 +1230,48 @@ function buildSchema(unit) {
     // Richtung dort bereits.
     if (on && z.n !== 1) { svg.appendChild(arrowHead(785, z.y, 'r', SUPC)); }
 
-    // Heizkoerper-Icon statt leerem Kasten (Dietmar, 16.08.2026) - EIN
-    // generisches Symbol fuer jede Heizflaechenart, da die tatsaechliche
-    // Bauart nur als Freitext (zone1Caption/zone2Caption) bekannt ist.
-    // Anschlusshoehen (z.y oben, z.retY unten) bleiben exakt wie beim
-    // vorherigen Kasten, damit Vor-/Ruecklauf ohne Umweg eintreffen.
-    // Linke Kante bei x=810, flucht mit dem Ankunftspunkt der Vor-/
-    // Ruecklaufleitungen (Dietmar-Konvention: Leitungen enden flach an
-    // der Bauteilkante, kein schwebender Spalt).
-    var radW = 140, radCX = 810 + radW / 2;
-    svg.appendChild(z.emitterType === 1
-      ? floorHeatingIcon(radCX, z.y - 20, z.retY + 12, radW)
-      : radiatorIcon(radCX, z.y - 20, z.retY + 12, radW));
-    var rt = el('text', { x: radCX, y: z.y - 40, class: 'box-title' });
+    // Heizkoerper + Fussbodenheizung IN REIHE statt einem einzelnen
+    // Kasten (Dietmar, 16.08.2026: "an jedem Heizkreis einen stilisierten
+    // Fussbodenheizkreis und mindestens einen stilisierten Heizkörper...
+    // unabhängig ein- und ausblendbar... Der Heizkreislauf sollte durch
+    // beide stilisierten Heizkörper durchführen"). Anschlusshoehen (z.y
+    // oben, z.retY unten) bleiben exakt wie zuvor. Linke Kante des ersten
+    // Icons bei x=810, flucht mit dem Vorlauf-Ankunftspunkt.
+    var iconTop = z.y - 20, iconBot = z.retY + 12, iconW = 110, iconGap = 30;
+    var curX = 810;
+    var iconTypes = [];
+    if (z.showRadiator) { iconTypes.push('radiator'); }
+    if (z.showFloor) { iconTypes.push('floor'); }
+    if (iconTypes.length === 0) {
+      // Weder Heizkoerper noch Fussbodenheizung gewaehlt: leerer Kasten
+      // als Rueckfallebene, damit die Leitungen nicht ins Leere laufen.
+      svg.appendChild(el('rect', { x: 810, y: iconTop, width: 140, height: iconBot - iconTop, rx: 4, class: 'box' }));
+      curX = 810 + 140;
+    } else {
+      iconTypes.forEach(function (t, i) {
+        svg.appendChild(t === 'radiator'
+          ? radiatorIcon(curX + iconW / 2, iconTop, iconBot, iconW)
+          : floorHeatingIcon(curX + iconW / 2, iconTop, iconBot, iconW));
+        curX += iconW;
+        if (i < iconTypes.length - 1) {
+          // Verbindungsleitung IN REIHE zum naechsten Icon - macht
+          // sichtbar, dass der Kreislauf durch beide Heizflaechen laeuft.
+          svg.appendChild(pipe('M' + curX + ',' + z.y + ' L' + (curX + iconGap) + ',' + z.y, SUP, on));
+          curX += iconGap;
+        }
+      });
+    }
+    var groupCX = (810 + curX) / 2;
+    var rt = el('text', { x: groupCX, y: z.y - 40, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: radCX, y: z.y - 26, class: 'tag' });
+      var rc = el('text', { x: groupCX, y: z.y - 26, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(radCX, z.retY + 12 + 18, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(groupCX, iconBot + 18, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
