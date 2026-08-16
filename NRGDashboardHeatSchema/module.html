@@ -618,6 +618,35 @@ function buildSchema(unit) {
     }
     return g;
   }
+  // Baut aus geraden Wegpunkten einen Pfad, bei dem jeder innere Knick
+  // durch einen engen Bogen ersetzt ist, statt einer scharfen Ecke
+  // (Dietmar, 16.08.2026: "Alle Leitungsknicke sollen mit einem engen
+  // Bogen ersetzt werden") - NUR fuer normale Leitungsabzweigungen/
+  // -umlenkungen, nicht fuer die Wendel/Spiralen (Puffer, WW-Tank,
+  // Fussbodenheizung), die bleiben bewusst scharfkantig gezeichnet.
+  function bentPath(pts, r) {
+    r = r || 8;
+    if (pts.length < 3) {
+      return 'M' + pts[0][0] + ',' + pts[0][1] +
+        pts.slice(1).map(function (p) { return ' L' + p[0] + ',' + p[1]; }).join('');
+    }
+    var d = 'M' + pts[0][0] + ',' + pts[0][1];
+    for (var i = 1; i < pts.length - 1; i++) {
+      var prev = pts[i - 1], cur = pts[i], next = pts[i + 1];
+      var d1x = cur[0] - prev[0], d1y = cur[1] - prev[1], len1 = Math.sqrt(d1x * d1x + d1y * d1y);
+      var d2x = next[0] - cur[0], d2y = next[1] - cur[1], len2 = Math.sqrt(d2x * d2x + d2y * d2y);
+      var rr = Math.min(r, len1 / 2, len2 / 2);
+      var bx = cur[0] - d1x / len1 * rr, by = cur[1] - d1y / len1 * rr;
+      var ax = cur[0] + d2x / len2 * rr, ay = cur[1] + d2y / len2 * rr;
+      d += ' L' + bx + ',' + by + ' Q' + cur[0] + ',' + cur[1] + ' ' + ax + ',' + ay;
+    }
+    var last = pts[pts.length - 1];
+    d += ' L' + last[0] + ',' + last[1];
+    return d;
+  }
+  function bentPipe(pts, cls, active, r, strokeOverride, width) {
+    return pipe(bentPath(pts, r), cls, active, strokeOverride, width);
+  }
   // 3-Wege-Ventil mit DREI Anschluessen statt der bisherigen
   // 2-Wege-Fliege (Dietmar, 14.08.2026: "Ventile an die Wege anpassen"):
   // Zulauf links, Abgang nach oben (Heizkreis) oder unten (Warmwasser).
@@ -825,7 +854,7 @@ function buildSchema(unit) {
   // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
   // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
   svg.appendChild(pipe('M318,170 L374,170', SUP, waterFlow));
-  svg.appendChild(pipe('M374,170 L374,142 L400,142', SUP, waterFlow && toRoom));
+  svg.appendChild(bentPipe([[374, 170], [374, 142], [400, 142]], SUP, waterFlow && toRoom));
 
   // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
   // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
@@ -1148,7 +1177,7 @@ function buildSchema(unit) {
   // verschieben sich.
   var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
-    svg.appendChild(pipe('M626,142 L626,322 L656,322', SUP, zones[1].pumpOn));
+    svg.appendChild(bentPipe([[626, 142], [626, 322], [656, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
     // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
     // Ankunftshoehe) - EIN Knick, dann trifft sie ohne weiteren Umweg auf
@@ -1287,8 +1316,8 @@ function buildSchema(unit) {
           // Zulauf: steigt AUSSEN links am Kasten hoch, biegt oben in die
           // rote Sammelleitung ein. Ablauf: verlaesst die blaue
           // Sammelleitung rechts, faellt zur Schiene.
-          svg.appendChild(pipe('M' + (boxL - 20) + ',' + iconTop + ' L' + (boxL - 20) + ',' + (peakY + manifoldH / 2) + ' L' + boxL + ',' + (peakY + manifoldH / 2), SUP, on));
-          svg.appendChild(pipe('M' + boxR + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 20) + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 20) + ',' + iconBot, RET, on));
+          svg.appendChild(bentPipe([[boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
+          svg.appendChild(bentPipe([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]], RET, on));
           curX += radW;
         } else {
           var gid = 'emitfloor' + z.n + unit.id;
