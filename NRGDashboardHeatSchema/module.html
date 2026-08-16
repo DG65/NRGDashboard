@@ -10,6 +10,16 @@
   .unit-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
   svg.schema { width: 100%; height: auto; display: block; }
 
+  /* Emitter-Schalter nur auf der vergroesserten Kachelseite (Dietmar,
+     16.08.2026: "nicht auf der Vorderseite ... wie bei den Eurotronic
+     Comet WiFi auf der vergroesserten Kachelseite") - ein HTML-Kachel-
+     Modul bekommt von Symcon keinen Hinweis, ob es gerade klein im
+     Dashboard-Raster oder gross in der aufgeklappten Ansicht liegt; das
+     JS am Skriptende misst deshalb die tatsaechliche Pixelbreite des
+     Containers und setzt/entfernt "enlarged" an <body>. */
+  .tile-toggle { visibility: hidden; }
+  body.enlarged .tile-toggle { visibility: visible; }
+
   /* Stil-Essenz aus fuenf Referenzbildern (Aquarea-Wiki, Solvis, iDM,
      Bernhard Baptists "Wärmepumpe Visu", OekoFEN/Solar-Visu; mit Dietmar
      am 14.08.2026 destilliert):
@@ -772,17 +782,18 @@ function buildSchema(unit) {
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
   svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
-  // Emitter-Schalter oben rechts (Dietmar, 16.08.2026: "die Schalter
-  // sollten auftauchen wenn man bei der Kachel oben rechts den
-  // Doppelpfeil drueckt") - dieser oeffnet nur die vergroesserte
-  // Standardansicht derselben Kachel, kein Sonderzustand, den das
-  // Tile-JS erkennen koennte. Die Schalter sitzen deshalb IMMER an
-  // dieser Stelle und werden im normalen kleinen Kachelbild einfach
-  // schwerer zu treffen, in der vergroesserten Ansicht (mehr Platz)
-  // aber gut bedienbar - genau der gewuenschte Effekt. Sie bleiben
+  // Emitter-Schalter oben rechts, NUR auf der vergroesserten
+  // Kachelseite sichtbar (Dietmar, 16.08.2026: "nicht auf der
+  // Vorderseite ... wie bei den Eurotronic Comet WiFi auf der
+  // vergroesserten Kachelseite"). Ein HTML-Kachel-Modul bekommt von
+  // Symcon keinen direkten Hinweis, ob es gerade klein im Dashboard-
+  // Raster oder aufgeklappt liegt - die Klasse "tile-toggle" (siehe
+  // <style> und das Skript am Dateiende) bleibt deshalb per CSS
+  // versteckt, bis die tatsaechliche Containerbreite per
+  // ResizeObserver einen Schwellwert ueberschreitet. Sie bleiben
   // AUCH sichtbar, wenn ein Kreis dadurch komplett ausgeblendet ist,
-  // sonst gaebe es keinen Weg mehr, ihn ueber die Kachel wieder
-  // einzuschalten. HK2 erscheint nur, wenn die Datenquelle ihn
+  // sonst gaebe es in der aufgeklappten Ansicht keinen Weg mehr, ihn
+  // wieder einzuschalten. HK2 erscheint nur, wenn die Datenquelle ihn
   // tatsaechlich meldet (hasZone2) - unabhaengig vom aktuellen
   // Ein-/Aus-Zustand seiner eigenen Emitter.
   function chipTextW(text) { return Math.max(44, String(text).length * 6.8 + 14); }
@@ -791,6 +802,7 @@ function buildSchema(unit) {
     var cx = rightEdge - w / 2;
     var g = chip(cx, y, label, null, active ? SUPC : '#4a5064', null);
     g.setAttribute('opacity', active ? '1' : '0.5');
+    g.setAttribute('class', 'tile-toggle');
     g.style.cursor = 'pointer';
     g.addEventListener('click', function () {
       if (typeof requestAction === 'function') { requestAction(ident, !active); }
@@ -1576,6 +1588,30 @@ function handleMessage(raw) {
     unitsEl.appendChild(row);
   });
 }
+
+// Front-/Rueckseiten-Erkennung fuer die Emitter-Schalter (siehe
+// ".tile-toggle" in <style>): Symcon liefert keinen Hinweis, ob die
+// Kachel gerade klein im Dashboard-Raster oder aufgeklappt in der
+// vergroesserten Ansicht liegt - beides ist dieselbe HTML-Seite, nur
+// in einem unterschiedlich grossen Container. Ueberschreitet die
+// tatsaechliche Breite von <body> den Schwellwert, gilt die Kachel als
+// aufgeklappt. Der Wert 500px ist ein erster Erfahrungswert (typische
+// Dashboard-Kachel ist schmaler, die aufgeklappte Ansicht deutlich
+// breiter) - falls er auf Dietmars WebFront nicht sauber trifft, hier
+// nachjustieren.
+(function () {
+  var ENLARGED_MIN_WIDTH = 500;
+  function updateEnlarged() {
+    var w = document.body.clientWidth || window.innerWidth || 0;
+    document.body.classList.toggle('enlarged', w >= ENLARGED_MIN_WIDTH);
+  }
+  updateEnlarged();
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(updateEnlarged).observe(document.body);
+  } else {
+    window.addEventListener('resize', updateEnlarged);
+  }
+})();
 </script>
 </body>
 </html>
