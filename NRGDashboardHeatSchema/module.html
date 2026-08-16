@@ -305,56 +305,40 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
-// Quadratische Spirale IM UHRZEIGERSINN von aussen nach innen, als
-// Punktliste: Start oben links, erste Strecke laeuft nach RECHTS die
-// Oberkante entlang (wie in Dietmars Referenzzeichnung) - die linke
-// Seite der aeussersten Windung beginnt dadurch erst eine Ganghoehe
-// UNTER der Oberkante, dort entsteht die natuerliche Oeffnung, durch
-// die die Ruecklauf-Spirale die Flaeche verlassen kann, ohne den
-// Vorlauf zu kreuzen.
-function squareSpiralPts(left, top, side, gap) {
-  var right = left + side, bot = top + side;
-  var pts = [[left, top]];
-  var x = left, y = top;
-  while (right - left > gap && bot - top > gap) {
-    x = right; pts.push([x, y]);
-    y = bot; pts.push([x, y]);
-    x = left; pts.push([x, y]);
-    top += gap; y = top; pts.push([x, y]);
-    right -= gap; bot -= gap; left += gap;
-  }
-  return pts;
-}
-function ptsToPathD(pts) {
-  return 'M' + pts[0][0] + ',' + pts[0][1] +
-    pts.slice(1).map(function (p) { return ' L' + p[0] + ',' + p[1]; }).join('');
-}
-
 // Fussbodenheizung als GEGENSTROM-Doppelspirale (Tichelmann-Prinzip),
-// exakt nach Dietmars Inkscape-Referenzzeichnung (16.08.2026,
-// gemeinsam praezisiert): die rote Vorlauf-Spirale laeuft von aussen
-// nach innen, die blaue Ruecklauf-Spirale laeuft PARALLEL DAZWISCHEN
-// verschachtelt wieder von innen nach aussen - Rot und Blau wechseln
-// sich als Ringe ab, bis zum Kern, wo beide ineinander uebergehen.
-// Die Ruecklauf-Spirale ist um eine halbe Ganghoehe versetzt (gleiches
-// gap, Kantenlaenge um gap kleiner), ihre Windungen liegen dadurch
-// mittig zwischen den Vorlauf-Windungen. Ihr Pfad wird RUECKWAERTS
-// serialisiert, damit die Flussanimation von innen nach aussen
-// laeuft (das Wasser kommt aus dem Kern zurueck).
+// exakt nach Dietmars Inkscape-Referenzzeichnungen (16./17.08.2026):
+// die rote Vorlauf-Spirale laeuft im Uhrzeigersinn von aussen nach
+// innen (zwei Windungen), die blaue Ruecklauf-Spirale laeuft um die
+// HALBE Ganghoehe versetzt parallel dazwischen wieder nach aussen -
+// dadurch ist der Abstand zwischen ALLEN benachbarten Linien identisch
+// gap/2 (Dietmar, 17.08.2026: "alle Abstaende zwischen den Linien
+// muessen identisch sein").
+//
+// Der KERN ist nach Dietmars zweiter Skizze (17.08.2026) geformt:
+// der Vorlauf endet mit einem U-Haken, dessen letztes Stueck
+// horizontal nach rechts laeuft; der Ruecklauf setzt GENAU an diesem
+// Endpunkt rechtwinklig an (Farbwechsel als direkter Stoss, kein
+// schraeges Verbindungsstueck) und bildet ein haengendes U, bevor er
+// gegenlaeufig nach aussen spiralt. Die Punktlisten sind fuer genau
+// ZWEI Vorlauf-Windungen ausgeschrieben (Raster h = gap/2); der
+// Ruecklauf ist vom Kern nach aussen gerichtet, damit die
+// Flussanimation von innen nach aussen laeuft.
 function counterSpiral(left, top, side, gap) {
-  var supPts = squareSpiralPts(left, top, side, gap);
-  var retPts = squareSpiralPts(left + gap / 2, top + gap / 2, side - gap, gap);
-  // Punktlisten statt fertiger Pfad-Strings, damit der Aufrufer sie
-  // durch bentPipe() mit gerundeten Ecken zeichnen kann (Dietmar,
-  // 17.08.2026: "die Ecken sind mit einem engen Bogen versehen").
-  // Ruecklauf-Liste rueckwaerts, damit die Flussanimation von innen
-  // nach aussen laeuft.
+  var L = left, T = top, R = left + side, B = top + side, g = gap, h = gap / 2;
+  var supPts = [
+    [L, T], [R, T], [R, B], [L, B], [L, T + g],
+    [R - g, T + g], [R - g, B - g], [L + g, B - g], [L + g, T + 2 * g],
+    [L + 2 * g, T + 2 * g]
+  ];
+  var retPts = [
+    [L + 2 * g, T + 2 * g],
+    [L + 2 * g, B - g - h], [R - g - h, B - g - h], [R - g - h, T + g + h],
+    [L + h, T + g + h], [L + h, B - h], [R - h, B - h], [R - h, T + h]
+  ];
   return {
     supPts: supPts,
-    retPts: retPts.slice().reverse(),
-    supEnd: supPts[supPts.length - 1],
-    retCore: retPts[retPts.length - 1],
-    retExit: retPts[0]
+    retPts: retPts,
+    retExit: retPts[retPts.length - 1]
   };
 }
 
@@ -665,7 +649,7 @@ function buildSchema(unit) {
   function zoneContentWidth(showRad, showFloor) {
     var w = 0, n = 0;
     if (showRad) { w += 110; n++; }
-    if (showFloor) { w += (n > 0 ? 24 : 0) + 177; n++; }
+    if (showFloor) { w += (n > 0 ? 24 : 0) + 201; n++; }
     return w;
   }
   var zone1W = z1Active ? zoneContentWidth(z1ShowRadiator, z1ShowFloor) : 0;
@@ -1522,50 +1506,38 @@ function buildSchema(unit) {
           curX += radW;
         } else if (t === 'floor') {
           // Fussbodenheizung als Gegenstrom-Doppelspirale nach Dietmars
-          // Referenzzeichnung (16.08.2026) - siehe counterSpiral().
-          // Vertikale Ausdehnung exakt nach Vorgabe (Dietmar,
-          // 17.08.2026): Unterkante auf der Ruecklaufhoehe (iconBot),
-          // Oberkante etwa auf der Oberkante des Heizkoerpers (dessen
-          // obere Sammelleitung liegt bei iconTop-95). Ganghoehe so
-          // gewaehlt, dass drei Vorlauf-Windungen entstehen ("du hast
-          // eine Windung zuviel"). Loest nebenbei die vorherige Enge
-          // zum Heizkoerper eines eventuellen zweiten Kreises: die
-          // Spirale endet jetzt AUF der eigenen Ruecklaufschiene statt
-          // 30px darunter.
-          // Ganghoehe 36 -> ZWEI Vorlauf-Windungen (Dietmar, 17.08.2026:
-          // "es ist noch eine Windung weniger"); der Ruecklauf liegt um
-          // die halbe Ganghoehe versetzt, dadurch ist der Abstand
-          // zwischen ALLEN benachbarten Linien identisch 18px (Dietmar:
-          // "alle Abstaende zwischen den Linien muessen identisch sein").
+          // Referenzzeichnungen (16./17.08.2026) - siehe counterSpiral().
+          // Unterkante auf der Ruecklaufhoehe (iconBot), Oberkante auf
+          // der Oberkante des Heizkoerpers (obere Sammelleitung bei
+          // iconTop-95). Ganghoehe 36 -> zwei Vorlauf-Windungen,
+          // Linienraster durchgehend 18px.
           var fTop = iconTop - 95, fSide = iconBot - fTop, fGap = 36;
-          var fLeft = curX + 16;
+          // Auch die Zu- und Ableitung liegen im 18px-Raster (Dietmar,
+          // 17.08.2026: "die Abstaende am linken Rand sind nicht
+          // identisch" - vorher lagen Steig- und Fallleitung 14 bzw. 7px
+          // neben der Spirale): rote Steigleitung 36px, blaue
+          // Fallleitung 18px links der Spiralkante.
+          var fLeft = curX + 40;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
-          // Vorlauf: von der Schiene (iconTop) kurz vor der Spirale
-          // senkrecht hoch zur Oberkante, dort oben links in die
-          // aeusserste Windung einbiegen (Dietmars Zeichnung: "die
-          // Vorlaufleitung steigt senkrecht hoch und tritt oben links
-          // ein").
-          // Ab dem Mischer (675) durchgehend gezeichnet - laeuft bei
-          // gezeigtem Heizkoerper unter diesem hindurch weiter zur
-          // Spirale (wie in Dietmars Zeichnung, wo der Vorlauf-Trunk
-          // unterhalb des Heizkoerpers bis zur Spirale durchlaeuft).
-          svg.appendChild(bentPipe([[675, iconTop], [fLeft - 14, iconTop], [fLeft - 14, fTop], [fLeft, fTop]], SUP, on));
-          // Mit gerundeten Ecken gezeichnet (Dietmar, 17.08.2026: "die
-          // Ecken sind mit einem engen Bogen versehen").
+          // Vorlauf: ab dem Mischer (675) durchgehend gezeichnet -
+          // laeuft bei gezeigtem Heizkoerper unter diesem hindurch,
+          // steigt links der Spirale senkrecht hoch und tritt oben
+          // links in die aeusserste Windung ein.
+          svg.appendChild(bentPipe([[675, iconTop], [fLeft - 36, iconTop], [fLeft - 36, fTop], [fLeft, fTop]], SUP, on));
+          // Beide Spiralen mit gerundeten Ecken (Dietmar, 17.08.2026:
+          // "die Ecken sind mit einem engen Bogen versehen"). Der
+          // Farbwechsel im Kern ist ein direkter Stoss: der Ruecklauf-
+          // Pfad beginnt exakt am Endpunkt des Vorlauf-Pfads (siehe
+          // counterSpiral()), ein eigenes Verbindungsstueck entfaellt.
           svg.appendChild(bentPipe(cs.supPts, SUP, on, 7));
           svg.appendChild(bentPipe(cs.retPts, RET, on, 7));
-          // Kern-Uebergang: Ende der Vorlauf-Spirale mit dem inneren
-          // Ende der Ruecklauf-Spirale verbinden - hier geht der
-          // Vorlauf in den Ruecklauf ueber.
-          svg.appendChild(bentPipe([cs.supEnd, cs.retCore], RET, on, 4));
-          // Ruecklauf-Austritt: die aeusserste blaue Windung verlaesst
-          // die Spirale oben links durch die natuerliche Oeffnung der
-          // Vorlauf-Spirale (deren linke Seite beginnt erst eine
-          // Ganghoehe tiefer - kein Kreuzen), laeuft kurz nach links
-          // und faellt dann senkrecht zur Ruecklauf-Sammelleitung
-          // (Dietmars Zeichnung).
-          radReturnLeads.push([[cs.retExit[0], cs.retExit[1]], [fLeft - 7, cs.retExit[1]], [fLeft - 7, iconBot]]);
-          curX += 16 + fSide + 16;
+          // Ruecklauf-Austritt: die aeusserste blaue Windung endet oben
+          // rechts; die Ableitung laeuft oberhalb der roten linken
+          // Windung (die erst eine Ganghoehe tiefer beginnt - kein
+          // Kreuzen) nach links aus der Spirale heraus und faellt dann
+          // senkrecht zur Ruecklauf-Sammelleitung.
+          radReturnLeads.push([[cs.retExit[0], cs.retExit[1]], [fLeft - 18, cs.retExit[1]], [fLeft - 18, iconBot]]);
+          curX += 40 + fSide + 16;
         }
       });
     }
