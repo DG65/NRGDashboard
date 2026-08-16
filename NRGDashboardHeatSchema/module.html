@@ -1246,7 +1246,10 @@ function buildSchema(unit) {
           // alle Rippen) und eine untere blaue Sammelleitung (sammelt von
           // allen Rippen), damit der Fluss sichtbar durch jede Rippe
           // laeuft statt nur dekorativ gefuellt zu sein.
-          var connectY = iconTop - 15, peakY = connectY - 80;
+          // Untere Sammelleitung 10px nach oben (Dietmar, 16.08.2026) -
+          // der Heizkoerper wird dadurch 10px niedriger, die obere Kante
+          // (peakY) bleibt unveraendert.
+          var peakY = iconTop - 95, connectY = iconTop - 25;
           var boxL = curX + 10, boxR = curX + radW - 10;
           svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
           topMostY = Math.min(topMostY, peakY - 8);
