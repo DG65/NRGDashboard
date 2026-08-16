@@ -223,96 +223,45 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
-// Heizkoerper-Icon statt der frueheren leeren Box (Dietmar, 16.08.2026:
-// "so etwas ... anstatt dem Rechteck") - flaches Linien-Symbol im
-// selben duennen Konturstil wie WT/Wanne/Badewanne. Zone1EmitterType/
-// Zone2EmitterType waehlen zwischen diesem und floorHeatingIcon() -
-// Dietmar wollte beide Heizflaechenarten SEHEN koennen, nicht nur ein
-// einzelnes Universalsymbol ("ich möchte da aber nicht nur einen
-// stilisierten Heizkörper sehen, ich möchte auch eine stilisierte
-// Fussbodenheizung sehen").
-function radiatorIcon(x, yTop, yBottom, w) {
-  var g = el('g', {});
-  var left = x - w / 2, right = x + w / 2;
-  var top = yTop, bot = yBottom;
-  // Leichte Isometrie (Dietmar, 16.08.2026: "genau wollte ich das wie
-  // auf dem Bild zuvor" - das Referenzbild zeigt Heizkoerper/FBH als
-  // 3D-Skizzen statt flacher Liniensymbole). Deck- und Seitenflaeche
-  // zuerst (liegen hinter der Front), gleiche Konturfarbe wie ueberall
-  // (PAL.draw), nur per Deckkraft von der Front abgesetzt.
-  var dx = 10, dy = -8;
-  g.appendChild(el('path', {
-    d: 'M' + right + ',' + top + ' L' + (right + dx) + ',' + (top + dy) +
-      ' L' + (right + dx) + ',' + (bot + dy) + ' L' + right + ',' + bot + ' Z',
-    fill: PAL.draw, 'fill-opacity': 0.16, stroke: PAL.draw, 'stroke-width': 1.2
-  }));
-  g.appendChild(el('path', {
-    d: 'M' + left + ',' + top + ' L' + (left + dx) + ',' + (top + dy) +
-      ' L' + (right + dx) + ',' + (top + dy) + ' L' + right + ',' + top + ' Z',
-    fill: PAL.draw, 'fill-opacity': 0.28, stroke: PAL.draw, 'stroke-width': 1.2
-  }));
-  g.appendChild(el('rect', {
-    x: left, y: top, width: w, height: bot - top, rx: 3,
-    fill: 'none', class: 'box'
-  }));
-  var finCount = 7, finGap = w / (finCount + 1);
-  for (var i = 1; i <= finCount; i++) {
-    var fx = left + i * finGap;
-    g.appendChild(el('path', {
-      d: 'M' + fx + ',' + (top + 4) + ' L' + fx + ',' + (bot - 4),
-      class: 'box', fill: 'none', 'stroke-width': 1.2
-    }));
+// Heizkoerper/Fussbodenheizung als ECHTE gefaerbte Leitung, genau wie
+// Dietmars zweites Referenzbild (16.08.2026): kein neutrales Symbol
+// mit Fuellung, sondern derselbe Rot-nach-Blau-Wendel-Ansatz wie schon
+// beim WW-Tank-Wendel/Puffer-Wendel - der Heizkoerper ist ein
+// Zickzack-Rohr, die Fussbodenheizung eine quadratische Spirale, beide
+// mit SUPC->RETC-Verlauf. Radiator- und Spiralpfad geben Start-/
+// Endpunkt zurueck, damit der Aufrufer sie sauber an die Vor-/
+// Ruecklaufleitung anschliessen kann.
+function radiatorZigzagPath(left, right, top, bot, folds) {
+  var d = 'M' + left + ',' + top;
+  var x = left, stepX = (right - left) / folds;
+  for (var i = 1; i <= folds; i++) {
+    var y = (i % 2 === 1) ? bot : top;
+    d += ' L' + x + ',' + y;
+    x += stepX;
+    d += ' L' + x + ',' + y;
   }
-  return g;
+  return { d: d, endX: x, endY: (folds % 2 === 1) ? bot : top };
 }
-
-// Fussbodenheizung: quadratische Spirale nach innen (klassische
-// Referenzdarstellung, z.B. Multibox-RTL-Schemazeichnungen), aber
-// flach/2D statt isometrisch - passt zum Rest des Schemas. Rein
-// dekorativ INNERHALB der Kontur, genau wie die Heizkoerper-Rippen
-// keine literalen Leitungen sind.
 function squareSpiralPath(cx, cy, w, h, gap) {
+  // Startet oben LINKS (nicht oben rechts) - muss von derselben Seite
+  // gespeist werden koennen wie der Heizkoerper-Zickzack, damit beide
+  // Komponenten an ihrer LINKEN Kante an die gemeinsame Vorlaufschiene
+  // anschliessen.
   var left = cx - w / 2, right = cx + w / 2, top = cy - h / 2, bot = cy + h / 2;
-  var d = 'M' + right + ',' + top;
-  var x = right, y = top;
+  var startX = left, startY = top;
+  var d = '';
+  var x = left, y = top;
   while (right - left > gap && bot - top > gap) {
-    x = left; d += ' L' + x + ',' + y;
-    top += gap;
     y = bot; d += ' L' + x + ',' + y;
     left += gap;
     x = right; d += ' L' + x + ',' + y;
     bot -= gap;
     y = top; d += ' L' + x + ',' + y;
     right -= gap;
+    x = left; d += ' L' + x + ',' + y;
+    top += gap;
   }
-  return d;
-}
-function floorHeatingIcon(x, yTop, yBottom, w) {
-  var g = el('g', {});
-  var left = x - w / 2;
-  var top = yTop, bot = yBottom;
-  g.appendChild(el('rect', {
-    x: left, y: top, width: w, height: bot - top, rx: 3,
-    fill: 'none', class: 'box'
-  }));
-  // Spirale als angedeutete Bodenflaeche in Aufsicht-Perspektive
-  // (Dietmar, 16.08.2026: "genau wollte ich das wie auf dem Bild
-  // zuvor") - quadratische Spirale um 45 Grad gedreht und vertikal
-  // gestaucht, wie im Referenzbild als Raute statt als flaches
-  // Quadrat. Nur die Spirale wird verzerrt, die Aussenkontur bleibt
-  // ein normales Rechteck, damit die Leitungen weiterhin sauber an der
-  // Kante anschliessen.
-  var cy = (top + bot) / 2;
-  var side = Math.min(w, bot - top) - 16;
-  var innerG = el('g', {
-    transform: 'translate(' + x + ',' + cy + ') scale(1,0.55) rotate(45) translate(' + (-x) + ',' + (-cy) + ')'
-  });
-  innerG.appendChild(el('path', {
-    d: squareSpiralPath(x, cy, side, side, 6),
-    fill: 'none', stroke: PAL.draw, 'stroke-width': 1.1, 'stroke-linejoin': 'round'
-  }));
-  g.appendChild(innerG);
-  return g;
+  return { startX: startX, startY: startY, d: d, endX: x, endY: y };
 }
 
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
@@ -1256,14 +1205,14 @@ function buildSchema(unit) {
     // Richtung dort bereits.
     if (on && z.n !== 1) { svg.appendChild(arrowHead(785, z.y, 'r', SUPC)); }
 
-    // Heizkoerper + Fussbodenheizung IN REIHE statt einem einzelnen
-    // Kasten (Dietmar, 16.08.2026: "an jedem Heizkreis einen stilisierten
-    // Fussbodenheizkreis und mindestens einen stilisierten Heizkörper...
-    // unabhängig ein- und ausblendbar... Der Heizkreislauf sollte durch
-    // beide stilisierten Heizkörper durchführen"). Anschlusshoehen (z.y
-    // oben, z.retY unten) bleiben exakt wie zuvor. Linke Kante des ersten
-    // Icons bei x=810, flucht mit dem Vorlauf-Ankunftspunkt.
-    var iconTop = z.y - 20, iconBot = z.retY + 12, iconW = 110, iconGap = 30;
+    // Heizkoerper + Fussbodenheizung als ECHTE gefaerbte Leitung, parallel
+    // gespeist (Dietmar, 16.08.2026, nach dem zweiten Referenzbild): beide
+    // haengen unabhaengig an derselben Vor-/Ruecklaufschiene statt in
+    // Reihe hintereinander. Anschlusshoehen (z.y oben, z.retY unten)
+    // bleiben exakt wie beim Kasten zuvor. Linke Kante des ersten Icons
+    // bei x=810, flucht mit dem Vorlauf-Ankunftspunkt.
+    var iconTop = z.y, iconBot = z.retY, iconGap = 24;
+    var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 810;
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
@@ -1271,33 +1220,48 @@ function buildSchema(unit) {
     if (iconTypes.length === 0) {
       // Weder Heizkoerper noch Fussbodenheizung gewaehlt: leerer Kasten
       // als Rueckfallebene, damit die Leitungen nicht ins Leere laufen.
-      svg.appendChild(el('rect', { x: 810, y: iconTop, width: 140, height: iconBot - iconTop, rx: 4, class: 'box' }));
+      svg.appendChild(el('rect', { x: 810, y: iconTop - 15, width: 140, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
       curX = 810 + 140;
     } else {
       iconTypes.forEach(function (t, i) {
-        svg.appendChild(t === 'radiator'
-          ? radiatorIcon(curX + iconW / 2, iconTop, iconBot, iconW)
-          : floorHeatingIcon(curX + iconW / 2, iconTop, iconBot, iconW));
-        curX += iconW;
-        if (i < iconTypes.length - 1) {
-          // Verbindungsleitung IN REIHE zum naechsten Icon - macht
-          // sichtbar, dass der Kreislauf durch beide Heizflaechen laeuft.
-          svg.appendChild(pipe('M' + curX + ',' + z.y + ' L' + (curX + iconGap) + ',' + z.y, SUP, on));
+        if (i > 0) {
+          // Verbindungsschienen zur gemeinsamen Vor-/Ruecklaufhoehe -
+          // beide Icons haengen PARALLEL an derselben Schiene, nicht
+          // hintereinander in Reihe.
+          svg.appendChild(pipe('M' + curX + ',' + iconTop + ' L' + (curX + iconGap) + ',' + iconTop, SUP, on));
+          svg.appendChild(pipe('M' + curX + ',' + iconBot + ' L' + (curX + iconGap) + ',' + iconBot, RET, on));
           curX += iconGap;
+        }
+        var gid = 'emit' + t + z.n + unit.id;
+        var gr = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: iconTop, x2: 0, y2: iconBot });
+        var gs0 = el('stop', { offset: '0%' }); gs0.setAttribute('stop-color', SUPC);
+        var gs1 = el('stop', { offset: '100%' }); gs1.setAttribute('stop-color', RETC);
+        gr.appendChild(gs0); gr.appendChild(gs1);
+        svg.querySelector('defs').appendChild(gr);
+        if (t === 'radiator') {
+          svg.appendChild(el('rect', { x: curX, y: iconTop - 15, width: radW, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
+          var zres = radiatorZigzagPath(curX + 10, curX + radW - 10, iconTop, iconBot, 5);
+          svg.appendChild(pipe(zres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
+          curX += radW;
+        } else {
+          var scx = curX + spiralSide / 2, scy = (iconTop + iconBot) / 2;
+          var sres = squareSpiralPath(scx, scy, spiralSide, spiralSide, 6);
+          svg.appendChild(pipe('M' + sres.startX + ',' + sres.startY + sres.d, 'pipe-hot', on, 'url(#' + gid + ')', 3));
+          curX += spiralSide;
         }
       });
     }
     var groupCX = (810 + curX) / 2;
-    var rt = el('text', { x: groupCX, y: z.y - 40, class: 'box-title' });
+    var rt = el('text', { x: groupCX, y: iconTop - 20, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: groupCX, y: z.y - 26, class: 'tag' });
+      var rc = el('text', { x: groupCX, y: iconTop - 6, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(groupCX, iconBot + 18, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(groupCX, iconBot + 30, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
