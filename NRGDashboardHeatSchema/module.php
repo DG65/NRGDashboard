@@ -119,9 +119,10 @@ class NRGDashboardHeatSchema extends IPSModule
         // waehlbar (Dietmar, 16.08.2026: "einmal so wie die Organische
         // Welle und der Fluessigkeitsglanz laeuft, oder ... laufe
         // konstant, du koenntest sogar noch die Geschwindigkeit zur
-        // Auswahl stellen") - gelten fuer die organische Welle und den
-        // Fluessigkeitsglanz gemeinsam (Punkte/Striche bleiben immer
-        // linear, siehe module.html).
+        // Auswahl stellen") - gelten fuer ALLE vier Optik-Stile
+        // gleichermassen (siehe module.html), keine Ausnahme fuer
+        // Punkte/Striche mehr (Dietmar, 16.08.2026: "wenn ich es
+        // aktivieren kann, dann sollte es auch funktionieren").
         if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowMotion')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.FlowMotion', VARIABLETYPE_INTEGER);
         }

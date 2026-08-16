@@ -102,10 +102,15 @@
      Aufziehen zeigt nur Instanz-Variablen, kein eigenes HTML. Default
      (keine body-Klasse) bleibt die bisherige organische Welle.
      "flow-dots": die urspruengliche, gleichfoermige Punktreihe vor der
-     Welle - bleibt bewusst IMMER linear (siehe unten), "atmend" passt
-     nicht zu einzelnen Punkten. "flow-dash": kurze durchgehende
-     Striche, schnellere, "technischere" Anmutung - ebenfalls immer
-     linear. "flow-liquid": breite, weiche, glaenzende Schliere statt
+     Welle. "flow-dash": kurze durchgehende Striche, schnellere,
+     "technischere" Anmutung. Beide folgen wie die Welle/der
+     Fluessigkeitsglanz "--flow-ease" (Dietmar, 16.08.2026: "warum geht
+     Atmend weder fuer gleichmaessige Punkte noch fuer fliessende
+     Striche? Wenn ich es aktivieren kann, dann sollte es auch
+     funktionieren" - zu Recht, ein erster Versuch hatte sie fest auf
+     linear verdrahtet, obwohl die Bewegungsart-Auswahl keine
+     Einschraenkung auf bestimmte Stile macht). "flow-liquid": breite,
+     weiche, glaenzende Schliere statt
      einzelner Punkte/Striche (Dietmar, 16.08.2026: "den Bender Stil" -
      wiederkehrender Wunsch nach einer fluessigeren Wasser-Textur wie in
      einer 3D-Fluidsimulation) - da echte Fluiddynamik im Rahmen von
@@ -116,13 +121,13 @@
   body.flow-dots .pipe-dots {
     stroke-dasharray: 0.1 14; opacity: 1; filter: none;
     animation-name: flowdots; animation-duration: calc(1s * var(--flow-mult));
-    animation-timing-function: linear; animation-iteration-count: infinite;
+    animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowdots { to { stroke-dashoffset: -28; } }
   body.flow-dash .pipe-dots {
     stroke-dasharray: 6 6; opacity: 0.9; filter: none;
     animation-name: flowdash; animation-duration: calc(0.9s * var(--flow-mult));
-    animation-timing-function: linear; animation-iteration-count: infinite;
+    animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowdash { to { stroke-dashoffset: -24; } }
   body.flow-liquid .pipe-dots {
@@ -1590,10 +1595,10 @@ function handleMessage(raw) {
   // Geschwindigkeit (0 = langsam, 1 = normal, 2 = schnell) sind von der
   // Optik UNABHAENGIGE CSS Custom Properties (Dietmar, 16.08.2026: "du
   // koenntest sogar noch die Geschwindigkeit zur Auswahl stellen") -
-  // gelten fuer die organische Welle UND den Fluessigkeitsglanz
-  // gemeinsam (Punkte/Striche bleiben bewusst immer linear, siehe
-  // <style>). FLOW_SPEED_MULT: kleiner Multiplikator = kuerzere Dauer
-  // = schnellere Bewegung.
+  // gelten fuer ALLE vier Optik-Stile (siehe <style>), keine Ausnahme
+  // mehr fuer Punkte/Striche (Dietmar, 16.08.2026: "wenn ich es
+  // aktivieren kann, dann sollte es auch funktionieren"). FLOW_SPEED_MULT:
+  // kleiner Multiplikator = kuerzere Dauer = schnellere Bewegung.
   var root = document.documentElement;
   var flowMotion = (d && d.flowMotion != null) ? d.flowMotion : 0;
   root.style.setProperty('--flow-ease', flowMotion === 1 ? 'linear' : 'ease-in-out');
