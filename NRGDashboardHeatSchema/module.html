@@ -1094,10 +1094,19 @@ function buildSchema(unit) {
   // (Dietmar, 16.08.2026: "sollen aber mittig sein" - der Puffer war
   // seither verschoben worden, 473 passte nicht mehr).
   var INNEN_PUF_CX = (400 + PUF_LEFT) / 2;
-  if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
+  // NUR im Raumheizbetrieb zeigen (Dietmar, 16.08.2026: "im
+  // Warmwasserbetrieb stimmt weder die Vorlauftemperatur fuer den
+  // Primaer- noch fuer den Sekundaerkreislauf - die Temperatur ist nur
+  // fuer den Vorlauf zum WW-Tank richtig") - das 3-Wege-Ventil leitet
+  // waehrend der Warmwasserbereitung genau dieses Wasser zum WW-Tank
+  // um, die Leitung zum Puffer fuehrt currently gar kein Wasser (ihre
+  // Animation ist bereits korrekt ueber toRoom abgeschaltet, siehe
+  // oben) - der Chip darauf waere trotzdem weiterhin angezeigt und
+  // damit irrefuehrend.
+  if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
     svg.appendChild(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
-  if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
+  if (toRoom && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
     svg.appendChild(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
@@ -1223,8 +1232,10 @@ function buildSchema(unit) {
   svg.appendChild(pipe('M620,192 L' + PUF_RIGHT + ',192', RET, anyOn));
   // Vorlauf-Chip mittig zwischen Puffer (PUF_RIGHT) und Mischer (694) - zeigt
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
-  // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar).
-  if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
+  // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar). Nur
+  // im Raumheizbetrieb (toRoom) - siehe Begruendung bei INNEN_PUF_CX
+  // weiter oben, gilt hier genauso fuer den Sekundaerkreislauf.
+  if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
     drawValve(chip((PUF_RIGHT + 694) / 2, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
 
