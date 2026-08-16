@@ -1261,7 +1261,7 @@ function buildSchema(unit) {
           // nur -20px gesamt (10px weniger als der Radiator -> ebenfalls
           // 20px Abstand, nur auf der anderen Seite).
           var boxL = curX + 10 - 30, boxR = curX + radW - 10 - 30;
-          svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
+          svg.appendChild(el('rect', { x: curX - 30, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
           topMostY = Math.min(topMostY, peakY - 8);
           var fgid = 'radfill' + z.n + unit.id;
           var manifoldH = 8;
