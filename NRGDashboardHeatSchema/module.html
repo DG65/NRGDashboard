@@ -50,11 +50,18 @@
   .pipe.flowing.pipe-hot { filter: drop-shadow(0 0 3px rgba(224,80,60,.7)); }
   .pipe.flowing.pipe-cold { filter: drop-shadow(0 0 3px rgba(74,144,217,.7)); }
 
-  /* Fluss-Animation: helle Punkte wandern ueber dem durchgezogenen Rohr
-     (zweilagig: Basisrohr voll, Punktlage animiert) - Richtung folgt der
-     Zeichenrichtung des Pfads. */
-  .pipe-dots { fill: none; stroke: var(--dots, rgba(255,255,255,.85)); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0.1 14; animation: flowdots 1s linear infinite; }
-  @keyframes flowdots { to { stroke-dashoffset: -28.2; } }
+  /* Fluss-Animation: weicher, organischer Wellenverlauf statt mechanischer
+     Punktreihe (Dietmar, 16.08.2026) - unregelmaessig lange/kurze Segmente
+     statt gleichfoermiger Punkte, leichte Unschaerfe fuer einen weichen statt
+     harten Rand, sanftes Ease-in-out statt linearer Bewegung fuer ein
+     "atmendes" statt mechanisches Fliessen. Zweilagig wie zuvor: Basisrohr
+     voll, Wellenlage animiert, Richtung folgt der Zeichenrichtung des Pfads. */
+  .pipe-dots {
+    fill: none; stroke: var(--dots, rgba(255,255,255,.8)); stroke-width: 3;
+    stroke-linecap: round; stroke-dasharray: 1 7 5 9; opacity: 0.85;
+    filter: blur(0.5px); animation: flowwave 2.2s ease-in-out infinite;
+  }
+  @keyframes flowwave { to { stroke-dashoffset: -44; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { to { transform: rotate(360deg); } }
 
