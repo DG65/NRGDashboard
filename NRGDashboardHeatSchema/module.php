@@ -66,22 +66,33 @@ class NRGDashboardHeatSchema extends IPSModule
         // erscheinen. Eigene Boolean-Variablen mit EnableAction()
         // rendern dagegen als normale Schalter in genau dieser
         // aufgezogenen Ansicht - gleiches Muster wie EMS_GridRewards im
-        // EMS-Modul.
-        $this->RegisterVariableBoolean('Zone1ShowRadiator', 'Heizkreis 1: Heizkörper', '', 10);
-        $this->RegisterVariableBoolean('Zone1ShowFloor', 'Heizkreis 1: Fußbodenheizung', '', 11);
-        $this->RegisterVariableBoolean('Zone2ShowRadiator', 'Heizkreis 2: Heizkörper', '', 20);
-        $this->RegisterVariableBoolean('Zone2ShowFloor', 'Heizkreis 2: Fußbodenheizung', '', 21);
-        $this->EnableAction('Zone1ShowRadiator');
-        $this->EnableAction('Zone1ShowFloor');
-        $this->EnableAction('Zone2ShowRadiator');
-        $this->EnableAction('Zone2ShowFloor');
-        // Create() laeuft nur EINMAL beim Anlegen der Instanz - der
-        // Default (beide an) muss deshalb nicht gegen spaetere manuelle
-        // Umschaltungen abgesichert werden.
-        $this->SetValue('Zone1ShowRadiator', true);
-        $this->SetValue('Zone1ShowFloor', true);
-        $this->SetValue('Zone2ShowRadiator', true);
-        $this->SetValue('Zone2ShowFloor', true);
+        // EMS-Modul (RegisterVariableXXX() in Create() ist idempotent
+        // und laut SUITE.md-Konvention der richtige Ort dafuer - anders
+        // als ein Aufruf in ApplyChanges(), siehe SUITE.md Punkt 3).
+        //
+        // Create() laeuft bei JEDEM Symcon-Neustart erneut fuer jede
+        // bestehende Instanz, nicht nur bei echter Neuanlage (Hinweis
+        // der CometWiFi-Sitzung, 16.08.2026, hat einen echten Bug hier
+        // aufgedeckt) - ein unbedingtes SetValue() haette Dietmars
+        // manuelle Umschaltungen bei jedem Neustart stillschweigend auf
+        // "an" zurueckgesetzt. Der Default wird deshalb nur gesetzt,
+        // wenn die Variable hier tatsaechlich NEU angelegt wird.
+        $zoneToggles = [
+            'Zone1ShowRadiator' => 'Heizkreis 1: Heizkörper',
+            'Zone1ShowFloor'    => 'Heizkreis 1: Fußbodenheizung',
+            'Zone2ShowRadiator' => 'Heizkreis 2: Heizkörper',
+            'Zone2ShowFloor'    => 'Heizkreis 2: Fußbodenheizung',
+        ];
+        $pos = 10;
+        foreach ($zoneToggles as $ident => $caption) {
+            $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
+            $this->RegisterVariableBoolean($ident, $caption, '', $pos);
+            $this->EnableAction($ident);
+            if ($isNew) {
+                $this->SetValue($ident, true);
+            }
+            $pos += 10;
+        }
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
