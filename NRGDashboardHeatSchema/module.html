@@ -223,6 +223,32 @@ function pumpIcon(x, y, active, dirDeg, r) {
   return g;
 }
 
+// Heizkoerper als generisches Platzhalter-Icon fuer JEDEN Heizkreis
+// (Dietmar, 16.08.2026: "so etwas ... anstatt dem Rechteck") - flaches
+// Linien-Symbol statt der bisherigen leeren Box, im selben duennen
+// Konturstil wie WT/Wanne/Badewanne. Bewusst EIN Symbol fuer alle
+// Heizflaechentypen (Radiator wie auch Fussbodenheizung), da die
+// tatsaechliche Bauart nur als Freitext (zone1Caption) bekannt ist,
+// nicht zuverlaessig maschinenlesbar.
+function radiatorIcon(x, yTop, yBottom, w) {
+  var g = el('g', {});
+  var left = x - w / 2, right = x + w / 2;
+  var top = yTop, bot = yBottom;
+  g.appendChild(el('rect', {
+    x: left, y: top, width: w, height: bot - top, rx: 3,
+    fill: 'none', class: 'box'
+  }));
+  var finCount = 7, finGap = w / (finCount + 1);
+  for (var i = 1; i <= finCount; i++) {
+    var fx = left + i * finGap;
+    g.appendChild(el('path', {
+      d: 'M' + fx + ',' + (top + 4) + ' L' + fx + ',' + (bot - 4),
+      class: 'box', fill: 'none', 'stroke-width': 1.2
+    }));
+  }
+  return g;
+}
+
 // Speicher: kraeftiger Rot-nach-Blau-Verlauf (Prinzip 2), geschwungene
 // Rohrschlangen-Wicklung aus weichen Boegen statt Zickzack, Liter-Angabe
 // direkt auf der Flaeche. Groesse proportional zum realen Volumen.
@@ -1159,21 +1185,26 @@ function buildSchema(unit) {
     // Richtung dort bereits.
     if (on && z.n !== 1) { svg.appendChild(arrowHead(785, z.y, 'r', SUPC)); }
 
-    // Heizkreis-Kasten. Die Beschreibung der Heizflaechen ist NICHT fest
-    // verdrahtet - sie unterscheidet sich von Anlage zu Anlage und kommt
-    // aus einer Freitext-Eigenschaft (vorher standen hier Dietmars
-    // Radiatoren fuer alle Nutzer).
-    svg.appendChild(el('rect', { x: 810, y: z.boxY, width: 180, height: 100, rx: 4, class: 'box' }));
-    var rt = el('text', { x: 900, y: z.boxY + 24, class: 'box-title' });
+    // Heizkoerper-Icon statt leerem Kasten (Dietmar, 16.08.2026) - EIN
+    // generisches Symbol fuer jede Heizflaechenart, da die tatsaechliche
+    // Bauart nur als Freitext (zone1Caption/zone2Caption) bekannt ist.
+    // Anschlusshoehen (z.y oben, z.retY unten) bleiben exakt wie beim
+    // vorherigen Kasten, damit Vor-/Ruecklauf ohne Umweg eintreffen.
+    // Linke Kante bei x=810, flucht mit dem Ankunftspunkt der Vor-/
+    // Ruecklaufleitungen (Dietmar-Konvention: Leitungen enden flach an
+    // der Bauteilkante, kein schwebender Spalt).
+    var radW = 140, radCX = 810 + radW / 2;
+    svg.appendChild(radiatorIcon(radCX, z.y - 20, z.retY + 12, radW));
+    var rt = el('text', { x: radCX, y: z.y - 40, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: 900, y: z.boxY + 40, class: 'tag' });
+      var rc = el('text', { x: radCX, y: z.y - 26, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(900, z.boxY + 70, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(radCX, z.retY + 12 + 18, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
