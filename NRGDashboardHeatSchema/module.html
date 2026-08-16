@@ -235,6 +235,22 @@ function radiatorIcon(x, yTop, yBottom, w) {
   var g = el('g', {});
   var left = x - w / 2, right = x + w / 2;
   var top = yTop, bot = yBottom;
+  // Leichte Isometrie (Dietmar, 16.08.2026: "genau wollte ich das wie
+  // auf dem Bild zuvor" - das Referenzbild zeigt Heizkoerper/FBH als
+  // 3D-Skizzen statt flacher Liniensymbole). Deck- und Seitenflaeche
+  // zuerst (liegen hinter der Front), gleiche Konturfarbe wie ueberall
+  // (PAL.draw), nur per Deckkraft von der Front abgesetzt.
+  var dx = 10, dy = -8;
+  g.appendChild(el('path', {
+    d: 'M' + right + ',' + top + ' L' + (right + dx) + ',' + (top + dy) +
+      ' L' + (right + dx) + ',' + (bot + dy) + ' L' + right + ',' + bot + ' Z',
+    fill: PAL.draw, 'fill-opacity': 0.16, stroke: PAL.draw, 'stroke-width': 1.2
+  }));
+  g.appendChild(el('path', {
+    d: 'M' + left + ',' + top + ' L' + (left + dx) + ',' + (top + dy) +
+      ' L' + (right + dx) + ',' + (top + dy) + ' L' + right + ',' + top + ' Z',
+    fill: PAL.draw, 'fill-opacity': 0.28, stroke: PAL.draw, 'stroke-width': 1.2
+  }));
   g.appendChild(el('rect', {
     x: left, y: top, width: w, height: bot - top, rx: 3,
     fill: 'none', class: 'box'
@@ -279,13 +295,23 @@ function floorHeatingIcon(x, yTop, yBottom, w) {
     x: left, y: top, width: w, height: bot - top, rx: 3,
     fill: 'none', class: 'box'
   }));
-  // Spirale quadratisch, mittig in der (breiteren als hohen) Kontur -
-  // Seitenlaenge an die kleinere Ausdehnung gekoppelt, Rand 6px.
-  var side = Math.min(w, bot - top) - 12;
-  g.appendChild(el('path', {
-    d: squareSpiralPath(x, (top + bot) / 2, side, side, 7),
-    fill: 'none', class: 'box', 'stroke-width': 1.2, 'stroke-linejoin': 'round'
+  // Spirale als angedeutete Bodenflaeche in Aufsicht-Perspektive
+  // (Dietmar, 16.08.2026: "genau wollte ich das wie auf dem Bild
+  // zuvor") - quadratische Spirale um 45 Grad gedreht und vertikal
+  // gestaucht, wie im Referenzbild als Raute statt als flaches
+  // Quadrat. Nur die Spirale wird verzerrt, die Aussenkontur bleibt
+  // ein normales Rechteck, damit die Leitungen weiterhin sauber an der
+  // Kante anschliessen.
+  var cy = (top + bot) / 2;
+  var side = Math.min(w, bot - top) - 16;
+  var innerG = el('g', {
+    transform: 'translate(' + x + ',' + cy + ') scale(1,0.55) rotate(45) translate(' + (-x) + ',' + (-cy) + ')'
+  });
+  innerG.appendChild(el('path', {
+    d: squareSpiralPath(x, cy, side, side, 6),
+    fill: 'none', stroke: PAL.draw, 'stroke-width': 1.1, 'stroke-linejoin': 'round'
   }));
+  g.appendChild(innerG);
   return g;
 }
 
