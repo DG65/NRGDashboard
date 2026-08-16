@@ -1507,6 +1507,10 @@ function buildSchema(unit) {
   // JEDER Leitung liegen, auch ueber solchen, die erst danach im Code
   // gezeichnet werden.
   valveLayer.forEach(function (v) { svg.appendChild(v); });
+  // viewBox-Zuschnitt auf den tatsaechlichen Inhalt passiert NICHT hier
+  // (getBBox() liefert an einem noch nicht ins Dokument eingehaengten
+  // <svg> nur Nullen), sondern in handleMessage(), NACHDEM dieses
+  // Element wirklich im DOM haengt - siehe dort.
   return svg;
 }
 
@@ -1568,6 +1572,29 @@ function handleMessage(raw) {
     }
     row.appendChild(unit.hasPipeSchema ? buildSchema(unit) : buildBasicCard(unit));
     unitsEl.appendChild(row);
+    // viewBox auf den TATSAECHLICH gezeichneten Inhalt zuschneiden statt
+    // auf die pauschale Layout-Leinwand (0..W, 0..H) zu vertrauen
+    // (Dietmar, 16.08.2026: "ist noch immer nicht die Kachelmitte" +
+    // "der Betriebsmodus sollte vielleicht auf einer festen Hoehe
+    // stehen"). Die Layout-Koordinaten (W/H) sind eine grosszuegige
+    // Leinwand fuer die Platzierung, kein exaktes Mass fuer den
+    // untersten/obersten gezeichneten Punkt - je nach Konfiguration
+    // (Heizkoerper/Fussboden, ein/zwei Kreise) bleibt unten mehr oder
+    // weniger Luft. Mit preserveAspectRatio="xMidYMid meet" zentriert
+    // der Browser die LEINWAND, nicht den Inhalt - blieb die Leinwand
+    // groesser als der Inhalt, sass die Zeichnung sichtbar aus der
+    // Mitte gerueckt. getBBox() braucht dafuer ein bereits im DOM
+    // haengendes Element, deshalb hier statt in buildSchema().
+    var schemaSvg = row.querySelector('svg.schema');
+    if (schemaSvg) {
+      var bbox = schemaSvg.getBBox();
+      if (bbox.width > 0 && bbox.height > 0) {
+        var pad = 12;
+        schemaSvg.setAttribute('viewBox',
+          Math.floor(bbox.x - pad) + ' ' + Math.floor(bbox.y - pad) + ' ' +
+          Math.ceil(bbox.width + pad * 2) + ' ' + Math.ceil(bbox.height + pad * 2));
+      }
+    }
   });
 }
 
