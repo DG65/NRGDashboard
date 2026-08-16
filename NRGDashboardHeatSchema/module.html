@@ -1169,7 +1169,10 @@ function buildSchema(unit) {
     // Ventile hindurch"): Ventil- und Pumpensymbol liegen als Kontur
     // darueber, statt dass die Leitung an ihnen aufhoert (Dietmar,
     // 16.08.2026).
-    svg.appendChild(pipe('M656,' + z.y + ' L810,' + z.y, SUP, on));
+    // Endet bei der Steigleitung des Heizkoerpers (falls vorhanden) -
+    // die liegt seit 16.08.2026 20px links von dessen Kontur statt genau
+    // auf x=810, sonst entstuende eine Luecke zur verschobenen Leitung.
+    svg.appendChild(pipe('M656,' + z.y + ' L' + (z.showRadiator ? 770 : 810) + ',' + z.y, SUP, on));
     // Bypass: der Mischer ist ein ECHTER Mischerkreis, kein reines
     // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
     // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
@@ -1250,7 +1253,14 @@ function buildSchema(unit) {
           // der Heizkoerper wird dadurch 10px niedriger, die obere Kante
           // (peakY) bleibt unveraendert.
           var peakY = iconTop - 95, connectY = iconTop - 25;
-          var boxL = curX + 10, boxR = curX + radW - 10;
+          // Radiator 30px nach links, Steig-/Fallleitung zusaetzlich
+          // eigenstaendig verschoben (Dietmar, 16.08.2026), damit beide
+          // sichtbar AUSSERHALB der Kontur liegen statt darauf: rote
+          // Steigleitung -40px gesamt (10px weiter als der Radiator ->
+          // 20px Abstand zur Kontur statt vorher 10px), blaue Fallleitung
+          // nur -20px gesamt (10px weniger als der Radiator -> ebenfalls
+          // 20px Abstand, nur auf der anderen Seite).
+          var boxL = curX + 10 - 30, boxR = curX + radW - 10 - 30;
           svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
           topMostY = Math.min(topMostY, peakY - 8);
           var fgid = 'radfill' + z.n + unit.id;
@@ -1277,8 +1287,8 @@ function buildSchema(unit) {
           // Zulauf: steigt AUSSEN links am Kasten hoch, biegt oben in die
           // rote Sammelleitung ein. Ablauf: verlaesst die blaue
           // Sammelleitung rechts, faellt zur Schiene.
-          svg.appendChild(pipe('M' + (boxL - 10) + ',' + iconTop + ' L' + (boxL - 10) + ',' + (peakY + manifoldH / 2) + ' L' + boxL + ',' + (peakY + manifoldH / 2), SUP, on));
-          svg.appendChild(pipe('M' + boxR + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 10) + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 10) + ',' + iconBot, RET, on));
+          svg.appendChild(pipe('M' + (boxL - 20) + ',' + iconTop + ' L' + (boxL - 20) + ',' + (peakY + manifoldH / 2) + ' L' + boxL + ',' + (peakY + manifoldH / 2), SUP, on));
+          svg.appendChild(pipe('M' + boxR + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 20) + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 20) + ',' + iconBot, RET, on));
           curX += radW;
         } else {
           var gid = 'emitfloor' + z.n + unit.id;
