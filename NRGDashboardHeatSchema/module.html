@@ -344,9 +344,14 @@ function ptsToPathD(pts) {
 function counterSpiral(left, top, side, gap) {
   var supPts = squareSpiralPts(left, top, side, gap);
   var retPts = squareSpiralPts(left + gap / 2, top + gap / 2, side - gap, gap);
+  // Punktlisten statt fertiger Pfad-Strings, damit der Aufrufer sie
+  // durch bentPipe() mit gerundeten Ecken zeichnen kann (Dietmar,
+  // 17.08.2026: "die Ecken sind mit einem engen Bogen versehen").
+  // Ruecklauf-Liste rueckwaerts, damit die Flussanimation von innen
+  // nach aussen laeuft.
   return {
-    supD: ptsToPathD(supPts),
-    retD: ptsToPathD(retPts.slice().reverse()),
+    supPts: supPts,
+    retPts: retPts.slice().reverse(),
     supEnd: supPts[supPts.length - 1],
     retCore: retPts[retPts.length - 1],
     retExit: retPts[0]
@@ -1527,7 +1532,12 @@ function buildSchema(unit) {
           // zum Heizkoerper eines eventuellen zweiten Kreises: die
           // Spirale endet jetzt AUF der eigenen Ruecklaufschiene statt
           // 30px darunter.
-          var fTop = iconTop - 95, fSide = iconBot - fTop, fGap = 22;
+          // Ganghoehe 36 -> ZWEI Vorlauf-Windungen (Dietmar, 17.08.2026:
+          // "es ist noch eine Windung weniger"); der Ruecklauf liegt um
+          // die halbe Ganghoehe versetzt, dadurch ist der Abstand
+          // zwischen ALLEN benachbarten Linien identisch 18px (Dietmar:
+          // "alle Abstaende zwischen den Linien muessen identisch sein").
+          var fTop = iconTop - 95, fSide = iconBot - fTop, fGap = 36;
           var fLeft = curX + 16;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
           // Vorlauf: von der Schiene (iconTop) kurz vor der Spirale
@@ -1540,8 +1550,10 @@ function buildSchema(unit) {
           // Spirale (wie in Dietmars Zeichnung, wo der Vorlauf-Trunk
           // unterhalb des Heizkoerpers bis zur Spirale durchlaeuft).
           svg.appendChild(bentPipe([[675, iconTop], [fLeft - 14, iconTop], [fLeft - 14, fTop], [fLeft, fTop]], SUP, on));
-          svg.appendChild(pipe(cs.supD, SUP, on));
-          svg.appendChild(pipe(cs.retD, RET, on));
+          // Mit gerundeten Ecken gezeichnet (Dietmar, 17.08.2026: "die
+          // Ecken sind mit einem engen Bogen versehen").
+          svg.appendChild(bentPipe(cs.supPts, SUP, on, 7));
+          svg.appendChild(bentPipe(cs.retPts, RET, on, 7));
           // Kern-Uebergang: Ende der Vorlauf-Spirale mit dem inneren
           // Ende der Ruecklauf-Spirale verbinden - hier geht der
           // Vorlauf in den Ruecklauf ueber.
