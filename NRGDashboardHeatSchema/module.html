@@ -1258,17 +1258,18 @@ function buildSchema(unit) {
           var fs1 = el('stop', { offset: '100%' }); fs1.setAttribute('stop-color', RETC);
           fgr.appendChild(fs0); fgr.appendChild(fs1);
           svg.querySelector('defs').appendChild(fgr);
-          // Sammelleitungen ueber die volle Rippenbreite - selbe
-          // Zulauf-/Ablauffarbe wie die Anschlussleitung, kein eigener
-          // Verlauf noetig.
-          svg.appendChild(el('rect', { x: boxL, y: peakY, width: boxR - boxL, height: manifoldH, fill: on ? SUPC : PAL.pumpOff }));
-          svg.appendChild(el('rect', { x: boxL, y: connectY - manifoldH, width: boxR - boxL, height: manifoldH, fill: on ? RETC : PAL.pumpOff }));
+          // Sammelleitungen als ECHTE Leitung statt gefuellter Balken
+          // (Dietmar, 16.08.2026: "Vom Fluessigkeitsstrom sehe ich noch
+          // nichts") - erst als pipe() gezeichnet bekommen sie die
+          // wandernden Punkte, die den Fluss ueberall sonst im Schema
+          // anzeigen; vorher waren Sammelleitungen UND Rippen nur
+          // statisch gefuellte Rechtecke ohne Animation.
+          svg.appendChild(pipe('M' + boxL + ',' + (peakY + manifoldH / 2) + ' L' + boxR + ',' + (peakY + manifoldH / 2), SUP, on, null, manifoldH));
+          svg.appendChild(pipe('M' + boxL + ',' + (connectY - manifoldH / 2) + ' L' + boxR + ',' + (connectY - manifoldH / 2), RET, on, null, manifoldH));
           var finCount = 8, finGap = (boxR - boxL) / finCount, finW = finGap * 0.42;
           for (var fi = 0; fi < finCount; fi++) {
-            svg.appendChild(el('rect', {
-              x: boxL + fi * finGap + (finGap - finW) / 2, y: finTop, width: finW, height: finBot - finTop,
-              fill: on ? ('url(#' + fgid + ')') : PAL.pumpOff
-            }));
+            var fx = boxL + fi * finGap + finGap / 2;
+            svg.appendChild(pipe('M' + fx + ',' + finTop + ' L' + fx + ',' + finBot, 'pipe-hot', on, 'url(#' + fgid + ')', finW));
           }
           // Zulauf: steigt AUSSEN links am Kasten hoch, biegt oben in die
           // rote Sammelleitung ein. Ablauf: verlaesst die blaue
