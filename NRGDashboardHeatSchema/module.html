@@ -1162,6 +1162,7 @@ function buildSchema(unit) {
   // Alles rechts vom Puffer nochmal 40px nach rechts (Dietmar,
   // 16.08.2026), um Platz fuer den Vorlauf-Chip zwischen Puffer und
   // Mischer zu schaffen - PUF_RIGHT bleibt der feste Anschlusspunkt.
+  var anyOn = zones.some(function (z) { return z.pumpOn; });
   if (hasZone2) {
     svg.appendChild(bentPipe([[645, 142], [645, 322], [675, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
@@ -1172,12 +1173,11 @@ function buildSchema(unit) {
     // separat gezeichnet haette an (620,372) eine scharfe Ecke ergeben.
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
-  // Keine eigene "Sammelleitung" mehr getrennt gezeichnet (Dietmar,
-  // 16.08.2026: "die Ruecklaeufe kannst du nun verbinden") - jede Zone
-  // zieht ihren eigenen Ruecklauf jetzt durchgehend bis zum Puffer
-  // (siehe weiter unten), die Strecke ab x=620 wird dadurch von
-  // derjenigen Zone animiert, die gerade foerdert, statt von einer
-  // separaten anyOn-Linie ueberzeichnet zu werden.
+  // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
+  // Sammelstelle (620,192) bis zum Puffer (Dietmar, 16.08.2026 - die
+  // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
+  // nicht die einzelnen Knicke fuer sich).
+  svg.appendChild(pipe('M620,192 L' + PUF_RIGHT + ',192', RET, anyOn));
   // Vorlauf-Chip mittig zwischen Puffer (PUF_RIGHT) und Mischer (694) - zeigt
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
   // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar).
@@ -1367,17 +1367,11 @@ function buildSchema(unit) {
     // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
     // (620,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
     // (Dietmar, 16.08.2026). Die Steigleitung liegt bei x=620, zwischen der
-    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595). Jede Zone
-    // zieht ihren Ruecklauf jetzt DURCHGEHEND bis zum Puffer statt an der
-    // vormals separat gezeichneten Sammelleitung zu enden (Dietmar,
-    // 16.08.2026: "die Ruecklaeufe kannst du nun verbinden ... Boegen
-    // anstatt Knicke") - der Knick am Zusammentreffen (620,192) war bisher
-    // ein scharfer T-Stoss zwischen zwei getrennten Pfaden, jetzt ein
-    // gerundeter Bogen INNERHALB eines einzigen bentPath()-Aufrufs.
+    // Vorlauf-Steigleitung (645) und dem Puffer (PUF_RIGHT=595).
     if (z.retY === 192) {
-      svg.appendChild(pipe('M829,' + z.retY + ' L' + PUF_RIGHT + ',' + z.retY, RET, on));
+      svg.appendChild(pipe('M829,' + z.retY + ' L620,' + z.retY, RET, on));
     } else {
-      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192], [PUF_RIGHT, 192]], RET, on));
+      svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192]], RET, on));
     }
   });
 
