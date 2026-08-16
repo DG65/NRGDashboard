@@ -331,10 +331,11 @@ function pumpIcon(x, y, active, dirDeg, r) {
 // Flussanimation von innen nach aussen laeuft.
 function counterSpiral(left, top, side, gap) {
   var L = left, T = top, R = left + side, B = top + side, g = gap, h = gap / 2;
-  // Die senkrechte Kern-Leitung (Abgang des haengenden U) steht exakt
-  // in der Mitte der Spirale (Dietmar, 17.08.2026: "die kernsenkrechte
-  // Leitung soweit nach rechts schieben bis sie in der Mitte steht").
-  var coreX = L + side / 2;
+  // Die senkrechte Kern-Leitung (Abgang des haengenden U) steht 8px
+  // links der Spiralenmitte (Dietmar, 17.08.2026, in zwei Schritten
+  // eingestellt: erst "bis sie in der Mitte steht", dann "um 8px nach
+  // links").
+  var coreX = L + side / 2 - 8;
   var supPts = [
     [L, T], [R, T], [R, B], [L, B], [L, T + g],
     [R - g, T + g], [R - g, B - g], [L + g, B - g], [L + g, T + 2 * g],
