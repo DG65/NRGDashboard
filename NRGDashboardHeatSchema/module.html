@@ -89,7 +89,15 @@
      (keine body-Klasse) bleibt die bisherige organische Welle.
      "flow-dots": die urspruengliche, gleichfoermige Punktreihe vor der
      Welle. "flow-dash": kurze durchgehende Striche, schnellere,
-     "technischere" Anmutung. */
+     "technischere" Anmutung. "flow-liquid": breite, weiche, glaenzende
+     Schliere statt einzelner Punkte/Striche (Dietmar, 16.08.2026: "den
+     Bender Stil" - wiederkehrender Wunsch nach einer fluessigeren
+     Wasser-Textur wie in einer 3D-Fluidsimulation) - da echte
+     Fluiddynamik im Rahmen von reinem SVG/CSS nicht sinnvoll
+     nachbildbar ist, simuliert ein breiter, stark verwaschener,
+     langsam gleitender Glanzstreifen ueber der farbig gefuellten Basis-
+     Leitung eine fliessende, glaenzende Oberflaeche statt einzelner
+     Wassertropfen. */
   body.flow-dots .pipe-dots {
     stroke-dasharray: 0.1 14; opacity: 1; filter: none;
     animation: flowdots 1s linear infinite;
@@ -100,6 +108,11 @@
     animation: flowdash 0.9s linear infinite;
   }
   @keyframes flowdash { to { stroke-dashoffset: -24; } }
+  body.flow-liquid .pipe-dots {
+    stroke-width: 5; stroke-dasharray: 26 22; opacity: 0.8;
+    filter: blur(2px); animation: flowliquid 1.9s ease-in-out infinite;
+  }
+  @keyframes flowliquid { to { stroke-dashoffset: -48; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { to { transform: rotate(360deg); } }
 
@@ -1550,7 +1563,7 @@ function handleMessage(raw) {
   setTheme(d && d.lightTheme);
   // Wasserfluss-Darstellung (siehe ".pipe-dots"-Varianten in <style>):
   // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche.
-  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash'];
+  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid'];
   FLOW_CLASSES.forEach(function (c) { if (c) { document.body.classList.remove(c); } });
   var flowClass = FLOW_CLASSES[(d && d.flowStyle) || 0];
   if (flowClass) { document.body.classList.add(flowClass); }
