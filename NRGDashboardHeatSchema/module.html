@@ -1238,33 +1238,43 @@ function buildSchema(unit) {
           curX += iconGap;
         }
         if (t === 'radiator') {
-          // Echter GEFUELLTER Heizkoerper mit senkrechten Rippen (dunkle
-          // Luecken) statt eines Zickzack-Rohrs (Dietmar, 16.08.2026,
-          // nach bearbeitetem Detail-Screenshot: "kannst Du es so besser
-          // erkennen?" + "Farbverlauf von Rot nach Blau"). Fuellung als
-          // Verlauf SUPC (oben, heiss) -> RETC (unten, kalt), Zu-/Ablauf
-          // als einfache Leitung von der Schiene rein/raus.
+          // Heizkoerper nach Dietmars Inkscape-Skizze (16.08.2026, "sieht
+          // schon wesentlich besser aus... kein doppelter Rahmen... den
+          // Fluessigkeitsstrom nicht vergessen"): EIN einfacher Rahmen,
+          // 8 schmalere Rippen mit mehr Abstand, UND - das war der
+          // fehlende Teil - eine obere rote Sammelleitung (verteilt auf
+          // alle Rippen) und eine untere blaue Sammelleitung (sammelt von
+          // allen Rippen), damit der Fluss sichtbar durch jede Rippe
+          // laeuft statt nur dekorativ gefuellt zu sein.
           var connectY = iconTop - 15, peakY = connectY - 80;
           var boxL = curX + 10, boxR = curX + radW - 10;
           svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
           topMostY = Math.min(topMostY, peakY - 8);
           var fgid = 'radfill' + z.n + unit.id;
-          var fgr = el('linearGradient', { id: fgid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: peakY, x2: 0, y2: connectY });
+          var manifoldH = 8;
+          var finTop = peakY + manifoldH, finBot = connectY - manifoldH;
+          var fgr = el('linearGradient', { id: fgid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: finTop, x2: 0, y2: finBot });
           var fs0 = el('stop', { offset: '0%' }); fs0.setAttribute('stop-color', SUPC);
           var fs1 = el('stop', { offset: '100%' }); fs1.setAttribute('stop-color', RETC);
           fgr.appendChild(fs0); fgr.appendChild(fs1);
           svg.querySelector('defs').appendChild(fgr);
-          var finCount = 9, finGap = (boxR - boxL) / finCount;
+          // Sammelleitungen ueber die volle Rippenbreite - selbe
+          // Zulauf-/Ablauffarbe wie die Anschlussleitung, kein eigener
+          // Verlauf noetig.
+          svg.appendChild(el('rect', { x: boxL, y: peakY, width: boxR - boxL, height: manifoldH, fill: on ? SUPC : PAL.pumpOff }));
+          svg.appendChild(el('rect', { x: boxL, y: connectY - manifoldH, width: boxR - boxL, height: manifoldH, fill: on ? RETC : PAL.pumpOff }));
+          var finCount = 8, finGap = (boxR - boxL) / finCount, finW = finGap * 0.42;
           for (var fi = 0; fi < finCount; fi++) {
             svg.appendChild(el('rect', {
-              x: boxL + fi * finGap + 1.5, y: peakY, width: finGap - 3, height: connectY - peakY,
+              x: boxL + fi * finGap + (finGap - finW) / 2, y: finTop, width: finW, height: finBot - finTop,
               fill: on ? ('url(#' + fgid + ')') : PAL.pumpOff
             }));
           }
-          // Zulauf/Ablauf als einfache Leitung, kein Rohr durch den
-          // Heizkoerper selbst (der ist jetzt Flaeche, keine Linie).
-          svg.appendChild(pipe('M' + boxL + ',' + iconTop + ' L' + boxL + ',' + connectY, SUP, on));
-          svg.appendChild(pipe('M' + (boxR - 6) + ',' + connectY + ' L' + (boxR - 6) + ',' + iconBot, RET, on));
+          // Zulauf: steigt AUSSEN links am Kasten hoch, biegt oben in die
+          // rote Sammelleitung ein. Ablauf: verlaesst die blaue
+          // Sammelleitung rechts, faellt zur Schiene.
+          svg.appendChild(pipe('M' + (boxL - 10) + ',' + iconTop + ' L' + (boxL - 10) + ',' + (peakY + manifoldH / 2) + ' L' + boxL + ',' + (peakY + manifoldH / 2), SUP, on));
+          svg.appendChild(pipe('M' + boxR + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 10) + ',' + (connectY - manifoldH / 2) + ' L' + (boxR + 10) + ',' + iconBot, RET, on));
           curX += radW;
         } else {
           var gid = 'emitfloor' + z.n + unit.id;
