@@ -543,18 +543,25 @@ function buildSchema(unit) {
     || (unit.z2MixValvePos !== null && unit.z2MixValvePos !== undefined);
   var z1ShowRadiator = cfg.zone1ShowRadiator !== false, z1ShowFloor = cfg.zone1ShowFloor !== false;
   var z2ShowRadiator = cfg.zone2ShowRadiator !== false, z2ShowFloor = cfg.zone2ShowFloor !== false;
+  // Ist fuer einen Kreis WEDER Heizkoerper NOCH Fussbodenheizung gewaehlt,
+  // wird der GESAMTE Heizkreis (Mischer, Pumpe, Titel, Chips, Leitungen)
+  // uebersprungen statt eines leeren Platzhalter-Kastens (Dietmar,
+  // 16.08.2026: "es sollten die kompletten HK nicht mehr dargestellt
+  // werden ... keine Schemen oder so etwas wie nicht aktiv. Wenn HK 1
+  // oder 2 nicht vorhanden ist, dann ist er eben nicht mehr vorhanden").
+  var z1Active = z1ShowRadiator || z1ShowFloor;
+  var z2Active = hasZone2 && (z2ShowRadiator || z2ShowFloor);
   // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 50px
   // (= iconBot-iconTop, bei beiden Zonen konstant), 24px Abstand
-  // zwischen zwei Icons derselben Zone, 140px leerer Kasten als
-  // Rueckfallebene, wenn gar kein Emitter gewaehlt ist.
+  // zwischen zwei Icons derselben Zone.
   function zoneContentWidth(showRad, showFloor) {
     var w = 0, n = 0;
     if (showRad) { w += 110; n++; }
     if (showFloor) { w += (n > 0 ? 24 : 0) + 50; n++; }
-    return n === 0 ? 140 : w;
+    return w;
   }
-  var zone1W = zoneContentWidth(z1ShowRadiator, z1ShowFloor);
-  var zone2W = hasZone2 ? zoneContentWidth(z2ShowRadiator, z2ShowFloor) : 0;
+  var zone1W = z1Active ? zoneContentWidth(z1ShowRadiator, z1ShowFloor) : 0;
+  var zone2W = z2Active ? zoneContentWidth(z2ShowRadiator, z2ShowFloor) : 0;
   var W = 829 + Math.max(zone1W, zone2W) + 80, H = 470;
   var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
@@ -765,6 +772,45 @@ function buildSchema(unit) {
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
   svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
+  // Emitter-Schalter oben rechts (Dietmar, 16.08.2026: "die Schalter
+  // sollten auftauchen wenn man bei der Kachel oben rechts den
+  // Doppelpfeil drueckt") - dieser oeffnet nur die vergroesserte
+  // Standardansicht derselben Kachel, kein Sonderzustand, den das
+  // Tile-JS erkennen koennte. Die Schalter sitzen deshalb IMMER an
+  // dieser Stelle und werden im normalen kleinen Kachelbild einfach
+  // schwerer zu treffen, in der vergroesserten Ansicht (mehr Platz)
+  // aber gut bedienbar - genau der gewuenschte Effekt. Sie bleiben
+  // AUCH sichtbar, wenn ein Kreis dadurch komplett ausgeblendet ist,
+  // sonst gaebe es keinen Weg mehr, ihn ueber die Kachel wieder
+  // einzuschalten. HK2 erscheint nur, wenn die Datenquelle ihn
+  // tatsaechlich meldet (hasZone2) - unabhaengig vom aktuellen
+  // Ein-/Aus-Zustand seiner eigenen Emitter.
+  function chipTextW(text) { return Math.max(44, String(text).length * 6.8 + 14); }
+  function emitterToggle(rightEdge, y, label, active, ident) {
+    var w = chipTextW(label);
+    var cx = rightEdge - w / 2;
+    var g = chip(cx, y, label, null, active ? SUPC : '#4a5064', null);
+    g.setAttribute('opacity', active ? '1' : '0.5');
+    g.style.cursor = 'pointer';
+    g.addEventListener('click', function () {
+      if (typeof requestAction === 'function') { requestAction(ident, !active); }
+    });
+    return { node: g, leftEdge: cx - w / 2 };
+  }
+  (function drawEmitterToggles() {
+    var rows = [
+      { active1: z1ShowRadiator, active2: z1ShowFloor, id1: 'zone1ShowRadiator', id2: 'zone1ShowFloor', y: 14 }
+    ];
+    if (hasZone2) {
+      rows.push({ active1: z2ShowRadiator, active2: z2ShowFloor, id1: 'zone2ShowRadiator', id2: 'zone2ShowFloor', y: 34 });
+    }
+    rows.forEach(function (row) {
+      var floorT = emitterToggle(W - 10, row.y, 'Fußboden', row.active2, row.id2);
+      drawValve(floorT.node);
+      var radT = emitterToggle(floorT.leftEdge - 6, row.y, 'Heizkörper', row.active1, row.id1);
+      drawValve(radT.node);
+    });
+  })();
   indoorUnit(svg, 290, 90, 110, 270);
 
   // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
@@ -1188,7 +1234,7 @@ function buildSchema(unit) {
     n: 1, y: 142, boxY: 107, retY: 192, temp: unit.z1WaterTemp,
     caption: cfg.zone1Caption, pumpKnown: pumpKnown, pumpOn: pumpOn,
     mv: unit.extMixingValve, mvPos: unit.mixValvePos,
-    showRadiator: z1ShowRadiator, showFloor: z1ShowFloor,
+    showRadiator: z1ShowRadiator, showFloor: z1ShowFloor, active: z1Active,
     vorlaufX: 694
   }];
   if (hasZone2) {
@@ -1198,7 +1244,7 @@ function buildSchema(unit) {
       caption: cfg.zone2Caption,
       pumpKnown: p2Known, pumpOn: p2Known ? !!unit.z2Pump : (waterFlow && toRoom),
       mv: unit.z2MixingValve, mvPos: unit.z2MixValvePos,
-      showRadiator: z2ShowRadiator, showFloor: z2ShowFloor,
+      showRadiator: z2ShowRadiator, showFloor: z2ShowFloor, active: z2Active,
       vorlaufX: 645
     });
   }
@@ -1214,8 +1260,12 @@ function buildSchema(unit) {
   // Alles rechts vom Puffer nochmal 40px nach rechts (Dietmar,
   // 16.08.2026), um Platz fuer den Vorlauf-Chip zwischen Puffer und
   // Mischer zu schaffen - PUF_RIGHT bleibt der feste Anschlusspunkt.
-  var anyOn = zones.some(function (z) { return z.pumpOn; });
-  if (hasZone2) {
+  // Nur AKTIVE Kreise zaehlen mit - ein ausgeblendeter HK (weder
+  // Heizkoerper noch Fussbodenheizung gewaehlt) speist weder die
+  // Trunk-Animation noch bekommt er seine eigene Abzweigleitung
+  // (Dietmar, 16.08.2026: "dann ist er eben nicht mehr vorhanden").
+  var anyOn = zones.some(function (z) { return z.active && z.pumpOn; });
+  if (zones[1] && zones[1].active) {
     svg.appendChild(bentPipe([[645, 142], [645, 322], [675, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
     // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
@@ -1224,7 +1274,8 @@ function buildSchema(unit) {
     // gerundeten Pfad zusammengefuehrt (Dietmar, 16.08.2026) - hier
     // separat gezeichnet haette an (620,372) eine scharfe Ecke ergeben.
   }
-  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
+  svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP,
+    (zones[0].active && zones[0].pumpOn) || (zones[1] && zones[1].active && zones[1].pumpOn)));
   // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
   // Sammelstelle (620,192) bis zum Puffer (Dietmar, 16.08.2026 - die
   // vorherige Fuehrung mit vier Knicken war der eigentliche Fehler,
@@ -1240,6 +1291,11 @@ function buildSchema(unit) {
   }
 
   zones.forEach(function (z) {
+    // Kompletter Kreis uebersprungen, wenn weder Heizkoerper noch
+    // Fussbodenheizung gewaehlt ist - kein Mischer, keine Pumpe, kein
+    // Titel, keine Leitung, kein Platzhalter-Kasten (Dietmar,
+    // 16.08.2026).
+    if (!z.active) { return; }
     var on = z.pumpOn;
     // Leitung laeuft DURCHGEHEND (kein Spalt) von der Abzweigung bis zum
     // Kasten, genau wie beim Innengeraet ("Leitungen laufen DURCH die
@@ -1313,15 +1369,13 @@ function buildSchema(unit) {
     // mit den Ruecklaufleitungen die in den Puffer gehen ... Bogen statt
     // Knick"), statt unverbunden zu enden.
     var radReturnLead = null;
+    // iconTypes ist nie leer: der ganze Kreis wird oben per z.active
+    // uebersprungen, wenn weder Heizkoerper noch Fussbodenheizung
+    // gewaehlt ist - kein Platzhalter-Kasten mehr noetig.
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
     if (z.showFloor) { iconTypes.push('floor'); }
-    if (iconTypes.length === 0) {
-      // Kein Heizkoerper gewaehlt: leerer Kasten als Rueckfallebene,
-      // damit die Leitungen nicht ins Leere laufen.
-      svg.appendChild(el('rect', { x: 829, y: iconTop - 15, width: 140, height: (iconBot - iconTop) + 30, rx: 4, class: 'box', fill: 'none' }));
-      curX = 829 + 140;
-    } else {
+    {
       iconTypes.forEach(function (t, i) {
         if (i > 0) {
           // Verbindungsschienen zur gemeinsamen Vor-/Ruecklaufhoehe -

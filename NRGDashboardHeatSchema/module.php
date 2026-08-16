@@ -120,6 +120,30 @@ class NRGDashboardHeatSchema extends IPSModule
         $this->UpdateVisualizationValue(json_encode($payload));
     }
 
+    /**
+     * Emitter-Schalter direkt in der Kachel (Dietmar, 16.08.2026: "die
+     * Schalter sollten auftauchen wenn man bei der Kachel oben rechts den
+     * Doppelpfeil drueckt") - der Doppelpfeil oeffnet nur die vergroesserte
+     * Standardansicht derselben Kachel, keinen Zugriff auf die Instanz-
+     * Properties. Die Schalter im SVG (siehe module.html, emitterToggle())
+     * rufen deshalb per WebFront-Bruecke requestAction() diese Methode auf,
+     * die die Property direkt umschaltet - genau wie requestAction() im
+     * NRGDashboardMonitor-Modul (Energiebilanz-Zeitraum) bereits vorgemacht.
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        $map = [
+            'zone1ShowRadiator' => 'Zone1ShowRadiator',
+            'zone1ShowFloor'    => 'Zone1ShowFloor',
+            'zone2ShowRadiator' => 'Zone2ShowRadiator',
+            'zone2ShowFloor'    => 'Zone2ShowFloor',
+        ];
+        if (isset($map[$Ident])) {
+            IPS_SetProperty($this->InstanceID, $map[$Ident], (bool) $Value);
+            IPS_ApplyChanges($this->InstanceID);
+        }
+    }
+
     private function updateInstanceStatus(array $payload): void
     {
         $this->SetStatus(($payload['ok'] ?? false) ? 102 : 104);
