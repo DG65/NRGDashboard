@@ -653,15 +653,14 @@ function buildSchema(unit) {
   // oder 2 nicht vorhanden ist, dann ist er eben nicht mehr vorhanden").
   var z1Active = z1ShowRadiator || z1ShowFloor;
   var z2Active = hasZone2 && (z2ShowRadiator || z2ShowFloor);
-  // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 110px
-  // plus je 16px Anschlussrand links/rechts (in der Groessenordnung des
-  // Heizkoerpers, Dietmar 16.08.2026: "schau auch mal die Groesse der
-  // Fussbodenheizung in Relation zum Radiator an"), 24px Abstand
-  // zwischen zwei Icons derselben Zone.
+  // Icon-Breiten: Heizkoerper 110px, Fussbodenheizungs-Spirale 145px
+  // (= Ruecklaufhoehe minus Heizkoerper-Oberkante, quadratisch, siehe
+  // fSide im Zeichencode) plus je 16px Anschlussrand links/rechts,
+  // 24px Abstand zwischen zwei Icons derselben Zone.
   function zoneContentWidth(showRad, showFloor) {
     var w = 0, n = 0;
     if (showRad) { w += 110; n++; }
-    if (showFloor) { w += (n > 0 ? 24 : 0) + 142; n++; }
+    if (showFloor) { w += (n > 0 ? 24 : 0) + 177; n++; }
     return w;
   }
   var zone1W = z1Active ? zoneContentWidth(z1ShowRadiator, z1ShowFloor) : 0;
@@ -1519,15 +1518,17 @@ function buildSchema(unit) {
         } else if (t === 'floor') {
           // Fussbodenheizung als Gegenstrom-Doppelspirale nach Dietmars
           // Referenzzeichnung (16.08.2026) - siehe counterSpiral().
-          // Groesse BEWUSST in der Groessenordnung des Heizkoerpers
-          // (Dietmar: "schau auch mal die Groesse der Fussbodenheizung
-          // in Relation zum Radiator an" - vorher war sie mit 50x50
-          // weniger als halb so gross wie der Heizkoerper); nach oben
-          // ueber die Vorlaufschiene hinausgezogen, nach unten begrenzt
-          // durch den Heizkoerper eines eventuellen zweiten Kreises
-          // (dessen Oberkante liegt bei z.y+85).
-          var fSide = 110, fGap = 14;
-          var fLeft = curX + 16, fTop = iconTop - 30;
+          // Vertikale Ausdehnung exakt nach Vorgabe (Dietmar,
+          // 17.08.2026): Unterkante auf der Ruecklaufhoehe (iconBot),
+          // Oberkante etwa auf der Oberkante des Heizkoerpers (dessen
+          // obere Sammelleitung liegt bei iconTop-95). Ganghoehe so
+          // gewaehlt, dass drei Vorlauf-Windungen entstehen ("du hast
+          // eine Windung zuviel"). Loest nebenbei die vorherige Enge
+          // zum Heizkoerper eines eventuellen zweiten Kreises: die
+          // Spirale endet jetzt AUF der eigenen Ruecklaufschiene statt
+          // 30px darunter.
+          var fTop = iconTop - 95, fSide = iconBot - fTop, fGap = 22;
+          var fLeft = curX + 16;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
           // Vorlauf: von der Schiene (iconTop) kurz vor der Spirale
           // senkrecht hoch zur Oberkante, dort oben links in die
