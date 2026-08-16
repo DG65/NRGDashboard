@@ -1238,33 +1238,33 @@ function buildSchema(unit) {
           curX += iconGap;
         }
         if (t === 'radiator') {
-          // Heizkoerper sitzt ERHOEHT ueber der Anschlussschiene (wie im
-          // Detailbild, 16.08.2026): Vorlauf steigt aussen als eigenes,
-          // gerades rotes Steigrohr zum Heizkoerper hoch, Ruecklauf faellt
-          // spiegelbildlich als blaues Fallrohr wieder herunter. Innerhalb
-          // des Heizkoerpers HARTE Farbtrennung Rot/Blau (kein Verlauf) -
-          // erste Haelfte der Falten rot, zweite Haelfte blau.
-          // WICHTIG (Dietmar, 16.08.2026, nach genauem Nachmessen des
-          // gerenderten Pfads): Ein-/Austritt MUESSEN beide an der
-          // UNTEREN Kante des Heizkoerpers liegen, nicht einer oben und
-          // einer unten - sonst durchquert das Steigrohr von der
-          // Anschlussschiene aus zwangslaeufig den eigenen Faltenbereich
-          // (beide liegen zwischen Schiene und Kastenoberkante) und
-          // ueberzeichnet die erste Falte unsichtbar (Ein-/Austritts-
-          // strecke lag deckungsgleich auf der ersten Falte). Jetzt
-          // steigen beide Anschluesse nur bis zur UNTERKANTE des
-          // Heizkoerpers, die Falten liegen komplett DARUEBER.
+          // Echter GEFUELLTER Heizkoerper mit senkrechten Rippen (dunkle
+          // Luecken) statt eines Zickzack-Rohrs (Dietmar, 16.08.2026,
+          // nach bearbeitetem Detail-Screenshot: "kannst Du es so besser
+          // erkennen?" + "Farbverlauf von Rot nach Blau"). Fuellung als
+          // Verlauf SUPC (oben, heiss) -> RETC (unten, kalt), Zu-/Ablauf
+          // als einfache Leitung von der Schiene rein/raus.
           var connectY = iconTop - 15, peakY = connectY - 80;
           var boxL = curX + 10, boxR = curX + radW - 10;
           svg.appendChild(el('rect', { x: curX, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
           topMostY = Math.min(topMostY, peakY - 8);
-          var folds = 6, splitFold = 3;
-          var pts = zigzagPoints(boxL, boxR, connectY - 6, peakY + 6, folds);
-          var splitIdx = splitFold * 2;
-          var redPts = [[boxL, iconTop]].concat(pts.slice(0, splitIdx + 1));
-          var bluePts = pts.slice(splitIdx).concat([[pts[pts.length - 1][0], iconBot]]);
-          svg.appendChild(pipe(pointsToD(redPts), SUP, on));
-          svg.appendChild(pipe(pointsToD(bluePts), RET, on));
+          var fgid = 'radfill' + z.n + unit.id;
+          var fgr = el('linearGradient', { id: fgid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: peakY, x2: 0, y2: connectY });
+          var fs0 = el('stop', { offset: '0%' }); fs0.setAttribute('stop-color', SUPC);
+          var fs1 = el('stop', { offset: '100%' }); fs1.setAttribute('stop-color', RETC);
+          fgr.appendChild(fs0); fgr.appendChild(fs1);
+          svg.querySelector('defs').appendChild(fgr);
+          var finCount = 9, finGap = (boxR - boxL) / finCount;
+          for (var fi = 0; fi < finCount; fi++) {
+            svg.appendChild(el('rect', {
+              x: boxL + fi * finGap + 1.5, y: peakY, width: finGap - 3, height: connectY - peakY,
+              fill: on ? ('url(#' + fgid + ')') : PAL.pumpOff
+            }));
+          }
+          // Zulauf/Ablauf als einfache Leitung, kein Rohr durch den
+          // Heizkoerper selbst (der ist jetzt Flaeche, keine Linie).
+          svg.appendChild(pipe('M' + boxL + ',' + iconTop + ' L' + boxL + ',' + connectY, SUP, on));
+          svg.appendChild(pipe('M' + (boxR - 6) + ',' + connectY + ' L' + (boxR - 6) + ',' + iconBot, RET, on));
           curX += radW;
         } else {
           var gid = 'emitfloor' + z.n + unit.id;
