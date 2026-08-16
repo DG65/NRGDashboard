@@ -1287,10 +1287,9 @@ function buildSchema(unit) {
     var pumpeTag = el('text', { x: 754, y: z.y - 25, class: 'tag' });
     pumpeTag.textContent = z.pumpKnown ? 'Pumpe' : 'Pumpe (kein Status)';
     svg.appendChild(pumpeTag);
-    // Pfeile im Vor-/Ruecklauf nur bei HK2 - bei HK1 auf Dietmars Wunsch
-    // entfernt (16.08.2026), die Flussanimation (Punkte) zeigt die
-    // Richtung dort bereits.
-    if (on && z.n !== 1) { svg.appendChild(arrowHead(804, z.y, 'r', SUPC)); }
+    // Pfeile im Vor-/Ruecklauf: bei HK1 (16.08.2026) und jetzt auch bei
+    // HK2 (16.08.2026) entfernt - die Flussanimation (Punkte) zeigt die
+    // Richtung bereits.
 
     // Heizkoerper + Fussbodenheizung als ECHTE gefaerbte Leitung, parallel
     // gespeist (Dietmar, 16.08.2026, nach dem zweiten Referenzbild): beide
@@ -1431,7 +1430,6 @@ function buildSchema(unit) {
     } else {
       svg.appendChild(bentPipe([[829, z.retY], [620, z.retY], [620, 192]], RET, on));
     }
-    if (on && z.n !== 1) { svg.appendChild(arrowHead(789, z.retY, 'l', RETC)); }
   });
 
   // Ventile ans Ende der Zeichenreihenfolge verschieben, damit sie ueber
