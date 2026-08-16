@@ -1250,7 +1250,6 @@ function buildSchema(unit) {
     var iconTop = z.y, iconBot = z.retY, iconGap = 24;
     var radW = 110, spiralSide = iconBot - iconTop;
     var curX = 810;
-    var topMostY = iconTop;
     var iconTypes = [];
     if (z.showRadiator) { iconTypes.push('radiator'); }
     if (z.showFloor) { iconTypes.push('floor'); }
@@ -1291,7 +1290,6 @@ function buildSchema(unit) {
           // 20px Abstand, nur auf der anderen Seite).
           var boxL = curX + 10 - 30, boxR = curX + radW - 10 - 30;
           svg.appendChild(el('rect', { x: curX - 30, y: peakY - 8, width: radW, height: (connectY - peakY) + 16, rx: 4, class: 'box', fill: 'none' }));
-          topMostY = Math.min(topMostY, peakY - 8);
           var fgid = 'radfill' + z.n + unit.id;
           var manifoldH = 8;
           var finTop = peakY + manifoldH, finBot = connectY - manifoldH;
@@ -1333,17 +1331,26 @@ function buildSchema(unit) {
         }
       });
     }
-    var groupCX = (810 + curX) / 2;
-    var rt = el('text', { x: groupCX, y: topMostY - 14, class: 'box-title' });
+    // "HEIZKREIS N" mittig UEBER Mischer (675) + Pumpe (735) statt ueber
+    // der ganzen Icon-Gruppe (Dietmar, 16.08.2026) - x=705 ist deren
+    // Mittelpunkt. Ueberdeckt weder Mischer/Pumpe-Beschriftung (25px
+    // darunter) noch den Heizkoerper (der beginnt erst bei x=790+).
+    var hkCX = (675 + 735) / 2;
+    var rt = el('text', { x: hkCX, y: z.y - 53, class: 'box-title' });
     rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
     svg.appendChild(rt);
     if (z.caption) {
-      var rc = el('text', { x: groupCX, y: topMostY, class: 'tag' });
+      var rc = el('text', { x: hkCX, y: z.y - 39, class: 'tag' });
       rc.textContent = z.caption;
       svg.appendChild(rc);
     }
+    // z.temp (HeishaMon z1/z2WaterTempID) ist die Ruecklauftemperatur der
+    // Zone, keine allgemeine Kreis-Temperatur - deshalb DIREKT auf der
+    // Ruecklaufleitung platziert (wie die uebrigen Vor-/Ruecklauf-Chips
+    // im Schema), nicht mehr unter dem ganzen Icon-Block (Dietmar,
+    // 16.08.2026: "die 18° sollen vermutlich der Ruecklauf sein").
     if (z.temp !== null && z.temp !== undefined) {
-      svg.appendChild(chip(groupCX, iconBot + 30, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
+      svg.appendChild(chip(729, z.retY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
