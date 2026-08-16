@@ -993,7 +993,16 @@ function buildSchema(unit) {
 
   // Warmwasser oben aus dem Speicher heraus zum Bad. Zwei Abgaenge:
   // links der Wanneneinlauf, rechts die Brause (Dietmar, 14.08.2026).
-  svg.appendChild(el('path', { d: 'M388,244 L530,244', fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  // Hauptleitung + Brause-Fallrohr als EIN Pfad (Dietmar, 16.08.2026:
+  // "da wo die roten Kreise sind sind noch immer Knicke") - die scharfe
+  // Ecke bei (530,244) entstand, weil zwei getrennte <path>-Elemente
+  // genau dort aufeinandertrafen; bentPath() rundet nur INNERHALB eines
+  // einzigen Aufrufs. Der Wanneneinlauf-Abzweig bei x=435 bleibt eine
+  // echte T-Abzweigung (kein Knick, keine Rundung noetig).
+  svg.appendChild(el('path', {
+    d: bentPath([[388, 244], [530, 244], [530, 256]], 8),
+    fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round'
+  }));
   var hwTag = el('text', { x: 459, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
   // Wanneneinlauf: Fallrohr mit abgewinkeltem Auslauf ueber dem Wannenrand
   svg.appendChild(el('path', {
@@ -1004,7 +1013,6 @@ function buildSchema(unit) {
   // Brausekopf dicht unter die Warmwasserleitung gehaengt (Dietmar,
   // 14.08.2026 - zweimal hoeher gerueckt); die Strahlen reichen dafuer
   // laenger hinunter, damit der Abstand zum Wannenrand gefuellt bleibt.
-  svg.appendChild(el('path', { d: 'M530,244 L530,256', fill: 'none', stroke: HW, 'stroke-width': 3 }));
   svg.appendChild(el('path', { d: 'M516,258 L544,258', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
   // Strahlen gepunktet als Wassertropfen (Dietmar, 14.08.2026). Bewusst
   // NICHT animiert - wie die uebrige Sanitaerseite, denn ob gezapft wird,
@@ -1082,19 +1090,23 @@ function buildSchema(unit) {
   svg.appendChild(pipe('M400,142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
   svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
-  // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen.
+  // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen. Mittig
+  // zwischen Innengeraet (400) und Puffer (PUF_LEFT) statt fest bei 473
+  // (Dietmar, 16.08.2026: "sollen aber mittig sein" - der Puffer war
+  // seither verschoben worden, 473 passte nicht mehr).
+  var INNEN_PUF_CX = (400 + PUF_LEFT) / 2;
   if (unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(473, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    svg.appendChild(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(473, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    svg.appendChild(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(473, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    svg.appendChild(chip(INNEN_PUF_CX, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -1105,7 +1117,7 @@ function buildSchema(unit) {
     // y=117 statt 114: gleicher Abstand (25) zum Vorlauf-Chip wie zwischen
     // Vorlauf/ΔT/Ruecklauf untereinander - vorher 28 statt 25 (Dietmar,
     // 14.08.2026).
-    svg.appendChild(chip(473, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    svg.appendChild(chip(INNEN_PUF_CX, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   // Puffer: Wasserfuellung wie beim WW-Tank (Rot/Blau-Verlauf nach
@@ -1200,9 +1212,10 @@ function buildSchema(unit) {
     svg.appendChild(bentPipe([[645, 142], [645, 322], [675, 322]], SUP, zones[1].pumpOn));
     // Steigt von der eigenen Ruecklauf-Austrittshoehe (372) auf die
     // gemeinsame Sammelhoehe (192 = Zone 1s eigene Hoehe = Puffer-
-    // Ankunftshoehe) - EIN Knick, dann trifft sie ohne weiteren Umweg auf
-    // die gemeinsame Leitung.
-    svg.appendChild(pipe('M667,372 L667,192', RET, zones[1].pumpOn));
+    // Ankunftshoehe). Wird weiter unten, im per-Zone Ruecklauf-Abschnitt,
+    // MIT der Austrittsleitung aus dem Kasten zu einem einzigen
+    // gerundeten Pfad zusammengefuehrt (Dietmar, 16.08.2026) - hier
+    // separat gezeichnet haette an (667,372) eine scharfe Ecke ergeben.
   }
   svg.appendChild(pipe('M' + PUF_RIGHT + ',142 L675,142', SUP, zones[0].pumpOn || (hasZone2 && zones[1].pumpOn)));
   // Gemeinsame Ruecklaufleitung: eine einzige gerade Linie von der
@@ -1227,7 +1240,15 @@ function buildSchema(unit) {
     // Endet bei der Steigleitung des Heizkoerpers (falls vorhanden) -
     // die liegt seit 16.08.2026 20px links von dessen Kontur statt genau
     // auf x=789, sonst entstuende eine Luecke zur verschobenen Leitung.
-    svg.appendChild(pipe('M675,' + z.y + ' L' + (z.showRadiator ? 789 : 829) + ',' + z.y, SUP, on));
+    // Ist der Heizkoerper das erste Icon, wird der Uebergang in dessen
+    // Steigleitung NICHT hier separat gezeichnet, sondern weiter unten
+    // in DENSELBEN bentPipe-Aufruf gemergt - sonst treffen zwei
+    // unabhaengig gezeichnete Pfade an dieser Stelle als scharfe Ecke
+    // aufeinander, die kein bentPath()-Aufruf rundet (Dietmar,
+    // 16.08.2026: "da wo die roten Kreise sind sind noch immer Knicke").
+    if (!z.showRadiator) {
+      svg.appendChild(pipe('M675,' + z.y + ' L829,' + z.y, SUP, on));
+    }
     // Bypass: der Mischer ist ein ECHTER Mischerkreis, kein reines
     // Stellventil (Dietmar, 16.08.2026) - er blendet warmen Puffer-
     // Vorlauf mit dem eigenen (kuehleren) Ruecklauf des Kreises, um die
@@ -1341,7 +1362,11 @@ function buildSchema(unit) {
           // Zulauf: steigt AUSSEN links am Kasten hoch, biegt oben in die
           // rote Sammelleitung ein. Ablauf: verlaesst die blaue
           // Sammelleitung rechts, faellt zur Schiene.
-          svg.appendChild(bentPipe([[boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
+          // Beginnt bei x=675 (Mischer) statt erst bei der Steigleitung -
+          // der Uebergang vom Mischer-Ausgang in die Steigleitung wird
+          // dadurch TEIL desselben gerundeten Pfads statt einer scharfen
+          // Ecke zwischen zwei getrennten Leitungen.
+          svg.appendChild(bentPipe([[675, z.y], [boxL - 20, iconTop], [boxL - 20, peakY + manifoldH / 2], [boxL, peakY + manifoldH / 2]], SUP, on));
           svg.appendChild(bentPipe([[boxR, connectY - manifoldH / 2], [boxR + 20, connectY - manifoldH / 2], [boxR + 20, iconBot]], RET, on));
           curX += radW;
         } else {
@@ -1387,10 +1412,18 @@ function buildSchema(unit) {
     }
 
     // Ruecklauf des Kreises verlaesst den Kasten an der LINKEN Seite (wie
-    // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50 - direkt auf der
-    // Sammelhoehe, dadurch nur diese EINE gerade Strecke bis zur
-    // Sammelstelle noetig, kein zusaetzlicher Knick am Kasten.
-    svg.appendChild(pipe('M829,' + z.retY + ' L667,' + z.retY, RET, on));
+    // der Vorlauf) auf z.retY = eigene Vorlaufhoehe + 50. Bei Zone 1
+    // deckt sich das mit der gemeinsamen Sammelhoehe (192) - eine einzige
+    // gerade Strecke reicht. Bei Zone 2 (retY=372) muss die Leitung erst
+    // zur Sammelhoehe hochsteigen - dieser Knick wird MIT der
+    // Austrittsstrecke zu einem gerundeten Pfad zusammengefasst statt an
+    // (667,372) als scharfe Ecke zwischen zwei Pfaden aufeinanderzutreffen
+    // (Dietmar, 16.08.2026).
+    if (z.retY === 192) {
+      svg.appendChild(pipe('M829,' + z.retY + ' L667,' + z.retY, RET, on));
+    } else {
+      svg.appendChild(bentPipe([[829, z.retY], [667, z.retY], [667, 192]], RET, on));
+    }
     if (on && z.n !== 1) { svg.appendChild(arrowHead(789, z.retY, 'l', RETC)); }
   });
 
