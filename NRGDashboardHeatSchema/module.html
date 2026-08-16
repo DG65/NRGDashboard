@@ -1406,18 +1406,14 @@ function buildSchema(unit) {
     // 16.08.2026: "die 18° sollen vermutlich der Ruecklauf sein" +
     // "der Ruecklauf Chip auf der Ruecklaufleitung darunter").
     if (z.temp !== null && z.temp !== undefined) {
-      // Mittig zwischen Puffer und dem jeweiligen Zonen-Vorlauf (Dietmar,
-      // 16.08.2026). Zone 1: ihr eigener Ruecklauf (retY=192) IST bereits
-      // die gemeinsame Sammelleitung, der Chip sitzt direkt darauf. Zone
-      // 2: bei retY=372 liegt zwischen Puffer und dem eigenen Abzweig
-      // (645) keine echte Leitung - der Chip sass dort im Leeren, und auf
-      // der gemeinsamen Sammelleitung (y=192) kollidiert er mit dem
-      // Zone-1-Chip (beide landen zu nah beieinander). Sitzt jetzt auf
-      // der Zone-2-eigenen Steigleitung (x=620, zwischen Vorlauf-Steigleitung
-      // und Puffer), mittig zwischen deren Ansatz an der Sammelleitung (192)
-      // und dem Kasten-Austritt (372).
-      var retChipX = z.retY === 192 ? (PUF_RIGHT + z.vorlaufX) / 2 : 620;
-      var retChipY = z.retY === 192 ? z.retY : (192 + z.retY) / 2;
+      // Zone 1: ihr eigener Ruecklauf (retY=192) IST bereits die
+      // gemeinsame Sammelleitung, der Chip sitzt mittig zwischen Puffer
+      // und Vorlauf direkt darauf (Dietmar, 16.08.2026). Zone 2: Chip
+      // sitzt auf der eigenen Ruecklaufleitung direkt unter der Pumpe
+      // (x=754), statt auf der Steigleitung (Dietmar, 16.08.2026: "auf
+      // die Ruecklaufleitung des HK 2 direkt unter die Pumpe").
+      var retChipX = z.retY === 192 ? (PUF_RIGHT + z.vorlaufX) / 2 : 754;
+      var retChipY = z.retY;
       drawValve(chip(retChipX, retChipY, fmtTemp1(z.temp), '°C', tempColor(z.temp), null));
     }
 
