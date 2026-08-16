@@ -72,13 +72,27 @@
   /* Fluss-Animation: weicher, organischer Wellenverlauf statt mechanischer
      Punktreihe (Dietmar, 16.08.2026) - unregelmaessig lange/kurze Segmente
      statt gleichfoermiger Punkte, leichte Unschaerfe fuer einen weichen statt
-     harten Rand, sanftes Ease-in-out statt linearer Bewegung fuer ein
-     "atmendes" statt mechanisches Fliessen. Zweilagig wie zuvor: Basisrohr
-     voll, Wellenlage animiert, Richtung folgt der Zeichenrichtung des Pfads. */
+     harten Rand. Zweilagig wie zuvor: Basisrohr voll, Wellenlage animiert,
+     Richtung folgt der Zeichenrichtung des Pfads.
+     --flow-mult (Geschwindigkeit) und --flow-ease (Bewegungsart) sind
+     eigene, von der Optik UNABHAENGIGE Variablen (Dietmar, 16.08.2026:
+     "einmal so wie die Organische Welle und der Fluessigkeitsglanz
+     laeuft, oder ... laufe konstant, du koenntest sogar noch die
+     Geschwindigkeit zur Auswahl stellen") - handleMessage() setzt sie
+     als CSS Custom Properties auf <html>, damit sich Optik (FlowStyle),
+     Bewegungsart (FlowMotion: atmend/konstant) und Geschwindigkeit
+     (FlowSpeed) frei miteinander kombinieren lassen, statt fuer jede
+     Kombination eine eigene Optionen-Zeile zu brauchen. Jeder Stil
+     definiert nur seine EIGENE Basisdauer (unterschiedlicher Charakter:
+     Punkte laufen schneller als die breite Fluessigkeits-Schliere),
+     skaliert per calc() mit dem gemeinsamen Multiplikator. */
+  :root { --flow-mult: 1; --flow-ease: ease-in-out; }
   .pipe-dots {
     fill: none; stroke: var(--dots, rgba(255,255,255,.8)); stroke-width: 3;
     stroke-linecap: round; stroke-dasharray: 1 7 5 9; opacity: 0.85;
-    filter: blur(0.5px); animation: flowwave 2.2s ease-in-out infinite;
+    filter: blur(0.5px); animation-name: flowwave;
+    animation-duration: calc(2.2s * var(--flow-mult));
+    animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowwave { to { stroke-dashoffset: -44; } }
   /* Mehrere Wasserfluss-Darstellungen zur Auswahl (Dietmar, 16.08.2026)
@@ -88,29 +102,34 @@
      Aufziehen zeigt nur Instanz-Variablen, kein eigenes HTML. Default
      (keine body-Klasse) bleibt die bisherige organische Welle.
      "flow-dots": die urspruengliche, gleichfoermige Punktreihe vor der
-     Welle. "flow-dash": kurze durchgehende Striche, schnellere,
-     "technischere" Anmutung. "flow-liquid": breite, weiche, glaenzende
-     Schliere statt einzelner Punkte/Striche (Dietmar, 16.08.2026: "den
-     Bender Stil" - wiederkehrender Wunsch nach einer fluessigeren
-     Wasser-Textur wie in einer 3D-Fluidsimulation) - da echte
-     Fluiddynamik im Rahmen von reinem SVG/CSS nicht sinnvoll
-     nachbildbar ist, simuliert ein breiter, stark verwaschener,
-     langsam gleitender Glanzstreifen ueber der farbig gefuellten Basis-
-     Leitung eine fliessende, glaenzende Oberflaeche statt einzelner
-     Wassertropfen. */
+     Welle - bleibt bewusst IMMER linear (siehe unten), "atmend" passt
+     nicht zu einzelnen Punkten. "flow-dash": kurze durchgehende
+     Striche, schnellere, "technischere" Anmutung - ebenfalls immer
+     linear. "flow-liquid": breite, weiche, glaenzende Schliere statt
+     einzelner Punkte/Striche (Dietmar, 16.08.2026: "den Bender Stil" -
+     wiederkehrender Wunsch nach einer fluessigeren Wasser-Textur wie in
+     einer 3D-Fluidsimulation) - da echte Fluiddynamik im Rahmen von
+     reinem SVG/CSS nicht sinnvoll nachbildbar ist, simuliert ein
+     breiter, stark verwaschener, gleitender Glanzstreifen ueber der
+     farbig gefuellten Basis-Leitung eine fliessende, glaenzende
+     Oberflaeche statt einzelner Wassertropfen. */
   body.flow-dots .pipe-dots {
     stroke-dasharray: 0.1 14; opacity: 1; filter: none;
-    animation: flowdots 1s linear infinite;
+    animation-name: flowdots; animation-duration: calc(1s * var(--flow-mult));
+    animation-timing-function: linear; animation-iteration-count: infinite;
   }
   @keyframes flowdots { to { stroke-dashoffset: -28; } }
   body.flow-dash .pipe-dots {
     stroke-dasharray: 6 6; opacity: 0.9; filter: none;
-    animation: flowdash 0.9s linear infinite;
+    animation-name: flowdash; animation-duration: calc(0.9s * var(--flow-mult));
+    animation-timing-function: linear; animation-iteration-count: infinite;
   }
   @keyframes flowdash { to { stroke-dashoffset: -24; } }
   body.flow-liquid .pipe-dots {
     stroke-width: 5; stroke-dasharray: 26 22; opacity: 0.8;
-    filter: blur(2px); animation: flowliquid 1.9s ease-in-out infinite;
+    filter: blur(2px); animation-name: flowliquid;
+    animation-duration: calc(1.9s * var(--flow-mult));
+    animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowliquid { to { stroke-dashoffset: -48; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
@@ -1562,11 +1581,25 @@ function handleMessage(raw) {
   var unitsEl = document.getElementById('units');
   setTheme(d && d.lightTheme);
   // Wasserfluss-Darstellung (siehe ".pipe-dots"-Varianten in <style>):
-  // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche.
+  // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche, 3 = Fluessigkeitsglanz.
   var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid'];
   FLOW_CLASSES.forEach(function (c) { if (c) { document.body.classList.remove(c); } });
   var flowClass = FLOW_CLASSES[(d && d.flowStyle) || 0];
   if (flowClass) { document.body.classList.add(flowClass); }
+  // Bewegungsart (0 = atmend/ease-in-out, 1 = konstant/linear) und
+  // Geschwindigkeit (0 = langsam, 1 = normal, 2 = schnell) sind von der
+  // Optik UNABHAENGIGE CSS Custom Properties (Dietmar, 16.08.2026: "du
+  // koenntest sogar noch die Geschwindigkeit zur Auswahl stellen") -
+  // gelten fuer die organische Welle UND den Fluessigkeitsglanz
+  // gemeinsam (Punkte/Striche bleiben bewusst immer linear, siehe
+  // <style>). FLOW_SPEED_MULT: kleiner Multiplikator = kuerzere Dauer
+  // = schnellere Bewegung.
+  var root = document.documentElement;
+  var flowMotion = (d && d.flowMotion != null) ? d.flowMotion : 0;
+  root.style.setProperty('--flow-ease', flowMotion === 1 ? 'linear' : 'ease-in-out');
+  var FLOW_SPEED_MULT = [1.6, 1, 0.55];
+  var flowSpeed = (d && d.flowSpeed != null) ? d.flowSpeed : 1;
+  root.style.setProperty('--flow-mult', FLOW_SPEED_MULT[flowSpeed] || 1);
   if (d && d.bg) { document.body.style.background = d.bg; }
   if (d && d.font) { document.body.style.fontFamily = d.font; }
 

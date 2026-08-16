@@ -115,6 +115,38 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->SetValue('FlowStyle', 0);
         }
 
+        // Bewegungsart und Geschwindigkeit UNABHAENGIG von der Optik
+        // waehlbar (Dietmar, 16.08.2026: "einmal so wie die Organische
+        // Welle und der Fluessigkeitsglanz laeuft, oder ... laufe
+        // konstant, du koenntest sogar noch die Geschwindigkeit zur
+        // Auswahl stellen") - gelten fuer die organische Welle und den
+        // Fluessigkeitsglanz gemeinsam (Punkte/Striche bleiben immer
+        // linear, siehe module.html).
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowMotion')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.FlowMotion', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 0, 'Atmend', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 1, 'Konstant', '', -1);
+        $flowMotionIsNew = @IPS_GetObjectIDByIdent('FlowMotion', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('FlowMotion', 'Wasserfluss-Bewegungsart', 'NRGDASHHEAT.FlowMotion', 51);
+        $this->EnableAction('FlowMotion');
+        if ($flowMotionIsNew) {
+            $this->SetValue('FlowMotion', 0);
+        }
+
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowSpeed')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.FlowSpeed', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 0, 'Langsam', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 1, 'Normal', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 2, 'Schnell', '', -1);
+        $flowSpeedIsNew = @IPS_GetObjectIDByIdent('FlowSpeed', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('FlowSpeed', 'Wasserfluss-Geschwindigkeit', 'NRGDASHHEAT.FlowSpeed', 52);
+        $this->EnableAction('FlowSpeed');
+        if ($flowSpeedIsNew) {
+            $this->SetValue('FlowSpeed', 1);
+        }
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
@@ -195,7 +227,7 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->Render();
             return;
         }
-        if ($Ident === 'FlowStyle') {
+        if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed'], true)) {
             $this->SetValue($Ident, (int) $Value);
             $this->Render();
         }
@@ -431,6 +463,8 @@ class NRGDashboardHeatSchema extends IPSModule
             'zone2ShowRadiator' => (bool) $this->GetValue('Zone2ShowRadiator'),
             'zone2ShowFloor'    => (bool) $this->GetValue('Zone2ShowFloor'),
             'flowStyle'   => (int) $this->GetValue('FlowStyle'),
+            'flowMotion'  => (int) $this->GetValue('FlowMotion'),
+            'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
             'renderedAt'  => time(),
             'units'       => $units,
         ];
