@@ -1295,7 +1295,7 @@ function buildSchema(unit) {
   // einzigen Aufrufs. Der Wanneneinlauf-Abzweig bei x=435 bleibt eine
   // echte T-Abzweigung (kein Knick, keine Rundung noetig).
   svg.appendChild(el('path', {
-    d: bentPath([[388, 244], [510, 244], [510, 256]], 8),
+    d: bentPath([[388, 244], [490, 244], [490, 256]], 8),
     fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round'
   }));
   var hwTag = el('text', { x: 459, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
@@ -1311,12 +1311,12 @@ function buildSchema(unit) {
   // 20px nach links (Dietmar, 17.08.2026: "Du musst die Brause um 20 px
   // nach links schieben") - die Zulaufleitung (oben) ist mitverschoben,
   // damit sie weiterhin mittig auf dem Brausekopf endet.
-  svg.appendChild(el('path', { d: 'M496,258 L524,258', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
+  svg.appendChild(el('path', { d: 'M476,258 L504,258', fill: 'none', stroke: CW, 'stroke-width': 2, 'stroke-linecap': 'round' }));
   // Strahlen gepunktet als Wassertropfen (Dietmar, 14.08.2026). Bewusst
   // NICHT animiert - wie die uebrige Sanitaerseite, denn ob gezapft wird,
   // ist nicht messbar.
   svg.appendChild(el('path', {
-    d: 'M501,262 L496,300 M510,262 L510,306 M519,262 L524,300',
+    d: 'M481,262 L476,300 M490,262 L490,306 M499,262 L504,300',
     fill: 'none', stroke: HW, 'stroke-width': 2,
     'stroke-linecap': 'round', 'stroke-dasharray': '0.1 6'
   }));
