@@ -1345,8 +1345,36 @@ function buildSchema(unit) {
   // 21px nach links (Dietmar, 16.08.2026), damit der Abstand
   // Innengeraet-Puffer (vorher 146) genauso gross ist wie
   // Aussengeraet-Innengeraet (125): 400 (Innengeraet-Rand) + 125 = 525.
-  var PUF_LEFT = 525, PUF_W = 70, PUF_RIGHT = PUF_LEFT + PUF_W;
-  var PUF_TOP = 125, PUF_H = 85, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
+  // Groesse skaliert mit der eingestellten Literzahl (Dietmar,
+  // 17.08.2026: "Die Groesse des Puffers veraendert sich nicht
+  // erkennbar, auch nicht zwischen 100 und 800 ltr" - Breite UND Hoehe
+  // waren bisher unabhaengig von bufferLiters fest verdrahtet, nur die
+  // Textbeschriftung aenderte sich). Ein EINHEITLICHER Skalierungsfaktor
+  // fuer Breite UND Hoehe (Dietmar: "Das Seitenverhaeltnis ist doch immer
+  // etwa aehnlich, das solltest Du beruecksichtigen") statt nur die Hoehe
+  // zu strecken: Kubikwurzel der Literzahl haelt bei einem Zylinder
+  // (Volumen ~ Breite^2 * Hoehe) das Seitenverhaeltnis bei wachsendem
+  // Volumen ungefaehr konstant, 100 l als Referenzgroesse (= bisherige
+  // feste Masse 70x85).
+  var PUF_LEFT = 525, PUF_TOP = 125;
+  var PUF_W_BASE = 70, PUF_H_BASE = 85;
+  // Der verfuegbare Platz ist NICHT immer gleich gross (Dietmar,
+  // 17.08.2026: "Es gibt Situationen in denen Du mehr oder weniger Platz
+  // zur Darstellung hast"): PUF_LEFT/PUF_TOP bleiben fest (Primaeranschluss
+  // bzw. Betriebszustand-Chip/Geraetetitel druebe), aber PUF_RIGHT darf
+  // nicht an die naechste hartkodierte Koordinate (620, Ruecklauf-
+  // Sammelpunkt) heranwachsen, und mit WW-Tank teilt sich die Spalte
+  // darunter den Raum mit der Sanitaerseite (Dusche/Badewanne ab y~244) -
+  // ohne WW-Tank ist dort bis weit nach unten frei Platz. Der
+  // Skalierungsfaktor wird auf den jeweils engeren der beiden Rahmen
+  // gedeckelt, damit KEINE Richtung in Nachbarelemente hineinwaechst.
+  var pufMaxScaleW = (615 - PUF_LEFT) / PUF_W_BASE;
+  var pufMaxScaleH = ((hasDhwTank ? 235 : 440) - PUF_TOP) / PUF_H_BASE;
+  var pufScale = Math.cbrt(bufferLiters / 100);
+  pufScale = Math.max(0.75, Math.min(pufScale, pufMaxScaleW, pufMaxScaleH));
+  var PUF_W = Math.round(PUF_W_BASE * pufScale), PUF_H = Math.round(PUF_H_BASE * pufScale);
+  var PUF_RIGHT = PUF_LEFT + PUF_W;
+  var PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
   // Zwei feste innere x-Positionen, an denen die Wendel abwechselnd
   // "andockt". GERADE Segmentzahl (6) ist entscheidend: die Wendel muss
   // an BEIDEN Enden links an der Wand anschliessen (Vorlauf UND
