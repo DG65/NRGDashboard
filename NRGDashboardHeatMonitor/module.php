@@ -15,16 +15,18 @@ declare(strict_types=1);
  * kein Modul wird vorausgesetzt, fehlende optionale Felder (contractVersion
  * 1.10: heatOutputPowerID/outsideTempID/compressorStartsID/
  * operationsHoursID; 1.9: copEstimateID/copMeasuredID/
- * dailyPerformanceFactorID) blenden die jeweilige Kennzahl/Kurve einfach
- * aus, statt eine Nullanzeige zu zeigen.
+ * dailyPerformanceFactorID; 1.11: dailyEnergyTotalID/dailyEnergyHeatingID/
+ * dailyEnergyCoolingID/dailyEnergyDHWID - WPHub, taeglich um Mitternacht
+ * zurueckspringende Zaehlerfelder aus der Panasonic Comfort Cloud,
+ * bevorzugt gegenueber der aus PowerID hochgerechneten Schaetzung, siehe
+ * DailyCounterMap()) blenden die jeweilige Kennzahl/Kurve einfach aus,
+ * statt eine Nullanzeige zu zeigen.
  *
- * V1-Umfang (Dietmar hat eine erste funktionierende Version gesehen wollen,
- * bevor Woche/Monat/Jahr + Detail-Umschalter draufkommen): Kennzahlen-
- * Kopfzeile + Tagesansicht (elektrische/thermische Leistung, Vorlauf/
- * Ruecklauf, Aussentemp, Abtau-Schattierung). Wochen-/Monats-/Jahresansicht
- * und Detail-Umschalter (Verdichterfrequenz, Durchfluss, WW-Temp,
- * Betriebsart-Farbcodierung) sind bewusst noch nicht gebaut - naechster
- * Schritt, sobald die Tagesansicht bei Dietmar passt.
+ * Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahresansicht (elektrische/
+ * thermische Leistung bzw. -energie, Vorlauf/Ruecklauf, Aussentemp,
+ * Abtau-Schattierung). Detail-Umschalter (Verdichterfrequenz, Durchfluss,
+ * WW-Temp, Betriebsart-Farbcodierung) sind bewusst noch nicht gebaut -
+ * naechster Ausbauschritt.
  */
 class NRGDashboardHeatMonitor extends IPSModule
 {
@@ -39,6 +41,19 @@ class NRGDashboardHeatMonitor extends IPSModule
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
 
+    // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
+    // Muster NRGDashboardMap/Topology/Tile): "Was ist Neu" (versionsscharf
+    // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
+    // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
+    // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
+    // nutzersichtbaren Aenderung erhoehen.
+    private const NEWS_VERSION = '0.1.0';
+    private const NEWS_ITEMS = [
+        'Neues Modul: Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile, Tages-/Wochen-/Monats-/Jahresansicht) - Geschwistermodul zur PV-Monitoring-Kachel.',
+    ];
+    private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
+    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+
     public function Create()
     {
         parent::Create();
@@ -51,6 +66,9 @@ class NRGDashboardHeatMonitor extends IPSModule
         // die erste gefundene nehmen, wie schon in DiscoverHeatpumps()
         // dokumentiert).
         $this->RegisterPropertyInteger('HeatpumpInstance', 0);
+
+        $this->RegisterAttributeString('SeenNews', '');
+        $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEATMON_Render($_IPS[\'TARGET\']);');
     }
@@ -65,7 +83,71 @@ class NRGDashboardHeatMonitor extends IPSModule
 
     public function GetConfigurationForm()
     {
-        return file_get_contents(__DIR__ . '/form.json');
+        $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        if (!isset($form['elements']) || !is_array($form['elements'])) {
+            $form['elements'] = [];
+        }
+
+        $this->injectVersionIntoDocPanel($form);
+
+        $banner = $this->newsBanner();
+        if ($banner !== null) {
+            array_unshift($form['elements'], $banner);
+        }
+
+        if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
+            $form['elements'][] = [
+                'type' => 'RowLayout',
+                'name' => 'ReviewHint',
+                'items' => [
+                    ['type' => 'Label', 'caption' => '🧪 NRG-Stack Dashboard ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHHEATMON_DismissReviewHint($id);'],
+                ],
+            ];
+        }
+
+        return json_encode($form);
+    }
+
+    private function injectVersionIntoDocPanel(array &$form): void
+    {
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $verTxt = (is_array($lib) && isset($lib['Version']))
+            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            : 'ℹ️ NRG-Stack Dashboard';
+        foreach ($form['elements'] as &$el) {
+            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+                array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
+                return;
+            }
+        }
+        unset($el);
+    }
+
+    private function newsBanner(): ?array
+    {
+        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+            return null;
+        }
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        foreach (self::NEWS_ITEMS as $line) {
+            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        }
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEATMON_AckNews($id);'];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
+    }
+
+    public function AckNews(): void
+    {
+        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        $this->UpdateFormField('NewsPanel', 'visible', false);
+    }
+
+    public function DismissReviewHint(): void
+    {
+        $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
+        $this->UpdateFormField('ReviewHint', 'visible', false);
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -305,6 +387,38 @@ class NRGDashboardHeatMonitor extends IPSModule
     }
 
     /**
+     * Tages-kWh-Karte aus einem taeglich um Mitternacht auf 0
+     * zurueckspringenden Zaehlerfeld (WPHub `dailyEnergy*ID`, seit
+     * heatpump-Vertrag 1.11 - Panasonic Cloud liefert keinen echten
+     * kumulativen Zaehler, siehe SUITE.md "NRG.kWh nur aus echten
+     * kumulativen Zaehlern"). Der Tageswert ist das Tagesmaximum (Max je
+     * Tagesbucket), NICHT der Durchschnitt wie bei DailyEnergyMap() -
+     * WPHub-Hinweis, 17.08.2026: "das sind Tageswerte, kein Verlauf zum
+     * Aufsummieren ... fuer einen Tagesvergleich braeuchtet ihr den
+     * archivierten Verlauf, nicht eine simple Differenzbildung".
+     */
+    private function DailyCounterMap(int $aid, int $vid): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $end = time();
+        $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            if (!isset($row['Max']) || !is_finite((float) $row['Max'])) {
+                continue;
+            }
+            $out[date('Y-m-d', (int) $row['TimeStamp'])] = round((float) $row['Max'], 2);
+        }
+        return $out;
+    }
+
+    /**
      * Monats-kWh-Karte ('Y-m' => kWh) fuer die Jahresansicht -
      * coverage-bewusste Hochrechnung mit den tatsaechlich abgedeckten
      * Stunden statt der vollen Kalendertage, sonst wird ein noch laufender
@@ -355,25 +469,42 @@ class NRGDashboardHeatMonitor extends IPSModule
         $powerID = (int) ($unit['PowerID'] ?? $unit['powerID'] ?? 0);
         $heatOutID = (int) ($unit['heatOutputPowerID'] ?? 0);
         $outsideTempID = (int) ($unit['outsideTempID'] ?? 0);
+        $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
         $aid = $this->ArchiveID();
+
+        // Bevorzugt der echte, taeglich zurueckspringende Zaehlerwert
+        // (WPHub `dailyEnergyTotalID`, Vertrag 1.11) statt der aus
+        // PowerID hochgerechneten Schaetzung - bei WPHub ist PowerID
+        // ohnehin immer 0 (Panasonic Cloud liefert keine
+        // Momentanleistung), bei HeishaMon fehlt das Zaehlerfeld und die
+        // Hochrechnung bleibt die einzige Quelle.
+        $dailyCounter = $dailyEnergyTotalID > 0 ? $this->DailyCounterMap($aid, $dailyEnergyTotalID) : [];
 
         $buckets = [];
         if ($type === 'year') {
-            $electric = $this->MonthlyEnergyMap($aid, $powerID, $start, $end);
             $thermal = $this->MonthlyEnergyMap($aid, $heatOutID, $start, $end);
+            if (count($dailyCounter) > 0) {
+                $electric = [];
+                foreach ($dailyCounter as $day => $kwh) {
+                    $mkey = substr($day, 0, 7);
+                    $electric[$mkey] = ($electric[$mkey] ?? 0.0) + $kwh;
+                }
+            } else {
+                $electric = $this->MonthlyEnergyMap($aid, $powerID, $start, $end);
+            }
             $cursor = strtotime(date('Y-m-01 00:00:00', $start));
             while ($cursor < $end) {
                 $key = date('Y-m', $cursor);
                 $buckets[] = [
                     'label'    => $key,
                     'ts'       => $cursor * 1000,
-                    'electric' => $electric[$key] ?? 0.0,
+                    'electric' => round($electric[$key] ?? 0.0, 2),
                     'thermal'  => $thermal[$key] ?? 0.0,
                 ];
                 $cursor = strtotime('+1 month', $cursor);
             }
         } else {
-            $electric = $this->DailyEnergyMap($aid, $powerID);
+            $electric = (count($dailyCounter) > 0) ? $dailyCounter : $this->DailyEnergyMap($aid, $powerID);
             $thermal = $this->DailyEnergyMap($aid, $heatOutID);
             $outside = $this->DailyAverageMap($aid, $outsideTempID);
             $cursor = $start;
@@ -470,6 +601,7 @@ class NRGDashboardHeatMonitor extends IPSModule
         $dailyAzID = (int) ($unit['dailyPerformanceFactorID'] ?? 0);
         $startsID = (int) ($unit['compressorStartsID'] ?? 0);
         $hoursID = (int) ($unit['operationsHoursID'] ?? 0);
+        $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
 
         $now = (int) $this->getNow();
         // Lokale Tagesgrenze statt UTC - mktime() nutzt die vom
@@ -503,7 +635,7 @@ class NRGDashboardHeatMonitor extends IPSModule
                 'avgRuntimeMin' => ($starts !== null && $starts > 0 && $hours !== null)
                     ? round($hours * 60 / $starts, 1) : null,
             ],
-            'day'   => $this->BuildDay($dayStart, $dayEnd, $powerID, $heatOutID, $mainOutletID, $mainInletID, $outsideTempID, $defrostID),
+            'day'   => $this->BuildDay($dayStart, $dayEnd, $powerID, $heatOutID, $mainOutletID, $mainInletID, $outsideTempID, $defrostID, $dailyEnergyTotalID),
         ];
     }
 
@@ -525,7 +657,7 @@ class NRGDashboardHeatMonitor extends IPSModule
      * geaendert haben, gleiches Muster wie im uebrigen NRG-Stack: nie
      * IDs cachen, immer frisch aufloesen).
      */
-    private function BuildDay(int $start, int $end, ?int $powerID = null, ?int $heatOutID = null, ?int $mainOutletID = null, ?int $mainInletID = null, ?int $outsideTempID = null, ?int $defrostID = null): array
+    private function BuildDay(int $start, int $end, ?int $powerID = null, ?int $heatOutID = null, ?int $mainOutletID = null, ?int $mainInletID = null, ?int $outsideTempID = null, ?int $defrostID = null, ?int $dailyEnergyTotalID = null): array
     {
         if ($powerID === null) {
             $unit = $this->SelectedHeatpump();
@@ -538,9 +670,17 @@ class NRGDashboardHeatMonitor extends IPSModule
             $mainInletID = (int) ($unit['mainInletTempID'] ?? 0);
             $outsideTempID = (int) ($unit['outsideTempID'] ?? 0);
             $defrostID = (int) ($unit['defrostingStateID'] ?? 0);
+            $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
         }
 
         $aid = $this->ArchiveID();
+
+        // Bevorzugt der echte Tages-Zaehlerwert (WPHub dailyEnergyTotalID,
+        // Tagesmaximum des jeweiligen Kalendertags) statt der aus PowerID
+        // hochgerechneten Schaetzung - siehe DailyCounterMap()/BuildPeriod().
+        $counterMap = ($dailyEnergyTotalID !== null && $dailyEnergyTotalID > 0)
+            ? $this->DailyCounterMap($aid, $dailyEnergyTotalID) : [];
+        $counterValue = $counterMap[date('Y-m-d', $start)] ?? null;
 
         return [
             'start'          => $start * 1000,
@@ -551,7 +691,7 @@ class NRGDashboardHeatMonitor extends IPSModule
             'mainInletTemp'  => $this->DaySeries($aid, $mainInletID, $start, $end),
             'outsideTemp'    => $this->DaySeries($aid, $outsideTempID, $start, $end),
             'defrostEpisodes' => $this->ActiveEpisodes($aid, $defrostID, $start, $end),
-            'electricEnergyKwh' => round($this->PowerToEnergy($aid, $powerID, $start, $end), 2),
+            'electricEnergyKwh' => $counterValue ?? round($this->PowerToEnergy($aid, $powerID, $start, $end), 2),
             'thermalEnergyKwh'  => round($this->PowerToEnergy($aid, $heatOutID, $start, $end), 2),
         ];
     }

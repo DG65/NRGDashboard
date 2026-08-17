@@ -76,9 +76,27 @@ class NRGDashboardHeatSchema extends IPSModule
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
 
+    // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
+    // Muster NRGDashboardMap/Topology/Tile): "Was ist Neu" (versionsscharf
+    // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
+    // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
+    // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
+    // nutzersichtbaren Aenderung erhoehen.
+    private const NEWS_VERSION = '0.4.0';
+    private const NEWS_ITEMS = [
+        'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
+        'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
+        'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
+    ];
+    private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
+    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+
     public function Create()
     {
         parent::Create();
+
+        $this->RegisterAttributeString('SeenNews', '');
+        $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -292,7 +310,71 @@ class NRGDashboardHeatSchema extends IPSModule
 
     public function GetConfigurationForm()
     {
-        return file_get_contents(__DIR__ . '/form.json');
+        $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        if (!isset($form['elements']) || !is_array($form['elements'])) {
+            $form['elements'] = [];
+        }
+
+        $this->injectVersionIntoDocPanel($form);
+
+        $banner = $this->newsBanner();
+        if ($banner !== null) {
+            array_unshift($form['elements'], $banner);
+        }
+
+        if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
+            $form['elements'][] = [
+                'type' => 'RowLayout',
+                'name' => 'ReviewHint',
+                'items' => [
+                    ['type' => 'Label', 'caption' => '🧪 NRG-Stack Dashboard ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
+                ],
+            ];
+        }
+
+        return json_encode($form);
+    }
+
+    private function injectVersionIntoDocPanel(array &$form): void
+    {
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $verTxt = (is_array($lib) && isset($lib['Version']))
+            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            : 'ℹ️ NRG-Stack Dashboard';
+        foreach ($form['elements'] as &$el) {
+            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+                array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
+                return;
+            }
+        }
+        unset($el);
+    }
+
+    private function newsBanner(): ?array
+    {
+        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+            return null;
+        }
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        foreach (self::NEWS_ITEMS as $line) {
+            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        }
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_AckNews($id);'];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
+    }
+
+    public function AckNews(): void
+    {
+        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        $this->UpdateFormField('NewsPanel', 'visible', false);
+    }
+
+    public function DismissReviewHint(): void
+    {
+        $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
+        $this->UpdateFormField('ReviewHint', 'visible', false);
     }
 
     private function readIntProperty(string $name, int $default): int

@@ -37,6 +37,17 @@ class NRGDashboardMonitor extends IPSModule
 
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
 
+    // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
+    // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
+    // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
+    // jeder nutzersichtbaren Aenderung erhoehen.
+    private const NEWS_VERSION = '0.9.0';
+    private const NEWS_ITEMS = [
+        'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
+        'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
+        'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
+    ];
+
     public function Create()
     {
         parent::Create();
@@ -66,6 +77,7 @@ class NRGDashboardMonitor extends IPSModule
         $this->RegisterPropertyBoolean('LightTheme', false);
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
+        $this->RegisterAttributeString('SeenNews', '');
         // Jahresvergleich-Konfiguration (Dietmar, 31.07.2026): spezifischer
         // erwarteter Jahresertrag + Anlagenleistung (auto aus Prognose ODER
         // manuell) + 12 Monatsanteile in % - siehe YearCompareConfig().
@@ -103,6 +115,13 @@ class NRGDashboardMonitor extends IPSModule
             $form['elements'] = [];
         }
 
+        $this->injectVersionIntoDocPanel($form);
+
+        $banner = $this->newsBanner();
+        if ($banner !== null) {
+            array_unshift($form['elements'], $banner);
+        }
+
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
                 'type' => 'RowLayout',
@@ -116,6 +135,40 @@ class NRGDashboardMonitor extends IPSModule
         }
 
         return json_encode($form);
+    }
+
+    private function injectVersionIntoDocPanel(array &$form): void
+    {
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $verTxt = (is_array($lib) && isset($lib['Version']))
+            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            : 'ℹ️ NRG-Stack Dashboard';
+        foreach ($form['elements'] as &$el) {
+            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+                array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
+                return;
+            }
+        }
+        unset($el);
+    }
+
+    private function newsBanner(): ?array
+    {
+        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+            return null;
+        }
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        foreach (self::NEWS_ITEMS as $line) {
+            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        }
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMON_AckNews($id);'];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
+    }
+
+    public function AckNews(): void
+    {
+        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        $this->UpdateFormField('NewsPanel', 'visible', false);
     }
 
     public function DismissReviewHint(): void
