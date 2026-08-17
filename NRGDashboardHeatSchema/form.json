@@ -50,6 +50,73 @@
           "caption": "Heizkörper/Fußbodenheizung je Heizkreis ein-/ausblenden: als Schalter direkt unter dieser Instanz im Objektbaum bzw. in der aufgezogenen Kachelansicht (Doppelpfeil), nicht hier im Formular."
         }
       ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Anlagenbauart",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Select",
+          "name": "Bauart",
+          "caption": "Bauart",
+          "options": [
+            { "caption": "Split (mit Innengerät)", "value": "split" },
+            { "caption": "Monoblock (nur Außengerät)", "value": "monoblock" }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "HasBuffer",
+              "caption": "Pufferspeicher vorhanden"
+            },
+            {
+              "type": "NumberSpinner",
+              "name": "BufferLiters",
+              "caption": "Volumen (l)",
+              "minimum": 1,
+              "visible": {
+                "type": "PropertyCondition",
+                "property": "HasBuffer",
+                "value": true
+              }
+            }
+          ]
+        },
+        {
+          "type": "RowLayout",
+          "visible": {
+            "type": "PropertyCondition",
+            "property": "Bauart",
+            "value": "split"
+          },
+          "items": [
+            {
+              "type": "CheckBox",
+              "name": "HasDhwTank",
+              "caption": "Warmwasser-Tank vorhanden"
+            },
+            {
+              "type": "NumberSpinner",
+              "name": "DhwLiters",
+              "caption": "Volumen (l)",
+              "minimum": 1,
+              "visible": {
+                "type": "PropertyCondition",
+                "property": "HasDhwTank",
+                "value": true
+              }
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "Monoblock-Anlagen haben nie ein Innengerät und damit auch nie einen integrierten Warmwasser-Tank."
+        }
+      ]
     }
   ]
 }

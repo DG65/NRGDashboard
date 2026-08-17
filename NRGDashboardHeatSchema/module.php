@@ -40,6 +40,18 @@ class NRGDashboardHeatSchema extends IPSModule
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
+        // Anlagenbauart und optionale Komponenten (Dietmar, 17.08.2026:
+        // "manche Waermepumpen haben einen groesseren Puffer" + "Anlagen
+        // ohne Innenteil" (= Monoblock, hat NIE einen integrierten
+        // WW-Tank) + "moeglich ist auch ein Splitgeraet ohne WW-Tank").
+        // Statische Anlagendaten (einmal bei der Einrichtung gesetzt),
+        // deshalb Formular-Properties statt Instanz-Variablen - anders
+        // als die Emitter-Schalter, die man spontan umschalten will.
+        $this->RegisterPropertyString('Bauart', 'split');
+        $this->RegisterPropertyBoolean('HasBuffer', true);
+        $this->RegisterPropertyInteger('BufferLiters', 100);
+        $this->RegisterPropertyBoolean('HasDhwTank', true);
+        $this->RegisterPropertyInteger('DhwLiters', 185);
         // Symcon bietet einer Kachel keine automatische Theme-Erkennung
         // an, deshalb stellt der Nutzer die Oberflaechenhelligkeit
         // einmalig selbst ein - gleiche Konvention wie im Monitor.
@@ -466,6 +478,11 @@ class NRGDashboardHeatSchema extends IPSModule
             'flowStyle'   => (int) $this->GetValue('FlowStyle'),
             'flowMotion'  => (int) $this->GetValue('FlowMotion'),
             'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
+            'bauart'      => $this->readStringProperty('Bauart', 'split'),
+            'hasBuffer'   => $this->readBoolProperty('HasBuffer', true),
+            'bufferLiters' => $this->readIntProperty('BufferLiters', 100),
+            'hasDhwTank'  => $this->readBoolProperty('HasDhwTank', true),
+            'dhwLiters'   => $this->readIntProperty('DhwLiters', 185),
             'renderedAt'  => time(),
             'units'       => $units,
         ];

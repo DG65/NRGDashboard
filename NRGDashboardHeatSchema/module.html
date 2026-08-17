@@ -618,6 +618,15 @@ function buildSchema(unit) {
   // Kachelweite Einstellungen (Freitexte je Heizkreis) liegen im Payload,
   // nicht an der einzelnen Waermepumpe.
   var cfg = lastData || {};
+  // Anlagenbauart und optionale Komponenten (Dietmar, 17.08.2026: siehe
+  // form.json "Anlagenbauart") - Monoblock-Verzweigung folgt als
+  // eigener, groesserer Umbau; Puffer/WW-Tank-Groesse und -Vorhanden-
+  // sein sind bereits umgesetzt.
+  var bauart = cfg.bauart || 'split';
+  var hasBuffer = cfg.hasBuffer !== false;
+  var bufferLiters = cfg.bufferLiters || 100;
+  var hasDhwTank = cfg.hasDhwTank !== false;
+  var dhwLiters = cfg.dhwLiters || 185;
   // Ventile werden gesammelt und ganz am Schluss erneut angehaengt -
   // dasselbe SVG-Element neu anzuhaengen verschiebt es ans Ende der
   // Zeichenreihenfolge, es liegt dann ueber JEDER Leitung, unabhaengig
@@ -980,20 +989,24 @@ function buildSchema(unit) {
   svg.appendChild(pipe('M318,170 L374,170', SUP, waterFlow));
   svg.appendChild(bentPipe([[374, 170], [374, 142], [400, 142]], SUP, waterFlow && toRoom));
 
-  // Integrierter 185l-WW-Tank: symmetrisch im Gehaeuse (240..350), links
-  // wie rechts 12px Abstand. Der Speicher wird VOR den Anschluss-
-  // leitungen gezeichnet, damit deren Endpunkte aus den zurueck-
-  // gegebenen Stutzen stammen statt geraten zu werden.
+  // Integrierter WW-Tank: nur bei Anlagen, die tatsaechlich einen haben
+  // (Dietmar, 17.08.2026: "moeglich ist auch ein Splitgeraet ohne
+  // WW-Tank" - reines Heizungs-Hydraulikmodul). Symmetrisch im
+  // Gehaeuse (240..350), links wie rechts 12px Abstand. Der Speicher
+  // wird VOR den Anschlussleitungen gezeichnet, damit deren Endpunkte
+  // aus den zurueckgegebenen Stutzen stammen statt geraten zu werden.
   var DHW_IN = 374;
-  var dhwPorts = tankShape(svg, 345, 226, 86, 116, unit.dhwTemp, 'WW-Tank', '185 l',
-    { coil: true, inX: DHW_IN });
-  // Speicherbezeichnung in den Sockel des Innengeraets (Gehaeuse bis 360,
-  // Sockelstrich bei 346) statt auf die von der Wendel gefuellte
-  // Speicherflaeche.
-  var dhwTag = el('text', { x: 345, y: 356, class: 'chip-text' });
-  dhwTag.style.fontSize = '8.5px';
-  dhwTag.textContent = 'WW-Tank 185 l';
-  svg.appendChild(dhwTag);
+  var dhwPorts = hasDhwTank ? tankShape(svg, 345, 226, 86, 116, unit.dhwTemp, 'WW-Tank', dhwLiters + ' l',
+    { coil: true, inX: DHW_IN }) : null;
+  if (hasDhwTank) {
+    // Speicherbezeichnung in den Sockel des Innengeraets (Gehaeuse bis
+    // 360, Sockelstrich bei 346) statt auf die von der Wendel gefuellte
+    // Speicherflaeche.
+    var dhwTag = el('text', { x: 345, y: 356, class: 'chip-text' });
+    dhwTag.style.fontSize = '8.5px';
+    dhwTag.textContent = 'WW-Tank ' + dhwLiters + ' l';
+    svg.appendChild(dhwTag);
+  }
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
   // der WW-Steigleitung, die Pumpe genau darueber im Vorlauf (Dietmar).
   var DHW_RISE = dhwPorts ? dhwPorts.riserX : 346;
@@ -1022,8 +1035,13 @@ function buildSchema(unit) {
   // will (14.08.2026, dritter Anlauf). Vorher stand es einmal auf dem
   // Heizkreis-Ruecklauf, dann knapp darunter auf der Steigleitung; beides
   // war nicht der T-Punkt selbst.
-  drawValve(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
-  drawValve(valve3(374, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
+  // Beide Ventile regeln nur die Umschaltung zum WW-Tank - ohne Tank
+  // gibt es diese Umschaltung nicht, der Heizkreis wird immer direkt
+  // versorgt (Dietmar, 17.08.2026).
+  if (hasDhwTank) {
+    drawValve(valveSymbol(DHW_RISE, 192, 6, (unit.twoWayValve !== false) ? '#4a90d9' : '#6f83a3', null, false));
+    drawValve(valve3(374, 170, 6, toDhw, toDhw ? '#e0b93c' : '#e0503c'));
+  }
   if (dhwPorts) {
     var dhwOn = waterFlow && toDhw;
     // Zulauf faellt vom 3-Wege-Ventil senkrecht in den Speicher.
@@ -1063,7 +1081,7 @@ function buildSchema(unit) {
   var idRows = [];
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push(['Pumpe', fmtTemp1(unit.pumpFlow) + ' l/min']); }
   if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push(['Drehzahl', Math.round(unit.pumpSpeed) + ' U/min']); }
-  if (unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank 185 l', fmtTemp1(unit.dhwTemp) + ' °C']); }
+  if (hasDhwTank && unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank ' + dhwLiters + ' l', fmtTemp1(unit.dhwTemp) + ' °C']); }
   // Verbund-Enum bevorzugen; nur wo er fehlt, den rohen Herstellerenum
   // uebersetzen (aeltere Modulstaende).
   var NORM_TEXT = {
@@ -1080,8 +1098,10 @@ function buildSchema(unit) {
   } else if (unit.operatingMode !== null && unit.operatingMode !== undefined) {
     idRows.push(['Modus', RAW_TEXT[unit.operatingMode] || 'unbekannt']);
   }
-  idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
-  idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
+  if (hasDhwTank) {
+    idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
+    idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
+  }
   idRows.forEach(function (row, ri) {
     var ry = 385 + ri * 15;
     var lbl = el('text', { x: 290, y: ry, class: 'tag' });
@@ -1099,6 +1119,11 @@ function buildSchema(unit) {
   });
 
   // ── Sanitaerseite ────────────────────────────────────────────
+  // Nur bei Anlagen mit WW-Tank - ohne Tank gibt es keine
+  // Warmwasserbereitung und damit auch keinen Sanitaerkreis zu zeigen
+  // (Dietmar, 17.08.2026: "die haben dann aber auch keinen WW-Tank und
+  // natuerlich auch diesen Kreislauf nicht").
+  if (hasDhwTank) {
   // Duenne, STATISCHE Leitungen: ob gerade gezapft wird, ist nicht
   // messbar - deshalb bewusst ohne Flussanimation, im Unterschied zu
   // allen Heizungsleitungen. Kaltwasser kommt unten von links bis ins
@@ -1157,6 +1182,7 @@ function buildSchema(unit) {
     svg.appendChild(el('path', { d: fd, fill: 'none', stroke: CW, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
   });
   var bTag = el('text', { x: 502, y: 380, class: 'tag' }); bTag.textContent = 'Dusche + Badewanne'; svg.appendChild(bTag);
+  }
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
   // Primaerseite links (Innengeraet), Sekundaerseite rechts (Heizkreis).
@@ -1246,40 +1272,59 @@ function buildSchema(unit) {
     svg.appendChild(chip(INNEN_PUF_CX, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
-  // Puffer: Wasserfuellung wie beim WW-Tank (Rot/Blau-Verlauf nach
-  // Vor-/Ruecklauffarbe), aber OHNE tankShape()s eigenen Oben-Stutzen-
-  // Wendelmechanismus - die Wendel wird direkt vom Aufrufer gezeichnet
-  // (pufCoilD, oben definiert), damit sie exakt auf Leitungshoehe an der
-  // Wand andockt (Dietmar, 14.08.2026).
-  tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
-    topColor: SUPC, botColor: RETC
-  });
-  // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
-  // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
-  var pufTag = el('text', { x: PUF_CX, y: PUF_TOP + PUF_H + 14, class: 'tag' });
-  pufTag.textContent = 'Puffer 100 l';
-  svg.appendChild(pufTag);
-  if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-    svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
-  }
+  // Puffer nur zeichnen, wenn die Anlage tatsaechlich einen hat
+  // (Dietmar, 17.08.2026: "manche Waermepumpen haben einen groesseren
+  // Puffer" -> Literzahl aus der Konfiguration; "manche Anlagen haben
+  // ueberhaupt keinen Puffer" -> Property "HasBuffer"). PUF_LEFT/
+  // PUF_RIGHT bleiben in JEDEM Fall die festen Anschlusskoordinaten,
+  // an denen die Primaer- (links) bzw. Sekundaerleitung (rechts, siehe
+  // weiter unten) enden - ohne Puffer wird nur die Luecke dazwischen
+  // mit einer durchgehenden Leitung ueberbrueckt, statt jede
+  // nachgelagerte Koordinate (Mischer, Heizkreise, Chips) neu zu
+  // berechnen.
+  if (hasBuffer) {
+    // Wasserfuellung wie beim WW-Tank (Rot/Blau-Verlauf nach
+    // Vor-/Ruecklauffarbe), aber OHNE tankShape()s eigenen Oben-Stutzen-
+    // Wendelmechanismus - die Wendel wird direkt vom Aufrufer gezeichnet
+    // (pufCoilD, oben definiert), damit sie exakt auf Leitungshoehe an der
+    // Wand andockt (Dietmar, 14.08.2026).
+    tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
+      topColor: SUPC, botColor: RETC
+    });
+    // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
+    // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
+    var pufTag = el('text', { x: PUF_CX, y: PUF_TOP + PUF_H + 14, class: 'tag' });
+    pufTag.textContent = 'Puffer ' + bufferLiters + ' l';
+    svg.appendChild(pufTag);
+    if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
+      svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    }
 
-  // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet, oben bei
-  // y=142) gibt auf dem Weg zum Ablauf (y=192) Waerme an die umgebende
-  // Fluessigkeit ab - Gradient SUPC -> RETC entlang der tatsaechlichen
-  // Leitungshoehen, kein zusaetzliches Bauteil, das es nicht gibt.
-  var pufCoilGid = 'pufcoil' + unit.id;
-  var pufDefs = svg.querySelector('defs');
-  var pcg = el('linearGradient', {
-    id: pufCoilGid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 142, x2: 0, y2: 192
-  });
-  var pcs0 = el('stop', { offset: '0%' }); pcs0.setAttribute('stop-color', SUPC);
-  var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', RETC);
-  pcg.appendChild(pcs0); pcg.appendChild(pcs1);
-  pufDefs.appendChild(pcg);
-  svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')'));
-  // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
-  // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
-  // Schema nur Platz kostet (Dietmar, 14.08.2026).
+    // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet, oben bei
+    // y=142) gibt auf dem Weg zum Ablauf (y=192) Waerme an die umgebende
+    // Fluessigkeit ab - Gradient SUPC -> RETC entlang der tatsaechlichen
+    // Leitungshoehen, kein zusaetzliches Bauteil, das es nicht gibt.
+    var pufCoilGid = 'pufcoil' + unit.id;
+    var pufDefs = svg.querySelector('defs');
+    var pcg = el('linearGradient', {
+      id: pufCoilGid, gradientUnits: 'userSpaceOnUse', x1: 0, y1: 142, x2: 0, y2: 192
+    });
+    var pcs0 = el('stop', { offset: '0%' }); pcs0.setAttribute('stop-color', SUPC);
+    var pcs1 = el('stop', { offset: '100%' }); pcs1.setAttribute('stop-color', RETC);
+    pcg.appendChild(pcs0); pcg.appendChild(pcs1);
+    pufDefs.appendChild(pcg);
+    svg.appendChild(pipe(pufCoilD, 'pipe-hot', waterFlow && toRoom, 'url(#' + pufCoilGid + ')'));
+    // Ausdehnungsgefaess (Panasonic H6) am primaeren Ruecklauf bewusst
+    // NICHT gezeichnet: rein schematisches Bauteil ohne Messwert, das im
+    // Schema nur Platz kostet (Dietmar, 14.08.2026).
+  } else {
+    // Ohne Puffer laufen Primaer- und Sekundaerleitung glatt durch -
+    // die Luecke zwischen PUF_LEFT und PUF_RIGHT wird einfach
+    // ueberbrueckt (Dietmar, 17.08.2026: "manche Anlagen haben
+    // ueberhaupt keinen Puffer").
+    svg.appendChild(pipe('M' + PUF_LEFT + ',142 L' + PUF_RIGHT + ',142', SUP, waterFlow && toRoom));
+    svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + PUF_RIGHT + ',192', RET, waterFlow && toRoom));
+  }
 
   // ── Sekundaerkreis: Puffer -> Mischer -> Pumpe -> Heizkreis(e) ──
   // Zweiter Heizkreis vorgedacht (Dietmar, 14.08.2026: "wir bauen das
