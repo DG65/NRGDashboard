@@ -660,6 +660,16 @@ class NRGDashboardHeatSchema extends IPSModule
                 $u['compressorFreq'] = 0.0;
                 $u['pumpFlow'] = 0.0;
                 $u['operatingModeNorm'] = 0;
+                // extPump (HK1) UND z2Pump (HK2) werden UNABHAENGIG von
+                // pumpFlow ausgewertet (module.html: pumpOn = pumpKnown
+                // ? !!unit.extPump : ...; zones[1].pumpOn analog ueber
+                // z2Pump) - blieben beide auf ihrem Basiswert true,
+                // animierten HK1/HK2 trotz pumpFlow=0 weiter, obwohl im
+                // Standby nichts fliessen soll (Dietmar, 17.08.2026: "im
+                // Standby vermutlich in keinem der beiden HK etwas
+                // fliessen sollte").
+                $u['extPump'] = false;
+                $u['z2Pump'] = false;
                 break;
             case 5: // Abtaubetrieb
                 $u['defrosting'] = true;
