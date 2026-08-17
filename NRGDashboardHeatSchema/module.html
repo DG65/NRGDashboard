@@ -892,7 +892,16 @@ function buildSchema(unit) {
   // eigene Kachel-HTML, sondern immer die Standardansicht der Instanz-
   // Kinder (Variablen). Ein im HTML gezeichneter Schalter waere dort
   // nie sichtbar gewesen.
-  indoorUnit(svg, 290, 90, 110, 270);
+  // Ohne WW-Tank ist das Geraet nur noch ein reines Heizungs-
+  // Hydraulikmodul - die untere Haelfte des Gehaeuses (dort sass sonst
+  // der Tank) faellt weg (Dietmar, 17.08.2026: "wenn der WW-Tank nicht
+  // vorhanden ist, dann ist das Innengeraet nur noch halb so hoch").
+  // 135 = exakt die Haelfte von 270 UND genau die Hoehe bis zur
+  // bisherigen Tank-Oberkante (90+135=225, Tank begann bei y=226) -
+  // der hydraulische Teil (WT, Ventile, Pumpe, alles <= y=207) bleibt
+  // dadurch unveraendert innerhalb des Gehaeuses.
+  var indoorH = hasDhwTank ? 270 : 135;
+  indoorUnit(svg, 290, 90, 110, indoorH);
 
   // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
   // WT-Kante (x=252) laufen statt vom Gehaeuse verdeckt zu werden.
@@ -1102,8 +1111,12 @@ function buildSchema(unit) {
     idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
     idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
   }
+  // Startet direkt unter dem Geraetesockel statt bei einem fixen Wert -
+  // sonst haette die Tabelle bei einem verkuerzten Gehaeuse (kein
+  // WW-Tank) in der Luft geschwebt.
+  var idRowStartY = 90 + indoorH + 25;
   idRows.forEach(function (row, ri) {
-    var ry = 385 + ri * 15;
+    var ry = idRowStartY + ri * 15;
     var lbl = el('text', { x: 290, y: ry, class: 'tag' });
     lbl.style.textAnchor = 'start';
     lbl.style.fontSize = '7.5px';
