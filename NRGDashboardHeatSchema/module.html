@@ -1081,8 +1081,20 @@ function buildSchema(unit) {
   // die Flussanimation nicht an ihnen abbricht - die Ventilsymbole liegen
   // als Kontur darueber. Der Heizkreis geht ab dem Vorlaufventil
   // senkrecht nach oben und dann nach rechts aus dem Geraet (Dietmar).
-  svg.appendChild(pipe('M318,170 L374,170', SUP, waterFlow));
-  svg.appendChild(bentPipe([[374, 170], [374, 142], [400, 142]], SUP, waterFlow && toRoom));
+  // Der untere Knick (374,170, direkt am Ventil) blieb bisher scharfkantig,
+  // obwohl der obere (374,142) laengst gerundet war - beide Segmente waren
+  // getrennte <path>-Elemente (Pumpenleitung endet dort, bentPipe() faengt
+  // dort neu an), bentPath() rundet aber nur INNERE Punkte desselben
+  // Aufrufs (Dietmar, 17.08.2026, mit Foto: "an der gewünschten Stelle
+  // kein Bogen vorhanden"). Grenze 16px frueher (358 statt 374) verschoben,
+  // damit (374,170) als innerer Punkt mit vollem Radius (8px, wie der
+  // andere Knick) gerundet wird - dieses kurze Stueck laeuft dadurch unter
+  // "waterFlow && toRoom" statt nur "waterFlow" (im reinen WW-Betrieb
+  // zeigt es sich als inaktiv, obwohl bis zum Ventil noch Wasser
+  // durchlaeuft - vernachlaessigbar kurzes Stueck fuer sauber gerundete
+  // Knicke ueberall).
+  svg.appendChild(pipe('M318,170 L358,170', SUP, waterFlow));
+  svg.appendChild(bentPipe([[358, 170], [374, 170], [374, 142], [400, 142]], SUP, waterFlow && toRoom));
 
   // Integrierter WW-Tank: nur bei Anlagen, die tatsaechlich einen haben
   // (Dietmar, 17.08.2026: "moeglich ist auch ein Splitgeraet ohne
