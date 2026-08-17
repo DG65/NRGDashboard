@@ -141,6 +141,19 @@ class NRGDashboardHeatMonitor extends IPSModule
         return $entries[0];
     }
 
+    // 1:1 NRGDashboardMonitor::ColorOrEmpty()/FontStack() - dieselbe
+    // Darstellungs-Konvention (Hintergrundfarbe/Schriftart aus den
+    // Formular-Properties in den Payload, module.html wendet sie an).
+    private function ColorOrEmpty(int $v): string
+    {
+        return ($v < 0) ? '' : sprintf('#%06X', $v);
+    }
+
+    private function FontStack(string $v): string
+    {
+        return ($v === '' || $v === self::DEF_FONT) ? '' : $v;
+    }
+
     private function num(int $vid): ?float
     {
         if ($vid <= 0 || !IPS_VariableExists($vid)) {
@@ -309,9 +322,15 @@ class NRGDashboardHeatMonitor extends IPSModule
         $hours = $this->num($hoursID);
 
         return [
-            'ok'    => true,
-            'label' => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
-            'kpi'   => [
+            'ok'         => true,
+            'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
+            // Wie NRGDashboardMonitor: Symcon bietet einer Kachel keinen
+            // Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - der Nutzer
+            // setzt es einmalig selbst (Formular "Darstellung").
+            'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
+            'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
+            'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            'kpi'        => [
                 'copCurrent'   => ($copMeasured !== null && $copMeasured > 0) ? round($copMeasured, 1)
                     : (($copEstimate !== null && $copEstimate > 0) ? round($copEstimate) : null),
                 'dailyAz'      => (function () use ($dailyAzID) {
