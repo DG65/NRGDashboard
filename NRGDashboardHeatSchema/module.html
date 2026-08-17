@@ -692,7 +692,25 @@ function buildSchema(unit) {
   var zone1W = z1Active ? zoneContentWidth(z1ShowRadiator, z1ShowFloor) : 0;
   var zone2W = z2Active ? zoneContentWidth(z2ShowRadiator, z2ShowFloor) : 0;
   var W = 829 + Math.max(zone1W, zone2W) + 80, H = 470;
-  var svg = el('svg', { class: 'schema', viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
+  // Aussengeraet-Position: normal x=35, bei Monoblock aber ein Stueck
+  // nach rechts geschoben, um die sonst sehr lange Leerstrecke bis zum
+  // Puffer (PUF_LEFT=525, siehe weiter unten - hartkodierte Kopie hier,
+  // weil die Position schon vor dem Puffer-Code feststehen muss) auf
+  // die Haelfte zu verkuerzen (Dietmar, 17.08.2026: "lange Strecke ...
+  // um die Haelfte reduzieren"). Der so entstehende linke Leerraum wird
+  // gleich anschliessend aus dem viewBox herausgeschnitten, statt als
+  // zusaetzlicher toter Rand sichtbar zu bleiben.
+  var outdoorBaseW = 130;
+  var outdoorW = monoblock ? Math.round(outdoorBaseW * 4 / 3) : outdoorBaseW;
+  var outdoorX = 35, monoLeftCrop = 0;
+  if (monoblock) {
+    var pufLeftForShift = 525;
+    var fullGap = pufLeftForShift - (35 + outdoorW);
+    monoLeftCrop = Math.round(fullGap / 2);
+    outdoorX = 35 + monoLeftCrop;
+  }
+  var outdoorRight = outdoorX + outdoorW;
+  var svg = el('svg', { class: 'schema', viewBox: monoLeftCrop + ' 0 ' + (W - monoLeftCrop) + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
   svg.appendChild(el('defs', {}));
   // KEIN eigener Hintergrund: die Kachel soll sich in den Symcon-
   // Untergrund einfuegen, ein gefuelltes Rechteck saesse sonst als
@@ -820,11 +838,8 @@ function buildSchema(unit) {
   // ein Drittel breiter gezeichnet wird (Dietmar, 17.08.2026: "bei einem
   // Monoblockgeraet das Aussengeraet um 1/3 breiter ist und der WT in
   // diesem 1/3 Mehrplatz sitzt").
-  var outdoorBaseW = 130;
-  var outdoorW = monoblock ? Math.round(outdoorBaseW * 4 / 3) : outdoorBaseW;
-  var outdoorRight = 35 + outdoorW;
-  var at = el('text', { x: 35 + outdoorW / 2, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  outdoorUnit(svg, 35, 90, outdoorW, 110, running, unit.fanSpeed, outdoorBaseW);
+  var at = el('text', { x: outdoorX + outdoorW / 2, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
+  outdoorUnit(svg, outdoorX, 90, outdoorW, 110, running, unit.fanSpeed, outdoorBaseW);
 
   // Messwert-Tabelle unter dem Geraet statt einzelner Chips (Dietmar,
   // 14.08.2026): 3 Zeilen x 2 Spalten, keine sichtbaren Linien, so breit
@@ -851,7 +866,7 @@ function buildSchema(unit) {
     // Inline-Style: .tag setzt text-anchor:middle per CSS, das Attribut
     // allein wuerde ueberschrieben (Labels sollen linksbuendig mit der
     // Geraetekante x=35 stehen - Dietmar, 14.08.2026).
-    var lbl = el('text', { x: 35, y: ry, class: 'tag' });
+    var lbl = el('text', { x: outdoorX, y: ry, class: 'tag' });
     lbl.style.textAnchor = 'start';
     lbl.style.fontSize = '7.5px';
     lbl.textContent = row[0];
@@ -870,8 +885,8 @@ function buildSchema(unit) {
     // Monoblock hat die Tabelle zwei Zeilen mehr (Heiss-/Sauggas), sonst
     // waere das Badge in die Zeilen hineingerutscht.
     var defrostY = 220 + odRows.length * 15 + 7;
-    svg.appendChild(el('rect', { x: 35, y: defrostY, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: 35 + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    svg.appendChild(el('rect', { x: outdoorX, y: defrostY, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: outdoorX + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
