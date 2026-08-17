@@ -1136,7 +1136,11 @@ function buildSchema(unit) {
   // Sekundaerkreis-Abschnitt) - hier bleibt nur der IMMER fliessende Teil
   // von der Einmuendung zum Waermetauscher.
   svg.appendChild(pipe('M' + DHW_RISE + ',192 L318,192', RET, waterFlow));
-  svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 8));
+  // Radius an die uebrigen Pumpen (Heizkreise, Standardradius 10)
+  // angeglichen (Dietmar, 17.08.2026: "Die Pumpendurchmesser sind
+  // unterschiedlich. Passe die Pumpe des Innengerätes an die übrigen
+  // Pumpen an.") - war mit 8 kleiner als der Default.
+  svg.appendChild(pumpIcon(DHW_RISE, 170, waterFlow, 0, 10));
   // Das Ventil sitzt GENAU auf dem Kreuzungspunkt, wo die WW-Steigleitung
   // auf den Ruecklauf trifft (DHW_RISE, 192) - dort, wo Dietmar es haben
   // will (14.08.2026, dritter Anlauf). Vorher stand es einmal auf dem
