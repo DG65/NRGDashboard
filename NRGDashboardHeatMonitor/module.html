@@ -23,6 +23,7 @@
   button.qday:hover { background: rgba(127,135,145,.22); }
   button.qday.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
   input.pick { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  select.pick { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   /* Kennzahlen-Kopfzeile: bewusst OHNE Karten-/Kastenoptik (Monitor kennt
      dieses Muster nirgends - dort stehen Zusammenfassungszahlen als
      schlichter Text, siehe z.B. ".ycSum"), nur Zahl fett + Label gedimmt
@@ -39,9 +40,15 @@
 <body>
 <div class="wrap">
   <div id="bar">
-    <button id="prev" class="nav" title="Vorheriger Tag">&#9664;</button>
+    <select id="type" class="pick">
+      <option value="day">Tag (Verlauf)</option>
+      <option value="week">Woche (Energie)</option>
+      <option value="month">Monat (Energie)</option>
+      <option value="year">Jahr (Energie)</option>
+    </select>
+    <button id="prev" class="nav" title="Zurück">&#9664;</button>
     <input id="pick" class="pick" type="date">
-    <button id="next" class="nav" title="Nächster Tag">&#9654;</button>
+    <button id="next" class="nav" title="Weiter">&#9654;</button>
     <button id="today" class="qday">Heute</button>
   </div>
   <div id="kpiRow"></div>
@@ -51,6 +58,8 @@
 <script>
   var lastData = null;
   var curDay = null; // { start, end } in Sekunden (lokale Tagesgrenzen)
+  var curType = 'day'; // day | week | month | year - wie NRGDashboardMonitor's #type-Select
+  var curPeriod = null; // { type, start, end } in Sekunden, fuer Woche/Monat/Jahr
   var chart = null;
   var ecReady = false;
 
@@ -114,12 +123,13 @@
       box.appendChild(val); box.appendChild(lbl);
       el.appendChild(box);
     });
-    // Tages-kWh (Strom/Waerme) haengen am Tagesdatensatz, nicht am kpi-
-    // Objekt (siehe module.php::BuildDay) - separat angehaengt, sofern
-    // vorhanden.
-    if (lastData && lastData.day) {
+    // kWh (Strom/Waerme) haengen am jeweiligen Zeitfenster-Datensatz, nicht
+    // am kpi-Objekt (siehe module.php::BuildDay()/BuildPeriod()) - separat
+    // angehaengt, je nach aktueller Ansicht.
+    var kwhSource = (curType === 'day') ? (lastData && lastData.day) : (lastData && lastData.period);
+    if (kwhSource) {
       [['electricEnergyKwh', 'kWh Strom'], ['thermalEnergyKwh', 'kWh Wärme']].forEach(function (r) {
-        var v = lastData.day[r[0]];
+        var v = kwhSource[r[0]];
         if (v === null || v === undefined) { return; }
         var box = document.createElement('div');
         box.className = 'kpi';
@@ -178,19 +188,79 @@
     requestAction('dayWindow', JSON.stringify({ start: startSec, end: endSec }));
   }
 
-  document.getElementById('prev').addEventListener('click', function () {
-    if (!curDay) { return; }
-    loadDay(curDay.start - 86400, curDay.end - 86400);
+  // Zeitraum-Grenzen (lokal) fuer Woche/Monat/Jahr, ausgehend von einem
+  // beliebigen Zeitpunkt innerhalb des Zeitraums - analog zur Tagesgrenze,
+  // die module.php per mktime() bildet, hier clientseitig fuer die
+  // Navigation (der Server bekommt am Ende ohnehin nur start/end in
+  // Sekunden, keine Kalenderlogik).
+  function weekRange(sec) {
+    var d = new Date(sec * 1000);
+    var day = (d.getDay() + 6) % 7; // 0 = Montag
+    var start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+    var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
+  }
+  function monthRange(sec) {
+    var d = new Date(sec * 1000);
+    var start = new Date(d.getFullYear(), d.getMonth(), 1);
+    var end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
+  }
+  function yearRange(sec) {
+    var d = new Date(sec * 1000);
+    var start = new Date(d.getFullYear(), 0, 1);
+    var end = new Date(d.getFullYear() + 1, 0, 1);
+    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
+  }
+  function rangeFor(type, sec) {
+    if (type === 'week') { return weekRange(sec); }
+    if (type === 'month') { return monthRange(sec); }
+    if (type === 'year') { return yearRange(sec); }
+    var s = sec - (sec % 86400);
+    return { start: s, end: s + 86400 };
+  }
+
+  function loadPeriod(type, sec) {
+    var r = rangeFor(type, sec);
+    curPeriod = { type: type, start: r.start, end: r.end };
+    document.getElementById('pick').value = toDateInputValue(r.start);
+    requestAction('periodWindow', JSON.stringify({ type: type, start: r.start, end: r.end }));
+  }
+
+  function shiftPeriod(dir) {
+    if (curType === 'day') {
+      if (!curDay) { return; }
+      loadDay(curDay.start + dir * 86400, curDay.end + dir * 86400);
+      return;
+    }
+    if (!curPeriod) { return; }
+    var mid = curPeriod.start + 86400; // ein Tag hinein, um Monats-/Jahresgrenzen sauber zu treffen
+    if (curType === 'week') { loadPeriod('week', mid + dir * 7 * 86400); return; }
+    if (curType === 'month') {
+      var d = new Date(curPeriod.start * 1000);
+      var next = new Date(d.getFullYear(), d.getMonth() + dir, 15);
+      loadPeriod('month', Math.floor(next.getTime() / 1000));
+      return;
+    }
+    if (curType === 'year') {
+      var dy = new Date(curPeriod.start * 1000);
+      var nexty = new Date(dy.getFullYear() + dir, 5, 15);
+      loadPeriod('year', Math.floor(nexty.getTime() / 1000));
+    }
+  }
+
+  document.getElementById('type').addEventListener('change', function (ev) {
+    curType = ev.target.value;
+    var anchor = curDay ? curDay.start : (curPeriod ? curPeriod.start : Math.floor(Date.now() / 1000));
+    if (curType === 'day') { loadDay(anchor - (anchor % 86400), anchor - (anchor % 86400) + 86400); }
+    else { loadPeriod(curType, anchor); }
   });
-  document.getElementById('next').addEventListener('click', function () {
-    if (!curDay) { return; }
-    loadDay(curDay.start + 86400, curDay.end + 86400);
-  });
+  document.getElementById('prev').addEventListener('click', function () { shiftPeriod(-1); });
+  document.getElementById('next').addEventListener('click', function () { shiftPeriod(1); });
   document.getElementById('today').addEventListener('click', function () {
-    if (!lastData || !lastData.day) { return; }
-    var todayStart = Math.floor(Date.now() / 1000);
-    todayStart -= todayStart % 86400; // grobe UTC-Naeherung, Server liefert die echte lokale Grenze ohnehin bei jedem Reload neu
-    loadDay(todayStart, todayStart + 86400);
+    var now = Math.floor(Date.now() / 1000);
+    if (curType === 'day') { loadDay(now - (now % 86400), now - (now % 86400) + 86400); }
+    else { loadPeriod(curType, now); }
   });
   document.getElementById('pick').addEventListener('change', function (ev) {
     var v = ev.target.value; // YYYY-MM-DD
@@ -198,8 +268,40 @@
     var parts = v.split('-').map(Number);
     var d = new Date(parts[0], parts[1] - 1, parts[2]);
     var startSec = Math.floor(d.getTime() / 1000);
-    loadDay(startSec, startSec + 86400);
+    if (curType === 'day') { loadDay(startSec, startSec + 86400); }
+    else { loadPeriod(curType, startSec); }
   });
+
+  function renderBars(period) {
+    if (!period) { return; }
+    ensureECharts(function () {
+      var el = document.getElementById('chart');
+      if (!chart) { chart = echarts.init(el, null, { renderer: 'svg' }); }
+      var buckets = seriesOrEmpty(period.buckets);
+      var cats = buckets.map(function (b) {
+        if (period.type === 'year') { return b.label.slice(5, 7) + '/' + b.label.slice(2, 4); }
+        return b.label.slice(8, 10) + '.' + b.label.slice(5, 7) + '.';
+      });
+      var axisLbl = { axisLabel: themeAxisStyle() };
+      var option = {
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 16, top: 28, bottom: 34 },
+        legend: { top: 0, textStyle: { color: themeLabelColor(), fontSize: 11 } },
+        tooltip: { trigger: 'axis' },
+        xAxis: Object.assign({ type: 'category', data: cats,
+          axisLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
+        yAxis: Object.assign({ type: 'value', name: 'kWh',
+          splitLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
+        dataZoom: (period.type !== 'year' && cats.length > 31) ? [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 6 }] : undefined,
+        series: [
+          { name: 'El. Energie', type: 'bar', data: buckets.map(function (b) { return b.electric; }), color: '#E8823C' },
+          { name: 'Therm. Energie', type: 'bar', data: buckets.map(function (b) { return b.thermal; }), color: '#E0503C' }
+        ]
+      };
+      chart.setOption(option, true);
+    });
+  }
 
   function handleMessage(raw) {
     var d;
@@ -211,6 +313,16 @@
         document.getElementById('pick').value = toDateInputValue(curDay.start);
         renderKpi(lastData.kpi);
         renderChart(d.day);
+      }
+      return;
+    }
+    if (d && d.type === 'periodUpdate') {
+      if (d.period) {
+        lastData.period = d.period;
+        curPeriod = { type: d.period.type, start: Math.floor(d.period.start / 1000), end: Math.floor(d.period.end / 1000) };
+        document.getElementById('pick').value = toDateInputValue(curPeriod.start);
+        renderKpi(lastData.kpi);
+        renderBars(d.period);
       }
       return;
     }

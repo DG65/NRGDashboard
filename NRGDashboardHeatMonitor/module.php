@@ -32,6 +32,9 @@ class NRGDashboardHeatMonitor extends IPSModule
     private const WPHUB_GUID   = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
     private const ARCHIVE_GUID = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const AGG_5MIN     = 5;
+    private const AGG_DAY      = 1;
+    private const AGG_MONTH    = 3;
+    private const SPAN_YEARS   = 5;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
@@ -251,6 +254,152 @@ class NRGDashboardHeatMonitor extends IPSModule
         return $kwh;
     }
 
+    /**
+     * Tages-kWh-Karte (Datum => kWh), 1:1 Muster
+     * NRGDashboardMonitor::DailyEnergyMap() - ein einziger AC-Aufruf ueber
+     * SPAN_YEARS Jahre, danach in BuildPeriod() lokal auf den gewuenschten
+     * Zeitraum eingeschraenkt (Woche/Monat als Tagesbalken).
+     */
+    private function DailyEnergyMap(int $aid, int $vid): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $end = time();
+        $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            $kwh = round(((float) $row['Avg']) * 24.0 / 1000.0, 2);
+            if (is_finite($kwh) && $kwh >= 0) {
+                $out[date('Y-m-d', (int) $row['TimeStamp'])] = $kwh;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Reiner Tages-Mittelwert (kein Energie-Hochrechnungs-Kunstgriff wie
+     * DailyEnergyMap) - fuer nicht-energetische Groessen wie Aussentemp,
+     * 1:1 Muster NRGDashboardMonitor::DailyAverageMap().
+     */
+    private function DailyAverageMap(int $aid, int $vid): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $end = time();
+        $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            $out[date('Y-m-d', (int) $row['TimeStamp'])] = round((float) $row['Avg'], 2);
+        }
+        return $out;
+    }
+
+    /**
+     * Monats-kWh-Karte ('Y-m' => kWh) fuer die Jahresansicht -
+     * coverage-bewusste Hochrechnung mit den tatsaechlich abgedeckten
+     * Stunden statt der vollen Kalendertage, sonst wird ein noch laufender
+     * Monat massiv ueberschaetzt (realer Fund in NRGDashboardMonitor,
+     * 05.08.2026: August zeigte 1325 statt ~299 kWh) - 1:1 Muster
+     * NRGDashboardMonitor::MonthlyEnergyMap().
+     */
+    private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
+            return [];
+        }
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_MONTH, $start, $end, 0);
+        if (!is_array($data)) {
+            return [];
+        }
+        $out = [];
+        foreach ($data as $row) {
+            if (!isset($row['Avg'])) {
+                continue;
+            }
+            $ts = (int) $row['TimeStamp'];
+            $monthStart = strtotime(date('Y-m-01 00:00:00', $ts));
+            $monthEnd = strtotime('+1 month', $monthStart);
+            $coverageEnd = min($end, $monthEnd);
+            $hours = max(0.0, ($coverageEnd - $monthStart) / 3600.0);
+            $kwh = round(((float) $row['Avg']) * $hours / 1000.0, 2);
+            if (is_finite($kwh) && $kwh >= 0) {
+                $out[date('Y-m', $monthStart)] = $kwh;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Woche/Monat/Jahr als Balken-Zeitreihe - Woche/Monat: Tagesbalken aus
+     * DailyEnergyMap()/DailyAverageMap() auf den Zeitraum eingeschraenkt;
+     * Jahr: Monatsbalken aus MonthlyEnergyMap(). Kein Tagesansicht-
+     * Feinschliff (5-Min-Kurve/Abtau-Schattierung) - das bleibt der
+     * Tagesansicht (BuildDay()) vorbehalten.
+     */
+    private function BuildPeriod(string $type, int $start, int $end): array
+    {
+        $unit = $this->SelectedHeatpump();
+        if ($unit === null) {
+            return ['type' => $type, 'start' => $start * 1000, 'end' => $end * 1000, 'buckets' => []];
+        }
+        $powerID = (int) ($unit['PowerID'] ?? $unit['powerID'] ?? 0);
+        $heatOutID = (int) ($unit['heatOutputPowerID'] ?? 0);
+        $outsideTempID = (int) ($unit['outsideTempID'] ?? 0);
+        $aid = $this->ArchiveID();
+
+        $buckets = [];
+        if ($type === 'year') {
+            $electric = $this->MonthlyEnergyMap($aid, $powerID, $start, $end);
+            $thermal = $this->MonthlyEnergyMap($aid, $heatOutID, $start, $end);
+            $cursor = strtotime(date('Y-m-01 00:00:00', $start));
+            while ($cursor < $end) {
+                $key = date('Y-m', $cursor);
+                $buckets[] = [
+                    'label'    => $key,
+                    'ts'       => $cursor * 1000,
+                    'electric' => $electric[$key] ?? 0.0,
+                    'thermal'  => $thermal[$key] ?? 0.0,
+                ];
+                $cursor = strtotime('+1 month', $cursor);
+            }
+        } else {
+            $electric = $this->DailyEnergyMap($aid, $powerID);
+            $thermal = $this->DailyEnergyMap($aid, $heatOutID);
+            $outside = $this->DailyAverageMap($aid, $outsideTempID);
+            $cursor = $start;
+            while ($cursor < $end) {
+                $key = date('Y-m-d', $cursor);
+                $buckets[] = [
+                    'label'       => $key,
+                    'ts'          => $cursor * 1000,
+                    'electric'    => $electric[$key] ?? 0.0,
+                    'thermal'     => $thermal[$key] ?? 0.0,
+                    'outsideTemp' => $outside[$key] ?? null,
+                ];
+                $cursor = strtotime('+1 day', $cursor);
+            }
+        }
+
+        return [
+            'type'    => $type,
+            'start'   => $start * 1000,
+            'end'     => $end * 1000,
+            'buckets' => $buckets,
+            'electricEnergyKwh' => round(array_sum(array_column($buckets, 'electric')), 2),
+            'thermalEnergyKwh'  => round(array_sum(array_column($buckets, 'thermal')), 2),
+        ];
+    }
+
     public function GetVisualizationTile()
     {
         $payload = $this->buildPayload();
@@ -277,6 +426,18 @@ class NRGDashboardHeatMonitor extends IPSModule
                 'ok'   => true,
                 'type' => 'dayUpdate',
                 'day'  => ($end > $start) ? $this->BuildDay($start, $end) : null,
+            ]));
+            return;
+        }
+        if ($Ident === 'periodWindow') {
+            $req = json_decode((string) $Value, true);
+            $type = (string) ($req['type'] ?? 'week');
+            $start = (int) ($req['start'] ?? 0);
+            $end = (int) ($req['end'] ?? 0);
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'     => true,
+                'type'   => 'periodUpdate',
+                'period' => ($end > $start) ? $this->BuildPeriod($type, $start, $end) : null,
             ]));
             return;
         }
