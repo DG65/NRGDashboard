@@ -835,6 +835,17 @@ function buildSchema(unit) {
     ['Verdichter', unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–'],
     ['Lüfter', unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' U/min' : '–']
   ];
+  // Bei Monoblock bleibt fuer Heiss-/Sauggas kein Kaeltemittelleitungs-
+  // Stueck mehr uebrig, an dem die bisherigen Chips (siehe unten)
+  // haetten "kleben" koennen - sie sassen dort frei schwebend neben dem
+  // WT, ohne erkennbaren Bezug (Dietmar, 17.08.2026: "was sind das fuer
+  // Chips ... an diese Stelle gehoeren die bestimmt nicht"). Beide Werte
+  // sind reine Angaben ZUM Aussengeraet und passen daher besser in
+  // dessen eigene Messwert-Tabelle.
+  if (monoblock) {
+    if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) { odRows.push(['Heißgas', fmtTemp1(unit.dischargeTemp) + ' °C']); }
+    if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) { odRows.push(['Sauggas', fmtTemp1(unit.suctionTemp) + ' °C']); }
+  }
   odRows.forEach(function (row, ri) {
     var ry = 220 + ri * 15;
     // Inline-Style: .tag setzt text-anchor:middle per CSS, das Attribut
@@ -855,8 +866,12 @@ function buildSchema(unit) {
     svg.appendChild(val);
   });
   if (unit.defrosting) {
-    svg.appendChild(el('rect', { x: 35, y: 262, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: 35 + outdoorW / 2, y: 273, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    // Unter der letzten Tabellenzeile statt bei einem fixen y - bei
+    // Monoblock hat die Tabelle zwei Zeilen mehr (Heiss-/Sauggas), sonst
+    // waere das Badge in die Zeilen hineingerutscht.
+    var defrostY = 220 + odRows.length * 15 + 7;
+    svg.appendChild(el('rect', { x: 35, y: defrostY, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: 35 + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
@@ -870,13 +885,14 @@ function buildSchema(unit) {
   // scheinen (Dietmar, 14.08.2026).
   // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240),
   // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
-  // Beschriftung oben, Kaltgas darunter mit Beschriftung unten. Bei
-  // Monoblock gibt es diese Mitte nicht (kein zweiter Kasten) - die
-  // Chips ruecken dann rechts neben das (breitere) Aussengeraet, wo
-  // sonst die Kaeltemittelleitungen zum Innengeraet gestanden haetten.
-  var refrChipX = monoblock ? outdoorRight + 18 : 228;
+  // Beschriftung oben, Kaltgas darunter mit Beschriftung unten. Nur beim
+  // Splitgeraet - dort sitzen sie auf der tatsaechlich gezeichneten
+  // Kaeltemittelleitung. Bei Monoblock stehen dieselben Werte stattdessen
+  // in der Aussengeraet-Tabelle (siehe oben), da es dort keine Leitung
+  // gibt, auf der die Chips sitzen koennten.
+  if (!monoblock) {
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    drawValve(chip(refrChipX, 170, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', null));
+    drawValve(chip(228, 170, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', null));
   }
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
@@ -886,7 +902,8 @@ function buildSchema(unit) {
     // Beschriftung tut das: Kaltgas/Verfluessiger). Der Rahmen wechselte
     // bisher faelschlich auf Amber im Kuehlbetrieb, obwohl die Leitung
     // darunter unveraendert blau blieb (Dietmar, 14.08.2026).
-    drawValve(chip(refrChipX, 192, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', null));
+    drawValve(chip(228, 192, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', null));
+  }
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
