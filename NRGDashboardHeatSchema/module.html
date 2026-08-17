@@ -873,6 +873,23 @@ function buildSchema(unit) {
     ['Verdichter', unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–'],
     ['Lüfter', unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' U/min' : '–']
   ];
+  // COP (Dietmar, 17.08.2026: "Steuerungsempfehlungen ... auf die
+  // Kachel sollten auch so Daten wie der Tages- Monats- und Jahres-COP"
+  // - HeishaMon liefert seit contractVersion 1.9 copEstimateID/
+  // copMeasuredID/dailyPerformanceFactorID; Monats-/Jahres-Arbeitszahl
+  // kommt bewusst NICHT ueber den Vertrag (EMS-Entscheid: Zeitraum-
+  // Aggregation ist Konsumentensache, siehe HeishaMon-Rueckmeldung) -
+  // dafuer braeuchte es eine eigene Archiv-Auswertung, kein Feld hier.
+  // Echte Messung bevorzugt, sonst die Schaetzung als Ersatz - beide
+  // OHNE Nachkommastelle (die Schaetzung selbst kommt nur in ~200-W-
+  // Stufen, eine Dezimalstelle waere Scheingenauigkeit).
+  var copShown = (unit.copMeasured !== null && unit.copMeasured !== undefined && unit.copMeasured > 0)
+    ? unit.copMeasured
+    : ((unit.copEstimate !== null && unit.copEstimate !== undefined && unit.copEstimate > 0) ? unit.copEstimate : null);
+  if (copShown !== null) { odRows.push(['COP', Math.round(copShown)]); }
+  if (unit.dailyPerformanceFactor !== null && unit.dailyPerformanceFactor !== undefined && unit.dailyPerformanceFactor > 0) {
+    odRows.push(['Tages-AZ', Math.round(unit.dailyPerformanceFactor)]);
+  }
   // Bei Monoblock bleibt fuer Heiss-/Sauggas kein Kaeltemittelleitungs-
   // Stueck mehr uebrig, an dem die bisherigen Chips (siehe unten)
   // haetten "kleben" koennen - sie sassen dort frei schwebend neben dem

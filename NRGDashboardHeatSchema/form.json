@@ -69,6 +69,21 @@
         },
         {
           "type": "SelectVariable",
+          "name": "ManualCopEstimateID",
+          "caption": "COP, Schätzung des Herstellers (optional)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualCopMeasuredID",
+          "caption": "COP, echte Messung über externen Zähler (optional)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualDailyPerformanceFactorID",
+          "caption": "Tages-Arbeitszahl (optional)"
+        },
+        {
+          "type": "SelectVariable",
           "name": "ManualDefrostingStateID",
           "caption": "Abtaubetrieb aktiv (bool)"
         },

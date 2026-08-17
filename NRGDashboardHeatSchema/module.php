@@ -59,6 +59,9 @@ class NRGDashboardHeatSchema extends IPSModule
         'defrostingStateID'       => 'ManualDefrostingStateID',
         'fan1SpeedID'             => 'ManualFan1SpeedID',
         'suctionTempID'           => 'ManualSuctionTempID',
+        'copEstimateID'           => 'ManualCopEstimateID',
+        'copMeasuredID'           => 'ManualCopMeasuredID',
+        'dailyPerformanceFactorID' => 'ManualDailyPerformanceFactorID',
         'z1PumpID'                => 'ManualZ1PumpID',
         'z1MixingValveID'         => 'ManualZ1MixingValveID',
         'z1MixingValvePositionID' => 'ManualZ1MixingValvePositionID',
@@ -658,6 +661,19 @@ class NRGDashboardHeatSchema extends IPSModule
                 // additives Feld, bei HeishaMon angefragt (14.08.2026) -
                 // bis der Vertrag es liefert, bleibt das Feld null.
                 'suctionTemp'     => $this->numTemp((int) ($e['suctionTempID'] ?? 0)),
+                // contractVersion 1.9 (HeishaMon, 17.08.2026, "COP-
+                // Vertragsrunde Stufe 1"): Arbeitszahl-Felder. copMeasured
+                // ist die echte Messung (0, wenn kein externer Zaehler
+                // konfiguriert ist), copEstimate die WP-eigene Schaetzung
+                // in ~200-W-Stufen - bewusst OHNE Nachkommastelle
+                // dargestellt (siehe module.html), sonst waere das eine
+                // Scheingenauigkeit, die die Quelle gar nicht hergibt.
+                // Monats-/Jahres-Arbeitszahl kommt NICHT ueber den
+                // Vertrag (EMS-Entscheid: Zeitraum-Aggregation ist
+                // Konsumentensache, kein Duplikat je Modul).
+                'copEstimate'     => $this->num((int) ($e['copEstimateID'] ?? 0)),
+                'copMeasured'     => $this->num((int) ($e['copMeasuredID'] ?? 0)),
+                'dailyPerformanceFactor' => $this->num((int) ($e['dailyPerformanceFactorID'] ?? 0)),
                 'extPump'         => $this->boolVal((int) ($e['z1PumpID'] ?? 0)),
                 // 0=Aus, 1=Zu (schliesst gerade), 2=Auf (oeffnet gerade) -
                 // Stellrichtung, KEINE absolute Position (HeishaMon-Hinweis).
@@ -744,6 +760,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
             'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,
             'defrosting' => false, 'fanSpeed' => 400.0, 'suctionTemp' => 17.0,
+            'copEstimate' => 4.2, 'copMeasured' => 4.0, 'dailyPerformanceFactor' => 3.8,
             'extPump' => true, 'extMixingValve' => 0,
             'operatingModeNorm' => 1, 'operatingMode' => null,
             // Zweiten Heizkreis standardmaessig MIT simulieren (Dietmar,
