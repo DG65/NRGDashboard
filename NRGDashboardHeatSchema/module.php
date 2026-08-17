@@ -40,18 +40,6 @@ class NRGDashboardHeatSchema extends IPSModule
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
-        // Anlagenbauart und optionale Komponenten (Dietmar, 17.08.2026:
-        // "manche Waermepumpen haben einen groesseren Puffer" + "Anlagen
-        // ohne Innenteil" (= Monoblock, hat NIE einen integrierten
-        // WW-Tank) + "moeglich ist auch ein Splitgeraet ohne WW-Tank").
-        // Statische Anlagendaten (einmal bei der Einrichtung gesetzt),
-        // deshalb Formular-Properties statt Instanz-Variablen - anders
-        // als die Emitter-Schalter, die man spontan umschalten will.
-        $this->RegisterPropertyString('Bauart', 'split');
-        $this->RegisterPropertyBoolean('HasBuffer', true);
-        $this->RegisterPropertyInteger('BufferLiters', 100);
-        $this->RegisterPropertyBoolean('HasDhwTank', true);
-        $this->RegisterPropertyInteger('DhwLiters', 185);
         // Symcon bietet einer Kachel keine automatische Theme-Erkennung
         // an, deshalb stellt der Nutzer die Oberflaechenhelligkeit
         // einmalig selbst ein - gleiche Konvention wie im Monitor.
@@ -160,6 +148,80 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->SetValue('FlowSpeed', 1);
         }
 
+        // Anlagenbauart und optionale Komponenten (Dietmar, 17.08.2026:
+        // "manche Waermepumpen haben einen groesseren Puffer" + "Anlagen
+        // ohne Innenteil" (= Monoblock, hat NIE einen integrierten
+        // WW-Tank) + "moeglich ist auch ein Splitgeraet ohne WW-Tank"),
+        // ebenfalls als Instanz-Variablen statt Formular-Properties
+        // (Dietmar, 17.08.2026: "die Anlagenbauart kannst du auch hinter
+        // den Doppelpfeil stecken") - selbes Muster wie die Emitter-
+        // Schalter oben: Anlagendaten aendern sich zwar selten, aber der
+        // Doppelpfeil ist trotzdem der Ort, den Dietmar dafuer will,
+        // statt in der Admin-Konsole zu suchen.
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.Bauart')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.Bauart', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 0, 'Split (mit Innengerät)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 1, 'Monoblock (nur Außengerät)', '', -1);
+        $bauartIsNew = @IPS_GetObjectIDByIdent('Bauart', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('Bauart', 'Bauart', 'NRGDASHHEAT.Bauart', 60);
+        $this->EnableAction('Bauart');
+        if ($bauartIsNew) {
+            $this->SetValue('Bauart', 0);
+        }
+
+        $componentToggles = [
+            'HasBuffer'  => ['Pufferspeicher vorhanden', 61, true],
+            'HasDhwTank' => ['Warmwasser-Tank vorhanden', 63, true],
+        ];
+        foreach ($componentToggles as $ident => $spec) {
+            $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
+            $this->RegisterVariableBoolean($ident, $spec[0], '', $spec[1]);
+            $this->EnableAction($ident);
+            if ($isNew) {
+                $this->SetValue($ident, $spec[2]);
+            }
+        }
+        // Literzahlen als einfache editierbare Zahl-Variablen (kein
+        // Profil noetig) - Position direkt hinter dem zugehoerigen
+        // Schalter.
+        $literToggles = [
+            'BufferLiters' => ['Pufferspeicher: Volumen (l)', 62, 100],
+            'DhwLiters'    => ['Warmwasser-Tank: Volumen (l)', 64, 185],
+        ];
+        foreach ($literToggles as $ident => $spec) {
+            $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
+            $this->RegisterVariableInteger($ident, $spec[0], '', $spec[1]);
+            $this->EnableAction($ident);
+            if ($isNew) {
+                $this->SetValue($ident, $spec[2]);
+            }
+        }
+
+        // Simulation (Dietmar, 17.08.2026: "die Buttons fuer die
+        // Simulation genauso [hinter den Doppelpfeil]") - dieselben
+        // Betriebsmodus-Szenarien wie im lokalen Pruefstand
+        // (.tools/test-scenarios.html), aber direkt in der echten
+        // Kachel/aufgezogenen Ansicht schaltbar: ersetzt bei aktivierter
+        // Simulation die echten Sensordaten durch feste Beispielwerte
+        // (siehe buildSimulatedUnit()), ohne die Instanz neu
+        // konfigurieren zu muessen.
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.SimulationMode')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.SimulationMode', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 0, 'Aus (echte Daten)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 1, 'Heizbetrieb', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 2, 'Kühlbetrieb', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 3, 'Warmwasserbetrieb', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 4, 'Standby', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 5, 'Abtaubetrieb', '', -1);
+        $simIsNew = @IPS_GetObjectIDByIdent('SimulationMode', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('SimulationMode', 'Simulation', 'NRGDASHHEAT.SimulationMode', 70);
+        $this->EnableAction('SimulationMode');
+        if ($simIsNew) {
+            $this->SetValue('SimulationMode', 0);
+        }
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
@@ -240,8 +302,13 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->Render();
             return;
         }
-        if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed'], true)) {
+        if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed', 'Bauart', 'BufferLiters', 'DhwLiters', 'SimulationMode'], true)) {
             $this->SetValue($Ident, (int) $Value);
+            $this->Render();
+            return;
+        }
+        if (in_array($Ident, ['HasBuffer', 'HasDhwTank'], true)) {
+            $this->SetValue($Ident, (bool) $Value);
             $this->Render();
         }
     }
@@ -359,6 +426,18 @@ class NRGDashboardHeatSchema extends IPSModule
 
     private function buildPayload(): array
     {
+        // Simulation (Dietmar, 17.08.2026: "die Buttons fuer die
+        // Simulation genauso [hinter den Doppelpfeil]") - ersetzt die
+        // echte Geraete-Erkennung komplett durch feste Beispielwerte,
+        // solange SimulationMode != 0 ist. Config-Felder (Zonen-
+        // Beschriftung, Emitter-Schalter, Wasserfluss, Bauart/Puffer/
+        // WW-Tank) bleiben dabei die ECHTEN eingestellten Werte - nur
+        // die Sensordaten der Waermepumpe selbst werden simuliert.
+        $simMode = (int) $this->GetValue('SimulationMode');
+        if ($simMode !== 0) {
+            return $this->buildBasePayload([$this->buildSimulatedUnit($simMode)]);
+        }
+
         $heatpumps = $this->DiscoverHeatpumps();
         if (count($heatpumps) === 0) {
             return [
@@ -463,6 +542,16 @@ class NRGDashboardHeatSchema extends IPSModule
             ];
         }
 
+        return $this->buildBasePayload($units);
+    }
+
+    /**
+     * Gemeinsamer Nutzlast-Rahmen (Config-Felder + uebergebene $units) fuer
+     * den echten Geraete-Pfad UND den Simulationspfad in buildPayload() -
+     * beide unterscheiden sich nur darin, WOHER $units kommt.
+     */
+    private function buildBasePayload(array $units): array
+    {
         return [
             'ok'          => true,
             'uid'         => (string) $this->InstanceID,
@@ -478,13 +567,66 @@ class NRGDashboardHeatSchema extends IPSModule
             'flowStyle'   => (int) $this->GetValue('FlowStyle'),
             'flowMotion'  => (int) $this->GetValue('FlowMotion'),
             'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
-            'bauart'      => $this->readStringProperty('Bauart', 'split'),
-            'hasBuffer'   => $this->readBoolProperty('HasBuffer', true),
-            'bufferLiters' => $this->readIntProperty('BufferLiters', 100),
-            'hasDhwTank'  => $this->readBoolProperty('HasDhwTank', true),
-            'dhwLiters'   => $this->readIntProperty('DhwLiters', 185),
+            'bauart'      => ((int) $this->GetValue('Bauart') === 1) ? 'monoblock' : 'split',
+            'hasBuffer'   => (bool) $this->GetValue('HasBuffer'),
+            'bufferLiters' => (int) $this->GetValue('BufferLiters'),
+            'hasDhwTank'  => (bool) $this->GetValue('HasDhwTank'),
+            'dhwLiters'   => (int) $this->GetValue('DhwLiters'),
             'renderedAt'  => time(),
             'units'       => $units,
         ];
+    }
+
+    /**
+     * Baut eine synthetische Einheit fuer die Simulation (Dietmar,
+     * 17.08.2026) - dieselben Betriebsmodus-Szenarien wie im lokalen
+     * Pruefstand .tools/test-scenarios.html, hier aber als PHP-Gegenstueck
+     * fuer die echte Kachel.
+     */
+    private function buildSimulatedUnit(int $mode): array
+    {
+        $u = [
+            'id' => $this->InstanceID, 'label' => 'Wärmepumpe (Simulation)',
+            'hasPipeSchema' => true, 'power' => 1500,
+            'pumpFlow' => 15.0, 'pumpSpeed' => 1450.0, 'pumpDuty' => null,
+            'threeWayValve' => 0, 'twoWayValve' => true,
+            'mainInletTemp' => 36.0, 'mainOutletTemp' => 42.0,
+            'z1WaterTemp' => 38.5, 'z2WaterTemp' => null,
+            'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
+            'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,
+            'defrosting' => false, 'fanSpeed' => 400.0, 'suctionTemp' => 17.0,
+            'extPump' => true, 'extMixingValve' => 0,
+            'operatingModeNorm' => 1, 'operatingMode' => null,
+            'mixValvePos' => 40.0, 'z2Pump' => null, 'z2MixingValve' => 0,
+            // z2* bleiben null (kein zweiter Heizkreis in der Simulation)
+            // - hasZone2 im Kachel-HTML erkennt eine zweite Zone schon,
+            // sobald IRGENDEINES der z2-Felder gesetzt ist, nicht nur bei
+            // echten Werten.
+            'z2MixValvePos' => null, 'indoorPipeTemp' => null,
+        ];
+        switch ($mode) {
+            case 2: // Kuehlbetrieb: Vorlauf kaelter als Ruecklauf (Panasonic dreht den Kreis um)
+                $u['mainOutletTemp'] = 15.5;
+                $u['mainInletTemp']  = 16.0;
+                $u['operatingModeNorm'] = 2;
+                $u['compressorFreq'] = 28.0;
+                break;
+            case 3: // Warmwasserbetrieb
+                $u['threeWayValve'] = 1;
+                $u['operatingModeNorm'] = 3;
+                break;
+            case 4: // Standby: kein Durchfluss, Verdichter aus
+                $u['compressorFreq'] = 0.0;
+                $u['pumpFlow'] = 0.0;
+                $u['operatingModeNorm'] = 0;
+                break;
+            case 5: // Abtaubetrieb
+                $u['defrosting'] = true;
+                break;
+            case 1: // Heizbetrieb - Default oben bereits gesetzt
+            default:
+                break;
+        }
+        return $u;
     }
 }
