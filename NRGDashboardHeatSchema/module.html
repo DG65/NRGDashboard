@@ -1443,7 +1443,15 @@ function buildSchema(unit) {
   // Wendel-Mitte (167,5-142=25,5 oben, 192-167,5=24,5 unten). Bei 100 l
   // (pufScaleH=1) ergibt das wieder exakt 142/192 - keine Regression.
   var pufCoilTop = PUF_CENTER_Y - 25.5 * pufScaleH, pufCoilBottom = PUF_CENTER_Y + 24.5 * pufScaleH;
-  var pufZigSteps = 6, pufZigStep = (pufCoilBottom - pufCoilTop) / pufZigSteps;
+  // Mehr Windungen statt vorhandene zu strecken (Dietmar, 17.08.2026:
+  // "anstatt die Wendel auseinander zu ziehen, könntest Du entsprechend
+  // mehr Wendeln einbauen, das sieht auch besser aus") - Anzahl waechst
+  // proportional zur Spannweite, Einzelwindungshoehe bleibt dadurch nah
+  // an der Referenzgroesse (50/6 ≈ 8,3px bei 100 l). GERADE Zahl bleibt
+  // Pflicht (siehe Kommentar oben) - deshalb auf 2er-Schritte gerundet.
+  var pufZigRefStep = (192 - 142) / 6;
+  var pufZigSteps = Math.max(2, Math.round((pufCoilBottom - pufCoilTop) / pufZigRefStep / 2) * 2);
+  var pufZigStep = (pufCoilBottom - pufCoilTop) / pufZigSteps;
   var pufCoilD = 'M' + PUF_LEFT + ',' + pufCoilTop + ' L' + PUF_ZIG_L + ',' + pufCoilTop;
   for (var pzi = 1; pzi <= pufZigSteps; pzi++) {
     pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (pufCoilTop + pzi * pufZigStep);
