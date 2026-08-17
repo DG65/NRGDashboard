@@ -591,18 +591,21 @@ class NRGDashboardHeatSchema extends IPSModule
             'pumpFlow' => 15.0, 'pumpSpeed' => 1450.0, 'pumpDuty' => null,
             'threeWayValve' => 0, 'twoWayValve' => true,
             'mainInletTemp' => 36.0, 'mainOutletTemp' => 42.0,
-            'z1WaterTemp' => 38.5, 'z2WaterTemp' => null,
+            'z1WaterTemp' => 38.5, 'z2WaterTemp' => 33.0,
             'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
             'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,
             'defrosting' => false, 'fanSpeed' => 400.0, 'suctionTemp' => 17.0,
             'extPump' => true, 'extMixingValve' => 0,
             'operatingModeNorm' => 1, 'operatingMode' => null,
-            'mixValvePos' => 40.0, 'z2Pump' => null, 'z2MixingValve' => 0,
-            // z2* bleiben null (kein zweiter Heizkreis in der Simulation)
-            // - hasZone2 im Kachel-HTML erkennt eine zweite Zone schon,
-            // sobald IRGENDEINES der z2-Felder gesetzt ist, nicht nur bei
-            // echten Werten.
-            'z2MixValvePos' => null, 'indoorPipeTemp' => null,
+            // Zweiten Heizkreis standardmaessig MIT simulieren (Dietmar,
+            // 17.08.2026: "ich habe immer noch kein 2. HK!?" - die
+            // Simulation hatte bisher IMMER nur einen Heizkreis gezeigt,
+            // unabhaengig von der Betriebsart, weil alle z2-Felder fest
+            // auf null standen). hasZone2 im Kachel-HTML erkennt eine
+            // zweite Zone schon, sobald IRGENDEINES der z2-Felder gesetzt
+            // ist, nicht nur bei echten Werten.
+            'mixValvePos' => 40.0, 'z2Pump' => true, 'z2MixingValve' => 0,
+            'z2MixValvePos' => 20.0, 'indoorPipeTemp' => null,
         ];
         switch ($mode) {
             case 2: // Kuehlbetrieb: Vorlauf kaelter als Ruecklauf (Panasonic dreht den Kreis um)
