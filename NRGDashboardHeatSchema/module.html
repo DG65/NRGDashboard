@@ -1388,7 +1388,10 @@ function buildSchema(unit) {
   // unten teilt sich die Spalte mit WW-Tank den Raum mit der
   // Sanitaerseite (Dusche/Badewanne ab y~244), ohne WW-Tank ist dort bis
   // weit nach unten frei Platz.
-  var pufScaleW = Math.max(0.75, Math.min(pufScale, (615 - PUF_CX_BASE) / (PUF_W_BASE / 2)));
+  // 5px mehr Sicherheitsabstand zur naechsten hartkodierten Koordinate
+  // (620, Ruecklauf-Sammelpunkt) - Dietmar, 17.08.2026: "Wir brauchen
+  // rechts des Puffer 5 px mehr Platz."
+  var pufScaleW = Math.max(0.75, Math.min(pufScale, (610 - PUF_CX_BASE) / (PUF_W_BASE / 2)));
   // 60 kollidierte noch mit dem Betriebszustand-Chip (fix bei y=25, Hoehe
   // 19) - dessen Unterkante liegt bei 34,5, die Puffer-Temperatur-Chip
   // (PUF_TOP-20, ebenfalls Hoehe 19, Oberkante also PUF_TOP-29,5) beruehrte
