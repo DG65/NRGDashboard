@@ -1356,7 +1356,16 @@ function buildSchema(unit) {
   // (Volumen ~ Breite^2 * Hoehe) das Seitenverhaeltnis bei wachsendem
   // Volumen ungefaehr konstant, 100 l als Referenzgroesse (= bisherige
   // feste Masse 70x85).
-  var PUF_LEFT = 525;
+  // Fester Mittelpunkt der Ausgangsbreite (525 + 70/2) - die Breite
+  // waechst SYMMETRISCH um diesen Punkt statt nur nach rechts, sonst
+  // ruecht der Puffer bei jedem Wachstum naeher an das Innengeraet heran,
+  // waehrend rechts (Richtung 620) kaum noch Luft bleibt (Dietmar,
+  // 17.08.2026: "Du könntest aber schon den Puffer etwas nach links
+  // verschieben wenn der Puffer wächst"). Die Wendel haengt komplett an
+  // PUF_LEFT/PUF_RIGHT (Zickzack + Anschluesse) und bleibt dadurch
+  // automatisch mittig, ohne eigene Formel (Dietmar: "klar, die Wendel
+  // ebenso, das sie immer in der Mitte des Puffers ist").
+  var PUF_CX_BASE = 525 + 70 / 2;
   // Mitte zwischen Primaer-Vor- (142) und -Ruecklauf (192) - das sind die
   // festen Wendel-Anschlusspunkte (echte Rohrleitungen, nicht verschiebbar).
   // Die Wendel bleibt IMMER hier (Dietmar, 17.08.2026: "die Wendel bleibt
@@ -1379,7 +1388,7 @@ function buildSchema(unit) {
   // unten teilt sich die Spalte mit WW-Tank den Raum mit der
   // Sanitaerseite (Dusche/Badewanne ab y~244), ohne WW-Tank ist dort bis
   // weit nach unten frei Platz.
-  var pufScaleW = Math.max(0.75, Math.min(pufScale, (615 - PUF_LEFT) / PUF_W_BASE));
+  var pufScaleW = Math.max(0.75, Math.min(pufScale, (615 - PUF_CX_BASE) / (PUF_W_BASE / 2)));
   // 60 kollidierte noch mit dem Betriebszustand-Chip (fix bei y=25, Hoehe
   // 19) - dessen Unterkante liegt bei 34,5, die Puffer-Temperatur-Chip
   // (PUF_TOP-20, ebenfalls Hoehe 19, Oberkante also PUF_TOP-29,5) beruehrte
@@ -1405,8 +1414,8 @@ function buildSchema(unit) {
     (pufBottomMax - PUF_CENTER_Y) / (PUF_H_BASE / 2)
   ));
   var PUF_W = Math.round(PUF_W_BASE * pufScaleW), PUF_H = Math.round(PUF_H_BASE * pufScaleH);
-  var PUF_RIGHT = PUF_LEFT + PUF_W;
-  var PUF_TOP = PUF_CENTER_Y - PUF_H / 2, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
+  var PUF_LEFT = PUF_CX_BASE - PUF_W / 2, PUF_RIGHT = PUF_CX_BASE + PUF_W / 2;
+  var PUF_TOP = PUF_CENTER_Y - PUF_H / 2, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_CX_BASE;
   // Zwei feste innere x-Positionen, an denen die Wendel abwechselnd
   // "andockt". GERADE Segmentzahl (6) ist entscheidend: die Wendel muss
   // an BEIDEN Enden links an der Wand anschliessen (Vorlauf UND
