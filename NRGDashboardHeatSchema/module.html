@@ -946,8 +946,16 @@ function buildSchema(unit) {
   // (Dietmar, 16.08.2026: "das Wort 'Betriebszustand' entfernst du
   // bitte. Den Chip ... stellst Du oben in die Mitte wo er nichts
   // stoert").
+  // Abtaubetrieb zuerst pruefen: der Verdichter laeuft dabei meist
+  // WEITER (Waerme aus dem Heizkreis wird kurzzeitig genutzt, um das
+  // Aussengeraet zu enteisen), running waere also weiterhin true und
+  // haette bisher "Heizbetrieb" gezeigt - direkt widersprochen vom
+  // separaten ABTAUBETRIEB-Badge unter dem Aussengeraet (Dietmar,
+  // 17.08.2026: "warum steht bei Abtaubetrieb der Betriebsmodus ...
+  // und zeitgleich Heizbetrieb in der Mitte").
   var modeText, modeColor;
-  if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
+  if (unit.defrosting) { modeText = 'Abtaubetrieb'; modeColor = '#4a90d9'; }
+  else if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
   else if (running && cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
   else if (running) { modeText = 'Heizbetrieb'; modeColor = HOT; }
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
