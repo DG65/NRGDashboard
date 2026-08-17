@@ -1364,8 +1364,14 @@ function buildSchema(unit) {
   // zwischen Waermeerzeuger (indoorSupX - Innengeraet bei Split, sonst
   // Aussengeraet bei Monoblock) und Puffer (PUF_LEFT) statt fest bei 473
   // (Dietmar, 16.08.2026: "sollen aber mittig sein" - der Puffer war
-  // seither verschoben worden, 473 passte nicht mehr).
-  var INNEN_PUF_CX = (indoorSupX + PUF_LEFT) / 2;
+  // seither verschoben worden, 473 passte nicht mehr). Ohne Puffer ist
+  // die ganze Strecke vom Waermeerzeuger bis zum Mischer (694) EINE
+  // durchgehende Leitung ohne jedes Bauteil dazwischen - die Chips
+  // ruecken dann auf deren Mitte statt nur auf die Mitte des ersten
+  // (nicht mehr besonderen) Abschnitts (Dietmar, 17.08.2026: "die Chips
+  // auch direkt in die Mitte zwischen Monoblock und Mischventil
+  // anordnen").
+  var INNEN_PUF_CX = hasBuffer ? (indoorSupX + PUF_LEFT) / 2 : (indoorSupX + 694) / 2;
   // NUR im Raumheizbetrieb zeigen (Dietmar, 16.08.2026: "im
   // Warmwasserbetrieb stimmt weder die Vorlauftemperatur fuer den
   // Primaer- noch fuer den Sekundaerkreislauf - die Temperatur ist nur
@@ -1804,7 +1810,13 @@ function buildSchema(unit) {
     // im Schema), nicht mehr unter dem ganzen Icon-Block (Dietmar,
     // 16.08.2026: "die 18° sollen vermutlich der Ruecklauf sein" +
     // "der Ruecklauf Chip auf der Ruecklaufleitung darunter").
-    if (z.temp !== null && z.temp !== undefined) {
+    // Zone 1 sitzt ohne Puffer auf EXAKT derselben durchgehenden Leitung
+    // wie der INNEN_PUF_CX-Ruecklaufchip weiter oben (kein Bauteil
+    // dazwischen, das die Temperatur aendern koennte) - dieselbe
+    // Redundanz, die schon beim doppelten Vorlaufchip entfernt wurde
+    // (Dietmar, 17.08.2026: "das gilt doch auch für den 2.
+    // Rücklaufchip, schließlich ist es ein und die selbe Leitung").
+    if (z.temp !== null && z.temp !== undefined && (hasBuffer || z.retY !== 192)) {
       // Zone 1: ihr eigener Ruecklauf (retY=192) IST bereits die
       // gemeinsame Sammelleitung, der Chip sitzt mittig zwischen Puffer
       // und Vorlauf direkt darauf (Dietmar, 16.08.2026). Zone 2: Chip
