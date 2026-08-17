@@ -880,15 +880,20 @@ function buildSchema(unit) {
   // kommt bewusst NICHT ueber den Vertrag (EMS-Entscheid: Zeitraum-
   // Aggregation ist Konsumentensache, siehe HeishaMon-Rueckmeldung) -
   // dafuer braeuchte es eine eigene Archiv-Auswertung, kein Feld hier.
-  // Echte Messung bevorzugt, sonst die Schaetzung als Ersatz - beide
-  // OHNE Nachkommastelle (die Schaetzung selbst kommt nur in ~200-W-
-  // Stufen, eine Dezimalstelle waere Scheingenauigkeit).
-  var copShown = (unit.copMeasured !== null && unit.copMeasured !== undefined && unit.copMeasured > 0)
-    ? unit.copMeasured
-    : ((unit.copEstimate !== null && unit.copEstimate !== undefined && unit.copEstimate > 0) ? unit.copEstimate : null);
-  if (copShown !== null) { odRows.push(['COP', Math.round(copShown)]); }
+  // Echte Messung bevorzugt, sonst die Schaetzung als Ersatz - NUR der
+  // Schaetzungs-Ersatzwert OHNE Nachkommastelle gerundet (kommt nur in
+  // ~200-W-Stufen, eine Dezimalstelle waere Scheingenauigkeit dort).
+  // Messung und Tages-AZ sind echte Rechenwerte aus Zaehlerdaten - eine
+  // Nachkommastelle ist bei einem Wertebereich von nur 2-5 durchaus
+  // aussagekraeftig (HeishaMon-Rueckmeldung, 17.08.2026: "COP 4,2 sagt
+  // deutlich mehr als COP 4").
+  if (unit.copMeasured !== null && unit.copMeasured !== undefined && unit.copMeasured > 0) {
+    odRows.push(['COP', fmtTemp1(unit.copMeasured)]);
+  } else if (unit.copEstimate !== null && unit.copEstimate !== undefined && unit.copEstimate > 0) {
+    odRows.push(['COP', Math.round(unit.copEstimate)]);
+  }
   if (unit.dailyPerformanceFactor !== null && unit.dailyPerformanceFactor !== undefined && unit.dailyPerformanceFactor > 0) {
-    odRows.push(['Tages-AZ', Math.round(unit.dailyPerformanceFactor)]);
+    odRows.push(['Tages-AZ', fmtTemp1(unit.dailyPerformanceFactor)]);
   }
   // Bei Monoblock bleibt fuer Heiss-/Sauggas kein Kaeltemittelleitungs-
   // Stueck mehr uebrig, an dem die bisherigen Chips (siehe unten)
