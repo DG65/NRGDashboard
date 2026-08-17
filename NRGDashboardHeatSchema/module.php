@@ -164,6 +164,7 @@ class NRGDashboardHeatSchema extends IPSModule
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 1, 'Gleichmäßige Punkte', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 2, 'Fließende Striche', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 3, 'Flüssigkeitsglanz', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 4, 'Digitale Signalimpulse', '', -1);
         $flowIsNew = @IPS_GetObjectIDByIdent('FlowStyle', $this->InstanceID) === false;
         $this->RegisterVariableInteger('FlowStyle', 'Wasserfluss-Darstellung', 'NRGDASHHEAT.FlowStyle', 50);
         $this->EnableAction('FlowStyle');

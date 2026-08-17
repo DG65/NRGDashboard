@@ -74,6 +74,7 @@
     <button data-scn="flowPunkte">Punkte</button>
     <button data-scn="flowStriche">Striche</button>
     <button data-scn="flowGlanz">Flüssigkeitsglanz</button>
+    <button data-scn="flowSignal">Digitale Signalimpulse</button>
     <button data-scn="flowKonstantSchnell">Konstant + schnell</button>
   </div>
   <div class="grp" data-grp="quelle">
@@ -179,6 +180,7 @@
     flowPunkte: function () { return basePayload({ flowStyle: 1 }); },
     flowStriche: function () { return basePayload({ flowStyle: 2 }); },
     flowGlanz: function () { return basePayload({ flowStyle: 3 }); },
+    flowSignal: function () { return basePayload({ flowStyle: 4 }); },
     flowKonstantSchnell: function () { return basePayload({ flowStyle: 3, flowMotion: 1, flowSpeed: 2 }); },
 
     keineDaten: function () { return { ok: false, error: 'Keine Verbindung zur Wärmepumpe.' }; },

@@ -137,6 +137,23 @@
     animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowliquid { to { stroke-dashoffset: -48; } }
+  /* Digitale Signalimpulse (Dietmar, 17.08.2026: "Digitale Signalimpulse
+     kannst du mal ausprobieren") - kurze helle Blitze in UNREGELMAESSIGEN
+     Abstaenden statt eines gleichfoermigen Musters, scharfkantig
+     (stroke-linecap:butt statt round) und ohne Weichzeichnung fuer eine
+     technische "Datenfluss"-Anmutung statt organischem Wasser. Folgt wie
+     die anderen Stile "--flow-ease", damit Atmend/Konstant weiterhin
+     funktioniert. Summe des dasharray-Musters (46) = Betrag des
+     dashoffset-Ziels, damit die Schleife nahtlos schliesst.
+  */
+  body.flow-signal .pipe-dots {
+    stroke-width: 3; stroke-linecap: butt; opacity: 1; filter: none;
+    stroke: rgba(255,255,255,.95);
+    stroke-dasharray: 2 4 2 4 2 12 6 3 2 9;
+    animation-name: flowsignal; animation-duration: calc(1.1s * var(--flow-mult));
+    animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
+  }
+  @keyframes flowsignal { to { stroke-dashoffset: -46; } }
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { to { transform: rotate(360deg); } }
 
@@ -2029,7 +2046,7 @@ function handleMessage(raw) {
   setTheme(d && d.lightTheme);
   // Wasserfluss-Darstellung (siehe ".pipe-dots"-Varianten in <style>):
   // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche, 3 = Fluessigkeitsglanz.
-  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid'];
+  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid', 'flow-signal'];
   FLOW_CLASSES.forEach(function (c) { if (c) { document.body.classList.remove(c); } });
   var flowClass = FLOW_CLASSES[(d && d.flowStyle) || 0];
   if (flowClass) { document.body.classList.add(flowClass); }
