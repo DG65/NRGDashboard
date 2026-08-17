@@ -1544,11 +1544,14 @@ function buildSchema(unit) {
           // Fallleitung 18px links der Spiralkante.
           var fLeft = curX + 40;
           var cs = counterSpiral(fLeft, fTop, fSide, fGap);
-          // Beschriftung mittig ueber der Spirale, gleicher Schriftgrad
-          // wie beim Heizkoerper (Dietmar, 17.08.2026) - class "tag"
-          // (8.5px) haelt "FUSSBODENHEIZUNGEN" bei ~105px unter den
-          // 145px der Spirale.
-          var floorLabel = el('text', { x: fLeft + fSide / 2, y: fTop - 8, class: 'tag' });
+          // Beschriftung mittig ueber dem GESAMTEN Element inklusive der
+          // Zu-/Ableitung links (Steigleitung bei fLeft-36), nicht nur
+          // ueber der Spiralflaeche (Dietmar, 17.08.2026: "das sollte
+          // aber schon in der Mitte des Elementes stehen"). Gleicher
+          // Schriftgrad wie beim Heizkoerper (class "tag", 8.5px),
+          // "FUSSBODENHEIZUNGEN" bleibt mit ~113px unter der
+          // Elementbreite.
+          var floorLabel = el('text', { x: (fLeft - 36 + fLeft + fSide) / 2, y: fTop - 8, class: 'tag' });
           floorLabel.textContent = 'Fußbodenheizungen';
           svg.appendChild(floorLabel);
           // Farbverlauf statt hartem Rot/Blau-Wechsel (Dietmar,
