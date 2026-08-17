@@ -52,6 +52,7 @@
     <button data-scn="keinWwTank">Kein WW-Tank</button>
     <button data-scn="wederNoch">Weder Puffer noch WW-Tank</button>
     <button data-scn="monoblock">Monoblock (kein Innengerät)</button>
+    <button data-scn="monoblockZweiKreise">Monoblock + HK1 + HK2</button>
   </div>
   <div class="grp" data-grp="kreise">
     <button data-scn="nurHeizkoerper">HK1 nur Heizkörper</button>
@@ -136,6 +137,9 @@
     keinWwTank: function () { return basePayload({ hasDhwTank: false }); },
     wederNoch: function () { return basePayload({ hasBuffer: false, hasDhwTank: false }); },
     monoblock: function () { return basePayload({ bauart: 'monoblock' }); },
+    monoblockZweiKreise: function () {
+      return basePayload({ bauart: 'monoblock', units: [baseUnit({ z2WaterTemp: 33.0, z2Pump: true })] });
+    },
 
     nurHeizkoerper: function () { return basePayload({ zone1ShowFloor: false }); },
     nurFussboden: function () { return basePayload({ zone1ShowRadiator: false }); },
