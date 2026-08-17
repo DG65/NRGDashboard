@@ -1388,6 +1388,17 @@ function buildSchema(unit) {
   // nun mit dem Betriebsmodus Chip. Du musst den Puffer etwa 30 px
   // kleiner machen und das wäre dann die maximal Größe!").
   var pufTopMin = 90, pufBottomMax = hasDhwTank ? 235 : 440;
+  // STRIKT symmetrisch um PUF_CENTER_Y (Dietmar, 17.08.2026 zur
+  // Rueckfrage bestaetigt: "die Wendel [liegt] weiterhin/immer in der
+  // Mitte des Puffers") - ein frueherer Zwischenstand liess bei
+  // ungleich verteiltem Platz die knappere Seite den Fehlbetrag an die
+  // grosszuegigere Seite abgeben, wodurch der geometrische Boxmittelpunkt
+  // von der (real fest verrohrten) Wendel-Position abgewichen waere.
+  // Der Skalierungsfaktor wird deshalb weiterhin auf den JEWEILS
+  // ENGEREN der beiden Rahmen gedeckelt, statt die Differenz zu
+  // verschieben - "variabel" bezieht sich auf die pro Situation
+  // unterschiedlich GROSSEN Rahmen (pufTopMin/pufBottomMax je nach
+  // WW-Tank), nicht auf eine Verschiebung der Box gegenueber der Wendel.
   var pufScaleH = Math.max(0.75, Math.min(
     pufScale,
     (PUF_CENTER_Y - pufTopMin) / (PUF_H_BASE / 2),
