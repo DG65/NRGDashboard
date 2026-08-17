@@ -137,66 +137,6 @@
     animation-timing-function: var(--flow-ease); animation-iteration-count: infinite;
   }
   @keyframes flowliquid { to { stroke-dashoffset: -48; } }
-  /* Partikel-Stile (siehe weiter unten) ersetzen die Muster-Leitung
-     komplett statt sie zu ueberlagern. */
-  body.flow-bubbles .pipe-dots, body.flow-glimmer .pipe-dots { display: none; }
-  /* Luftblasen und Glimmer (Dietmar, 17.08.2026: "so etwas wie stroemender
-     Glimmer oder Luftblasen die auftauchen und dann unterwegs
-     verschwinden") - anders als die vier Muster oben (ein einziges
-     <path> mit wanderndem stroke-dasharray) braucht "auftauchen und
-     verschwinden WAEHREND der Fahrt" echte Einzelpartikel: <circle>-
-     Elemente, die per offset-path derselben Leitungsform folgen und
-     dabei ihre eigene Opacity/Groesse durchlaufen, statt eines
-     gleichfoermigen Musters. Default unsichtbar (display:none), die
-     drei generischen ".pipe-particle"-Kreise pro Leitung (siehe pipe())
-     bedienen JE NACH aktiver body-Klasse einen der beiden Stile - nie
-     beide gleichzeitig.
-     transform-box:fill-box noetig, damit CSS "transform: scale()" auf
-     einem SVG-Kreis um seinen EIGENEN Mittelpunkt skaliert statt um den
-     Ursprung des <svg>-Wurzelelements. */
-  .pipe-particle {
-    display: none; r: 3px; fill: rgba(255,255,255,.92);
-    stroke: rgba(0,0,0,.18); stroke-width: .5px;
-    transform-box: fill-box; transform-origin: center;
-    offset-rotate: 0deg; animation-timing-function: linear;
-    animation-iteration-count: infinite;
-  }
-  /* Luftblasen: schlicht auf-/abblendend, dabei minimal in der Groesse
-     schwankend (kleine Blasen wirken sonst wie Punkte) - drei leicht
-     unterschiedliche Radien fuer eine organischere, weniger maschinelle
-     Anmutung als die "Gleichmaessige Punkte"-Reihe. */
-  body.flow-bubbles .pipe-particle {
-    display: block; animation-name: bubbleTravel;
-    animation-duration: calc(2.6s * var(--flow-mult));
-  }
-  body.flow-bubbles .pipe-particle.p1 { r: 3.4px; animation-delay: 0s; }
-  body.flow-bubbles .pipe-particle.p2 { r: 2.4px; animation-delay: calc(2.6s * var(--flow-mult) / 3); }
-  body.flow-bubbles .pipe-particle.p3 { r: 3.9px; animation-delay: calc(2.6s * var(--flow-mult) * 2 / 3); }
-  @keyframes bubbleTravel {
-    0%   { offset-distance: 0%;   opacity: 0;   transform: scale(.5); }
-    12%  { opacity: .9;           transform: scale(1); }
-    82%  { opacity: .9;           transform: scale(1); }
-    100% { offset-distance: 100%; opacity: 0;   transform: scale(.6); }
-  }
-  /* Glimmer: heller Funke statt Blase - taucht auf, laeuft mit, und
-     verglueht am Ende sichtbar (Groesse + Leuchten nehmen kurz zu) statt
-     einfach nur auszublenden (Dietmar, 17.08.2026: "Auch der Glimmer
-     soll auftauchen und irgendwann mit einem aufglühen verschwinden"). */
-  body.flow-glimmer .pipe-particle {
-    display: block; r: 2.2px; fill: #fffdf4; stroke: none;
-    animation-name: glimmerTravel;
-    animation-duration: calc(2.1s * var(--flow-mult));
-  }
-  body.flow-glimmer .pipe-particle.p1 { animation-delay: 0s; }
-  body.flow-glimmer .pipe-particle.p2 { animation-delay: calc(2.1s * var(--flow-mult) / 3); }
-  body.flow-glimmer .pipe-particle.p3 { animation-delay: calc(2.1s * var(--flow-mult) * 2 / 3); }
-  @keyframes glimmerTravel {
-    0%   { offset-distance: 0%;   opacity: 0;  transform: scale(.4); filter: drop-shadow(0 0 1px rgba(255,255,255,.6)); }
-    10%  { opacity: 1;            transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,255,255,.85)); }
-    72%  { opacity: 1;            transform: scale(1); filter: drop-shadow(0 0 2px rgba(255,255,255,.85)); }
-    88%  { opacity: 1;            transform: scale(2.1); filter: drop-shadow(0 0 6px rgba(255,255,255,1)); }
-    100% { offset-distance: 100%; opacity: 0;  transform: scale(.3); filter: drop-shadow(0 0 0 rgba(255,255,255,0)); }
-  }
   @keyframes fanspin { to { transform: rotate(360deg); } }
   @keyframes pumpspin { to { transform: rotate(360deg); } }
 
@@ -842,19 +782,6 @@ function buildSchema(unit) {
       var dots = el('path', { d: d, class: 'pipe-dots' });
       if (width) { dots.style.strokeWidth = Math.max(1.4, width * 0.4); }
       g.appendChild(dots);
-      // Luftblasen/Glimmer (Dietmar, 17.08.2026: "so etwas wie stroemender
-      // Glimmer oder Luftblasen die auftauchen und dann unterwegs
-      // verschwinden") - eigene <circle>-Partikel statt der Strich/Punkt-
-      // Musterleitung: offset-path folgt DERSELBEN Pfadform wie die
-      // Leitung selbst, drei zeitversetzte Partikel ergeben einen
-      // kontinuierlichen Strom. Per CSS (body.flow-bubbles/flow-glimmer)
-      // ein- und wieder ausgeblendet, nur je EIN Stil gleichzeitig sichtbar
-      // - dieselben drei Elemente bedienen beide neuen Stile.
-      ['p1', 'p2', 'p3'].forEach(function (pc) {
-        var particle = el('circle', { class: 'pipe-particle ' + pc });
-        particle.style.offsetPath = 'path("' + d + '")';
-        g.appendChild(particle);
-      });
     }
     return g;
   }
@@ -2102,7 +2029,7 @@ function handleMessage(raw) {
   setTheme(d && d.lightTheme);
   // Wasserfluss-Darstellung (siehe ".pipe-dots"-Varianten in <style>):
   // 0/fehlend = organische Welle, 1 = Punkte, 2 = Striche, 3 = Fluessigkeitsglanz.
-  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid', 'flow-bubbles', 'flow-glimmer'];
+  var FLOW_CLASSES = ['', 'flow-dots', 'flow-dash', 'flow-liquid'];
   FLOW_CLASSES.forEach(function (c) { if (c) { document.body.classList.remove(c); } });
   var flowClass = FLOW_CLASSES[(d && d.flowStyle) || 0];
   if (flowClass) { document.body.classList.add(flowClass); }
