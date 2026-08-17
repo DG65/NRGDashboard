@@ -623,9 +623,15 @@ function buildSchema(unit) {
   // eigener, groesserer Umbau; Puffer/WW-Tank-Groesse und -Vorhanden-
   // sein sind bereits umgesetzt.
   var bauart = cfg.bauart || 'split';
+  var monoblock = bauart === 'monoblock';
   var hasBuffer = cfg.hasBuffer !== false;
   var bufferLiters = cfg.bufferLiters || 100;
-  var hasDhwTank = cfg.hasDhwTank !== false;
+  // Bei Monoblock gibt es niemals ein Innengeraet - und damit auch nie
+  // einen integrierten WW-Tank oder die Sanitaerseite (Dietmar,
+  // 17.08.2026: "Bei Monoblock gibt es niemals ein Innengeraet ...
+  // die haben dann aber auch keinen WW-Tank"). Die gespeicherte
+  // HasDhwTank-Variable wird fuer Monoblock schlicht ignoriert.
+  var hasDhwTank = !monoblock && cfg.hasDhwTank !== false;
   var dhwLiters = cfg.dhwLiters || 185;
   // Ventile werden gesammelt und ganz am Schluss erneut angehaengt -
   // dasselbe SVG-Element neu anzuhaengen verschiebt es ans Ende der
@@ -798,8 +804,16 @@ function buildSchema(unit) {
   }
 
   // ── Aussengeraet (Panasonic-Technikzeichnungs-Optik) ─────────
-  var at = el('text', { x: 100, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  outdoorUnit(svg, 35, 90, 130, 110, running, unit.fanSpeed);
+  // Monoblock hat keinen zweiten Kasten fuers Innengeraet - der
+  // Waermetauscher sitzt stattdessen MIT im Aussengeraet, das dafuer um
+  // ein Drittel breiter gezeichnet wird (Dietmar, 17.08.2026: "bei einem
+  // Monoblockgeraet das Aussengeraet um 1/3 breiter ist und der WT in
+  // diesem 1/3 Mehrplatz sitzt").
+  var outdoorBaseW = 130;
+  var outdoorW = monoblock ? Math.round(outdoorBaseW * 4 / 3) : outdoorBaseW;
+  var outdoorRight = 35 + outdoorW;
+  var at = el('text', { x: 35 + outdoorW / 2, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
+  outdoorUnit(svg, 35, 90, outdoorW, 110, running, unit.fanSpeed);
 
   // Messwert-Tabelle unter dem Geraet statt einzelner Chips (Dietmar,
   // 14.08.2026): 3 Zeilen x 2 Spalten, keine sichtbaren Linien, so breit
@@ -823,15 +837,15 @@ function buildSchema(unit) {
     // Inline-Styles noetig: .chip-text setzt text-anchor:middle per CSS;
     // Schrift klein genug, dass die Zeile in der Geraetebreite bleibt
     // (Dietmar, 14.08.2026).
-    var val = el('text', { x: 165, y: ry, class: 'chip-text' });
+    var val = el('text', { x: outdoorRight, y: ry, class: 'chip-text' });
     val.style.textAnchor = 'end';
     val.style.fontSize = '10.5px';
     val.textContent = row[1];
     svg.appendChild(val);
   });
   if (unit.defrosting) {
-    svg.appendChild(el('rect', { x: 35, y: 262, width: 130, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: 100, y: 273, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    svg.appendChild(el('rect', { x: 35, y: 262, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
+    var db = el('text', { x: 35 + outdoorW / 2, y: 273, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
@@ -845,9 +859,13 @@ function buildSchema(unit) {
   // scheinen (Dietmar, 14.08.2026).
   // Chips MITTIG zwischen Aussen- (Kante 165) und Innengeraet (240),
   // je 23px von der eigenen Leitung entfernt: Heissgas darueber mit
-  // Beschriftung oben, Kaltgas darunter mit Beschriftung unten.
+  // Beschriftung oben, Kaltgas darunter mit Beschriftung unten. Bei
+  // Monoblock gibt es diese Mitte nicht (kein zweiter Kasten) - die
+  // Chips ruecken dann rechts neben das (breitere) Aussengeraet, wo
+  // sonst die Kaeltemittelleitungen zum Innengeraet gestanden haetten.
+  var refrChipX = monoblock ? outdoorRight + 18 : 228;
   if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) {
-    drawValve(chip(228, 170, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', null));
+    drawValve(chip(refrChipX, 170, fmtTemp1(unit.dischargeTemp), '°C', '#d98a3c', null));
   }
   // Sauggas-/Kaltgastemperatur: braucht suctionTempID aus dem heatpump-
   // Vertrag (bei HeishaMon angefragt) - bis dahin fehlt das Feld einfach.
@@ -857,7 +875,7 @@ function buildSchema(unit) {
     // Beschriftung tut das: Kaltgas/Verfluessiger). Der Rahmen wechselte
     // bisher faelschlich auf Amber im Kuehlbetrieb, obwohl die Leitung
     // darunter unveraendert blau blieb (Dietmar, 14.08.2026).
-    drawValve(chip(228, 192, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', null));
+    drawValve(chip(refrChipX, 192, fmtTemp1(unit.suctionTemp), '°C', '#6e9ab8', null));
   }
 
   // ── Innengeraet: Kombi-Hydromodul WH-ADC0309J3E5 ─────────────
@@ -869,7 +887,9 @@ function buildSchema(unit) {
   // zum Heizkreis), die externe Pumpe (H14) sitzt sekundaerseitig NACH
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
-  var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  if (!monoblock) {
+    var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+  }
   // Betriebsart sichtbar machen - ohne sie sind Vor-/Ruecklauffarben und
   // die Kaeltemittel-Beschriftung nicht eindeutig lesbar. Sie gilt fuer
   // die GANZE Anlage und sitzt deshalb oben mittig im Canvas, wo sie
@@ -884,6 +904,13 @@ function buildSchema(unit) {
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
   svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
+  // Anschlusspunkte, an denen der Vorlauf (SUP, y=142) und der
+  // gemeinsame Ruecklauf (RET, y=192) den Waermeerzeuger in Richtung
+  // Puffer/Heizkreis verlassen. Split: rechte Kante des Innengeraets
+  // (x=400) bzw. die WW-Steigleitungs-Einmuendung (DHW_RISE). Monoblock:
+  // direkt die rechte Kante des (verbreiterten) Aussengeraets - siehe
+  // unten (Dietmar, 17.08.2026: "der WT in diesem 1/3 Mehrplatz sitzt").
+  var indoorSupX = outdoorRight, indoorRetX = outdoorRight;
   // Emitter-Schalter (Heizkoerper/Fussboden je HK) sitzen NICHT hier im
   // SVG (verworfener erster Versuch mit ResizeObserver-Sichtbarkeit),
   // sondern sind echte Instanz-Variablen mit EnableAction() in
@@ -901,24 +928,10 @@ function buildSchema(unit) {
   // der hydraulische Teil (WT, Ventile, Pumpe, alles <= y=207) bleibt
   // dadurch unveraendert innerhalb des Gehaeuses.
   var indoorH = hasDhwTank ? 270 : 135;
-  indoorUnit(svg, 290, 90, 110, indoorH);
-
-  // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
-  // WT-Kante (x=252) laufen statt vom Gehaeuse verdeckt zu werden.
-  svg.appendChild(refrigerantLine('M165,170 L302,170', running, true));
-  svg.appendChild(refrigerantLine('M302,192 L165,192', running, false));
-
-  // Innenleben sichtbar (Dietmar, 14.08.2026): Waermetauscher an den
-  // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
-  // Ruecklauf, WW-Tank unten im Geraet.
-  // Plattenwaermetauscher: Rechteck mit Schraffur
-  // Zwei gegenlaeufige Wendeln statt abstrakter Schraffur (Referenz
-  // "Aufbau Luft/Wasser Waermepumpe", Dietmar 14.08.2026): links das
-  // Kaeltemittel (Amber), rechts das Wasser - dazu ein warmes Gluehen,
-  // wenn der Verdichter Waerme uebergibt.
   // Feste Windungszahl statt fester Schrittweite: so endet die Wendel
   // exakt bei y1 und hat oben wie unten denselben Abstand zur WT-Kante
-  // (Dietmar, 14.08.2026).
+  // (Dietmar, 14.08.2026). Ausserhalb des Split-Zweigs deklariert, damit
+  // auch der Monoblock-Waermetauscher (im Aussengeraet) sie nutzen kann.
   function coilPath(cx, y0, y1, amp, turns) {
     var step = (y1 - y0) / turns;
     var d = 'M' + cx + ',' + y0, sgn = 1;
@@ -939,6 +952,22 @@ function buildSchema(unit) {
     lg.appendChild(s0); lg.appendChild(s1);
     return lg;
   }
+  if (!monoblock) {
+  indoorUnit(svg, 290, 90, 110, indoorH);
+
+  // Kaeltemittelleitungen jetzt DARUEBER, damit sie sichtbar bis an die
+  // WT-Kante (x=252) laufen statt vom Gehaeuse verdeckt zu werden.
+  svg.appendChild(refrigerantLine('M165,170 L302,170', running, true));
+  svg.appendChild(refrigerantLine('M302,192 L165,192', running, false));
+
+  // Innenleben sichtbar (Dietmar, 14.08.2026): Waermetauscher an den
+  // Kaeltemittelleitungen, 3-Wege-Ventil (Raum/WW), 2-Wege-Ventil im
+  // Ruecklauf, WW-Tank unten im Geraet.
+  // Plattenwaermetauscher: Rechteck mit Schraffur
+  // Zwei gegenlaeufige Wendeln statt abstrakter Schraffur (Referenz
+  // "Aufbau Luft/Wasser Waermepumpe", Dietmar 14.08.2026): links das
+  // Kaeltemittel (Amber), rechts das Wasser - dazu ein warmes Gluehen,
+  // wenn der Verdichter Waerme uebergibt.
   if (running) {
     var hxGlow = el('circle', { cx: 310, cy: 181, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
     hxGlow.style.filter = 'blur(6px)';
@@ -1130,6 +1159,43 @@ function buildSchema(unit) {
     val.textContent = row[1];
     svg.appendChild(val);
   });
+  indoorSupX = 400;
+  indoorRetX = DHW_RISE;
+  } else {
+    // ── Monoblock: Waermetauscher IM (verbreiterten) Aussengeraet ──
+    // Kein zweiter Kasten, kein Kaeltemittel ausserhalb des
+    // Aussengeraets - der WT sitzt in dem Drittel, um das das
+    // Aussengeraet oben verbreitert wurde, und gibt nur noch Wasser
+    // (Vorlauf/Ruecklauf) nach aussen ab (Dietmar, 17.08.2026).
+    var mbWtW = 16, mbWtGap = 10;
+    var mbWtX = outdoorRight - mbWtGap - mbWtW;
+    var mbWtY0 = 144, mbWtY1 = 190;
+    if (running) {
+      var mbGlow = el('circle', { cx: mbWtX + mbWtW / 2, cy: (mbWtY0 + mbWtY1) / 2, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
+      mbGlow.style.filter = 'blur(6px)';
+      svg.appendChild(mbGlow);
+    }
+    svg.appendChild(el('rect', { x: mbWtX, y: mbWtY0, width: mbWtW, height: mbWtY1 - mbWtY0, rx: 2, fill: PAL.deep, stroke: PAL.draw, 'stroke-width': 1.4 }));
+    var mbGasGradId = 'mbhxgas' + unit.id, mbWatGradId = 'mbhxwat' + unit.id;
+    var mbHxDefs = el('defs', {});
+    mbHxDefs.appendChild(cooling
+      ? coilGradient(mbGasGradId, '#6e9ab8', '#4a90d9')
+      : coilGradient(mbGasGradId, '#d98a3c', '#6e9ab8'));
+    mbHxDefs.appendChild(cooling
+      ? coilGradient(mbWatGradId, '#4a90d9', '#7d9dc4')
+      : coilGradient(mbWatGradId, '#e0503c', '#4a90d9'));
+    svg.appendChild(mbHxDefs);
+    svg.appendChild(el('path', { d: coilPath(mbWtX + 5, mbWtY0 + 4, mbWtY1 - 4, 3, 5), fill: 'none', stroke: 'url(#' + mbGasGradId + ')', 'stroke-width': 1.8 }));
+    svg.appendChild(el('path', { d: coilPath(mbWtX + 11, mbWtY0 + 4, mbWtY1 - 4, -3, 5), fill: 'none', stroke: 'url(#' + mbWatGradId + ')', 'stroke-width': 1.8 }));
+    var mbWtTag = el('text', { x: mbWtX + mbWtW / 2, y: mbWtY0 - 6, class: 'tag' }); mbWtTag.textContent = 'WT'; svg.appendChild(mbWtTag);
+    // Kurze Stichleitungen von der WT-Kante bis zur Geraetekante -
+    // dahinter beginnt die ganz normale Vor-/Ruecklaufleitung Richtung
+    // Puffer/Heizkreis (unveraendert, wie beim Split-Geraet).
+    svg.appendChild(pipe('M' + (mbWtX + mbWtW) + ',142 L' + outdoorRight + ',142', SUP, waterFlow && toRoom));
+    svg.appendChild(pipe('M' + outdoorRight + ',192 L' + (mbWtX + mbWtW) + ',192', RET, waterFlow));
+    indoorSupX = outdoorRight;
+    indoorRetX = outdoorRight;
+  }
 
   // ── Sanitaerseite ────────────────────────────────────────────
   // Nur bei Anlagen mit WW-Tank - ohne Tank gibt es keine
@@ -1243,14 +1309,15 @@ function buildSchema(unit) {
   // Primaerleitungen: unveraendert, enden direkt an der Tankwand - kein
   // Knick, kein Umweg (Dietmar, 14.08.2026: "die Leitungen gibt es so
   // nicht" - vorher fuehrten sie ueber Stutzen zur Tankoberkante).
-  svg.appendChild(pipe('M400,142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
-  svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + DHW_RISE + ',192', RET, waterFlow && toRoom));
+  svg.appendChild(pipe('M' + indoorSupX + ',142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
+  svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + indoorRetX + ',192', RET, waterFlow && toRoom));
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen. Mittig
-  // zwischen Innengeraet (400) und Puffer (PUF_LEFT) statt fest bei 473
+  // zwischen Waermeerzeuger (indoorSupX - Innengeraet bei Split, sonst
+  // Aussengeraet bei Monoblock) und Puffer (PUF_LEFT) statt fest bei 473
   // (Dietmar, 16.08.2026: "sollen aber mittig sein" - der Puffer war
   // seither verschoben worden, 473 passte nicht mehr).
-  var INNEN_PUF_CX = (400 + PUF_LEFT) / 2;
+  var INNEN_PUF_CX = (indoorSupX + PUF_LEFT) / 2;
   // NUR im Raumheizbetrieb zeigen (Dietmar, 16.08.2026: "im
   // Warmwasserbetrieb stimmt weder die Vorlauftemperatur fuer den
   // Primaer- noch fuer den Sekundaerkreislauf - die Temperatur ist nur
