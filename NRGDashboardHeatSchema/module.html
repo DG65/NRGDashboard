@@ -887,10 +887,21 @@ function buildSchema(unit) {
   // Nachkommastelle ist bei einem Wertebereich von nur 2-5 durchaus
   // aussagekraeftig (HeishaMon-Rueckmeldung, 17.08.2026: "COP 4,2 sagt
   // deutlich mehr als COP 4").
+  // "aktuell" im Label (Dietmar, 17.08.2026: "Kannst du auch die
+  // momentane COP Zahl darstellen?") - der Wert war schon immer die
+  // Momentanablesung (copMeasured/copEstimate, KEIN Tagesmittel wie
+  // "Tages-AZ" direkt darunter), nur das schlichte Label "COP" liess
+  // das offen. Eine Aufteilung nach Heizen/Kuehlen/Warmwasser ergibt
+  // fuer den Momentanwert keinen Sinn - es laeuft ohnehin immer nur
+  // EINE Betriebsart gleichzeitig, der angezeigte Wert IST bereits der
+  // COP der gerade aktiven Betriebsart (siehe "Modus"-Chip oben in der
+  // Mitte). Eine Aufteilung waere erst fuer ZEITRAUM-Mittelwerte
+  // (z. B. "COP waehrend Heizstunden heute") sinnvoll - das ist dieselbe
+  // Archiv-Auswertung wie Monats-/Jahres-AZ, bewusst nicht hier gebaut.
   if (unit.copMeasured !== null && unit.copMeasured !== undefined && unit.copMeasured > 0) {
-    odRows.push(['COP', fmtTemp1(unit.copMeasured)]);
+    odRows.push(['COP aktuell', fmtTemp1(unit.copMeasured)]);
   } else if (unit.copEstimate !== null && unit.copEstimate !== undefined && unit.copEstimate > 0) {
-    odRows.push(['COP', Math.round(unit.copEstimate)]);
+    odRows.push(['COP aktuell', Math.round(unit.copEstimate)]);
   }
   if (unit.dailyPerformanceFactor !== null && unit.dailyPerformanceFactor !== undefined && unit.dailyPerformanceFactor > 0) {
     odRows.push(['Tages-AZ', fmtTemp1(unit.dailyPerformanceFactor)]);
