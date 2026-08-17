@@ -1356,25 +1356,39 @@ function buildSchema(unit) {
   // (Volumen ~ Breite^2 * Hoehe) das Seitenverhaeltnis bei wachsendem
   // Volumen ungefaehr konstant, 100 l als Referenzgroesse (= bisherige
   // feste Masse 70x85).
-  var PUF_LEFT = 525, PUF_TOP = 125;
+  var PUF_LEFT = 525;
+  // Mitte zwischen Primaer-Vor- (142) und -Ruecklauf (192) - das sind die
+  // festen Wendel-Anschlusspunkte (echte Rohrleitungen, nicht verschiebbar).
+  // Die Wendel bleibt IMMER hier (Dietmar, 17.08.2026: "die Wendel bleibt
+  // dabei immer Mittig") - der Tank waechst deshalb SYMMETRISCH um diesen
+  // Punkt, statt nur nach unten.
+  var PUF_CENTER_Y = 167.5;
   var PUF_W_BASE = 70, PUF_H_BASE = 85;
-  // Der verfuegbare Platz ist NICHT immer gleich gross (Dietmar,
-  // 17.08.2026: "Es gibt Situationen in denen Du mehr oder weniger Platz
-  // zur Darstellung hast"): PUF_LEFT/PUF_TOP bleiben fest (Primaeranschluss
-  // bzw. Betriebszustand-Chip/Geraetetitel druebe), aber PUF_RIGHT darf
-  // nicht an die naechste hartkodierte Koordinate (620, Ruecklauf-
-  // Sammelpunkt) heranwachsen, und mit WW-Tank teilt sich die Spalte
-  // darunter den Raum mit der Sanitaerseite (Dusche/Badewanne ab y~244) -
-  // ohne WW-Tank ist dort bis weit nach unten frei Platz. Der
-  // Skalierungsfaktor wird auf den jeweils engeren der beiden Rahmen
-  // gedeckelt, damit KEINE Richtung in Nachbarelemente hineinwaechst.
-  var pufMaxScaleW = (615 - PUF_LEFT) / PUF_W_BASE;
-  var pufMaxScaleH = ((hasDhwTank ? 235 : 440) - PUF_TOP) / PUF_H_BASE;
   var pufScale = Math.cbrt(bufferLiters / 100);
-  pufScale = Math.max(0.75, Math.min(pufScale, pufMaxScaleW, pufMaxScaleH));
-  var PUF_W = Math.round(PUF_W_BASE * pufScale), PUF_H = Math.round(PUF_H_BASE * pufScale);
+  // Breite und Hoehe werden UNABHAENGIG voneinander gedeckelt: bei kleinen/
+  // mittleren Volumen wachsen beide gleich (Seitenverhaeltnis bleibt exakt
+  // erhalten), erst wenn eine Richtung an ihre Nachbarelemente stoesst,
+  // plateaut NUR diese - die andere waechst weiter (Dietmar, 17.08.2026:
+  // "den Puffer bis 2000 ltr wachsen lassen" - eine gemeinsame Deckelung
+  // haette schon weit vor 2000 l plateauen lassen, weil die Breite
+  // schneller an ihre Grenze (620, Ruecklauf-Sammelpunkt) stoesst als
+  // 2000 l optisch hergeben).
+  //
+  // Nach oben ist etwas Platz, bis knapp unter den Betriebszustand-Chip
+  // (fix bei y=25) - "es gibt aber schon etwas Platz nach oben". Nach
+  // unten teilt sich die Spalte mit WW-Tank den Raum mit der
+  // Sanitaerseite (Dusche/Badewanne ab y~244), ohne WW-Tank ist dort bis
+  // weit nach unten frei Platz.
+  var pufScaleW = Math.max(0.75, Math.min(pufScale, (615 - PUF_LEFT) / PUF_W_BASE));
+  var pufTopMin = 60, pufBottomMax = hasDhwTank ? 235 : 440;
+  var pufScaleH = Math.max(0.75, Math.min(
+    pufScale,
+    (PUF_CENTER_Y - pufTopMin) / (PUF_H_BASE / 2),
+    (pufBottomMax - PUF_CENTER_Y) / (PUF_H_BASE / 2)
+  ));
+  var PUF_W = Math.round(PUF_W_BASE * pufScaleW), PUF_H = Math.round(PUF_H_BASE * pufScaleH);
   var PUF_RIGHT = PUF_LEFT + PUF_W;
-  var PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
+  var PUF_TOP = PUF_CENTER_Y - PUF_H / 2, PUF_BOTTOM = PUF_TOP + PUF_H, PUF_CX = PUF_LEFT + PUF_W / 2;
   // Zwei feste innere x-Positionen, an denen die Wendel abwechselnd
   // "andockt". GERADE Segmentzahl (6) ist entscheidend: die Wendel muss
   // an BEIDEN Enden links an der Wand anschliessen (Vorlauf UND
