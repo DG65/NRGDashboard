@@ -1436,17 +1436,38 @@ function buildSchema(unit) {
   // Stichleitungen von der Wand zum ersten/letzten Wendelpunkt.
   var PUF_MARGIN = 14;
   var PUF_ZIG_R = PUF_RIGHT - PUF_MARGIN, PUF_ZIG_L = PUF_LEFT + PUF_MARGIN;
-  var pufZigSteps = 6, pufZigStep = (192 - 142) / pufZigSteps;
-  var pufCoilD = 'M' + PUF_LEFT + ',142 L' + PUF_ZIG_L + ',142';
+  // Die Wendel selbst waechst proportional mit der Puffergroesse mit
+  // (Dietmar, 17.08.2026: "Je nach Puffergröße muss auch die Wendel
+  // wachsen") - Anschlusshoehen skaliert mit demselben Faktor wie die
+  // Boxhoehe (pufScaleH), ausgehend von den urspruenglichen Absaenden zur
+  // Wendel-Mitte (167,5-142=25,5 oben, 192-167,5=24,5 unten). Bei 100 l
+  // (pufScaleH=1) ergibt das wieder exakt 142/192 - keine Regression.
+  var pufCoilTop = PUF_CENTER_Y - 25.5 * pufScaleH, pufCoilBottom = PUF_CENTER_Y + 24.5 * pufScaleH;
+  var pufZigSteps = 6, pufZigStep = (pufCoilBottom - pufCoilTop) / pufZigSteps;
+  var pufCoilD = 'M' + PUF_LEFT + ',' + pufCoilTop + ' L' + PUF_ZIG_L + ',' + pufCoilTop;
   for (var pzi = 1; pzi <= pufZigSteps; pzi++) {
-    pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (142 + pzi * pufZigStep);
+    pufCoilD += ' L' + (pzi % 2 === 1 ? PUF_ZIG_R : PUF_ZIG_L) + ',' + (pufCoilTop + pzi * pufZigStep);
   }
-  pufCoilD += ' L' + PUF_LEFT + ',192';
-  // Primaerleitungen: unveraendert, enden direkt an der Tankwand - kein
-  // Knick, kein Umweg (Dietmar, 14.08.2026: "die Leitungen gibt es so
-  // nicht" - vorher fuehrten sie ueber Stutzen zur Tankoberkante).
-  svg.appendChild(pipe('M' + indoorSupX + ',142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
-  svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + indoorRetX + ',192', RET, waterFlow && toRoom));
+  pufCoilD += ' L' + PUF_LEFT + ',' + pufCoilBottom;
+  // Primaerleitungen: laufen auf der urspruenglichen Leitungshoehe
+  // (142/192) heran und werden erst 5px vor der Tankwand auf die
+  // (bei groesseren Puffern abweichende) Wendel-Anschlusshoehe umgelenkt
+  // (Dietmar, 17.08.2026: "Die Zuleitungen zur Wendel sollen 5 px vor
+  // dem Puffer an die entsprechende Stelle geführt werden. Knicke bitte
+  // mit den entsprechenden Bögen herstellen.") - ueber bentPipe() wie
+  // ueberall sonst im Schema, damit die Knicke abgerundet sind statt
+  // scharfkantig. NUR wenn tatsaechlich eine Wendel gezeichnet wird
+  // (hasBuffer) - ohne Puffer gibt es keine abweichende Anschlusshoehe,
+  // zu der es sich zu knicken lohnte, die Leitung laeuft dann wie bisher
+  // gerade in die Ueberbrueckung (siehe hasBuffer-Zweig weiter unten).
+  var PUF_LEAD_X = PUF_LEFT - 5;
+  if (hasBuffer) {
+    svg.appendChild(bentPipe([[indoorSupX, 142], [PUF_LEAD_X, 142], [PUF_LEAD_X, pufCoilTop], [PUF_LEFT, pufCoilTop]], SUP, waterFlow && toRoom));
+    svg.appendChild(bentPipe([[PUF_LEFT, pufCoilBottom], [PUF_LEAD_X, pufCoilBottom], [PUF_LEAD_X, 192], [indoorRetX, 192]], RET, waterFlow && toRoom));
+  } else {
+    svg.appendChild(pipe('M' + indoorSupX + ',142 L' + PUF_LEFT + ',142', SUP, waterFlow && toRoom));
+    svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + indoorRetX + ',192', RET, waterFlow && toRoom));
+  }
   // Vorlauf / Spreizung / Ruecklauf als Chips DIREKT auf den Leitungen
   // (Prinzip 1 der Referenz-Essenz), ΔT mittig dazwischen. Mittig
   // zwischen Waermeerzeuger (indoorSupX - Innengeraet bei Split, sonst
