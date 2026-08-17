@@ -1451,7 +1451,14 @@ function buildSchema(unit) {
     // ueberbrueckt (Dietmar, 17.08.2026: "manche Anlagen haben
     // ueberhaupt keinen Puffer").
     svg.appendChild(pipe('M' + PUF_LEFT + ',142 L' + PUF_RIGHT + ',142', SUP, waterFlow && toRoom));
-    svg.appendChild(pipe('M' + PUF_LEFT + ',192 L' + PUF_RIGHT + ',192', RET, waterFlow && toRoom));
+    // Ruecklauf-Richtung wie auf beiden Nachbarabschnitten (Waermeerzeuger
+    // -> PUF_LEFT und Sammelstelle -> PUF_RIGHT): beide zeichnen mit
+    // FALLENDEM x, weil das Wasser von rechts (Heizkreis) nach links
+    // (Waermeerzeuger) zurueckfliesst - die Bruecke lief bisher mit
+    // STEIGENDEM x und damit optisch verkehrt herum (Dietmar, 17.08.2026:
+    // "wo der Puffer normalerweise steht, ist die Stromflussrichtung
+    // verkehrt herum").
+    svg.appendChild(pipe('M' + PUF_RIGHT + ',192 L' + PUF_LEFT + ',192', RET, waterFlow && toRoom));
   }
 
   // ── Sekundaerkreis: Puffer -> Mischer -> Pumpe -> Heizkreis(e) ──
@@ -1530,8 +1537,13 @@ function buildSchema(unit) {
   // die gemeinsame Puffer-Ausgangstemperatur, bevor sie zonenweise
   // gemischt wird (kein eigener Vorlauf-Sensor je Zone verfuegbar). Nur
   // im Raumheizbetrieb (toRoom) - siehe Begruendung bei INNEN_PUF_CX
-  // weiter oben, gilt hier genauso fuer den Sekundaerkreislauf.
-  if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
+  // weiter oben, gilt hier genauso fuer den Sekundaerkreislauf. Ohne
+  // Puffer waere das derselbe Wert wie der bereits vor der Bruecke
+  // gezeigte INNEN_PUF_CX-Chip (dazwischen liegt nur eine durchgehende
+  // Leitung ohne Waermetauscher) - dann bleibt es bei der einen
+  // Anzeige (Dietmar, 17.08.2026: "eine Ausfertigung der doppelten Vor-
+  // und Ruecklauf Chips kann in dem Fall auch entfernt werden").
+  if (hasBuffer && toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
     drawValve(chip((PUF_RIGHT + 694) / 2, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
 
