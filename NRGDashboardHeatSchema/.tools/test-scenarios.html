@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!--
+  Prüfstand für die Kachel - klickbare Szenarien statt Einweg-Python-
+  Skripten (Dietmar, 17.08.2026: "Kannst du auch Test Buttons für alle
+  Szenarien und die Simulation dazu bauen? Das könntest Du noch zuvor
+  bauen, damit ich wirklich alles kontrollieren kann.").
+
+  Laedt das ECHTE module.html per <iframe> (kein kopierter/veralteter
+  Stand) und ruft darin handleMessage() mit vorgefertigten Nutzlasten
+  auf - genau der Mechanismus, den GetVisualizationTile()/Render() in
+  module.php auch verwenden. Einfach im Browser oeffnen:
+
+    open .tools/test-scenarios.html
+
+  Fuer die Wasserfluss-Stile/-Geschwindigkeit steht rechts oben ein
+  Regler; Symcon liefert die Werte sonst aus echten Instanz-Variablen
+  (siehe module.php RequestAction), hier direkt im Payload gesetzt.
+-->
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e13; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; background: #14181f; border-bottom: 1px solid #2a2f3a; align-items: center; }
+  #bar h2 { color: #eef2f6; font-size: 12px; font-weight: 700; margin: 0 10px 0 0; text-transform: uppercase; letter-spacing: .4px; opacity: .7; }
+  .grp { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 10px 4px 0; border-right: 1px solid #2a2f3a; margin-right: 4px; }
+  .grp:last-child { border-right: none; }
+  button { background: #232833; color: #cfd6e2; border: 1px solid #3a4150; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+  button:hover { background: #2c323f; }
+  button.active { background: #3a5a8a; border-color: #5b84c4; color: #fff; }
+  #status { color: #93a3bd; font-size: 11px; padding: 2px 12px 8px; }
+  #frameWrap { position: absolute; top: 0; right: 0; bottom: 0; left: 0; padding-top: 96px; box-sizing: border-box; }
+  iframe { width: 100%; height: 100%; border: 0; background: #05070a; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <h2>Szenarien</h2>
+  <div class="grp" data-grp="komponenten">
+    <button data-scn="basis">Basis (Puffer 100l + WW-Tank 185l)</button>
+    <button data-scn="pufferGross">Puffer 800l</button>
+    <button data-scn="keinPuffer">Kein Puffer</button>
+    <button data-scn="keinWwTank">Kein WW-Tank</button>
+    <button data-scn="wederNoch">Weder Puffer noch WW-Tank</button>
+  </div>
+  <div class="grp" data-grp="kreise">
+    <button data-scn="nurHeizkoerper">HK1 nur Heizkörper</button>
+    <button data-scn="nurFussboden">HK1 nur Fußbodenheizung</button>
+    <button data-scn="beideEmitter">HK1 Heizkörper + Fußboden</button>
+    <button data-scn="zweiKreise">HK1 + HK2 aktiv</button>
+    <button data-scn="hk1Aus">HK1 ausgeblendet (nur HK2)</button>
+    <button data-scn="keinEmitter">Kein Emitter gewählt (HK verschwindet)</button>
+  </div>
+  <div class="grp" data-grp="betrieb">
+    <button data-scn="heizen">Heizbetrieb</button>
+    <button data-scn="kuehlen">Kühlbetrieb</button>
+    <button data-scn="warmwasser">Warmwasserbetrieb</button>
+    <button data-scn="standby">Standby (kein Fluss)</button>
+    <button data-scn="abtau">Abtaubetrieb</button>
+  </div>
+  <div class="grp" data-grp="fluss">
+    <button data-scn="flowWelle">Welle</button>
+    <button data-scn="flowPunkte">Punkte</button>
+    <button data-scn="flowStriche">Striche</button>
+    <button data-scn="flowGlanz">Flüssigkeitsglanz</button>
+    <button data-scn="flowKonstantSchnell">Konstant + schnell</button>
+  </div>
+  <div class="grp" data-grp="quelle">
+    <button data-scn="keineDaten">Keine Daten (Fehleranzeige)</button>
+    <button data-scn="nurBasiswerte">Nur Basiswerte (kein Rohrschema)</button>
+    <button data-scn="zweiWaermepumpen">Zwei Wärmepumpen (Stapel-Ansicht)</button>
+  </div>
+</div>
+<div id="status">Szenario wählen …</div>
+<div id="frameWrap"><iframe id="tile" src="../module.html"></iframe></div>
+<script>
+  var frame = document.getElementById('tile');
+  var statusEl = document.getElementById('status');
+  var lastScn = null;
+
+  function baseUnit(overrides) {
+    var u = {
+      label: 'Wärmepumpe', hasPipeSchema: true,
+      power: 1500, pumpFlow: 15, pumpSpeed: 1450,
+      mainOutletTemp: 42.0, mainInletTemp: 36.0,
+      z1WaterTemp: 38.5, z2WaterTemp: null,
+      extMixingValve: 0, mixValvePos: 40,
+      z2MixingValve: 0, z2MixValvePos: 20, z2Pump: null,
+      compressor: true, compressorFreq: 34,
+      waterFlow: true, threeWayValve: 0, twoWayValve: true,
+      defrost: false, boosterHeater: false,
+      dhwTemp: 44.0, bufferTemp: 40.0,
+      dischargeTemp: 82.0, suctionTemp: 17.0,
+      indoorPipeTemp: null, operatingModeNorm: 1, operatingMode: null,
+      id: '1'
+    };
+    for (var k in (overrides || {})) { u[k] = overrides[k]; }
+    return u;
+  }
+
+  function basePayload(overrides) {
+    var p = {
+      ok: true, lightTheme: false,
+      zone1ShowRadiator: true, zone1ShowFloor: true,
+      zone2ShowRadiator: true, zone2ShowFloor: true,
+      flowStyle: 0, flowMotion: 0, flowSpeed: 1,
+      hasBuffer: true, bufferLiters: 100,
+      hasDhwTank: true, dhwLiters: 185,
+      bauart: 'split',
+      units: [baseUnit()]
+    };
+    for (var k in (overrides || {})) { p[k] = overrides[k]; }
+    return p;
+  }
+
+  var SCENARIOS = {
+    basis: function () { return basePayload(); },
+    pufferGross: function () { return basePayload({ bufferLiters: 800 }); },
+    keinPuffer: function () { return basePayload({ hasBuffer: false }); },
+    keinWwTank: function () { return basePayload({ hasDhwTank: false }); },
+    wederNoch: function () { return basePayload({ hasBuffer: false, hasDhwTank: false }); },
+
+    nurHeizkoerper: function () { return basePayload({ zone1ShowFloor: false }); },
+    nurFussboden: function () { return basePayload({ zone1ShowRadiator: false }); },
+    beideEmitter: function () { return basePayload(); },
+    zweiKreise: function () {
+      return basePayload({ units: [baseUnit({ z2WaterTemp: 33.0, z2Pump: true })] });
+    },
+    hk1Aus: function () {
+      return basePayload({
+        zone1ShowRadiator: false, zone1ShowFloor: false,
+        units: [baseUnit({ z2WaterTemp: 33.0, z2Pump: true })]
+      });
+    },
+    keinEmitter: function () { return basePayload({ zone1ShowRadiator: false, zone1ShowFloor: false }); },
+
+    heizen: function () { return basePayload({ units: [baseUnit({ threeWayValve: 0, compressorFreq: 34 })] }); },
+    kuehlen: function () {
+      return basePayload({
+        units: [baseUnit({
+          threeWayValve: 0, compressorFreq: 28,
+          mainOutletTemp: 15.5, mainInletTemp: 16.0,
+          operatingModeNorm: 2
+        })]
+      });
+    },
+    warmwasser: function () {
+      return basePayload({ units: [baseUnit({ threeWayValve: 1, operatingModeNorm: 3 })] });
+    },
+    standby: function () {
+      return basePayload({
+        units: [baseUnit({ compressor: false, compressorFreq: 0, waterFlow: false, pumpFlow: 0, operatingModeNorm: 0 })]
+      });
+    },
+    abtau: function () { return basePayload({ units: [baseUnit({ defrost: true })] }); },
+
+    flowWelle: function () { return basePayload({ flowStyle: 0 }); },
+    flowPunkte: function () { return basePayload({ flowStyle: 1 }); },
+    flowStriche: function () { return basePayload({ flowStyle: 2 }); },
+    flowGlanz: function () { return basePayload({ flowStyle: 3 }); },
+    flowKonstantSchnell: function () { return basePayload({ flowStyle: 3, flowMotion: 1, flowSpeed: 2 }); },
+
+    keineDaten: function () { return { ok: false, error: 'Keine Verbindung zur Wärmepumpe.' }; },
+    nurBasiswerte: function () {
+      return basePayload({ units: [baseUnit({ hasPipeSchema: false, pumpFlow: null, mainOutletTemp: null, mainInletTemp: null })] });
+    },
+    zweiWaermepumpen: function () {
+      return basePayload({
+        units: [
+          baseUnit({ id: '1', label: 'Wärmepumpe Ost' }),
+          baseUnit({ id: '2', label: 'Wärmepumpe West', z2WaterTemp: 33.0, z2Pump: true })
+        ]
+      });
+    }
+  };
+
+  function fire(name) {
+    var build = SCENARIOS[name];
+    if (!build) { return; }
+    var payload = build();
+    var win = frame.contentWindow;
+    if (!win || typeof win.handleMessage !== 'function') {
+      statusEl.textContent = 'Kachel noch nicht geladen - kurz warten und erneut klicken.';
+      return;
+    }
+    win.handleMessage(JSON.stringify(payload));
+    lastScn = name;
+    Array.prototype.forEach.call(document.querySelectorAll('button[data-scn]'), function (b) {
+      b.classList.toggle('active', b.getAttribute('data-scn') === name);
+    });
+    statusEl.textContent = 'Aktiv: ' + name + '  —  Payload: ' + JSON.stringify(payload).slice(0, 300) + (JSON.stringify(payload).length > 300 ? ' …' : '');
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('button[data-scn]'), function (b) {
+    b.addEventListener('click', function () { fire(b.getAttribute('data-scn')); });
+  });
+
+  frame.addEventListener('load', function () { fire(lastScn || 'basis'); });
+</script>
+</body>
+</html>
