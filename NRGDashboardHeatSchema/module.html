@@ -1169,7 +1169,12 @@ function buildSchema(unit) {
     // (Vorlauf/Ruecklauf) nach aussen ab (Dietmar, 17.08.2026).
     var mbWtW = 16, mbWtGap = 10;
     var mbWtX = outdoorRight - mbWtGap - mbWtW;
-    var mbWtY0 = 144, mbWtY1 = 190;
+    // Der WT muss deutlich hoeher sein als der Abstand zwischen Vor-
+    // (142) und Ruecklaufleitung (192, Differenz 50px) - er ragt oben
+    // und unten darueber hinaus, statt genau dazwischen zu passen
+    // (Dietmar, 17.08.2026: "der WT etwas höher sein wie die Vor- und
+    // Rücklaufleitungen auseinander liegen").
+    var mbWtY0 = 130, mbWtY1 = 198;
     if (running) {
       var mbGlow = el('circle', { cx: mbWtX + mbWtW / 2, cy: (mbWtY0 + mbWtY1) / 2, r: 16, fill: cooling ? '#4a90d9' : '#d98a3c', opacity: 0.22 });
       mbGlow.style.filter = 'blur(6px)';
