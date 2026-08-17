@@ -1436,13 +1436,18 @@ function buildSchema(unit) {
   // Stichleitungen von der Wand zum ersten/letzten Wendelpunkt.
   var PUF_MARGIN = 14;
   var PUF_ZIG_R = PUF_RIGHT - PUF_MARGIN, PUF_ZIG_L = PUF_LEFT + PUF_MARGIN;
-  // Die Wendel selbst waechst proportional mit der Puffergroesse mit
-  // (Dietmar, 17.08.2026: "Je nach Puffergröße muss auch die Wendel
-  // wachsen") - Anschlusshoehen skaliert mit demselben Faktor wie die
-  // Boxhoehe (pufScaleH), ausgehend von den urspruenglichen Absaenden zur
-  // Wendel-Mitte (167,5-142=25,5 oben, 192-167,5=24,5 unten). Bei 100 l
-  // (pufScaleH=1) ergibt das wieder exakt 142/192 - keine Regression.
-  var pufCoilTop = PUF_CENTER_Y - 25.5 * pufScaleH, pufCoilBottom = PUF_CENTER_Y + 24.5 * pufScaleH;
+  // Die Wendel selbst waechst mit der Puffergroesse mit (Dietmar,
+  // 17.08.2026: "Je nach Puffergröße muss auch die Wendel wachsen" - und
+  // beim ersten Versuch mit proportionaler Skalierung noch: "kannst Du
+  // die Wendel noch größer machen, du bist noch nicht am Ende ...
+  // vielleicht sagst Du 10 px vom Puffer entfernt endet die Wendel").
+  // Der proportionale Ansatz liess die Randabstaende MIT wachsen, statt
+  // die Wendel wirklich bis fast an den Tankrand auszudehnen - jetzt ein
+  // FESTER 10px-Abstand zu PUF_TOP/PUF_BOTTOM, unabhaengig von der
+  // Groesse. Bei 100 l (PUF_TOP=125) ergibt das 135/195 statt vorher
+  // 142/192 - die Wendel ist dadurch bewusst auch im Referenzfall schon
+  // etwas groesser als zuvor, ganz im Sinne der Rueckmeldung.
+  var pufCoilTop = PUF_TOP + 10, pufCoilBottom = PUF_BOTTOM - 10;
   // Mehr Windungen statt vorhandene zu strecken (Dietmar, 17.08.2026:
   // "anstatt die Wendel auseinander zu ziehen, könntest Du entsprechend
   // mehr Wendeln einbauen, das sieht auch besser aus") - Anzahl waechst
