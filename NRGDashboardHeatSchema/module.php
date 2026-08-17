@@ -205,22 +205,10 @@ class NRGDashboardHeatSchema extends IPSModule
         // Kachel/aufgezogenen Ansicht schaltbar: ersetzt bei aktivierter
         // Simulation die echten Sensordaten durch feste Beispielwerte
         // (siehe buildSimulatedUnit()), ohne die Instanz neu
-        // konfigurieren zu muessen.
-        if (!IPS_VariableProfileExists('NRGDASHHEAT.SimulationMode')) {
-            IPS_CreateVariableProfile('NRGDASHHEAT.SimulationMode', VARIABLETYPE_INTEGER);
-        }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 0, 'Aus (echte Daten)', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 1, 'Heizbetrieb', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 2, 'Kühlbetrieb', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 3, 'Warmwasserbetrieb', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 4, 'Standby', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.SimulationMode', 5, 'Abtaubetrieb', '', -1);
-        $simIsNew = @IPS_GetObjectIDByIdent('SimulationMode', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('SimulationMode', 'Simulation', 'NRGDASHHEAT.SimulationMode', 70);
-        $this->EnableAction('SimulationMode');
-        if ($simIsNew) {
-            $this->SetValue('SimulationMode', 0);
-        }
+        // konfigurieren zu muessen. Die Optionen haengen von der Bauart
+        // ab (siehe ApplySimulationProfile()) und werden deshalb bei
+        // jedem Bauart-Wechsel neu aufgebaut.
+        $this->ApplySimulationProfile();
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHHEAT_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -267,6 +255,50 @@ class NRGDashboardHeatSchema extends IPSModule
         return ($v === '' || $v === self::DEF_FONT) ? '' : $v;
     }
 
+    /**
+     * Baut/aktualisiert das Simulation-Profil abhaengig von der aktuellen
+     * Bauart (Dietmar, 17.08.2026: "Stellt man bei einem Monoblockgeraet
+     * die Warmwasserbereitung ein, die es ja gar nicht gibt, dann wird
+     * der Teil zwischen Ausseneinheit und gedachtem Puffer der Vor- und
+     * Rueckflussleitungen nicht animiert. ... ich wuerde eher tendieren,
+     * den Schalter Warmwasserbetrieb in der Simulation zu entfernen, wenn
+     * man auf Monoblock eingestellt hat"). Das Profil ist INSTANZ-
+     * spezifisch (Name traegt die InstanceID), damit unterschiedliche
+     * Bauarten in verschiedenen Instanzen sich nicht gegenseitig die
+     * Dropdown-Optionen ueberschreiben. Eine einzelne Assoziation laesst
+     * sich in IPS nicht entfernen, nur das ganze Profil - deshalb wird es
+     * bei jedem Aufruf komplett neu aufgebaut.
+     */
+    private function ApplySimulationProfile(): void
+    {
+        $profile = 'NRGDASHHEAT.SimulationMode.' . $this->InstanceID;
+        $monoblock = ((int) $this->GetValue('Bauart')) === 1;
+        if (IPS_VariableProfileExists($profile)) {
+            IPS_DeleteVariableProfile($profile);
+        }
+        IPS_CreateVariableProfile($profile, VARIABLETYPE_INTEGER);
+        IPS_SetVariableProfileAssociation($profile, 0, 'Aus (echte Daten)', '', -1);
+        IPS_SetVariableProfileAssociation($profile, 1, 'Heizbetrieb', '', -1);
+        IPS_SetVariableProfileAssociation($profile, 2, 'Kühlbetrieb', '', -1);
+        if (!$monoblock) {
+            IPS_SetVariableProfileAssociation($profile, 3, 'Warmwasserbetrieb', '', -1);
+        }
+        IPS_SetVariableProfileAssociation($profile, 4, 'Standby', '', -1);
+        IPS_SetVariableProfileAssociation($profile, 5, 'Abtaubetrieb', '', -1);
+        $simIsNew = @IPS_GetObjectIDByIdent('SimulationMode', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('SimulationMode', 'Simulation', $profile, 70);
+        $this->EnableAction('SimulationMode');
+        if ($simIsNew) {
+            $this->SetValue('SimulationMode', 0);
+        }
+        // Stand bisher auf Warmwasserbetrieb und die Anlage ist jetzt
+        // Monoblock: der Wert existiert im Profil nicht mehr - auf "Aus"
+        // zurueckfallen statt eine ungueltige Auswahl stehen zu lassen.
+        if ($monoblock && (int) $this->GetValue('SimulationMode') === 3) {
+            $this->SetValue('SimulationMode', 0);
+        }
+    }
+
     public function GetVisualizationTile()
     {
         $payload = $this->buildPayload();
@@ -304,6 +336,12 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed', 'Bauart', 'BufferLiters', 'DhwLiters', 'SimulationMode'], true)) {
             $this->SetValue($Ident, (int) $Value);
+            if ($Ident === 'Bauart') {
+                // Simulation-Optionen haengen von der Bauart ab (siehe
+                // ApplySimulationProfile()) - bei einem Wechsel sofort
+                // neu aufbauen, statt erst beim naechsten Kernelstart.
+                $this->ApplySimulationProfile();
+            }
             $this->Render();
             return;
         }
