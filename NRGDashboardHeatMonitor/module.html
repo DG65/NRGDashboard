@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  /* Bar/Kachel-Grundgeruest 1:1 nach NRGDashboardMonitor-Konvention (Dietmar,
+     17.08.2026: "in der Form und im Aussehen von der vorhandenen
+     PV-Monitoring Kachel") - gleiche Klassen/Farben, hier nur auf EINE
+     Ansicht (Tag) statt mehrerer Reiter reduziert (v1, siehe module.php). */
+  html, body { margin: 0; height: 100%; background: transparent; }
+  .wrap { position: relative; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; padding: 14px 12px 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink, #e7ecf3); }
+  body.light .wrap { color: var(--ink, #1c232e); }
+  #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  button.nav:hover { background: rgba(127,135,145,.22); }
+  button.qday { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  button.qday:hover { background: rgba(127,135,145,.22); }
+  button.qday.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
+  #dateLabel { font-size: 13px; font-weight: 700; min-width: 90px; text-align: center; }
+  #title { text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; opacity: .7; margin: 2px 0 10px; }
+  #kpiRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 12px; }
+  .kpi { flex: 0 0 auto; min-width: 92px; padding: 8px 14px; border-radius: 10px; background: rgba(127,135,145,.10); border: 1px solid rgba(127,135,145,.22); text-align: center; }
+  .kpi .val { font-size: 19px; font-weight: 800; line-height: 1.15; }
+  .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; opacity: .65; margin-top: 2px; }
+  #chart { width: 100%; flex: 1 1 auto; min-height: 160px; position: relative; }
+  .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="title">Wärmepumpe</div>
+  <div id="kpiRow"></div>
+  <div id="bar">
+    <button id="prev" class="nav" title="Vorheriger Tag">&#9664;</button>
+    <span id="dateLabel"></span>
+    <button id="next" class="nav" title="Nächster Tag">&#9654;</button>
+    <button id="today" class="qday">Heute</button>
+  </div>
+  <div id="chart"></div>
+  <div id="empty" class="empty" style="display:none"></div>
+</div>
+<script>
+  var lastData = null;
+  var curDay = null; // { start, end } in Sekunden (lokale Tagesgrenzen)
+  var chart = null;
+  var ecReady = false;
+
+  function setTheme(light) {
+    document.body.classList.toggle('light', !!light);
+  }
+  setTheme(false);
+
+  function addScript(src, cb) {
+    var s = document.createElement('script');
+    s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); };
+    document.head.appendChild(s);
+  }
+  // ECharts per CDN nachladen statt lokal einbetten (Dietmar/NRGDashboardMonitor-
+  // Erfahrung, 31.07.2026: eingebettetes ECharts (~618KB) + Zeitreihen-Nutzlast
+  // hat live "Output-Buffer exceeds Limit" ausgeloest) - dieselbe Loesung hier
+  // uebernommen, statt denselben Fehler erneut zu bauen.
+  function ensureECharts(cb) {
+    if (typeof echarts !== 'undefined') { ecReady = true; return cb(); }
+    if (ecReady === 'loading') { return setTimeout(function () { ensureECharts(cb); }, 80); }
+    ecReady = 'loading';
+    addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { ecReady = true; cb(); });
+  }
+
+  function fmtDate(tsSec) {
+    var d = new Date(tsSec * 1000);
+    return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  function renderKpi(kpi) {
+    var rows = [
+      ['copCurrent', 'COP aktuell', ''],
+      ['dailyAz', 'Tages-AZ', ''],
+      ['operationsHours', 'Betriebsstd.', 'h'],
+      ['compressorStarts', 'Starts', ''],
+      ['avgRuntimeMin', 'Ø Laufzeit', 'min']
+    ];
+    var el = document.getElementById('kpiRow');
+    el.innerHTML = '';
+    if (!kpi) { return; }
+    rows.forEach(function (r) {
+      var v = kpi[r[0]];
+      if (v === null || v === undefined) { return; }
+      var box = document.createElement('div');
+      box.className = 'kpi';
+      var val = document.createElement('div');
+      val.className = 'val';
+      val.textContent = (typeof v === 'number' ? v.toLocaleString('de-DE') : v) + (r[2] ? ' ' + r[2] : '');
+      var lbl = document.createElement('div');
+      lbl.className = 'lbl'; lbl.textContent = r[1];
+      box.appendChild(val); box.appendChild(lbl);
+      el.appendChild(box);
+    });
+    // Tages-kWh (Strom/Waerme) haengen am Tagesdatensatz, nicht am kpi-
+    // Objekt (siehe module.php::BuildDay) - separat angehaengt, sofern
+    // vorhanden.
+    if (lastData && lastData.day) {
+      [['electricEnergyKwh', 'kWh Strom'], ['thermalEnergyKwh', 'kWh Wärme']].forEach(function (r) {
+        var v = lastData.day[r[0]];
+        if (v === null || v === undefined) { return; }
+        var box = document.createElement('div');
+        box.className = 'kpi';
+        var val = document.createElement('div');
+        val.className = 'val'; val.textContent = v.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+        var lbl = document.createElement('div');
+        lbl.className = 'lbl'; lbl.textContent = r[1];
+        box.appendChild(val); box.appendChild(lbl);
+        el.appendChild(box);
+      });
+    }
+  }
+
+  function seriesOrEmpty(pts) { return Array.isArray(pts) ? pts : []; }
+
+  function renderChart(day) {
+    if (!day) { return; }
+    ensureECharts(function () {
+      var el = document.getElementById('chart');
+      if (!chart) { chart = echarts.init(el, null, { renderer: 'svg' }); }
+      var markAreas = seriesOrEmpty(day.defrostEpisodes).map(function (ep) {
+        return [{ xAxis: ep[0] }, { xAxis: ep[1] }];
+      });
+      var option = {
+        backgroundColor: 'transparent',
+        textStyle: { color: 'inherit' },
+        grid: { left: 46, right: 46, top: 28, bottom: 34 },
+        legend: { top: 0, textStyle: { color: '#9aa4b0', fontSize: 11 } },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'time', min: day.start, max: day.end, axisLabel: { color: '#9aa4b0' } },
+        yAxis: [
+          { type: 'value', name: 'W', position: 'left', axisLabel: { color: '#9aa4b0' }, splitLine: { lineStyle: { color: 'rgba(127,135,145,.15)' } } },
+          { type: 'value', name: '°C', position: 'right', axisLabel: { color: '#9aa4b0' }, splitLine: { show: false } }
+        ],
+        dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 6 }],
+        series: [
+          { name: 'El. Leistung', type: 'line', showSymbol: false, yAxisIndex: 0, data: seriesOrEmpty(day.electricPower), color: '#E8823C',
+            markArea: markAreas.length ? { itemStyle: { color: 'rgba(74,163,224,.18)' }, data: markAreas } : undefined },
+          { name: 'Therm. Leistung', type: 'line', showSymbol: false, yAxisIndex: 0, data: seriesOrEmpty(day.thermalPower), color: '#E0503C' },
+          { name: 'Vorlauf', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.mainOutletTemp), color: '#e0503c', lineStyle: { type: 'dashed' } },
+          { name: 'Rücklauf', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.mainInletTemp), color: '#4a90d9', lineStyle: { type: 'dashed' } },
+          { name: 'Außentemp.', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.outsideTemp), color: '#5FCB6B', lineStyle: { type: 'dotted' } }
+        ]
+      };
+      chart.setOption(option, true);
+    });
+  }
+
+  function loadDay(startSec, endSec) {
+    curDay = { start: startSec, end: endSec };
+    document.getElementById('dateLabel').textContent = fmtDate(startSec);
+    requestAction('dayWindow', JSON.stringify({ start: startSec, end: endSec }));
+  }
+
+  document.getElementById('prev').addEventListener('click', function () {
+    if (!curDay) { return; }
+    loadDay(curDay.start - 86400, curDay.end - 86400);
+  });
+  document.getElementById('next').addEventListener('click', function () {
+    if (!curDay) { return; }
+    loadDay(curDay.start + 86400, curDay.end + 86400);
+  });
+  document.getElementById('today').addEventListener('click', function () {
+    if (!lastData || !lastData.day) { return; }
+    var todayStart = Math.floor(Date.now() / 1000);
+    todayStart -= todayStart % 86400; // grobe UTC-Naeherung, Server liefert die echte lokale Grenze ohnehin bei jedem Reload neu
+    loadDay(todayStart, todayStart + 86400);
+  });
+
+  function handleMessage(raw) {
+    var d;
+    try { d = JSON.parse(raw); } catch (e) { return; }
+    if (d && d.type === 'dayUpdate') {
+      if (d.day) {
+        lastData.day = d.day;
+        curDay = { start: Math.floor(d.day.start / 1000), end: Math.floor(d.day.end / 1000) };
+        document.getElementById('dateLabel').textContent = fmtDate(curDay.start);
+        renderKpi(lastData.kpi);
+        renderChart(d.day);
+      }
+      return;
+    }
+    lastData = d;
+    var emptyEl = document.getElementById('empty');
+    if (!d || !d.ok) {
+      emptyEl.style.display = '';
+      emptyEl.textContent = (d && d.error) ? d.error : 'Keine Daten.';
+      document.getElementById('kpiRow').innerHTML = '';
+      document.getElementById('chart').innerHTML = '';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    document.getElementById('title').textContent = d.label || 'Wärmepumpe';
+    renderKpi(d.kpi);
+    if (d.day) {
+      curDay = { start: Math.floor(d.day.start / 1000), end: Math.floor(d.day.end / 1000) };
+      document.getElementById('dateLabel').textContent = fmtDate(curDay.start);
+      renderChart(d.day);
+    }
+  }
+
+  window.addEventListener('resize', function () { if (chart) { chart.resize(); } });
+</script>
+</body>
+</html>

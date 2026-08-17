@@ -1,0 +1,15 @@
+{
+  "id": "{86574F22-636A-4208-A252-FEECB20789E9}",
+  "name": "NRGDashboardHeatMonitor",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Wärmepumpen-Monitoring",
+    "Wärmepumpen-Verlauf"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHHEATMON"
+}

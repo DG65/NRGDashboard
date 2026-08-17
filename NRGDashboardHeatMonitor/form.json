@@ -1,0 +1,50 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "caption": "📖 Dokumentation & Hilfe",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile + Tagesansicht), Geschwistermodul zu NRGDashboardMonitor. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
+        },
+        {
+          "type": "Label",
+          "caption": "Fehlt ein Vertragsfeld (z. B. COP oder Außentemperatur bei einer reinen WPHub-Installation), blendet die Kachel die jeweilige Kennzahl/Kurve einfach aus, statt eine Nullanzeige zu zeigen."
+        },
+        {
+          "type": "Label",
+          "caption": "V1: Kennzahlen-Kopfzeile + Tagesansicht. Wochen-/Monats-/Jahresansicht und Detail-Umschalter (Verdichterfrequenz, Durchfluss, WW-Temperatur, Betriebsart-Farbcodierung) folgen als nächster Ausbauschritt."
+        }
+      ]
+    },
+    {
+      "type": "SelectInstance",
+      "name": "HeatpumpInstance",
+      "caption": "Wärmepumpe (leer = automatisch die erste gefundene HeishaMon-/WPHub-Instanz)"
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "Darstellung",
+      "expanded": false,
+      "items": [
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+        },
+        {
+          "type": "CheckBox",
+          "name": "LightTheme",
+          "caption": "Symcon-Oberfläche ist auf Hell gestellt (Symcon bietet der Kachel keine automatische Erkennung an)"
+        }
+      ]
+    }
+  ]
+}
