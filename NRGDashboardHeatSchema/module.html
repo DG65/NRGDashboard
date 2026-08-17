@@ -1381,18 +1381,24 @@ function buildSchema(unit) {
   // Animation ist bereits korrekt ueber toRoom abgeschaltet, siehe
   // oben) - der Chip darauf waere trotzdem weiterhin angezeigt und
   // damit irrefuehrend.
+  // drawValve() statt svg.appendChild(): die Chips werden am Ende erneut
+  // angehaengt und liegen dadurch garantiert ueber JEDER Leitung -
+  // sonst faellt genau das zwischen Waermeerzeuger und Mischer (694)
+  // spaeter noch gezeichnete (Bruecke, Zonenkreise, Mischer, Pumpe)
+  // wieder drueber (Dietmar, 17.08.2026: "Die Chips stehen nicht im
+  // Vordergrund").
   if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    svg.appendChild(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    drawValve(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
   }
   if (toRoom && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    svg.appendChild(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    drawValve(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    svg.appendChild(chip(INNEN_PUF_CX, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    drawValve(chip(INNEN_PUF_CX, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -1403,7 +1409,7 @@ function buildSchema(unit) {
     // y=117 statt 114: gleicher Abstand (25) zum Vorlauf-Chip wie zwischen
     // Vorlauf/ΔT/Ruecklauf untereinander - vorher 28 statt 25 (Dietmar,
     // 14.08.2026).
-    svg.appendChild(chip(INNEN_PUF_CX, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    drawValve(chip(INNEN_PUF_CX, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   // Puffer nur zeichnen, wenn die Anlage tatsaechlich einen hat
