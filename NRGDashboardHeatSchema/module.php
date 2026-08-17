@@ -198,6 +198,14 @@ class NRGDashboardHeatSchema extends IPSModule
             }
         }
 
+        // Bei Monoblock gibt es NIE einen WW-Tank (siehe hasDhwTank in
+        // buildBasePayload) - die beiden zugehoerigen Einstellungen
+        // (Vorhanden-Schalter + Literzahl) dann auch aus der Doppelpfeil-
+        // Ansicht ausblenden, statt sie wirkungslos stehen zu lassen
+        // (Dietmar, 17.08.2026: "wenn man Monoblock ankreuzt, dann kann
+        // auch der WW-Tank in den Einstellmoeglichkeiten verschwinden").
+        $this->ApplyDhwVisibility();
+
         // Simulation (Dietmar, 17.08.2026: "die Buttons fuer die
         // Simulation genauso [hinter den Doppelpfeil]") - dieselben
         // Betriebsmodus-Szenarien wie im lokalen Pruefstand
@@ -269,6 +277,24 @@ class NRGDashboardHeatSchema extends IPSModule
      * sich in IPS nicht entfernen, nur das ganze Profil - deshalb wird es
      * bei jedem Aufruf komplett neu aufgebaut.
      */
+    /**
+     * Blendet die WW-Tank-Einstellungen (Vorhanden-Schalter + Literzahl)
+     * im Objektbaum aus, solange Bauart=Monoblock ist - dort gibt es nie
+     * einen WW-Tank, siehe hasDhwTank in buildBasePayload() (Dietmar,
+     * 17.08.2026: "wenn man Monoblock ankreuzt, dann kann auch der
+     * WW-Tank in den Einstellmoeglichkeiten verschwinden").
+     */
+    private function ApplyDhwVisibility(): void
+    {
+        $monoblock = ((int) $this->GetValue('Bauart')) === 1;
+        foreach (['HasDhwTank', 'DhwLiters'] as $ident) {
+            $id = @IPS_GetObjectIDByIdent($ident, $this->InstanceID);
+            if ($id !== false) {
+                IPS_SetHidden($id, $monoblock);
+            }
+        }
+    }
+
     private function ApplySimulationProfile(): void
     {
         $profile = 'NRGDASHHEAT.SimulationMode.' . $this->InstanceID;
@@ -337,10 +363,11 @@ class NRGDashboardHeatSchema extends IPSModule
         if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed', 'Bauart', 'BufferLiters', 'DhwLiters', 'SimulationMode'], true)) {
             $this->SetValue($Ident, (int) $Value);
             if ($Ident === 'Bauart') {
-                // Simulation-Optionen haengen von der Bauart ab (siehe
-                // ApplySimulationProfile()) - bei einem Wechsel sofort
-                // neu aufbauen, statt erst beim naechsten Kernelstart.
+                // Simulation-Optionen und WW-Tank-Sichtbarkeit haengen
+                // von der Bauart ab - bei einem Wechsel sofort neu
+                // aufbauen, statt erst beim naechsten Kernelstart.
                 $this->ApplySimulationProfile();
+                $this->ApplyDhwVisibility();
             }
             $this->Render();
             return;
