@@ -11,7 +11,12 @@ declare(strict_types=1);
  * Datenquelle hergibt, die restlichen optionalen Felder bleiben 0/leer.
  * Kein Modul (auch nicht HeishaMon) wird vorausgesetzt - reine
  * WPHub-Installationen ohne Zusatzplatine zeigen nur die Basisfelder
- * (elektrische Leistung, sofern gemessen), kein Rohrschema.
+ * (elektrische Leistung, sofern gemessen), kein Rohrschema. Wer weder
+ * HeishaMon noch WPHub hat, kann im Formular unter "Manuelle
+ * Datenanbindung" eigene, bereits vorhandene IPS-Variablen auf dieselben
+ * Vertragsfelder verknuepfen (siehe buildManualHeatpumpEntry()) - der
+ * manuelle Eintrag durchlaeuft danach denselben Mapping-Code wie jede
+ * andere Quelle.
  *
  * Optionale Felder (contractVersion 1.3, mit HeishaMon abgestimmt, additiv
  * versioniert): pumpFlowID (l/min), pumpSpeedID (U/min), pumpDutyID
@@ -31,6 +36,40 @@ class NRGDashboardHeatSchema extends IPSModule
     private const WPHUB_GUID = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
     private const METERHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
 
+    // Manuelle Datenanbindung (Dietmar, 17.08.2026): Vertragsfeld =>
+    // Property-Name. Deckt GENAU dieselben *ID-Felder ab, die
+    // DiscoverHeatpumps() auch von HeishaMon/WPHub liest (siehe
+    // buildPayload()) - ein manuell verknuepfter Eintrag durchlaeuft
+    // danach denselben Mapping-Code wie jeder andere Vertragslieferant.
+    private const MANUAL_FIELDS = [
+        'PowerID'                 => 'ManualPowerID',
+        'pumpFlowID'              => 'ManualPumpFlowID',
+        'pumpSpeedID'             => 'ManualPumpSpeedID',
+        'pumpDutyID'              => 'ManualPumpDutyID',
+        'threeWayValveStateID'    => 'ManualThreeWayValveStateID',
+        'twoWayValveStateID'      => 'ManualTwoWayValveStateID',
+        'mainInletTempID'         => 'ManualMainInletTempID',
+        'mainOutletTempID'        => 'ManualMainOutletTempID',
+        'z1WaterTempID'           => 'ManualZ1WaterTempID',
+        'z2WaterTempID'           => 'ManualZ2WaterTempID',
+        'dhwTempID'               => 'ManualDhwTempID',
+        'bufferTempID'            => 'ManualBufferTempID',
+        'compressorFreqID'        => 'ManualCompressorFreqID',
+        'dischargeTempID'         => 'ManualDischargeTempID',
+        'defrostingStateID'       => 'ManualDefrostingStateID',
+        'fan1SpeedID'             => 'ManualFan1SpeedID',
+        'suctionTempID'           => 'ManualSuctionTempID',
+        'z1PumpID'                => 'ManualZ1PumpID',
+        'z1MixingValveID'         => 'ManualZ1MixingValveID',
+        'z1MixingValvePositionID' => 'ManualZ1MixingValvePositionID',
+        'z2PumpID'                => 'ManualZ2PumpID',
+        'z2MixingValveID'         => 'ManualZ2MixingValveID',
+        'z2MixingValvePositionID' => 'ManualZ2MixingValvePositionID',
+        'indoorPipeTempID'        => 'ManualIndoorPipeTempID',
+        'operatingModeNormID'     => 'ManualOperatingModeNormID',
+        'operatingModeID'         => 'ManualOperatingModeID',
+    ];
+
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
 
@@ -49,6 +88,23 @@ class NRGDashboardHeatSchema extends IPSModule
         // die Heizflaechen unterscheiden sich von Anlage zu Anlage.
         $this->RegisterPropertyString('Zone1Caption', '');
         $this->RegisterPropertyString('Zone2Caption', '');
+        // Manuelle Datenanbindung fuer Waermepumpen OHNE HeishaMon/WPHub
+        // (Dietmar, 17.08.2026: "Diese Hydraulikschemen, die sollten
+        // natuerlich auch anderen zur Verfuegung stehen die keine
+        // HeishaMon haben ... manuell einzurichtende Datenpunkte ... die
+        // man mit etwas anderem verbinden kann") - ein zusaetzlicher
+        // Eintrag im 'heatpump'-Vertrag (siehe DiscoverHeatpumps()),
+        // dessen *ID-Felder auf beliebige, bereits vorhandene IPS-
+        // Variablen verweisen statt auf ein liefendes Erzeuger-Modul.
+        // SelectVariable-Formularelemente gibt es nur im Formular
+        // (Admin-Konsole), nicht als Instanz-Variable mit EnableAction -
+        // deshalb bewusst Form-Properties statt Doppelpfeil-Variablen,
+        // anders als Bauart/Puffer/WW-Tank/Simulation oben.
+        $this->RegisterPropertyBoolean('ManualEnabled', false);
+        $this->RegisterPropertyString('ManualCaption', '');
+        foreach (self::MANUAL_FIELDS as $propertyName) {
+            $this->RegisterPropertyInteger($propertyName, 0);
+        }
         // Heizkoerper und Fussbodenheizung je Kreis unabhaengig ein-
         // /ausblendbar (Dietmar, 16.08.2026: "manche haben nur
         // Fussbodenheizung ... auch in den Versionen mit nur einem HK
@@ -423,7 +479,34 @@ class NRGDashboardHeatSchema extends IPSModule
                 }
             }
         }
+        $manual = $this->buildManualHeatpumpEntry();
+        if ($manual !== null) {
+            $entries[] = $manual;
+        }
         return $entries;
+    }
+
+    /**
+     * Manuell verknuepfter 'heatpump'-Eintrag (Dietmar, 17.08.2026) - fuer
+     * Anlagen ohne HeishaMon/WPHub. ADDITIV zur Auto-Erkennung (nicht
+     * exklusiv): wer keines der beiden Module hat, bekommt genau diesen
+     * einen Eintrag; wer zusaetzlich manuell eine zweite Waermepumpe
+     * einbinden will, kann das ebenso tun.
+     */
+    private function buildManualHeatpumpEntry(): ?array
+    {
+        if (!$this->ReadPropertyBoolean('ManualEnabled')) {
+            return null;
+        }
+        $e = [
+            '_instanceID' => $this->InstanceID,
+            'Caption'     => $this->ReadPropertyString('ManualCaption') ?: 'Wärmepumpe (manuell)',
+            'Measured'    => $this->ReadPropertyInteger('ManualPowerID') > 0,
+        ];
+        foreach (self::MANUAL_FIELDS as $contractKey => $propertyName) {
+            $e[$contractKey] = $this->ReadPropertyInteger($propertyName);
+        }
+        return $e;
     }
 
     private function ResolveMeterHubPower(): array
@@ -507,7 +590,7 @@ class NRGDashboardHeatSchema extends IPSModule
         if (count($heatpumps) === 0) {
             return [
                 'ok'    => false,
-                'error' => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren.',
+                'error' => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren, oder im Formular unter "Manuelle Datenanbindung" eigene Variablen verknüpfen.',
             ];
         }
         $meterhubPower = $this->ResolveMeterHubPower();

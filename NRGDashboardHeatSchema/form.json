@@ -12,6 +12,185 @@
         {
           "type": "Label",
           "caption": "Liefert die jeweilige Datenquelle keine Pumpen-/Ventil-/Durchfluss-Werte (z. B. reine WPHub-Installation ohne HeishaMon-Zusatzplatine), zeigt die Kachel nur die Basiswerte (elektrische Leistung) statt eines unvollständigen Rohrschemas."
+        },
+        {
+          "type": "Label",
+          "caption": "Weder HeishaMon noch WPHub? Unter „Manuelle Datenanbindung“ weiter unten lassen sich eigene, bereits vorhandene Variablen auf dieselben Felder verknüpfen."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "caption": "🔌 Manuelle Datenanbindung (ohne HeishaMon/WPHub)",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Für Wärmepumpen ohne HeishaMon/WPHub: eigene, bereits vorhandene Variablen (z. B. aus einem Modbus-Modul oder eigenen Skripten) auf die Felder dieses Schemas verknüpfen. Zusätzlich zur Auto-Erkennung nutzbar - nicht nur als Ersatz."
+        },
+        {
+          "type": "CheckBox",
+          "name": "ManualEnabled",
+          "caption": "Manuell verknüpfte Wärmepumpe anzeigen"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "ManualCaption",
+          "caption": "Bezeichnung (leer = „Wärmepumpe (manuell)“)"
+        },
+        {
+          "type": "Label",
+          "caption": "Leistung/Verdichter"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualPowerID",
+          "caption": "Elektrische Leistung (W)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualCompressorFreqID",
+          "caption": "Verdichterfrequenz (Hz)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualFan1SpeedID",
+          "caption": "Lüfterdrehzahl (U/min)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualDischargeTempID",
+          "caption": "Heißgastemperatur (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualSuctionTempID",
+          "caption": "Sauggastemperatur (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualDefrostingStateID",
+          "caption": "Abtaubetrieb aktiv (bool)"
+        },
+        {
+          "type": "Label",
+          "caption": "Hauptkreis (Vor-/Rücklauf, Pumpe, Ventile)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualMainOutletTempID",
+          "caption": "Vorlauftemperatur (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualMainInletTempID",
+          "caption": "Rücklauftemperatur (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualPumpFlowID",
+          "caption": "Durchfluss (l/min)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualPumpSpeedID",
+          "caption": "Pumpendrehzahl (U/min)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualPumpDutyID",
+          "caption": "Pumpenleistung (Rohwert)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualThreeWayValveStateID",
+          "caption": "3-Wege-Ventil (0=Raum/1=Warmwasser)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualTwoWayValveStateID",
+          "caption": "2-Wege-Ventil offen (bool)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualOperatingModeNormID",
+          "caption": "Betriebsart, NRG-Stack-Enum (0=Standby/1=Heizen/2=Kühlen/3=WW/4=Heizen+WW/5=Kühlen+WW/-1=unbekannt)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualOperatingModeID",
+          "caption": "Betriebsart, Rohwert des Herstellers (optional, nur Diagnose)"
+        },
+        {
+          "type": "Label",
+          "caption": "Warmwasser und Puffer"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualDhwTempID",
+          "caption": "Warmwasser-Tank-Temperatur (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualBufferTempID",
+          "caption": "Pufferspeicher-Temperatur (°C)"
+        },
+        {
+          "type": "Label",
+          "caption": "Heizkreis 1"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ1WaterTempID",
+          "caption": "Vorlauftemperatur Heizkreis 1 (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ1PumpID",
+          "caption": "Pumpe Heizkreis 1 an (bool)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ1MixingValveID",
+          "caption": "Mischventil Heizkreis 1, Stellrichtung (0=Aus/1=Zu/2=Auf)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ1MixingValvePositionID",
+          "caption": "Mischventil Heizkreis 1, Stellung in % (optional)"
+        },
+        {
+          "type": "Label",
+          "caption": "Heizkreis 2 (optional - nur wenn vorhanden)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ2WaterTempID",
+          "caption": "Vorlauftemperatur Heizkreis 2 (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ2PumpID",
+          "caption": "Pumpe Heizkreis 2 an (bool)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ2MixingValveID",
+          "caption": "Mischventil Heizkreis 2, Stellrichtung (0=Aus/1=Zu/2=Auf)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualZ2MixingValvePositionID",
+          "caption": "Mischventil Heizkreis 2, Stellung in % (optional)"
+        },
+        {
+          "type": "Label",
+          "caption": "Sonstiges"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualIndoorPipeTempID",
+          "caption": "Rohrtemperatur Innengerät/Verdampfer (°C, optional)"
         }
       ]
     },
