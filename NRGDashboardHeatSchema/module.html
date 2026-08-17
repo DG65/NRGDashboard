@@ -572,11 +572,17 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed, contentW) {
   blades.appendChild(el('circle', { cx: 0, cy: 0, r: 2, fill: PAL.blade }));
   bladesWrap.appendChild(blades);
   g.appendChild(bladesWrap);
-  // Lamellengitter ueber dem Lueferbereich (linke ~72% der Front)
-  var grilleR = x + contentW * 0.72;
+  // Lamellengitter ZENTRIERT ueber dem Luefter (Dietmar, 17.08.2026: "der
+  // Gitterrost vor dem Ventilator ... sollte in allen Darstellungen
+  // zentriert auf dem Ventilator sitzen") - vorher an der Geraetekante
+  // (x+6) bis zu einem festen Breitenanteil (contentW*0.72) verankert,
+  // was nur zufaellig ungefaehr mittig zum Luefter lag statt es
+  // garantiert zu sein.
+  var grilleHalfW = fanR + 6;
+  var grilleL = fanCx - grilleHalfW, grilleR = fanCx + grilleHalfW;
   var lam = '';
   for (var ly = y + 8; ly < y + h - 6; ly += 6) {
-    lam += 'M' + (x + 6) + ',' + ly + ' L' + grilleR + ',' + ly + ' ';
+    lam += 'M' + grilleL + ',' + ly + ' L' + grilleR + ',' + ly + ' ';
   }
   g.appendChild(el('path', { d: lam, fill: 'none', stroke: C, 'stroke-width': 0.8, opacity: 0.75 }));
   // Rechte Spalte: Luftschlitze
