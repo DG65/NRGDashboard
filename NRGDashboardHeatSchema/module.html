@@ -1380,7 +1380,14 @@ function buildSchema(unit) {
   // Sanitaerseite (Dusche/Badewanne ab y~244), ohne WW-Tank ist dort bis
   // weit nach unten frei Platz.
   var pufScaleW = Math.max(0.75, Math.min(pufScale, (615 - PUF_LEFT) / PUF_W_BASE));
-  var pufTopMin = 60, pufBottomMax = hasDhwTank ? 235 : 440;
+  // 60 kollidierte noch mit dem Betriebszustand-Chip (fix bei y=25, Hoehe
+  // 19) - dessen Unterkante liegt bei 34,5, die Puffer-Temperatur-Chip
+  // (PUF_TOP-20, ebenfalls Hoehe 19, Oberkante also PUF_TOP-29,5) beruehrte
+  // sie bei PUF_TOP=60 fast (Oberkante 30,5). 30px weiter (90) schafft
+  // echten Abstand (Dietmar, 17.08.2026: "Der Temperatur Chip kollidiert
+  // nun mit dem Betriebsmodus Chip. Du musst den Puffer etwa 30 px
+  // kleiner machen und das wäre dann die maximal Größe!").
+  var pufTopMin = 90, pufBottomMax = hasDhwTank ? 235 : 440;
   var pufScaleH = Math.max(0.75, Math.min(
     pufScale,
     (PUF_CENTER_Y - pufTopMin) / (PUF_H_BASE / 2),
