@@ -1578,19 +1578,19 @@ function buildSchema(unit) {
   // spaeter noch gezeichnete (Bruecke, Zonenkreise, Mischer, Pumpe)
   // wieder drueber (Dietmar, 17.08.2026: "Die Chips stehen nicht im
   // Vordergrund").
-  // Chip-Stapel Kaelteleistung/Vorlauf/ΔT/Ruecklauf/Durchfluss: 12px
-  // hoeher begonnen (105 statt 117) als vorher, damit der unterste
-  // Durchfluss-Chip (jetzt 205 statt 217) mehr Abstand zur "Warmwasser"-
-  // Beschriftung (y=236) bekommt - vorher nur 9,5px Luecke, siehe
-  // Begruendung bei der Durchfluss-Chip-Einfuehrung unten (Dietmar,
-  // 18.08.2026: "Kaelteleistung-Chip muss so weit nach oben wandern,
-  // dass der Durchflusschip unterhalb bleibt" - Reihenfolge/25px-Rhythmus
-  // bleiben dabei unveraendert, nur der ganze Block ruckt als Ganzes hoch).
-  // Die vier Chips UNTERHALB der Kaelteleistung (Vorlauf/ΔT/Ruecklauf/
-  // Durchfluss) bekommen zusaetzlich eine GEMEINSAME Breite (Dietmar,
-  // 18.08.2026: "muessen gleich breit sein") - das laengste Label
-  // ("ΔT X,XK" oder "XX,Xl/min") bestimmt die Breite fuer alle vier,
-  // statt dass jeder Chip einzeln an seinem eigenen Text schrumpft.
+  // Chip-Stapel (Dietmar, 18.08.2026, zweite Runde): der 12px-Hochschub
+  // des GESAMTEN Stapels wird zurueckgenommen - Vorlauf/ΔT/Ruecklauf
+  // bleiben wieder exakt auf ihrem urspruenglichen 25px-Rhythmus (142/
+  // 167/192), UNVERAENDERT. Stattdessen wandert nur der Durchfluss-Chip
+  // ("Durchflussmenge") an die 2. Position von oben (auf den Platz, den
+  // die Kaelteleistung/therm.-Leistung bisher belegte, y=117) und die
+  // Kaelteleistung selbst (samt Beschriftung) rueckt einen weiteren
+  // 25px-Schritt hoeher (y=92) - schafft den noetigen Abstand zur
+  // "Warmwasser"-Beschriftung ueber die Neu-Anordnung statt ueber ein
+  // pauschales Verschieben des gesamten Blocks.
+  // Die vier Chips Durchfluss/Vorlauf/ΔT/Ruecklauf bekommen weiterhin
+  // eine GEMEINSAME Breite (Dietmar, 18.08.2026: "muessen gleich breit
+  // sein") - das laengste Label bestimmt die Breite fuer alle vier.
   var flowChipLabels = [];
   if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
     flowChipLabels.push(fmtTemp1(unit.mainOutletTemp) + ' °C');
@@ -1607,39 +1607,40 @@ function buildSchema(unit) {
   var flowChipW = flowChipLabels.reduce(function (w, label) { return Math.max(w, label.length * 6.8 + 14); }, 44);
 
   if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 130, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null, false, flowChipW));
+    drawValve(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null, false, flowChipW));
   }
   if (toRoom && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 180, fmtTemp1(unit.mainInletTemp), '°C', RETC, null, false, flowChipW));
+    drawValve(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null, false, flowChipW));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    drawValve(chip(INNEN_PUF_CX, 155, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null, false, flowChipW));
+    drawValve(chip(INNEN_PUF_CX, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null, false, flowChipW));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
   // therm.". Nur bei realem Umlauf (Durchfluss > 0) angezeigt, sonst
-  // waere die Rechnung Rauschen.
+  // waere die Rechnung Rauschen. y=92: einen 25px-Schritt oberhalb des
+  // an den Durchfluss abgetretenen alten Platzes (117), siehe oben.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    drawValve(chip(INNEN_PUF_CX, 105, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    drawValve(chip(INNEN_PUF_CX, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   // Volumenstrom bisher nur klein in der Innengeraet-Tabelle ("Pumpe X
-  // l/min") - jetzt zusaetzlich als eigener Chip direkt auf der Leitung,
-  // im selben 25px-Rhythmus unter dem Ruecklauf-Chip (Dietmar,
-  // 17.08.2026: "Den Volumenstrom könntest du auch noch in die
-  // Darstellung bauen"). Unabhaengig von toRoom/haveVLRL gezeigt - der
+  // l/min") - jetzt zusaetzlich als eigener Chip direkt auf der Leitung.
+  // y=117: 2. Position von oben (Dietmar, 18.08.2026), auf dem frei
+  // gewordenen alten Kaelteleistung-Platz - nicht mehr unter dem
+  // Ruecklauf-Chip. Unabhaengig von toRoom/haveVLRL gezeigt - der
   // Durchfluss selbst ist auch im Warmwasserbetrieb eine echte Messung,
   // anders als die Vor-/Ruecklauftemperatur-Chips (siehe Begruendung bei
   // INNEN_PUF_CX weiter oben).
   // OHNE Tag (wie Vorlauf/Ruecklauf) - die Einheit "l/min" macht den
   // Volumenstrom bereits eindeutig.
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 205, fmtTemp1(unit.pumpFlow), 'l/min', SUPC, null, false, flowChipW));
+    drawValve(chip(INNEN_PUF_CX, 117, fmtTemp1(unit.pumpFlow), 'l/min', SUPC, null, false, flowChipW));
   }
   // Puffer nur zeichnen, wenn die Anlage tatsaechlich einen hat
   // (Dietmar, 17.08.2026: "manche Waermepumpen haben einen groesseren
