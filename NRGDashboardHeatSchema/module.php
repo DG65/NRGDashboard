@@ -533,7 +533,7 @@ class NRGDashboardHeatSchema extends IPSModule
      * ModuleID). Reale elektrische Leistung kommt bevorzugt aus dem Vertrag
      * selbst (Measured=true); ist dort keine echte Messung hinterlegt, wird
      * zusaetzlich ueber MeterHub (function==='heatpump', bevorzugt
-     * authority='billing') gemerged - Muster: NRGDashboardMonitor::
+     * authority='billing') gemerged - Muster: NRGDashboardPVMonitor::
      * GridPowerID(), MeterHubs eigener Vorschlag vom 13.08.2026 (Merge beim
      * Konsumenten statt Kopplung zwischen den Erzeuger-Modulen).
      */

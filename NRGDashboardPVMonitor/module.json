@@ -1,6 +1,6 @@
 {
   "id": "{E1A674D1-F48F-492D-B172-F8B9390BFEB3}",
-  "name": "NRGDashboardMonitor",
+  "name": "NRGDashboardPVMonitor",
   "type": 3,
   "vendor": "",
   "aliases": [
@@ -11,5 +11,5 @@
   "parentRequirements": [],
   "childRequirements": [],
   "implemented": [],
-  "prefix": "NRGDASHMON"
+  "prefix": "NRGDASHPVMON"
 }

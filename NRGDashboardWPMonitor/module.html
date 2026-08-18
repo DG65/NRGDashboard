@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* Bar/Grundgeruest UND Theme-Handling 1:1 aus NRGDashboardMonitor
+  /* Bar/Grundgeruest UND Theme-Handling 1:1 aus NRGDashboardPVMonitor
      uebernommen (Dietmar, 17.08.2026: "Orientiere Dich bitte visuell an
      die andere Monitoring Kachel") - selbe Klassennamen, selbe Farben/
      Radien, kein eigenes "Kartenlook" erfunden. padding-top:52px ist KEIN
@@ -58,12 +58,12 @@
 <script>
   var lastData = null;
   var curDay = null; // { start, end } in Sekunden (lokale Tagesgrenzen)
-  var curType = 'day'; // day | week | month | year - wie NRGDashboardMonitor's #type-Select
+  var curType = 'day'; // day | week | month | year - wie NRGDashboardPVMonitor's #type-Select
   var curPeriod = null; // { type, start, end } in Sekunden, fuer Woche/Monat/Jahr
   var chart = null;
   var ecReady = false;
 
-  // Theme-Handling 1:1 NRGDashboardMonitor::isLightTheme()/themeLabelColor()/
+  // Theme-Handling 1:1 NRGDashboardPVMonitor::isLightTheme()/themeLabelColor()/
   // themeAxisStyle() (Dietmar, 31.07.2026 dort: Symcon bietet einer Kachel
   // KEINEN Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - deshalb die
   // Property "LightTheme", nicht prefers-color-scheme). GRID_COLOR bleibt
@@ -81,7 +81,7 @@
     s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); };
     document.head.appendChild(s);
   }
-  // ECharts per CDN nachladen statt lokal einbetten (Dietmar/NRGDashboardMonitor-
+  // ECharts per CDN nachladen statt lokal einbetten (Dietmar/NRGDashboardPVMonitor-
   // Erfahrung, 31.07.2026: eingebettetes ECharts (~618KB) + Zeitreihen-Nutzlast
   // hat live "Output-Buffer exceeds Limit" ausgeloest) - dieselbe Loesung hier
   // uebernommen, statt denselben Fehler erneut zu bauen.

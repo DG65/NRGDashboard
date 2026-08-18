@@ -1,6 +1,6 @@
 {
   "id": "{86574F22-636A-4208-A252-FEECB20789E9}",
-  "name": "NRGDashboardHeatMonitor",
+  "name": "NRGDashboardWPMonitor",
   "type": 3,
   "vendor": "",
   "aliases": [
@@ -11,5 +11,5 @@
   "parentRequirements": [],
   "childRequirements": [],
   "implemented": [],
-  "prefix": "NRGDASHHEATMON"
+  "prefix": "NRGDASHWPMON"
 }

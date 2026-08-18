@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 /**
- * NRGDashboardHeatMonitor - Verlaufs-/Diagnose-Kachel fuer die Waermepumpe,
- * Geschwistermodul zu NRGDashboardMonitor (PV/Batterie/Netz) - gleiche
+ * NRGDashboardWPMonitor - Verlaufs-/Diagnose-Kachel fuer die Waermepumpe,
+ * Geschwistermodul zu NRGDashboardPVMonitor (PV/Batterie/Netz) - gleiche
  * Optik/UX-Konvention (Datumsleiste, ECharts, Kennzahlen-Kopfzeile), siehe
- * NRGDashboardMonitor::module.html fuer die uebernommenen CSS-Klassen
+ * NRGDashboardPVMonitor::module.html fuer die uebernommenen CSS-Klassen
  * (Dietmar, 17.08.2026: "eine weitere Monitoring Kachel in der Form und im
  * Aussehen von der vorhandenen PV-Monitoring Kachel").
  *
@@ -28,7 +28,7 @@ declare(strict_types=1);
  * WW-Temp, Betriebsart-Farbcodierung) sind bewusst noch nicht gebaut -
  * naechster Ausbauschritt.
  */
-class NRGDashboardHeatMonitor extends IPSModule
+class NRGDashboardWPMonitor extends IPSModule
 {
     private const HEISHA_GUID  = '{1919151A-3C0F-4C09-B906-291638EC1469}';
     private const WPHUB_GUID   = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
@@ -70,7 +70,7 @@ class NRGDashboardHeatMonitor extends IPSModule
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
 
-        $this->RegisterTimer('Refresh', 0, 'NRGDASHHEATMON_Render($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('Refresh', 0, 'NRGDASHWPMON_Render($_IPS[\'TARGET\']);');
     }
 
     public function ApplyChanges()
@@ -102,7 +102,7 @@ class NRGDashboardHeatMonitor extends IPSModule
                 'items' => [
                     ['type' => 'Label', 'caption' => '🧪 NRG-Stack Dashboard ist Beta — Rückmeldungen sind willkommen:'],
                     ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
-                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHHEATMON_DismissReviewHint($id);'],
+                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -134,7 +134,7 @@ class NRGDashboardHeatMonitor extends IPSModule
         foreach (self::NEWS_ITEMS as $line) {
             $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEATMON_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_AckNews($id);'];
         return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
     }
 
@@ -226,7 +226,7 @@ class NRGDashboardHeatMonitor extends IPSModule
         return $entries[0];
     }
 
-    // 1:1 NRGDashboardMonitor::ColorOrEmpty()/FontStack() - dieselbe
+    // 1:1 NRGDashboardPVMonitor::ColorOrEmpty()/FontStack() - dieselbe
     // Darstellungs-Konvention (Hintergrundfarbe/Schriftart aus den
     // Formular-Properties in den Payload, module.html wendet sie an).
     private function ColorOrEmpty(int $v): string
@@ -268,7 +268,7 @@ class NRGDashboardHeatMonitor extends IPSModule
 
     /**
      * 5-Minuten-Zeitreihe (Mittelwert je Bucket), [[tsMs, value],...] -
-     * 1:1 Muster NRGDashboardMonitor::DaySeries().
+     * 1:1 Muster NRGDashboardPVMonitor::DaySeries().
      */
     private function DaySeries(int $aid, int $vid, int $start, int $end): array
     {
@@ -319,7 +319,7 @@ class NRGDashboardHeatMonitor extends IPSModule
     /**
      * Leistungs-Zeitreihe zu kWh aufintegriert (nur positive Anteile,
      * Leistung ist hier immer eine Bezugsgroesse) - Muster
-     * NRGDashboardMonitor::PowerToEnergy().
+     * NRGDashboardPVMonitor::PowerToEnergy().
      */
     private function PowerToEnergy(int $aid, int $vid, int $start, int $end): float
     {
@@ -338,7 +338,7 @@ class NRGDashboardHeatMonitor extends IPSModule
 
     /**
      * Tages-kWh-Karte (Datum => kWh), 1:1 Muster
-     * NRGDashboardMonitor::DailyEnergyMap() - ein einziger AC-Aufruf ueber
+     * NRGDashboardPVMonitor::DailyEnergyMap() - ein einziger AC-Aufruf ueber
      * SPAN_YEARS Jahre, danach in BuildPeriod() lokal auf den gewuenschten
      * Zeitraum eingeschraenkt (Woche/Monat als Tagesbalken).
      */
@@ -366,7 +366,7 @@ class NRGDashboardHeatMonitor extends IPSModule
     /**
      * Reiner Tages-Mittelwert (kein Energie-Hochrechnungs-Kunstgriff wie
      * DailyEnergyMap) - fuer nicht-energetische Groessen wie Aussentemp,
-     * 1:1 Muster NRGDashboardMonitor::DailyAverageMap().
+     * 1:1 Muster NRGDashboardPVMonitor::DailyAverageMap().
      */
     private function DailyAverageMap(int $aid, int $vid): array
     {
@@ -422,9 +422,9 @@ class NRGDashboardHeatMonitor extends IPSModule
      * Monats-kWh-Karte ('Y-m' => kWh) fuer die Jahresansicht -
      * coverage-bewusste Hochrechnung mit den tatsaechlich abgedeckten
      * Stunden statt der vollen Kalendertage, sonst wird ein noch laufender
-     * Monat massiv ueberschaetzt (realer Fund in NRGDashboardMonitor,
+     * Monat massiv ueberschaetzt (realer Fund in NRGDashboardPVMonitor,
      * 05.08.2026: August zeigte 1325 statt ~299 kWh) - 1:1 Muster
-     * NRGDashboardMonitor::MonthlyEnergyMap().
+     * NRGDashboardPVMonitor::MonthlyEnergyMap().
      */
     private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
     {
@@ -617,7 +617,7 @@ class NRGDashboardHeatMonitor extends IPSModule
         return [
             'ok'         => true,
             'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
-            // Wie NRGDashboardMonitor: Symcon bietet einer Kachel keinen
+            // Wie NRGDashboardPVMonitor: Symcon bietet einer Kachel keinen
             // Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - der Nutzer
             // setzt es einmalig selbst (Formular "Darstellung").
             'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),

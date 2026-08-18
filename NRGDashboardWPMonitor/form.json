@@ -7,7 +7,7 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile + Tagesansicht), Geschwistermodul zu NRGDashboardMonitor. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
+          "caption": "Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile + Tagesansicht), Geschwistermodul zu NRGDashboardPVMonitor. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
         },
         {
           "type": "Label",

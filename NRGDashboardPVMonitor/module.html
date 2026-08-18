@@ -379,7 +379,7 @@
     // Legenden-Sichtbarkeit je Kurvenname - bleibt ueber Reiter-/Tageswechsel
     // UND ueber ein Neuladen der Kachel erhalten (localStorage), Muster:
     // InverterHubMonitor. Namensraum je Instanz (uid), damit mehrere
-    // NRGDashboardMonitor-Kacheln sich nicht gegenseitig beeinflussen.
+    // NRGDashboardPVMonitor-Kacheln sich nicht gegenseitig beeinflussen.
     var vis = {}, visKey = null, visLoaded = false;
     function isVisible(name) { return vis[name] !== false; }
     function loadVis() {

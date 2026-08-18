@@ -25,7 +25,7 @@ define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}'
 define('NRGDASH_GUID_STROMGEDACHT',   '{D5A8C3A1-2222-4A55-8888-123456789003}');
 define('NRGDASH_GUID_PVPROGNOSE',     '{257DD4E8-9705-462E-89FC-56D0A1038353}');
 define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
-// Schwester-Kachel im selben Repo (NRGDashboardMonitor) - fuer den
+// Schwester-Kachel im selben Repo (NRGDashboardPVMonitor) - fuer den
 // IrradianceID-Rueckfall (Dietmar, 29.07.2026: "Einstrahlungswerte nicht
 // mehr als einmal irgendwo eintragen").
 define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
@@ -1565,7 +1565,7 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Eigene Property gewinnt; sonst - bei genau einer NRGDashboardMonitor-
+     * Eigene Property gewinnt; sonst - bei genau einer NRGDashboardPVMonitor-
      * Instanz - deren "IrradianceID" mitlesen (Dietmar, 29.07.2026: "möchte
      * Einstrahlungswerte nicht mehr als einmal irgendwo eintragen"). Direktes
      * Lesen einer Schwester-Instanz-Property ist hier bewusst in Ordnung -
@@ -1596,7 +1596,7 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Rekursive Ident-Suche (Muster: NRGDashboardMonitor::FindVarByIdent(),
+     * Rekursive Ident-Suche (Muster: NRGDashboardPVMonitor::FindVarByIdent(),
      * 1:1 uebernommen) - IPS_GetObjectIDByIdent findet nur DIREKTE Kinder,
      * InverterHubs Treiber verschieben ihre Variablen aber sofort nach
      * Anlage in fachliche Unterkategorien (z.B. "PV / MPPT").

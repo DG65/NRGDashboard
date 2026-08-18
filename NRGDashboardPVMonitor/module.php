@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * NRGDashboardMonitor - Zeitreihen-Kachel (Phase 3 des NRGDashboard-Verbunds).
+ * NRGDashboardPVMonitor - Zeitreihen-Kachel (Phase 3 des NRGDashboard-Verbunds).
  * Übergabe von InverterHubMonitor (25.-27.07.2026): Diagnose-Logik bleibt bei
  * InverterHub (siehe NRGDashboardTile::discoverDiagnostics()), die
  * Zeitreihen-DARSTELLUNG wandert hierher. InverterHubMonitor bleibt parallel
@@ -16,7 +16,7 @@ declare(strict_types=1);
  * folgen in weiteren Runden - bewusst nicht in einem Schritt, um jede Stufe
  * live verifizieren zu können (Verbund-Arbeitsweise dieser Sitzung).
  */
-class NRGDashboardMonitor extends IPSModule
+class NRGDashboardPVMonitor extends IPSModule
 {
     private const ARCHIVE_GUID     = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const PVF_GUID         = '{257DD4E8-9705-462E-89FC-56D0A1038353}';
@@ -90,7 +90,7 @@ class NRGDashboardMonitor extends IPSModule
         // Vorrang). Format: {"2025": {"1": 436.0, "2": 464.94, ...}}.
         $this->RegisterAttributeString('ManualHistory', '{}');
 
-        $this->RegisterTimer('Refresh', 0, 'NRGDASHMON_Render($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('Refresh', 0, 'NRGDASHPVMON_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
 
@@ -129,7 +129,7 @@ class NRGDashboardMonitor extends IPSModule
                 'items' => [
                     ['type' => 'Label', 'caption' => '🧪 NRG Dashboard Monitoring ist Beta — Rückmeldungen sind willkommen:'],
                     ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
-                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHMON_DismissReviewHint($id);'],
+                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -161,7 +161,7 @@ class NRGDashboardMonitor extends IPSModule
         foreach (self::NEWS_ITEMS as $line) {
             $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMON_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckNews($id);'];
         return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
     }
 

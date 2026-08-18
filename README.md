@@ -564,7 +564,7 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   übergab proaktiv die vollständige Spezifikation der eigenen
   `InverterHubMonitor`-Kachel (Übergabeziel: Diagnose-Logik bleibt bei
   InverterHub, die Zeitreihen-**Darstellung** wandert zu NRGDashboard).
-  Neues Modul **`NRGDashboardMonitor`** (eigene GUID/Prefix `NRGDASHMON`,
+  Neues Modul **`NRGDashboardPVMonitor`** (eigene GUID/Prefix `NRGDASHMON`,
   library.json auf 0.3.0-beta.1/Build 3 angehoben):
   - **Erste Ausbaustufe:** nur Reiter „PV & Einstrahlung“, nur Ansicht
     „Tag (Verlauf)“ - bewusst nicht die komplette Kachel in einem Schritt,
@@ -908,7 +908,7 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   **Verbundweite Selbstprüfung "eigene Anlage als Norm" (28.07.2026,
   ausgelöst durch einen EMS-Formularfehler bei Dietmar - Meldung
   verpflichtend mit konkretem Befund, nicht nur "passt schon").** Beide
-  Formulare (`NRGDashboardTile`, `NRGDashboardMonitor`) durchgegangen gegen
+  Formulare (`NRGDashboardTile`, `NRGDashboardPVMonitor`) durchgegangen gegen
   die drei Prüffragen (implizite Pflicht-Hardware? automatisch/manuell
   unklar? für Laien mit anderer Anlage verständlich?) plus Volltextsuche
   nach eigenen IDs/Instanz-Nummern/Standortdaten im Repo:
@@ -1032,7 +1032,7 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
 ## Lehren für den Verbund: ECharts/Highcharts-Fallstricke (28.07.2026)
 
 Verbindlich für **jedes** Modul im NRG-Stack, das ECharts oder Highcharts
-einbindet (bei uns: `NRGDashboardMonitor`; bekanntermaßen auch
+einbindet (bei uns: `NRGDashboardPVMonitor`; bekanntermaßen auch
 `InverterHubMonitor`/`InverterHubEnergy`) - alle Punkte hier wurden live an
 Dietmars Instanz gefunden, nicht nur theoretisch vermutet. Details/Code
 jeweils in den Runden-Einträgen oben, hier nur die verdichtete Lehre:
