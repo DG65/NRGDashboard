@@ -243,10 +243,10 @@ function tempColor(c) {
 // Werte-Chip an der Leitung (Prinzip 1 der Referenz-Essenz): dunkle
 // Pille, Randfarbe traegt die Information (Leitungs-/Temperaturfarbe),
 // Wert weiss und fett. Optionaler Tag darueber.
-function chip(x, y, text, unit, borderColor, tag, tagBelow) {
+function chip(x, y, text, unit, borderColor, tag, tagBelow, minWidth) {
   var g = el('g', {});
   var label = text + (unit ? ' ' + unit : '');
-  var w = Math.max(44, label.length * 6.8 + 14);
+  var w = Math.max(44, label.length * 6.8 + 14, minWidth || 0);
   var h = 19;
   g.appendChild(el('rect', { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: h / 2, class: 'chip', stroke: borderColor || '#6f83a3' }));
   var t = el('text', { x: x, y: y + 4, class: 'chip-text' });
@@ -1578,18 +1578,46 @@ function buildSchema(unit) {
   // spaeter noch gezeichnete (Bruecke, Zonenkreise, Mischer, Pumpe)
   // wieder drueber (Dietmar, 17.08.2026: "Die Chips stehen nicht im
   // Vordergrund").
+  // Chip-Stapel Kaelteleistung/Vorlauf/ΔT/Ruecklauf/Durchfluss: 12px
+  // hoeher begonnen (105 statt 117) als vorher, damit der unterste
+  // Durchfluss-Chip (jetzt 205 statt 217) mehr Abstand zur "Warmwasser"-
+  // Beschriftung (y=236) bekommt - vorher nur 9,5px Luecke, siehe
+  // Begruendung bei der Durchfluss-Chip-Einfuehrung unten (Dietmar,
+  // 18.08.2026: "Kaelteleistung-Chip muss so weit nach oben wandern,
+  // dass der Durchflusschip unterhalb bleibt" - Reihenfolge/25px-Rhythmus
+  // bleiben dabei unveraendert, nur der ganze Block ruckt als Ganzes hoch).
+  // Die vier Chips UNTERHALB der Kaelteleistung (Vorlauf/ΔT/Ruecklauf/
+  // Durchfluss) bekommen zusaetzlich eine GEMEINSAME Breite (Dietmar,
+  // 18.08.2026: "muessen gleich breit sein") - das laengste Label
+  // ("ΔT X,XK" oder "XX,Xl/min") bestimmt die Breite fuer alle vier,
+  // statt dass jeder Chip einzeln an seinem eigenen Text schrumpft.
+  var flowChipLabels = [];
   if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 142, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null));
+    flowChipLabels.push(fmtTemp1(unit.mainOutletTemp) + ' °C');
   }
   if (toRoom && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 192, fmtTemp1(unit.mainInletTemp), '°C', RETC, null));
+    flowChipLabels.push(fmtTemp1(unit.mainInletTemp) + ' °C');
+  }
+  if (haveVLRL) {
+    flowChipLabels.push('ΔT ' + fmtTemp1(Math.abs(unit.mainOutletTemp - unit.mainInletTemp)) + ' K');
+  }
+  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
+    flowChipLabels.push(fmtTemp1(unit.pumpFlow) + ' l/min');
+  }
+  var flowChipW = flowChipLabels.reduce(function (w, label) { return Math.max(w, label.length * 6.8 + 14); }, 44);
+
+  if (toRoom && unit.mainOutletTemp !== null && unit.mainOutletTemp !== undefined) {
+    drawValve(chip(INNEN_PUF_CX, 130, fmtTemp1(unit.mainOutletTemp), '°C', SUPC, null, false, flowChipW));
+  }
+  if (toRoom && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined) {
+    drawValve(chip(INNEN_PUF_CX, 180, fmtTemp1(unit.mainInletTemp), '°C', RETC, null, false, flowChipW));
   }
   if (haveVLRL) {
     // Betrag anzeigen: im Kuehlbetrieb ist die Spreizung rechnerisch
     // negativ, ein "ΔT -0,5 K" waere nur verwirrend - die Richtung sagt
     // die Betriebsart-Kennzeichnung.
     var dT = Math.abs(unit.mainOutletTemp - unit.mainInletTemp);
-    drawValve(chip(INNEN_PUF_CX, 167, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null));
+    drawValve(chip(INNEN_PUF_CX, 155, 'ΔT ' + fmtTemp1(dT), 'K', '#e0b93c', null, false, flowChipW));
   }
   // Thermische Heizleistung aus Spreizung x Durchfluss (P = m*c*dT,
   // Wasser ~4,186 kJ/kgK) - Referenzvorbild Aquarea-Wiki "Leistung
@@ -1597,10 +1625,7 @@ function buildSchema(unit) {
   // waere die Rechnung Rauschen.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    // y=117 statt 114: gleicher Abstand (25) zum Vorlauf-Chip wie zwischen
-    // Vorlauf/ΔT/Ruecklauf untereinander - vorher 28 statt 25 (Dietmar,
-    // 14.08.2026).
-    drawValve(chip(INNEN_PUF_CX, 117, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
+    drawValve(chip(INNEN_PUF_CX, 105, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
       cooling ? 'Kälteleistung' : 'therm. Leistung'));
   }
   // Volumenstrom bisher nur klein in der Innengeraet-Tabelle ("Pumpe X
@@ -1612,12 +1637,9 @@ function buildSchema(unit) {
   // anders als die Vor-/Ruecklauftemperatur-Chips (siehe Begruendung bei
   // INNEN_PUF_CX weiter oben).
   // OHNE Tag (wie Vorlauf/Ruecklauf) - die Einheit "l/min" macht den
-  // Volumenstrom bereits eindeutig, und der Platz zwischen Ruecklauf-Chip
-  // (y=192) und der "Warmwasser"-Beschriftung der Sanitaerseite (y=236)
-  // reicht nicht fuer ein zusaetzliches Tag ober- oder unterhalb, ohne mit
-  // einem der beiden zu kollidieren (beim Rendertest sichtbar geworden).
+  // Volumenstrom bereits eindeutig.
   if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) {
-    drawValve(chip(INNEN_PUF_CX, 217, fmtTemp1(unit.pumpFlow), 'l/min', SUPC, null));
+    drawValve(chip(INNEN_PUF_CX, 205, fmtTemp1(unit.pumpFlow), 'l/min', SUPC, null, false, flowChipW));
   }
   // Puffer nur zeichnen, wenn die Anlage tatsaechlich einen hat
   // (Dietmar, 17.08.2026: "manche Waermepumpen haben einen groesseren
