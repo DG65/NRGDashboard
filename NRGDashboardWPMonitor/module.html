@@ -3,71 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <style>
-  /* Bar/Grundgeruest UND Theme-Handling 1:1 aus NRGDashboardPVMonitor
-     uebernommen (Dietmar, 17.08.2026: "Orientiere Dich bitte visuell an
-     die andere Monitoring Kachel") - selbe Klassennamen, selbe Farben/
-     Radien, kein eigenes "Kartenlook" erfunden. padding-top:52px ist KEIN
-     Zufallswert, sondern reservierter Platz fuer Symcons eigene
-     Kachel-Titelzeile (Instanzname) - die Kachel zeichnet bewusst KEINE
-     eigene Ueberschrift (Cross-Session-Befund CometWiFi/HeishaMon-
-     Schema-Sitzung: das Aufziehen zeigt zwar nur Instanz-Variablen, aber
-     die NICHT aufgezogene Standardkachel bekommt ihren Titel von Symcon
-     selbst darueber montiert).
+  /* Steuerleiste/Legende/Grundgeruest 1:1 aus NRGDashboardPVMonitor
+     uebernommen (Dietmar, 18.08.2026: "alles Grundlegende ... praezise
+     analog bauen") - selbe Klassennamen, selbe Farben/Radien. padding-
+     top:52px ist reservierter Platz fuer Symcons eigene Kachel-Titelzeile
+     (Instanzname) - die Kachel zeichnet bewusst KEINE eigene Ueberschrift.
   */
   html, body { margin: 0; height: 100%; background: transparent; }
   .wrap { position: relative; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; padding: 52px 12px 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
   button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
-  button.nav:hover { background: rgba(127,135,145,.22); }
+  button.nav:hover:not(:disabled) { background: rgba(127,135,145,.22); }
+  button.nav:disabled { opacity: .35; cursor: default; }
+  #quick { display: flex; gap: 4px; }
   button.qday { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
-  button.qday:hover { background: rgba(127,135,145,.22); }
+  button.qday:hover:not(:disabled) { background: rgba(127,135,145,.22); }
   button.qday.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
-  input.pick { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
-  select.pick { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
-  /* Kennzahlen-Kopfzeile: bewusst OHNE Karten-/Kastenoptik (Monitor kennt
-     dieses Muster nirgends - dort stehen Zusammenfassungszahlen als
-     schlichter Text, siehe z.B. ".ycSum"), nur Zahl fett + Label gedimmt
-     darunter, wie eine kleine Kennzahlenzeile statt eigens erfundener
-     Kacheln. */
-  #kpiRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; margin-bottom: 10px; font-size: 12px; }
+  button.qday:disabled { opacity: .35; cursor: default; }
+  input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  select.sel:disabled { opacity: .35; cursor: default; }
+  select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
+  #kpiRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; margin: 10px 0; font-size: 12px; }
   .kpi { flex: 0 0 auto; text-align: center; opacity: .92; }
   .kpi .val { font-size: 17px; font-weight: 700; line-height: 1.1; }
   .kpi .lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; opacity: .65; margin-top: 1px; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; position: relative; }
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 8px; font-size: 11px; overflow-x: auto; }
+  .legItem { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; opacity: 1; user-select: none; flex: none; white-space: nowrap; }
+  .legItem.off { opacity: .35; }
+  .legItem .dot {
+    width: 9px; height: 9px; border-radius: 50%; flex: none; position: relative; overflow: hidden;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -1px 2px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.35);
+  }
+  .legItem .dot::after {
+    content: ''; position: absolute; top: 8%; left: 12%; width: 55%; height: 45%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.9), rgba(255,255,255,0) 72%);
+    border-radius: inherit; pointer-events: none;
+  }
   .empty { font-size: 13px; padding: 28px 10px; text-align: center; opacity: .7; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div id="bar">
-    <select id="type" class="pick">
+    <select id="type" class="sel">
       <option value="day">Tag (Verlauf)</option>
       <option value="week">Woche (Energie)</option>
       <option value="month">Monat (Energie)</option>
       <option value="year">Jahr (Energie)</option>
+      <option value="all">Gesamt (Energie)</option>
+      <option value="custom">Benutzerdefiniert</option>
     </select>
     <button id="prev" class="nav" title="Zurück">&#9664;</button>
+    <span id="periodLabel" class="pick" style="display:none; cursor:default;"></span>
     <input id="pick" class="pick" type="date">
-    <button id="next" class="nav" title="Weiter">&#9654;</button>
-    <button id="today" class="qday">Heute</button>
+    <input id="pickTo" class="pick" type="date" style="display:none">
+    <button id="next" class="nav" title="Vor">&#9654;</button>
+    <span id="quick"></span>
   </div>
   <div id="kpiRow"></div>
   <div id="chart"></div>
+  <div id="legendRow"></div>
   <div id="empty" class="empty" style="display:none"></div>
 </div>
 <script>
-  var lastData = null;
-  var curDay = null; // { start, end } in Sekunden (lokale Tagesgrenzen)
-  var curType = 'day'; // day | week | month | year - wie NRGDashboardPVMonitor's #type-Select
-  var curPeriod = null; // { type, start, end } in Sekunden, fuer Woche/Monat/Jahr
-  var chart = null;
-  var ecReady = false;
+  var lastData = null, chart = null, chartEngine = null, idx = 0;
+  var curView = 'day';
+  var viewRef = new Date();
+  var customFrom = null, customTo = null;
 
   // Theme-Handling 1:1 NRGDashboardPVMonitor::isLightTheme()/themeLabelColor()/
-  // themeAxisStyle() (Dietmar, 31.07.2026 dort: Symcon bietet einer Kachel
-  // KEINEN Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - deshalb die
-  // Property "LightTheme", nicht prefers-color-scheme). GRID_COLOR bleibt
-  // bewusst der bereits theme-neutrale Grauton.
+  // themeAxisStyle() - Symcon bietet einer Kachel KEINEN Weg, das aktuelle
+  // Hell/Dunkel-Theme zu erkennen, deshalb die Property "LightTheme".
   var GRID_COLOR = 'rgba(128,128,128,.28)';
   function isLightTheme() { return !!(lastData && lastData.lightTheme); }
   function themeLabelColor() { return isLightTheme() ? '#333' : '#9aa4b0'; }
@@ -76,24 +83,52 @@
   // Beschriftung verschwinden) - nur im Hellmodus wird eine Farbe gesetzt.
   function themeAxisStyle() { return isLightTheme() ? { color: '#333' } : {}; }
 
+  // Zoom in allen Charts (1:1 NRGDashboardPVMonitor::DATA_ZOOM_INSIDE) -
+  // Mausrad/Pinch/Ziehen auf der Zeit-/Kategorieachse, sichtbarer Slider.
+  var DATA_ZOOM_INSIDE = [
+    { type: 'inside', filterMode: 'none' },
+    { type: 'slider', filterMode: 'none', height: 14, bottom: 4, borderColor: GRID_COLOR, fillerColor: 'rgba(255,255,255,.12)', handleStyle: { color: '#888' }, textStyle: { color: '#888' }, dataBackground: { lineStyle: { color: GRID_COLOR }, areaStyle: { color: GRID_COLOR } } }
+  ];
+
+  // Legenden-Sichtbarkeit je Kurvenname - bleibt ueber Ansichtswechsel UND
+  // ueber ein Neuladen der Kachel erhalten (localStorage), 1:1 Muster
+  // NRGDashboardPVMonitor. Namensraum je Instanz (uid).
+  var vis = {}, visKey = null, visLoaded = false;
+  function isVisible(name) { return vis[name] !== false; }
+  function loadVis() {
+    if (visLoaded) { return; }
+    visLoaded = true;
+    try { var s = localStorage.getItem(visKey); if (s) { vis = JSON.parse(s) || {}; } } catch (e) {}
+  }
+  function saveVis() { try { localStorage.setItem(visKey, JSON.stringify(vis)); } catch (e) {} }
+  function setVisible(name, on) { vis[name] = on; saveVis(); }
+
   function addScript(src, cb) {
     var s = document.createElement('script');
     s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); };
     document.head.appendChild(s);
   }
+  // Highcharts wird wie in NRGDashboardPVMonitor vom CDN nachgeladen, NICHT
+  // eingebettet (Lizenz - eine Redistribution mit dem Modul waere bei
+  // Highcharts nicht abgedeckt). Nur wer diese Engine explizit waehlt,
+  // braucht dafuer Internetzugriff und eine eigene gueltige Lizenz.
+  var libs = { hc: 0, ec: 0 };
+  function ensureHighcharts(cb) {
+    if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; return cb(); }
+    if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
+    libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
+  }
   // ECharts per CDN nachladen statt lokal einbetten (Dietmar/NRGDashboardPVMonitor-
   // Erfahrung, 31.07.2026: eingebettetes ECharts (~618KB) + Zeitreihen-Nutzlast
-  // hat live "Output-Buffer exceeds Limit" ausgeloest) - dieselbe Loesung hier
-  // uebernommen, statt denselben Fehler erneut zu bauen.
+  // hat live "Output-Buffer exceeds Limit" ausgeloest).
   function ensureECharts(cb) {
-    if (typeof echarts !== 'undefined') { ecReady = true; return cb(); }
-    if (ecReady === 'loading') { return setTimeout(function () { ensureECharts(cb); }, 80); }
-    ecReady = 'loading';
-    addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { ecReady = true; cb(); });
+    if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
+    if (libs.ec === 1) { return setTimeout(function () { ensureECharts(cb); }, 80); }
+    libs.ec = 1;
+    addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
   }
 
-  function toDateInputValue(tsSec) {
-    var d = new Date(tsSec * 1000);
+  function fmtDate(d) {
     var mm = String(d.getMonth() + 1).padStart(2, '0');
     var dd = String(d.getDate()).padStart(2, '0');
     return d.getFullYear() + '-' + mm + '-' + dd;
@@ -123,13 +158,13 @@
       box.appendChild(val); box.appendChild(lbl);
       el.appendChild(box);
     });
-    // kWh (Strom/Waerme) haengen am jeweiligen Zeitfenster-Datensatz, nicht
-    // am kpi-Objekt (siehe module.php::BuildDay()/BuildPeriod()) - separat
-    // angehaengt, je nach aktueller Ansicht.
-    var kwhSource = (curType === 'day') ? (lastData && lastData.day) : (lastData && lastData.period);
-    if (kwhSource) {
-      [['electricEnergyKwh', 'kWh Strom'], ['thermalEnergyKwh', 'kWh Wärme']].forEach(function (r) {
-        var v = kwhSource[r[0]];
+    // kWh (Strom/Waerme) haengen am aktuellen Zeitfenster, nicht am kpi-
+    // Objekt - Tag: aus dem gerade gezeigten Tag (days[idx]), sonst: Summe
+    // der sichtbaren Balken der aktuellen Energie-Ansicht.
+    var kwh = currentKwhTotals();
+    if (kwh) {
+      [['electric', 'kWh Strom'], ['thermal', 'kWh Wärme']].forEach(function (r) {
+        var v = kwh[r[0]];
         if (v === null || v === undefined) { return; }
         var box = document.createElement('div');
         box.className = 'kpi';
@@ -143,209 +178,472 @@
     }
   }
 
+  function currentKwhTotals() {
+    if (!lastData) { return null; }
+    if (curView === 'day') {
+      var d = (lastData.days || [])[idx];
+      return d ? { electric: d.electricEnergyKwh, thermal: d.thermalEnergyKwh } : null;
+    }
+    var rows = buildEnergyRows();
+    var sum = { electric: null, thermal: null };
+    rows.series.forEach(function (s) {
+      var key = (s.name === 'El. Energie') ? 'electric' : (s.name === 'Therm. Energie' ? 'thermal' : null);
+      if (!key) { return; }
+      var total = 0, any = false;
+      s.data.forEach(function (v) { if (v !== null && v !== undefined) { total += v; any = true; } });
+      sum[key] = any ? Math.round(total * 100) / 100 : null;
+    });
+    return sum;
+  }
+
+  // Eigene, von uns kontrollierte Legende statt der eingebauten Klick-
+  // Ereignisse von ECharts/Highcharts - 1:1 Muster NRGDashboardPVMonitor
+  // (beide Bibliotheken feuern bei Klicks auf ihre native Legende ein
+  // Ereignis, das sich nicht zuverlaessig von einem rein programmatisch
+  // ausgeloesten Zustand unterscheiden laesst).
+  function renderLegend(items) {
+    var row = document.getElementById('legendRow');
+    row.innerHTML = '';
+    items.forEach(function (it) {
+      var el = document.createElement('span');
+      el.className = 'legItem' + (isVisible(it.name) ? '' : ' off');
+      el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name;
+      el.onclick = function () { setVisible(it.name, !isVisible(it.name)); render(); };
+      row.appendChild(el);
+    });
+  }
+
   function seriesOrEmpty(pts) { return Array.isArray(pts) ? pts : []; }
 
-  function renderChart(day) {
-    if (!day) { return; }
-    ensureECharts(function () {
-      var el = document.getElementById('chart');
-      if (!chart) { chart = echarts.init(el, null, { renderer: 'svg' }); }
-      var markAreas = seriesOrEmpty(day.defrostEpisodes).map(function (ep) {
-        return [{ xAxis: ep[0] }, { xAxis: ep[1] }];
-      });
-      var axisLbl = { axisLabel: themeAxisStyle() };
-      var option = {
-        backgroundColor: 'transparent',
-        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: 46, top: 28, bottom: 34 },
-        legend: { top: 0, textStyle: { color: themeLabelColor(), fontSize: 11 } },
-        tooltip: { trigger: 'axis' },
-        xAxis: Object.assign({ type: 'time', min: day.start, max: day.end,
-          splitLine: { show: false }, axisLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
-        yAxis: [
-          Object.assign({ type: 'value', name: 'W', position: 'left',
-            splitLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
-          Object.assign({ type: 'value', name: '°C', position: 'right',
-            splitLine: { show: false } }, axisLbl)
-        ],
-        dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 6 }],
-        series: [
-          { name: 'El. Leistung', type: 'line', showSymbol: false, yAxisIndex: 0, data: seriesOrEmpty(day.electricPower), color: '#E8823C',
-            markArea: markAreas.length ? { itemStyle: { color: 'rgba(74,163,224,.18)' }, data: markAreas } : undefined },
-          { name: 'Therm. Leistung', type: 'line', showSymbol: false, yAxisIndex: 0, data: seriesOrEmpty(day.thermalPower), color: '#E0503C' },
-          { name: 'Vorlauf', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.mainOutletTemp), color: '#e0503c', lineStyle: { type: 'dashed' } },
-          { name: 'Rücklauf', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.mainInletTemp), color: '#4a90d9', lineStyle: { type: 'dashed' } },
-          { name: 'Außentemp.', type: 'line', showSymbol: false, yAxisIndex: 1, data: seriesOrEmpty(day.outsideTemp), color: '#5FCB6B', lineStyle: { type: 'dotted' } }
-        ]
-      };
-      chart.setOption(option, true);
+  function daySeriesFor(d) {
+    var series = [];
+    if (lastData.hasElectric) { series.push({ name: 'El. Leistung', data: seriesOrEmpty(d.electricPower), axis: 0, color: '#E8823C' }); }
+    if (lastData.hasThermal) { series.push({ name: 'Therm. Leistung', data: seriesOrEmpty(d.thermalPower), axis: 0, color: '#E0503C' }); }
+    if (lastData.hasFlowTemps) {
+      series.push({ name: 'Vorlauf', data: seriesOrEmpty(d.mainOutletTemp), axis: 1, color: '#e0503c', dashed: true });
+      series.push({ name: 'Rücklauf', data: seriesOrEmpty(d.mainInletTemp), axis: 1, color: '#4a90d9', dashed: true });
+    }
+    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true }); }
+    return series;
+  }
+
+  function destroyChart() {
+    if (chart) { try { if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); } } catch (e) {} }
+    chart = null; chartEngine = null;
+    var el = document.getElementById('chart'); if (el) { el.innerHTML = ''; }
+    var lr = document.getElementById('legendRow'); if (lr) { lr.innerHTML = ''; }
+  }
+
+  function sizeChart() {
+    if (!chart) { return; }
+    if (chartEngine === 'highcharts') { chart.reflow(); } else { chart.resize(); }
+  }
+
+  function renderECharts(el, d) {
+    if (chart && chartEngine !== 'echarts') { destroyChart(); }
+    if (!chart) {
+      el.innerHTML = '';
+      chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 });
+      chartEngine = 'echarts';
+    }
+    var allSeries = daySeriesFor(d);
+    renderLegend(allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+    var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+    var markAreas = seriesOrEmpty(d.defrostEpisodes).map(function (ep) {
+      return [{ xAxis: ep[0] }, { xAxis: ep[1] }];
     });
+    var series = visSeries.map(function (s, i) {
+      var line = {
+        name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color,
+        lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : (s.dotted ? { type: 'dotted' } : {}))
+      };
+      if (i === 0 && markAreas.length) {
+        line.markArea = { itemStyle: { color: 'rgba(74,163,224,.18)' }, data: markAreas };
+      }
+      return line;
+    });
+    chart.setOption({
+      backgroundColor: 'transparent',
+      textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+      grid: { left: 46, right: 46, top: 20, bottom: 52 },
+      legend: { show: false },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+        extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+        formatter: function (params) {
+          return params.map(function (p, i) {
+            var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
+            var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString('de-DE') + '</div>' : '';
+            return head + '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
+          }).join('');
+        }
+      },
+      xAxis: { type: 'time', min: d.dayStart, max: d.dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, minInterval: 3600 * 1000, maxInterval: 3600 * 1000, axisLabel: themeAxisStyle() },
+      yAxis: [
+        { type: 'value', name: 'W', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+        { type: 'value', name: '°C', position: 'right', show: lastData.hasFlowTemps || lastData.hasOutsideTemp, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
+      ],
+      dataZoom: DATA_ZOOM_INSIDE,
+      series: series
+    }, true);
   }
 
-  function loadDay(startSec, endSec) {
-    curDay = { start: startSec, end: endSec };
-    document.getElementById('pick').value = toDateInputValue(startSec);
-    requestAction('dayWindow', JSON.stringify({ start: startSec, end: endSec }));
+  function renderHighcharts(el, d) {
+    if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+    var allSeries = daySeriesFor(d);
+    renderLegend(allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+    var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+    var plotBands = seriesOrEmpty(d.defrostEpisodes).map(function (ep) {
+      return { from: ep[0], to: ep[1], color: 'rgba(74,163,224,.18)' };
+    });
+    chart = Highcharts.chart(el, {
+      time: { useUTC: false },
+      chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+      title: { text: null },
+      xAxis: { type: 'datetime', min: d.dayStart, max: d.dayEnd, plotBands: plotBands, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+      yAxis: [
+        { title: { text: 'W', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
+        { title: { text: '°C', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, visible: lastData.hasFlowTemps || lastData.hasOutsideTemp }
+      ],
+      legend: { enabled: false },
+      credits: { enabled: false },
+      tooltip: {
+        shared: true, useHTML: true,
+        formatter: function () {
+          var lines = ['<b>' + Highcharts.dateFormat('%d.%m.%Y %H:%M', this.x) + '</b>'];
+          this.points.forEach(function (p) {
+            lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
+          });
+          return lines.join('');
+        }
+      },
+      series: visSeries.map(function (s) {
+        return {
+          name: s.name, type: 'line', data: s.data, color: s.color, yAxis: s.axis,
+          dashStyle: s.dashed ? 'Dash' : (s.dotted ? 'Dot' : 'Solid'), marker: { enabled: false }, lineWidth: 1.4
+        };
+      })
+    });
+    chartEngine = 'highcharts';
   }
 
-  // Zeitraum-Grenzen (lokal) fuer Woche/Monat/Jahr, ausgehend von einem
-  // beliebigen Zeitpunkt innerhalb des Zeitraums - analog zur Tagesgrenze,
-  // die module.php per mktime() bildet, hier clientseitig fuer die
-  // Navigation (der Server bekommt am Ende ohnehin nur start/end in
-  // Sekunden, keine Kalenderlogik).
-  function weekRange(sec) {
-    var d = new Date(sec * 1000);
-    var day = (d.getDay() + 6) % 7; // 0 = Montag
-    var start = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
-    var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
-    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
+  // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert - Kategorien+Reihen aus den
+  // vom Backend gelieferten Tages-kWh-Karten (lastData.energy), 1:1 Muster
+  // NRGDashboardPVMonitor::buildEnergyRows()/energySeriesFor(): EIN
+  // Archivdurchlauf pro Serie liefert alle Ansichten, hier wird nur noch
+  // clientseitig gruppiert.
+  var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  var MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  var WEEKDAY_NAMES_FULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+
+  function startOfWeek(date) {
+    var r = new Date(date);
+    var wd = (r.getDay() + 6) % 7; // Montag=0
+    r.setDate(r.getDate() - wd);
+    return r;
   }
-  function monthRange(sec) {
-    var d = new Date(sec * 1000);
-    var start = new Date(d.getFullYear(), d.getMonth(), 1);
-    var end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
+  function isoWeekNumber(date) {
+    var d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    var dayNum = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - dayNum + 3);
+    var firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    var diff = (d - firstThursday) / 86400000;
+    return 1 + Math.round(diff / 7);
   }
-  function yearRange(sec) {
-    var d = new Date(sec * 1000);
-    var start = new Date(d.getFullYear(), 0, 1);
-    var end = new Date(d.getFullYear() + 1, 0, 1);
-    return { start: Math.floor(start.getTime() / 1000), end: Math.floor(end.getTime() / 1000) };
-  }
-  function rangeFor(type, sec) {
-    if (type === 'week') { return weekRange(sec); }
-    if (type === 'month') { return monthRange(sec); }
-    if (type === 'year') { return yearRange(sec); }
-    var s = sec - (sec % 86400);
-    return { start: s, end: s + 86400 };
+  function shiftViewRef(dir) {
+    var r = new Date(viewRef);
+    if (curView === 'week') { r.setDate(r.getDate() + dir * 7); }
+    else if (curView === 'month') { r.setMonth(r.getMonth() + dir); }
+    else if (curView === 'year') { r.setFullYear(r.getFullYear() + dir); }
+    viewRef = r;
   }
 
-  function loadPeriod(type, sec) {
-    var r = rangeFor(type, sec);
-    curPeriod = { type: type, start: r.start, end: r.end };
-    document.getElementById('pick').value = toDateInputValue(r.start);
-    requestAction('periodWindow', JSON.stringify({ type: type, start: r.start, end: r.end }));
+  function energySeriesFor() {
+    var series = [];
+    if (lastData.hasElectric) { series.push({ name: 'El. Energie', color: '#E8823C', map: (lastData.energy && lastData.energy.electric) || {} }); }
+    if (lastData.hasThermal) { series.push({ name: 'Therm. Energie', color: '#E0503C', map: (lastData.energy && lastData.energy.thermal) || {} }); }
+    return series;
   }
 
-  function shiftPeriod(dir) {
-    if (curType === 'day') {
-      if (!curDay) { return; }
-      loadDay(curDay.start + dir * 86400, curDay.end + dir * 86400);
+  function buildEnergyRows() {
+    var seriesDefs = energySeriesFor();
+    var categories = [], fullLabels = [], dateLists = [];
+    if (curView === 'week') {
+      var ws = startOfWeek(viewRef);
+      for (var i = 0; i < 7; i++) {
+        var dt = new Date(ws); dt.setDate(ws.getDate() + i);
+        categories.push(WEEKDAY_NAMES[i] + ' ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2));
+        fullLabels.push(WEEKDAY_NAMES_FULL[i] + ', ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear());
+        dateLists.push([fmtDate(dt)]);
+      }
+    } else if (curView === 'month') {
+      var y = viewRef.getFullYear(), m = viewRef.getMonth();
+      var last = new Date(y, m + 1, 0).getDate();
+      for (var day = 1; day <= last; day++) {
+        categories.push(String(day));
+        fullLabels.push(day + '. ' + MONTH_NAMES_FULL[m] + ' ' + y);
+        dateLists.push([fmtDate(new Date(y, m, day))]);
+      }
+    } else if (curView === 'year') {
+      var yy = viewRef.getFullYear();
+      for (var mo = 0; mo < 12; mo++) {
+        categories.push(MONTH_NAMES[mo]);
+        fullLabels.push(MONTH_NAMES_FULL[mo] + ' ' + yy);
+        var lastD = new Date(yy, mo + 1, 0).getDate();
+        var list = [];
+        for (var dd = 1; dd <= lastD; dd++) { list.push(fmtDate(new Date(yy, mo, dd))); }
+        dateLists.push(list);
+      }
+    } else if (curView === 'all') {
+      var thisYear = new Date().getFullYear();
+      for (var k = 4; k >= 0; k--) {
+        var yr = thisYear - k;
+        categories.push(String(yr));
+        fullLabels.push(String(yr));
+        var l2 = [];
+        for (var mm = 0; mm < 12; mm++) {
+          var lastDd = new Date(yr, mm + 1, 0).getDate();
+          for (var d2 = 1; d2 <= lastDd; d2++) { l2.push(fmtDate(new Date(yr, mm, d2))); }
+        }
+        dateLists.push(l2);
+      }
+    } else if (curView === 'custom' && customFrom && customTo) {
+      var from = new Date(customFrom + 'T00:00:00'), to = new Date(customTo + 'T00:00:00');
+      for (var cd = new Date(from); cd <= to; cd.setDate(cd.getDate() + 1)) {
+        categories.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2));
+        fullLabels.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2) + '.' + cd.getFullYear());
+        dateLists.push([fmtDate(cd)]);
+      }
+    }
+    var series = seriesDefs.map(function (s) {
+      var data = dateLists.map(function (dl) {
+        var sum = 0, any = false;
+        dl.forEach(function (ds) { if (s.map[ds] !== undefined) { sum += s.map[ds]; any = true; } });
+        return any ? Math.round(sum * 100) / 100 : null;
+      });
+      return { name: s.name, color: s.color, data: data };
+    });
+    return { categories: categories, fullLabels: fullLabels, series: series };
+  }
+
+  function renderBarECharts(el) {
+    if (chart && chartEngine !== 'echarts') { destroyChart(); }
+    if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+    var rows = buildEnergyRows();
+    renderLegend(rows.series.map(function (s) { return { name: s.name, color: s.color }; }));
+    var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
+    chart.setOption({
+      backgroundColor: 'transparent',
+      textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+      grid: { left: 46, right: 12, top: 20, bottom: 60 },
+      legend: { show: false },
+      tooltip: {
+        trigger: 'axis', axisPointer: { type: 'shadow' },
+        backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+        extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+        formatter: function (params) {
+          var idx = params[0] ? params[0].dataIndex : 0;
+          var head = '<div style="font-weight:600;margin-bottom:2px">' + (rows.fullLabels[idx] || rows.categories[idx]) + '</div>';
+          return head + params.map(function (p) {
+            return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (p.value === null || p.value === undefined ? '–' : Number(p.value).toFixed(2)) + ' kWh</b></div>';
+          }).join('');
+        }
+      },
+      xAxis: { type: 'category', data: rows.categories, axisLabel: { rotate: rows.categories.length > 12 ? 45 : 0, color: isLightTheme() ? '#333' : undefined } },
+      yAxis: [{ type: 'value', name: 'kWh', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle() }],
+      dataZoom: DATA_ZOOM_INSIDE,
+      series: visSeries.map(function (s) { return { name: s.name, type: 'bar', data: s.data, color: s.color }; })
+    }, true);
+  }
+
+  function renderBarHighcharts(el) {
+    if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+    var rows = buildEnergyRows();
+    renderLegend(rows.series.map(function (s) { return { name: s.name, color: s.color }; }));
+    var visSeries = rows.series.filter(function (s) { return isVisible(s.name); });
+    chart = Highcharts.chart(el, {
+      time: { useUTC: false },
+      chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+      title: { text: null },
+      xAxis: { categories: rows.categories, labels: { rotation: rows.categories.length > 12 ? -45 : 0, style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+      yAxis: [{ title: { text: 'kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } }],
+      legend: { enabled: false },
+      credits: { enabled: false },
+      tooltip: {
+        shared: true, useHTML: true,
+        formatter: function () {
+          var idx = this.points ? this.points[0].point.index : this.point.index;
+          var lines = ['<b>' + (rows.fullLabels[idx] || rows.categories[idx]) + '</b>'];
+          (this.points || [this]).forEach(function (p) {
+            lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + ' kWh</b></div>');
+          });
+          return lines.join('');
+        }
+      },
+      series: visSeries.map(function (s) { return { name: s.name, type: 'column', data: s.data, color: s.color }; })
+    });
+    chartEngine = 'highcharts';
+  }
+
+  function syncNav() {
+    var days = (lastData && lastData.days) || [];
+    document.getElementById('bar').style.visibility = 'visible';
+
+    var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
+    quick.innerHTML = '';
+
+    if (curView === 'day') {
+      pick.style.display = ''; pickTo.style.display = 'none';
+      document.getElementById('periodLabel').style.display = 'none';
+      document.getElementById('prev').disabled = (idx >= days.length - 1);
+      document.getElementById('next').disabled = (idx <= 0);
+      var d = days[idx];
+      if (d) { pick.value = d.id; }
+      var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
+      labels.forEach(function (l) {
+        var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
+        var btn = document.createElement('button');
+        btn.className = 'qday' + (target === idx ? ' active' : '');
+        btn.textContent = l[0];
+        btn.disabled = (target < 0) || !days[target] || !days[target].hasData;
+        btn.onclick = function () { idx = target; render(); };
+        quick.appendChild(btn);
+      });
       return;
     }
-    if (!curPeriod) { return; }
-    var mid = curPeriod.start + 86400; // ein Tag hinein, um Monats-/Jahresgrenzen sauber zu treffen
-    if (curType === 'week') { loadPeriod('week', mid + dir * 7 * 86400); return; }
-    if (curType === 'month') {
-      var d = new Date(curPeriod.start * 1000);
-      var next = new Date(d.getFullYear(), d.getMonth() + dir, 15);
-      loadPeriod('month', Math.floor(next.getTime() / 1000));
+
+    if (curView === 'custom') {
+      pick.style.display = ''; pickTo.style.display = '';
+      document.getElementById('periodLabel').style.display = 'none';
+      document.getElementById('prev').disabled = true;
+      document.getElementById('next').disabled = true;
+      if (customFrom) { pick.value = customFrom; }
+      if (customTo) { pickTo.value = customTo; }
       return;
     }
-    if (curType === 'year') {
-      var dy = new Date(curPeriod.start * 1000);
-      var nexty = new Date(dy.getFullYear() + dir, 5, 15);
-      loadPeriod('year', Math.floor(nexty.getTime() / 1000));
+
+    pickTo.style.display = 'none';
+    var periodLabel = document.getElementById('periodLabel');
+    if (curView === 'all') {
+      pick.style.display = 'none'; periodLabel.style.display = 'none';
+      document.getElementById('prev').disabled = true;
+      document.getElementById('next').disabled = true;
+      return;
+    }
+    // Woche/Monat/Jahr: statt eines vollen Datums einen dazu passenden
+    // Text anzeigen (KW/Monat/Jahr) - Vor/Zurueck deckt die Navigation
+    // bereits vollstaendig ab.
+    pick.style.display = 'none';
+    periodLabel.style.display = '';
+    document.getElementById('prev').disabled = false;
+    document.getElementById('next').disabled = false;
+    if (curView === 'week') {
+      periodLabel.textContent = 'KW ' + isoWeekNumber(viewRef) + ', ' + viewRef.getFullYear();
+    } else if (curView === 'month') {
+      periodLabel.textContent = MONTH_NAMES_FULL[viewRef.getMonth()] + ' ' + viewRef.getFullYear();
+    } else if (curView === 'year') {
+      periodLabel.textContent = String(viewRef.getFullYear());
     }
   }
 
-  document.getElementById('type').addEventListener('change', function (ev) {
-    curType = ev.target.value;
-    var anchor = curDay ? curDay.start : (curPeriod ? curPeriod.start : Math.floor(Date.now() / 1000));
-    if (curType === 'day') { loadDay(anchor - (anchor % 86400), anchor - (anchor % 86400) + 86400); }
-    else { loadPeriod(curType, anchor); }
-  });
-  document.getElementById('prev').addEventListener('click', function () { shiftPeriod(-1); });
-  document.getElementById('next').addEventListener('click', function () { shiftPeriod(1); });
-  document.getElementById('today').addEventListener('click', function () {
-    var now = Math.floor(Date.now() / 1000);
-    if (curType === 'day') { loadDay(now - (now % 86400), now - (now % 86400) + 86400); }
-    else { loadPeriod(curType, now); }
-  });
-  document.getElementById('pick').addEventListener('change', function (ev) {
-    var v = ev.target.value; // YYYY-MM-DD
-    if (!v) { return; }
-    var parts = v.split('-').map(Number);
-    var d = new Date(parts[0], parts[1] - 1, parts[2]);
-    var startSec = Math.floor(d.getTime() / 1000);
-    if (curType === 'day') { loadDay(startSec, startSec + 86400); }
-    else { loadPeriod(curType, startSec); }
-  });
+  function render() {
+    syncNav();
+    renderKpi(lastData ? lastData.kpi : null);
+    var el = document.getElementById('chart');
+    var emptyEl = document.getElementById('empty');
 
-  function renderBars(period) {
-    if (!period) { return; }
-    ensureECharts(function () {
-      var el = document.getElementById('chart');
-      if (!chart) { chart = echarts.init(el, null, { renderer: 'svg' }); }
-      var buckets = seriesOrEmpty(period.buckets);
-      var cats = buckets.map(function (b) {
-        if (period.type === 'year') { return b.label.slice(5, 7) + '/' + b.label.slice(2, 4); }
-        return b.label.slice(8, 10) + '.' + b.label.slice(5, 7) + '.';
-      });
-      var axisLbl = { axisLabel: themeAxisStyle() };
-      var option = {
-        backgroundColor: 'transparent',
-        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: 16, top: 28, bottom: 34 },
-        legend: { top: 0, textStyle: { color: themeLabelColor(), fontSize: 11 } },
-        tooltip: { trigger: 'axis' },
-        xAxis: Object.assign({ type: 'category', data: cats,
-          axisLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
-        yAxis: Object.assign({ type: 'value', name: 'kWh',
-          splitLine: { lineStyle: { color: GRID_COLOR } } }, axisLbl),
-        dataZoom: (period.type !== 'year' && cats.length > 31) ? [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 6 }] : undefined,
-        series: [
-          { name: 'El. Energie', type: 'bar', data: buckets.map(function (b) { return b.electric; }), color: '#E8823C' },
-          { name: 'Therm. Energie', type: 'bar', data: buckets.map(function (b) { return b.thermal; }), color: '#E0503C' }
-        ]
-      };
-      chart.setOption(option, true);
-    });
+    if (curView !== 'day') {
+      if (curView === 'custom' && (!customFrom || !customTo)) {
+        destroyChart();
+        emptyEl.style.display = ''; emptyEl.textContent = 'Bitte Von-/Bis-Datum wählen';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      var wantEngineBar = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+      if (wantEngineBar === 'highcharts') {
+        ensureHighcharts(function () { el.innerHTML = ''; renderBarHighcharts(el); });
+      } else {
+        ensureECharts(function () { renderBarECharts(el); setTimeout(sizeChart, 60); });
+      }
+      return;
+    }
+
+    var days = (lastData && lastData.days) || [];
+    var d = days[idx];
+    if (!d || !d.hasData) {
+      destroyChart();
+      emptyEl.style.display = ''; emptyEl.textContent = 'Keine Archivdaten für diesen Tag';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+    if (wantEngine === 'highcharts') {
+      ensureHighcharts(function () { el.innerHTML = ''; renderHighcharts(el, d); });
+    } else {
+      ensureECharts(function () { renderECharts(el, d); setTimeout(sizeChart, 60); });
+    }
   }
 
   function handleMessage(raw) {
     var d;
     try { d = JSON.parse(raw); } catch (e) { return; }
-    if (d && d.type === 'dayUpdate') {
-      if (d.day) {
-        lastData.day = d.day;
-        curDay = { start: Math.floor(d.day.start / 1000), end: Math.floor(d.day.end / 1000) };
-        document.getElementById('pick').value = toDateInputValue(curDay.start);
-        renderKpi(lastData.kpi);
-        renderChart(d.day);
-      }
-      return;
-    }
-    if (d && d.type === 'periodUpdate') {
-      if (d.period) {
-        lastData.period = d.period;
-        curPeriod = { type: d.period.type, start: Math.floor(d.period.start / 1000), end: Math.floor(d.period.end / 1000) };
-        document.getElementById('pick').value = toDateInputValue(curPeriod.start);
-        renderKpi(lastData.kpi);
-        renderBars(d.period);
-      }
-      return;
-    }
-    lastData = d;
-    var emptyEl = document.getElementById('empty');
     if (!d || !d.ok) {
+      var emptyEl = document.getElementById('empty');
       emptyEl.style.display = '';
       emptyEl.textContent = (d && d.error) ? d.error : 'Keine Daten.';
       document.getElementById('kpiRow').innerHTML = '';
       document.getElementById('chart').innerHTML = '';
+      document.getElementById('legendRow').innerHTML = '';
       return;
     }
-    emptyEl.style.display = 'none';
+    lastData = d;
+    visKey = 'nrgdashwpmon_vis_' + (d.uid || 'x');
+    loadVis();
     if (d.bg) { document.body.style.background = d.bg; }
-    renderKpi(d.kpi);
-    if (d.day) {
-      curDay = { start: Math.floor(d.day.start / 1000), end: Math.floor(d.day.end / 1000) };
-      document.getElementById('pick').value = toDateInputValue(curDay.start);
-      renderChart(d.day);
-    }
+    // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
+    // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
+    // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,
+    // die ein spaeteres resize() nicht zuverlaessig repariert. Deshalb den
+    // ersten Render-Aufruf einen Frame verzoegern (1:1 NRGDashboardPVMonitor).
+    requestAnimationFrame(function () { render(); });
   }
 
-  window.addEventListener('resize', function () { if (chart) { chart.resize(); } });
+  document.getElementById('prev').onclick = function () {
+    if (curView === 'day') {
+      var days = (lastData && lastData.days) || [];
+      if (idx < days.length - 1) { idx++; render(); }
+    } else if (curView === 'week' || curView === 'month' || curView === 'year') {
+      shiftViewRef(-1); render();
+    }
+  };
+  document.getElementById('next').onclick = function () {
+    if (curView === 'day') {
+      if (idx > 0) { idx--; render(); }
+    } else if (curView === 'week' || curView === 'month' || curView === 'year') {
+      shiftViewRef(1); render();
+    }
+  };
+  document.getElementById('pick').onchange = function (e) {
+    if (curView === 'day') {
+      var days = (lastData && lastData.days) || [];
+      var i = days.findIndex(function (d) { return d.id === e.target.value; });
+      if (i >= 0) { idx = i; render(); }
+    } else if (curView === 'custom') {
+      customFrom = e.target.value; render();
+    } else if (e.target.value) {
+      viewRef = new Date(e.target.value + 'T00:00:00'); render();
+    }
+  };
+  document.getElementById('pickTo').onchange = function (e) {
+    customTo = e.target.value; render();
+  };
+  document.getElementById('type').onchange = function (e) {
+    curView = e.target.value;
+    render();
+  };
+  window.addEventListener('resize', function () { if (chart) { setTimeout(sizeChart, 60); } });
 </script>
 </body>
 </html>

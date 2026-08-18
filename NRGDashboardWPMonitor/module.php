@@ -4,29 +4,36 @@ declare(strict_types=1);
 
 /**
  * NRGDashboardWPMonitor - Verlaufs-/Diagnose-Kachel fuer die Waermepumpe,
- * Geschwistermodul zu NRGDashboardPVMonitor (PV/Batterie/Netz) - gleiche
- * Optik/UX-Konvention (Datumsleiste, ECharts, Kennzahlen-Kopfzeile), siehe
- * NRGDashboardPVMonitor::module.html fuer die uebernommenen CSS-Klassen
- * (Dietmar, 17.08.2026: "eine weitere Monitoring Kachel in der Form und im
- * Aussehen von der vorhandenen PV-Monitoring Kachel").
+ * Geschwistermodul zu NRGDashboardPVMonitor (PV/Batterie/Netz). Architektur
+ * bewusst 1:1 von dort uebernommen (Dietmar, 18.08.2026: "alles Grundlegende
+ * ... praezise analog bauen", inkl. Highcharts/ECharts-Wahl):
+ * - EIN Payload deckt sowohl das rollierende Tage-Fenster (WINDOW_DAYS) als
+ *   auch die komplette Woche/Monat/Jahr/Gesamt/Benutzerdefiniert-Ansicht ab
+ *   (Tages-kWh-Karten ueber SPAN_YEARS) - das Frontend navigiert danach rein
+ *   clientseitig, ohne bei jedem Ansichtswechsel erneut das Archiv
+ *   abzufragen (siehe NRGDashboardPVMonitor::buildPayload()-Kommentar).
+ * - Highcharts/ECharts wahlweise (Formular-Property "Engine"), beide per
+ *   CDN nachgeladen statt eingebettet (Lizenz/Ausgabepuffer-Gruende, siehe
+ *   NRGDashboardPVMonitor::ensureHighcharts()/ensureECharts()).
+ * - Eigene, selbst kontrollierte Legende statt der eingebauten Klick-
+ *   Ereignisse beider Bibliotheken (siehe module.html renderLegend()).
  *
  * Datenquelle wie NRGDashboardHeatSchema: der gemeinsame 'heatpump'-
  * Vertragstyp (HEISHA_GetFunctions()/WPHUB_GetFunctions()), generisch -
  * kein Modul wird vorausgesetzt, fehlende optionale Felder (contractVersion
  * 1.10: heatOutputPowerID/outsideTempID/compressorStartsID/
  * operationsHoursID; 1.9: copEstimateID/copMeasuredID/
- * dailyPerformanceFactorID; 1.11: dailyEnergyTotalID/dailyEnergyHeatingID/
- * dailyEnergyCoolingID/dailyEnergyDHWID - WPHub, taeglich um Mitternacht
- * zurueckspringende Zaehlerfelder aus der Panasonic Comfort Cloud,
- * bevorzugt gegenueber der aus PowerID hochgerechneten Schaetzung, siehe
- * DailyCounterMap()) blenden die jeweilige Kennzahl/Kurve einfach aus,
- * statt eine Nullanzeige zu zeigen.
+ * dailyPerformanceFactorID; 1.11: dailyEnergyTotalID - WPHub, taeglich um
+ * Mitternacht zurueckspringendes Zaehlerfeld aus der Panasonic Comfort
+ * Cloud, bevorzugt gegenueber der aus PowerID hochgerechneten Schaetzung,
+ * siehe DailyCounterMap()) blenden die jeweilige Kennzahl/Kurve einfach
+ * aus, statt eine Nullanzeige zu zeigen.
  *
- * Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahresansicht (elektrische/
- * thermische Leistung bzw. -energie, Vorlauf/Ruecklauf, Aussentemp,
- * Abtau-Schattierung). Detail-Umschalter (Verdichterfrequenz, Durchfluss,
- * WW-Temp, Betriebsart-Farbcodierung) sind bewusst noch nicht gebaut -
- * naechster Ausbauschritt.
+ * Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahres-/Gesamt-/
+ * Benutzerdefiniert-Ansicht (elektrische/thermische Leistung bzw. -energie,
+ * Vorlauf/Ruecklauf, Aussentemp, Abtau-Schattierung). Detail-Umschalter
+ * (Verdichterfrequenz, Durchfluss, WW-Temp, Betriebsart-Farbcodierung) sind
+ * bewusst noch nicht gebaut - naechster Ausbauschritt.
  */
 class NRGDashboardWPMonitor extends IPSModule
 {
@@ -35,11 +42,16 @@ class NRGDashboardWPMonitor extends IPSModule
     private const ARCHIVE_GUID = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const AGG_5MIN     = 5;
     private const AGG_DAY      = 1;
-    private const AGG_MONTH    = 3;
+    // Rollierendes Tage-Fenster fuer die Tagesansicht (5-Minuten-Kurven) -
+    // 1:1 NRGDashboardPVMonitor::WINDOW_DAYS: EIN Archivdurchlauf pro Serie
+    // deckt alle per Vor/Zurueck erreichbaren Tage ab, kein Nachladen bei
+    // jedem Klick.
+    private const WINDOW_DAYS  = 8;
     private const SPAN_YEARS   = 5;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
+    private const DEF_ENGINE     = 'echarts';
 
     // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
     // Muster NRGDashboardMap/Topology/Tile): "Was ist Neu" (versionsscharf
@@ -47,9 +59,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.1.0';
+    private const NEWS_VERSION = '0.2.0';
     private const NEWS_ITEMS = [
-        'Neues Modul: Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile, Tages-/Wochen-/Monats-/Jahresansicht) - Geschwistermodul zur PV-Monitoring-Kachel.',
+        'Architektur an NRGDashboardPVMonitor angeglichen: Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht laufen jetzt rein clientseitig (kein Nachladen bei jedem Ansichtswechsel mehr), plus wahlweise Highcharts oder ECharts als Zeichen-Engine (Formular "Darstellung").',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
@@ -60,6 +72,7 @@ class NRGDashboardWPMonitor extends IPSModule
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
+        $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
         $this->RegisterPropertyBoolean('LightTheme', false);
         // Manuelle Waermepumpen-Auswahl fuer den Fall mehrerer gefundener
         // Instanzen (Dietmar hat bei sich nur eine - Default 0 = automatisch
@@ -290,8 +303,8 @@ class NRGDashboardWPMonitor extends IPSModule
     /**
      * Zusammenhaengende "aktiv"-Intervalle einer boolschen/0-1-Groesse
      * (hier: Abtaubetrieb) als [[startMs,endMs],...] - fuer die
-     * Schattierung im Chart (ECharts markArea). Bucket gilt als aktiv,
-     * wenn der 5-Minuten-Mittelwert > 0.5 ist.
+     * Schattierung im Chart (ECharts/Highcharts markArea/plotBand). Bucket
+     * gilt als aktiv, wenn der 5-Minuten-Mittelwert > 0.5 ist.
      */
     private function ActiveEpisodes(int $aid, int $vid, int $start, int $end): array
     {
@@ -337,10 +350,11 @@ class NRGDashboardWPMonitor extends IPSModule
     }
 
     /**
-     * Tages-kWh-Karte (Datum => kWh), 1:1 Muster
-     * NRGDashboardPVMonitor::DailyEnergyMap() - ein einziger AC-Aufruf ueber
-     * SPAN_YEARS Jahre, danach in BuildPeriod() lokal auf den gewuenschten
-     * Zeitraum eingeschraenkt (Woche/Monat als Tagesbalken).
+     * Tages-kWh-Karte (Datum => kWh) ueber SPAN_YEARS, 1:1 Muster
+     * NRGDashboardPVMonitor::DailyEnergyMap() - EIN Archivdurchlauf pro
+     * Serie, das Frontend gruppiert daraus Woche/Monat/Jahr/Gesamt/
+     * Benutzerdefiniert selbst (kein weiterer Archivzugriff bei jedem
+     * Ansichtswechsel, siehe module.html buildEnergyRows()).
      */
     private function DailyEnergyMap(int $aid, int $vid): array
     {
@@ -388,7 +402,7 @@ class NRGDashboardWPMonitor extends IPSModule
 
     /**
      * Tages-kWh-Karte aus einem taeglich um Mitternacht auf 0
-     * zurueckspringenden Zaehlerfeld (WPHub `dailyEnergy*ID`, seit
+     * zurueckspringenden Zaehlerfeld (WPHub `dailyEnergyTotalID`, seit
      * heatpump-Vertrag 1.11 - Panasonic Cloud liefert keinen echten
      * kumulativen Zaehler, siehe SUITE.md "NRG.kWh nur aus echten
      * kumulativen Zaehlern"). Der Tageswert ist das Tagesmaximum (Max je
@@ -418,119 +432,6 @@ class NRGDashboardWPMonitor extends IPSModule
         return $out;
     }
 
-    /**
-     * Monats-kWh-Karte ('Y-m' => kWh) fuer die Jahresansicht -
-     * coverage-bewusste Hochrechnung mit den tatsaechlich abgedeckten
-     * Stunden statt der vollen Kalendertage, sonst wird ein noch laufender
-     * Monat massiv ueberschaetzt (realer Fund in NRGDashboardPVMonitor,
-     * 05.08.2026: August zeigte 1325 statt ~299 kWh) - 1:1 Muster
-     * NRGDashboardPVMonitor::MonthlyEnergyMap().
-     */
-    private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
-    {
-        if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
-            return [];
-        }
-        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_MONTH, $start, $end, 0);
-        if (!is_array($data)) {
-            return [];
-        }
-        $out = [];
-        foreach ($data as $row) {
-            if (!isset($row['Avg'])) {
-                continue;
-            }
-            $ts = (int) $row['TimeStamp'];
-            $monthStart = strtotime(date('Y-m-01 00:00:00', $ts));
-            $monthEnd = strtotime('+1 month', $monthStart);
-            $coverageEnd = min($end, $monthEnd);
-            $hours = max(0.0, ($coverageEnd - $monthStart) / 3600.0);
-            $kwh = round(((float) $row['Avg']) * $hours / 1000.0, 2);
-            if (is_finite($kwh) && $kwh >= 0) {
-                $out[date('Y-m', $monthStart)] = $kwh;
-            }
-        }
-        return $out;
-    }
-
-    /**
-     * Woche/Monat/Jahr als Balken-Zeitreihe - Woche/Monat: Tagesbalken aus
-     * DailyEnergyMap()/DailyAverageMap() auf den Zeitraum eingeschraenkt;
-     * Jahr: Monatsbalken aus MonthlyEnergyMap(). Kein Tagesansicht-
-     * Feinschliff (5-Min-Kurve/Abtau-Schattierung) - das bleibt der
-     * Tagesansicht (BuildDay()) vorbehalten.
-     */
-    private function BuildPeriod(string $type, int $start, int $end): array
-    {
-        $unit = $this->SelectedHeatpump();
-        if ($unit === null) {
-            return ['type' => $type, 'start' => $start * 1000, 'end' => $end * 1000, 'buckets' => []];
-        }
-        $powerID = (int) ($unit['PowerID'] ?? $unit['powerID'] ?? 0);
-        $heatOutID = (int) ($unit['heatOutputPowerID'] ?? 0);
-        $outsideTempID = (int) ($unit['outsideTempID'] ?? 0);
-        $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
-        $aid = $this->ArchiveID();
-
-        // Bevorzugt der echte, taeglich zurueckspringende Zaehlerwert
-        // (WPHub `dailyEnergyTotalID`, Vertrag 1.11) statt der aus
-        // PowerID hochgerechneten Schaetzung - bei WPHub ist PowerID
-        // ohnehin immer 0 (Panasonic Cloud liefert keine
-        // Momentanleistung), bei HeishaMon fehlt das Zaehlerfeld und die
-        // Hochrechnung bleibt die einzige Quelle.
-        $dailyCounter = $dailyEnergyTotalID > 0 ? $this->DailyCounterMap($aid, $dailyEnergyTotalID) : [];
-
-        $buckets = [];
-        if ($type === 'year') {
-            $thermal = $this->MonthlyEnergyMap($aid, $heatOutID, $start, $end);
-            if (count($dailyCounter) > 0) {
-                $electric = [];
-                foreach ($dailyCounter as $day => $kwh) {
-                    $mkey = substr($day, 0, 7);
-                    $electric[$mkey] = ($electric[$mkey] ?? 0.0) + $kwh;
-                }
-            } else {
-                $electric = $this->MonthlyEnergyMap($aid, $powerID, $start, $end);
-            }
-            $cursor = strtotime(date('Y-m-01 00:00:00', $start));
-            while ($cursor < $end) {
-                $key = date('Y-m', $cursor);
-                $buckets[] = [
-                    'label'    => $key,
-                    'ts'       => $cursor * 1000,
-                    'electric' => round($electric[$key] ?? 0.0, 2),
-                    'thermal'  => $thermal[$key] ?? 0.0,
-                ];
-                $cursor = strtotime('+1 month', $cursor);
-            }
-        } else {
-            $electric = (count($dailyCounter) > 0) ? $dailyCounter : $this->DailyEnergyMap($aid, $powerID);
-            $thermal = $this->DailyEnergyMap($aid, $heatOutID);
-            $outside = $this->DailyAverageMap($aid, $outsideTempID);
-            $cursor = $start;
-            while ($cursor < $end) {
-                $key = date('Y-m-d', $cursor);
-                $buckets[] = [
-                    'label'       => $key,
-                    'ts'          => $cursor * 1000,
-                    'electric'    => $electric[$key] ?? 0.0,
-                    'thermal'     => $thermal[$key] ?? 0.0,
-                    'outsideTemp' => $outside[$key] ?? null,
-                ];
-                $cursor = strtotime('+1 day', $cursor);
-            }
-        }
-
-        return [
-            'type'    => $type,
-            'start'   => $start * 1000,
-            'end'     => $end * 1000,
-            'buckets' => $buckets,
-            'electricEnergyKwh' => round(array_sum(array_column($buckets, 'electric')), 2),
-            'thermalEnergyKwh'  => round(array_sum(array_column($buckets, 'thermal')), 2),
-        ];
-    }
-
     public function GetVisualizationTile()
     {
         $payload = $this->buildPayload();
@@ -547,38 +448,12 @@ class NRGDashboardWPMonitor extends IPSModule
         $this->UpdateVisualizationValue(json_encode($payload));
     }
 
-    public function RequestAction($Ident, $Value)
-    {
-        if ($Ident === 'dayWindow') {
-            $req = json_decode((string) $Value, true);
-            $start = (int) ($req['start'] ?? 0);
-            $end = (int) ($req['end'] ?? 0);
-            $this->UpdateVisualizationValue(json_encode([
-                'ok'   => true,
-                'type' => 'dayUpdate',
-                'day'  => ($end > $start) ? $this->BuildDay($start, $end) : null,
-            ]));
-            return;
-        }
-        if ($Ident === 'periodWindow') {
-            $req = json_decode((string) $Value, true);
-            $type = (string) ($req['type'] ?? 'week');
-            $start = (int) ($req['start'] ?? 0);
-            $end = (int) ($req['end'] ?? 0);
-            $this->UpdateVisualizationValue(json_encode([
-                'ok'     => true,
-                'type'   => 'periodUpdate',
-                'period' => ($end > $start) ? $this->BuildPeriod($type, $start, $end) : null,
-            ]));
-            return;
-        }
-        throw new Exception('Invalid Ident: ' . $Ident);
-    }
-
     /**
-     * Kennzahlen-Kopfzeile + heutige Tagesansicht - Grundgeruest fuer
-     * GetVisualizationTile()/Render(). Weitere Zeitfenster (Woche/Monat/
-     * Jahr) sind der naechste Ausbauschritt (siehe Klassenkommentar).
+     * EIN Payload pro Refresh - siehe Klassenkommentar. Rollierendes
+     * Tage-Fenster (WINDOW_DAYS) + Tages-kWh-Karten (SPAN_YEARS) fuer die
+     * Energie-Ansichten decken jede Navigation ab, ohne dass die Kachel
+     * dafuer je RequestAction()/UpdateVisualizationValue() bemuehen muss
+     * (1:1 Muster NRGDashboardPVMonitor::buildPayload()).
      */
     private function buildPayload(): array
     {
@@ -603,11 +478,61 @@ class NRGDashboardWPMonitor extends IPSModule
         $hoursID = (int) ($unit['operationsHoursID'] ?? 0);
         $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
 
-        $now = (int) $this->getNow();
-        // Lokale Tagesgrenze statt UTC - mktime() nutzt die vom
-        // Symcon-System konfigurierte Zeitzone.
-        $dayStart = mktime(0, 0, 0, (int) date('n', $now), (int) date('j', $now), (int) date('Y', $now));
-        $dayEnd = $dayStart + 86400;
+        $aid = $this->ArchiveID();
+        $todayStart = strtotime('today 00:00:00');
+
+        // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert: EIN Archivdurchlauf pro
+        // Serie ueber SPAN_YEARS Jahre (Tages-kWh), das Frontend gruppiert
+        // daraus die jeweilige Ansicht selbst - kein erneuter Archivzugriff
+        // bei jedem Ansichts-/Zeitraumwechsel (1:1 Muster
+        // NRGDashboardPVMonitor::buildPayload(), Abschnitt $energy). Vorab
+        // berechnet, damit die Tage-Schleife unten dieselben Karten fuer
+        // die Tages-kWh-KPI-Zeilen wiederverwenden kann statt ein zweites
+        // Mal je Tag zu integrieren.
+        // Bevorzugt der echte, taeglich zurueckspringende Zaehlerwert
+        // (WPHub dailyEnergyTotalID) statt der aus PowerID hochgerechneten
+        // Schaetzung - bei WPHub ist PowerID ohnehin immer 0 (Panasonic
+        // Cloud liefert keine Momentanleistung), bei HeishaMon fehlt das
+        // Zaehlerfeld und die Hochrechnung bleibt die einzige Quelle.
+        $electricCounter = ($aid > 0 && $dailyEnergyTotalID > 0) ? $this->DailyCounterMap($aid, $dailyEnergyTotalID) : [];
+        $energy = [
+            'electric'    => (count($electricCounter) > 0) ? $electricCounter : (($aid > 0) ? $this->DailyEnergyMap($aid, $powerID) : []),
+            'thermal'     => ($aid > 0) ? $this->DailyEnergyMap($aid, $heatOutID) : [],
+            'outsideTemp' => ($aid > 0) ? $this->DailyAverageMap($aid, $outsideTempID) : [],
+        ];
+
+        $days = [];
+        for ($k = 0; $k < self::WINDOW_DAYS; $k++) {
+            $start = $todayStart - $k * 86400;
+            $end = min(time(), $start + 86400);
+            $dateKey = date('Y-m-d', $start);
+
+            $electricPower = ($aid > 0) ? $this->DaySeries($aid, $powerID, $start, $end) : [];
+            $thermalPower = ($aid > 0) ? $this->DaySeries($aid, $heatOutID, $start, $end) : [];
+            $mainOutletTemp = ($aid > 0) ? $this->DaySeries($aid, $mainOutletID, $start, $end) : [];
+            $mainInletTemp = ($aid > 0) ? $this->DaySeries($aid, $mainInletID, $start, $end) : [];
+            $outsideTemp = ($aid > 0) ? $this->DaySeries($aid, $outsideTempID, $start, $end) : [];
+            $defrostEpisodes = ($aid > 0) ? $this->ActiveEpisodes($aid, $defrostID, $start, $end) : [];
+
+            $hasData = count($electricPower) > 0 || count($thermalPower) > 0
+                || count($mainOutletTemp) > 0 || count($mainInletTemp) > 0;
+
+            $days[] = [
+                'id'              => $dateKey,
+                'label'           => date('d.m.Y', $start),
+                'hasData'         => $hasData,
+                'dayStart'        => $start * 1000,
+                'dayEnd'          => ($start + 86400) * 1000,
+                'electricPower'   => $electricPower,
+                'thermalPower'    => $thermalPower,
+                'mainOutletTemp'  => $mainOutletTemp,
+                'mainInletTemp'   => $mainInletTemp,
+                'outsideTemp'     => $outsideTemp,
+                'defrostEpisodes' => $defrostEpisodes,
+                'electricEnergyKwh' => $energy['electric'][$dateKey] ?? null,
+                'thermalEnergyKwh'  => $energy['thermal'][$dateKey] ?? null,
+            ];
+        }
 
         $copMeasured = $this->num($copMeasuredID);
         $copEstimate = $this->num($copEstimateID);
@@ -616,13 +541,23 @@ class NRGDashboardWPMonitor extends IPSModule
 
         return [
             'ok'         => true,
+            // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
+            // (localStorage im Frontend) - Muster NRGDashboardPVMonitor.
+            'uid'        => (string) $this->InstanceID,
             'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
             // Wie NRGDashboardPVMonitor: Symcon bietet einer Kachel keinen
             // Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - der Nutzer
             // setzt es einmalig selbst (Formular "Darstellung").
             'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
+            'hasElectric' => $powerID > 0 || $dailyEnergyTotalID > 0,
+            'hasThermal'  => $heatOutID > 0,
+            'hasFlowTemps' => $mainOutletID > 0 && $mainInletID > 0,
+            'hasOutsideTemp' => $outsideTempID > 0,
             'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:
+            // "Natuerlich auch mit der Auswahl Highchart und Echart").
+            'engine'     => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'kpi'        => [
                 'copCurrent'   => ($copMeasured !== null && $copMeasured > 0) ? round($copMeasured, 1)
                     : (($copEstimate !== null && $copEstimate > 0) ? round($copEstimate) : null),
@@ -635,64 +570,8 @@ class NRGDashboardWPMonitor extends IPSModule
                 'avgRuntimeMin' => ($starts !== null && $starts > 0 && $hours !== null)
                     ? round($hours * 60 / $starts, 1) : null,
             ],
-            'day'   => $this->BuildDay($dayStart, $dayEnd, $powerID, $heatOutID, $mainOutletID, $mainInletID, $outsideTempID, $defrostID, $dailyEnergyTotalID),
-        ];
-    }
-
-    private function getNow(): int
-    {
-        // Date()/time() sind in Symcon-Skripten normal nutzbar (anders als
-        // in Workflow-Skripten) - eigener Wrapper nur, damit ein spaeterer
-        // Test-Mock (Simulation) hier ansetzen kann, ohne buildPayload()
-        // selbst anfassen zu muessen.
-        return time();
-    }
-
-    /**
-     * Tagesdaten fuer den Hauptchart. Wird sowohl initial (buildPayload())
-     * als auch bei Navigation (RequestAction 'dayWindow') mit denselben
-     * ID-Feldern der aktuell ausgewaehlten Waermepumpe aufgerufen - bei der
-     * Navigation muessen die IDs daher erneut aufgeloest werden (die
-     * Instanz kann sich zwischen zwei Kachel-Interaktionen theoretisch
-     * geaendert haben, gleiches Muster wie im uebrigen NRG-Stack: nie
-     * IDs cachen, immer frisch aufloesen).
-     */
-    private function BuildDay(int $start, int $end, ?int $powerID = null, ?int $heatOutID = null, ?int $mainOutletID = null, ?int $mainInletID = null, ?int $outsideTempID = null, ?int $defrostID = null, ?int $dailyEnergyTotalID = null): array
-    {
-        if ($powerID === null) {
-            $unit = $this->SelectedHeatpump();
-            if ($unit === null) {
-                return ['start' => $start, 'end' => $end];
-            }
-            $powerID = (int) ($unit['PowerID'] ?? $unit['powerID'] ?? 0);
-            $heatOutID = (int) ($unit['heatOutputPowerID'] ?? 0);
-            $mainOutletID = (int) ($unit['mainOutletTempID'] ?? 0);
-            $mainInletID = (int) ($unit['mainInletTempID'] ?? 0);
-            $outsideTempID = (int) ($unit['outsideTempID'] ?? 0);
-            $defrostID = (int) ($unit['defrostingStateID'] ?? 0);
-            $dailyEnergyTotalID = (int) ($unit['dailyEnergyTotalID'] ?? 0);
-        }
-
-        $aid = $this->ArchiveID();
-
-        // Bevorzugt der echte Tages-Zaehlerwert (WPHub dailyEnergyTotalID,
-        // Tagesmaximum des jeweiligen Kalendertags) statt der aus PowerID
-        // hochgerechneten Schaetzung - siehe DailyCounterMap()/BuildPeriod().
-        $counterMap = ($dailyEnergyTotalID !== null && $dailyEnergyTotalID > 0)
-            ? $this->DailyCounterMap($aid, $dailyEnergyTotalID) : [];
-        $counterValue = $counterMap[date('Y-m-d', $start)] ?? null;
-
-        return [
-            'start'          => $start * 1000,
-            'end'            => $end * 1000,
-            'electricPower'  => $this->DaySeries($aid, $powerID, $start, $end),
-            'thermalPower'   => $this->DaySeries($aid, $heatOutID, $start, $end),
-            'mainOutletTemp' => $this->DaySeries($aid, $mainOutletID, $start, $end),
-            'mainInletTemp'  => $this->DaySeries($aid, $mainInletID, $start, $end),
-            'outsideTemp'    => $this->DaySeries($aid, $outsideTempID, $start, $end),
-            'defrostEpisodes' => $this->ActiveEpisodes($aid, $defrostID, $start, $end),
-            'electricEnergyKwh' => $counterValue ?? round($this->PowerToEnergy($aid, $powerID, $start, $end), 2),
-            'thermalEnergyKwh'  => round($this->PowerToEnergy($aid, $heatOutID, $start, $end), 2),
+            'days'   => $days,
+            'energy' => $energy,
         ];
     }
 }

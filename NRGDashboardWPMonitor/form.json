@@ -15,7 +15,7 @@
         },
         {
           "type": "Label",
-          "caption": "Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahresansicht. Detail-Umschalter (Verdichterfrequenz, Durchfluss, WW-Temperatur, Betriebsart-Farbcodierung) folgen als nächster Ausbauschritt."
+          "caption": "Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht, wahlweise mit ECharts oder Highcharts als Zeichen-Engine (Formular „Darstellung“) - identische Architektur wie die PV-Monitoring-Kachel. Detail-Umschalter (Verdichterfrequenz, Durchfluss, WW-Temperatur, Betriebsart-Farbcodierung) folgen als nächster Ausbauschritt."
         }
       ]
     },
@@ -29,6 +29,15 @@
       "caption": "Darstellung",
       "expanded": false,
       "items": [
+        {
+          "type": "Select",
+          "name": "Engine",
+          "caption": "Chart-Engine",
+          "options": [
+            { "caption": "ECharts (vom Internet nachgeladen, empfohlen)", "value": "echarts" },
+            { "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)", "value": "highcharts" }
+          ]
+        },
         {
           "type": "SelectColor",
           "name": "ColorBackground",
