@@ -1,5 +1,12 @@
 # NRGDashboard
 
+![Symcon](https://img.shields.io/badge/Symcon-PHPModul-blue)
+![Modul Version](https://img.shields.io/badge/Modul_Version-0.6.0--beta.1-blue)
+![Symcon Version](https://img.shields.io/badge/Symcon_Version-9.0%2B-blue)
+![License](https://img.shields.io/badge/License-PolyForm_Noncommercial_1.0.0-lightgrey)
+[![Check Style](https://github.com/DG65/NRGDashboard/actions/workflows/check-style.yml/badge.svg)](https://github.com/DG65/NRGDashboard/actions/workflows/check-style.yml)
+[![PayPal](https://img.shields.io/badge/PayPal-Me-blue?logo=paypal)](https://paypal.me/DietmarGureth)
+
 Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im
 [Kompatibilitäts-Manifest](https://github.com/DG65/EMS/blob/main/SUITE.md).
 
