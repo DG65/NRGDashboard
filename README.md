@@ -8,7 +8,7 @@
 [![PayPal](https://img.shields.io/badge/PayPal-Me-blue?logo=paypal)](https://paypal.me/DietmarGureth)
 
 Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im
-[Kompatibilitäts-Manifest](https://github.com/DG65/EMS/blob/main/SUITE.md).
+[Kompatibilitäts-Manifest](https://github.com/DG65/NRGEMS/blob/main/SUITE.md).
 
 ## Zweck
 
