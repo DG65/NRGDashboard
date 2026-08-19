@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // GUID    : {6B2F8C41-9E3A-4D6B-8F1C-5A7D9E2B4C61}
-// Verbund : NRG-Stack (DG65) - siehe https://github.com/DG65/EMS/blob/main/SUITE.md
+// Verbund : NRG-Stack (DG65) - siehe https://github.com/DG65/NRGEMS/blob/main/SUITE.md
 //
 // Phase 1: automatische Geräte-Discovery über die *_GetFunctions-Verträge
 // des Verbunds. Kein Hardcoding von Variablen-IDs - genau das Problem, das

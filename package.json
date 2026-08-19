@@ -1,7 +1,7 @@
 {
   "name": "nrgdashboard",
   "version": "1.0.0",
-  "description": "Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im [Kompatibilitäts-Manifest](https://github.com/DG65/EMS/blob/main/SUITE.md).",
+  "description": "Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im [Kompatibilitäts-Manifest](https://github.com/DG65/NRGEMS/blob/main/SUITE.md).",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
