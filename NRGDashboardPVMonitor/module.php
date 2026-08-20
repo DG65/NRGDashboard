@@ -894,18 +894,22 @@ class NRGDashboardPVMonitor extends IPSModule
             $plan = @EMS_GetDayPlan($emsId);
             if (is_array($plan) && isset($plan['slots']) && is_array($plan['slots'])) {
                 $out['hasEms'] = true;
+                // Selbstbeschreibender Umrechnungsfaktor statt einer hart codierten
+                // Annahme (Lehre aus zwei aufeinanderfolgenden Skalierungsfehlern,
+                // 20.08.2026 - einer bei uns, einer bei EMS selbst, beide unbemerkt
+                // bis zum Live-Diagramm): EMS 0.22.3 liefert zusaetzlich 'priceUnit'
+                // ("ct/kWh" oder "EUR/kWh"), genau fuer diesen Fall. Fehlt das Feld
+                // (aeltere EMS-Version), bleibt ct/kWh die dokumentierte Default-
+                // Annahme des urspruenglichen Vertrags.
+                $priceUnit = (string) ($plan['priceUnit'] ?? 'ct/kWh');
+                $priceFactor = (stripos($priceUnit, 'eur') !== false) ? 100.0 : 1.0;
                 foreach ($plan['slots'] as $slot) {
                     $out['slots'][] = [
                         'time'  => (int) ($slot['time'] ?? 0) * 1000,
                         'op'    => (int) ($slot['op'] ?? 0),
                         'power' => (int) ($slot['power'] ?? 0),
                         'reason' => (string) ($slot['reason'] ?? ''),
-                        // EMS_GetDayPlan() liefert 'price' bereits in ct/kWh (siehe
-                        // Vertragsspezifikation, 20.08.2026) - die fruehere *100-
-                        // Umrechnung hier war ein eigener Fehler (Annahme EUR/kWh),
-                        // hat Werte wie 2000+ statt 10-40 ct erzeugt (Dietmars Fund,
-                        // live im Tagesplan-Diagramm sichtbar geworden).
-                        'price' => isset($slot['price']) && $slot['price'] !== null ? round((float) $slot['price'], 2) : null,
+                        'price' => isset($slot['price']) && $slot['price'] !== null ? round((float) $slot['price'] * $priceFactor, 2) : null,
                         'soc'   => isset($slot['soc']) && $slot['soc'] !== null ? (float) $slot['soc'] : null,
                     ];
                 }
