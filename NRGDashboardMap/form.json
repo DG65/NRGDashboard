@@ -48,6 +48,18 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Details je Kategorie",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "name": "DiscoveryDetails",
+          "caption": ""
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [

@@ -183,6 +183,7 @@ class NRGDashboardTile extends IPSModule
 
         $this->injectVersionIntoDocPanel($form);
         $this->injectDeviceToggleValues($form);
+        $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
         if ($banner !== null) {
@@ -213,6 +214,37 @@ class NRGDashboardTile extends IPSModule
         foreach ($form['elements'] as &$el) {
             if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
+                return;
+            }
+        }
+        unset($el);
+    }
+
+    /**
+     * Einheitliche Verbund-Status-Kopfzeile (SUITE.md "Einheitliche
+     * Verbund-Status-Kopfzeile", 20.08.2026, Referenz EMS::
+     * getDiscoverySummaryLine()) - EINE Zeile Icon+Zahl+Zeitstempel, kein
+     * Aufzaehlungssatz. Nutzt den persistierten Stand (DeviceCache/
+     * LastDiscoveryTs), damit ein erneutes OEFFNEN des Formulars den
+     * letzten Suchlauf zeigt, nicht nur ein frischer Klick auf den Button.
+     */
+    private function getDiscoverySummaryLine(): string
+    {
+        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        if ($ts === 0) {
+            return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
+        }
+        $devices = json_decode($this->ReadAttributeString('DeviceCache'), true) ?: [];
+        $count = count($devices);
+        $icon = $count > 0 ? '✅' : '⚠️';
+        return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+    }
+
+    private function injectDiscoveryResultLabel(array &$form): void
+    {
+        foreach ($form['elements'] as &$el) {
+            if (($el['name'] ?? '') === 'DiscoveryResult') {
+                $el['caption'] = $this->getDiscoverySummaryLine();
                 return;
             }
         }
@@ -475,13 +507,7 @@ class NRGDashboardTile extends IPSModule
         // "Geraete jetzt suchen"-Button komplett ins Leere (nur Log-Eintrag,
         // keine Rueckmeldung im Formular selbst). UpdateFormField ist ein
         // No-Op, wenn kein Formular gerade offen ist.
-        $this->UpdateFormField(
-            'DiscoveryResult',
-            'caption',
-            count($devices) > 0
-                ? sprintf('✅ %d Geräte gefunden (zuletzt %s Uhr).', count($devices), date('H:i:s'))
-                : '⚠️ Keine Geräte gefunden - sind Partnermodule installiert und konfiguriert?'
-        );
+        $this->UpdateFormField('DiscoveryResult', 'caption', $this->getDiscoverySummaryLine());
 
         // Ereignisgesteuert statt gepollt (Muster: InverterHubTile - RegisterMessage
         // je Quellvariable, sofortiger Push bei jeder Aenderung). Der 5-Minuten-

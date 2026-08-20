@@ -44,6 +44,8 @@ class NRGDashboardTopology extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
+        $this->RegisterAttributeString('PartnerNamesCache', '[]');
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHTOPO_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
@@ -167,11 +169,14 @@ class NRGDashboardTopology extends IPSModule
     }
 
     /**
-     * Ergebnis-Label im Formular (Muster NRGDashboardTile::DiscoveryResult),
-     * hier zusaetzlich mit den Partnernamen statt nur der Anzahl - genau die
-     * Namen, die auch die Kachel je Knoten zeigt (node.label), damit der
-     * Nutzer schon im Formular sieht, WER gefunden wurde, nicht nur wie viele.
-     * No-Op, wenn gerade kein Formular offen ist (UpdateFormField).
+     * Ergebnis-Kopfzeile im Formular (SUITE.md "Einheitliche Verbund-
+     * Status-Kopfzeile", 20.08.2026, Referenz EMS::getDiscoverySummaryLine()):
+     * EINE Zeile Icon+Zahl+Zeitstempel, kein Aufzaehlungssatz mehr - die
+     * Partnernamen (genau die, die auch die Kachel je Knoten zeigt) wandern
+     * in ein eingeklapptes Unter-Panel (siehe formatPartnerNames()). Der
+     * Sonderfall "keine EMS-Instanz erreichbar" bleibt eine eigene Meldung -
+     * dafuer gibt es noch keine Zahl zum Zaehlen. No-Op, wenn gerade kein
+     * Formular offen ist (UpdateFormField).
      */
     private function updateDiscoveryResultLabel(array $payload): void
     {
@@ -180,13 +185,44 @@ class NRGDashboardTopology extends IPSModule
             return;
         }
         $names = array_map(static fn (array $n) => $n['label'], $payload['nodes'] ?? []);
-        $this->UpdateFormField(
-            'DiscoveryResult',
-            'caption',
-            count($names) > 0
-                ? sprintf('✅ %d Partner gefunden: %s (zuletzt %s Uhr).', count($names), implode(', ', $names), date('H:i:s'))
-                : sprintf('⚠️ EMS-Instanz „%s“ gefunden, aber keine Partnermodule gemeldet.', $payload['emsLabel'] ?? '?')
-        );
+        $this->WriteAttributeInteger('LastDiscoveryTs', time());
+        $this->WriteAttributeString('PartnerNamesCache', json_encode($names));
+        $this->UpdateFormField('DiscoveryResult', 'caption', $this->getDiscoverySummaryLine());
+        $this->UpdateFormField('DiscoveryDetails', 'caption', $this->formatPartnerNames($names, $payload['emsLabel'] ?? '?'));
+    }
+
+    private function getDiscoverySummaryLine(): string
+    {
+        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        if ($ts === 0) {
+            return 'ℹ️ Noch nicht gesucht — Kachel öffnen oder Formular übernehmen.';
+        }
+        $names = json_decode($this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
+        $count = count($names);
+        $icon = $count > 0 ? '✅' : '⚠️';
+        return sprintf('%s %d Partner gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+    }
+
+    private function formatPartnerNames(array $names, string $emsLabel): string
+    {
+        if (empty($names)) {
+            return sprintf('EMS-Instanz „%s“ gefunden, aber keine Partnermodule gemeldet.', $emsLabel);
+        }
+        return implode(', ', $names);
+    }
+
+    private function injectDiscoveryResultLabel(array &$form): void
+    {
+        foreach ($form['elements'] as &$el) {
+            if (($el['name'] ?? '') === 'DiscoveryResult') {
+                $el['caption'] = $this->getDiscoverySummaryLine();
+            }
+            if (($el['name'] ?? '') === 'DiscoveryDetails') {
+                $names = json_decode($this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
+                $el['caption'] = empty($names) ? 'Noch keine Details - erst suchen.' : implode(', ', $names);
+            }
+        }
+        unset($el);
     }
 
     public function ResetStyle(): void
@@ -209,6 +245,7 @@ class NRGDashboardTopology extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

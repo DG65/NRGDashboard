@@ -63,6 +63,8 @@ class NRGDashboardMap extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
+        $this->RegisterAttributeString('CategoryCache', '{}');
 
         $this->RegisterVariableString('MapHTML', 'NRG-Stack Map', '~HTMLBox');
         $this->RegisterTimer('NRGDASHMAP_Discover', 0, 'NRGDASHMAP_Discover($_IPS[\'TARGET\']);');
@@ -148,6 +150,7 @@ class NRGDashboardMap extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
         if ($banner !== null) {
@@ -347,9 +350,14 @@ class NRGDashboardMap extends IPSModule
     }
 
     /**
-     * Ergebnis-Label im Formular (Muster NRGDashboardTile/Topology): zeigt
-     * die gefundenen Geraete gruppiert nach Kategorie, nicht nur die
-     * Gesamtzahl - No-Op, wenn gerade kein Formular offen ist.
+     * Ergebnis-Kopfzeile im Formular (SUITE.md "Einheitliche Verbund-
+     * Status-Kopfzeile", 20.08.2026, Referenz EMS::getDiscoverySummaryLine()):
+     * EINE Zeile Icon+Zahl+Zeitstempel, kein Aufzaehlungssatz mehr - die
+     * Kategorie-Aufschluesselung wandert in ein eingeklapptes Unter-Panel
+     * (siehe injectDiscoveryDetails()). Persistiert Zaehler+Zeitstempel,
+     * damit ein erneutes OEFFNEN des Formulars den letzten Suchlauf zeigt,
+     * nicht nur ein frischer Klick auf den Button. No-Op, wenn gerade kein
+     * Formular offen ist (UpdateFormField).
      */
     private function updateDiscoveryResultLabel(array $result): void
     {
@@ -362,19 +370,47 @@ class NRGDashboardMap extends IPSModule
             }
             $byCat[$cat] = ($byCat[$cat] ?? 0) + 1;
         }
+        $this->WriteAttributeInteger('LastDiscoveryTs', time());
+        $this->WriteAttributeString('CategoryCache', json_encode($byCat));
+        $this->UpdateFormField('DiscoveryResult', 'caption', $this->getDiscoverySummaryLine());
+        $this->UpdateFormField('DiscoveryDetails', 'caption', $this->formatCategoryBreakdown($byCat));
+    }
+
+    private function getDiscoverySummaryLine(): string
+    {
+        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        if ($ts === 0) {
+            return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
+        }
+        $byCat = json_decode($this->ReadAttributeString('CategoryCache'), true) ?: [];
+        $count = array_sum($byCat);
+        $icon = $count > 0 ? '✅' : '⚠️';
+        return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+    }
+
+    private function formatCategoryBreakdown(array $byCat): string
+    {
         if (empty($byCat)) {
-            $this->UpdateFormField('DiscoveryResult', 'caption', '⚠️ Keine Geräte gefunden - sind Partnermodule installiert und konfiguriert?');
-            return;
+            return 'Noch keine Details - erst suchen.';
         }
         $parts = [];
         foreach ($byCat as $cat => $count) {
             $parts[] = $count . 'x ' . (self::CATEGORY_LABELS[$cat] ?? $cat);
         }
-        $this->UpdateFormField(
-            'DiscoveryResult',
-            'caption',
-            sprintf('✅ %d Geräte gefunden: %s (zuletzt %s Uhr).', count($nodes) - 1, implode(', ', $parts), date('H:i:s'))
-        );
+        return implode(', ', $parts);
+    }
+
+    private function injectDiscoveryResultLabel(array &$form): void
+    {
+        foreach ($form['elements'] as &$el) {
+            if (($el['name'] ?? '') === 'DiscoveryResult') {
+                $el['caption'] = $this->getDiscoverySummaryLine();
+            }
+            if (($el['name'] ?? '') === 'DiscoveryDetails') {
+                $el['caption'] = $this->formatCategoryBreakdown(json_decode($this->ReadAttributeString('CategoryCache'), true) ?: []);
+            }
+        }
+        unset($el);
     }
 
     private function GenerateHTML(array $data): string

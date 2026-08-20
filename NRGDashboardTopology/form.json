@@ -44,6 +44,18 @@
     },
     {
       "type": "ExpansionPanel",
+      "caption": "Details je Partner",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "name": "DiscoveryDetails",
+          "caption": ""
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
       "caption": "Darstellung",
       "expanded": false,
       "items": [
