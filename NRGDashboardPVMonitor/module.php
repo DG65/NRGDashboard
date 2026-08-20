@@ -25,6 +25,8 @@ class NRGDashboardPVMonitor extends IPSModule
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
     private const METERHUB_GUID    = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
+    private const EMS_GUID         = '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}';
+    private const LFC_GUID         = '{DC5AD508-507F-40EA-8630-0959AED83050}';
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
     private const WINDOW_DAYS      = 8;
@@ -41,8 +43,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.9.0';
+    private const NEWS_VERSION = '0.10.0';
     private const NEWS_ITEMS = [
+        'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
         'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
         'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
         'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
@@ -847,6 +850,93 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $ids = @IPS_GetInstanceListByModuleID(self::PVF_GUID);
         return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    private function EmsInstanceID(): int
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    private function LfcInstanceID(): int
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::LFC_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    // Farben/Namen je EMS_OP_*-Konstante - 1:1 aus EMS::getPlanActions()
+    // uebernommen (Verbund-Abstimmung, 20.08.2026). Nur die 5 Werte, die im
+    // Tagesplan-Kontext tatsaechlich vorkommen (Standby/Backup/GridRewards
+    // sind Live-Betriebszustaende, keine geplanten) - unbekannte op-Werte
+    // fallen auf denselben Grauton wie "Automatik" zurueck, statt zu fehlen.
+    private const PLAN_OP_COLORS = [
+        0 => ['name' => 'Automatik',                 'color' => '#AAAAAA'],
+        1 => ['name' => 'PV-Eigenverbrauch (laden)',  'color' => '#4CAF50'],
+        2 => ['name' => 'Netz laden',                 'color' => '#2196F3'],
+        3 => ['name' => 'Eigenverbrauch (entladen)',  'color' => '#FF9800'],
+        5 => ['name' => 'Einspeisen',                 'color' => '#9C27B0'],
+    ];
+
+    /**
+     * EMS-Tagesplan (heute+morgen, Viertelstunden-Slots) + optional PV-/
+     * Lastprognose direkt von PVPrognose/Lastprognose (NICHT ueber EMS
+     * proxied - EMS' ausdruecklicher Wunsch, 20.08.2026, um keine
+     * unnoetige Kopplung zwischen den Prognose-Modulen und EMS
+     * einzufuehren). Alles in EINEM Aufruf, wie der Rest des Payloads -
+     * kein Nachladen bei Reiterwechsel.
+     */
+    private function BuildDayPlan(): array
+    {
+        $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => []];
+
+        $emsId = $this->EmsInstanceID();
+        if ($emsId > 0 && function_exists('EMS_GetDayPlan')) {
+            $plan = @EMS_GetDayPlan($emsId);
+            if (is_array($plan) && isset($plan['slots']) && is_array($plan['slots'])) {
+                $out['hasEms'] = true;
+                foreach ($plan['slots'] as $slot) {
+                    $out['slots'][] = [
+                        'time'  => (int) ($slot['time'] ?? 0) * 1000,
+                        'op'    => (int) ($slot['op'] ?? 0),
+                        'power' => (int) ($slot['power'] ?? 0),
+                        'reason' => (string) ($slot['reason'] ?? ''),
+                        'price' => isset($slot['price']) && $slot['price'] !== null ? (float) $slot['price'] * 100.0 : null,
+                        'soc'   => isset($slot['soc']) && $slot['soc'] !== null ? (float) $slot['soc'] : null,
+                    ];
+                }
+            }
+        }
+
+        $out['pvForecast'] = $this->ForecastSeries($this->PvfInstanceID(), 'PVF_GetForecast');
+        $out['loadForecast'] = $this->ForecastSeries($this->LfcInstanceID(), 'LFC_GetForecast');
+
+        return $out;
+    }
+
+    /**
+     * Heute+morgen aus GetForecast(0)/GetForecast(1) zu EINER [[tsMs,W],...]-
+     * Zeitreihe zusammengefuegt - gleiches Vertragsformat bei PVF und LFC
+     * ('resolution' als "<n>min"-String, 'mean' je Slot in W).
+     */
+    private function ForecastSeries(int $instanceId, string $function): array
+    {
+        if ($instanceId <= 0 || !function_exists($function)) {
+            return [];
+        }
+        $pts = [];
+        foreach ([0, 1] as $offset) {
+            $fc = @$function($instanceId, $offset);
+            if (!is_array($fc) || !isset($fc['mean']) || !is_array($fc['mean'])) {
+                continue;
+            }
+            $slotMin = (int) (rtrim((string) ($fc['resolution'] ?? '60min'), 'min') ?: 60);
+            $slotSec = max(1, $slotMin) * 60;
+            $dayStart = strtotime('today +' . $offset . ' days');
+            foreach ($fc['mean'] as $i => $w) {
+                $pts[] = [($dayStart + $i * $slotSec) * 1000, (float) $w];
+            }
+        }
+        return $pts;
     }
 
     // Feste Knotenfarben, 1:1 aus InverterHubEnergy::COL_* uebernommen (deren
@@ -1920,6 +2010,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'mpptKeys' => array_keys($mppt),
             'days'     => $days,
             'energy'   => $energy,
+            'dayPlan'  => $this->BuildDayPlan(),
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),

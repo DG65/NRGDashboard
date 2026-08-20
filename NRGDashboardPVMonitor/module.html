@@ -46,6 +46,13 @@
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
   #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; overflow-x: auto; }
+  /* Tagesplan-Reiter (20.08.2026): eigene, NICHT interaktive Farbschluessel-
+     Zeile fuer die EMS_OP_*-Hintergrundbaender (markArea/plotBands) -
+     getrennt von #legendRow, weil ein Klick hier keine echte Chart-Serie
+     hat, die sich ein-/ausblenden liesse (waere ein irrefuehrender Klick-
+     Koeder, wenn er wie die echte Legende aussaehe, aber nichts taete). */
+  #planKeyRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .85; }
+  #planKeyRow .legItem { cursor: default; }
   /* Jahresvergleich kann auf viele Jahre anwachsen (Dietmar, 31.07.2026:
      "Wohin werden die weiteren Jahre geschrieben?") - die einzeilige,
      horizontal scrollende Legende (siehe #legendRow oben, urspruenglich
@@ -184,6 +191,7 @@
         <button class="tab" data-tab="flow">Energiebilanz</button>
         <button class="tab" data-tab="balance">Bilanz</button>
         <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
+        <button class="tab" data-tab="tagesplan">Tagesplan</button>
       </div>
       <div id="chartcol">
         <div id="chart"></div>
@@ -192,6 +200,7 @@
           <button data-unit="kw">Ø kW</button>
         </div>
         <div id="legendRow"></div>
+        <div id="planKeyRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
       </div>
@@ -1281,6 +1290,183 @@
         },
         series: visSeries.map(function (s) {
           return { name: s.name, type: 'column', data: s.data, color: s.color };
+        })
+      });
+      chartEngine = 'highcharts';
+    }
+
+    // "Tagesplan"-Reiter (Dietmars Wunsch, 20.08.2026, relayed ueber EMS):
+    // EMS_GetDayPlan() (heute+morgen, Viertelstunden-Slots, op/price/soc je
+    // Slot) als Hintergrundbaender (markArea/plotBands, Farbe je EMS_OP_*,
+    // siehe PLAN_OP_COLORS unten - 1:1 aus EMS::getPlanActions() uebernommen)
+    // + Preis/SOC/PV-Prognose/Last-Prognose als normale, ueber die
+    // bestehende Legende ein-/ausblendbare Linien. PV-/Lastprognose kommen
+    // laut EMS bewusst NICHT ueber EMS selbst, sondern direkt von
+    // PVPrognose/Lastprognose (keine unnoetige Kopplung).
+    var PLAN_OP_COLORS = {
+      0: { name: 'Automatik', color: '#AAAAAA' },
+      1: { name: 'PV-Eigenverbrauch (laden)', color: '#4CAF50' },
+      2: { name: 'Netz laden', color: '#2196F3' },
+      3: { name: 'Eigenverbrauch (entladen)', color: '#FF9800' },
+      5: { name: 'Einspeisen', color: '#9C27B0' }
+    };
+    function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
+
+    // Statische, NICHT interaktive Farbschluessel-Zeile fuer die
+    // Hintergrundbaender (siehe CSS-Kommentar #planKeyRow) - nur die
+    // tatsaechlich im aktuellen Plan vorkommenden op-Werte, damit die Zeile
+    // nicht mit nie auftretenden Kategorien vollgestopft wird.
+    function renderPlanKey() {
+      var dp = (lastData && lastData.dayPlan) || {};
+      var seen = {};
+      (dp.slots || []).forEach(function (s) { seen[s.op] = true; });
+      var row = document.getElementById('planKeyRow');
+      row.innerHTML = '';
+      Object.keys(seen).forEach(function (op) {
+        var info = planOpInfo(+op);
+        var el = document.createElement('span');
+        el.className = 'legItem';
+        el.innerHTML = '<span class="dot" style="background:' + info.color + '"></span>' + info.name;
+        row.appendChild(el);
+      });
+    }
+
+    // Baender aus den Plan-Slots ableiten - EIN Band pro zusammenhaengender
+    // Folge gleicher op-Werte (nicht ein Band je 15-Minuten-Slot), sonst
+    // wuerden 96 Einzelbaender pro Tag gezeichnet statt weniger, klar
+    // abgegrenzter Phasen.
+    function planBands(slots) {
+      var bands = [];
+      var open = null;
+      slots.forEach(function (s, i) {
+        var next = slots[i + 1];
+        var end = next ? next.time : (s.time + 15 * 60000);
+        if (!open || open.op !== s.op) {
+          if (open) { bands.push(open); }
+          open = { op: s.op, start: s.time, end: end };
+        } else {
+          open.end = end;
+        }
+      });
+      if (open) { bands.push(open); }
+      return bands;
+    }
+
+    function planSeries(dp) {
+      var series = [];
+      var priceData = dp.slots.filter(function (s) { return s.price !== null && s.price !== undefined; })
+        .map(function (s) { return [s.time, s.price]; });
+      if (priceData.length) { series.push({ name: 'Strompreis', data: priceData, axis: 1, color: '#ffb300', step: true }); }
+      var socData = dp.slots.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
+        .map(function (s) { return [s.time, s.soc]; });
+      if (socData.length) { series.push({ name: 'Batterie-SOC (geplant)', data: socData, axis: 2, color: '#9575cd', dashed: true }); }
+      if (dp.pvForecast && dp.pvForecast.length) {
+        series.push({ name: 'PV-Prognose', data: dp.pvForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#e57373', dashed: false });
+      }
+      if (dp.loadForecast && dp.loadForecast.length) {
+        series.push({ name: 'Last-Prognose', data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
+      }
+      return series;
+    }
+
+    function renderDayPlanECharts(el, dp) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) {
+        el.innerHTML = '';
+        chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 });
+        chartEngine = 'echarts';
+      }
+      var allSeries = planSeries(dp);
+      renderLegend('tagesplan', allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var bands = planBands(dp.slots);
+      var markAreas = bands.map(function (b) {
+        var info = planOpInfo(b.op);
+        return [{ xAxis: b.start, itemStyle: { color: info.color, opacity: .16 } }, { xAxis: b.end }];
+      });
+      var series = visSeries.map(function (s, i) {
+        var line = {
+          name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data,
+          yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1.2 }, s.dashed ? { type: 'dashed' } : {})
+        };
+        if (i === 0 && markAreas.length) { line.markArea = { silent: true, data: markAreas }; }
+        return line;
+      });
+      if (!series.length && markAreas.length) {
+        // Alle Serien ausgeblendet - Baender brauchen trotzdem einen Traeger.
+        series.push({ name: '', type: 'line', data: [], markArea: { silent: true, data: markAreas } });
+      }
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 60, top: 28, bottom: 32 },
+        legend: { show: false },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          formatter: function (params) {
+            var ts = params.length ? params[0].value[0] : null;
+            var slot = ts !== null ? dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]) : null;
+            var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString('de-DE') + '</div>' : '';
+            var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' : '';
+            var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
+              var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
+            }).join('');
+            return head + opLine + lines;
+          }
+        },
+        xAxis: { type: 'time', splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
+        yAxis: [
+          { type: 'value', name: 'kW', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+          { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } },
+          { type: 'value', name: 'SOC %', position: 'right', offset: 46, min: 0, max: 100, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
+        ],
+        dataZoom: DATA_ZOOM_INSIDE,
+        series: series
+      }, true);
+    }
+
+    function renderDayPlanHighcharts(el, dp) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var allSeries = planSeries(dp);
+      renderLegend('tagesplan', allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var bands = planBands(dp.slots);
+      var plotBands = bands.map(function (b) {
+        var info = planOpInfo(b.op);
+        return { from: b.start, to: b.end, color: info.color + '29' };
+      });
+      chart = Highcharts.chart(el, {
+        time: { useUTC: false },
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: { type: 'datetime', plotBands: plotBands, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+        yAxis: [
+          { title: { text: 'kW', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
+          { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true },
+          { title: { text: 'SOC %', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, min: 0, max: 100 }
+        ],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          shared: true, useHTML: true,
+          formatter: function () {
+            var ts = this.x;
+            var slot = dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]);
+            var lines = ['<b>' + Highcharts.dateFormat('%d.%m.%Y %H:%M', ts) + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '')];
+            this.points.forEach(function (p) {
+              lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
+            });
+            return lines.join('');
+          }
+        },
+        series: visSeries.map(function (s) {
+          return {
+            name: s.name, type: 'line', data: s.data, color: s.color, yAxis: s.axis,
+            step: s.step ? 'left' : undefined, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false }, lineWidth: 1.4
+          };
         })
       });
       chartEngine = 'highcharts';
@@ -2541,6 +2727,25 @@
         el.innerHTML = '<div class="empty">Keine Batterie-Variable gefunden - im Formular „Datenquelle“ wählen oder InverterHub installieren</div>';
         return;
       }
+      document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
+      if (curTab === 'tagesplan') {
+        var dp = lastData.dayPlan || {};
+        if (!dp.hasEms || !dp.slots || !dp.slots.length) {
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          document.getElementById('planKeyRow').style.display = 'none';
+          el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
+          return;
+        }
+        renderPlanKey();
+        var wantEngineDp = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+        if (wantEngineDp === 'highcharts') {
+          ensureHighcharts(function () { el.innerHTML = ''; renderDayPlanHighcharts(el, dp); });
+        } else {
+          ensureECharts(function () { renderDayPlanECharts(el, dp); setTimeout(sizeChart, 60); });
+        }
+        return;
+      }
       if (curTab === 'balance') {
         document.getElementById('balancePanel').style.display = '';
         if (!lastData.hasEnergyFlow) {
@@ -2804,9 +3009,11 @@
           curView = 'day';
           typeSel.value = 'day';
         }
-        // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
-        // Woche/Monat/Jahr-Navigation noetig (Dietmar, 31.07.2026).
-        document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
+        // Jahresvergleich zeigt immer "seit Inbetriebnahme", Tagesplan immer
+        // "jetzt bis morgen" - keine Tag/Woche/Monat/Jahr-Navigation noetig
+        // (Dietmar, 31.07.2026 bzw. 20.08.2026). EMS haelt keine Tagesplan-
+        // Historie vor, ein Datumsfeld waere hier also wirkungslos.
+        document.getElementById('bar').style.display = (curTab === 'yearcompare' || curTab === 'tagesplan') ? 'none' : '';
         render();
       };
     });
