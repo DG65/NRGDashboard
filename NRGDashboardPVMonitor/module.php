@@ -900,7 +900,12 @@ class NRGDashboardPVMonitor extends IPSModule
                         'op'    => (int) ($slot['op'] ?? 0),
                         'power' => (int) ($slot['power'] ?? 0),
                         'reason' => (string) ($slot['reason'] ?? ''),
-                        'price' => isset($slot['price']) && $slot['price'] !== null ? (float) $slot['price'] * 100.0 : null,
+                        // EMS_GetDayPlan() liefert 'price' bereits in ct/kWh (siehe
+                        // Vertragsspezifikation, 20.08.2026) - die fruehere *100-
+                        // Umrechnung hier war ein eigener Fehler (Annahme EUR/kWh),
+                        // hat Werte wie 2000+ statt 10-40 ct erzeugt (Dietmars Fund,
+                        // live im Tagesplan-Diagramm sichtbar geworden).
+                        'price' => isset($slot['price']) && $slot['price'] !== null ? round((float) $slot['price'], 2) : null,
                         'soc'   => isset($slot['soc']) && $slot['soc'] !== null ? (float) $slot['soc'] : null,
                     ];
                 }
