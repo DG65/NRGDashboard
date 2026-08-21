@@ -1630,6 +1630,14 @@ class NRGDashboardPVMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'dayPlanLoad') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'      => true,
+                'type'    => 'dayPlanUpdate',
+                'dayPlan' => $this->BuildDayPlan(),
+            ]));
+            return;
+        }
         if ($Ident === 'yearCompareHistory') {
             $req = json_decode((string) $Value, true);
             $this->SaveManualHistory(is_array($req) ? $req : []);
@@ -2019,7 +2027,17 @@ class NRGDashboardPVMonitor extends IPSModule
             'mpptKeys' => array_keys($mppt),
             'days'     => $days,
             'energy'   => $energy,
-            'dayPlan'  => $this->BuildDayPlan(),
+            // Tagesplan NICHT mehr Teil des Haupt-Payloads (Dietmar,
+            // 21.08.2026: "Laden benoetigt sehr lange") - PVF_GetForecast()/
+            // LFC_GetForecast() koennen intern bis zu LFC_LookbackDays
+            // (Default 365!) Kandidatentage durchsuchen, macht bei jedem
+            // Render() (alle 5 Minuten, UNABHAENGIG vom gerade sichtbaren
+            // Reiter) unnoetig teure Archivzugriffe. Nur noch 'hasEms' als
+            // billiger Hinweis, ob der Reiter ueberhaupt sinnvoll ist -
+            // die eigentlichen Daten holt requestAction('dayPlanLoad') erst,
+            // wenn der Tagesplan-Reiter tatsaechlich geoeffnet wird (gleiches
+            // Nachforder-Muster wie Bilanz/Jahresvergleich).
+            'hasEms'   => $this->EmsInstanceID() > 0,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),

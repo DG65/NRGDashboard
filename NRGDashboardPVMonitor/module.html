@@ -235,6 +235,13 @@
     // Zeitraum-Parameter noetig (immer "seit Inbetriebnahme"), deshalb reicht
     // ein einzelner Cache-Slot statt eines Keys wie bei balanceCache.
     var yearCompareCache = null, yearComparePending = false, yearCompareSub = 'total';
+    // Tagesplan-Reiter (Dietmar, 21.08.2026: "Laden benoetigt sehr lange") -
+    // gleiches Nachforder-Muster wie yearCompareCache: PVF_/LFC_GetForecast()
+    // koennen intern sehr teuer sein (bis zu LFC_LookbackDays Kandidatentage),
+    // deshalb NICHT mehr Teil des Haupt-Payloads, sondern erst per
+    // requestAction('dayPlanLoad') geholt, wenn der Reiter tatsaechlich
+    // geoeffnet wird. Kein Zeitraum-Parameter noetig (immer heute+morgen).
+    var dayPlanCache = null, dayPlanPending = false;
     // Strompreis-Reiter: Netzbezug wahlweise als Energie (kWh je 15-Min-
     // Balken) oder als Durchschnittsleistung (kW) anzeigen (Dietmars
     // Wunsch, 07.08.2026). Umrechnung ist ein simpler Faktor 4, weil
@@ -1360,7 +1367,7 @@
     // tatsaechlich im aktuellen (gefilterten) Tag vorkommenden op-Werte,
     // damit die Zeile nicht mit nie auftretenden Kategorien vollgestopft wird.
     function renderPlanKey(dp) {
-      dp = dp || (lastData && lastData.dayPlan) || {};
+      dp = dp || dayPlanCache || {};
       var seen = {};
       (dp.slots || []).forEach(function (s) { seen[s.op] = true; });
       var row = document.getElementById('planKeyRow');
@@ -2823,7 +2830,25 @@
       }
       document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
       if (curTab === 'tagesplan') {
-        var dp = lastData.dayPlan || {};
+        if (!lastData.hasEms) {
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          document.getElementById('planKeyRow').style.display = 'none';
+          el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
+          return;
+        }
+        if (!dayPlanCache) {
+          if (!dayPlanPending) {
+            dayPlanPending = true;
+            requestAction('dayPlanLoad', '{}');
+          }
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          document.getElementById('planKeyRow').style.display = 'none';
+          el.innerHTML = '<div class="empty">Lade Tagesplan…</div>';
+          return;
+        }
+        var dp = dayPlanCache;
         if (!dp.hasEms || !dp.slots || !dp.slots.length) {
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
@@ -3016,6 +3041,14 @@
         yearCompareCache = d.data;
         yearComparePending = false;
         if (curTab === 'yearcompare') { render(); }
+        return;
+      }
+      // Antwort auf requestAction('dayPlanLoad', ...) - Tagesplan-Reiter
+      // (21.08.2026), gleiches Nachforder-Muster wie yearCompareUpdate.
+      if (d.type === 'dayPlanUpdate') {
+        dayPlanCache = d.dayPlan;
+        dayPlanPending = false;
+        if (curTab === 'tagesplan') { render(); }
         return;
       }
       lastData = d;
