@@ -1483,15 +1483,7 @@
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
             }).join('');
-            // TEMPORAER: Debug-Zeile zur Eingrenzung von Dietmars Tooltip-
-            // Zeit-Fund (21.08.2026) - vor dem naechsten Release wieder
-            // entfernen.
-            var dbg = '<div style="opacity:.6;font-size:10px;margin-top:4px;border-top:1px solid #555;padding-top:4px">' +
-              'axisValue=' + ts + ' | value0=' + (params[0] && params[0].value ? params[0].value[0] : '?') +
-              ' | now=' + Date.now() + ' | tzOffsetMin=' + new Date().getTimezoneOffset() +
-              ' | tz=' + (Intl.DateTimeFormat().resolvedOptions().timeZone || '?') +
-              ' | dayStart=' + dp.dayStart + '</div>';
-            return head + opLine + lines + dbg;
+            return head + opLine + lines;
           }
         },
         xAxis: { type: 'time', min: dp.dayStart, max: dp.dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
@@ -1546,7 +1538,18 @@
             })[0];
             var ts = finePoint ? finePoint.x : this.x;
             var slot = dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]);
-            var lines = ['<b>' + Highcharts.dateFormat('%d.%m.%Y %H:%M', ts) + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '')];
+            // Highcharts.dateFormat() ist eine GLOBALE Funktion und ignoriert
+            // das chart-eigene "time: { useUTC: false }" - dieselbe 2-Stunden-
+            // UTC-Abweichung, die schon im Tages-Reiter gefunden wurde (siehe
+            // Kommentar dort, 28.07.2026), hier beim Bau des Tagesplan-
+            // Reiters erneut hineingebaut (Dietmars Fund, 21.08.2026, weil er
+            // Highcharts nutzt - der ECharts-Pfad war bereits korrekt).
+            // Natives JS-Datum statt Highcharts-API, gleiches Muster wie im
+            // Tages-Reiter.
+            var dtP = new Date(ts);
+            var p2P = function (n) { return ('0' + n).slice(-2); };
+            var tsLabel = p2P(dtP.getDate()) + '.' + p2P(dtP.getMonth() + 1) + '.' + dtP.getFullYear() + ' ' + p2P(dtP.getHours()) + ':' + p2P(dtP.getMinutes());
+            var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '')];
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
             });
