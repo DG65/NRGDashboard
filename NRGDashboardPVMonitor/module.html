@@ -1427,17 +1427,34 @@
         var info = planOpInfo(b.op);
         return [{ xAxis: b.start, itemStyle: { color: info.color, opacity: .16 } }, { xAxis: b.end }];
       });
+      // Rote "Jetzt"-Linie, nur am heutigen Tag (Muster: Strompreis-Reiter,
+      // Dietmars Wunsch 28.07.2026 dort, 21.08.2026 hier uebernommen) - an
+      // die erste sichtbare Serie gehaengt statt an eine leere Hilfsserie
+      // (sonst reicht die Linie nur ueber DEREN Werteumfang statt die volle
+      // Diagrammhoehe, siehe Strompreis-Kommentar).
+      var showNowLine = (tagesplanDay === 0) && dp.dayStart <= Date.now() && Date.now() < dp.dayEnd;
+      var nowMarkLine = showNowLine
+        ? { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: '#ff5252', width: 2, type: 'solid' }, data: [{ xAxis: Date.now() }] }
+        : undefined;
       var series = visSeries.map(function (s, i) {
         var line = {
           name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data,
           yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1.2 }, s.dashed ? { type: 'dashed' } : {})
         };
-        if (i === 0 && markAreas.length) { line.markArea = { silent: true, data: markAreas }; }
+        if (i === 0) {
+          if (markAreas.length) { line.markArea = { silent: true, data: markAreas }; }
+          if (nowMarkLine) { line.markLine = nowMarkLine; }
+        }
         return line;
       });
-      if (!series.length && markAreas.length) {
-        // Alle Serien ausgeblendet - Baender brauchen trotzdem einen Traeger.
-        series.push({ name: '', type: 'line', data: [], markArea: { silent: true, data: markAreas } });
+      if (!series.length && (markAreas.length || nowMarkLine)) {
+        // Alle Serien ausgeblendet - Baender/Jetzt-Linie brauchen trotzdem
+        // einen Traeger.
+        series.push({
+          name: '', type: 'line', data: [],
+          markArea: markAreas.length ? { silent: true, data: markAreas } : undefined,
+          markLine: nowMarkLine
+        });
       }
       chart.setOption({
         backgroundColor: 'transparent',
@@ -1490,11 +1507,14 @@
         var info = planOpInfo(b.op);
         return { from: b.start, to: b.end, color: info.color + '29' };
       });
+      // Rote "Jetzt"-Linie, nur am heutigen Tag (Muster: Strompreis-Reiter).
+      var showNowLine = (tagesplanDay === 0) && dp.dayStart <= Date.now() && Date.now() < dp.dayEnd;
+      var plotLines = showNowLine ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }] : [];
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
         chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
-        xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+        xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, plotLines: plotLines, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [
           { title: { text: 'kW', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
           { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true },
