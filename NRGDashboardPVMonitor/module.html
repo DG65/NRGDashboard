@@ -215,6 +215,11 @@
     // "morgen" per Vor-Navigation erreichbar machen, ohne den Standard-
     // Einstieg fuer die anderen Reiter zu verschieben).
     var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
+    // Tagesplan-Reiter (Dietmar, 21.08.2026: "jeden der beiden Tage
+    // einzeln sehen" statt beide Tage in einem Chart) - eigene, simple
+    // 0/1-Navigation (0=heute, 1=morgen), unabhaengig von curView/idx der
+    // uebrigen Reiter, da EMS keine Tagesplan-Historie vorhaelt.
+    var tagesplanDay = 0;
     // Energiebilanz (Sankey) fuer Woche/Monat/Jahr/Gesamt/Benutzerdefiniert -
     // per requestAction() nachgeforderte Ergebnisse, keyed "start_end"
     // (Unix-Sekunden), damit ein einmal geladener Zeitraum nicht bei jedem
@@ -450,6 +455,22 @@
 
       var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
       quick.innerHTML = '';
+
+      if (curTab === 'tagesplan') {
+        pick.style.display = 'none'; pickTo.style.display = 'none';
+        document.getElementById('periodLabel').style.display = '';
+        document.getElementById('periodLabel').textContent = (tagesplanDay === 0) ? 'Heute' : 'Morgen';
+        document.getElementById('prev').disabled = (tagesplanDay <= 0);
+        document.getElementById('next').disabled = (tagesplanDay >= 1);
+        ['Heute', 'Morgen'].forEach(function (l, i) {
+          var btn = document.createElement('button');
+          btn.className = 'qday' + (tagesplanDay === i ? ' active' : '');
+          btn.textContent = l;
+          btn.onclick = function () { tagesplanDay = i; render(); };
+          quick.appendChild(btn);
+        });
+        return;
+      }
 
       if (curView === 'day') {
         pick.style.display = ''; pickTo.style.display = 'none';
@@ -1312,12 +1333,34 @@
     };
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
 
+    // Tagesplan auf EINEN der beiden Tage einschraenken (Dietmar,
+    // 21.08.2026: "jeden der beiden Tage einzeln sehen" statt heute+morgen
+    // in einem Chart) - tagesplanDay 0=heute/1=morgen. slots/pvForecast/
+    // loadForecast werden auf die lokale Kalendertag-Grenze gefiltert, dazu
+    // die Tagesgrenzen selbst (fuer eine feste x-Achse, gleiches Muster wie
+    // die normale Tagesansicht mit d.dayStart/d.dayEnd).
+    function dayPlanForSelectedDay(dp) {
+      var start = new Date(); start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() + tagesplanDay);
+      var end = new Date(start); end.setDate(end.getDate() + 1);
+      var startMs = start.getTime(), endMs = end.getTime();
+      var inRange = function (p) { return p[0] >= startMs && p[0] < endMs; };
+      return {
+        hasEms: dp.hasEms,
+        dayStart: startMs,
+        dayEnd: endMs,
+        slots: (dp.slots || []).filter(function (s) { return s.time >= startMs && s.time < endMs; }),
+        pvForecast: (dp.pvForecast || []).filter(inRange),
+        loadForecast: (dp.loadForecast || []).filter(inRange)
+      };
+    }
+
     // Statische, NICHT interaktive Farbschluessel-Zeile fuer die
     // Hintergrundbaender (siehe CSS-Kommentar #planKeyRow) - nur die
-    // tatsaechlich im aktuellen Plan vorkommenden op-Werte, damit die Zeile
-    // nicht mit nie auftretenden Kategorien vollgestopft wird.
-    function renderPlanKey() {
-      var dp = (lastData && lastData.dayPlan) || {};
+    // tatsaechlich im aktuellen (gefilterten) Tag vorkommenden op-Werte,
+    // damit die Zeile nicht mit nie auftretenden Kategorien vollgestopft wird.
+    function renderPlanKey(dp) {
+      dp = dp || (lastData && lastData.dayPlan) || {};
       var seen = {};
       (dp.slots || []).forEach(function (s) { seen[s.op] = true; });
       var row = document.getElementById('planKeyRow');
@@ -1417,7 +1460,7 @@
             return head + opLine + lines;
           }
         },
-        xAxis: { type: 'time', splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
+        xAxis: { type: 'time', min: dp.dayStart, max: dp.dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
         yAxis: [
           { type: 'value', name: 'kW', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
           { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } },
@@ -1442,7 +1485,7 @@
         time: { useUTC: false },
         chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
-        xAxis: { type: 'datetime', plotBands: plotBands, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+        xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [
           { title: { text: 'kW', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
           { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true },
@@ -2737,12 +2780,13 @@
           el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
           return;
         }
-        renderPlanKey();
+        var dpDay = dayPlanForSelectedDay(dp);
+        renderPlanKey(dpDay);
         var wantEngineDp = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
         if (wantEngineDp === 'highcharts') {
-          ensureHighcharts(function () { el.innerHTML = ''; renderDayPlanHighcharts(el, dp); });
+          ensureHighcharts(function () { el.innerHTML = ''; renderDayPlanHighcharts(el, dpDay); });
         } else {
-          ensureECharts(function () { renderDayPlanECharts(el, dp); setTimeout(sizeChart, 60); });
+          ensureECharts(function () { renderDayPlanECharts(el, dpDay); setTimeout(sizeChart, 60); });
         }
         return;
       }
@@ -2937,7 +2981,9 @@
     }
 
     document.getElementById('prev').onclick = function () {
-      if (curView === 'day') {
+      if (curTab === 'tagesplan') {
+        if (tagesplanDay > 0) { tagesplanDay--; render(); }
+      } else if (curView === 'day') {
         var days = (lastData && lastData.days) || [];
         if (idx < days.length - 1) { idx++; render(); }
       } else if (curView === 'week' || curView === 'month' || curView === 'year') {
@@ -2945,7 +2991,9 @@
       }
     };
     document.getElementById('next').onclick = function () {
-      if (curView === 'day') {
+      if (curTab === 'tagesplan') {
+        if (tagesplanDay < 1) { tagesplanDay++; render(); }
+      } else if (curView === 'day') {
         if (idx > 0) { idx--; render(); }
       } else if (curView === 'week' || curView === 'month' || curView === 'year') {
         shiftViewRef(1); render();
@@ -3005,15 +3053,19 @@
         var dayOnly = (curTab === 'battery' || curTab === 'price');
         var typeSel = document.getElementById('type');
         typeSel.disabled = dayOnly;
+        typeSel.style.display = (curTab === 'tagesplan') ? 'none' : '';
         if (dayOnly && curView !== 'day') {
           curView = 'day';
           typeSel.value = 'day';
         }
-        // Jahresvergleich zeigt immer "seit Inbetriebnahme", Tagesplan immer
-        // "jetzt bis morgen" - keine Tag/Woche/Monat/Jahr-Navigation noetig
-        // (Dietmar, 31.07.2026 bzw. 20.08.2026). EMS haelt keine Tagesplan-
-        // Historie vor, ein Datumsfeld waere hier also wirkungslos.
-        document.getElementById('bar').style.display = (curTab === 'yearcompare' || curTab === 'tagesplan') ? 'none' : '';
+        // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
+        // Woche/Monat/Jahr-Navigation noetig (Dietmar, 31.07.2026).
+        // Tagesplan bekommt seine EIGENE, einfache Heute/Morgen-Navigation
+        // (siehe syncNav() curTab==='tagesplan'-Zweig, Dietmar 21.08.2026:
+        // "jeden der beiden Tage einzeln sehen" statt beide Tage in einem
+        // Chart) - #bar bleibt dafuer sichtbar, nur die Ansichts-Auswahl
+        // (Tag/Woche/...) ist ausgeblendet, da hier wirkungslos.
+        document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
         render();
       };
     });
