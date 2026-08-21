@@ -1483,7 +1483,15 @@
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
             }).join('');
-            return head + opLine + lines;
+            // TEMPORAER: Debug-Zeile zur Eingrenzung von Dietmars Tooltip-
+            // Zeit-Fund (21.08.2026) - vor dem naechsten Release wieder
+            // entfernen.
+            var dbg = '<div style="opacity:.6;font-size:10px;margin-top:4px;border-top:1px solid #555;padding-top:4px">' +
+              'axisValue=' + ts + ' | value0=' + (params[0] && params[0].value ? params[0].value[0] : '?') +
+              ' | now=' + Date.now() + ' | tzOffsetMin=' + new Date().getTimezoneOffset() +
+              ' | tz=' + (Intl.DateTimeFormat().resolvedOptions().timeZone || '?') +
+              ' | dayStart=' + dp.dayStart + '</div>';
+            return head + opLine + lines + dbg;
           }
         },
         xAxis: { type: 'time', min: dp.dayStart, max: dp.dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
