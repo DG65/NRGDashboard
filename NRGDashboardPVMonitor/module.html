@@ -54,19 +54,18 @@
   #planKeyRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .85; }
   #planKeyRow .legItem { cursor: default; }
   /* StromGedacht-Netzampel (21.08.2026, relayed ueber die StromGedacht-
-     Sitzung, Dietmars Wunsch): eigene, farbige Zeitleiste statt eines
-     weiteren Chart-Bands - robuster als ein zweites markArea/plotBands im
-     selben Koordinatensystem (kein Kampf um Y-Achsen-Bereiche zwischen
-     EMS-Betriebsart und Ampel-Zustand). Ein Segment je zusammenhaengendem
-     Ampel-Zustand, Breite proportional zur Dauer. */
-  .ampelStrip { display: flex; height: 18px; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
-  .ampelSeg { height: 100%; }
-  .ampelDayLabel { font-size: 11px; opacity: .7; margin-bottom: 2px; }
-  /* Netzampel-Reiter: Heute+Morgen jeweils als eigene Leiste untereinander,
-     keine Tag/Woche/... Navigation noetig (StromGedachts Horizont ist fest
-     48h ab jetzt, kein historischer Rueckblick moeglich). */
-  #netzampelPanel { padding-top: 10px; }
-  #netzampelPanel .ampelBlock { margin-bottom: 18px; }
+     Sitzung; 22.08.2026 auf Dietmars Feedback hin auf einen echten Chart
+     umgestellt - eigene ECharts/Highcharts-Instanz mit demselben Zeitraster
+     und denselben Grid-Raendern wie das Tagesplan-Diagramm, damit Laenge und
+     Netzlinien exakt zusammenpassen, statt einer unabhaengigen Flexbox-
+     Zeitleiste). Segmente kommen als markArea/plotBands aus renderAmpelChart. */
+  .ampelStrip { height: 34px; margin: 4px 0 4px; }
+  /* Netzampel-Reiter: EIN Tag je Ansicht mit Heute/Morgen-Navigation
+     (dieselbe tagesplanDay-Leiste wie beim Tagesplan-Reiter, Dietmars
+     Wunsch 22.08.2026: "wie beim Strompreis mit heute und morgen" statt
+     beider Tage untereinander). */
+  #netzampelPanel { padding-top: 6px; }
+  #netzampelPanel .ampelStrip { height: 70px; }
   /* Jahresvergleich kann auf viele Jahre anwachsen (Dietmar, 31.07.2026:
      "Wohin werden die weiteren Jahre geschrieben?") - die einzeilige,
      horizontal scrollende Legende (siehe #legendRow oben, urspruenglich
@@ -489,7 +488,7 @@
       var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
       quick.innerHTML = '';
 
-      if (curTab === 'tagesplan') {
+      if (curTab === 'tagesplan' || curTab === 'netzampel') {
         pick.style.display = 'none'; pickTo.style.display = 'none';
         document.getElementById('periodLabel').style.display = '';
         document.getElementById('periodLabel').textContent = (tagesplanDay === 0) ? 'Heute' : 'Morgen';
@@ -1379,32 +1378,81 @@
     };
     function ampelInfo(v) { return AMPEL_COLORS[String(v)] || { name: 'Zustand ' + v, color: '#888' }; }
 
-    // Rendert eine farbige Zeitleiste (Segmente proportional zur Dauer,
-    // auf [start,end] zugeschnitten) statt eines weiteren Chart-Bands -
-    // robuster als ein zweites markArea/plotBands im selben Koordinaten-
-    // system wie die EMS-Betriebsart-Baender (kein Kampf um Y-Achsen-
-    // Bereiche). No-Op (leert nur), wenn keine Segmente vorhanden sind.
-    function renderAmpelStrip(containerId, segments, start, end) {
+    // Ampel als echtes Mini-Chart statt einer unabhaengigen Flexbox-
+    // Zeitleiste (Dietmars Feedback, 22.08.2026: "in keiner Weise mit dem
+    // Diagramm bzw. dem Diagrammstil in Einklang", weder Laenge noch
+    // Netzlinien passten). Grid-Raender links/rechts sind bewusst IDENTISCH
+    // mit denen des Tagesplan-Diagramms (renderDayPlanECharts/Highcharts),
+    // damit die Segmentgrenzen pixelgenau unter der Zeitachse des Haupt-
+    // diagramms liegen. showAxis=false (innerhalb des Tagesplans, wo die
+    // Zeitachse schon vom Hauptchart kommt) blendet nur Beschriftung/Achsen-
+    // linie aus, die Gitternetzlinien (splitLine/gridLine) bleiben immer
+    // sichtbar - genau die vom Diagrammstil.
+    function renderAmpelChart(containerId, segments, start, end, showAxis) {
       var el = document.getElementById(containerId);
-      el.innerHTML = '';
-      var total = end - start;
-      if (total <= 0) { return; }
-      (segments || []).forEach(function (s) {
-        var from = Math.max(s.from, start), to = Math.min(s.to, end);
-        if (to <= from) { return; }
-        var info = ampelInfo(s.value);
-        var seg = document.createElement('div');
-        seg.className = 'ampelSeg';
-        seg.style.width = ((to - from) / total * 100) + '%';
-        seg.style.background = info.color;
-        seg.title = info.name + ' (' + fmtHM(from) + '–' + fmtHM(to) + ' Uhr)';
-        el.appendChild(seg);
-      });
+      if (!el) { return; }
+      if (end <= start) { el.innerHTML = ''; return; }
+      var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+      if (wantEngine === 'highcharts') {
+        ensureHighcharts(function () { renderAmpelChartHC(el, segments, start, end, showAxis); });
+      } else {
+        ensureECharts(function () { renderAmpelChartEC(el, segments, start, end, showAxis); });
+      }
     }
 
-    function fmtHM(ms) {
-      var d = new Date(ms);
-      return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    function renderAmpelChartEC(el, segments, start, end, showAxis) {
+      if (el._ampelChart) { el._ampelChart.dispose(); el._ampelChart = null; }
+      el.innerHTML = '';
+      var inst = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 });
+      el._ampelChart = inst;
+      var areas = (segments || []).map(function (s) {
+        var from = Math.max(s.from, start), to = Math.min(s.to, end);
+        if (to <= from) { return null; }
+        var info = ampelInfo(s.value);
+        return [{ xAxis: from, itemStyle: { color: info.color, opacity: .85 } }, { xAxis: to }];
+      }).filter(Boolean);
+      inst.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 60, top: 2, bottom: showAxis ? 22 : 2 },
+        xAxis: {
+          type: 'time', min: start, max: end,
+          axisLine: { show: false }, axisTick: { show: false },
+          axisLabel: Object.assign({}, themeAxisStyle(), { show: !!showAxis }),
+          splitLine: { show: true, lineStyle: { color: GRID_COLOR } }
+        },
+        yAxis: { type: 'value', show: false, min: 0, max: 1 },
+        tooltip: { show: false },
+        series: [{ type: 'line', data: [], silent: true, markArea: { silent: true, data: areas } }]
+      }, true);
+    }
+
+    function renderAmpelChartHC(el, segments, start, end, showAxis) {
+      if (el._ampelChart) { el._ampelChart.destroy(); el._ampelChart = null; }
+      var plotBands = (segments || []).map(function (s) {
+        var from = Math.max(s.from, start), to = Math.min(s.to, end);
+        if (to <= from) { return null; }
+        return { from: from, to: to, color: ampelInfo(s.value).color + 'D9' };
+      }).filter(Boolean);
+      el._ampelChart = Highcharts.chart(el, {
+        time: { useUTC: false },
+        chart: {
+          backgroundColor: 'transparent', animation: false,
+          marginLeft: 55, marginRight: 110, marginTop: 2, marginBottom: showAxis ? 24 : 2,
+          style: lastData.font ? { fontFamily: lastData.font } : {}
+        },
+        title: { text: null },
+        credits: { enabled: false },
+        legend: { enabled: false },
+        tooltip: { enabled: false },
+        xAxis: {
+          type: 'datetime', min: start, max: end, plotBands: plotBands,
+          gridLineWidth: 1, gridLineColor: GRID_COLOR, lineWidth: 0, tickLength: 0,
+          labels: { enabled: !!showAxis, style: themeAxisStyle() }
+        },
+        yAxis: { visible: false, min: 0, max: 1 },
+        series: [{ type: 'line', data: [], enableMouseTracking: false }]
+      });
     }
 
     // Nicht-interaktive Farbschluessel-Zeile fuer die Ampel - nur die
@@ -1603,7 +1651,12 @@
       var plotLines = showNowLine ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }] : [];
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // marginLeft/marginRight fest statt automatisch (Dietmars Fund,
+        // 22.08.2026: die Ampel-Zusatzleiste unter diesem Chart braucht
+        // GENAU dieselben Raender, sonst laufen die Segmentgrenzen der
+        // Ampel nicht mit der Zeitachse dieses Charts mit - siehe
+        // renderAmpelChartHC).
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, plotLines: plotLines, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [
@@ -2956,7 +3009,7 @@
             document.getElementById('ampelStrip').style.display = 'none';
           } else {
             document.getElementById('ampelStrip').style.display = '';
-            renderAmpelStrip('ampelStrip', stromgedachtCache.segments, dpDay.dayStart, dpDay.dayEnd);
+            renderAmpelChart('ampelStrip', stromgedachtCache.segments, dpDay.dayStart, dpDay.dayEnd, false);
           }
         } else {
           document.getElementById('ampelStrip').style.display = 'none';
@@ -2972,6 +3025,7 @@
       if (curTab === 'netzampel') {
         destroyChart();
         document.getElementById('legendRow').innerHTML = '';
+        document.getElementById('planKeyRow').style.display = 'none';
         var np = document.getElementById('netzampelPanel');
         np.style.display = '';
         if (!lastData.hasStromGedacht) {
@@ -2988,17 +3042,16 @@
           np.innerHTML = '<div class="empty">Keine Ampel-Daten verfügbar - liegt die Anlage im StromGedacht-Netzgebiet?</div>';
           return;
         }
-        var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-        var todayStartMs = todayStart.getTime();
-        var tomorrowStartMs = todayStartMs + 86400000;
-        var afterTomorrowMs = todayStartMs + 2 * 86400000;
-        np.innerHTML =
-          '<div class="ampelBlock"><div class="ampelDayLabel">Heute</div><div id="ampelStripHeute" class="ampelStrip"></div></div>' +
-          '<div class="ampelBlock"><div class="ampelDayLabel">Morgen</div><div id="ampelStripMorgen" class="ampelStrip"></div></div>' +
-          '<div id="ampelKeyRow" style="margin-top:4px"></div>';
-        renderAmpelStrip('ampelStripHeute', segs, todayStartMs, tomorrowStartMs);
-        renderAmpelStrip('ampelStripMorgen', segs, tomorrowStartMs, afterTomorrowMs);
-        renderAmpelKey('ampelKeyRow', segs);
+        // EIN Tag je Ansicht statt Heute+Morgen untereinander (Dietmar,
+        // 22.08.2026: "wie beim Strompreis mit heute und morgen") - dieselbe
+        // tagesplanDay-Navigation wie beim Tagesplan-Reiter (siehe syncNav).
+        var naStart = new Date(); naStart.setHours(0, 0, 0, 0);
+        naStart.setDate(naStart.getDate() + tagesplanDay);
+        var naStartMs = naStart.getTime();
+        var naEndMs = naStartMs + 86400000;
+        np.innerHTML = '<div id="netzampelChart" class="ampelStrip"></div><div id="ampelKeyRow" style="margin-top:4px"></div>';
+        renderAmpelChart('netzampelChart', segs, naStartMs, naEndMs, true);
+        renderAmpelKey('ampelKeyRow', segs.filter(function (s) { return s.to > naStartMs && s.from < naEndMs; }));
         return;
       }
       if (curTab === 'balance') {
@@ -3209,7 +3262,7 @@
     }
 
     document.getElementById('prev').onclick = function () {
-      if (curTab === 'tagesplan') {
+      if (curTab === 'tagesplan' || curTab === 'netzampel') {
         if (tagesplanDay > 0) { tagesplanDay--; render(); }
       } else if (curView === 'day') {
         var days = (lastData && lastData.days) || [];
@@ -3219,7 +3272,7 @@
       }
     };
     document.getElementById('next').onclick = function () {
-      if (curTab === 'tagesplan') {
+      if (curTab === 'tagesplan' || curTab === 'netzampel') {
         if (tagesplanDay < 1) { tagesplanDay++; render(); }
       } else if (curView === 'day') {
         if (idx > 0) { idx--; render(); }
@@ -3281,26 +3334,36 @@
         var dayOnly = (curTab === 'battery' || curTab === 'price');
         var typeSel = document.getElementById('type');
         typeSel.disabled = dayOnly;
-        typeSel.style.display = (curTab === 'tagesplan') ? 'none' : '';
+        typeSel.style.display = (curTab === 'tagesplan' || curTab === 'netzampel') ? 'none' : '';
         if (dayOnly && curView !== 'day') {
           curView = 'day';
           typeSel.value = 'day';
         }
-        // Jahresvergleich zeigt immer "seit Inbetriebnahme", Netzampel immer
-        // "heute+morgen" (StromGedachts fester 48h-Horizont) - beide brauchen
-        // keine Tag/Woche/Monat/Jahr-Navigation, #bar bleibt komplett
-        // ausgeblendet (Dietmar, 31.07.2026 bzw. 21.08.2026). Tagesplan
-        // bekommt seine EIGENE, einfache Heute/Morgen-Navigation (siehe
-        // syncNav() curTab==='tagesplan'-Zweig, Dietmar 21.08.2026: "jeden
-        // der beiden Tage einzeln sehen" statt beide Tage in einem Chart) -
-        // #bar bleibt dafuer sichtbar, nur die Ansichts-Auswahl (Tag/Woche/
-        // ...) ist ausgeblendet, da hier wirkungslos.
-        document.getElementById('bar').style.display = (curTab === 'yearcompare' || curTab === 'netzampel') ? 'none' : '';
+        // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
+        // Woche/Monat/Jahr-Navigation noetig, #bar bleibt komplett
+        // ausgeblendet (Dietmar, 31.07.2026). Tagesplan UND Netzampel teilen
+        // sich dieselbe einfache Heute/Morgen-Navigation (siehe syncNav()
+        // curTab==='tagesplan'||'netzampel'-Zweig; Dietmar 21.08.2026 fuer
+        // Tagesplan "jeden der beiden Tage einzeln sehen", 22.08.2026 fuer
+        // Netzampel "wie beim Strompreis mit heute und morgen" statt beider
+        // Tage in einer Ansicht) - #bar bleibt dafuer sichtbar, nur die
+        // Ansichts-Auswahl (Tag/Woche/...) ist ausgeblendet, da hier
+        // wirkungslos.
+        document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
         if (lastData.hasStromGedacht && (curTab === 'netzampel' || curTab === 'tagesplan')) { ensureStromGedacht(); }
         render();
       };
     });
-    window.addEventListener('resize', function () { if (chart) { setTimeout(sizeChart, 60); } });
+    function sizeAmpelChart(containerId) {
+      var el = document.getElementById(containerId);
+      var inst = el && el._ampelChart;
+      if (!inst) { return; }
+      if (inst.reflow) { inst.reflow(); } else { inst.resize(); }
+    }
+    window.addEventListener('resize', function () {
+      if (chart) { setTimeout(sizeChart, 60); }
+      setTimeout(function () { sizeAmpelChart('ampelStrip'); sizeAmpelChart('netzampelChart'); }, 60);
+    });
   </script>
 </body>
 </html>
