@@ -27,6 +27,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const EMS_GUID         = '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}';
     private const LFC_GUID         = '{DC5AD508-507F-40EA-8630-0959AED83050}';
+    private const STROMGEDACHT_GUID = '{D5A8C3A1-2222-4A55-8888-123456789003}';
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
     private const WINDOW_DAYS      = 8;
@@ -864,6 +865,58 @@ class NRGDashboardPVMonitor extends IPSModule
         return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
     }
 
+    private function StromGedachtInstanceID(): int
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::STROMGEDACHT_GUID);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    // Farben/Namen je StromGedacht-Ampelzustand - 1:1 aus der StromGedacht-
+    // Kachel uebernommen (Verbund-Abstimmung, 21.08.2026, fuer optische
+    // Konsistenz). Zustand 2 (Gelb) ist laut StromGedacht veraltet und
+    // kommt praktisch nicht mehr vor, bleibt aber definiert statt zu fehlen.
+    private const AMPEL_COLORS = [
+        -1 => ['name' => 'Supergrün — bevorzugt nutzen', 'color' => '#00BFA5'],
+        1  => ['name' => 'Grün — wie gewohnt',            'color' => '#00C853'],
+        2  => ['name' => 'Gelb',                          'color' => '#FFD600'],
+        3  => ['name' => 'Orange — reduzieren',           'color' => '#FF6D00'],
+        4  => ['name' => 'Rot — vermeiden',                'color' => '#D50000'],
+    ];
+
+    /**
+     * StromGedacht-Netzampel-Vorschau (Dietmar, 21.08.2026, relayed ueber
+     * die StromGedacht-Sitzung) - SGW_GetForecast() liefert IMMER alle
+     * aktivierten Quellen gemischt, hier auf source==='stromgedacht'
+     * gefiltert (Vertrag SGW_GetForecast, contractVersion 1.0). Horizont
+     * fest 48h ab jetzt (StromGedachts eigene API-Grenze, nicht
+     * veraenderbar). Lazy geladen wie BuildDayPlan() - kein Teil des
+     * Haupt-Payloads.
+     */
+    private function BuildStromGedacht(): array
+    {
+        $id = $this->StromGedachtInstanceID();
+        if ($id <= 0 || !function_exists('SGW_GetForecast')) {
+            return ['hasStromGedacht' => false, 'segments' => []];
+        }
+        $start = time();
+        $end = $start + 48 * 3600;
+        $raw = @SGW_GetForecast($id, $start, $end);
+        $segments = [];
+        if (is_array($raw)) {
+            foreach ($raw as $e) {
+                if (($e['source'] ?? '') !== 'stromgedacht') {
+                    continue;
+                }
+                $segments[] = [
+                    'from'  => (int) ($e['from'] ?? 0) * 1000,
+                    'to'    => (int) ($e['to'] ?? 0) * 1000,
+                    'value' => (int) ($e['value'] ?? 1),
+                ];
+            }
+        }
+        return ['hasStromGedacht' => true, 'segments' => $segments];
+    }
+
     // Farben/Namen je EMS_OP_*-Konstante - 1:1 aus EMS::getPlanActions()
     // uebernommen (Verbund-Abstimmung, 20.08.2026). Nur die 5 Werte, die im
     // Tagesplan-Kontext tatsaechlich vorkommen (Standby/Backup/GridRewards
@@ -1638,6 +1691,14 @@ class NRGDashboardPVMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'stromgedachtLoad') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'           => true,
+                'type'         => 'stromgedachtUpdate',
+                'stromgedacht' => $this->BuildStromGedacht(),
+            ]));
+            return;
+        }
         if ($Ident === 'yearCompareHistory') {
             $req = json_decode((string) $Value, true);
             $this->SaveManualHistory(is_array($req) ? $req : []);
@@ -2038,6 +2099,7 @@ class NRGDashboardPVMonitor extends IPSModule
             // wenn der Tagesplan-Reiter tatsaechlich geoeffnet wird (gleiches
             // Nachforder-Muster wie Bilanz/Jahresvergleich).
             'hasEms'   => $this->EmsInstanceID() > 0,
+            'hasStromGedacht' => $this->StromGedachtInstanceID() > 0,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),

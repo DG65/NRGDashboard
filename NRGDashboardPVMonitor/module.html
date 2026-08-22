@@ -53,6 +53,20 @@
      Koeder, wenn er wie die echte Legende aussaehe, aber nichts taete). */
   #planKeyRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .85; }
   #planKeyRow .legItem { cursor: default; }
+  /* StromGedacht-Netzampel (21.08.2026, relayed ueber die StromGedacht-
+     Sitzung, Dietmars Wunsch): eigene, farbige Zeitleiste statt eines
+     weiteren Chart-Bands - robuster als ein zweites markArea/plotBands im
+     selben Koordinatensystem (kein Kampf um Y-Achsen-Bereiche zwischen
+     EMS-Betriebsart und Ampel-Zustand). Ein Segment je zusammenhaengendem
+     Ampel-Zustand, Breite proportional zur Dauer. */
+  .ampelStrip { display: flex; height: 18px; border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .ampelSeg { height: 100%; }
+  .ampelDayLabel { font-size: 11px; opacity: .7; margin-bottom: 2px; }
+  /* Netzampel-Reiter: Heute+Morgen jeweils als eigene Leiste untereinander,
+     keine Tag/Woche/... Navigation noetig (StromGedachts Horizont ist fest
+     48h ab jetzt, kein historischer Rueckblick moeglich). */
+  #netzampelPanel { padding-top: 10px; }
+  #netzampelPanel .ampelBlock { margin-bottom: 18px; }
   /* Jahresvergleich kann auf viele Jahre anwachsen (Dietmar, 31.07.2026:
      "Wohin werden die weiteren Jahre geschrieben?") - die einzeilige,
      horizontal scrollende Legende (siehe #legendRow oben, urspruenglich
@@ -192,6 +206,7 @@
         <button class="tab" data-tab="balance">Bilanz</button>
         <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
         <button class="tab" data-tab="tagesplan">Tagesplan</button>
+        <button class="tab" data-tab="netzampel">Netzampel</button>
       </div>
       <div id="chartcol">
         <div id="chart"></div>
@@ -199,10 +214,12 @@
           <button data-unit="kwh">kWh</button>
           <button data-unit="kw">Ø kW</button>
         </div>
+        <div id="ampelStrip" class="ampelStrip" style="display:none"></div>
         <div id="legendRow"></div>
         <div id="planKeyRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
+        <div id="netzampelPanel" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -242,6 +259,15 @@
     // requestAction('dayPlanLoad') geholt, wenn der Reiter tatsaechlich
     // geoeffnet wird. Kein Zeitraum-Parameter noetig (immer heute+morgen).
     var dayPlanCache = null, dayPlanPending = false;
+    // StromGedacht-Netzampel (21.08.2026) - gleiches Nachforder-Muster,
+    // eigener Cache/Ident, da unabhaengig von EMS ladbar (auch nutzbar,
+    // wenn kein EMS installiert ist).
+    var stromgedachtCache = null, stromgedachtPending = false;
+    function ensureStromGedacht() {
+      if (stromgedachtCache || stromgedachtPending) { return; }
+      stromgedachtPending = true;
+      requestAction('stromgedachtLoad', '{}');
+    }
     // Strompreis-Reiter: Netzbezug wahlweise als Energie (kWh je 15-Min-
     // Balken) oder als Durchschnittsleistung (kW) anzeigen (Dietmars
     // Wunsch, 07.08.2026). Umrechnung ist ein simpler Faktor 4, weil
@@ -1339,6 +1365,64 @@
       5: { name: 'Einspeisen', color: '#9C27B0' }
     };
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
+
+    // StromGedacht-Netzampel (21.08.2026, relayed ueber die StromGedacht-
+    // Sitzung, Dietmars Wunsch: "in 1 + 2" - sowohl als Zusatzleiste im
+    // Tagesplan-Reiter ALS AUCH als eigener Netzampel-Reiter). Farben 1:1
+    // aus der StromGedacht-Kachel uebernommen, siehe module.php AMPEL_COLORS.
+    var AMPEL_COLORS = {
+      '-1': { name: 'Supergrün — bevorzugt nutzen', color: '#00BFA5' },
+      '1': { name: 'Grün — wie gewohnt', color: '#00C853' },
+      '2': { name: 'Gelb', color: '#FFD600' },
+      '3': { name: 'Orange — reduzieren', color: '#FF6D00' },
+      '4': { name: 'Rot — vermeiden', color: '#D50000' }
+    };
+    function ampelInfo(v) { return AMPEL_COLORS[String(v)] || { name: 'Zustand ' + v, color: '#888' }; }
+
+    // Rendert eine farbige Zeitleiste (Segmente proportional zur Dauer,
+    // auf [start,end] zugeschnitten) statt eines weiteren Chart-Bands -
+    // robuster als ein zweites markArea/plotBands im selben Koordinaten-
+    // system wie die EMS-Betriebsart-Baender (kein Kampf um Y-Achsen-
+    // Bereiche). No-Op (leert nur), wenn keine Segmente vorhanden sind.
+    function renderAmpelStrip(containerId, segments, start, end) {
+      var el = document.getElementById(containerId);
+      el.innerHTML = '';
+      var total = end - start;
+      if (total <= 0) { return; }
+      (segments || []).forEach(function (s) {
+        var from = Math.max(s.from, start), to = Math.min(s.to, end);
+        if (to <= from) { return; }
+        var info = ampelInfo(s.value);
+        var seg = document.createElement('div');
+        seg.className = 'ampelSeg';
+        seg.style.width = ((to - from) / total * 100) + '%';
+        seg.style.background = info.color;
+        seg.title = info.name + ' (' + fmtHM(from) + '–' + fmtHM(to) + ' Uhr)';
+        el.appendChild(seg);
+      });
+    }
+
+    function fmtHM(ms) {
+      var d = new Date(ms);
+      return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+
+    // Nicht-interaktive Farbschluessel-Zeile fuer die Ampel - nur die
+    // tatsaechlich im Zeitraum vorkommenden Zustaende (Muster: renderPlanKey).
+    function renderAmpelKey(containerId, segments) {
+      var seen = {};
+      (segments || []).forEach(function (s) { seen[s.value] = true; });
+      var row = document.getElementById(containerId);
+      row.innerHTML = '';
+      Object.keys(seen).forEach(function (v) {
+        var info = ampelInfo(v);
+        var el = document.createElement('span');
+        el.className = 'legItem';
+        el.style.cursor = 'default';
+        el.innerHTML = '<span class="dot" style="background:' + info.color + '"></span>' + info.name;
+        row.appendChild(el);
+      });
+    }
 
     // Tagesplan auf EINEN der beiden Tage einschraenken (Dietmar,
     // 21.08.2026: "jeden der beiden Tage einzeln sehen" statt heute+morgen
@@ -2805,6 +2889,7 @@
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
+      if (curTab !== 'netzampel') { document.getElementById('netzampelPanel').style.display = 'none'; }
       document.getElementById('legendRow').classList.toggle('legendWrap', curTab === 'yearcompare');
       var priceUnitRow = document.getElementById('priceUnitRow');
       priceUnitRow.style.display = (curTab === 'price' && lastData.hasGrid) ? '' : 'none';
@@ -2829,11 +2914,13 @@
         return;
       }
       document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
+      if (curTab !== 'tagesplan') { document.getElementById('ampelStrip').style.display = 'none'; }
       if (curTab === 'tagesplan') {
         if (!lastData.hasEms) {
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
+          document.getElementById('ampelStrip').style.display = 'none';
           el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
           return;
         }
@@ -2845,6 +2932,7 @@
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
+          document.getElementById('ampelStrip').style.display = 'none';
           el.innerHTML = '<div class="empty">Lade Tagesplan…</div>';
           return;
         }
@@ -2853,17 +2941,64 @@
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
+          document.getElementById('ampelStrip').style.display = 'none';
           el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
           return;
         }
         var dpDay = dayPlanForSelectedDay(dp);
         renderPlanKey(dpDay);
+        // StromGedacht-Netzampel als Zusatzleiste (Dietmars Wunsch,
+        // 21.08.2026: "in 1 + 2") - unabhaengig vom EMS-Tagesplan geladen,
+        // zeigt sich nur, wenn eine StromGedacht-Instanz gefunden wurde.
+        if (lastData.hasStromGedacht) {
+          if (!stromgedachtCache) {
+            ensureStromGedacht();
+            document.getElementById('ampelStrip').style.display = 'none';
+          } else {
+            document.getElementById('ampelStrip').style.display = '';
+            renderAmpelStrip('ampelStrip', stromgedachtCache.segments, dpDay.dayStart, dpDay.dayEnd);
+          }
+        } else {
+          document.getElementById('ampelStrip').style.display = 'none';
+        }
         var wantEngineDp = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
         if (wantEngineDp === 'highcharts') {
           ensureHighcharts(function () { el.innerHTML = ''; renderDayPlanHighcharts(el, dpDay); });
         } else {
           ensureECharts(function () { renderDayPlanECharts(el, dpDay); setTimeout(sizeChart, 60); });
         }
+        return;
+      }
+      if (curTab === 'netzampel') {
+        destroyChart();
+        document.getElementById('legendRow').innerHTML = '';
+        var np = document.getElementById('netzampelPanel');
+        np.style.display = '';
+        if (!lastData.hasStromGedacht) {
+          np.innerHTML = '<div class="empty">Keine StromGedacht-Instanz gefunden - installieren/konfigurieren (Vertrag SGW_GetForecast)</div>';
+          return;
+        }
+        if (!stromgedachtCache) {
+          ensureStromGedacht();
+          np.innerHTML = '<div class="empty">Lade Netzampel…</div>';
+          return;
+        }
+        var segs = stromgedachtCache.segments;
+        if (!segs || !segs.length) {
+          np.innerHTML = '<div class="empty">Keine Ampel-Daten verfügbar - liegt die Anlage im StromGedacht-Netzgebiet?</div>';
+          return;
+        }
+        var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        var todayStartMs = todayStart.getTime();
+        var tomorrowStartMs = todayStartMs + 86400000;
+        var afterTomorrowMs = todayStartMs + 2 * 86400000;
+        np.innerHTML =
+          '<div class="ampelBlock"><div class="ampelDayLabel">Heute</div><div id="ampelStripHeute" class="ampelStrip"></div></div>' +
+          '<div class="ampelBlock"><div class="ampelDayLabel">Morgen</div><div id="ampelStripMorgen" class="ampelStrip"></div></div>' +
+          '<div id="ampelKeyRow" style="margin-top:4px"></div>';
+        renderAmpelStrip('ampelStripHeute', segs, todayStartMs, tomorrowStartMs);
+        renderAmpelStrip('ampelStripMorgen', segs, tomorrowStartMs, afterTomorrowMs);
+        renderAmpelKey('ampelKeyRow', segs);
         return;
       }
       if (curTab === 'balance') {
@@ -3051,6 +3186,15 @@
         if (curTab === 'tagesplan') { render(); }
         return;
       }
+      // Antwort auf requestAction('stromgedachtLoad', ...) - Netzampel
+      // (21.08.2026), genutzt sowohl vom Tagesplan-Reiter (Zusatzleiste)
+      // als auch vom eigenen Netzampel-Reiter.
+      if (d.type === 'stromgedachtUpdate') {
+        stromgedachtCache = d.stromgedacht;
+        stromgedachtPending = false;
+        if (curTab === 'tagesplan' || curTab === 'netzampel') { render(); }
+        return;
+      }
       lastData = d;
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
@@ -3142,14 +3286,17 @@
           curView = 'day';
           typeSel.value = 'day';
         }
-        // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
-        // Woche/Monat/Jahr-Navigation noetig (Dietmar, 31.07.2026).
-        // Tagesplan bekommt seine EIGENE, einfache Heute/Morgen-Navigation
-        // (siehe syncNav() curTab==='tagesplan'-Zweig, Dietmar 21.08.2026:
-        // "jeden der beiden Tage einzeln sehen" statt beide Tage in einem
-        // Chart) - #bar bleibt dafuer sichtbar, nur die Ansichts-Auswahl
-        // (Tag/Woche/...) ist ausgeblendet, da hier wirkungslos.
-        document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
+        // Jahresvergleich zeigt immer "seit Inbetriebnahme", Netzampel immer
+        // "heute+morgen" (StromGedachts fester 48h-Horizont) - beide brauchen
+        // keine Tag/Woche/Monat/Jahr-Navigation, #bar bleibt komplett
+        // ausgeblendet (Dietmar, 31.07.2026 bzw. 21.08.2026). Tagesplan
+        // bekommt seine EIGENE, einfache Heute/Morgen-Navigation (siehe
+        // syncNav() curTab==='tagesplan'-Zweig, Dietmar 21.08.2026: "jeden
+        // der beiden Tage einzeln sehen" statt beide Tage in einem Chart) -
+        // #bar bleibt dafuer sichtbar, nur die Ansichts-Auswahl (Tag/Woche/
+        // ...) ist ausgeblendet, da hier wirkungslos.
+        document.getElementById('bar').style.display = (curTab === 'yearcompare' || curTab === 'netzampel') ? 'none' : '';
+        if (lastData.hasStromGedacht && (curTab === 'netzampel' || curTab === 'tagesplan')) { ensureStromGedacht(); }
         render();
       };
     });
