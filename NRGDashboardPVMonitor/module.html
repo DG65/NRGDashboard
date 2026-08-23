@@ -224,6 +224,30 @@
     // "morgen" per Vor-Navigation erreichbar machen, ohne den Standard-
     // Einstieg fuer die anderen Reiter zu verschieben).
     var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
+    // Tage ausserhalb des kleinen, eager mitgeschickten Fensters (Dietmar,
+    // 23.08.2026: "warum komme ich beim Strompreis nur bis zum 17.08.2026
+    // zurueck? Prinzipiell moechte ich in allen Reitern alle Tage sehen") -
+    // gleiches Nachforder-Muster wie dayPlanCache/balanceCache, aber
+    // KEYED nach "k" (Tage-Offset zu heute, negativ = Zukunft), nicht nach
+    // "idx" (idx haengt vom eager-Fenster ab, k nicht). dayAt(i) liefert den
+    // Tag fuer Array-Index i entweder aus lastData.days (eager, schnell)
+    // oder aus dayCache (nachgefordert) und stoesst bei Bedarf genau EINE
+    // requestAction('dayData') pro k an - die Navigation nach hinten ist
+    // dadurch nicht mehr durch WINDOW_DAYS begrenzt, sondern nur noch durch
+    // tatsaechlich vorhandene Archivdaten (BuildDayData() liefert
+    // hasData:false, wenn dort nichts mehr ist).
+    var dayCache = {}, dayPending = {};
+    function dayAt(i) {
+      var arr = (lastData && lastData.days) || [];
+      if (arr[i]) { return arr[i]; }
+      var k = i - 1;
+      if (dayCache[k]) { return dayCache[k]; }
+      if (!dayPending[k]) {
+        dayPending[k] = true;
+        requestAction('dayData', JSON.stringify({ k: k }));
+      }
+      return null;
+    }
     // Tagesplan-Reiter (Dietmar, 21.08.2026: "jeden der beiden Tage
     // einzeln sehen" statt beide Tage in einem Chart) - eigene, simple
     // 0/1-Navigation (0=heute, 1=morgen), unabhaengig von curView/idx der
@@ -475,7 +499,6 @@
     }
 
     function syncNav() {
-      var days = (lastData && lastData.days) || [];
       document.getElementById('bar').style.visibility = 'visible';
 
       var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
@@ -499,17 +522,22 @@
 
       if (curView === 'day') {
         pick.style.display = ''; pickTo.style.display = 'none';
-        document.getElementById('prev').disabled = (idx >= days.length - 1);
+        // Kein Ende mehr fuer "zurueck" (Dietmar, 23.08.2026: "in allen
+        // Reitern alle Tage sehen") - dayAt() holt jeden Tag jenseits des
+        // kleinen eager-Fensters einzeln nach, begrenzt nur noch durch
+        // tatsaechlich vorhandene Archivdaten, nicht mehr durch WINDOW_DAYS.
+        document.getElementById('prev').disabled = false;
         document.getElementById('next').disabled = (idx <= 0);
-        var d = days[idx];
+        var d = dayAt(idx);
         if (d) { pick.value = d.id; }
         var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
         labels.forEach(function (l) {
-          var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
+          var target = l[1] + 1;
+          var dd = dayAt(target);
           var btn = document.createElement('button');
           btn.className = 'qday' + (target === idx ? ' active' : '');
           btn.textContent = l[0];
-          btn.disabled = (target < 0) || !days[target] || !days[target].hasData;
+          btn.disabled = !dd || !dd.hasData;
           btn.onclick = function () { idx = target; render(); };
           quick.appendChild(btn);
         });
@@ -2924,7 +2952,8 @@
         btn.classList.toggle('active', (btn.getAttribute('data-unit') === 'kw') === priceUnitKw);
       });
 
-      if (curTab === 'price' && lastData.days && lastData.days[idx] && (!lastData.days[idx].price || !lastData.days[idx].price.length)) {
+      var priceDayCheck = (curTab === 'price') ? dayAt(idx) : null;
+      if (curTab === 'price' && priceDayCheck && (!priceDayCheck.price || !priceDayCheck.price.length)) {
         destroyChart();
         el.innerHTML = '<div class="empty">Keine Preiskurve verfügbar - Tibber Grid Rewards-Instanz wählen oder installieren</div>';
         return;
@@ -3014,8 +3043,8 @@
         }
         var balBounds, balGran;
         if (curView === 'day') {
-          var balDay = (lastData.days || [])[idx];
-          if (!balDay) { destroyChart(); el.innerHTML = '<div class="empty">Kein Tag ausgewählt</div>'; return; }
+          var balDay = dayAt(idx);
+          if (!balDay) { destroyChart(); el.innerHTML = '<div class="empty">Lade…</div>'; return; }
           balBounds = { start: Math.floor(balDay.dayStart / 1000), end: Math.floor(balDay.dayEnd / 1000) };
           balGran = 'day';
         } else {
@@ -3060,10 +3089,9 @@
         }
         var flowObj = null;
         if (curView === 'day') {
-          // Tag: die passende Kurve liegt bereits im vorab gelieferten
-          // Tage-Fenster (siehe module.php::buildPayload()), kein Nachladen
-          // noetig.
-          var flowDay = (lastData.days || [])[idx];
+          // Tag: entweder schon im eager mitgelieferten Fenster oder ueber
+          // dayAt()/requestAction('dayData') nachgefordert (23.08.2026).
+          var flowDay = dayAt(idx);
           flowObj = flowDay ? flowDay.flow : null;
         } else {
           // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert: das Tage-Fenster
@@ -3130,9 +3158,13 @@
         return;
       }
 
-      var days = (lastData && lastData.days) || [];
-      var d = days[idx];
-      if (!d || !d.hasData) {
+      var d = dayAt(idx);
+      if (!d) {
+        destroyChart();
+        el.innerHTML = '<div class="empty">Lade…</div>';
+        return;
+      }
+      if (!d.hasData) {
         destroyChart();
         el.innerHTML = '<div class="empty">Keine Archivdaten für diesen Tag</div>';
         return;
@@ -3191,6 +3223,17 @@
         if (curTab === 'tagesplan') { render(); }
         return;
       }
+      // Antwort auf requestAction('dayData', ...) - ein einzelner Tag
+      // ausserhalb des eager mitgeschickten Fensters (23.08.2026), siehe
+      // dayAt(). curView === 'day' statt eines bestimmten curTab, da ein
+      // nachgeforderter Tag in JEDEM Tag-Reiter (solar/mpp/battery/price/
+      // balance/flow) auftauchen kann.
+      if (d.type === 'dayDataUpdate') {
+        dayPending[d.k] = false;
+        if (d.day) { dayCache[d.k] = d.day; }
+        if (curView === 'day') { render(); }
+        return;
+      }
       lastData = d;
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
@@ -3208,8 +3251,9 @@
       if (curTab === 'tagesplan') {
         if (tagesplanDay > 0) { tagesplanDay--; render(); }
       } else if (curView === 'day') {
-        var days = (lastData && lastData.days) || [];
-        if (idx < days.length - 1) { idx++; render(); }
+        // Kein Ende mehr fuer "zurueck" (Dietmar, 23.08.2026) - dayAt()
+        // fordert jeden Tag jenseits des eager-Fensters selbst nach.
+        idx++; render();
       } else if (curView === 'week' || curView === 'month' || curView === 'year') {
         shiftViewRef(-1); render();
       }
@@ -3225,9 +3269,15 @@
     };
     document.getElementById('pick').onchange = function (e) {
       if (curView === 'day') {
-        var days = (lastData && lastData.days) || [];
-        var i = days.findIndex(function (d) { return d.id === e.target.value; });
-        if (i >= 0) { idx = i; render(); }
+        // idx direkt aus dem Datum errechnen statt im (jetzt nur noch
+        // kleinen, eager mitgelieferten) days-Array zu suchen (23.08.2026) -
+        // dayAt() fordert den Tag bei Bedarf selbst nach, unabhaengig davon,
+        // wie weit er in der Vergangenheit liegt.
+        var picked = new Date(e.target.value + 'T00:00:00');
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var k = Math.round((today - picked) / 86400000);
+        idx = k + 1;
+        render();
       } else if (curView === 'custom') {
         customFrom = e.target.value; render();
       } else if (e.target.value) {

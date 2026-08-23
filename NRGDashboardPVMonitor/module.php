@@ -1748,6 +1748,34 @@ class NRGDashboardPVMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'dayData') {
+            // Einzelner Tag ausserhalb des eager mitgeschickten kleinen
+            // Fensters (Dietmar, 23.08.2026: "in allen Reitern alle Tage
+            // sehen", die Navigation soll nicht mehr an WINDOW_DAYS enden) -
+            // gleiche Vorbereitung wie in buildPayload(), aber nur die
+            // billigen Property-Lesungen, kein Archivzugriff bis BuildDayData().
+            $req = json_decode((string) $Value, true);
+            $k = (int) ($req['k'] ?? 0);
+            $model = $this->PvfModel();
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'   => true,
+                'type' => 'dayDataUpdate',
+                'k'    => $k,
+                'day'  => $this->BuildDayData(
+                    $k,
+                    $this->ArchiveID(),
+                    $this->PvPowerID(),
+                    $this->readIntProperty('IrradianceID', 0),
+                    $this->readIntProperty('TemperatureID', 0),
+                    $this->readFloatProperty('TempCoeff', -0.40),
+                    $this->BatPowerID(),
+                    $this->SocID(),
+                    $this->MpptPowerIDs(),
+                    $model
+                ),
+            ]));
+            return;
+        }
         if ($Ident === 'yearCompareHistory') {
             $req = json_decode((string) $Value, true);
             $this->SaveManualHistory(is_array($req) ? $req : []);
@@ -1923,12 +1951,150 @@ class NRGDashboardPVMonitor extends IPSModule
     }
 
     /**
+     * Alle Tagesserien fuer GENAU EINEN Tag (Ansicht "Tag (Verlauf)"),
+     * $k Tage vor heute (negativ = in der Zukunft, aktuell nur $k=-1
+     * "morgen" sinnvoll gefuellt - siehe PriceDaySlots()). Herausgeloest aus
+     * buildPayload()'s ehemaliger Schleife (Dietmar, 23.08.2026: "warum
+     * komme ich beim Strompreis nur bis zum 17.08.2026 zurueck? -
+     * Prinzipiell moechte ich in allen Reitern alle Tage sehen") - vorher
+     * war die Navigation durch das feste WINDOW_DAYS=8-Fenster gedeckelt,
+     * das buildPayload() bei JEDEM Render()-Timer-Tick eager aufbaute. Jetzt
+     * baut buildPayload() weiterhin ein kleines Fenster eager (fuer
+     * verzoegerungsfreie Navigation der letzten paar Tage), alles darueber
+     * hinaus holt RequestAction('dayData') einzeln, nach demselben Lazy-
+     * Load-Muster wie dayPlanLoad/balancePeriod. Ein einzelner Tag ist immer
+     * guenstig genug fuer eine Nachforderung (kein WINDOW_DAYS-Faktor mehr) -
+     * die Navigation nach hinten ist dadurch unbegrenzt, nur durch
+     * tatsaechlich vorhandene Archivdaten.
+     */
+    private function BuildDayData(
+        int $k,
+        int $aid,
+        int $pvID,
+        int $irrID,
+        int $tempID,
+        float $tc,
+        int $batID,
+        int $socID,
+        array $mppt,
+        ?array $model
+    ): array {
+        $todayStart = strtotime('today 00:00:00');
+        $start = $todayStart - $k * 86400;
+        $end   = min(time(), $start + 86400);
+        // Ein Tag in der Zukunft (morgen) hat archivseitig grundsaetzlich
+        // nichts zu bieten - $start läge dann NACH $end (min(time(),...)
+        // bliebe bei "jetzt" haengen), das wuerde AC_GetAggregatedValues
+        // mit vertauschten Grenzen aufrufen. Archivfelder bleiben dort
+        // deshalb schlicht leer, nur PriceDaySlots() (siehe unten) deckt
+        // auch morgen sinnvoll ab.
+        $isFuture = $start > time();
+
+        $pv  = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $pvID, $start, $end) : [];
+        $irr = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $irrID, $start, $end) : [];
+        $temp = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $tempID, $start, $end) : [];
+        $bat = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $batID, $start, $end) : [];
+        // SOC-Rauschen glaetten (Muster: InverterHubMonitor::SmoothPoints,
+        // Fenster 15) - nur fuer die eigene Anzeige, kein Diagnostik-Wert.
+        $soc = (!$isFuture && $aid > 0) ? $this->SmoothPoints($this->DaySeries($aid, $socID, $start, $end), 15) : [];
+
+        $mpptSeries = [];
+        foreach ($mppt as $n => $vid) {
+            $mpptSeries[$n] = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $vid, $start, $end) : [];
+        }
+
+        // Temperaturwerte je Zeitstempel zuordnen (gleiches 5-Minuten-
+        // Raster wie Einstrahlung, daher per Zeitstempel-Map statt Index
+        // koppelbar) - fuer beide Erwartungskurven unten (Gesamt UND je
+        // MPP-Tracker-Strang) gemeinsam einmal aufgebaut.
+        $tempByTs = [];
+        foreach ($temp as $tp) { $tempByTs[$tp[0]] = $tp[1]; }
+
+        $expected = [];
+        if ($model !== null && count($irr) > 0) {
+            // Muster: InverterHubMonitor - expectedW = Einstrahlung(W/m^2)
+            // * totalKwp * PR. Der scheinbar fehlende Faktor 1000
+            // (W/m^2 <-> kWp) kuerzt sich numerisch weg: kWp ist "kW bei
+            // 1000 W/m^2 STC", 1 kWp entspricht also zahlenmaessig
+            // 1000 W - beide Male /1000 bzw. *1000 heben sich auf.
+            // Temperaturkorrektur (Fund der Prognose-Sitzung, 28.07.2026):
+            // ohne Temperaturglied fehlt der Grossteil der ab Mittag
+            // zunehmenden Abweichung nach oben - Zellen werden bei hoher
+            // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
+            // liefern dadurch real weniger, als die reine Einstrahlungs-
+            // Rechnung vorhersagt.
+            foreach ($irr as $p) {
+                $ta = $tempByTs[$p[0]] ?? null;
+                $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
+                $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'] * $derate, 0)];
+            }
+        }
+
+        $price = $this->PriceDaySlots($start);
+        // Sankey-Energiebilanz nur fuer den Zeitraum, der wirklich schon
+        // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
+        // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
+        $flow = (!$isFuture) ? $this->EnergyFlow($start, $end) : null;
+        // Netzbezug im Strompreis-Reiter (Dietmars Wunsch, 28.07.2026,
+        // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
+        // Preiskurve, gleicher $aid/$end wie die anderen Serien.
+        // GridPowerSign() kanonisiert automatisch erkannte MeterHub-
+        // Netzleistung ("+ = Bezug") auf unsere "+ = Einspeisung"-
+        // Konvention (Fund der MeterHub-Sitzung, 23.08.2026).
+        $gridID = $this->GridPowerID();
+        $gridSign = $this->GridPowerSign($gridID);
+        $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $gridID, $start, $end, $gridSign) : [];
+        // Monats-Spitzenwert der Netzbezugsleistung (Dietmar,
+        // 07.08.2026) - je Tag identisch fuer alle Tage desselben
+        // Monats, bewusst pro Tag mitgeschickt statt separat
+        // nachgefordert (ein Archivdurchlauf mehr pro Tageswechsel ist
+        // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
+        $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $gridID, $start, $gridSign) : null;
+
+        $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
+            || ($flow !== null && ($flow['hasData'] ?? false));
+        foreach ($mpptSeries as $s) {
+            $hasData = $hasData || count($s) > 0;
+        }
+
+        $sun = $this->SunRange($start);
+
+        return [
+            'k'        => $k,
+            'id'       => date('Y-m-d', $start),
+            'label'    => date('d.m.Y', $start),
+            'hasData'  => $hasData,
+            // Sonnenaufgang-1h/Sonnenuntergang+1h in ms - nur fuer den
+            // Reiter "PV & Einstrahlung" als x-Achsen-Bereich genutzt
+            // (Dietmars Wunsch: Nachtstunden ohne Erzeugung nicht anzeigen).
+            'sunStart' => $sun[0] * 1000,
+            'sunEnd'   => $sun[1] * 1000,
+            // Kalendertag-Grenzen in ms (NICHT wie $end oben auf "jetzt"
+            // gedeckelt) - der Batterie-Reiter soll auch am heutigen Tag
+            // immer die vollen 0-24 Uhr zeigen, statt die x-Achse an der
+            // aktuellen Uhrzeit abzuschneiden (Dietmars Wunsch,
+            // 28.07.2026).
+            'dayStart' => $start * 1000,
+            'dayEnd'   => ($start + 86400) * 1000,
+            'pv'       => $pv,
+            'irr'      => $irr,
+            'expected' => $expected,
+            'bat'      => $bat,
+            'soc'      => $soc,
+            'mppt'     => $mpptSeries,
+            'price'    => $price,
+            'flow'     => $flow,
+            'gridDraw' => $gridDraw,
+            'gridMonthPeak' => $gridMonthPeak,
+        ];
+    }
+
+    /**
      * Baut die Nutzlast fuer ein navigierbares Tage-Fenster (Ansicht
      * "Tag (Verlauf)") - Muster: InverterHubMonitor::BuildPayload(),
-     * WINDOW_DAYS=8. Alle Tage des Fensters werden in EINEM Archivdurchlauf
-     * pro Serie mitgeschickt; das Frontend navigiert rein clientseitig
-     * zwischen den mitgelieferten Tagen, ohne bei jedem Klick auf
-     * Vor/Zurück erneut das Modul aufzurufen.
+     * WINDOW_DAYS=8. Ein kleines Fenster wird weiterhin eager mit jedem
+     * Render() mitgeschickt; alles darueber hinaus holt sich das Frontend
+     * per requestAction('dayData') nach - siehe BuildDayData().
      */
     private function buildPayload(): array
     {
@@ -1963,8 +2129,6 @@ class NRGDashboardPVMonitor extends IPSModule
             }, $model['generatorKwp']));
         }
 
-        $todayStart = strtotime('today 00:00:00');
-
         $days = [];
         // k=-1 (morgen) zusaetzlich zu k=0..WINDOW_DAYS-2 (heute rueckwaerts) -
         // NUR der Strompreis-Reiter kann einen Folgetag ueberhaupt fuellen
@@ -1974,114 +2138,17 @@ class NRGDashboardPVMonitor extends IPSModule
         // VOR dem bisherigen Fenster eingefuegt (Index 0 bleibt "heute" fuer
         // den JS-Default idx=1, nicht 0 - siehe module.html) statt das
         // Fenster nach vorn zu verschieben, damit alle anderen Reiter beim
-        // Oeffnen der Kachel unveraendert mit "heute" starten.
+        // Oeffnen der Kachel unveraendert mit "heute" starten. Dieses kleine
+        // Fenster wird weiterhin EAGER mit jedem Render()-Timer-Tick
+        // mitgeschickt (sofortige Vor/Zurueck-Navigation ohne Wartezeit);
+        // alles darueber hinaus holt sich das Frontend seit Dietmars Fund
+        // vom 23.08.2026 ("warum komme ich nur bis zum 17.08. zurueck? -
+        // Prinzipiell moechte ich in allen Reitern alle Tage sehen")
+        // einzeln per requestAction('dayData', {k}) nach - siehe BuildDayData()
+        // und RequestAction(). Kein fixes Fenster mehr, das die Navigation
+        // nach hinten begrenzt.
         for ($k = -1; $k < self::WINDOW_DAYS - 1; $k++) {
-            $start = $todayStart - $k * 86400;
-            $end   = min(time(), $start + 86400);
-            // Ein Tag in der Zukunft (morgen) hat archivseitig grundsaetzlich
-            // nichts zu bieten - $start läge dann NACH $end (min(time(),...)
-            // bliebe bei "jetzt" haengen), das wuerde AC_GetAggregatedValues
-            // mit vertauschten Grenzen aufrufen. Archivfelder bleiben dort
-            // deshalb schlicht leer, nur PriceDaySlots() (siehe unten) deckt
-            // auch morgen sinnvoll ab.
-            $isFuture = $start > time();
-
-            $pv  = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $pvID, $start, $end) : [];
-            $irr = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $irrID, $start, $end) : [];
-            $temp = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $tempID, $start, $end) : [];
-            $bat = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $batID, $start, $end) : [];
-            // SOC-Rauschen glaetten (Muster: InverterHubMonitor::SmoothPoints,
-            // Fenster 15) - nur fuer die eigene Anzeige, kein Diagnostik-Wert.
-            $soc = (!$isFuture && $aid > 0) ? $this->SmoothPoints($this->DaySeries($aid, $socID, $start, $end), 15) : [];
-
-            $mpptSeries = [];
-            foreach ($mppt as $n => $vid) {
-                $mpptSeries[$n] = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $vid, $start, $end) : [];
-            }
-
-            // Temperaturwerte je Zeitstempel zuordnen (gleiches 5-Minuten-
-            // Raster wie Einstrahlung, daher per Zeitstempel-Map statt Index
-            // koppelbar) - fuer beide Erwartungskurven unten (Gesamt UND je
-            // MPP-Tracker-Strang) gemeinsam einmal aufgebaut.
-            $tempByTs = [];
-            foreach ($temp as $tp) { $tempByTs[$tp[0]] = $tp[1]; }
-
-            $expected = [];
-            if ($model !== null && count($irr) > 0) {
-                // Muster: InverterHubMonitor - expectedW = Einstrahlung(W/m^2)
-                // * totalKwp * PR. Der scheinbar fehlende Faktor 1000
-                // (W/m^2 <-> kWp) kuerzt sich numerisch weg: kWp ist "kW bei
-                // 1000 W/m^2 STC", 1 kWp entspricht also zahlenmaessig
-                // 1000 W - beide Male /1000 bzw. *1000 heben sich auf.
-                // Temperaturkorrektur (Fund der Prognose-Sitzung, 28.07.2026):
-                // ohne Temperaturglied fehlt der Grossteil der ab Mittag
-                // zunehmenden Abweichung nach oben - Zellen werden bei hoher
-                // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
-                // liefern dadurch real weniger, als die reine Einstrahlungs-
-                // Rechnung vorhersagt.
-                foreach ($irr as $p) {
-                    $ta = $tempByTs[$p[0]] ?? null;
-                    $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
-                    $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'] * $derate, 0)];
-                }
-            }
-
-            $price = $this->PriceDaySlots($start);
-            // Sankey-Energiebilanz nur fuer den Zeitraum, der wirklich schon
-            // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
-            // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
-            $flow = (!$isFuture) ? $this->EnergyFlow($start, $end) : null;
-            // Netzbezug im Strompreis-Reiter (Dietmars Wunsch, 28.07.2026,
-            // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
-            // Preiskurve, gleicher $aid/$end wie die anderen Serien.
-            // GridPowerSign() kanonisiert automatisch erkannte MeterHub-
-            // Netzleistung ("+ = Bezug") auf unsere "+ = Einspeisung"-
-            // Konvention (Fund der MeterHub-Sitzung, 23.08.2026).
-            $gridID = $this->GridPowerID();
-            $gridSign = $this->GridPowerSign($gridID);
-            $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $gridID, $start, $end, $gridSign) : [];
-            // Monats-Spitzenwert der Netzbezugsleistung (Dietmar,
-            // 07.08.2026) - je Tag identisch fuer alle Tage desselben
-            // Monats, bewusst pro Tag mitgeschickt statt separat
-            // nachgefordert (ein Archivdurchlauf mehr pro Tageswechsel ist
-            // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
-            $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $gridID, $start, $gridSign) : null;
-
-            $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
-                || ($flow !== null && ($flow['hasData'] ?? false));
-            foreach ($mpptSeries as $s) {
-                $hasData = $hasData || count($s) > 0;
-            }
-
-            $sun = $this->SunRange($start);
-
-            $days[] = [
-                'id'       => date('Y-m-d', $start),
-                'label'    => date('d.m.Y', $start),
-                'hasData'  => $hasData,
-                // Sonnenaufgang-1h/Sonnenuntergang+1h in ms - nur fuer den
-                // Reiter "PV & Einstrahlung" als x-Achsen-Bereich genutzt
-                // (Dietmars Wunsch: Nachtstunden ohne Erzeugung nicht anzeigen).
-                'sunStart' => $sun[0] * 1000,
-                'sunEnd'   => $sun[1] * 1000,
-                // Kalendertag-Grenzen in ms (NICHT wie $end oben auf "jetzt"
-                // gedeckelt) - der Batterie-Reiter soll auch am heutigen Tag
-                // immer die vollen 0-24 Uhr zeigen, statt die x-Achse an der
-                // aktuellen Uhrzeit abzuschneiden (Dietmars Wunsch,
-                // 28.07.2026).
-                'dayStart' => $start * 1000,
-                'dayEnd'   => ($start + 86400) * 1000,
-                'pv'       => $pv,
-                'irr'      => $irr,
-                'expected' => $expected,
-                'bat'      => $bat,
-                'soc'      => $soc,
-                'mppt'     => $mpptSeries,
-                'price'    => $price,
-                'flow'     => $flow,
-                'gridDraw' => $gridDraw,
-                'gridMonthPeak' => $gridMonthPeak,
-            ];
+            $days[] = $this->BuildDayData($k, $aid, $pvID, $irrID, $tempID, $tc, $batID, $socID, $mppt, $model);
         }
 
         // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert: EIN Archivdurchlauf pro
