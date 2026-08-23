@@ -53,19 +53,14 @@
      Koeder, wenn er wie die echte Legende aussaehe, aber nichts taete). */
   #planKeyRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .85; }
   #planKeyRow .legItem { cursor: default; }
-  /* StromGedacht-Netzampel (21.08.2026, relayed ueber die StromGedacht-
-     Sitzung; 22.08.2026 auf Dietmars Feedback hin auf einen echten Chart
-     umgestellt - eigene ECharts/Highcharts-Instanz mit demselben Zeitraster
-     und denselben Grid-Raendern wie das Tagesplan-Diagramm, damit Laenge und
-     Netzlinien exakt zusammenpassen, statt einer unabhaengigen Flexbox-
-     Zeitleiste). Segmente kommen als markArea/plotBands aus renderAmpelChart. */
+  /* StromGedacht-Netzampel als Zusatzleiste im Tagesplan (21./22.08.2026,
+     relayed ueber die StromGedacht-Sitzung) - eigene ECharts/Highcharts-
+     Instanz mit demselben Zeitraster und denselben Grid-Raendern wie das
+     Tagesplan-Diagramm, damit Laenge und Netzlinien exakt zusammenpassen.
+     Der eigenstaendige Netzampel-Reiter (Option "2" von Dietmars "1+2") ist
+     am 23.08.2026 wieder entfernt worden ("Die Darstellung ergibt keinen
+     Sinn") - die Zusatzleiste im Tagesplan (Option "1") bleibt. */
   .ampelStrip { height: 34px; margin: 4px 0 4px; }
-  /* Netzampel-Reiter: EIN Tag je Ansicht mit Heute/Morgen-Navigation
-     (dieselbe tagesplanDay-Leiste wie beim Tagesplan-Reiter, Dietmars
-     Wunsch 22.08.2026: "wie beim Strompreis mit heute und morgen" statt
-     beider Tage untereinander). */
-  #netzampelPanel { padding-top: 6px; }
-  #netzampelPanel .ampelStrip { height: 70px; }
   /* Jahresvergleich kann auf viele Jahre anwachsen (Dietmar, 31.07.2026:
      "Wohin werden die weiteren Jahre geschrieben?") - die einzeilige,
      horizontal scrollende Legende (siehe #legendRow oben, urspruenglich
@@ -205,7 +200,6 @@
         <button class="tab" data-tab="balance">Bilanz</button>
         <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
         <button class="tab" data-tab="tagesplan">Tagesplan</button>
-        <button class="tab" data-tab="netzampel">Netzampel</button>
       </div>
       <div id="chartcol">
         <div id="chart"></div>
@@ -218,7 +212,6 @@
         <div id="planKeyRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
-        <div id="netzampelPanel" style="display:none"></div>
       </div>
     </div>
   </div>
@@ -488,7 +481,7 @@
       var pick = document.getElementById('pick'), pickTo = document.getElementById('pickTo'), quick = document.getElementById('quick');
       quick.innerHTML = '';
 
-      if (curTab === 'tagesplan' || curTab === 'netzampel') {
+      if (curTab === 'tagesplan') {
         pick.style.display = 'none'; pickTo.style.display = 'none';
         document.getElementById('periodLabel').style.display = '';
         document.getElementById('periodLabel').textContent = (tagesplanDay === 0) ? 'Heute' : 'Morgen';
@@ -1365,10 +1358,9 @@
     };
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
 
-    // StromGedacht-Netzampel (21.08.2026, relayed ueber die StromGedacht-
-    // Sitzung, Dietmars Wunsch: "in 1 + 2" - sowohl als Zusatzleiste im
-    // Tagesplan-Reiter ALS AUCH als eigener Netzampel-Reiter). Farben 1:1
-    // aus der StromGedacht-Kachel uebernommen, siehe module.php AMPEL_COLORS.
+    // StromGedacht-Netzampel als Zusatzleiste im Tagesplan-Reiter (21.08.2026,
+    // relayed ueber die StromGedacht-Sitzung). Farben 1:1 aus der
+    // StromGedacht-Kachel uebernommen, siehe module.php AMPEL_COLORS.
     var AMPEL_COLORS = {
       '-1': { name: 'Supergrün — bevorzugt nutzen', color: '#00BFA5' },
       '1': { name: 'Grün — wie gewohnt', color: '#00C853' },
@@ -1452,23 +1444,6 @@
         },
         yAxis: { visible: false, min: 0, max: 1 },
         series: [{ type: 'line', data: [], enableMouseTracking: false }]
-      });
-    }
-
-    // Nicht-interaktive Farbschluessel-Zeile fuer die Ampel - nur die
-    // tatsaechlich im Zeitraum vorkommenden Zustaende (Muster: renderPlanKey).
-    function renderAmpelKey(containerId, segments) {
-      var seen = {};
-      (segments || []).forEach(function (s) { seen[s.value] = true; });
-      var row = document.getElementById(containerId);
-      row.innerHTML = '';
-      Object.keys(seen).forEach(function (v) {
-        var info = ampelInfo(v);
-        var el = document.createElement('span');
-        el.className = 'legItem';
-        el.style.cursor = 'default';
-        el.innerHTML = '<span class="dot" style="background:' + info.color + '"></span>' + info.name;
-        row.appendChild(el);
       });
     }
 
@@ -2942,7 +2917,6 @@
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
-      if (curTab !== 'netzampel') { document.getElementById('netzampelPanel').style.display = 'none'; }
       document.getElementById('legendRow').classList.toggle('legendWrap', curTab === 'yearcompare');
       var priceUnitRow = document.getElementById('priceUnitRow');
       priceUnitRow.style.display = (curTab === 'price' && lastData.hasGrid) ? '' : 'none';
@@ -3001,8 +2975,10 @@
         var dpDay = dayPlanForSelectedDay(dp);
         renderPlanKey(dpDay);
         // StromGedacht-Netzampel als Zusatzleiste (Dietmars Wunsch,
-        // 21.08.2026: "in 1 + 2") - unabhaengig vom EMS-Tagesplan geladen,
-        // zeigt sich nur, wenn eine StromGedacht-Instanz gefunden wurde.
+        // 21.08.2026: "in 1 + 2", der eigenstaendige Reiter davon - Option
+        // "2" - wurde am 23.08.2026 wieder entfernt) - unabhaengig vom
+        // EMS-Tagesplan geladen, zeigt sich nur, wenn eine StromGedacht-
+        // Instanz gefunden wurde.
         if (lastData.hasStromGedacht) {
           if (!stromgedachtCache) {
             ensureStromGedacht();
@@ -3020,38 +2996,6 @@
         } else {
           ensureECharts(function () { renderDayPlanECharts(el, dpDay); setTimeout(sizeChart, 60); });
         }
-        return;
-      }
-      if (curTab === 'netzampel') {
-        destroyChart();
-        document.getElementById('legendRow').innerHTML = '';
-        document.getElementById('planKeyRow').style.display = 'none';
-        var np = document.getElementById('netzampelPanel');
-        np.style.display = '';
-        if (!lastData.hasStromGedacht) {
-          np.innerHTML = '<div class="empty">Keine StromGedacht-Instanz gefunden - installieren/konfigurieren (Vertrag SGW_GetForecast)</div>';
-          return;
-        }
-        if (!stromgedachtCache) {
-          ensureStromGedacht();
-          np.innerHTML = '<div class="empty">Lade Netzampel…</div>';
-          return;
-        }
-        var segs = stromgedachtCache.segments;
-        if (!segs || !segs.length) {
-          np.innerHTML = '<div class="empty">Keine Ampel-Daten verfügbar - liegt die Anlage im StromGedacht-Netzgebiet?</div>';
-          return;
-        }
-        // EIN Tag je Ansicht statt Heute+Morgen untereinander (Dietmar,
-        // 22.08.2026: "wie beim Strompreis mit heute und morgen") - dieselbe
-        // tagesplanDay-Navigation wie beim Tagesplan-Reiter (siehe syncNav).
-        var naStart = new Date(); naStart.setHours(0, 0, 0, 0);
-        naStart.setDate(naStart.getDate() + tagesplanDay);
-        var naStartMs = naStart.getTime();
-        var naEndMs = naStartMs + 86400000;
-        np.innerHTML = '<div id="netzampelChart" class="ampelStrip"></div><div id="ampelKeyRow" style="margin-top:4px"></div>';
-        renderAmpelChart('netzampelChart', segs, naStartMs, naEndMs, true);
-        renderAmpelKey('ampelKeyRow', segs.filter(function (s) { return s.to > naStartMs && s.from < naEndMs; }));
         return;
       }
       if (curTab === 'balance') {
@@ -3239,13 +3183,12 @@
         if (curTab === 'tagesplan') { render(); }
         return;
       }
-      // Antwort auf requestAction('stromgedachtLoad', ...) - Netzampel
-      // (21.08.2026), genutzt sowohl vom Tagesplan-Reiter (Zusatzleiste)
-      // als auch vom eigenen Netzampel-Reiter.
+      // Antwort auf requestAction('stromgedachtLoad', ...) - StromGedacht-
+      // Netzampel als Zusatzleiste im Tagesplan-Reiter (21.08.2026).
       if (d.type === 'stromgedachtUpdate') {
         stromgedachtCache = d.stromgedacht;
         stromgedachtPending = false;
-        if (curTab === 'tagesplan' || curTab === 'netzampel') { render(); }
+        if (curTab === 'tagesplan') { render(); }
         return;
       }
       lastData = d;
@@ -3262,7 +3205,7 @@
     }
 
     document.getElementById('prev').onclick = function () {
-      if (curTab === 'tagesplan' || curTab === 'netzampel') {
+      if (curTab === 'tagesplan') {
         if (tagesplanDay > 0) { tagesplanDay--; render(); }
       } else if (curView === 'day') {
         var days = (lastData && lastData.days) || [];
@@ -3272,7 +3215,7 @@
       }
     };
     document.getElementById('next').onclick = function () {
-      if (curTab === 'tagesplan' || curTab === 'netzampel') {
+      if (curTab === 'tagesplan') {
         if (tagesplanDay < 1) { tagesplanDay++; render(); }
       } else if (curView === 'day') {
         if (idx > 0) { idx--; render(); }
@@ -3334,23 +3277,21 @@
         var dayOnly = (curTab === 'battery' || curTab === 'price');
         var typeSel = document.getElementById('type');
         typeSel.disabled = dayOnly;
-        typeSel.style.display = (curTab === 'tagesplan' || curTab === 'netzampel') ? 'none' : '';
+        typeSel.style.display = (curTab === 'tagesplan') ? 'none' : '';
         if (dayOnly && curView !== 'day') {
           curView = 'day';
           typeSel.value = 'day';
         }
         // Jahresvergleich zeigt immer "seit Inbetriebnahme" - keine Tag/
         // Woche/Monat/Jahr-Navigation noetig, #bar bleibt komplett
-        // ausgeblendet (Dietmar, 31.07.2026). Tagesplan UND Netzampel teilen
-        // sich dieselbe einfache Heute/Morgen-Navigation (siehe syncNav()
-        // curTab==='tagesplan'||'netzampel'-Zweig; Dietmar 21.08.2026 fuer
-        // Tagesplan "jeden der beiden Tage einzeln sehen", 22.08.2026 fuer
-        // Netzampel "wie beim Strompreis mit heute und morgen" statt beider
-        // Tage in einer Ansicht) - #bar bleibt dafuer sichtbar, nur die
-        // Ansichts-Auswahl (Tag/Woche/...) ist ausgeblendet, da hier
-        // wirkungslos.
+        // ausgeblendet (Dietmar, 31.07.2026). Tagesplan bekommt seine
+        // EIGENE, einfache Heute/Morgen-Navigation (siehe syncNav()
+        // curTab==='tagesplan'-Zweig, Dietmar 21.08.2026: "jeden der beiden
+        // Tage einzeln sehen" statt beide Tage in einem Chart) - #bar bleibt
+        // dafuer sichtbar, nur die Ansichts-Auswahl (Tag/Woche/...) ist
+        // ausgeblendet, da hier wirkungslos.
         document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
-        if (lastData.hasStromGedacht && (curTab === 'netzampel' || curTab === 'tagesplan')) { ensureStromGedacht(); }
+        if (lastData.hasStromGedacht && curTab === 'tagesplan') { ensureStromGedacht(); }
         render();
       };
     });
@@ -3362,7 +3303,7 @@
     }
     window.addEventListener('resize', function () {
       if (chart) { setTimeout(sizeChart, 60); }
-      setTimeout(function () { sizeAmpelChart('ampelStrip'); sizeAmpelChart('netzampelChart'); }, 60);
+      setTimeout(function () { sizeAmpelChart('ampelStrip'); }, 60);
     });
   </script>
 </body>
