@@ -323,6 +323,36 @@ class NRGDashboardPVMonitor extends IPSModule
         return ($grid > 0 && IPS_VariableExists($grid)) ? $grid : 0;
     }
 
+    /**
+     * Vorzeichen-Multiplikator, um eine Netzleistungs-Variable in unsere
+     * kanonische Konvention "+ = Einspeisung" zu lesen - Fund der MeterHub-
+     * Sitzung, 23.08.2026: MeterHub zaehlt Netzleistung modulweit als
+     * "+ = Bezug" (MeterHub/README.md, Zeile 166; MeterHub/CLAUDE.md,
+     * Punkt 2 - GENAU umgekehrt zu unserer eigenen Konvention). Dietmars
+     * manueller GridPowerID-Override zeigt auf MeterHubs "power_total"
+     * (Inexogy), wurde bisher aber ungeprueft im "+Einspeisung"-Sinn
+     * gelesen - Netzbezug und Einspeisung erschienen dadurch im
+     * Strompreis-Reiter vertauscht. Statt eines manuellen Vorzeichen-Flags
+     * wird die Herkunft automatisch erkannt: entspricht $vid der powerID
+     * einer MeterHub-"grid"-Zuordnung (MHUB_GetFunctions()), ist das
+     * Vorzeichen -1, sonst (IHUB-Pfad oder eine andere manuelle
+     * Verknuepfung) unveraendert +1 - funktioniert unabhaengig davon, ob
+     * $vid automatisch oder manuell (Property GridPowerID) verknuepft
+     * wurde, ohne dass Dietmar am Formular etwas aendern muss.
+     */
+    private function GridPowerSign(int $vid): int
+    {
+        if ($vid <= 0) {
+            return 1;
+        }
+        foreach ($this->MeterHubAssignments() as $a) {
+            if (($a['function'] ?? '') === 'grid' && (int) ($a['powerID'] ?? 0) === $vid) {
+                return -1;
+            }
+        }
+        return 1;
+    }
+
     private function SocID(): int
     {
         $explicit = $this->readIntProperty('SocID', 0);
@@ -1040,7 +1070,20 @@ class NRGDashboardPVMonitor extends IPSModule
             if (!function_exists('MHUB_GetFunctions')) {
                 break;
             }
-            $f = @MHUB_GetFunctions($id);
+            // MHUB_GetFunctions() liefert laut eigenem Vertrag (MeterHub/
+            // CLAUDE.md: "liefert Modus, Zuordnungen und Variablen-IDs als
+            // JSON") einen JSON-STRING, anders als IHUB_GetFunctions()
+            // (liefert bereits ein natives PHP-Array) - der fehlende
+            // json_decode() hier liess is_array($f) IMMER fehlschlagen,
+            // MeterHubAssignments() also STETS leer zurueckgeben. Fund der
+            // MeterHub-Sitzung, 23.08.2026 (urspruenglich beim Nachgehen
+            // eines Netzbezug/Einspeisung-Vorzeichenfehlers): betraf nicht
+            // nur GridPowerSign(), sondern auch FlowComponents()/
+            // DayBalanceCurve() - beide nutzten dadurch bislang NIE die
+            // echten MeterHub-Zaehler/-Zuordnungen, sondern immer nur den
+            // IHUB-Fallback.
+            $raw = @MHUB_GetFunctions($id);
+            $f = is_string($raw) ? json_decode($raw, true) : $raw;
             if (!is_array($f) || !isset($f['assignments']) || !is_array($f['assignments'])) {
                 continue;
             }
@@ -1441,9 +1484,11 @@ class NRGDashboardPVMonitor extends IPSModule
      * an der vollen Stunde ausgerichtet (900s), passend zu den ueblichen
      * Tibber/EnWG-Slotlaengen - je Bucket werden die enthaltenen 5-Minuten-
      * Mittelwerte zu kWh aufintegriert (Avg * 5/60 / 1000, negative Werte
-     * (=Einspeisung) auf 0 geklemmt).
+     * (=Einspeisung) auf 0 geklemmt). $sign kanonisiert $vid auf "+ =
+     * Einspeisung", siehe GridPowerSign() (Fund der MeterHub-Sitzung,
+     * 23.08.2026: MeterHub-Netzleistung ist "+ = Bezug", das Gegenteil).
      */
-    private function SlotEnergyBars(int $aid, int $vid, int $start, int $end): array
+    private function SlotEnergyBars(int $aid, int $vid, int $start, int $end, int $sign = 1): array
     {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return [];
@@ -1456,7 +1501,7 @@ class NRGDashboardPVMonitor extends IPSModule
         foreach ($data as $row) {
             $ts = (int) $row['TimeStamp'];
             $bucketStart = $ts - ($ts % 900);
-            $drawW = max(0.0, -(float) $row['Avg']);
+            $drawW = max(0.0, -$sign * (float) $row['Avg']);
             $kwh = $drawW * (5.0 / 60.0) / 1000.0;
             $buckets[$bucketStart] = ($buckets[$bucketStart] ?? 0.0) + $kwh;
         }
@@ -1496,7 +1541,7 @@ class NRGDashboardPVMonitor extends IPSModule
      * nur mit klein genug gehaltenen Einzelabfragen.
      * Rueckgabe null, wenn (noch) keine Daten im Monat vorliegen.
      */
-    private function MonthlyPeakDraw(int $aid, int $vid, int $dayStart): ?array
+    private function MonthlyPeakDraw(int $aid, int $vid, int $dayStart, int $sign = 1): ?array
     {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return null;
@@ -1513,10 +1558,14 @@ class NRGDashboardPVMonitor extends IPSModule
         $peakDayStart = null;
         $peakDrawW = 0.0;
         foreach ($dailyRows as $row) {
-            if (!isset($row['Min'])) {
+            // Vorzeichenkanonisierung wie in SlotEnergyBars(): bei $sign=-1
+            // (MeterHub, "+ = Bezug") ist der taegliche BEZUGS-Spitzenwert
+            // das Max statt das Min der 5-Minuten-Mittelwerte.
+            $extreme = ($sign > 0) ? ($row['Min'] ?? null) : ($row['Max'] ?? null);
+            if ($extreme === null) {
                 continue;
             }
-            $drawW = max(0.0, -(float) $row['Min']);
+            $drawW = max(0.0, -$sign * (float) $extreme);
             if ($peakDayStart === null || $drawW > $peakDrawW) {
                 $peakDrawW = $drawW;
                 $peakDayStart = (int) $row['TimeStamp'];
@@ -1526,7 +1575,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return null;
         }
         $dayEnd = min($monthEnd, $peakDayStart + 86400);
-        $bars = $this->SlotEnergyBars($aid, $vid, $peakDayStart, $dayEnd);
+        $bars = $this->SlotEnergyBars($aid, $vid, $peakDayStart, $dayEnd, $sign);
         if (count($bars) === 0) {
             return null;
         }
@@ -1813,6 +1862,12 @@ class NRGDashboardPVMonitor extends IPSModule
         $gridA = $this->BestAssignment($assignments, 'grid');
         $gridPowerID = $gridA['powerID'] ?? 0;
         $gridPowerID = ($gridPowerID > 0) ? (int) $gridPowerID : $ihubGridPowerID;
+        // GridPowerSign() kanonisiert MeterHub-Netzleistung ("+ = Bezug")
+        // auf unsere "+ = Einspeisung"-Konvention - ohne diese Korrektur
+        // waren Netzbezug/Netzeinspeisung hier vertauscht, sobald ein
+        // MeterHub-Netzzaehler getaggt ist (Fund der MeterHub-Sitzung,
+        // 23.08.2026, identischer Fehler wie in GridPowerID()).
+        $gridSign = $this->GridPowerSign($gridPowerID);
 
         $aid = $this->ArchiveID();
         $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
@@ -1822,7 +1877,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $byTs = [];
         foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
         foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
-        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1]; }
+        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1] * $gridSign; }
         ksort($byTs);
 
         $netzbezug = []; $batterieentladung = []; $direktverbrauch = [];
@@ -1979,13 +2034,18 @@ class NRGDashboardPVMonitor extends IPSModule
             // Netzbezug im Strompreis-Reiter (Dietmars Wunsch, 28.07.2026,
             // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
             // Preiskurve, gleicher $aid/$end wie die anderen Serien.
-            $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $this->GridPowerID(), $start, $end) : [];
+            // GridPowerSign() kanonisiert automatisch erkannte MeterHub-
+            // Netzleistung ("+ = Bezug") auf unsere "+ = Einspeisung"-
+            // Konvention (Fund der MeterHub-Sitzung, 23.08.2026).
+            $gridID = $this->GridPowerID();
+            $gridSign = $this->GridPowerSign($gridID);
+            $gridDraw = (!$isFuture) ? $this->SlotEnergyBars($aid, $gridID, $start, $end, $gridSign) : [];
             // Monats-Spitzenwert der Netzbezugsleistung (Dietmar,
             // 07.08.2026) - je Tag identisch fuer alle Tage desselben
             // Monats, bewusst pro Tag mitgeschickt statt separat
             // nachgefordert (ein Archivdurchlauf mehr pro Tageswechsel ist
             // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
-            $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $this->GridPowerID(), $start) : null;
+            $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $gridID, $start, $gridSign) : null;
 
             $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
                 || ($flow !== null && ($flow['hasData'] ?? false));
