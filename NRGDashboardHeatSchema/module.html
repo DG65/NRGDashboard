@@ -563,28 +563,27 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed, contentW, fan2Speed) {
     g.appendChild(el('path', { d: 'M' + fx + ',' + footY + ' l-4,6 h16 l-4,-6 Z', fill: PAL.surface, stroke: C, 'stroke-width': 1.2 }));
   });
   // Zweiter Luefter (Dietmar, 24.08.2026: "Es gibt auch Aussengeraete und
-  // Monoblockgeraete mit 2 Ventilatoren") - erkannt an fan2Speed !== null
-  // (HeishaMon liefert fan2SpeedID nur additiv, 0/fehlend = nur ein
-  // Luefter verbaut, siehe DiscoverHeatpumps()). Bei zwei Luefter kleinerer
-  // Radius und zwei Positionen nebeneinander statt einem grossen mittig,
-  // damit beide plus Gitter in denselben contentW-Bereich passen wie
-  // vorher der eine.
+  // Monoblockgeraete mit 2 Ventilatoren", 24.08.2026 praezisiert: "liegen
+  // uebereinander nicht nebeneinander und sie ueberschneiden sich auch
+  // nicht" - reale Doppelluefter-Aussengeraete stapeln die Luefter meist
+  // vertikal in EINER Spalte, nicht nebeneinander in der Breite) - erkannt
+  // an fan2Speed !== null (HeishaMon liefert fan2SpeedID nur additiv,
+  // 0/fehlend = nur ein Luefter verbaut, siehe DiscoverHeatpumps()).
   var twoFans = (fan2Speed !== null && fan2Speed !== undefined);
-  // Radius/Positionen so gewaehlt, dass beide Luefter samt gemeinsamem
-  // Gitter (siehe unten) innerhalb von contentW bleiben, mit noch genug
-  // Rand fuer die rechte Luftschlitz-Spalte - bei zwei Luefter enger als
-  // beim einzelnen, das ist bei echten Doppelluefter-Aussengeraeten auch
-  // so (schmalere Gitterstege zwischen den beiden Kreisen).
-  var fanR = twoFans ? h * 0.24 : h * 0.38;
-  var fanCy = y + h / 2;
+  // Radius so gewaehlt, dass beide Luefter UEBEREINANDER ins Gehaeuse
+  // passen, OHNE sich zu ueberschneiden: Mittelpunktabstand h*0.44,
+  // Durchmesser (2*fanR) muss kleiner bleiben - h*0.19 laesst sichtbaren
+  // Abstand zwischen den beiden Kreisen.
+  var fanR = twoFans ? h * 0.19 : h * 0.38;
+  var fanCx = x + contentW * 0.40;
   var fanCenters = twoFans
-    ? [x + contentW * 0.25, x + contentW * 0.58]
-    : [x + contentW * 0.40];
+    ? [y + h * 0.28, y + h * 0.72]
+    : [y + h / 2];
   var speeds = twoFans ? [fanSpeed, fan2Speed] : [fanSpeed];
 
   // Luefter (hinter dem Gitter): Kreis + rotierende Blaetter - je Luefter
   // einmal aufgerufen.
-  fanCenters.forEach(function (fanCx, i) {
+  fanCenters.forEach(function (fanCy, i) {
     var spd = speeds[i];
     g.appendChild(el('circle', { cx: fanCx, cy: fanCy, r: fanR, fill: 'none', stroke: C, 'stroke-width': 1.4 }));
     // Translate im WRAPPER-Element, Rotation im inneren - eine CSS-
@@ -617,10 +616,11 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed, contentW, fan2Speed) {
   // Lamellengitter ZENTRIERT ueber dem/den Luefter(n) (Dietmar,
   // 17.08.2026: "der Gitterrost vor dem Ventilator ... sollte in allen
   // Darstellungen zentriert auf dem Ventilator sitzen") - bei zwei
-  // Luefter EIN durchgehendes Gitter ueber beide, von der linken bis zur
-  // rechten Luefterkante plus Rand.
-  var grilleL = fanCenters[0] - fanR - 6;
-  var grilleR = fanCenters[fanCenters.length - 1] + fanR + 6;
+  // uebereinander gestapelten Luefter bleibt die Gitterbreite dieselbe
+  // wie bei einem (EINE Spalte), nur die Hoehe deckt weiterhin das ganze
+  // Gehaeuse ab (unveraendert, deckt automatisch beide Luefter mit ab).
+  var grilleL = fanCx - fanR - 6;
+  var grilleR = fanCx + fanR + 6;
   var lam = '';
   for (var ly = y + 8; ly < y + h - 6; ly += 6) {
     lam += 'M' + grilleL + ',' + ly + ' L' + grilleR + ',' + ly + ' ';
