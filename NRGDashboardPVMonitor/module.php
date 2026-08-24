@@ -40,19 +40,6 @@ class NRGDashboardPVMonitor extends IPSModule
 
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
 
-    // Lokal gebuendeltes ECharts (lib/echarts.min.js, Apache-2.0 - siehe
-    // RegisterHook() in Create()/ProcessHookData()). NUR ECharts, NICHT
-    // Highcharts: dessen Lizenz deckt keine Redistribution mit dem Modul ab
-    // (siehe Kommentar bei ensureHighcharts() in module.html), Highcharts
-    // bleibt deshalb bewusst beim offiziellen CDN (dort immer automatisch
-    // aktuell, kein Staleness-Risiko). Versionsnummer hier fest hinterlegt,
-    // damit sie sich zentral pflegt UND fuer eine automatisierte
-    // Aktualitaetspruefung auslesen laesst (Dietmar, 24.08.2026: "kannst Du
-    // mich aufmerksam machen, wenn Highchart oder EChart nicht mehr aktuell
-    // sind?" - siehe der geplante ECharts-Versions-Check-Task). Bei einem
-    // ECharts-Update IMMER auch diese Konstante mitpflegen.
-    private const LIB_ECHARTS_VERSION = '5.5.1';
-
     // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
@@ -109,23 +96,6 @@ class NRGDashboardPVMonitor extends IPSModule
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHPVMON_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
-
-        // Lokales Ausliefern von ECharts statt CDN (Dietmar, 24.08.2026:
-        // "beim ersten Laden der Kachel dauert es rund 10s" - module.html
-        // laed die Chart-Bibliothek beim allerersten Oeffnen per
-        // <script src="https://cdn.jsdelivr.net/..."> nach und blockiert
-        // damit den ersten Chart, bis der externe Download durch ist). Ein
-        // WebHook liefert dieselbe Datei vom eigenen Symcon-Webserver aus
-        // (gleicher Origin wie die Kachel selbst, gleiches Browser-
-        // Caching-Verhalten wie ein CDN, aber ohne externe Netzwerk-
-        // abhaengigkeit). NICHT ins Tile-HTML einbetten - das hat schon
-        // einmal den 1-MB-Ausgabepuffer gesprengt (siehe
-        // GetVisualizationTile()-Kommentar, 31.07.2026), ein WebHook ist
-        // ein separater HTTP-Request, zaehlt also nicht zu diesem Limit.
-        // NUR ECharts (Apache-2.0, Redistribution erlaubt) - Highcharts
-        // bleibt aus Lizenzgruenden beim offiziellen CDN (siehe
-        // ensureHighcharts() in module.html).
-        $this->RegisterHook('/hook/nrgdashpvmon_' . $this->InstanceID);
     }
 
     public function ApplyChanges()
@@ -1697,36 +1667,6 @@ class NRGDashboardPVMonitor extends IPSModule
         $html = str_replace('/*__ECHARTS_JS__*/', '', $html);
         $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
         return $html;
-    }
-
-    /**
-     * Liefert das lokal gebuendelte ECharts (lib/echarts.min.js) unter
-     * /hook/nrgdashpvmon_<InstanceID>/echarts.min.js aus - registriert in
-     * Create() via RegisterHook(). Ersetzt das CDN-Nachladen in
-     * module.html (ensureECharts(), Fund Dietmar 24.08.2026: "beim ersten
-     * Laden der Kachel dauert es rund 10s"). NUR ECharts (Apache-2.0) -
-     * Highcharts bleibt aus Lizenzgruenden beim offiziellen CDN (siehe
-     * Kommentar bei ensureHighcharts() in module.html und die
-     * LIB_ECHARTS_VERSION-Konstante oben). Cache-Control lang, da die Datei
-     * nur bei einem echten Modul-Update wechselt.
-     */
-    public function ProcessHookData()
-    {
-        $path = (string) ($_SERVER['PATH_INFO'] ?? '');
-        if ($path !== '/echarts.min.js') {
-            http_response_code(404);
-            echo 'Not found';
-            return;
-        }
-        $file = __DIR__ . '/lib/echarts.min.js';
-        if (!is_file($file)) {
-            http_response_code(404);
-            echo 'Not found';
-            return;
-        }
-        header('Content-Type: application/javascript; charset=utf-8');
-        header('Cache-Control: public, max-age=604800');
-        readfile($file);
     }
 
     public function Render(): void
