@@ -58,6 +58,7 @@ class NRGDashboardHeatSchema extends IPSModule
         'dischargeTempID'         => 'ManualDischargeTempID',
         'defrostingStateID'       => 'ManualDefrostingStateID',
         'fan1SpeedID'             => 'ManualFan1SpeedID',
+        'fan2SpeedID'             => 'ManualFan2SpeedID',
         'suctionTempID'           => 'ManualSuctionTempID',
         'copEstimateID'           => 'ManualCopEstimateID',
         'copMeasuredID'           => 'ManualCopMeasuredID',
@@ -739,6 +740,12 @@ class NRGDashboardHeatSchema extends IPSModule
                 // drehzahl des Aussengeraets, additiv - fehlt bei aelteren
                 // Staenden einfach (?? 0 -> null).
                 'fanSpeed'        => $this->num((int) ($e['fan1SpeedID'] ?? 0)),
+                // Zweiter Luefter (Dietmar, 24.08.2026: "Es gibt auch
+                // Aussengeraete und Monoblockgeraete mit 2 Ventilatoren") -
+                // additives Feld wie fanSpeed, HeishaMon liefert es seit
+                // contractVersion 1.5 bereits mit ('fan2SpeedID' => 0, wenn
+                // nur ein Luefter verbaut ist), bislang aber ungenutzt.
+                'fan2Speed'       => $this->num((int) ($e['fan2SpeedID'] ?? 0)),
                 // Sauggas-/Kaltgastemperatur (Gegenstueck zum Heissgas):
                 // additives Feld, bei HeishaMon angefragt (14.08.2026) -
                 // bis der Vertrag es liefert, bleibt das Feld null.

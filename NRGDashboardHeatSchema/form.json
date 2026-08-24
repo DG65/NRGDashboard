@@ -55,7 +55,12 @@
         {
           "type": "SelectVariable",
           "name": "ManualFan1SpeedID",
-          "caption": "Lüfterdrehzahl (U/min)"
+          "caption": "Lüfterdrehzahl 1 (U/min)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualFan2SpeedID",
+          "caption": "Lüfterdrehzahl 2 (U/min) - nur bei Außen-/Monoblockgeräten mit 2 Ventilatoren"
         },
         {
           "type": "SelectVariable",
