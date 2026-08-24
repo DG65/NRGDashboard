@@ -1554,11 +1554,17 @@
       var socData = dp.slots.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
         .map(function (s) { return [s.time, s.soc]; });
       if (socData.length) { series.push({ name: 'Batterie-SOC (geplant)', data: socData, axis: 2, color: '#9575cd', dashed: true }); }
+      // Namen bewusst OHNE "-Prognose"/"(geplant)"-Zusatz (Dietmar,
+      // 24.08.2026: "die Vergangenheit so darstellen wie sie war, nicht
+      // mehr als Prognose") - die Linien sind jetzt links vom "Jetzt"-
+      // Strich Ist-Werte (SpliceActual() in module.php) und rechts davon
+      // Prognose, ein fester "-Prognose"-Name waere fuer die Vergangenheit
+      // irrefuehrend.
       if (dp.pvForecast && dp.pvForecast.length) {
-        series.push({ name: 'PV-Prognose', data: dp.pvForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#e57373', dashed: false });
+        series.push({ name: 'PV', data: dp.pvForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#e57373', dashed: false });
       }
       if (dp.loadForecast && dp.loadForecast.length) {
-        series.push({ name: 'Last-Prognose', data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
+        series.push({ name: 'Last', data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
       }
       return series;
     }

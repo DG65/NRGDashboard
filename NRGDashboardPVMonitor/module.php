@@ -1002,6 +1002,84 @@ class NRGDashboardPVMonitor extends IPSModule
         $out['pvForecast'] = $this->ForecastSeries($this->PvfInstanceID(), 'PVF_GetForecast');
         $out['loadForecast'] = $this->ForecastSeries($this->LfcInstanceID(), 'LFC_GetForecast');
 
+        // Vergangenheit als Ist statt als Prognose zeigen (Dietmar,
+        // 24.08.2026: "wie wäre es, wenn man die Vergangenheit so
+        // darstellen würde wie sie war und nicht mehr als Prognose?") -
+        // die Prognose-Punkte VOR jetzt werden durch echte Archivwerte
+        // ersetzt, NACH jetzt bleibt die Prognose stehen. Nur fuer den
+        // Zeitraum vor jetzt sinnvoll (die Zukunft hat naturgemaess keine
+        // Ist-Werte) - betrifft also praktisch nur den heutigen Tag.
+        $now = time();
+        $todayStart = strtotime('today 00:00:00');
+        $aid = $this->ArchiveID();
+        if ($aid > 0 && $now > $todayStart) {
+            $pvID = $this->PvPowerID();
+            $pvActual = $this->DaySeries($aid, $pvID, $todayStart, $now);
+            $out['pvForecast'] = $this->SpliceActual($out['pvForecast'], $pvActual, $now * 1000);
+
+            $batID = $this->BatPowerID();
+            $gridID = $this->GridPowerID();
+            $gridSign = $this->GridPowerSign($gridID);
+            $loadActual = $this->ActualLoadSeries($aid, $pvID, $batID, $gridID, $gridSign, $todayStart, $now);
+            $out['loadForecast'] = $this->SpliceActual($out['loadForecast'], $loadActual, $now * 1000);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Ersetzt in einer Prognose-Zeitreihe alle Punkte VOR $cutoffMs durch
+     * $actual (Archivwerte), Punkte ab $cutoffMs bleiben unveraendert
+     * Prognose - siehe BuildDayPlan(). Bewusst reine Punktkonkatenation
+     * statt Interpolation/Resampling: PV-/Lastprognose sind stuendlich,
+     * Ist-Werte 5-minuetig - ein Liniendiagramm verbindet unterschiedlich
+     * dichte Abschnitte ohne weiteres Zutun sauber.
+     */
+    private function SpliceActual(array $forecast, array $actual, int $cutoffMs): array
+    {
+        if (count($actual) === 0) {
+            return $forecast;
+        }
+        $future = array_values(array_filter($forecast, function ($p) use ($cutoffMs) {
+            return $p[0] >= $cutoffMs;
+        }));
+        return array_merge($actual, $future);
+    }
+
+    /**
+     * Tatsaechlicher Lastverlauf (Ist) aus PV/Batterie/Netz-Leistung
+     * abgeleitet - dieselbe Aufteilungsformel wie DayBalanceCurve()
+     * ("pvToLoad + Batterieentladung + Netzbezug"), hier aber als EINE
+     * Last-Zeitreihe statt vier getrennter Kurven, fuer den Tagesplan-
+     * Reiter (siehe SpliceActual()). Bewusst eigenstaendig statt
+     * DayBalanceCurve() mitzubenutzen - andere Rueckgabeform, und
+     * DayBalanceCurve() bleibt unangetastet, um dessen bestehendes
+     * Verhalten nicht versehentlich zu veraendern.
+     */
+    private function ActualLoadSeries(int $aid, int $pvID, int $batID, int $gridID, int $gridSign, int $start, int $end): array
+    {
+        $pvPts = $this->DaySeries($aid, $pvID, $start, $end);
+        $batPts = $this->DaySeries($aid, $batID, $start, $end);
+        $gridPts = $this->DaySeries($aid, $gridID, $start, $end);
+
+        $byTs = [];
+        foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
+        foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
+        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1] * $gridSign; }
+        ksort($byTs);
+
+        $out = [];
+        foreach ($byTs as $ts => $v) {
+            $pv = max(0.0, (float) ($v['pv'] ?? 0));
+            $bat = (float) ($v['bat'] ?? 0);
+            $grid = (float) ($v['grid'] ?? 0);
+            $batCh = max(0.0, -$bat);
+            $batDis = max(0.0, $bat);
+            $gridImp = max(0.0, -$grid);
+            $gridExp = max(0.0, $grid);
+            $pvToLoad = max(0.0, $pv - $gridExp - $batCh);
+            $out[] = [$ts, round($pvToLoad + $batDis + $gridImp, 0)];
+        }
         return $out;
     }
 
