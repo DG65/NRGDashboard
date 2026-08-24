@@ -466,19 +466,23 @@
       libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
     }
 
-    // Fix (31.07.2026): ECharts war bisher IMMER lokal eingebettet (~618KB),
-    // sobald diese Engine gewaehlt war - zusammen mit dem restlichen
-    // Tage-Fenster-Payload (WINDOW_DAYS Tage x mehrere Serien) hat das live
-    // bei Dietmar "Output-Buffer exceeds Limit (1048576 bytes)" ausgeloest.
-    // Gleiches Muster wie ensureHighcharts() jetzt auch fuer ECharts: per
-    // CDN nachladen statt einbetten - Highcharts laeuft nachweislich schon
-    // ueber ein CDN in dieser Umgebung, dieselbe Netzwerk-Erreichbarkeit
-    // gilt also auch hier.
+    // ECharts (Apache-2.0, Redistribution erlaubt - anders als Highcharts,
+    // siehe Kommentar bei ensureHighcharts()) wird seit 24.08.2026 vom
+    // Modul SELBST per WebHook ausgeliefert statt vom CDN (Dietmar:
+    // "beim ersten Laden der Kachel dauert es rund 10s") - vorher war die
+    // Datei entweder eingebettet (hat den 1-MB-Ausgabepuffer gesprengt,
+    // 31.07.2026-Fix) oder kam vom externen jsdelivr-CDN (blockierte den
+    // allerersten Chart bis zum Download-Ende). Der WebHook-Pfad nutzt
+    // lastData.uid (== InstanceID, siehe buildPayload()) - beim allerersten
+    // Aufruf ist lastData bereits gesetzt, GetVisualizationTile() haengt
+    // das handleMessage() mit dem vollen Payload synchron VOR jedem
+    // render()/ensureECharts()-Aufruf ans Tile-HTML an.
     function ensureECharts(cb) {
       if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
       if (libs.ec === 1) { return setTimeout(function () { ensureECharts(cb); }, 80); }
       libs.ec = 1;
-      addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
+      var uid = (lastData && lastData.uid) || '';
+      addScript('/hook/nrgdashpvmon_' + uid + '/echarts.min.js', function () { libs.ec = 2; cb(); });
     }
 
     // Energiebilanz-Reiter (Sankey) braucht zusaetzlich das Highcharts-
