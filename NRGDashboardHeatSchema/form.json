@@ -64,6 +64,16 @@
         },
         {
           "type": "SelectVariable",
+          "name": "ManualInternalHeaterStateID",
+          "caption": "Heizstab intern aktiv (bool)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualExternalHeaterStateID",
+          "caption": "Heizstab extern aktiv (bool)"
+        },
+        {
+          "type": "SelectVariable",
           "name": "ManualDischargeTempID",
           "caption": "Heißgastemperatur (°C)"
         },

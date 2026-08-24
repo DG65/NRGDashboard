@@ -570,14 +570,18 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed, contentW, fan2Speed) {
   // an fan2Speed !== null (HeishaMon liefert fan2SpeedID nur additiv,
   // 0/fehlend = nur ein Luefter verbaut, siehe DiscoverHeatpumps()).
   var twoFans = (fan2Speed !== null && fan2Speed !== undefined);
-  // Radius so gewaehlt, dass beide Luefter UEBEREINANDER ins Gehaeuse
-  // passen, OHNE sich zu ueberschneiden: Mittelpunktabstand h*0.44,
-  // Durchmesser (2*fanR) muss kleiner bleiben - h*0.19 laesst sichtbaren
-  // Abstand zwischen den beiden Kreisen.
-  var fanR = twoFans ? h * 0.19 : h * 0.38;
+  // Luefterdurchmesser bleibt IMMER gleich gross, unabhaengig von h
+  // (Dietmar, 24.08.2026: "der Ventilatordurchmesser bleibt gleich wie
+  // beim einfachen Ventilatorgeraet") - 0.38 * die Standard-Gehaeusehoehe
+  // eines Ein-Luefter-Geraets (110), NICHT * das tatsaechlich uebergebene
+  // h. Das Gehaeuse selbst wird bei zwei Luefter vom Aufrufer bereits
+  // nahezu doppelt so hoch uebergeben (Dietmar: "die Hoehe des
+  // Aussengeraets verdoppelt sich nahezu"), damit zwei volle Luefter
+  // UEBEREINANDER hineinpassen, ohne sich zu ueberschneiden.
+  var fanR = 110 * 0.38;
   var fanCx = x + contentW * 0.40;
   var fanCenters = twoFans
-    ? [y + h * 0.28, y + h * 0.72]
+    ? [y + h * 0.25, y + h * 0.75]
     : [y + h / 2];
   var speeds = twoFans ? [fanSpeed, fan2Speed] : [fanSpeed];
 
@@ -886,17 +890,27 @@ function buildSchema(unit) {
   // Monoblockgeraet das Aussengeraet um 1/3 breiter ist und der WT in
   // diesem 1/3 Mehrplatz sitzt").
   var at = el('text', { x: outdoorX + outdoorW / 2, y: 82, class: 'box-title' }); at.textContent = 'AUSSENGERÄT'; svg.appendChild(at);
-  outdoorUnit(svg, outdoorX, 90, outdoorW, 110, running, unit.fanSpeed, outdoorBaseW, unit.fan2Speed);
+  // Gehaeuse bei zwei Luefter nahezu doppelt so hoch (Dietmar, 24.08.2026:
+  // "die Hoehe des Aussengeraetes verdoppelt sich nahezu, d.h. der
+  // Ventilatordurchmesser bleibt gleich wie beim einfach Ventilatorgeraet")
+  // - siehe outdoorUnit(), fanR ist dort fix und haengt NICHT von diesem h
+  // ab, sonst waeren die Luefter mitgewachsen statt gleich gross zu bleiben.
+  var hasFan2 = unit.fan2Speed !== null && unit.fan2Speed !== undefined;
+  var outdoorH = hasFan2 ? 210 : 110;
+  outdoorUnit(svg, outdoorX, 90, outdoorW, outdoorH, running, unit.fanSpeed, outdoorBaseW, unit.fan2Speed);
 
   // Messwert-Tabelle unter dem Geraet statt einzelner Chips (Dietmar,
   // 14.08.2026): 3 Zeilen x 2 Spalten, keine sichtbaren Linien, so breit
   // wie das Aussengeraet (x 35..165). Label links, Wert rechtsbuendig.
+  // Start-y folgt der (ggf. groesseren) Geraetehoehe (24.08.2026), statt
+  // fest bei 220 zu bleiben - sonst ueberlappt die Tabelle das bei zwei
+  // Luefter hoehere Gehaeuse.
+  var odTableY = 90 + outdoorH + 20;
   var pw = fmtPower(unit.power);
   // Zweiter Luefter (24.08.2026): eigene Zeile nur, wenn das Geraet
-  // tatsaechlich einen zweiten hat (fan2Speed !== null) - sonst bleibt es
+  // tatsaechlich einen zweiten hat (hasFan2, siehe oben) - sonst bleibt es
   // bei der einen "Lüfter"-Zeile wie bisher, kein leerer "–"-Ballast fuer
   // Geraete mit nur einem Ventilator.
-  var hasFan2 = unit.fan2Speed !== null && unit.fan2Speed !== undefined;
   var odRows = [
     ['Leistung', pw ? pw.v + ' ' + pw.u : '–'],
     ['Verdichter', unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–'],
@@ -950,7 +964,7 @@ function buildSchema(unit) {
     if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) { odRows.push(['Sauggas', fmtTemp1(unit.suctionTemp) + ' °C']); }
   }
   odRows.forEach(function (row, ri) {
-    var ry = 220 + ri * 15;
+    var ry = odTableY + ri * 15;
     // Inline-Style: .tag setzt text-anchor:middle per CSS, das Attribut
     // allein wuerde ueberschrieben (Labels sollen linksbuendig mit der
     // Geraetekante x=35 stehen - Dietmar, 14.08.2026).
@@ -972,7 +986,7 @@ function buildSchema(unit) {
     // Unter der letzten Tabellenzeile statt bei einem fixen y - bei
     // Monoblock hat die Tabelle zwei Zeilen mehr (Heiss-/Sauggas), sonst
     // waere das Badge in die Zeilen hineingerutscht.
-    var defrostY = 220 + odRows.length * 15 + 7;
+    var defrostY = odTableY + odRows.length * 15 + 7;
     svg.appendChild(el('rect', { x: outdoorX, y: defrostY, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
     var db = el('text', { x: outdoorX + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
   }
@@ -1043,6 +1057,22 @@ function buildSchema(unit) {
   else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
   else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
   svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
+  // Heizstab (Dietmar, 24.08.2026: "was wir auch vergessen haben, den
+  // Heizstab") - HeishaMon meldet intern/extern getrennt nach
+  // Einbaulage, nicht nach Verwendungszweck (WW/Raum); da die genaue
+  // hydraulische Position je nach Installation variiert (HeishaMon:
+  // "der interne meist im Innengeraet/Pufferkreis, der externe je nach
+  // Installation eher am Puffer oder Vorlauf") UND unser Datenpunkt
+  // beide zu EINEM Status zusammenfasst (heaterActive, siehe module.php),
+  // bewusst als Status-Badge neben der Betriebsart statt an eine
+  // bestimmte Rohrstelle gepinnt - vermeidet eine falsche Praezision, die
+  // der Datenpunkt gar nicht hergibt. null (Datenpunkt fehlt komplett) =
+  // Badge bleibt ganz aus, false (Datenpunkt da, aber inaktiv) ebenso -
+  // nur bei true erscheint es, ein Heizstab ist selten genug aktiv, dass
+  // ein dauerhaft sichtbares "Aus"-Badge nur Rauschen waere.
+  if (unit.heaterActive === true) {
+    svg.appendChild(chip(W / 2, 45, 'Heizstab', null, '#e0503c', null));
+  }
   // Anschlusspunkte, an denen der Vorlauf (SUP, y=142) und der
   // gemeinsame Ruecklauf (RET, y=192) den Waermeerzeuger in Richtung
   // Puffer/Heizkreis verlassen. Split: rechte Kante des Innengeraets

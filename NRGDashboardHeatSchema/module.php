@@ -59,6 +59,8 @@ class NRGDashboardHeatSchema extends IPSModule
         'defrostingStateID'       => 'ManualDefrostingStateID',
         'fan1SpeedID'             => 'ManualFan1SpeedID',
         'fan2SpeedID'             => 'ManualFan2SpeedID',
+        'internalHeaterStateID'   => 'ManualInternalHeaterStateID',
+        'externalHeaterStateID'   => 'ManualExternalHeaterStateID',
         'suctionTempID'           => 'ManualSuctionTempID',
         'copEstimateID'           => 'ManualCopEstimateID',
         'copMeasuredID'           => 'ManualCopMeasuredID',
@@ -659,6 +661,23 @@ class NRGDashboardHeatSchema extends IPSModule
         return is_bool($v) ? $v : (is_numeric($v) ? ((float) $v != 0.0) : null);
     }
 
+    /**
+     * Kombiniert internen/externen Heizstab-Status zu EINEM Wert fuers
+     * Schema-Symbol (siehe DiscoverHeatpumps()) - null nur, wenn WEDER
+     * intern noch extern verfuegbar ist (Symbol bleibt dann ganz aus,
+     * statt faelschlich "aus" zu zeigen); sonst true, sobald mindestens
+     * einer der verfuegbaren aktiv ist.
+     */
+    private function heaterActive(int $internalVid, int $externalVid): ?bool
+    {
+        $internal = $this->boolVal($internalVid);
+        $external = $this->boolVal($externalVid);
+        if ($internal === null && $external === null) {
+            return null;
+        }
+        return ($internal === true) || ($external === true);
+    }
+
     private function buildPayload(): array
     {
         // Simulation (Dietmar, 17.08.2026: "die Buttons fuer die
@@ -793,6 +812,22 @@ class NRGDashboardHeatSchema extends IPSModule
                 'z2MixingValve'   => $this->num((int) ($e['z2MixingValveID'] ?? 0)),
                 'z2MixValvePos'   => $this->num((int) ($e['z2MixingValvePositionID'] ?? 0)),
                 'indoorPipeTemp'  => $this->numTemp((int) ($e['indoorPipeTempID'] ?? 0)),
+                // Heizstab (Dietmar, 24.08.2026: "was wir auch vergessen
+                // haben, den Heizstab") - HeishaMon contractVersion 1.12,
+                // 24.08.2026: intern (im Innengeraet verbaut) und extern
+                // (separater Zusatz-/Boosterheizer) getrennt gemeldet,
+                // NICHT WW/Raum wie urspruenglich vermutet - hydraulisch
+                // ist die Einbaulage (intern/extern) die relevante
+                // Unterscheidung, nicht der Verwendungszweck. EIN
+                // Heizstab-Symbol statt zwei getrennter (Vorschlag
+                // HeishaMon, deren Erfahrung zur hydraulischen Einbaulage):
+                // aktiv, wenn irgendein verfuegbarer Heizstab laeuft; null
+                // (Symbol bleibt aus), wenn KEINER der beiden Datenpunkte
+                // vorhanden ist, statt faelschlich "aus" zu zeigen.
+                'heaterActive'    => $this->heaterActive(
+                    (int) ($e['internalHeaterStateID'] ?? 0),
+                    (int) ($e['externalHeaterStateID'] ?? 0)
+                ),
             ];
         }
 
