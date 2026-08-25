@@ -1,0 +1,15 @@
+{
+  "id": "{C9C30229-C36F-4B1C-A474-C0F5C7C4CF30}",
+  "name": "NRGDashboardForecast",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Energieprognose",
+    "PV-/Lastprognose"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHFC"
+}

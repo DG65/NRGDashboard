@@ -1,0 +1,335 @@
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; }
+  body { font-family: system-ui, sans-serif; font-size: 12px; color: #cfd6de; }
+  #empty { display: none; align-items: center; justify-content: center; height: 100%; opacity: .7; padding: 12px; text-align: center; }
+  #chart { width: 100%; height: calc(100% - 34px); min-height: 160px; }
+  #summary { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 4px 8px; font-size: 11px; opacity: .85; }
+  #summary .day { white-space: nowrap; }
+  #summary .day b { opacity: .9; }
+  #summary .now { padding: 0 8px 4px; font-size: 11px; opacity: .7; }
+</style>
+<div id="empty">Keine Prognosedaten verfügbar.</div>
+<div id="chart"></div>
+<div id="now"></div>
+<div id="summary"></div>
+
+<script>
+  // Dual-Engine-Laden per CDN (Muster NRGDashboardPVMonitor::ensureHighcharts/
+  // ensureECharts) - Highcharts aus Lizenzgruenden IMMER vom offiziellen CDN,
+  // ECharts (Apache-2.0) koennte grundsaetzlich lokal gebuendelt werden, aber
+  // ein RegisterHook()-Versuch dafuer ist an Dietmars Symcon-Version bereits
+  // gescheitert (24.08.2026, hat eine andere Kachel lahmgelegt) - hier
+  // deshalb bewusst NICHT wiederholt, beide Engines bleiben CDN-basiert.
+  var libs = {};
+  function addScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); }; document.head.appendChild(s); }
+  function ensureHighcharts(cb) {
+    if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.arearange) { libs.hc = 2; return cb(); }
+    if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
+    libs.hc = 1;
+    addScript('https://code.highcharts.com/highcharts.js', function () {
+      addScript('https://code.highcharts.com/highcharts-more.js', function () { libs.hc = 2; cb(); });
+    });
+  }
+  function ensureECharts(cb) {
+    if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
+    if (libs.ec === 1) { return setTimeout(function () { ensureECharts(cb); }, 80); }
+    libs.ec = 1;
+    addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
+  }
+
+  var COL_PV = '#e0a020', COL_LOAD = '#2bb3c0', COL_NOW = '#ff5252';
+  var GRID_COLOR = 'rgba(128,128,128,.28)';
+  var lastData = null, chart = null, chartEngine = null;
+
+  // 15-Minuten-Raster (96 Punkte/Tag, live an Dietmars Anlage bestaetigt,
+  // 25.08.2026) - Stunden-Achsen-Trick von Prognose uebernommen: keine
+  // Kalenderdatum-Achse, sondern eine durchgehende 0..nDays*24-Stunden-Achse
+  // (alle Tage aneinandergehaengt). SLOT_H = Stunden je Punkt.
+  var SLOT_H = 0.25;
+
+  // Baut aus days[] flache [[x,y],...]-Punktreihen (x = durchgehende
+  // Stunde, y = kW). $field ist 'p50'|'p10'|'p90' fuer die Prognose oder
+  // 'pvMeas'/'loMeas' fuer die Ist-Ueberlagerung - jeweils innerhalb
+  // day.pv/day.load bzw. direkt am Tag-Objekt (Meas-Felder).
+  function seriesFor(days, key, field) {
+    var pts = [];
+    days.forEach(function (day, di) {
+      var src = (field === 'pvMeas' || field === 'loMeas') ? day[field] : (day[key] && day[key][field]);
+      if (!Array.isArray(src)) { return; }
+      src.forEach(function (w, j) {
+        if (w === null || w === undefined) { return; }
+        // Ausreisser-Schutz (live gefunden, 25.08.2026: einzelne pvMeas/
+        // loMeas-Punkte lagen bei > 10^7 W - offensichtliche Messfehler,
+        // keine reale Haushaltslast) - alles ueber 50 kW wird verworfen,
+        // statt die Y-Achse durch einen einzelnen Ausreisser zu ruinieren.
+        var kw = w / 1000;
+        if (Math.abs(kw) > 50) { return; }
+        pts.push([di * 24 + j * SLOT_H, Math.round(kw * 1000) / 1000]);
+      });
+    });
+    return pts;
+  }
+
+  // Band als [x, low, high] fuer Highcharts arearange bzw. als Basis fuer
+  // den ECharts-Stacked-Area-Trick (siehe renderECharts).
+  function bandFor(days, key) {
+    var pts = [];
+    days.forEach(function (day, di) {
+      var lo = day[key] && day[key].p10, hi = day[key] && day[key].p90;
+      if (!Array.isArray(lo) || !Array.isArray(hi)) { return; }
+      for (var j = 0; j < lo.length; j++) {
+        if (lo[j] === null || hi[j] === null || lo[j] === undefined || hi[j] === undefined) { continue; }
+        var loKw = lo[j] / 1000, hiKw = hi[j] / 1000;
+        if (Math.abs(loKw) > 50 || Math.abs(hiKw) > 50) { continue; }
+        pts.push([di * 24 + j * SLOT_H, Math.round(loKw * 1000) / 1000, Math.round(hiKw * 1000) / 1000]);
+      }
+    });
+    return pts;
+  }
+
+  function nowX(days) {
+    var idx = -1;
+    days.forEach(function (d, i) { if (d.label === 'heute') { idx = i; } });
+    if (idx < 0) { return null; }
+    var d = new Date();
+    return idx * 24 + d.getHours() + d.getMinutes() / 60;
+  }
+
+  function fmtKwh(v) { return (v === null || v === undefined) ? '–' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + ' kWh'; }
+
+  function renderSummary(days) {
+    var el = document.getElementById('summary');
+    el.innerHTML = '';
+    days.forEach(function (d) {
+      var pvSoll = d.pv && d.pv.kwh, loSoll = d.load && d.load.kwh;
+      var pvIst = d.pvKwhIst, loIst = d.loKwhIst;
+      var span = document.createElement('span');
+      span.className = 'day';
+      var pvTxt = 'PV ' + fmtKwh(pvSoll) + (pvIst !== null && pvIst !== undefined ? ' (Ist ' + fmtKwh(pvIst) + ')' : '');
+      var loTxt = 'Verbrauch ' + fmtKwh(loSoll) + (loIst !== null && loIst !== undefined ? ' (Ist ' + fmtKwh(loIst) + ')' : '');
+      span.innerHTML = '<b>' + (d.label || '') + ':</b> ' + pvTxt + ' · ' + loTxt;
+      el.appendChild(span);
+    });
+  }
+
+  function renderNowLine(actualPV, actualLoad) {
+    var el = document.getElementById('now');
+    var parts = [];
+    if (actualPV !== null && actualPV !== undefined) { parts.push('PV jetzt: ' + Math.round(actualPV) + ' W'); }
+    if (actualLoad !== null && actualLoad !== undefined) { parts.push('Verbrauch jetzt: ' + Math.round(actualLoad) + ' W'); }
+    el.textContent = parts.join(' · ');
+    el.style.cssText = 'padding:0 8px;font-size:11px;opacity:.7;';
+  }
+
+  function destroyChart() {
+    if (!chart) { return; }
+    if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); }
+    chart = null;
+  }
+
+  function renderECharts(el, days, nowXv) {
+    if (chart && chartEngine !== 'echarts') { destroyChart(); }
+    if (!chart) {
+      chart = echarts.init(el, null, { renderer: 'canvas' });
+      chartEngine = 'echarts';
+    }
+    var nDays = days.length;
+    var pvP10 = bandFor(days, 'pv'), loP10 = bandFor(days, 'load');
+    var pv50 = seriesFor(days, 'pv', 'p50'), lo50 = seriesFor(days, 'load', 'p50');
+    var pvIst = seriesFor(days, 'pv', 'pvMeas'), loIst = seriesFor(days, 'load', 'loMeas');
+
+    // ECharts kennt keine native Band-Serie wie Highcharts' arearange.
+    // Der ueblicherweise empfohlene Trick (zwei gestapelte Flaechenserien,
+    // unsichtbare Basis=p10 + sichtbare Differenz=p90-p10 obendrauf) hat
+    // sich beim Testen (25.08.2026) als fehlerhaft erwiesen - die Flaeche
+    // fuellte den GESAMTEN Hintergrund statt nur den Bereich zwischen p10
+    // und p90 (ECharts-Stacking griff hier nicht wie erwartet). Stattdessen
+    // Masken-Technik: EINE Flaeche bei p90 (faerbt bis y=0), darueber eine
+    // ZWEITE Flaeche bei p10 in der Hintergrundfarbe der Kachel (deckt den
+    // Bereich UNTER p10 wieder ab) - deckungsgleich mit dem tatsaechlichen
+    // Kachel-Hintergrund (bg-Property/Theme), daher ohne sichtbare Naht.
+    function bandSeries(bandPts, color, nameBase) {
+      var hi = bandPts.map(function (p) { return [p[0], p[2]]; });
+      var lo = bandPts.map(function (p) { return [p[0], p[1]]; });
+      var maskColor = lastData.bg || (lastData.lightTheme ? '#f4f6f8' : '#1c1e22');
+      return [
+        { name: nameBase + '-Band', type: 'line', data: hi, symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: color, opacity: .22 }, silent: true, tooltip: { show: false }, z: 1 },
+        { name: nameBase + ' (Maske)', type: 'line', data: lo, symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: maskColor, opacity: 1 }, silent: true, tooltip: { show: false }, z: 2 },
+      ];
+    }
+
+    var series = [];
+    series = series.concat(bandSeries(pvP10, COL_PV, 'PV'));
+    series = series.concat(bandSeries(loP10, COL_LOAD, 'Verbrauch'));
+    series.push({ name: 'PV-Prognose', type: 'line', data: pv50, showSymbol: false, color: COL_PV, lineStyle: { width: 1.6 } });
+    series.push({ name: 'Verbrauchs-Prognose', type: 'line', data: lo50, showSymbol: false, color: COL_LOAD, lineStyle: { width: 1.6, type: 'dashed' } });
+    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', data: pvIst, showSymbol: false, color: COL_PV, lineStyle: { width: 2.4 } }); }
+    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', data: loIst, showSymbol: false, color: COL_LOAD, lineStyle: { width: 2.4 } }); }
+
+    var dayLines = [];
+    for (var i = 1; i < nDays; i++) { dayLines.push({ xAxis: i * 24 }); }
+    if (nowXv !== null) {
+      series.push({ name: 'Jetzt', type: 'line', data: [], markLine: { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: COL_NOW, width: 2 }, data: [{ xAxis: nowXv }] } });
+    }
+    if (dayLines.length) {
+      series.push({ name: 'Tagesgrenzen', type: 'line', data: [], markLine: { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: GRID_COLOR, width: 1, type: 'dashed' }, data: dayLines } });
+    }
+
+    chart.setOption({
+      backgroundColor: 'transparent',
+      textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+      grid: { left: 44, right: 16, top: 24, bottom: 56 },
+      legend: { show: true, top: 0, textStyle: { color: '#cfd6de', fontSize: 10 }, data: ['PV-Prognose', 'Verbrauchs-Prognose', 'PV Ist', 'Verbrauch Ist'] },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+        formatter: function (params) {
+          var relevant = params.filter(function (p) { return p.seriesName.indexOf('Band') < 0 && p.seriesName.indexOf('Basis') < 0 && p.seriesName !== 'Jetzt' && p.seriesName !== 'Tagesgrenzen'; });
+          if (!relevant.length) { return ''; }
+          var x = relevant[0].axisValue;
+          var dayIdx = Math.floor(x / 24), hourInDay = x - dayIdx * 24;
+          var hh = Math.floor(hourInDay), mm = Math.round((hourInDay - hh) * 60);
+          var dayLabel = (days[dayIdx] && days[dayIdx].label) || '';
+          var head = '<div style="font-weight:600;margin-bottom:2px">' + dayLabel + ' ' + ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2) + '</div>';
+          var lines = relevant.map(function (p) { return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + p.value[1].toFixed(2) + ' kW</b></div>'; }).join('');
+          return head + lines;
+        }
+      },
+      xAxis: {
+        type: 'value', min: 0, max: nDays * 24, interval: 6,
+        axisLabel: { formatter: function (v) { return (('0' + (Math.round(v) % 24)).slice(-2)) + ':00'; }, color: '#9aa4b0' },
+        splitLine: { show: true, lineStyle: { color: GRID_COLOR } },
+      },
+      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#9aa4b0' }, axisLabel: { color: '#9aa4b0' }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+      dataZoom: [
+        { type: 'inside', start: Math.max(0, ((Math.max(0, (nowXv || 0) - 12)) / (nDays * 24)) * 100), end: Math.min(100, (((nowXv || 0) + 36) / (nDays * 24)) * 100) },
+        { type: 'slider', height: 16, bottom: 30, textStyle: { color: '#9aa4b0' } },
+      ],
+      series: series,
+    }, true);
+  }
+
+  function renderHighcharts(el, days, nowXv) {
+    if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+    var nDays = days.length;
+    var pvBand = bandFor(days, 'pv'), loBand = bandFor(days, 'load');
+    var pv50 = seriesFor(days, 'pv', 'p50'), lo50 = seriesFor(days, 'load', 'p50');
+    var pvIst = seriesFor(days, 'pv', 'pvMeas'), loIst = seriesFor(days, 'load', 'loMeas');
+
+    var plotLines = [];
+    for (var i = 1; i < nDays; i++) { plotLines.push({ value: i * 24, color: GRID_COLOR, width: 1, dashStyle: 'Dash', zIndex: 3 }); }
+    if (nowXv !== null) { plotLines.push({ value: nowXv, color: COL_NOW, width: 2, zIndex: 5 }); }
+
+    var series = [
+      { name: 'PV-Band', type: 'arearange', data: pvBand, color: COL_PV, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
+      { name: 'Verbrauchs-Band', type: 'arearange', data: loBand, color: COL_LOAD, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
+      { name: 'PV-Prognose', type: 'line', data: pv50, color: COL_PV, lineWidth: 1.6, marker: { enabled: false }, zIndex: 2 },
+      { name: 'Verbrauchs-Prognose', type: 'line', data: lo50, color: COL_LOAD, lineWidth: 1.6, dashStyle: 'Dash', marker: { enabled: false }, zIndex: 2 },
+    ];
+    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', data: pvIst, color: COL_PV, lineWidth: 2.4, marker: { enabled: false }, zIndex: 3 }); }
+    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', data: loIst, color: COL_LOAD, lineWidth: 2.4, marker: { enabled: false }, zIndex: 3 }); }
+
+    chart = Highcharts.chart(el, {
+      chart: { backgroundColor: 'transparent', zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+      title: { text: null },
+      credits: { enabled: false },
+      legend: { enabled: true, itemStyle: { color: '#cfd6de', fontSize: '10px' } },
+      xAxis: {
+        // floor/ceiling begrenzen den scrollbaren Gesamtbereich auf die
+        // echten nDays*24 Stunden; min/max setzen NUR den initial
+        // sichtbaren Ausschnitt (per setExtremes() nach dem Erzeugen, s.u.)
+        // - beides ueber dieselben Felder zu setzen wuerde das eine vom
+        // anderen ueberschreiben.
+        floor: 0, ceiling: nDays * 24, tickInterval: 6, plotLines: plotLines,
+        labels: { style: { color: '#9aa4b0' }, formatter: function () { return ('0' + (Math.round(this.value) % 24)).slice(-2) + ':00'; } },
+        gridLineWidth: 1, gridLineColor: GRID_COLOR,
+        scrollbar: { enabled: true },
+      },
+      yAxis: { title: { text: 'kW', style: { color: '#9aa4b0' } }, labels: { style: { color: '#9aa4b0' } }, gridLineColor: GRID_COLOR },
+      tooltip: {
+        shared: true, useHTML: true,
+        formatter: function () {
+          var x = this.x, dayIdx = Math.floor(x / 24), hourInDay = x - dayIdx * 24;
+          var hh = Math.floor(hourInDay), mm = Math.round((hourInDay - hh) * 60);
+          var dayLabel = (days[dayIdx] && days[dayIdx].label) || '';
+          var lines = ['<b>' + dayLabel + ' ' + ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2) + '</b>'];
+          this.points.forEach(function (p) {
+            if (p.series.name.indexOf('Band') >= 0) { return; }
+            lines.push('<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + p.y.toFixed(2) + ' kW</b>');
+          });
+          return lines.join('<br/>');
+        }
+      },
+      series: series,
+    });
+    chartEngine = 'highcharts';
+    // Initial sichtbarer Ausschnitt ("jetzt" ± etwas Kontext) - siehe
+    // Kommentar bei floor/ceiling oben, muss NACH dem Erzeugen gesetzt
+    // werden, sonst ueberschreibt es den scrollbaren Gesamtbereich.
+    chart.xAxis[0].setExtremes(Math.max(0, (nowXv || 0) - 12), Math.min(nDays * 24, (nowXv || 0) + 36));
+  }
+
+  function render() {
+    var d = lastData;
+    var empty = document.getElementById('empty');
+    var chartEl = document.getElementById('chart');
+    if (!d || !d.ok || !d.hasSource || !d.hasData || !d.days || !d.days.length) {
+      destroyChart();
+      chartEl.style.display = 'none';
+      document.getElementById('summary').innerHTML = '';
+      document.getElementById('now').textContent = '';
+      empty.style.display = 'flex';
+      empty.textContent = (d && d.message) ? d.message
+        : (!d || !d.hasSource) ? 'Keine Energiebilanz-Instanz gefunden - installieren/konfigurieren.'
+        : 'Keine Prognosedaten verfügbar.';
+      return;
+    }
+    empty.style.display = 'none';
+    chartEl.style.display = '';
+
+    var nowXv = nowX(d.days);
+    var wantEngine = (d.engine === 'highcharts') ? 'highcharts' : 'echarts';
+    if (wantEngine === 'highcharts') {
+      ensureHighcharts(function () { renderHighcharts(chartEl, d.days, nowXv); });
+    } else {
+      ensureECharts(function () { renderECharts(chartEl, d.days, nowXv); setTimeout(function () { chart && chart.resize(); }, 60); });
+    }
+    renderSummary(d.days);
+    renderNowLine(d.actualPV, d.actualLoad);
+  }
+
+  function handleMessage(raw) {
+    var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!d || !d.ok) { return; }
+    lastData = d;
+    if (d.bg) { document.body.style.background = d.bg; }
+    if (d.font) { document.body.style.fontFamily = d.font; }
+    render();
+  }
+
+  window.addEventListener('resize', function () {
+    if (!chart) { return; }
+    setTimeout(function () { chartEngine === 'highcharts' ? chart.reflow() : chart.resize(); }, 60);
+  });
+
+  // ResizeObserver statt eines festen setTimeout-Delays nach dem ersten
+  // Render (Fund, 25.08.2026): #chart hatte beim allerersten Aufbau noch
+  // nicht seine endgueltige Layout-Groesse (CSS-Flexbox war zum Zeitpunkt
+  // von echarts.init()/setOption() noch nicht fertig berechnet), wodurch
+  // die Band-Masken-Serien (siehe bandSeries()) falsch positioniert
+  // wurden - sah aus wie ein Rendering-Bug (Flaeche fuellte die gesamte
+  // Kachel), war aber ein Groessen-Problem: ein manuelles chart.resize()
+  // danach behob es sofort. EIN fixer Timeout (60ms) war nicht zuverlaessig
+  // genug (Layout kann laenger brauchen, je nach Kachel-Kontext/Ladezeit).
+  // ResizeObserver reagiert stattdessen auf die TATSAECHLICHE Groessen-
+  // aenderung, egal wie lange die dauert - deckt auch spaetere WebFront-
+  // Kachel-Groessenaenderungen ab, nicht nur den ersten Aufbau.
+  if (typeof ResizeObserver !== 'undefined') {
+    var chartEl0 = document.getElementById('chart');
+    new ResizeObserver(function () {
+      if (!chart) { return; }
+      chartEngine === 'highcharts' ? chart.reflow() : chart.resize();
+    }).observe(chartEl0);
+  }
+</script>
