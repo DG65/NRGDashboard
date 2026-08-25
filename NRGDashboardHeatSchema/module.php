@@ -100,6 +100,19 @@ class NRGDashboardHeatSchema extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // "Hat wirklich 2 Luefter"-Gedaechtnis (HeishaMon-Fund, 25.08.2026):
+        // fan2SpeedID liegt bei JEDER HeishaMon-Installation an einer festen
+        // Byte-Position im CN-CNT-Protokoll und wird IMMER dekodiert/
+        // gesendet, unabhaengig von der tatsaechlichen Geraete-Hardware -
+        // die reine ID-Existenz ist also KEIN verlaesslicher Hinweis auf
+        // einen echten zweiten Luefter (Dietmar, 25.08.2026: "meine
+        // Panasonic hat nur ein Lüfter"). Das Protokoll selbst liefert kein
+        // Meta-Feld dafuer (HeishaMon-Rueckmeldung), einzig verlaesslicher
+        // Hinweis ist ein tatsaechlich beobachteter Wert > 0 - einmal
+        // gesehen, bleibt es dauerhaft gemerkt (JSON-Map Quell-Instanz-ID
+        // => true), sonst wuerde die 2-Luefter-Darstellung bei jedem
+        // Idle-Zustand des Verdichters wieder verschwinden.
+        $this->RegisterAttributeString('Fan2Confirmed', '{}');
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -589,6 +602,13 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         $e = [
             '_instanceID' => $this->InstanceID,
+            // manuell verknuepfte Felder sind eine bewusste Entscheidung
+            // des Nutzers (er waehlt die Variable explizit im Formular) -
+            // im Gegensatz zu automatisch von HeishaMon/WPHub gemeldeten
+            // *ID-Feldern braucht das KEINE "war der Wert je > 0"-
+            // Bestaetigung (siehe resolveFan2Speed()), das waere hier nur
+            // unnoetige Verzoegerung fuer eine ohnehin willentliche Angabe.
+            '_manual'     => true,
             'Caption'     => $this->ReadPropertyString('ManualCaption') ?: 'Wärmepumpe (manuell)',
             'Measured'    => $this->ReadPropertyInteger('ManualPowerID') > 0,
         ];
@@ -633,6 +653,37 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         $v = GetValue($vid);
         return is_numeric($v) ? (float) $v : null;
+    }
+
+    /**
+     * Kanonisiert einen automatisch gemeldeten fan2Speed-Rohwert auf einen
+     * verlaesslichen "hat wirklich 2 Luefter"-Status (HeishaMon-Fund,
+     * 25.08.2026 - siehe Fan2Confirmed-Attribut in Create()). $manual
+     * ueberspringt die Bestaetigung (siehe buildManualHeatpumpEntry()).
+     * Rueckgabe null = Ein-Luefter-Darstellung, sonst der (ggf. aktuell 0
+     * betragende) Rohwert.
+     */
+    private function resolveFan2Speed(int $sourceInstanceId, ?float $raw, bool $manual): ?float
+    {
+        if ($manual) {
+            return $raw;
+        }
+        if ($raw === null) {
+            return null;
+        }
+        $map = json_decode((string) $this->ReadAttributeString('Fan2Confirmed'), true);
+        if (!is_array($map)) {
+            $map = [];
+        }
+        $key = (string) $sourceInstanceId;
+        if ($raw > 0.0) {
+            if (($map[$key] ?? false) !== true) {
+                $map[$key] = true;
+                $this->WriteAttributeString('Fan2Confirmed', json_encode($map));
+            }
+            return $raw;
+        }
+        return ($map[$key] ?? false) === true ? $raw : null;
     }
 
     /**
@@ -760,11 +811,20 @@ class NRGDashboardHeatSchema extends IPSModule
                 // Staenden einfach (?? 0 -> null).
                 'fanSpeed'        => $this->num((int) ($e['fan1SpeedID'] ?? 0)),
                 // Zweiter Luefter (Dietmar, 24.08.2026: "Es gibt auch
-                // Aussengeraete und Monoblockgeraete mit 2 Ventilatoren") -
-                // additives Feld wie fanSpeed, HeishaMon liefert es seit
-                // contractVersion 1.5 bereits mit ('fan2SpeedID' => 0, wenn
-                // nur ein Luefter verbaut ist), bislang aber ungenutzt.
-                'fan2Speed'       => $this->num((int) ($e['fan2SpeedID'] ?? 0)),
+                // Aussengeraete und Monoblockgeraete mit 2 Ventilatoren",
+                // 25.08.2026 widerlegt an seiner eigenen Ein-Luefter-Anlage:
+                // "meine Panasonic hat nur ein Lüfter") - HeishaMon-Fund,
+                // 25.08.2026: fan2SpeedID liegt bei JEDER Installation an
+                // fester Byte-Position im CN-CNT-Protokoll und wird IMMER
+                // gemeldet, unabhaengig von der echten Geraete-Hardware.
+                // Reine ID-Existenz beweist also NICHTS - resolveFan2Speed()
+                // verlangt einen tatsaechlich beobachteten Wert > 0
+                // (dauerhaft gemerkt, siehe Fan2Confirmed-Attribut).
+                'fan2Speed'       => $this->resolveFan2Speed(
+                    (int) $e['_instanceID'],
+                    $this->num((int) ($e['fan2SpeedID'] ?? 0)),
+                    (bool) ($e['_manual'] ?? false)
+                ),
                 // Sauggas-/Kaltgastemperatur (Gegenstueck zum Heissgas):
                 // additives Feld, bei HeishaMon angefragt (14.08.2026) -
                 // bis der Vertrag es liefert, bleibt das Feld null.
