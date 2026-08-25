@@ -202,10 +202,22 @@
         splitLine: { show: true, lineStyle: { color: GRID_COLOR } },
       },
       yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#9aa4b0' }, axisLabel: { color: '#9aa4b0' }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
-      dataZoom: [
-        { type: 'inside', start: Math.max(0, ((Math.max(0, (nowXv || 0) - 12)) / (nDays * 24)) * 100), end: Math.min(100, (((nowXv || 0) + 36) / (nDays * 24)) * 100) },
-        { type: 'slider', height: 16, bottom: 30, textStyle: { color: '#9aa4b0' } },
-      ],
+      dataZoom: (function () {
+        // Fund, 25.08.2026 (Dietmar: "man MUSS horizontal scrollen statt
+        // dass alle 6 Tage gequetscht in eine statische Breite passen") -
+        // der 'slider'-dataZoom hatte KEIN eigenes start/end und fiel
+        // damit auf den ECharts-Default 0-100% zurueck, was den vom
+        // 'inside'-dataZoom berechneten engeren Ausschnitt sofort wieder
+        // ueberschrieb - im Ergebnis zeigte die Kachel doch wieder alle
+        // Tage ungezoomt. Beide Komponenten muessen denselben Start/Ende
+        // bekommen, sonst gewinnt der zuletzt im Array stehende.
+        var zStart = Math.max(0, (((nowXv || 0) - 12) / (nDays * 24)) * 100);
+        var zEnd = Math.min(100, (((nowXv || 0) + 36) / (nDays * 24)) * 100);
+        return [
+          { type: 'inside', start: zStart, end: zEnd },
+          { type: 'slider', start: zStart, end: zEnd, height: 16, bottom: 30, textStyle: { color: '#9aa4b0' } },
+        ];
+      })(),
       series: series,
     }, true);
   }
