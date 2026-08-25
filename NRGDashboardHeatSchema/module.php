@@ -883,7 +883,19 @@ class NRGDashboardHeatSchema extends IPSModule
             'z1WaterTemp' => 38.5, 'z2WaterTemp' => 33.0,
             'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
             'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,
-            'defrosting' => false, 'fanSpeed' => 400.0, 'suctionTemp' => 17.0,
+            'defrosting' => false, 'fanSpeed' => 400.0,
+            // Zweiter Luefter + Heizstab (Dietmar, 25.08.2026: "Kannst Du
+            // das den Heizstab in der Simmulation auch sichtbar machen,
+            // damit ich wenigstens darüber urteilen kann ob das so
+            // richtig ist?") - die Simulation hatte beide neuen Felder
+            // bisher schlicht nicht gesetzt (blieben undefined, keins der
+            // beiden Elemente erschien je in der Simulationsansicht).
+            // fan2Speed hier immer gesetzt (reales Doppelluefter-Szenario),
+            // heaterActive per Default an - realistischer waere er meist
+            // aus, aber Dietmar soll das Badge SEHEN koennen, ohne extra
+            // danach suchen zu muessen.
+            'fan2Speed' => 380.0, 'heaterActive' => true,
+            'suctionTemp' => 17.0,
             'copEstimate' => 4.2, 'copMeasured' => 4.0, 'dailyPerformanceFactor' => 3.8,
             'extPump' => true, 'extMixingValve' => 0,
             'operatingModeNorm' => 1, 'operatingMode' => null,
@@ -922,6 +934,7 @@ class NRGDashboardHeatSchema extends IPSModule
                 // fliessen sollte").
                 $u['extPump'] = false;
                 $u['z2Pump'] = false;
+                $u['heaterActive'] = false;
                 break;
             case 5: // Abtaubetrieb
                 $u['defrosting'] = true;
