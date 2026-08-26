@@ -1026,8 +1026,10 @@
             gridSeriesW.markArea = {
               silent: true,
               itemStyle: { color: 'rgba(148,163,184,.16)' },
-              label: { show: true, position: 'inside', formatter: '{b}', color: 'rgba(226,232,240,.75)', fontSize: 10, lineHeight: 14 },
-              data: [[{ xAxis: wmMs, name: 'Noch keine\nBezugsenergie' }, { xAxis: wmShadeEnd }]],
+              // Dietmar, 27.08.2026: einzeilig, 90 Grad gegen den
+              // Uhrzeigersinn gedreht statt zweizeilig waagerecht.
+              label: { show: true, position: 'inside', formatter: '{b}', rotate: 90, color: 'rgba(226,232,240,.75)', fontSize: 10 },
+              data: [[{ xAxis: wmMs, name: 'Noch keine Datensätze der Bezugsenergie vorhanden!' }, { xAxis: wmShadeEnd }]],
             };
             var wmPrevData = (gridSeriesW.markLine && gridSeriesW.markLine.data) ? gridSeriesW.markLine.data : [];
             gridSeriesW.markLine = Object.assign({}, gridSeriesW.markLine, {
@@ -1352,14 +1354,17 @@
       chartEngine = 'highcharts';
       // Erklaertext mittig im Wasserzeichen-Band (siehe Kommentar bei
       // wmPlotBands oben) - freihaendig statt ueber plotBands.label, damit
-      // er nicht auf die oft schmale Bandbreite geclippt wird.
+      // er nicht auf die oft schmale Bandbreite geclippt wird. Einzeilig,
+      // 90 Grad gegen den Uhrzeigersinn gedreht (Dietmar, 27.08.2026) -
+      // dafuer normaler SVG-Text statt useHTML, dessen HTML-Div sich nicht
+      // sauber um den Ankerpunkt drehen laesst.
       if (wmPlotBands.length) {
         var wmBand = wmPlotBands[0];
         var wmX = chart.xAxis[0].toPixels((wmBand.from + wmBand.to) / 2, false);
-        var wmY = chart.plotTop + chart.plotHeight / 2 - 10;
-        chart.renderer.text('Noch keine<br>Bezugsenergie', wmX, wmY, true)
-          .css({ color: 'rgba(226,232,240,.75)', fontSize: '10px', textAlign: 'center', whiteSpace: 'nowrap' })
-          .attr({ align: 'center', zIndex: 6 })
+        var wmY = chart.plotTop + chart.plotHeight / 2;
+        chart.renderer.text('Noch keine Datensätze der Bezugsenergie vorhanden!', wmX, wmY)
+          .css({ color: 'rgba(226,232,240,.75)', fontSize: '10px' })
+          .attr({ align: 'center', rotation: -90, zIndex: 6 })
           .add();
       }
     }
