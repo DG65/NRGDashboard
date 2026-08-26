@@ -1,404 +1,588 @@
-<style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: transparent; }
-  body { font-family: system-ui, sans-serif; font-size: 12px; color: #cfd6de; }
-  #empty { display: none; align-items: center; justify-content: center; height: 100%; opacity: .7; padding: 12px; text-align: center; }
-  #chart { width: 100%; height: calc(100% - 34px); min-height: 160px; }
-  #summary { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 4px 8px; font-size: 11px; opacity: .85; }
-  #summary .day { white-space: nowrap; }
-  #summary .day b { opacity: .9; }
-  #summary .now { padding: 0 8px 4px; font-size: 11px; opacity: .7; }
-</style>
-<div id="empty">Keine Prognosedaten verfügbar.</div>
-<div id="chart"></div>
-<div id="now"></div>
-<div id="summary"></div>
+<!DOCTYPE html>
+<html>
 
-<script>
-  // Dual-Engine-Laden per CDN (Muster NRGDashboardPVMonitor::ensureHighcharts/
-  // ensureECharts) - Highcharts aus Lizenzgruenden IMMER vom offiziellen CDN,
-  // ECharts (Apache-2.0) koennte grundsaetzlich lokal gebuendelt werden, aber
-  // ein RegisterHook()-Versuch dafuer ist an Dietmars Symcon-Version bereits
-  // gescheitert (24.08.2026, hat eine andere Kachel lahmgelegt) - hier
-  // deshalb bewusst NICHT wiederholt, beide Engines bleiben CDN-basiert.
-  var libs = {};
-  function addScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); }; document.head.appendChild(s); }
-  function ensureHighcharts(cb) {
-    if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.arearange) { libs.hc = 2; return cb(); }
-    if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
-    libs.hc = 1;
-    addScript('https://code.highcharts.com/highcharts.js', function () {
-      addScript('https://code.highcharts.com/highcharts-more.js', function () { libs.hc = 2; cb(); });
-    });
-  }
-  function ensureECharts(cb) {
-    if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
-    if (libs.ec === 1) { return setTimeout(function () { ensureECharts(cb); }, 80); }
-    libs.ec = 1;
-    addScript('https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
-  }
-
-  var COL_PV = '#e0a020', COL_LOAD = '#2bb3c0', COL_NOW = '#ff5252';
-  var GRID_COLOR = 'rgba(128,128,128,.28)';
-  var lastData = null, chart = null, chartEngine = null;
-
-  // 15-Minuten-Raster (96 Punkte/Tag, live an Dietmars Anlage bestaetigt,
-  // 25.08.2026) - Stunden-Achsen-Trick von Prognose uebernommen: keine
-  // Kalenderdatum-Achse, sondern eine durchgehende 0..nDays*24-Stunden-Achse
-  // (alle Tage aneinandergehaengt). SLOT_H = Stunden je Punkt.
-  var SLOT_H = 0.25;
-
-  // Baut aus days[] flache [[x,y],...]-Punktreihen (x = durchgehende
-  // Stunde, y = kW). $field ist 'p50'|'p10'|'p90' fuer die Prognose oder
-  // 'pvMeas'/'loMeas' fuer die Ist-Ueberlagerung - jeweils innerhalb
-  // day.pv/day.load bzw. direkt am Tag-Objekt (Meas-Felder).
-  function seriesFor(days, key, field) {
-    var pts = [];
-    days.forEach(function (day, di) {
-      var src = (field === 'pvMeas' || field === 'loMeas') ? day[field] : (day[key] && day[key][field]);
-      if (!Array.isArray(src)) { return; }
-      src.forEach(function (w, j) {
-        if (w === null || w === undefined) { return; }
-        // Ausreisser-Schutz (live gefunden, 25.08.2026: einzelne pvMeas/
-        // loMeas-Punkte lagen bei > 10^7 W - offensichtliche Messfehler,
-        // keine reale Haushaltslast) - alles ueber 50 kW wird verworfen,
-        // statt die Y-Achse durch einen einzelnen Ausreisser zu ruinieren.
-        var kw = w / 1000;
-        if (Math.abs(kw) > 50) { return; }
-        pts.push([di * 24 + j * SLOT_H, Math.round(kw * 1000) / 1000]);
-      });
-    });
-    return pts;
-  }
-
-  // Band als [x, low, high] fuer Highcharts arearange bzw. als Basis fuer
-  // den ECharts-Stacked-Area-Trick (siehe renderECharts).
-  function bandFor(days, key) {
-    var pts = [];
-    days.forEach(function (day, di) {
-      var lo = day[key] && day[key].p10, hi = day[key] && day[key].p90;
-      if (!Array.isArray(lo) || !Array.isArray(hi)) { return; }
-      for (var j = 0; j < lo.length; j++) {
-        if (lo[j] === null || hi[j] === null || lo[j] === undefined || hi[j] === undefined) { continue; }
-        var loKw = lo[j] / 1000, hiKw = hi[j] / 1000;
-        if (Math.abs(loKw) > 50 || Math.abs(hiKw) > 50) { continue; }
-        pts.push([di * 24 + j * SLOT_H, Math.round(loKw * 1000) / 1000, Math.round(hiKw * 1000) / 1000]);
-      }
-    });
-    return pts;
-  }
-
-  function nowX(days) {
-    var idx = -1;
-    days.forEach(function (d, i) { if (d.label === 'heute') { idx = i; } });
-    if (idx < 0) { return null; }
-    var d = new Date();
-    return idx * 24 + d.getHours() + d.getMinutes() / 60;
-  }
-
-  function fmtKwh(v) { return (v === null || v === undefined) ? '–' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + ' kWh'; }
-
-  function renderSummary(days) {
-    var el = document.getElementById('summary');
-    el.innerHTML = '';
-    days.forEach(function (d) {
-      var pvSoll = d.pv && d.pv.kwh, loSoll = d.load && d.load.kwh;
-      var pvIst = d.pvKwhIst, loIst = d.loKwhIst;
-      var span = document.createElement('span');
-      span.className = 'day';
-      var pvTxt = 'PV ' + fmtKwh(pvSoll) + (pvIst !== null && pvIst !== undefined ? ' (Ist ' + fmtKwh(pvIst) + ')' : '');
-      var loTxt = 'Verbrauch ' + fmtKwh(loSoll) + (loIst !== null && loIst !== undefined ? ' (Ist ' + fmtKwh(loIst) + ')' : '');
-      span.innerHTML = '<b>' + (d.label || '') + ':</b> ' + pvTxt + ' · ' + loTxt;
-      el.appendChild(span);
-    });
-  }
-
-  function renderNowLine(actualPV, actualLoad) {
-    var el = document.getElementById('now');
-    var parts = [];
-    if (actualPV !== null && actualPV !== undefined) { parts.push('PV jetzt: ' + Math.round(actualPV) + ' W'); }
-    if (actualLoad !== null && actualLoad !== undefined) { parts.push('Verbrauch jetzt: ' + Math.round(actualLoad) + ' W'); }
-    el.textContent = parts.join(' · ');
-    el.style.cssText = 'padding:0 8px;font-size:11px;opacity:.7;';
-  }
-
-  function destroyChart() {
-    if (!chart) { return; }
-    if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); }
-    chart = null;
-  }
-
-  function renderECharts(el, days, nowXv) {
-    if (chart && chartEngine !== 'echarts') { destroyChart(); }
-    if (!chart) {
-      chart = echarts.init(el, null, { renderer: 'canvas' });
-      chartEngine = 'echarts';
-    }
-    var nDays = days.length;
-    var pvP10 = bandFor(days, 'pv'), loP10 = bandFor(days, 'load');
-    var pv50 = seriesFor(days, 'pv', 'p50'), lo50 = seriesFor(days, 'load', 'p50');
-    var pvIst = seriesFor(days, 'pv', 'pvMeas'), loIst = seriesFor(days, 'load', 'loMeas');
-
-    // ECharts kennt keine native Band-Serie wie Highcharts' arearange.
-    // Der ueblicherweise empfohlene Trick (zwei gestapelte Flaechenserien,
-    // unsichtbare Basis=p10 + sichtbare Differenz=p90-p10 obendrauf) hat
-    // sich beim Testen (25.08.2026) als fehlerhaft erwiesen - die Flaeche
-    // fuellte den GESAMTEN Hintergrund statt nur den Bereich zwischen p10
-    // und p90 (ECharts-Stacking griff hier nicht wie erwartet). Stattdessen
-    // Masken-Technik: EINE Flaeche bei p90 (faerbt bis y=0), darueber eine
-    // ZWEITE Flaeche bei p10 in der Hintergrundfarbe der Kachel (deckt den
-    // Bereich UNTER p10 wieder ab) - deckungsgleich mit dem tatsaechlichen
-    // Kachel-Hintergrund (bg-Property/Theme), daher ohne sichtbare Naht.
-    function bandSeries(bandPts, color, nameBase) {
-      var hi = bandPts.map(function (p) { return [p[0], p[2]]; });
-      var lo = bandPts.map(function (p) { return [p[0], p[1]]; });
-      var maskColor = lastData.bg || (lastData.lightTheme ? '#f4f6f8' : '#1c1e22');
-      return [
-        { name: nameBase + '-Band', type: 'line', data: hi, symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: color, opacity: .22 }, silent: true, tooltip: { show: false }, z: 1 },
-        { name: nameBase + ' (Maske)', type: 'line', data: lo, symbol: 'none', lineStyle: { opacity: 0 }, areaStyle: { color: maskColor, opacity: 1 }, silent: true, tooltip: { show: false }, z: 2 },
-      ];
-    }
-
-    var series = [];
-    series = series.concat(bandSeries(pvP10, COL_PV, 'PV'));
-    series = series.concat(bandSeries(loP10, COL_LOAD, 'Verbrauch'));
-    series.push({ name: 'PV-Prognose', type: 'line', data: pv50, showSymbol: false, color: COL_PV, lineStyle: { width: 1.6 } });
-    series.push({ name: 'Verbrauchs-Prognose', type: 'line', data: lo50, showSymbol: false, color: COL_LOAD, lineStyle: { width: 1.6, type: 'dashed' } });
-    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', data: pvIst, showSymbol: false, color: COL_PV, lineStyle: { width: 2.4 } }); }
-    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', data: loIst, showSymbol: false, color: COL_LOAD, lineStyle: { width: 2.4 } }); }
-    // Zwei Sammel-Legendeneintraege statt vier einzelner (Dietmar,
-    // 26.08.2026: "auf dem Referenzdiagramm oben rechts kann man die
-    // beiden Linien ausblenden. Das gibt es bei Dir nicht") - EINE
-    // unsichtbare Proxy-Serie je Farbe traegt den Legendennamen, ein
-    // legendselectchanged-Listener (siehe unten) schaltet beim Klick
-    // Prognose+Ist+Band derselben Farbe gemeinsam um, statt vier
-    // getrennte Buttons zu zeigen, von denen jeder nur seine eigene
-    // Linie beeinflusst.
-    series.push({ name: 'PV', type: 'line', data: [], showSymbol: false, color: COL_PV, lineStyle: { width: 1.6 }, silent: true, tooltip: { show: false } });
-    series.push({ name: 'Verbrauch', type: 'line', data: [], showSymbol: false, color: COL_LOAD, lineStyle: { width: 1.6, type: 'dashed' }, silent: true, tooltip: { show: false } });
-
-    var dayLines = [];
-    for (var i = 1; i < nDays; i++) { dayLines.push({ xAxis: i * 24 }); }
-    if (nowXv !== null) {
-      series.push({ name: 'Jetzt', type: 'line', data: [], markLine: { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: COL_NOW, width: 2 }, data: [{ xAxis: nowXv }] } });
-    }
-    if (dayLines.length) {
-      series.push({ name: 'Tagesgrenzen', type: 'line', data: [], markLine: { symbol: 'none', silent: true, label: { show: false }, lineStyle: { color: GRID_COLOR, width: 1, type: 'dashed' }, data: dayLines } });
-    }
-
-    chart.setOption({
-      backgroundColor: 'transparent',
-      textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-      grid: { left: 44, right: 16, top: 24, bottom: 56 },
-      legend: { show: true, top: 0, textStyle: { color: '#cfd6de', fontSize: 10 }, data: ['PV', 'Verbrauch'] },
-      tooltip: {
-        trigger: 'axis',
-        backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
-        formatter: function (params) {
-          var relevant = params.filter(function (p) { return p.seriesName.indexOf('Band') < 0 && p.seriesName.indexOf('Basis') < 0 && p.seriesName !== 'Jetzt' && p.seriesName !== 'Tagesgrenzen'; });
-          if (!relevant.length) { return ''; }
-          var x = relevant[0].axisValue;
-          var dayIdx = Math.floor(x / 24), hourInDay = x - dayIdx * 24;
-          var hh = Math.floor(hourInDay), mm = Math.round((hourInDay - hh) * 60);
-          var dayLabel = (days[dayIdx] && days[dayIdx].label) || '';
-          var head = '<div style="font-weight:600;margin-bottom:2px">' + dayLabel + ' ' + ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2) + '</div>';
-          var lines = relevant.map(function (p) { return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + p.value[1].toFixed(2) + ' kW</b></div>'; }).join('');
-          return head + lines;
+<head>
+    <meta charset="UTF-8">
+    <style>
+        html, body { margin: 0; height: 100%; background: transparent; }
+        .wrap { box-sizing: border-box; padding: 56px 6px 10px; position: relative; }
+        #legend { display: none; text-align: right; margin-bottom: 8px; line-height: 1.3; }
+        #legend .lg { display: inline-flex; align-items: center; gap: 6px; margin-left: 16px; cursor: pointer; white-space: nowrap; }
+        #legend .lg:first-child { margin-left: 0; }
+        #legend .sw { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+        #legend .lg b { font-weight: 500; }
+        /* Mehr als 3 Tage: Chart+Tagesstreifen werden breiter als der Rahmen und per
+           nativem Browser-Scroll gezeigt (statt sich zusammenzuquetschen) — beide bleiben
+           dabei pixelgenau ausgerichtet, weil sie dieselbe berechnete Breite bekommen.
+           Scrollbalken bewusst unsichtbar (Dietmars Wunsch — überdeckte sonst die
+           Ist-Werte-Zeile am unteren Rand); gescrollt wird trotzdem ganz normal per
+           Touch/Trackpad/Klick-Ziehen, nur ohne sichtbare Leiste. */
+        #scrollWrap { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; position: relative; }
+        #scrollWrap::-webkit-scrollbar { display: none; height: 0; }
+        /* Y-Achse (kW) bleibt beim Horizontalscrollen sichtbar: eigene, schmale
+           Überlagerung mit position:sticky links im Scroll-Rahmen — dafür blenden
+           beide Engines ihre EIGENE Achsenbeschriftung aus (Gitterlinien bleiben).
+           width/height:0 + overflow:visible, damit sie keinen Platz im Layout
+           beansprucht, ihre Kind-Elemente aber trotzdem absolut positionierbar sind. */
+        #yAxisOverlay { position: sticky; left: 0; top: 0; width: 0; height: 0; overflow: visible; z-index: 5; pointer-events: none; }
+        #yAxisOverlay .yl { position: absolute; left: 2px; transform: translateY(-50%); white-space: nowrap; }
+        /* Scroll-Hinweis (Forum-Feedback hfichtinger, 26.08.2026: "war etwas
+           tricky das scrollen herauszufinden") — je ein Pfeil links/rechts,
+           als kleine runde "Chip"-Fläche (Hintergrund/Textfarbe dynamisch aus
+           D.TIP/D.TEXT gesetzt, siehe updateScrollHint) statt reinem Zeichen,
+           damit er auf JEDEM Kachel-Hintergrund (hell/dunkel/transparent)
+           sicher lesbar ist — die erste Fassung (nur Text + Schatten) war auf
+           dunklem Grund kaum zu erkennen (Dietmars Feedback). BEWUSST
+           außerhalb von #scrollWrap, als Geschwister-Elemente direkt in .wrap
+           (die selbst nicht scrollt): position:sticky innerhalb des Scroll-
+           Rahmens (wie bei #yAxisOverlay) funktioniert hier NICHT symmetrisch —
+           die statische Ausgangsposition eines Blocks mit width:0 liegt immer
+           am LINKEN Rand des Inhalts, „right:0" hätte also nie etwas zum
+           Andocken (live geprüft: Pfeil blieb bei x≈0 hängen statt rechts).
+           Stattdessen: position:absolute relativ zu .wrap, vertikale Position
+           wird in updateScrollHint() aus der tatsächlichen Chart-Höhe berechnet
+           (die variiert je nach Konfiguration). Links nur eingeblendet, wenn
+           bereits nach rechts gescrollt wurde, rechts nur, solange noch mehr
+           Inhalt folgt — kein dauerhaftes Element, keine erneute sichtbare
+           Bildlaufleiste (die wollte Dietmar bewusst nicht mehr). */
+        #scrollHintL, #scrollHintR { position: absolute; width: 0; height: 0; overflow: visible; z-index: 6; pointer-events: none; }
+        /* #scrollHintL.left wird per JS gesetzt (aus D.plotLeft, siehe
+           updateScrollHint) — ein fester Wert läge über der Y-Achsen-
+           Beschriftung (Dietmars Feedback: der linke Pfeil deckte die
+           mittlere Y-Achsen-Zahl ab). #scrollHintR.right bleibt fest, dort
+           gibt es keine Beschriftung im Weg. */
+        #scrollHintR { right: 6px; }
+        #scrollHintL span, #scrollHintR span {
+            position: absolute; top: 0; transform: translateY(-50%);
+            display: flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 50%;
+            font-size: 17px; line-height: 1; opacity: 0; transition: opacity .2s;
+            box-shadow: 0 1px 5px rgba(0,0,0,.3);
         }
-      },
-      xAxis: {
-        type: 'value', min: 0, max: nDays * 24, interval: 6,
-        axisLabel: { formatter: function (v) { return (('0' + (Math.round(v) % 24)).slice(-2)) + ':00'; }, color: '#9aa4b0' },
-        splitLine: { show: true, lineStyle: { color: GRID_COLOR } },
-      },
-      // max mit Kopfraum statt reinem Auto-Max (Dietmar, 26.08.2026: "Du
-      // hast die Gitterlinien 'oben raus' ... Eindruck, als wenn es oben
-      // weiterginge") - ohne Kopfraum reichte die hoechste Kurve bis exakt
-      // an die Gehaeusekante, ohne sichtbare obere Begrenzungslinie/Rand
-      // darueber wirkte das wie abgeschnitten statt wie ein geschlossenes
-      // Diagramm (Referenz-Vorbild hat sichtbaren Rand ueber der Kurve).
-      yAxis: { type: 'value', name: 'kW', min: 0, max: function (v) { return Math.ceil(v.max * 1.15 * 10) / 10; }, nameTextStyle: { color: '#9aa4b0' }, axisLabel: { color: '#9aa4b0' }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
-      dataZoom: (function () {
-        // Fund, 25.08.2026 (Dietmar: "man MUSS horizontal scrollen statt
-        // dass alle 6 Tage gequetscht in eine statische Breite passen") -
-        // der 'slider'-dataZoom hatte KEIN eigenes start/end und fiel
-        // damit auf den ECharts-Default 0-100% zurueck, was den vom
-        // 'inside'-dataZoom berechneten engeren Ausschnitt sofort wieder
-        // ueberschrieb - im Ergebnis zeigte die Kachel doch wieder alle
-        // Tage ungezoomt. Beide Komponenten muessen denselben Start/Ende
-        // bekommen, sonst gewinnt der zuletzt im Array stehende.
-        var zStart = Math.max(0, (((nowXv || 0) - 12) / (nDays * 24)) * 100);
-        var zEnd = Math.min(100, (((nowXv || 0) + 36) / (nDays * 24)) * 100);
-        return [
-          { type: 'inside', start: zStart, end: zEnd },
-          // Deutlich sichtbar gestylt (Dietmar, 26.08.2026: "Zum
-          // horizontal scrollen gibt es bei Dir nichts") - der ECharts-
-          // Default (dezentes Grau) ging auf dunklem Kachel-Hintergrund
-          // faktisch unter, obwohl er da war (dataZoom.show=true, korrektes
-          // start/end - per getOption() live bestaetigt). Jetzt mit klar
-          // erkennbarem Griff/Fuellung statt der Default-Farben.
-          { type: 'slider', start: zStart, end: zEnd, height: 18, bottom: 26,
-            backgroundColor: 'rgba(255,255,255,.04)', borderColor: 'rgba(255,255,255,.25)',
-            fillerColor: 'rgba(96,165,255,.35)',
-            dataBackground: { lineStyle: { color: 'rgba(255,255,255,.35)' }, areaStyle: { color: 'rgba(255,255,255,.08)' } },
-            handleStyle: { color: '#60a5ff', borderColor: '#e8eef6' },
-            moveHandleStyle: { color: '#60a5ff' },
-            textStyle: { color: '#cfd6de' } },
-        ];
-      })(),
-      series: series,
-    }, true);
+        #scrollHintL span { left: 0; }
+        #scrollHintR span { right: 0; }
+        #scrollHintL span.show, #scrollHintR span.show { opacity: .92; }
+        #chart { width: 100%; height: 360px; }
+        /* +5px Abstand zur X-Achsen-Zeitbeschriftung des Charts direkt darüber
+           (Dietmars Feedback: zu eng, dadurch waren die Uhrzeiten schlecht
+           von "Gestern"/"Heute" usw. zu unterscheiden). */
+        #days { display: none; margin-top: 11px; line-height: 1.25; }
+        .empty { color: #8a97a3; font-size: 13px; padding: 24px 10px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
 
-    // Klick auf "PV"/"Verbrauch" in der Legende schaltet Prognose+Ist+Band
-    // derselben Farbe gemeinsam um (siehe Kommentar bei den Proxy-Serien
-    // oben) - chart.off() zuerst, damit bei wiederholtem render() nicht
-    // mehrere Listener uebereinander gestapelt werden.
-    var legendGroups = {
-      PV: ['PV-Prognose', 'PV Ist', 'PV-Band', 'PV (Maske)'],
-      Verbrauch: ['Verbrauchs-Prognose', 'Verbrauch Ist', 'Verbrauch-Band', 'Verbrauch (Maske)'],
-    };
-    chart.off('legendselectchanged');
-    chart.on('legendselectchanged', function (params) {
-      var on = params.selected[params.name];
-      (legendGroups[params.name] || []).forEach(function (n) {
-        chart.dispatchAction({ type: on ? 'legendSelect' : 'legendUnSelect', name: n });
-      });
-    });
-  }
+<body>
+    <div class="wrap">
+        <div id="legend"></div>
+        <div id="scrollWrap">
+            <div id="yAxisOverlay"></div>
+            <div id="chart"></div>
+            <div id="days"></div>
+        </div>
+        <div id="scrollHintL"><span>&lsaquo;</span></div>
+        <div id="scrollHintR"><span>&rsaquo;</span></div>
+    </div>
 
-  function renderHighcharts(el, days, nowXv) {
-    if (chart && chartEngine !== 'highcharts') { destroyChart(); }
-    var nDays = days.length;
-    var pvBand = bandFor(days, 'pv'), loBand = bandFor(days, 'load');
-    var pv50 = seriesFor(days, 'pv', 'p50'), lo50 = seriesFor(days, 'load', 'p50');
-    var pvIst = seriesFor(days, 'pv', 'pvMeas'), loIst = seriesFor(days, 'load', 'loMeas');
-
-    var plotLines = [];
-    for (var i = 1; i < nDays; i++) { plotLines.push({ value: i * 24, color: GRID_COLOR, width: 1, dashStyle: 'Dash', zIndex: 3 }); }
-    if (nowXv !== null) { plotLines.push({ value: nowXv, color: COL_NOW, width: 2, zIndex: 5 }); }
-
-    // "PV"/"Verbrauch" als Haupt-Serie mit id, Band+Ist per linkedTo daran
-    // gehaengt (Dietmar, 26.08.2026: "auf dem Referenzdiagramm ... kann
-    // man die beiden Linien ausblenden. Das gibt es bei Dir nicht") -
-    // Highcharts blendet linkedTo-Serien automatisch mit ein/aus, wenn die
-    // Hauptserie per Legende umgeschaltet wird, ohne eigenen Listener wie
-    // bei ECharts noetig. showInLegend:false auf den verlinkten Serien
-    // haelt die Legende bei zwei Eintraegen statt vier/sechs.
-    var series = [
-      { name: 'PV-Band', type: 'arearange', linkedTo: 'pv-main', data: pvBand, color: COL_PV, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
-      { name: 'Verbrauchs-Band', type: 'arearange', linkedTo: 'load-main', data: loBand, color: COL_LOAD, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
-      { id: 'pv-main', name: 'PV', type: 'line', data: pv50, color: COL_PV, lineWidth: 1.6, marker: { enabled: false }, zIndex: 2 },
-      { id: 'load-main', name: 'Verbrauch', type: 'line', data: lo50, color: COL_LOAD, lineWidth: 1.6, dashStyle: 'Dash', marker: { enabled: false }, zIndex: 2 },
-    ];
-    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', linkedTo: 'pv-main', data: pvIst, color: COL_PV, lineWidth: 2.4, marker: { enabled: false }, showInLegend: false, zIndex: 3 }); }
-    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', linkedTo: 'load-main', data: loIst, color: COL_LOAD, lineWidth: 2.4, marker: { enabled: false }, showInLegend: false, zIndex: 3 }); }
-
-    chart = Highcharts.chart(el, {
-      chart: { backgroundColor: 'transparent', zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
-      title: { text: null },
-      credits: { enabled: false },
-      legend: { enabled: true, itemStyle: { color: '#cfd6de', fontSize: '10px' } },
-      xAxis: {
-        // floor/ceiling begrenzen den scrollbaren Gesamtbereich auf die
-        // echten nDays*24 Stunden; min/max setzen NUR den initial
-        // sichtbaren Ausschnitt (per setExtremes() nach dem Erzeugen, s.u.)
-        // - beides ueber dieselben Felder zu setzen wuerde das eine vom
-        // anderen ueberschreiben.
-        floor: 0, ceiling: nDays * 24, tickInterval: 6, plotLines: plotLines,
-        labels: { style: { color: '#9aa4b0' }, formatter: function () { return ('0' + (Math.round(this.value) % 24)).slice(-2) + ':00'; } },
-        gridLineWidth: 1, gridLineColor: GRID_COLOR,
-        // Deutlich sichtbar gestylt, gleicher Grund wie beim ECharts-
-        // Slider oben (Dietmar, 26.08.2026: Default ging auf dunklem
-        // Hintergrund optisch unter).
-        scrollbar: { enabled: true, height: 12, barBackgroundColor: '#60a5ff', barBorderRadius: 4, barBorderWidth: 0, trackBackgroundColor: 'rgba(255,255,255,.08)', trackBorderWidth: 0 },
-      },
-      // maxPadding statt reinem Auto-Max, gleicher Grund wie bei ECharts
-      // oben (Dietmar, 26.08.2026: Kurve reichte ohne Kopfraum bis an die
-      // Gehaeusekante, wirkte "oben abgeschnitten" statt geschlossen).
-      yAxis: { title: { text: 'kW', style: { color: '#9aa4b0' } }, labels: { style: { color: '#9aa4b0' } }, gridLineColor: GRID_COLOR, min: 0, maxPadding: .15 },
-      tooltip: {
-        shared: true, useHTML: true,
-        formatter: function () {
-          var x = this.x, dayIdx = Math.floor(x / 24), hourInDay = x - dayIdx * 24;
-          var hh = Math.floor(hourInDay), mm = Math.round((hourInDay - hh) * 60);
-          var dayLabel = (days[dayIdx] && days[dayIdx].label) || '';
-          var lines = ['<b>' + dayLabel + ' ' + ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2) + '</b>'];
-          this.points.forEach(function (p) {
-            if (p.series.name.indexOf('Band') >= 0) { return; }
-            lines.push('<span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + p.y.toFixed(2) + ' kW</b>');
-          });
-          return lines.join('<br/>');
+    <script>
+        var lastData = null, chart = null, chartEngine = null;
+        var userHide = { pv: false, load: false };
+        var libs = { hc: 0, ec: 0 };
+        // Gestrichelte "jetzt"-Linie rot statt neutralem Grau (Dietmars Wunsch) —
+        // fest statt theme-abhängig, da Rot auf hellem wie dunklem Grund gut lesbar bleibt.
+        var NOW_LINE_COLOR = '#ef4444';
+        // Plotbereich-Ränder — für BEIDE Engines identisch erzwungen (statt deren
+        // Auto-Layout), damit die feststehende Y-Achsen-Überlagerung (buildYAxisOverlay)
+        // unabhängig von der Engine an derselben Pixel-Position sitzt wie die echten
+        // Gitterlinien, und damit der Tagesstreifen (padding-Werte) weiter fluchtet.
+        // Mit der Kachel-Schriftgröße (D.scale) skaliert — sonst passen bei größer
+        // skalierten Kacheln weder die X-Achsen-Beschriftung (unten) noch die
+        // „kW"-Einheit (oben) mehr in den fest reservierten Rand und werden
+        // abgeschnitten (live bei Dietmar mit skalierter Kachel aufgetreten).
+        function plotMetrics(scale) {
+            return {
+                left: Math.round(46 * scale), right: Math.round(14 * scale),
+                top: Math.round(18 * scale), bottom: Math.round(28 * scale)
+            };
         }
-      },
-      series: series,
-    });
-    chartEngine = 'highcharts';
-    // Initial sichtbarer Ausschnitt ("jetzt" ± etwas Kontext) - siehe
-    // Kommentar bei floor/ceiling oben, muss NACH dem Erzeugen gesetzt
-    // werden, sonst ueberschreibt es den scrollbaren Gesamtbereich.
-    chart.xAxis[0].setExtremes(Math.max(0, (nowXv || 0) - 12), Math.min(nDays * 24, (nowXv || 0) + 36));
-  }
 
-  function render() {
-    var d = lastData;
-    var empty = document.getElementById('empty');
-    var chartEl = document.getElementById('chart');
-    if (!d || !d.ok || !d.hasSource || !d.hasData || !d.days || !d.days.length) {
-      destroyChart();
-      chartEl.style.display = 'none';
-      document.getElementById('summary').innerHTML = '';
-      document.getElementById('now').textContent = '';
-      empty.style.display = 'flex';
-      empty.textContent = (d && d.message) ? d.message
-        : (!d || !d.hasSource) ? 'Keine Energiebilanz-Instanz gefunden - installieren/konfigurieren.'
-        : 'Keine Prognosedaten verfügbar.';
-      return;
-    }
-    empty.style.display = 'none';
-    chartEl.style.display = '';
+        function handleMessage(payload) {
+            var data = (typeof payload === 'string') ? JSON.parse(payload) : payload;
+            if (!data) { return; }
+            lastData = data;
+            // Hintergrundfarbe gilt für die GANZE Kachel/Seite, nicht nur das Diagramm.
+            document.body.style.background = data.bg ? data.bg : 'transparent';
+            document.documentElement.style.background = data.bg ? data.bg : 'transparent';
+            render();
+        }
 
-    var nowXv = nowX(d.days);
-    var wantEngine = (d.engine === 'highcharts') ? 'highcharts' : 'echarts';
-    if (wantEngine === 'highcharts') {
-      ensureHighcharts(function () { renderHighcharts(chartEl, d.days, nowXv); });
-    } else {
-      ensureECharts(function () { renderECharts(chartEl, d.days, nowXv); setTimeout(function () { chart && chart.resize(); }, 60); });
-    }
-    renderSummary(d.days);
-    renderNowLine(d.actualPV, d.actualLoad);
-  }
+        function pad(x) { return (x < 10 ? '0' : '') + x; }
+        function kw(w) { return (w / 1000).toFixed(2); }
+        function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-  function handleMessage(raw) {
-    var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!d || !d.ok) { return; }
-    lastData = d;
-    if (d.bg) { document.body.style.background = d.bg; }
-    if (d.font) { document.body.style.fontFamily = d.font; }
-    render();
-  }
+        /** Nächstliegenden Unsicherheitsband-Punkt ([x,p10,p90] in kW) zu x suchen —
+         *  für die P10/P90-Anzeige im Tooltip (beide Engines, siehe buildEC/buildHC). */
+        function nearestBand(bandArr, x) {
+            if (!bandArr || !bandArr.length) { return null; }
+            var best = bandArr[0], bd = Math.abs(bandArr[0][0] - x);
+            for (var i = 1; i < bandArr.length; i++) {
+                var d = Math.abs(bandArr[i][0] - x);
+                if (d < bd) { bd = d; best = bandArr[i]; }
+            }
+            return best;
+        }
 
-  window.addEventListener('resize', function () {
-    if (!chart) { return; }
-    setTimeout(function () { chartEngine === 'highcharts' ? chart.reflow() : chart.resize(); }, 60);
-  });
+        /** Textfarben nach Helligkeit des konfigurierten Hintergrunds wählen. */
+        function isDarkColor(hex) {
+            var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+            if (!m) { return null; }
+            var n = parseInt(m[1], 16);
+            var lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+            return lum < 140;
+        }
 
-  // ResizeObserver statt eines festen setTimeout-Delays nach dem ersten
-  // Render (Fund, 25.08.2026): #chart hatte beim allerersten Aufbau noch
-  // nicht seine endgueltige Layout-Groesse (CSS-Flexbox war zum Zeitpunkt
-  // von echarts.init()/setOption() noch nicht fertig berechnet), wodurch
-  // die Band-Masken-Serien (siehe bandSeries()) falsch positioniert
-  // wurden - sah aus wie ein Rendering-Bug (Flaeche fuellte die gesamte
-  // Kachel), war aber ein Groessen-Problem: ein manuelles chart.resize()
-  // danach behob es sofort. EIN fixer Timeout (60ms) war nicht zuverlaessig
-  // genug (Layout kann laenger brauchen, je nach Kachel-Kontext/Ladezeit).
-  // ResizeObserver reagiert stattdessen auf die TATSAECHLICHE Groessen-
-  // aenderung, egal wie lange die dauert - deckt auch spaetere WebFront-
-  // Kachel-Groessenaenderungen ab, nicht nur den ersten Aufbau.
-  if (typeof ResizeObserver !== 'undefined') {
-    var chartEl0 = document.getElementById('chart');
-    new ResizeObserver(function () {
-      if (!chart) { return; }
-      chartEngine === 'highcharts' ? chart.reflow() : chart.resize();
-    }).observe(chartEl0);
-  }
-</script>
+        function addScript(src, cb) {
+            var s = document.createElement('script');
+            s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); };
+            document.head.appendChild(s);
+        }
+        function ensureLib(engine, cb) {
+            if (engine === 'echarts') {
+                if (typeof echarts !== 'undefined') { libs.ec = 2; return cb(); }
+                if (libs.ec === 1) { return setTimeout(function () { ensureLib(engine, cb); }, 80); }
+                libs.ec = 1; addScript('https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js', function () { libs.ec = 2; cb(); });
+            } else {
+                if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.arearange) { libs.hc = 2; return cb(); }
+                if (libs.hc === 1) { return setTimeout(function () { ensureLib(engine, cb); }, 80); }
+                libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { addScript('https://code.highcharts.com/highcharts-more.js', function () { libs.hc = 2; cb(); }); });
+            }
+        }
+
+        function destroyChart() {
+            if (chart) { try { if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); } } catch (e) {} }
+            chart = null; chartEngine = null;
+            var c = document.getElementById('chart'); if (c) { c.innerHTML = ''; }
+        }
+
+        var scrollHintBound = false, lastHintD = null;
+        /**
+         * Pfeile links/rechts nur zeigen, solange in die jeweilige Richtung
+         * noch mehr Inhalt folgt. #scrollHintL/R sitzen außerhalb von
+         * #scrollWrap (siehe CSS-Kommentar), deshalb wird ihre vertikale
+         * Position hier aus der tatsächlichen Chart-Höhe berechnet (variiert
+         * je nach Konfiguration/Ist-Zeile). $D optional (fehlt beim reinen
+         * Scroll-Update) — Farben werden dann einfach nicht neu gesetzt.
+         */
+        function updateScrollHint(D) {
+            if (D) { lastHintD = D; }
+            var w = document.getElementById('scrollWrap');
+            var hintL = document.getElementById('scrollHintL'), hintR = document.getElementById('scrollHintR');
+            var spanL = hintL ? hintL.querySelector('span') : null, spanR = hintR ? hintR.querySelector('span') : null;
+            var chartEl = document.getElementById('chart');
+            var wrapEl = document.querySelector('.wrap');
+            if (!w || !hintL || !hintR || !spanL || !spanR || !chartEl || !wrapEl) { return; }
+            var scrollable = w.scrollWidth > w.clientWidth + 1;
+            var atStart = w.scrollLeft <= 2;
+            var atEnd = w.scrollLeft + w.clientWidth >= w.scrollWidth - 2;
+            spanL.classList.toggle('show', scrollable && !atStart);
+            spanR.classList.toggle('show', scrollable && !atEnd);
+            if (lastHintD) {
+                [spanL, spanR].forEach(function (s) { s.style.background = lastHintD.TIP; s.style.color = lastHintD.TEXT; });
+                // Links hinter die Y-Achsen-Beschriftung setzen (D.plotLeft) statt
+                // eines festen Werts — sonst deckt der Pfeil die mittlere
+                // Y-Achsen-Zahl ab (Dietmars Feedback).
+                hintL.style.left = (lastHintD.plotLeft + 6) + 'px';
+            }
+            var cRect = chartEl.getBoundingClientRect(), wRect = wrapEl.getBoundingClientRect();
+            var top = Math.round(cRect.top - wRect.top + cRect.height / 2) + 'px';
+            hintL.style.top = top; hintR.style.top = top;
+            if (!scrollHintBound) { scrollHintBound = true; w.addEventListener('scroll', function () { updateScrollHint(); }); }
+        }
+
+        function render() {
+            var data = lastData; if (!data) { return; }
+            var engine = (data.engine === 'highcharts') ? 'highcharts' : 'echarts';
+            var el = document.getElementById('chart');
+            var legEl = document.getElementById('legend'), daysEl = document.getElementById('days');
+            if (!data.hasData || !data.days || !data.days.length) {
+                destroyChart();
+                legEl.style.display = 'none'; daysEl.style.display = 'none';
+                el.innerHTML = '<div class="empty">' + (data.message || 'Keine Daten') + '</div>';
+                updateScrollHint();
+                return;
+            }
+            ensureLib(engine, function () {
+                if (chart && chartEngine !== engine) { destroyChart(); }
+                chartEngine = engine;
+                if (engine === 'echarts') { buildEC(); } else { buildHC(); }
+            });
+        }
+
+        // ---- gemeinsame Datenaufbereitung -------------------------------
+        function prepData() {
+            var data = lastData;
+            // Mit konfiguriertem Hintergrund entscheidet dessen Helligkeit über die
+            // Textfarben; ohne (transparent) der Hell-/Dunkelmodus des Geräts.
+            var bgDark = isDarkColor(data.bg);
+            var dark = (bgDark !== null) ? bgDark
+                     : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            // Breite: bis zu BASELINE_DAYS passt wie bisher ohne Scroll in den Rahmen;
+            // darüber hinaus wird Chart+Tagesstreifen proportional breiter und der
+            // Rahmen (#scrollWrap, overflow-x:auto) macht daraus horizontales Scrollen —
+            // beide bekommen dieselbe Breite, damit Tagesgrenzen exakt fluchten.
+            var wrapEl = document.getElementById('scrollWrap');
+            var baseW = (wrapEl && wrapEl.clientWidth) ? wrapEl.clientWidth : (document.body.clientWidth || 600);
+            var BASELINE_DAYS = 3;
+            var renderW = Math.round(Math.max(baseW, baseW * data.days.length / BASELINE_DAYS));
+            var scale = data.scale || 1, pm = plotMetrics(scale);
+            var D = {
+                data: data,
+                renderW: renderW,
+                dark: dark, TEXT: dark ? '#e8edf2' : '#1b2430', MUTED: dark ? '#9fb0c0' : '#5c6b7a',
+                GRID: dark ? 'rgba(127,135,145,.22)' : 'rgba(20,30,45,.14)', TIP: dark ? 'rgba(28,38,52,.97)' : 'rgba(255,255,255,.98)',
+                SEP: dark ? 'rgba(159,176,192,.34)' : 'rgba(92,107,122,.30)',
+                days: data.days, nDays: data.days.length,
+                pvC: data.pvColor || '#e0a020', loC: data.loadColor || '#2bb3c0',
+                plotLeft: pm.left, plotRight: pm.right, plotTop: pm.top, plotBottom: pm.bottom,
+                scale: scale, lw: data.lineWidth || 2, smooth: (data.smooth !== false),
+                showBand: (data.showBand !== false), bandOp: (data.bandOp != null ? data.bandOp : 0.16),
+                actualPV: data.actualPV, actualLoad: data.actualLoad,
+                yMaxManual: data.yMaxManual || 0, showGrid: (data.showGrid !== false), showLegend: (data.showLegend !== false),
+                showIstRow: (data.showIstRow !== false), font: data.font || 'sans-serif',
+                pvPresent: false, loPresent: false, pvLine: [], pvBand: [], loLine: [], loBand: []
+            };
+            data.days.forEach(function (d, di) {
+                if (d.pv) {
+                    D.pvPresent = true; var n = d.pv.p50.length, st = 24 / n;
+                    for (var i = 0; i < n; i++) { var x = di * 24 + i * st; D.pvLine.push([x, d.pv.p50[i] / 1000]); D.pvBand.push([x, d.pv.p10[i] / 1000, d.pv.p90[i] / 1000]); }
+                }
+                if (d.load) {
+                    D.loPresent = true; var n2 = d.load.p50.length, st2 = 24 / n2;
+                    for (var j = 0; j < n2; j++) { var x2 = di * 24 + j * st2; D.loLine.push([x2, d.load.p50[j] / 1000]); D.loBand.push([x2, d.load.p10[j] / 1000, d.load.p90[j] / 1000]); }
+                }
+            });
+            // Ist-Verlauf je Tag (Gestern voller Tag, Heute bis jetzt) — über die Segmente verteilt.
+            D.pvMeas = []; D.loMeas = [];
+            data.days.forEach(function (d, di) {
+                if (d.pvMeas) { var n = d.pvMeas.length, st = 24 / n; for (var i = 0; i < n; i++) { if (d.pvMeas[i] != null) { D.pvMeas.push([di * 24 + i * st, d.pvMeas[i] / 1000]); } } }
+                if (d.loMeas) { var n2 = d.loMeas.length, st2 = 24 / n2; for (var j = 0; j < n2; j++) { if (d.loMeas[j] != null) { D.loMeas.push([di * 24 + j * st2, d.loMeas[j] / 1000]); } } }
+            });
+            D.hasIst = data.days.some(function (d) { return d.pvKwhIst != null || d.loKwhIst != null; });
+
+            // Sichtbarkeit je Reihe (Legenden-Klick) + Y-Achsen-Max — geteilt zwischen
+            // beiden Engines, damit die feststehende Y-Achsen-Überlagerung (siehe
+            // buildYAxisOverlay) exakt zu dem passt, was jede Engine tatsächlich zeichnet.
+            D.pvVis = D.pvPresent && !userHide.pv;
+            D.loVis = D.loPresent && !userHide.load;
+            (function () {
+                var maxV = 0, useBand = D.showBand && D.bandOp > 0;
+                if (D.pvVis) { (useBand ? D.pvBand : D.pvLine).forEach(function (p) { var v = useBand ? p[2] : p[1]; if (v > maxV) { maxV = v; } }); }
+                if (D.loVis) { (useBand ? D.loBand : D.loLine).forEach(function (p) { var v = useBand ? p[2] : p[1]; if (v > maxV) { maxV = v; } }); }
+                D.yMax = D.yMaxManual > 0 ? D.yMaxManual : Math.max(0.5, Math.ceil(maxV * 1.08 * 2) / 2);
+            })();
+
+            // „jetzt"-Marker am Heute-Segment (mit Gestern verschiebt es sich um 24 h).
+            // Die konkreten Punkte (Farbe/Sichtbarkeit) baut sich jede Engine selbst aus
+            // D.nowX/D.actualPV/D.actualLoad + der aktuellen userHide-Sichtbarkeit.
+            D.nowX = null;
+            var heuteIdx = -1;
+            data.days.forEach(function (d, di) { if (d.label === 'heute') { heuteIdx = di; } });
+            if (heuteIdx >= 0) {
+                var now = new Date(); D.nowX = heuteIdx * 24 + now.getHours() + now.getMinutes() / 60;
+            }
+            return D;
+        }
+
+        /**
+         * Diagrammhöhe = Rest zwischen dem oben fest reservierten Rand (den
+         * IPS selbst für den Instanznamen vorsieht, siehe .wrap padding-top)
+         * und dem unten fest bemessenen Tagesstreifen — misst dafür die
+         * TATSÄCHLICH verfügbare Kachelhöhe (WebFront: vom Nutzer per Ziehen
+         * bestimmt), statt eine eigene "Diagrammhöhe"-Einstellung zu
+         * brauchen (Dietmar, 26.08.2026: "bräuchte es diese Einstellung
+         * überhaupt nicht, wenn man die Diagrammhöhe als den Rest zwischen
+         * oben und unten definieren würde"). Legende/Tagesstreifen müssen
+         * VOR diesem Aufruf schon fertig befüllt sein (echte statt geschätzte
+         * Höhe); die Abstände (Legende↔Chart, Chart↔Tagesstreifen) bleiben
+         * dabei unverändert — es liest nur die vorhandenen CSS-Werte aus,
+         * ändert sie nicht.
+         */
+        function computeCanvasHeight(legEl, daysEl) {
+            var totalH = document.body.clientHeight || window.innerHeight || 400;
+            var wrapEl = document.querySelector('.wrap');
+            var wrapCS = wrapEl ? getComputedStyle(wrapEl) : null;
+            var padTop = wrapCS ? (parseFloat(wrapCS.paddingTop) || 0) : 56;
+            var padBottom = wrapCS ? (parseFloat(wrapCS.paddingBottom) || 0) : 10;
+            // Ausgeblendete Legende (ShowLegend=false) beansprucht keinen Platz —
+            // display:none-Elemente melden zwar offsetHeight=0, ihre CSS-Margins
+            // aber weiterhin per getComputedStyle, deshalb hier explizit geprüft
+            // statt sich darauf zu verlassen (der frei gewordene Platz geht so
+            // vollständig ans Diagramm, Forum-Wunsch hfichtinger 26.08.2026).
+            var legCS = getComputedStyle(legEl), daysCS = getComputedStyle(daysEl);
+            var legH = (legEl.style.display === 'none') ? 0
+                : legEl.offsetHeight + (parseFloat(legCS.marginTop) || 0) + (parseFloat(legCS.marginBottom) || 0);
+            var daysH = daysEl.offsetHeight + (parseFloat(daysCS.marginTop) || 0) + (parseFloat(daysCS.marginBottom) || 0);
+            return Math.max(140, Math.round(totalH - padTop - padBottom - legH - daysH));
+        }
+
+        // ---- Highcharts (privat) ----------------------------------------
+        function buildHC() {
+            var D = prepData(), el = document.getElementById('chart');
+            var legEl = document.getElementById('legend');
+            if (D.showLegend) { legEl.style.display = 'block'; renderLegend(legEl, D); } else { legEl.style.display = 'none'; legEl.innerHTML = ''; }
+            var daysEl = document.getElementById('days'); daysEl.style.display = 'block'; dayStrip(daysEl, D);
+            var canvasH = computeCanvasHeight(legEl, daysEl);
+            buildYAxisOverlay(D, canvasH);
+            el.style.height = canvasH + 'px'; el.style.width = D.renderW + 'px';
+
+            var TEXT = D.TEXT, MUTED = D.MUTED, GRID = D.GRID, TIP = D.TIP, days = D.days, nDays = D.nDays;
+            var pvC = D.pvC, loC = D.loC, scale = D.scale, lw = D.lw;
+            var stype = D.smooth ? 'spline' : 'line', showBand = D.showBand, bandOp = D.bandOp;
+            var fpx = function (n) { return (n * scale) + 'px'; };
+            var pvVis = D.pvVis, loVis = D.loVis;
+
+            var series = [];
+            if (pvVis) {
+                series.push({ id: 'pv', type: stype, name: 'PV', data: D.pvLine, color: pvC, lineWidth: lw, zIndex: 3 });
+                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'PV-Band', data: D.pvBand, color: pvC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'pv', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
+                if (D.pvMeas.length > 1) { series.push({ type: stype, name: 'PV gemessen', data: D.pvMeas, color: pvC, dashStyle: 'ShortDash', lineWidth: Math.max(1, lw - 0.5), linkedTo: 'pv', enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
+            }
+            if (loVis) {
+                series.push({ id: 'load', type: stype, name: 'Verbrauch', data: D.loLine, color: loC, lineWidth: lw, zIndex: 3 });
+                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'Verbrauch-Band', data: D.loBand, color: loC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'load', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
+                if (D.loMeas.length > 1) { series.push({ type: stype, name: 'Verbrauch gemessen', data: D.loMeas, color: loC, dashStyle: 'ShortDash', lineWidth: Math.max(1, lw - 0.5), linkedTo: 'load', enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
+            }
+            var nowPts = [];
+            if (D.nowX != null) {
+                if (pvVis && D.actualPV != null) { nowPts.push({ x: D.nowX, y: D.actualPV / 1000, color: pvC }); }
+                if (loVis && D.actualLoad != null) { nowPts.push({ x: D.nowX, y: D.actualLoad / 1000, color: loC }); }
+            }
+            if (nowPts.length) { series.push({ type: 'scatter', name: 'jetzt', data: nowPts, showInLegend: false, enableMouseTracking: false, zIndex: 6, marker: { enabled: true, radius: 5, symbol: 'circle', lineColor: TIP, lineWidth: 2 } }); }
+
+            var plotLines = [];
+            for (var di = 1; di < nDays; di++) { plotLines.push({ value: di * 24, color: D.SEP, width: 1, zIndex: 2 }); }
+            if (D.nowX != null) { plotLines.push({ value: D.nowX, color: NOW_LINE_COLOR, width: 1, dashStyle: 'Dash', zIndex: 4 }); }
+
+            var options = {
+                // Ränder erzwungen (D.plot*, identisch zu ECharts' grid, skaliert mit
+                // D.scale) statt Highcharts' Auto-Layout — nötig, damit #yAxisOverlay
+                // pixelgenau auf den Gitterlinien sitzt, unabhängig davon, welche Engine
+                // gerade rendert.
+                chart: { backgroundColor: 'transparent', width: D.renderW, height: canvasH,
+                    marginTop: D.plotTop, marginBottom: D.plotBottom, marginLeft: D.plotLeft, marginRight: D.plotRight,
+                    spacingTop: 0, spacingBottom: 0, spacingLeft: 0, spacingRight: 0,
+                    style: { fontFamily: D.font }, animation: false },
+                title: { text: undefined }, credits: { enabled: false }, exporting: { enabled: false },
+                // Eigene Legende (#legend, außerhalb #scrollWrap) statt der eingebauten —
+                // die läge innerhalb des Chart-Canvas und würde beim Scrollen mitlaufen.
+                legend: { enabled: false },
+                // labels.y fest vorgegeben statt Highcharts' Auto-Platzierung: die
+                // brauchte trotz tickLength:0 mehr Raum, als wir über marginBottom
+                // reserviert hatten — die Zeitbeschriftung wurde dadurch am unteren
+                // Kachelrand abgeschnitten (Dietmars Feedback, live mit
+                // labelGroup.getBBox() nachgemessen: Label ragte ~5px über die
+                // Canvas-Höhe hinaus). Mit explizitem y bleibt sie sicher innerhalb
+                // von D.plotBottom, unabhängig von Highcharts' interner Annahme.
+                xAxis: { min: 0, max: nDays * 24, tickInterval: 3, gridLineWidth: (D.showGrid ? 1 : 0), gridLineColor: GRID, lineColor: GRID, tickLength: 0, plotLines: plotLines,
+                    labels: { y: Math.round(9 * scale + 6), style: { color: MUTED, fontSize: fpx(9) }, formatter: function () { return pad(this.value % 24); } } },
+                // Achsenbeschriftung/-titel aus (zeigt stattdessen #yAxisOverlay, das beim
+                // Scrollen sichtbar bleibt) — Gitterlinien bleiben wie gehabt.
+                yAxis: { min: 0, max: D.yMax, title: { text: null }, gridLineColor: GRID, gridLineWidth: D.showGrid ? 1 : 0, labels: { enabled: false } },
+                tooltip: { shared: true, useHTML: true, backgroundColor: TIP, borderColor: GRID, borderRadius: 6, style: { color: TEXT, fontSize: fpx(11) }, formatter: function () {
+                    var x = this.x, di = Math.floor(x / 24 + 1e-6), hod = x - di * 24, hh = Math.floor(hod + 1e-6), mm = Math.round((hod - hh) * 60); if (mm >= 60) { hh++; mm -= 60; }
+                    var head = cap((days[di] || days[0]).label) + ' ' + pad(hh) + ':' + pad(mm);
+                    var html = '<div style="font-weight:500;margin-bottom:2px">' + head + '</div>', pvV = null, loV = null;
+                    this.points.forEach(function (p) {
+                        if (p.series.userOptions.id === 'pv') {
+                            // Kein P10/P90 bei PV (Dietmar, 26.08.2026): die PV-Prognose ist
+                            // physikbasiert statt k-NN-Quantile wie bei der Last — echte
+                            // Streuwerte gibt es dafür nicht, nur bei Verbrauch.
+                            pvV = p.y;
+                            html += '<div><span style="color:' + pvC + '">●</span> PV: <b>' + p.y.toFixed(2) + ' kW</b></div>';
+                        }
+                        if (p.series.userOptions.id === 'load') {
+                            loV = p.y; var lb = nearestBand(D.loBand, p.x);
+                            html += '<div><span style="color:' + loC + '">●</span> Verbrauch: <b>' + p.y.toFixed(2) + ' kW</b>' + (lb ? ' <span style="color:' + MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
+                        }
+                    });
+                    if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + MUTED + ';margin-top:2px">Saldo ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
+                    return html;
+                } },
+                plotOptions: { series: { animation: false, marker: { enabled: false }, states: { inactive: { opacity: 1 } } } },
+                series: series
+            };
+
+            if (chart) { try { chart.update(options, true, true); } catch (e) { try { chart.destroy(); } catch (_) {} chart = null; } }
+            if (!chart) { el.innerHTML = ''; chart = Highcharts.chart('chart', options); }
+            updateScrollHint(D);
+        }
+
+        // ---- Legende (geteilt zwischen beiden Engines) -------------------
+        // Bewusst NICHT die eingebaute Highcharts-Legende (die liegt innerhalb des
+        // Chart-Canvas und würde beim Horizontalscrollen mit wegscrollen) — beide
+        // Engines nutzen dasselbe externe #legend-Element außerhalb von #scrollWrap,
+        // damit sie beim Scrollen sichtbar/klickbar stehen bleibt (Dietmars Wunsch).
+        function renderLegend(legEl, D) {
+            var h = '';
+            function item(id, name, color, present, actual, hidden) {
+                if (!present) { return; }
+                var v = actual != null ? (' · jetzt <b>' + kw(actual) + ' kW</b>') : '';
+                h += '<span class="lg" onclick="toggleSeries(\'' + id + '\')" title="Klick: aus-/einblenden" style="opacity:' + (hidden ? 0.4 : 1) + '"><span class="sw" style="background:' + color + '"></span>' + name + v + '</span>';
+            }
+            item('pv', 'PV', D.pvC, D.pvPresent, D.actualPV, userHide.pv);
+            item('load', 'Verbrauch', D.loC, D.loPresent, D.actualLoad, userHide.load);
+            legEl.innerHTML = h;
+            legEl.style.fontSize = (11 * D.scale) + 'px'; legEl.style.fontFamily = D.font; legEl.style.color = D.TEXT;
+        }
+        function dayStrip(daysEl, D) {
+            // Dietmar, 26.08.2026 (nach ShowLegend derselbe Gedanke): "Ist"-
+            // Zeile per Schalter abschaltbar für mehr Platz — hasIst zählt
+            // dafür effektiv als "aus", damit auch das "Soll"-Präfix wieder
+            // wegfällt (bare "Soll" ohne Gegenstück wäre sonst inkonsistent,
+            // genau wie im Fall ganz ohne konfigurierte Ist-Werte).
+            var hasIst = D.hasIst && D.showIstRow;
+            function kwhRow(prefix, pvVal, loVal) {
+                var k = '';
+                if (pvVal != null) { k += '<span style="color:' + D.pvC + '">' + pvVal.toFixed(2) + '</span>'; }
+                if (pvVal != null && loVal != null) { k += ' · '; }
+                if (loVal != null) { k += '<span style="color:' + D.loC + '">' + loVal.toFixed(2) + '</span>'; }
+                if (!k) { return ''; }
+                var pre = prefix ? ('<span style="color:' + D.MUTED + '">' + prefix + ' </span>') : '';
+                return '<div style="color:' + D.MUTED + ';font-size:0.86em">' + pre + k + '<span style="color:' + D.MUTED + '"> kWh</span></div>';
+            }
+            var h = '<div style="display:flex;padding:0 ' + D.plotRight + 'px 0 ' + D.plotLeft + 'px">';
+            D.days.forEach(function (day, di) {
+                var pv = userHide.pv ? null : day.pv, lo = userHide.load ? null : day.load;
+                var soll = kwhRow(hasIst ? 'Soll' : '', pv ? pv.kwh : null, lo ? lo.kwh : null);
+                var ipv = (!userHide.pv && D.showIstRow) ? day.pvKwhIst : null, ilo = (!userHide.load && D.showIstRow) ? day.loKwhIst : null;
+                var ist = (ipv != null || ilo != null) ? kwhRow('Ist', ipv, ilo) : '';
+                h += '<div style="flex:1;text-align:center;line-height:1.3"><div style="font-weight:500;color:' + D.TEXT + '">' + cap(day.label) + '</div>' + soll + ist + '</div>';
+            });
+            daysEl.innerHTML = h + '</div>';
+            daysEl.style.fontSize = (11 * D.scale) + 'px'; daysEl.style.fontFamily = D.font;
+            daysEl.style.width = D.renderW + 'px';
+        }
+
+        /**
+         * Y-Achse (0..D.yMax, 5 gleich verteilte Marken inkl. „kW"-Einheit) als eigene,
+         * feststehende Überlagerung — beide Engines blenden dafür ihre eingebaute
+         * Achsenbeschriftung aus (Gitterlinien bleiben, siehe D.plotTop/D.plotBottom).
+         * Positionierung rein rechnerisch (nicht aus der Engine ausgelesen), daher
+         * erzwingen beide Engines exakt denselben, skalierten Plotbereich (plotMetrics()).
+         * Die „kW"-Beschriftung sitzt in der Mitte des oberen Rands (D.plotTop/2) statt
+         * an einem festen Negativ-Offset — sonst ragt sie bei größerer Kachel-Skalierung
+         * über den oberen Rand von #scrollWrap hinaus und wird von dessen
+         * overflow-y:hidden abgeschnitten (live bei Dietmar so aufgetreten).
+         */
+        function buildYAxisOverlay(D, canvasH) {
+            var el = document.getElementById('yAxisOverlay');
+            var plotH = Math.max(1, canvasH - D.plotTop - D.plotBottom);
+            var steps = 4, h = '';
+            for (var i = 0; i <= steps; i++) {
+                var v = D.yMax * i / steps;
+                var y = D.plotTop + plotH * (1 - i / steps);
+                h += '<span class="yl" style="top:' + y + 'px;color:' + D.MUTED + ';font-size:' + (10 * D.scale) + 'px;font-family:' + D.font + '">' + v.toFixed(v < 10 ? 1 : 0) + '</span>';
+            }
+            h += '<span class="yl" style="top:' + (D.plotTop / 2) + 'px;color:' + D.MUTED + ';font-size:' + (10 * D.scale) + 'px;font-family:' + D.font + '">kW</span>';
+            el.innerHTML = h;
+        }
+        function toggleSeries(w) { userHide[w] = !userHide[w]; render(); }
+
+        function buildEC() {
+            var D = prepData(), el = document.getElementById('chart');
+            var legEl = document.getElementById('legend'), daysEl = document.getElementById('days');
+            if (D.showLegend) { legEl.style.display = 'block'; renderLegend(legEl, D); } else { legEl.style.display = 'none'; legEl.innerHTML = ''; }
+            daysEl.style.display = 'block'; dayStrip(daysEl, D);
+            var canvasH = computeCanvasHeight(legEl, daysEl);
+            buildYAxisOverlay(D, canvasH);
+            el.style.height = canvasH + 'px'; el.style.width = D.renderW + 'px';
+
+            var pvVis = D.pvVis, loVis = D.loVis;
+            var fs = function (n) { return n * D.scale; };
+            var series = [];
+
+            // Unsicherheitsband als Polygon (robust auf der Wert-Achse)
+            function bandSeries(band, color, vis) {
+                if (!vis || !D.showBand || D.bandOp <= 0 || band.length < 2) { return; }
+                series.push({
+                    type: 'custom', silent: true, z: 1, clip: true, animation: false, data: [0],
+                    renderItem: function (params, api) {
+                        var pts = [], i, c;
+                        for (i = 0; i < band.length; i++) { c = api.coord([band[i][0], band[i][2]]); pts.push([c[0], c[1]]); }
+                        for (i = band.length - 1; i >= 0; i--) { c = api.coord([band[i][0], band[i][1]]); pts.push([c[0], c[1]]); }
+                        return { type: 'polygon', shape: { points: pts }, style: { fill: color, opacity: D.bandOp } };
+                    }
+                });
+            }
+            bandSeries(D.pvBand, D.pvC, pvVis);
+            bandSeries(D.loBand, D.loC, loVis);
+
+            if (pvVis && D.pvMeas.length > 1) { series.push({ type: 'line', data: D.pvMeas, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvC, width: Math.max(1, D.lw - 0.5), type: 'dashed' }, silent: true, animation: false, z: 3 }); }
+            if (loVis && D.loMeas.length > 1) { series.push({ type: 'line', data: D.loMeas, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.loC, width: Math.max(1, D.lw - 0.5), type: 'dashed' }, silent: true, animation: false, z: 3 }); }
+
+            var markData = [];
+            for (var di = 1; di < D.nDays; di++) { markData.push({ xAxis: di * 24, lineStyle: { color: D.SEP, type: 'solid', width: 1 } }); }
+            if (D.nowX != null) { markData.push({ xAxis: D.nowX, lineStyle: { color: NOW_LINE_COLOR, type: 'dashed', width: 1 } }); }
+            var markLine = { silent: true, symbol: 'none', label: { show: false }, data: markData, animation: false };
+            var attached = false;
+            if (pvVis) { var sp = { id: 'pv', name: 'PV', type: 'line', data: D.pvLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvC, width: D.lw }, itemStyle: { color: D.pvC }, z: 3, animation: false }; if (!attached) { sp.markLine = markLine; attached = true; } series.push(sp); }
+            if (loVis) { var sl = { id: 'load', name: 'Verbrauch', type: 'line', data: D.loLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.loC, width: D.lw }, itemStyle: { color: D.loC }, z: 3, animation: false }; if (!attached) { sl.markLine = markLine; attached = true; } series.push(sl); }
+            if (!attached && markData.length) { series.push({ type: 'line', data: [], silent: true, markLine: markLine }); }
+
+            var dots = [];
+            if (D.nowX != null) {
+                if (pvVis && D.actualPV != null) { dots.push({ value: [D.nowX, D.actualPV / 1000], itemStyle: { color: D.pvC, borderColor: D.TIP, borderWidth: 2 } }); }
+                if (loVis && D.actualLoad != null) { dots.push({ value: [D.nowX, D.actualLoad / 1000], itemStyle: { color: D.loC, borderColor: D.TIP, borderWidth: 2 } }); }
+            }
+            if (dots.length) { series.push({ type: 'scatter', data: dots, symbolSize: 11, z: 6, silent: true, animation: false }); }
+
+            var option = {
+                backgroundColor: 'transparent',
+                textStyle: { fontFamily: D.font, color: D.TEXT },
+                grid: { left: D.plotLeft, right: D.plotRight, top: D.plotTop, bottom: D.plotBottom, containLabel: false },
+                animation: false,
+                xAxis: { type: 'value', min: 0, max: D.nDays * 24, interval: 3, axisLabel: { show: true, color: D.MUTED, fontSize: fs(9), hideOverlap: true, formatter: function (v) { return pad(v % 24); } }, axisTick: { show: false }, axisLine: { lineStyle: { color: D.GRID } }, splitLine: { show: D.showGrid, lineStyle: { color: D.GRID } } },
+                // Achsenbeschriftung/-titel aus (zeigt stattdessen #yAxisOverlay, das beim
+                // Scrollen sichtbar bleibt) — Gitterlinien (splitLine) bleiben wie gehabt.
+                yAxis: { type: 'value', min: 0, max: D.yMax, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: D.showGrid, lineStyle: { color: D.GRID } } },
+                tooltip: { trigger: 'axis', backgroundColor: D.TIP, borderColor: D.GRID, borderWidth: 1, textStyle: { color: D.TEXT, fontSize: fs(11) }, axisPointer: { type: 'line', lineStyle: { color: D.MUTED, type: 'dashed' } },
+                    formatter: function (ps) {
+                        if (!ps || !ps.length) { return ''; }
+                        var x = ps[0].axisValue, di = Math.floor(x / 24 + 1e-6), hod = x - di * 24, hh = Math.floor(hod + 1e-6), mm = Math.round((hod - hh) * 60); if (mm >= 60) { hh++; mm -= 60; }
+                        var head = cap((D.days[di] || D.days[0]).label) + ' ' + pad(hh) + ':' + pad(mm);
+                        var html = '<div style="font-weight:500;margin-bottom:2px">' + head + '</div>', pvV = null, loV = null;
+                        ps.forEach(function (p) {
+                            if (p.seriesName === 'PV') {
+                                // Kein P10/P90 bei PV (Dietmar, 26.08.2026): die PV-Prognose ist
+                                // physikbasiert statt k-NN-Quantile wie bei der Last — echte
+                                // Streuwerte gibt es dafür nicht, nur bei Verbrauch.
+                                pvV = p.value[1];
+                                html += '<div><span style="color:' + D.pvC + '">●</span> PV: <b>' + p.value[1].toFixed(2) + ' kW</b></div>';
+                            }
+                            if (p.seriesName === 'Verbrauch') {
+                                loV = p.value[1]; var lb = nearestBand(D.loBand, p.value[0]);
+                                html += '<div><span style="color:' + D.loC + '">●</span> Verbrauch: <b>' + p.value[1].toFixed(2) + ' kW</b>' + (lb ? ' <span style="color:' + D.MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
+                            }
+                        });
+                        if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + D.MUTED + ';margin-top:2px">Saldo ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
+                        return html;
+                    } },
+                series: series
+            };
+
+            if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas' }); }
+            chart.resize({ width: D.renderW, height: canvasH });
+            chart.setOption(option, true);
+            updateScrollHint(D);
+        }
+
+        window.addEventListener('resize', function () {
+            if (!chart) { return; }
+            // Volles render() statt nur resize()/reflow(): #scrollWrap-Breite hat sich
+            // ggf. geändert, renderW (und damit Chart- und Tagesstreifen-Breite) müssen
+            // neu berechnet werden, nicht nur der Inhalt in die alte Breite gezwängt.
+            render();
+        });
+    </script>
+</body>
+
+</html>

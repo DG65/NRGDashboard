@@ -7,11 +7,11 @@
       "items": [
         {
           "type": "Label",
-          "caption": "PV-/Lastprognose als scrollbares Mehrtage-Diagramm - Übernahme der bisherigen Energiebilanz-Kachel (Prognose-Repo) in NRGDashboard. Prognoses eigene Kachel bleibt vorerst als Fallback bestehen, die Berechnung selbst bleibt bei ihr - hier nur die Darstellung."
+          "caption": "1:1-Übernahme der Darstellung von Prognoses Energiebilanz-Kachel - Übergabe an NRGDashboard als Darstellungsschicht, die Berechnung (k-NN-Prognose, Perzentile, Ist-Integration) bleibt bei Prognose."
         },
         {
           "type": "Label",
-          "caption": "Zeigt „Gestern“ (falls vorhanden) plus den vollen von der Prognose gelieferten Vorhersage-Horizont (aktuell bis zu 5 Tage), mit Unsicherheitsband (P10–P90) und überlagerter Ist-Kurve für bereits vergangene Stunden."
+          "caption": "Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) sind direkt im WebFront einstellbar - Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
         }
       ]
     },
@@ -29,37 +29,6 @@
           "name": "ForecastInstance",
           "caption": "Energiebilanz-Instanz (Prognose)",
           "moduleID": "{481CBE19-C8D9-4B72-B13F-0D249006B709}"
-        }
-      ]
-    },
-    {
-      "type": "ExpansionPanel",
-      "caption": "Darstellung",
-      "expanded": false,
-      "items": [
-        {
-          "type": "Select",
-          "name": "Engine",
-          "caption": "Chart-Engine",
-          "options": [
-            { "caption": "ECharts (vom Internet nachgeladen, Apache-2.0)", "value": "echarts" },
-            { "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)", "value": "highcharts" }
-          ]
-        },
-        {
-          "type": "SelectColor",
-          "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
-        },
-        {
-          "type": "ValidationTextBox",
-          "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
-        },
-        {
-          "type": "CheckBox",
-          "name": "LightTheme",
-          "caption": "Symcon-Oberfläche ist auf Hell gestellt (für theme-abhängige Textfarben - Symcon bietet der Kachel keine automatische Erkennung an)"
         }
       ]
     }
