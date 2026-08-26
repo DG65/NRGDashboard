@@ -166,6 +166,16 @@
     series.push({ name: 'Verbrauchs-Prognose', type: 'line', data: lo50, showSymbol: false, color: COL_LOAD, lineStyle: { width: 1.6, type: 'dashed' } });
     if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', data: pvIst, showSymbol: false, color: COL_PV, lineStyle: { width: 2.4 } }); }
     if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', data: loIst, showSymbol: false, color: COL_LOAD, lineStyle: { width: 2.4 } }); }
+    // Zwei Sammel-Legendeneintraege statt vier einzelner (Dietmar,
+    // 26.08.2026: "auf dem Referenzdiagramm oben rechts kann man die
+    // beiden Linien ausblenden. Das gibt es bei Dir nicht") - EINE
+    // unsichtbare Proxy-Serie je Farbe traegt den Legendennamen, ein
+    // legendselectchanged-Listener (siehe unten) schaltet beim Klick
+    // Prognose+Ist+Band derselben Farbe gemeinsam um, statt vier
+    // getrennte Buttons zu zeigen, von denen jeder nur seine eigene
+    // Linie beeinflusst.
+    series.push({ name: 'PV', type: 'line', data: [], showSymbol: false, color: COL_PV, lineStyle: { width: 1.6 }, silent: true, tooltip: { show: false } });
+    series.push({ name: 'Verbrauch', type: 'line', data: [], showSymbol: false, color: COL_LOAD, lineStyle: { width: 1.6, type: 'dashed' }, silent: true, tooltip: { show: false } });
 
     var dayLines = [];
     for (var i = 1; i < nDays; i++) { dayLines.push({ xAxis: i * 24 }); }
@@ -180,7 +190,7 @@
       backgroundColor: 'transparent',
       textStyle: lastData.font ? { fontFamily: lastData.font } : {},
       grid: { left: 44, right: 16, top: 24, bottom: 56 },
-      legend: { show: true, top: 0, textStyle: { color: '#cfd6de', fontSize: 10 }, data: ['PV-Prognose', 'Verbrauchs-Prognose', 'PV Ist', 'Verbrauch Ist'] },
+      legend: { show: true, top: 0, textStyle: { color: '#cfd6de', fontSize: 10 }, data: ['PV', 'Verbrauch'] },
       tooltip: {
         trigger: 'axis',
         backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
@@ -201,7 +211,13 @@
         axisLabel: { formatter: function (v) { return (('0' + (Math.round(v) % 24)).slice(-2)) + ':00'; }, color: '#9aa4b0' },
         splitLine: { show: true, lineStyle: { color: GRID_COLOR } },
       },
-      yAxis: { type: 'value', name: 'kW', nameTextStyle: { color: '#9aa4b0' }, axisLabel: { color: '#9aa4b0' }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+      // max mit Kopfraum statt reinem Auto-Max (Dietmar, 26.08.2026: "Du
+      // hast die Gitterlinien 'oben raus' ... Eindruck, als wenn es oben
+      // weiterginge") - ohne Kopfraum reichte die hoechste Kurve bis exakt
+      // an die Gehaeusekante, ohne sichtbare obere Begrenzungslinie/Rand
+      // darueber wirkte das wie abgeschnitten statt wie ein geschlossenes
+      // Diagramm (Referenz-Vorbild hat sichtbaren Rand ueber der Kurve).
+      yAxis: { type: 'value', name: 'kW', min: 0, max: function (v) { return Math.ceil(v.max * 1.15 * 10) / 10; }, nameTextStyle: { color: '#9aa4b0' }, axisLabel: { color: '#9aa4b0' }, splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
       dataZoom: (function () {
         // Fund, 25.08.2026 (Dietmar: "man MUSS horizontal scrollen statt
         // dass alle 6 Tage gequetscht in eine statische Breite passen") -
@@ -215,11 +231,39 @@
         var zEnd = Math.min(100, (((nowXv || 0) + 36) / (nDays * 24)) * 100);
         return [
           { type: 'inside', start: zStart, end: zEnd },
-          { type: 'slider', start: zStart, end: zEnd, height: 16, bottom: 30, textStyle: { color: '#9aa4b0' } },
+          // Deutlich sichtbar gestylt (Dietmar, 26.08.2026: "Zum
+          // horizontal scrollen gibt es bei Dir nichts") - der ECharts-
+          // Default (dezentes Grau) ging auf dunklem Kachel-Hintergrund
+          // faktisch unter, obwohl er da war (dataZoom.show=true, korrektes
+          // start/end - per getOption() live bestaetigt). Jetzt mit klar
+          // erkennbarem Griff/Fuellung statt der Default-Farben.
+          { type: 'slider', start: zStart, end: zEnd, height: 18, bottom: 26,
+            backgroundColor: 'rgba(255,255,255,.04)', borderColor: 'rgba(255,255,255,.25)',
+            fillerColor: 'rgba(96,165,255,.35)',
+            dataBackground: { lineStyle: { color: 'rgba(255,255,255,.35)' }, areaStyle: { color: 'rgba(255,255,255,.08)' } },
+            handleStyle: { color: '#60a5ff', borderColor: '#e8eef6' },
+            moveHandleStyle: { color: '#60a5ff' },
+            textStyle: { color: '#cfd6de' } },
         ];
       })(),
       series: series,
     }, true);
+
+    // Klick auf "PV"/"Verbrauch" in der Legende schaltet Prognose+Ist+Band
+    // derselben Farbe gemeinsam um (siehe Kommentar bei den Proxy-Serien
+    // oben) - chart.off() zuerst, damit bei wiederholtem render() nicht
+    // mehrere Listener uebereinander gestapelt werden.
+    var legendGroups = {
+      PV: ['PV-Prognose', 'PV Ist', 'PV-Band', 'PV (Maske)'],
+      Verbrauch: ['Verbrauchs-Prognose', 'Verbrauch Ist', 'Verbrauch-Band', 'Verbrauch (Maske)'],
+    };
+    chart.off('legendselectchanged');
+    chart.on('legendselectchanged', function (params) {
+      var on = params.selected[params.name];
+      (legendGroups[params.name] || []).forEach(function (n) {
+        chart.dispatchAction({ type: on ? 'legendSelect' : 'legendUnSelect', name: n });
+      });
+    });
   }
 
   function renderHighcharts(el, days, nowXv) {
@@ -233,14 +277,21 @@
     for (var i = 1; i < nDays; i++) { plotLines.push({ value: i * 24, color: GRID_COLOR, width: 1, dashStyle: 'Dash', zIndex: 3 }); }
     if (nowXv !== null) { plotLines.push({ value: nowXv, color: COL_NOW, width: 2, zIndex: 5 }); }
 
+    // "PV"/"Verbrauch" als Haupt-Serie mit id, Band+Ist per linkedTo daran
+    // gehaengt (Dietmar, 26.08.2026: "auf dem Referenzdiagramm ... kann
+    // man die beiden Linien ausblenden. Das gibt es bei Dir nicht") -
+    // Highcharts blendet linkedTo-Serien automatisch mit ein/aus, wenn die
+    // Hauptserie per Legende umgeschaltet wird, ohne eigenen Listener wie
+    // bei ECharts noetig. showInLegend:false auf den verlinkten Serien
+    // haelt die Legende bei zwei Eintraegen statt vier/sechs.
     var series = [
-      { name: 'PV-Band', type: 'arearange', data: pvBand, color: COL_PV, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
-      { name: 'Verbrauchs-Band', type: 'arearange', data: loBand, color: COL_LOAD, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
-      { name: 'PV-Prognose', type: 'line', data: pv50, color: COL_PV, lineWidth: 1.6, marker: { enabled: false }, zIndex: 2 },
-      { name: 'Verbrauchs-Prognose', type: 'line', data: lo50, color: COL_LOAD, lineWidth: 1.6, dashStyle: 'Dash', marker: { enabled: false }, zIndex: 2 },
+      { name: 'PV-Band', type: 'arearange', linkedTo: 'pv-main', data: pvBand, color: COL_PV, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
+      { name: 'Verbrauchs-Band', type: 'arearange', linkedTo: 'load-main', data: loBand, color: COL_LOAD, fillOpacity: .18, lineWidth: 0, marker: { enabled: false }, enableMouseTracking: false, showInLegend: false, zIndex: 0 },
+      { id: 'pv-main', name: 'PV', type: 'line', data: pv50, color: COL_PV, lineWidth: 1.6, marker: { enabled: false }, zIndex: 2 },
+      { id: 'load-main', name: 'Verbrauch', type: 'line', data: lo50, color: COL_LOAD, lineWidth: 1.6, dashStyle: 'Dash', marker: { enabled: false }, zIndex: 2 },
     ];
-    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', data: pvIst, color: COL_PV, lineWidth: 2.4, marker: { enabled: false }, zIndex: 3 }); }
-    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', data: loIst, color: COL_LOAD, lineWidth: 2.4, marker: { enabled: false }, zIndex: 3 }); }
+    if (pvIst.length) { series.push({ name: 'PV Ist', type: 'line', linkedTo: 'pv-main', data: pvIst, color: COL_PV, lineWidth: 2.4, marker: { enabled: false }, showInLegend: false, zIndex: 3 }); }
+    if (loIst.length) { series.push({ name: 'Verbrauch Ist', type: 'line', linkedTo: 'load-main', data: loIst, color: COL_LOAD, lineWidth: 2.4, marker: { enabled: false }, showInLegend: false, zIndex: 3 }); }
 
     chart = Highcharts.chart(el, {
       chart: { backgroundColor: 'transparent', zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
@@ -256,9 +307,15 @@
         floor: 0, ceiling: nDays * 24, tickInterval: 6, plotLines: plotLines,
         labels: { style: { color: '#9aa4b0' }, formatter: function () { return ('0' + (Math.round(this.value) % 24)).slice(-2) + ':00'; } },
         gridLineWidth: 1, gridLineColor: GRID_COLOR,
-        scrollbar: { enabled: true },
+        // Deutlich sichtbar gestylt, gleicher Grund wie beim ECharts-
+        // Slider oben (Dietmar, 26.08.2026: Default ging auf dunklem
+        // Hintergrund optisch unter).
+        scrollbar: { enabled: true, height: 12, barBackgroundColor: '#60a5ff', barBorderRadius: 4, barBorderWidth: 0, trackBackgroundColor: 'rgba(255,255,255,.08)', trackBorderWidth: 0 },
       },
-      yAxis: { title: { text: 'kW', style: { color: '#9aa4b0' } }, labels: { style: { color: '#9aa4b0' } }, gridLineColor: GRID_COLOR },
+      // maxPadding statt reinem Auto-Max, gleicher Grund wie bei ECharts
+      // oben (Dietmar, 26.08.2026: Kurve reichte ohne Kopfraum bis an die
+      // Gehaeusekante, wirkte "oben abgeschnitten" statt geschlossen).
+      yAxis: { title: { text: 'kW', style: { color: '#9aa4b0' } }, labels: { style: { color: '#9aa4b0' } }, gridLineColor: GRID_COLOR, min: 0, maxPadding: .15 },
       tooltip: {
         shared: true, useHTML: true,
         formatter: function () {
