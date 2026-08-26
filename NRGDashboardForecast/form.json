@@ -29,6 +29,20 @@
           "name": "ForecastInstance",
           "caption": "Energiebilanz-Instanz (Prognose)",
           "moduleID": "{481CBE19-C8D9-4B72-B13F-0D249006B709}"
+        },
+        {
+          "type": "Label",
+          "caption": "── Ist-Werte (optional): eigene Leistungsvariablen für den gemessenen Verlauf, unabhängig von Prognoses eigener Konfiguration ──"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ActualPV",
+          "caption": "Ist-PV-Leistung (W)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ActualLoad",
+          "caption": "Ist-Hausverbrauch (W)"
         }
       ]
     }

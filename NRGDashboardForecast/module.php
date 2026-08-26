@@ -27,6 +27,10 @@ declare(strict_types=1);
  */
 class NRGDashboardForecast extends IPSModule
 {
+    // Request-lokaler Cache der automatisch erkannten Einheiten je Variable
+    // (autoPowerFactor()) - 1:1 Muster aus Prognoses Energiebilanz.
+    private $unitCache = [];
+
     private const FORECAST_GUID = '{481CBE19-C8D9-4B72-B13F-0D249006B709}';
 
     private const MAX_OFFSET = 4; // heute + 4 weitere Tage, deckungsgleich mit Prognose
@@ -53,6 +57,7 @@ class NRGDashboardForecast extends IPSModule
     private const NEWS_ITEMS = [
         '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
         'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel ueber den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',
+        'Eigene Ist-Leistungsvariablen (Konsole: "Ist-Werte") mit eigener Einheiten-Erkennung und Archiv-Cache-Intervall - unabhaengig von Prognoses eigener Konfiguration.',
     ];
 
     public function Create()
@@ -60,6 +65,16 @@ class NRGDashboardForecast extends IPSModule
         parent::Create();
 
         $this->RegisterPropertyInteger('ForecastInstance', 0);
+        // Eigene Ist-Leistungsvariablen (Dietmar, 26.08.2026: "hinter dem
+        // Doppelpfeil fehlen noch Einheit der Ist-Leistungsvariablen und
+        // Archiv-Cache" - das ergibt nur Sinn, wenn wir den gemessenen
+        // Verlauf SELBST aus dem Archiv lesen, statt uns auf Prognoses
+        // eigene ActualPV/ActualLoad-Konfiguration zu verlassen). Bewusst
+        // Property statt Doppelpfeil-Variable: nur die Konsole bietet
+        // SelectVariable (Dashboard-Formularmuster).
+        $this->RegisterPropertyInteger('ActualPV', 0);
+        $this->RegisterPropertyInteger('ActualLoad', 0);
+        $this->RegisterAttributeString('MeasuredCache', '');
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
@@ -96,12 +111,14 @@ class NRGDashboardForecast extends IPSModule
         }
 
         $int = [
-            'Days'            => ['Anzuzeigende Tage', 'NRGDASHFC.Days', 20, self::DEF_DAYS],
-            'ChartEngine'     => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
-            'ColorPV'         => ['Farbe PV-Erzeugung', '~HexColor', 41, self::DEF_PV],
-            'ColorLoad'       => ['Farbe Verbrauch', '~HexColor', 42, self::DEF_LOAD],
-            'ColorBackground' => ['Hintergrundfarbe (falls nicht automatisch)', '~HexColor', 44, 0xFFFFFF],
-            'FontFamily'      => ['Schriftart', 'NRGDASHFC.Font', 45, 0],
+            'Days'             => ['Anzuzeigende Tage', 'NRGDASHFC.Days', 20, self::DEF_DAYS],
+            'PowerUnit'        => ['Einheit der Ist-Leistungsvariablen', 'NRGDASHFC.PowerUnit', 30, 2],
+            'MeasuredCacheSec' => ['Ist-Verlauf neu berechnen alle ... s (Archiv-Cache)', 'NRGDASHFC.CacheSec', 34, 120],
+            'ChartEngine'      => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
+            'ColorPV'          => ['Farbe PV-Erzeugung', '~HexColor', 41, self::DEF_PV],
+            'ColorLoad'        => ['Farbe Verbrauch', '~HexColor', 42, self::DEF_LOAD],
+            'ColorBackground'  => ['Hintergrundfarbe (falls nicht automatisch)', '~HexColor', 44, 0xFFFFFF],
+            'FontFamily'       => ['Schriftart', 'NRGDASHFC.Font', 45, 0],
         ];
         foreach ($int as $ident => $spec) {
             [$caption, $profile, $pos, $default] = $spec;
@@ -142,6 +159,15 @@ class NRGDashboardForecast extends IPSModule
         IPS_SetVariableProfileAssociation('NRGDASHFC.Days', 4, 'Heute + 3 Tage', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.Days', 5, 'Heute + 4 Tage (voller Horizont)', '', -1);
 
+        if (!IPS_VariableProfileExists('NRGDASHFC.PowerUnit')) { IPS_CreateVariableProfile('NRGDASHFC.PowerUnit', VARIABLETYPE_INTEGER); }
+        IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 0, 'W (Watt)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 1, 'kW (Kilowatt)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 2, 'Automatisch erkennen (Profil/Groessenordnung)', '', -1);
+
+        if (!IPS_VariableProfileExists('NRGDASHFC.CacheSec')) { IPS_CreateVariableProfile('NRGDASHFC.CacheSec', VARIABLETYPE_INTEGER); }
+        IPS_SetVariableProfileValues('NRGDASHFC.CacheSec', 15, 900, 5);
+        IPS_SetVariableProfileText('NRGDASHFC.CacheSec', '', ' s');
+
         if (!IPS_VariableProfileExists('NRGDASHFC.Engine')) { IPS_CreateVariableProfile('NRGDASHFC.Engine', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileAssociation('NRGDASHFC.Engine', 0, 'ECharts (quelloffen, auch kommerziell)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.Engine', 1, 'Highcharts (nur privat/nicht-kommerziell)', '', -1);
@@ -179,9 +205,35 @@ class NRGDashboardForecast extends IPSModule
     {
         parent::ApplyChanges();
         $this->SetVisualizationType(1);
-        $this->SetStatus(102);
+        $this->WriteAttributeString('MeasuredCache', ''); // Cache bei Konfig-Aenderung verwerfen
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
+
+        // Eigene Ist-Leistungsvariablen live abonnieren (Muster Prognoses
+        // Energiebilanz::ApplyChanges()) - damit der "jetzt"-Punkt/die
+        // Legende sofort reagiert, statt bis zum naechsten 5-Minuten-Tick
+        // zu warten.
+        foreach ($this->GetMessageList() as $senderID => $messages) {
+            foreach ($messages as $msg) {
+                if ($msg === VM_UPDATE) { $this->UnregisterMessage($senderID, VM_UPDATE); }
+            }
+        }
+        foreach (['ActualPV', 'ActualLoad'] as $prop) {
+            $vid = $this->ReadPropertyInteger($prop);
+            if ($vid > 0 && IPS_VariableExists($vid)) {
+                $this->RegisterReference($vid);
+                $this->RegisterMessage($vid, VM_UPDATE);
+            }
+        }
+
+        $this->SetStatus(102);
         $this->Render();
+    }
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        if ($Message === VM_UPDATE) {
+            $this->Render();
+        }
     }
 
     /**
@@ -193,7 +245,7 @@ class NRGDashboardForecast extends IPSModule
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
                        'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto'];
-        $intIdents  = ['Days', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorBackground', 'FontFamily'];
+        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
         if (in_array($Ident, $boolIdents, true)) {
@@ -343,11 +395,41 @@ class NRGDashboardForecast extends IPSModule
         // "Heute" ist immer der erste Prognosetag - Ist-Ueberlagerung dort
         // zusaetzlich nach ShowActualPV/ShowActualLoad filtern (Gestern
         // behaelt seine Ist-Kurve immer, siehe Prognoses eigene Logik: dort
-        // gibt es keinen separaten Schalter fuer Gestern-Ist).
+        // gibt es keinen separaten Schalter fuer Gestern-Ist). Sind EIGENE
+        // Ist-Leistungsvariablen konfiguriert (ActualPV/ActualLoad-
+        // Property), werden pvMeas/loMeas/*KwhIst hier durch unsere EIGENE
+        // archivbasierte Berechnung ersetzt statt Prognoses mitgelieferte
+        // Werte zu uebernehmen - genau dafuer existieren PowerUnit/
+        // MeasuredCacheSec bei uns. Ohne eigene Variable bleibt, was der
+        // Vertrag mitliefert (graceful fallback, keine Pflichtkonfiguration).
+        $pvVar = $this->ReadPropertyInteger('ActualPV');
+        $loVar = $this->ReadPropertyInteger('ActualLoad');
+        $today = strtotime('today');
         foreach ($out as &$d) {
-            if (($d['label'] ?? '') === 'heute') {
-                if (!$showActualPV) { $d['pvMeas'] = null; }
-                if (!$showActualLoad) { $d['loMeas'] = null; }
+            $isYesterday = ($d['label'] ?? '') === 'gestern';
+            $isToday     = ($d['label'] ?? '') === 'heute';
+            if (!$isYesterday && !$isToday) { continue; }
+            $start = $isYesterday ? strtotime('yesterday') : $today;
+
+            if ($showPV && $pvVar > 0 && $d['pv'] !== null) {
+                $n = count($d['pv']['p50']);
+                $m = $this->measuredCached('pv', $pvVar, $n, $start);
+                if (is_array($m)) {
+                    $d['pvKwhIst'] = $this->sumKwh($m, $n);
+                    $d['pvMeas']   = ($isYesterday || $showActualPV) ? $m : null;
+                }
+            } elseif ($isToday && !$showActualPV) {
+                $d['pvMeas'] = null;
+            }
+            if ($showLoad && $loVar > 0 && $d['load'] !== null) {
+                $n = count($d['load']['p50']);
+                $m = $this->measuredCached('load', $loVar, $n, $start);
+                if (is_array($m)) {
+                    $d['loKwhIst'] = $this->sumKwh($m, $n);
+                    $d['loMeas']   = ($isYesterday || $showActualLoad) ? $m : null;
+                }
+            } elseif ($isToday && !$showActualLoad) {
+                $d['loMeas'] = null;
             }
         }
         unset($d);
@@ -361,9 +443,17 @@ class NRGDashboardForecast extends IPSModule
             'hasData'    => $hasData,
             'message'    => $hasData ? '' : (string) ($data['message'] ?? 'Keine Prognosedaten'),
             'days'       => $out,
-            'actualPV'   => $showPV   ? ($data['actualPV']   ?? null) : null,
-            'actualLoad' => $showLoad ? ($data['actualLoad'] ?? null) : null,
+            'actualPV'   => $showPV   ? $this->actualValue('ActualPV', $pvVar, $data)   : null,
+            'actualLoad' => $showLoad ? $this->actualValue('ActualLoad', $loVar, $data) : null,
         ];
+    }
+
+    /** Eigene Ist-Leistungsvariable bevorzugt, sonst Prognoses mitgelieferter Momentanwert. */
+    private function actualValue(string $prop, int $vid, array $data)
+    {
+        if ($vid > 0) { return $this->readActual($prop); }
+        $key = ($prop === 'ActualPV') ? 'actualPV' : 'actualLoad';
+        return $data[$key] ?? null;
     }
 
     private function filterDay(array $d, bool $showPV, bool $showLoad): array
@@ -379,6 +469,188 @@ class NRGDashboardForecast extends IPSModule
             $d['loKwhIst'] = null;
         }
         return $d;
+    }
+
+    // -------------------------------------------------------------------
+    // Eigene Ist-Leistungsvariablen: archivbasierte Berechnung (1:1 aus
+    // Prognoses Energiebilanz uebernommen, siehe deren PowerUnit/
+    // MeasuredCacheSec/measuredCached()/readMeasured()/measuredFine()) -
+    // unabhaengig von Prognoses eigener ActualPV/ActualLoad-Konfiguration.
+    // -------------------------------------------------------------------
+
+    /** Momentane Leistung (W) einer Ist-Wert-Variablen; null wenn unkonfiguriert. */
+    private function readActual(string $prop)
+    {
+        $vid = $this->ReadPropertyInteger($prop);
+        if ($vid <= 0 || !IPS_VariableExists($vid)) { return null; }
+        return (float) GetValue($vid) * $this->varPowerFactor($vid);
+    }
+
+    /** Faktor zur Umrechnung nach W: 0=W, 1=kW, 2=automatisch je Variable. */
+    private function varPowerFactor(int $vid): float
+    {
+        $mode = (int) $this->GetValue('PowerUnit');
+        if ($mode === 0) { return 1.0; }
+        if ($mode === 1) { return 1000.0; }
+        if (isset($this->unitCache[$vid])) { return $this->unitCache[$vid]; }
+        $f = $this->autoPowerFactor($vid);
+        $this->unitCache[$vid] = $f;
+        return $f;
+    }
+
+    /**
+     * Automatische Einheiten-Erkennung: 1) Profil-Suffix ("W"/"kW"),
+     * 2) Groessenordnung der Tagesmaxima (letzte 7 Tage, < 100 -> kW), 3) W.
+     */
+    private function autoPowerFactor(int $vid): float
+    {
+        $v    = IPS_GetVariable($vid);
+        $prof = ($v['VariableCustomProfile'] !== '') ? $v['VariableCustomProfile'] : $v['VariableProfile'];
+        if ($prof !== '' && IPS_VariableProfileExists($prof)) {
+            $suffix = strtolower(trim(IPS_GetVariableProfile($prof)['Suffix']));
+            if ($suffix === 'kw') { return 1000.0; }
+            if ($suffix === 'w')  { return 1.0; }
+            if ($suffix === 'mw') { return 1000000.0; }
+        }
+        $aid = $this->getArchiveID();
+        if ($aid > 0) {
+            $rows = @AC_GetAggregatedValues($aid, $vid, 1, strtotime('-7 days'), time(), 0);
+            if (is_array($rows) && count($rows) > 0) {
+                $max = 0.0;
+                foreach ($rows as $r) { $max = max($max, (float) $r['Max']); }
+                if ($max > 0 && $max < 100) { return 1000.0; }
+            }
+        }
+        return 1.0;
+    }
+
+    /** Ist-Tagessumme (kWh bis jetzt) aus einem Slot-Profil (Ø-W je Slot). */
+    private function sumKwh($arr, int $n)
+    {
+        if (!is_array($arr) || $n <= 0) { return null; }
+        $hoursPerSlot = 24.0 / $n;
+        $sum = 0.0; $any = false;
+        foreach ($arr as $v) { if ($v !== null) { $sum += (float) $v; $any = true; } }
+        return $any ? $sum * $hoursPerSlot / 1000.0 : null;
+    }
+
+    /**
+     * Wie readMeasured(), aber mit Cache: integriert den Ist-Verlauf nur
+     * alle MeasuredCacheSec Sekunden neu (Archiv-Zugriff), dazwischen aus
+     * dem Attribut. Der "jetzt"-Punkt/Legendenwert (readActual()) bleibt
+     * davon unberuehrt (live).
+     */
+    private function measuredCached(string $key, int $vid, int $slots, int $start)
+    {
+        $today   = strtotime('today');
+        $dateStr = date('Y-m-d', $start);
+        $cKey    = $key . '_' . $dateStr;
+        // Abgeschlossene Tage aendern sich nicht mehr -> laenger cachen.
+        $ttl     = ($start < $today) ? 21600 : max(15, (int) $this->GetValue('MeasuredCacheSec'));
+
+        $cache = json_decode($this->ReadAttributeString('MeasuredCache'), true);
+        if (!is_array($cache)) { $cache = []; }
+
+        $e = $cache[$cKey] ?? null;
+        if (is_array($e)
+            && (int) ($e['vid'] ?? 0) === $vid
+            && (int) ($e['slots'] ?? 0) === $slots
+            && (time() - (int) ($e['ts'] ?? 0)) < $ttl) {
+            return $e['data'];
+        }
+
+        $data = $this->readMeasured($vid, $slots, $start);
+        $cache[$cKey] = ['ts' => time(), 'vid' => $vid, 'slots' => $slots, 'data' => $data];
+        $this->WriteAttributeString('MeasuredCache', json_encode($cache));
+        return $data;
+    }
+
+    private function readMeasured(int $vid, int $slots, int $start)
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) { return null; }
+        $aid = $this->getArchiveID();
+        if ($aid === 0) { return null; }
+
+        $f = $this->varPowerFactor($vid);
+
+        // 60 min: stuendliches Aggregat (exakt, leichtgewichtig).
+        if ($slots <= 24) {
+            $rows = AC_GetAggregatedValues($aid, $vid, 0, $start, $start + 86400 - 1, 0);
+            if (!is_array($rows) || count($rows) === 0) { return null; }
+            $out = array_fill(0, $slots, null);
+            foreach ($rows as $r) {
+                $h = (int) date('G', $r['TimeStamp']);
+                if ($h >= 0 && $h < $slots) { $out[$h] = (float) $r['Avg'] * $f; }
+            }
+            return $out;
+        }
+
+        // 30/15 min: zeitgewichtet aus den Rohwerten (keine Treppenstufen).
+        $fine = $this->measuredFine($aid, $vid, $start, $slots);
+        if (is_array($fine) && $f !== 1.0) {
+            foreach ($fine as $i => $v) { if ($v !== null) { $fine[$i] = $v * $f; } }
+        }
+        return $fine;
+    }
+
+    /**
+     * Gemessenes Slot-Profil (Tag bis "jetzt" bzw. voller Tag bei Gestern)
+     * zeitgewichtet aus den Rohwerten: jeder geloggte Wert gilt bis zum
+     * naechsten Wechsel, Oe-Leistung je Slot = Sum v*dt / Sum dt.
+     * Zukuenftige Slots = null.
+     */
+    private function measuredFine(int $aid, int $vid, int $start, int $slots)
+    {
+        $until   = min($start + 86400, time());
+        $slotSec = 86400.0 / $slots;
+
+        $carry = null;
+        $pre = AC_GetLoggedValues($aid, $vid, 0, $start - 1, 1);
+        if (is_array($pre) && count($pre) > 0) { $carry = (float) $pre[0]['Value']; }
+
+        $rows = AC_GetLoggedValues($aid, $vid, $start, $until, 0);
+        if (!is_array($rows)) { $rows = []; }
+        usort($rows, function ($a, $b) { return $a['TimeStamp'] <=> $b['TimeStamp']; });
+
+        $points = [];
+        $first  = ($carry !== null) ? $carry : (count($rows) > 0 ? (float) $rows[0]['Value'] : null);
+        $points[] = ['t' => $start, 'v' => $first];
+        foreach ($rows as $r) {
+            $t = (int) $r['TimeStamp'];
+            if ($t > $start && $t <= $until) { $points[] = ['t' => $t, 'v' => (float) $r['Value']]; }
+        }
+        if ($first === null && count($points) <= 1) { return null; }
+
+        $sumW = array_fill(0, $slots, 0.0);
+        $sumS = array_fill(0, $slots, 0.0);
+        $cnt  = count($points);
+        for ($p = 0; $p < $cnt; $p++) {
+            $v = $points[$p]['v'];
+            if ($v === null) { continue; }
+            $t0 = $points[$p]['t'];
+            $t1 = ($p + 1 < $cnt) ? $points[$p + 1]['t'] : $until;
+            while ($t0 < $t1) {
+                $slot = (int) (($t0 - $start) / $slotSec);
+                if ($slot < 0 || $slot >= $slots) { break; }
+                $slotEnd = $start + ($slot + 1) * $slotSec;
+                $segEnd  = min($t1, $slotEnd);
+                $dur     = $segEnd - $t0;
+                $sumW[$slot] += $v * $dur;
+                $sumS[$slot] += $dur;
+                $t0 = $segEnd;
+            }
+        }
+        $out = array_fill(0, $slots, null);
+        for ($s = 0; $s < $slots; $s++) {
+            if ($sumS[$s] > 0) { $out[$s] = $sumW[$s] / $sumS[$s]; }
+        }
+        return $out;
+    }
+
+    private function getArchiveID(): int
+    {
+        $ids = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+        return (count($ids) > 0) ? (int) $ids[0] : 0;
     }
 
     public function GetConfigurationForm()
@@ -458,6 +730,8 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('ShowActualLoad', false);
         $this->SetValue('ShowYesterday', false);
         $this->SetValue('Days', self::DEF_DAYS);
+        $this->SetValue('PowerUnit', 2);
+        $this->SetValue('MeasuredCacheSec', 120);
         $this->SetValue('ChartEngine', 0);
         $this->SetValue('ColorPV', self::DEF_PV);
         $this->SetValue('ColorLoad', self::DEF_LOAD);
