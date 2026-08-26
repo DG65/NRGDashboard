@@ -43,6 +43,11 @@
           "type": "SelectVariable",
           "name": "ActualLoad",
           "caption": "Ist-Hausverbrauch (W)"
+        },
+        {
+          "type": "Button",
+          "caption": "Darstellung auf Standard zurücksetzen",
+          "onClick": "NRGDASHFC_ResetStyle($id);"
         }
       ]
     }
