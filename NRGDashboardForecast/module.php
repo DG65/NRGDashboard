@@ -16,14 +16,22 @@ declare(strict_types=1);
  * sie derzeit von Prognose bereit steht, kein aehnlich oder ungefaehr - ich
  * moechte das absolut 1:1 Abbild." module.html ist deshalb eine wortgetreue
  * Kopie von Prognose/Energiebilanz/module.html (reines HTML/CSS/JS, kein
- * PHP-Bezug). Dieses module.php baut denselben Payload wie Prognoses
- * GetFullUpdateMessage() (Stil-Felder + hasData/message/days/actualPV/
- * actualLoad), nur dass der Datenanteil ueber den bereits bestehenden
- * EFTILE_GetDaysData()-Vertrag kommt (liefert IMMER den vollen Umfang,
- * inkl. Gestern + Ist-Ueberlagerung) und hier lokal nach unseren EIGENEN
- * Doppelpfeil-Einstellungen (Days/ShowYesterday/ShowActualPV/...)
- * zurechtgeschnitten wird - die eigentliche Berechnung (k-NN-Prognose,
- * Perzentile, Ist-Integration aus dem Archiv) bleibt bei Prognose.
+ * PHP-Bezug).
+ *
+ * Instanzformular ebenfalls 1:1 (Dietmar, 26.08.2026, zum Vergleichs-
+ * Screenshot: "Da fehlt aber noch etwas. Das hier ist die Referenz von
+ * Prognose." -> explizit bestaetigt: zwei getrennte Instanzfelder statt
+ * einer zusammengefassten Energiebilanz-Instanz): dieses module.php liest
+ * PVForecast/LoadForecast deshalb DIREKT (PVSource/LoadSource-Properties,
+ * ReadSeries()/snapshotToDay(), 1:1 aus Prognoses eigenem buildDaysData()
+ * uebernommen) statt ueber EFTILE_GetDaysData() zu gehen - genau wie
+ * Prognoses Energiebilanz es selbst tut. Baut denselben Payload wie
+ * Prognoses GetFullUpdateMessage() (Stil-Felder + hasData/message/days/
+ * actualPV/actualLoad), hier lokal nach unseren EIGENEN Doppelpfeil-
+ * Einstellungen (Days/ShowYesterday/ShowActualPV/...) zurechtgeschnitten -
+ * die Prognoseberechnung selbst (k-NN, Perzentile) bleibt bei PVForecast/
+ * LoadForecast, die Ist-Integration aus dem Archiv uebernehmen wir jetzt
+ * ueber eigene ActualPV/ActualLoad-Variablen komplett selbst.
  */
 class NRGDashboardForecast extends IPSModule
 {
@@ -31,7 +39,8 @@ class NRGDashboardForecast extends IPSModule
     // (autoPowerFactor()) - 1:1 Muster aus Prognoses Energiebilanz.
     private $unitCache = [];
 
-    private const FORECAST_GUID = '{481CBE19-C8D9-4B72-B13F-0D249006B709}';
+    private const SOURCE_PV   = '{257DD4E8-9705-462E-89FC-56D0A1038353}'; // PVForecast
+    private const SOURCE_LOAD = '{DC5AD508-507F-40EA-8630-0959AED83050}'; // LoadForecast
 
     private const MAX_OFFSET = 4; // heute + 4 weitere Tage, deckungsgleich mit Prognose
 
@@ -58,20 +67,25 @@ class NRGDashboardForecast extends IPSModule
         '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
         'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel ueber den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',
         'Eigene Ist-Leistungsvariablen (Konsole: "Ist-Werte") mit eigener Einheiten-Erkennung und Archiv-Cache-Intervall - unabhaengig von Prognoses eigener Konfiguration.',
+        'Datenquelle jetzt zwei getrennte Felder (PV-Prognose-/Last-Prognose-Instanz) statt einer zusammengefassten Energiebilanz-Instanz, 1:1 wie in Prognoses eigenem Formular - bei genau je einer installierten Instanz weiterhin automatisch erkannt.',
     ];
 
     public function Create()
     {
         parent::Create();
 
-        $this->RegisterPropertyInteger('ForecastInstance', 0);
+        // Reine Verdrahtung (Quell-/Variablenauswahl) bleibt Property - nur
+        // die Konsole bietet SelectInstance/SelectVariable, eine
+        // Doppelpfeil-Variable kann das nicht abbilden (Dashboard-Muster,
+        // 1:1 wie Prognoses eigenes Energiebilanz-Formular: PVSource +
+        // LoadSource statt einer zusammengefassten Energiebilanz-Instanz).
+        $this->RegisterPropertyInteger('PVSource', 0);
+        $this->RegisterPropertyInteger('LoadSource', 0);
         // Eigene Ist-Leistungsvariablen (Dietmar, 26.08.2026: "hinter dem
         // Doppelpfeil fehlen noch Einheit der Ist-Leistungsvariablen und
         // Archiv-Cache" - das ergibt nur Sinn, wenn wir den gemessenen
         // Verlauf SELBST aus dem Archiv lesen, statt uns auf Prognoses
-        // eigene ActualPV/ActualLoad-Konfiguration zu verlassen). Bewusst
-        // Property statt Doppelpfeil-Variable: nur die Konsole bietet
-        // SelectVariable (Dashboard-Formularmuster).
+        // eigene ActualPV/ActualLoad-Konfiguration zu verlassen).
         $this->RegisterPropertyInteger('ActualPV', 0);
         $this->RegisterPropertyInteger('ActualLoad', 0);
         $this->RegisterAttributeString('MeasuredCache', '');
@@ -79,7 +93,10 @@ class NRGDashboardForecast extends IPSModule
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
 
-        $this->RegisterTimer('Refresh', 0, 'NRGDASHFC_Render($_IPS[\'TARGET\']);');
+        // Kein eigener Timer mehr (1:1 wie Prognoses Energiebilanz): wir
+        // lesen PVF_Today/LFC_Today & Co. jetzt direkt und reagieren rein
+        // ereignisgesteuert auf deren VM_UPDATE (siehe ApplyChanges()),
+        // statt archivbasiert alle 5 Minuten zu pollen.
 
         // Alle Darstellungseinstellungen als echte Instanz-Variablen statt
         // Formular-Properties (1:1 aus Prognoses Energiebilanz uebernommen,
@@ -206,15 +223,29 @@ class NRGDashboardForecast extends IPSModule
         parent::ApplyChanges();
         $this->SetVisualizationType(1);
         $this->WriteAttributeString('MeasuredCache', ''); // Cache bei Konfig-Aenderung verwerfen
-        $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
 
-        // Eigene Ist-Leistungsvariablen live abonnieren (Muster Prognoses
-        // Energiebilanz::ApplyChanges()) - damit der "jetzt"-Punkt/die
-        // Legende sofort reagiert, statt bis zum naechsten 5-Minuten-Tick
-        // zu warten.
+        // Rein ereignisgesteuert (1:1 Muster Prognoses Energiebilanz::
+        // ApplyChanges()): PVF_Today/LFC_Today & Co. der aufgeloesten
+        // Quellen sowie die eigenen Ist-Leistungsvariablen live abonnieren.
         foreach ($this->GetMessageList() as $senderID => $messages) {
             foreach ($messages as $msg) {
                 if ($msg === VM_UPDATE) { $this->UnregisterMessage($senderID, VM_UPDATE); }
+            }
+        }
+
+        $found = false;
+        $pv = $this->ResolveSource(self::SOURCE_PV, 'PVSource');
+        if ($pv > 0) {
+            foreach (['PVF_Today', 'PVF_Tomorrow', 'PVF_DayAfter', 'PVF_Day3', 'PVF_Day4'] as $ident) {
+                $vid = @IPS_GetObjectIDByIdent($ident, $pv);
+                if ($vid !== false && $vid > 0) { $this->RegisterReference($vid); $this->RegisterMessage($vid, VM_UPDATE); $found = true; }
+            }
+        }
+        $load = $this->ResolveSource(self::SOURCE_LOAD, 'LoadSource');
+        if ($load > 0) {
+            foreach (['LFC_Today', 'LFC_Tomorrow', 'LFC_DayAfter', 'LFC_Day3', 'LFC_Day4'] as $ident) {
+                $vid = @IPS_GetObjectIDByIdent($ident, $load);
+                if ($vid !== false && $vid > 0) { $this->RegisterReference($vid); $this->RegisterMessage($vid, VM_UPDATE); $found = true; }
             }
         }
         foreach (['ActualPV', 'ActualLoad'] as $prop) {
@@ -225,7 +256,7 @@ class NRGDashboardForecast extends IPSModule
             }
         }
 
-        $this->SetStatus($this->ForecastInstanceID() > 0 ? 102 : 104);
+        $this->SetStatus($found ? 102 : 104);
         $this->Render();
     }
 
@@ -264,18 +295,55 @@ class NRGDashboardForecast extends IPSModule
         }
     }
 
-    /**
-     * Property zuerst (mehrere Energiebilanz-Instanzen moeglich), sonst
-     * Auto-Discovery bei genau einer gefundenen Instanz.
-     */
-    private function ForecastInstanceID(): int
+    /** Property zuerst, sonst Auto-Discovery bei genau einer gefundenen Instanz. */
+    private function ResolveSource(string $guid, string $prop): int
     {
-        $explicit = $this->ReadPropertyInteger('ForecastInstance');
-        if ($explicit > 0 && @IPS_InstanceExists($explicit)) {
-            return $explicit;
+        $configured = $this->ReadPropertyInteger($prop);
+        if ($configured > 0 && IPS_InstanceExists($configured)) { return $configured; }
+        $list = IPS_GetInstanceListByModuleID($guid);
+        return (count($list) === 1) ? (int) $list[0] : 0;
+    }
+
+    /** Liest die JSON-Prognosevariablen einer Quelle in [Tag => {p10,p50,p90,kwh}|null]. */
+    private function ReadSeries(int $src, array $idents, int $limit): array
+    {
+        $out = [];
+        for ($i = 0; $i < $limit; $i++) {
+            $out[$i] = null;
+            if ($src <= 0) { continue; }
+            $vid = @IPS_GetObjectIDByIdent($idents[$i], $src);
+            $raw = ($vid !== false && $vid > 0) ? GetValue($vid) : null;
+            $fc  = is_string($raw) ? json_decode($raw, true) : null;
+            if (!is_array($fc) || !isset($fc['p50']) || !is_array($fc['p50'])) { continue; }
+            $out[$i] = [
+                'p10' => array_map('floatval', $fc['p10'] ?? []),
+                'p50' => array_map('floatval', $fc['p50']),
+                'p90' => array_map('floatval', $fc['p90'] ?? []),
+                'kwh' => round((float) ($fc['kwh'] ?? 0), 2),
+            ];
         }
-        $ids = @IPS_GetInstanceListByModuleID(self::FORECAST_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $out;
+    }
+
+    /**
+     * Gespeicherten Prognose-Snapshot (Soll) eines Tages als Tag-Struktur.
+     * p10=p50=p90 (Snapshot hat nur den Median -> Linie ohne Band).
+     */
+    private function snapshotToDay(int $src, string $fn, string $date)
+    {
+        if ($src <= 0 || !function_exists($fn)) { return null; }
+        $snap = @$fn($src, $date);
+        if (!is_array($snap) || empty($snap['p50']) || !is_array($snap['p50'])) { return null; }
+        $p50 = array_map('floatval', $snap['p50']);
+        return ['p10' => $p50, 'p50' => $p50, 'p90' => $p50, 'kwh' => round((float) ($snap['kwh'] ?? 0), 2)];
+    }
+
+    /** Wochentag (deutsches Kuerzel) + Datum fuer einen Tages-Offset ab heute (0=heute). */
+    private function dayLabel(int $offsetDays): string
+    {
+        $ts = strtotime($offsetDays . ' days');
+        $wd = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][((int) date('N', $ts)) - 1];
+        return $wd . ' ' . date('d.m.', $ts);
     }
 
     private function FontScaleValue(): float
@@ -312,12 +380,12 @@ class NRGDashboardForecast extends IPSModule
     }
 
     // -------------------------------------------------------------------
-    // Datenanbindung: EFTILE_GetDaysData() liefert IMMER den vollen Umfang
-    // (5-Tage-Horizont inkl. Gestern + Ist-Ueberlagerung, unabhaengig von
-    // Prognoses eigenen Anzeige-Properties) - wir schneiden hier lokal nach
-    // UNSEREN Doppelpfeil-Einstellungen zurecht (Days/ShowYesterday/
-    // ShowActualPV/ShowActualLoad/ShowPV/ShowLoad), analog zu Prognoses
-    // eigenem buildDaysData($full=false)-Zweig fuer die eigene Kachel.
+    // Datenanbindung: buildFullDaysData() liest PVForecast/LoadForecast
+    // direkt und liefert IMMER den vollen Umfang (5-Tage-Horizont inkl.
+    // Gestern) - wir schneiden hier lokal nach UNSEREN Doppelpfeil-
+    // Einstellungen zurecht (Days/ShowYesterday/ShowActualPV/
+    // ShowActualLoad/ShowPV/ShowLoad), analog zu Prognoses eigenem
+    // buildDaysData($full=false)-Zweig fuer die eigene Kachel.
     // -------------------------------------------------------------------
 
     private function buildPayload(): string
@@ -339,28 +407,61 @@ class NRGDashboardForecast extends IPSModule
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
         ];
 
-        $id = $this->ForecastInstanceID();
-        $data = null;
-        if ($id > 0 && function_exists('EFTILE_GetDaysData')) {
-            $raw = @EFTILE_GetDaysData($id);
-            $data = is_string($raw) ? json_decode($raw, true) : $raw;
-        }
-
-        if (!is_array($data)) {
-            return json_encode(array_merge($style, [
-                'hasData' => false,
-                'message' => ($id <= 0) ? 'Keine Energiebilanz-Instanz gefunden' : 'Keine Prognosedaten',
-                'days'    => [],
-                'actualPV'   => null,
-                'actualLoad' => null,
-            ]));
-        }
-
-        return json_encode(array_merge($style, $this->trimToOwnSettings($data)));
+        return json_encode(array_merge($style, $this->trimToOwnSettings($this->buildFullDaysData())));
     }
 
     /**
-     * Schneidet den vollen EFTILE_GetDaysData()-Datenanteil auf UNSERE
+     * Liest PVForecast/LoadForecast direkt (1:1 aus Prognoses
+     * buildDaysData($full=true) uebernommen, siehe deren Klassendoku:
+     * immer voller 5-Tage-Horizont + Gestern, unabhaengig von unseren
+     * eigenen Doppelpfeil-Einstellungen - trimToOwnSettings() schneidet
+     * danach zurecht). Ist-Ueberlagerung kommt NICHT von hier, sondern aus
+     * unseren eigenen ActualPV/ActualLoad-Variablen (trimToOwnSettings()).
+     */
+    private function buildFullDaysData(): array
+    {
+        $pvSrc   = $this->ResolveSource(self::SOURCE_PV, 'PVSource');
+        $loadSrc = $this->ResolveSource(self::SOURCE_LOAD, 'LoadSource');
+
+        $limit = self::MAX_OFFSET + 1;
+        $pvIdents   = ['PVF_Today', 'PVF_Tomorrow', 'PVF_DayAfter', 'PVF_Day3', 'PVF_Day4'];
+        $loadIdents = ['LFC_Today', 'LFC_Tomorrow', 'LFC_DayAfter', 'LFC_Day3', 'LFC_Day4'];
+        $pvDays   = $this->ReadSeries($pvSrc,   $pvIdents,   $limit);
+        $loadDays = $this->ReadSeries($loadSrc, $loadIdents, $limit);
+
+        $labels = ['heute'];
+        for ($i = 1; $i <= self::MAX_OFFSET; $i++) { $labels[] = $this->dayLabel($i) . ' (heute +' . $i . ')'; }
+
+        $days = [];
+
+        // Gestern: Soll aus gespeichertem Snapshot (Ist kommt spaeter aus
+        // unseren eigenen ActualPV/ActualLoad-Variablen, trimToOwnSettings()).
+        $yDate = date('Y-m-d', strtotime('yesterday'));
+        $gpv = $this->snapshotToDay($pvSrc,   'PVF_GetSnapshot', $yDate);
+        $glo = $this->snapshotToDay($loadSrc, 'LFC_GetSnapshot', $yDate);
+        if ($gpv !== null || $glo !== null) {
+            $days[] = ['label' => 'gestern', 'pv' => $gpv, 'load' => $glo,
+                       'pvMeas' => null, 'loMeas' => null, 'pvKwhIst' => null, 'loKwhIst' => null];
+        }
+
+        $hasData = false;
+        for ($i = 0; $i < $limit; $i++) {
+            $pv   = $pvDays[$i]   ?? null;
+            $load = $loadDays[$i] ?? null;
+            if ($pv !== null || $load !== null) { $hasData = true; }
+            $days[] = ['label' => $labels[$i], 'pv' => $pv, 'load' => $load,
+                       'pvMeas' => null, 'loMeas' => null, 'pvKwhIst' => null, 'loKwhIst' => null];
+        }
+
+        return [
+            'hasData' => $hasData,
+            'message' => $hasData ? '' : 'Keine Prognosedaten',
+            'days'    => $days,
+        ];
+    }
+
+    /**
+     * Schneidet den vollen buildFullDaysData()-Datenanteil auf UNSERE
      * eigenen Doppelpfeil-Einstellungen zu - Gegenstueck zu Prognoses
      * buildDaysData($full=false), nur hier statt dort, weil die Berechnung
      * bei Prognose bleibt und wir nur die fertigen Tage nachtraeglich

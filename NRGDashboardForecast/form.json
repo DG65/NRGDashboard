@@ -11,7 +11,7 @@
         },
         {
           "type": "Label",
-          "caption": "Quelle: die Energiebilanz-Instanz (Prognose) wird automatisch gefunden (nur bei mehreren Instanzen manuell wählen). Die Kachel funktioniert auch mit nur einer Reihe (PV oder Verbrauch); per Schalter oder Klick auf den Legendeneintrag lässt sich jede Reihe ausblenden."
+          "caption": "Quellen: die PV- und die Lastprognose-Instanz werden automatisch gefunden (nur bei mehreren Instanzen manuell wählen). Die Kachel funktioniert auch mit nur einer Quelle; per Schalter oder Klick auf den Legendeneintrag lässt sich jede Reihe ausblenden."
         },
         {
           "type": "Label",
@@ -37,13 +37,19 @@
     },
     {
       "type": "Label",
-      "caption": "Quelle wird automatisch erkannt (genau eine Energiebilanz-Instanz). Nur bei mehreren Instanzen hier festlegen."
+      "caption": "Quellen werden automatisch erkannt (je eine PV- und Lastprognose-Instanz). Nur bei mehreren Instanzen hier festlegen."
     },
     {
       "type": "SelectInstance",
-      "name": "ForecastInstance",
-      "caption": "Energiebilanz-Instanz (Prognose)",
-      "moduleID": "{481CBE19-C8D9-4B72-B13F-0D249006B709}"
+      "name": "PVSource",
+      "caption": "PV-Prognose-Instanz (leer = automatisch)",
+      "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
+    },
+    {
+      "type": "SelectInstance",
+      "name": "LoadSource",
+      "caption": "Last-Prognose-Instanz (leer = automatisch, optional)",
+      "moduleID": "{DC5AD508-507F-40EA-8630-0959AED83050}"
     },
     {
       "type": "Label",
@@ -81,7 +87,7 @@
     {
       "code": 104,
       "icon": "inactive",
-      "caption": "Keine Energiebilanz-Instanz gefunden"
+      "caption": "Keine Prognose-Instanz gefunden"
     }
   ]
 }
