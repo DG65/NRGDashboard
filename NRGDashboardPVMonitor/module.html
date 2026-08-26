@@ -1028,7 +1028,7 @@
               itemStyle: { color: 'rgba(148,163,184,.16)' },
               // Dietmar, 27.08.2026: einzeilig, 90 Grad gegen den
               // Uhrzeigersinn gedreht statt zweizeilig waagerecht.
-              label: { show: true, position: 'inside', formatter: '{b}', rotate: 90, color: 'rgba(226,232,240,.75)', fontSize: 18 },
+              label: { show: true, position: 'inside', align: 'center', verticalAlign: 'middle', formatter: '{b}', rotate: 90, color: 'rgba(226,232,240,.75)', fontSize: 18 },
               data: [[{ xAxis: wmMs, name: 'Noch keine Datensätze der Bezugsenergie vorhanden!' }, { xAxis: wmShadeEnd }]],
             };
             var wmPrevData = (gridSeriesW.markLine && gridSeriesW.markLine.data) ? gridSeriesW.markLine.data : [];
@@ -1362,9 +1362,15 @@
         var wmBand = wmPlotBands[0];
         var wmX = chart.xAxis[0].toPixels((wmBand.from + wmBand.to) / 2, false);
         var wmY = chart.plotTop + chart.plotHeight / 2;
+        // dominant-baseline:central statt der SVG-Standard-Baseline -
+        // sonst sitzt der Ankerpunkt (wmY) auf der Schriftlinie statt der
+        // vertikalen Textmitte, was sich nach der 90-Grad-Drehung als
+        // seitlicher Versatz zeigt, der mit der Schriftgroesse waechst
+        // (Dietmars Fund, 27.08.2026, bei steigender Schriftgroesse
+        // zunehmend sichtbar geworden).
         chart.renderer.text('Noch keine Datensätze der Bezugsenergie vorhanden!', wmX, wmY)
           .css({ color: 'rgba(226,232,240,.75)', fontSize: '18px' })
-          .attr({ align: 'center', rotation: -90, zIndex: 6 })
+          .attr({ align: 'center', rotation: -90, zIndex: 6, 'dominant-baseline': 'central' })
           .add();
       }
     }
