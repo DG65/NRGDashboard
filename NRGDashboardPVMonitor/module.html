@@ -1001,6 +1001,37 @@
           if (d.gridMonthPeak.kw > barMaxE) { priceLeftAxisMax = Math.ceil(d.gridMonthPeak.kw * 1.08 * 10) / 10; }
         }
       }
+      // Archiv-Nachlauf des Netzzaehlers (MeterHub-Sitzung, 27.08.2026:
+      // Feature-Wunsch Dietmars) - Inexogy-Zaehler archivieren erst mit
+      // 15-45 Min. Verzoegerung, "gridWatermarkTs" markiert den letzten
+      // vollstaendig archivierten Datensatz. Graue Flaeche vom Wasserzeichen
+      // bis "jetzt" (bzw. Tagesende bei vergangenen Tagen) zeigt den noch
+      // nicht sicher vollstaendigen Bereich, plus eine gestrichelte Linie
+      // mit Uhrzeit-Label - an dieselbe Netzbezug-Balkenserie gehaengt wie
+      // der Monats-Spitzenwert oben, deren markLine-Eintraege deshalb
+      // zusammengefuehrt statt ueberschrieben werden.
+      if (tab === 'price' && lastData.hasGrid && lastData.gridWatermarkTs && d) {
+        var wmMs = lastData.gridWatermarkTs * 1000;
+        var wmDate = new Date(wmMs);
+        if (d.id === fmtDate(wmDate)) {
+          var gridSeriesW = series.filter(function (s) { return s.type === 'bar' && s.yAxisIndex === 0; })[0];
+          if (gridSeriesW) {
+            var wmDayEnd = new Date(wmDate); wmDayEnd.setHours(24, 0, 0, 0);
+            var wmShadeEnd = Math.min(Date.now(), wmDayEnd.getTime());
+            var wmLabel = 'Lastgang bis ' + ('0' + wmDate.getHours()).slice(-2) + ':' + ('0' + wmDate.getMinutes()).slice(-2);
+            gridSeriesW.markArea = { silent: true, itemStyle: { color: 'rgba(148,163,184,.16)' }, data: [[{ xAxis: wmMs }, { xAxis: wmShadeEnd }]] };
+            var wmPrevData = (gridSeriesW.markLine && gridSeriesW.markLine.data) ? gridSeriesW.markLine.data : [];
+            gridSeriesW.markLine = Object.assign({}, gridSeriesW.markLine, {
+              symbol: 'none', silent: true,
+              data: wmPrevData.concat([{
+                xAxis: wmMs,
+                lineStyle: { color: '#94a3b8', width: 1.5, type: 'dashed' },
+                label: { show: true, position: 'insideEndTop', color: '#94a3b8', fontSize: 10, formatter: wmLabel },
+              }]),
+            });
+          }
+        }
+      }
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
@@ -1147,6 +1178,22 @@
           if (d.gridMonthPeak.kw > barMaxHC) { priceLeftAxisMaxHC = Math.ceil(d.gridMonthPeak.kw * 1.08 * 10) / 10; }
         }
       }
+      // Archiv-Nachlauf des Netzzaehlers - Pendant zu ECharts' markArea/
+      // markLine oben (siehe dortiger Kommentar), hier als xAxis-plotBand/
+      // -plotLine.
+      var wmPlotLines = [], wmPlotBands = [];
+      if (tab === 'price' && lastData.hasGrid && lastData.gridWatermarkTs && d) {
+        var wmMsHC = lastData.gridWatermarkTs * 1000;
+        var wmDateHC = new Date(wmMsHC);
+        if (d.id === fmtDate(wmDateHC)) {
+          var wmDayEndHC = new Date(wmDateHC); wmDayEndHC.setHours(24, 0, 0, 0);
+          var wmShadeEndHC = Math.min(Date.now(), wmDayEndHC.getTime());
+          var wmLabelHC = 'Lastgang bis ' + ('0' + wmDateHC.getHours()).slice(-2) + ':' + ('0' + wmDateHC.getMinutes()).slice(-2);
+          wmPlotBands.push({ from: wmMsHC, to: wmShadeEndHC, color: 'rgba(148,163,184,.16)' });
+          wmPlotLines.push({ value: wmMsHC, color: '#94a3b8', width: 1.5, dashStyle: 'Dash', zIndex: 5,
+                              label: { text: wmLabelHC, align: 'right', style: { color: '#94a3b8', fontSize: '10px' } } });
+        }
+      }
       chart = Highcharts.chart(el, {
         // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
         // UTC statt in der Zeitzone des Browsers (live gefunden: Tooltip
@@ -1193,9 +1240,10 @@
             gridLineWidth: 1, gridLineColor: GRID_COLOR, tickInterval: 3600 * 1000,
             crosshair: { width: 1, color: 'rgba(255,255,255,.4)', dashStyle: 'Dash' },
             labels: { style: themeAxisStyle() },
-            plotLines: (tab === 'price' && d && d.id === fmtDate(new Date()))
+            plotBands: wmPlotBands,
+            plotLines: ((tab === 'price' && d && d.id === fmtDate(new Date()))
               ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }]
-              : []
+              : []).concat(wmPlotLines)
           }
         ),
         yAxis: (tab === 'price')

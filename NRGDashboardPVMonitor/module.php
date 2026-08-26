@@ -353,6 +353,26 @@ class NRGDashboardPVMonitor extends IPSModule
         return 1;
     }
 
+    /**
+     * Unix-Zeitstempel des letzten Lastgang-Datensatzes, fuer den der
+     * Netzzaehler ALLE drei Zielvariablen archiviert hat (MeterHub-Feld
+     * "archiveWatermarkTs", MHUB_GetFunctions() contractVersion 1.2) - nur
+     * bei verzoegert archivierenden Zaehlern gesetzt ("latency"==="delayed",
+     * bei Dietmar Inexogy), sonst null (Echtzeit-Zaehler brauchen keine
+     * Anzeige, siehe MeterHub-Sitzung 27.08.2026).
+     */
+    private function GridArchiveWatermarkTs(): ?int
+    {
+        foreach ($this->MeterHubAssignments() as $a) {
+            if (($a['function'] ?? '') !== 'grid' || ($a['latency'] ?? '') !== 'delayed') {
+                continue;
+            }
+            $ts = $a['archiveWatermarkTs'] ?? null;
+            return is_numeric($ts) ? (int) $ts : null;
+        }
+        return null;
+    }
+
     private function SocID(): int
     {
         $explicit = $this->readIntProperty('SocID', 0);
@@ -2287,6 +2307,15 @@ class NRGDashboardPVMonitor extends IPSModule
             'hasMpptModel' => $mpptModelUsable,
             'hasEnergyFlow' => $this->singleInverterHubID() > 0 || count($this->MeterHubAssignments()) > 0,
             'hasGrid'  => $this->GridPowerID() > 0,
+            // Netzbezug/-einspeisung stammt bei verzoegert archivierenden
+            // Zaehlern (Inexogy/MeterHub, MHUB_GetFunctions()-Feld
+            // "latency"==="delayed") mit 15-45 Min. Nachlauf aus dem
+            // Archiv - MeterHub-Sitzung, 27.08.2026: Feature-Wunsch
+            // Dietmars, diese Backfill-Grenze im Strompreis-Reiter sichtbar
+            // zu machen, statt den Lastgang implizit als "bis jetzt"
+            // vollstaendig erscheinen zu lassen. null bei Echtzeit-Zaehlern
+            // (kein Nachlauf, keine Anzeige noetig).
+            'gridWatermarkTs' => $this->GridArchiveWatermarkTs(),
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,
