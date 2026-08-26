@@ -7,49 +7,81 @@
       "items": [
         {
           "type": "Label",
-          "caption": "1:1-Übernahme der Darstellung von Prognoses Energiebilanz-Kachel - Übergabe an NRGDashboard als Darstellungsschicht, die Berechnung (k-NN-Prognose, Perzentile, Ist-Integration) bleibt bei Prognose."
+          "caption": "Was zeigt die Kachel: PV-Erzeugung und Verbrauch als Prognose-Kurven (P50) mit Unsicherheitsband (P10–P90) über bis zu 5 Tage — der EMS-Blick: Erzeugung gegen Verbrauch, die Lücke ist Netzbezug/Einspeisung. Hover/Touch zeigt Werte und Saldo zur Uhrzeit."
         },
         {
           "type": "Label",
-          "caption": "Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) sind direkt im WebFront einstellbar - Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
+          "caption": "Quelle: die Energiebilanz-Instanz (Prognose) wird automatisch gefunden (nur bei mehreren Instanzen manuell wählen). Die Kachel funktioniert auch mit nur einer Reihe (PV oder Verbrauch); per Schalter oder Klick auf den Legendeneintrag lässt sich jede Reihe ausblenden."
+        },
+        {
+          "type": "Label",
+          "caption": "Ist-Werte: mit den beiden Ist-Leistungsvariablen erscheinen der Momentanwert in der Legende, ein Punkt auf der Jetzt-Linie, der gemessene Tagesverlauf als gestrichelte Linie (optional) und die Ist-kWh unter den Soll-Werten. Einheit W/kW wird automatisch erkannt."
+        },
+        {
+          "type": "Label",
+          "caption": "Gestern: zeigt den Vortag mit gemessener Kurve (ganzer Tag) und der damaligen Prognose. So sieht man, wie gut die Prognose getroffen hat."
+        },
+        {
+          "type": "Label",
+          "caption": "Diagramm-Engine: ECharts (quelloffen, auch kommerziell kostenlos) oder Highcharts (nur privat/nicht-kommerziell kostenlos). Beide sehen praktisch gleich aus; die Library wird per CDN geladen (Internet im Anzeigegerät nötig). Umschaltbar über die aufgezogene Kachelansicht (Doppelpfeil), nicht hier im Formular."
+        },
+        {
+          "type": "Label",
+          "caption": "Darstellung: Linienstärke, Glättung, Band-Transparenz, Gitter, Y-Achse, Farben, Schriftart/-größe, Tage, Ist-Anzeige, Cache — alles über die aufgezogene Kachelansicht (Doppelpfeil) einstellbar, nicht hier im Formular. Der Archiv-Cache (Ist-Verlauf) reduziert die Last; Standard 120 s reicht."
+        },
+        {
+          "type": "Label",
+          "caption": "Tipp: Kachel im WebFront groß genug ziehen (Kachelgröße = sichtbarer Ausschnitt, Diagrammhöhe passt sich automatisch an)."
         }
       ]
     },
     {
-      "type": "ExpansionPanel",
-      "caption": "Datenquelle",
-      "expanded": true,
-      "items": [
-        {
-          "type": "Label",
-          "caption": "Wird automatisch gefunden, sofern genau eine Energiebilanz-Instanz installiert ist - bei mehreren bitte hier gezielt auswählen."
-        },
-        {
-          "type": "SelectInstance",
-          "name": "ForecastInstance",
-          "caption": "Energiebilanz-Instanz (Prognose)",
-          "moduleID": "{481CBE19-C8D9-4B72-B13F-0D249006B709}"
-        },
-        {
-          "type": "Label",
-          "caption": "── Ist-Werte (optional): eigene Leistungsvariablen für den gemessenen Verlauf, unabhängig von Prognoses eigener Konfiguration ──"
-        },
-        {
-          "type": "SelectVariable",
-          "name": "ActualPV",
-          "caption": "Ist-PV-Leistung (W)"
-        },
-        {
-          "type": "SelectVariable",
-          "name": "ActualLoad",
-          "caption": "Ist-Hausverbrauch (W)"
-        },
-        {
-          "type": "Button",
-          "caption": "Darstellung auf Standard zurücksetzen",
-          "onClick": "NRGDASHFC_ResetStyle($id);"
-        }
-      ]
+      "type": "Label",
+      "caption": "Quelle wird automatisch erkannt (genau eine Energiebilanz-Instanz). Nur bei mehreren Instanzen hier festlegen."
+    },
+    {
+      "type": "SelectInstance",
+      "name": "ForecastInstance",
+      "caption": "Energiebilanz-Instanz (Prognose)",
+      "moduleID": "{481CBE19-C8D9-4B72-B13F-0D249006B709}"
+    },
+    {
+      "type": "Label",
+      "caption": "── Ist-Werte (optional): eigene Leistungsvariablen für den gemessenen Verlauf, unabhängig von Prognoses eigener Konfiguration ──"
+    },
+    {
+      "type": "SelectVariable",
+      "name": "ActualPV",
+      "caption": "Ist-PV-Leistung (W)"
+    },
+    {
+      "type": "SelectVariable",
+      "name": "ActualLoad",
+      "caption": "Ist-Hausverbrauch (W)"
+    }
+  ],
+  "actions": [
+    {
+      "type": "Button",
+      "caption": "Doppelpfeil-Einstellungen auf Standard zurücksetzen",
+      "onClick": "NRGDASHFC_ResetStyle($id);"
+    },
+    {
+      "type": "Button",
+      "caption": "🔄 Übernehmen erzwingen (ohne Formularänderung)",
+      "onClick": "IPS_ApplyChanges($id); echo '✅ ApplyChanges() ausgeführt.';"
+    }
+  ],
+  "status": [
+    {
+      "code": 102,
+      "icon": "active",
+      "caption": "Aktiv"
+    },
+    {
+      "code": 104,
+      "icon": "inactive",
+      "caption": "Keine Energiebilanz-Instanz gefunden"
     }
   ]
 }

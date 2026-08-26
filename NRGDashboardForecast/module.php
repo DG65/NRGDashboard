@@ -225,7 +225,7 @@ class NRGDashboardForecast extends IPSModule
             }
         }
 
-        $this->SetStatus(102);
+        $this->SetStatus($this->ForecastInstanceID() > 0 ? 102 : 104);
         $this->Render();
     }
 
