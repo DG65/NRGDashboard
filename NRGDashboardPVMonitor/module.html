@@ -10,7 +10,12 @@
   .wrap { position: relative; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; padding: 52px 12px 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
   #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; }
-  #tabs { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; }
+  /* Animiertes Ein-/Ausklappen (Dietmar, 27.08.2026: "coole Animation") -
+     max-width statt display:none, weil display nicht animierbar ist:
+     die Leiste gleitet seitlich zu (max-width -> 0) und blendet dabei
+     aus (opacity + leichte Verschiebung). overflow:hidden verhindert
+     Umbruch/Ueberstand waehrend der Animation. */
+  #tabs { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; max-width: 220px; overflow: hidden; transition: max-width .3s ease, opacity .25s ease, transform .3s ease; }
   /* Einklappbare Reiterleiste (Dietmar, 27.08.2026: "mehr Platz für die
      Diagramme") - Pfeil-Knopf statt Hover: Touch-Geräte im WebFront haben
      kein echtes Hovern, ein Hover-Menü würde dort den ersten Tipp
@@ -21,7 +26,10 @@
   #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; }
   #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; }
   #tabsToggle:hover { opacity: 1; background: rgba(127,135,145,.22); }
-  #tabsWrap.collapsed #tabs { display: none; }
+  #tabsWrap.collapsed #tabs { max-width: 0; opacity: 0; transform: translateX(-10px); pointer-events: none; }
+  /* Pfeil dreht sich beim Umschalten mit (Teil der Animation). */
+  #tabsToggle { transition: transform .3s ease; }
+  #tabsWrap.collapsed #tabsToggle { transform: rotate(180deg); }
   button.tab { font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; opacity: .6; }
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
   button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
@@ -3456,8 +3464,17 @@
     // aendert sich), gleiches sizeChart()-Muster wie beim Fenster-Resize.
     var tabsCollapsedKey = null;
     function applyTabsCollapsed(collapsed) {
+      // Pfeilrichtung kommt aus der CSS-Rotation (Teil der Animation),
+      // kein Glyph-Tausch mehr - der wuerde die Drehung doppelt spiegeln.
       document.getElementById('tabsWrap').classList.toggle('collapsed', collapsed);
-      document.getElementById('tabsToggle').innerHTML = collapsed ? '&#9654;' : '&#9664;';
+      // Chart-Groesse NACH der Animation nachfuehren (max-width-Transition
+      // .3s, siehe CSS) - waehrenddessen aendert sich die #chartcol-Breite
+      // laufend, ein einzelner Resize am Ende reicht und flackert nicht.
+      if (chart) { setTimeout(sizeChart, 330); }
+    }
+    function setTabsCollapsed(collapsed) {
+      applyTabsCollapsed(collapsed);
+      try { if (tabsCollapsedKey) { localStorage.setItem(tabsCollapsedKey, collapsed ? '1' : '0'); } } catch (e) {}
     }
     function loadTabsCollapsed(uid) {
       tabsCollapsedKey = 'nrgdashmon_tabs_' + uid;
@@ -3466,10 +3483,7 @@
       applyTabsCollapsed(collapsed);
     }
     document.getElementById('tabsToggle').onclick = function () {
-      var collapsed = !document.getElementById('tabsWrap').classList.contains('collapsed');
-      applyTabsCollapsed(collapsed);
-      try { if (tabsCollapsedKey) { localStorage.setItem(tabsCollapsedKey, collapsed ? '1' : '0'); } } catch (e) {}
-      if (chart) { setTimeout(sizeChart, 60); }
+      setTabsCollapsed(!document.getElementById('tabsWrap').classList.contains('collapsed'));
     };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {
@@ -3516,6 +3530,11 @@
         // ausgeblendet, da hier wirkungslos.
         document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
         if (lastData.hasStromGedacht && curTab === 'tagesplan') { ensureStromGedacht(); }
+        // Nach der Reiterwahl klappt die Leiste automatisch wieder zu
+        // (Dietmar, 27.08.2026: "wenn man einen Reiter ausgewaehlt hat
+        // [soll] die Leiste wieder verschwinden") - die Leiste wird damit
+        // zum kurzlebigen Menue: Pfeil oeffnet, Auswahl schliesst.
+        setTabsCollapsed(true);
         render();
       };
     });
