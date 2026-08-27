@@ -40,6 +40,48 @@ Mehrere Module in einer Bibliothek: `NRGDashboardTile` (Hauptkachel),
 Kachel-HTML — Bedienelemente brauchen echte Instanz-Variablen mit
 `EnableAction()`.
 
+## Sommer-/Winterzeit (DST) — verbindliche Regel (27.08.2026)
+
+Kalendertag-Grenzen **niemals** über eine feste Sekundenzahl berechnen
+(`$start + 86400`, `Date.now() - N*86400000` o.ä.) — an den zwei
+DST-Umstellungstagen im Jahr hat ein Kalendertag real 23 (März) oder 25
+Stunden (Oktober), nicht 24. Eine solche Rechnung landet ab dem
+nächsten DST-Wechsel dauerhaft eine Stunde neben der echten Mitternacht
+(nicht nur am Umstellungstag selbst) — bei uns live gefunden in
+`BuildDayData()`/`PriceDaySlots()`/`SunRange()`/`BuildBalancePeriod()`
+(PVMonitor), identisch in WPMonitor, plus `readMeasured()`/
+`measuredFine()` in Forecast (Commit `868f410`, verbundweite
+DST-Prüfung).
+
+**Stattdessen:**
+- PHP: `strtotime('+1 day', $ts)` / `strtotime('-N day', $ts)` statt
+  `$ts ± N*86400` für Kalendertag-Arithmetik (verifiziert für
+  Europe/Berlin: 82800s im März, 90000s im Oktober).
+- JS: `Date`-Feldmutation (`setDate()`/`setHours(0,0,0,0)`) statt
+  `Date.now() ± N*86400000`.
+- Reine Sekunden-Deltas zwischen zwei Unix-Timestamps (Cache-TTL,
+  Staleness-Checks, Watchdog-Timeouts) sind NICHT betroffen — die
+  brauchen keine Kalendertag-Bedeutung und bleiben wie gehabt.
+- Vor jeder neuen Tages-/Wochen-/Monats-Auswertung (Archiv-Queries,
+  Slot-Raster, Achsen-Grenzen) kurz prüfen: rechnet das über einen
+  echten Kalendertag? Dann diese Regel anwenden.
+
+Ausnahme: `NRGDashboardForecast/module.html`s durchgehende 24-Einheiten-
+Stunden-Achse (`di*24`) ist eine bewusste 1:1-Kopie von Prognoses
+eigenem Code (Dietmars expliziter Wunsch) und wird NICHT einseitig
+gefixt — Fund an Prognose gemeldet, wird bei Bedarf im nächsten Sync
+übernommen.
+
+**Verwandte, aber andere Falle — Highcharts-Tooltip-Zeit (kein DST-Bug,
+permanenter 2h-Offset):** `Highcharts.dateFormat()` ist eine GLOBALE
+Funktion und ignoriert das chart-eigene `time: { useUTC: false }` — die
+Achse selbst zeigt korrekt lokale Zeit, ein per `Highcharts.dateFormat()`
+formatierter Tooltip-Text landet aber 2 Stunden (CEST-Offset) daneben.
+Gefunden zuerst in PVMonitor (28.07.2026), wiedergefunden in WPMonitor
+(27.08.2026, Commit `1b75731`). Fix: natives `new Date(this.x)` +
+manuelle Formatierung statt `Highcharts.dateFormat()` im
+Tooltip-Formatter jeder Highcharts-Instanz.
+
 ## Branch-Modell
 
 Arbeitsbranch `ems-integration` (verbundweit identisch), Merge nach
