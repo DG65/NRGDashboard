@@ -224,6 +224,15 @@ class NRGDashboardForecast extends IPSModule
         $this->SetVisualizationType(1);
         $this->WriteAttributeString('MeasuredCache', ''); // Cache bei Konfig-Aenderung verwerfen
 
+        // Standalone-Webseite fuer IPSView/Browser (WebView/Popup) - Muster
+        // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
+        // ... auch so vorbereiten, dass man sie in IPSView einbinden kann").
+        if (IPS_GetKernelRunlevel() === KR_READY) {
+            $this->RegisterHook('/hook/nrgdashforecast' . $this->InstanceID);
+        } else {
+            $this->RegisterMessage(0, IPS_KERNELMESSAGE);
+        }
+
         // Rein ereignisgesteuert (1:1 Muster Prognoses Energiebilanz::
         // ApplyChanges()): PVF_Today/LFC_Today & Co. der aufgeloesten
         // Quellen sowie die eigenen Ist-Leistungsvariablen live abonnieren.
@@ -262,9 +271,40 @@ class NRGDashboardForecast extends IPSModule
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
+        if ($Message === IPS_KERNELMESSAGE && isset($Data[0]) && $Data[0] === KR_READY) {
+            $this->ApplyChanges();
+            return;
+        }
         if ($Message === VM_UPDATE) {
             $this->Render();
         }
+    }
+
+    /** WebHook beim WebHook-Control registrieren (Standard-Muster, 1:1 aus Prognoses Energiebilanz). */
+    private function RegisterHook(string $WebHook): void
+    {
+        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
+        if (count($ids) === 0) {
+            return;
+        }
+        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
+        if (!is_array($hooks)) {
+            $hooks = [];
+        }
+        foreach ($hooks as $index => $hook) {
+            if ($hook['Hook'] === $WebHook) {
+                if ((int) $hook['TargetID'] === $this->InstanceID) {
+                    return;
+                }
+                $hooks[$index]['TargetID'] = $this->InstanceID;
+                IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
+                IPS_ApplyChanges($ids[0]);
+                return;
+            }
+        }
+        $hooks[] = ['Hook' => $WebHook, 'TargetID' => $this->InstanceID];
+        IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
+        IPS_ApplyChanges($ids[0]);
     }
 
     /**
@@ -377,6 +417,27 @@ class NRGDashboardForecast extends IPSModule
         $html = file_get_contents(__DIR__ . '/module.html');
         $html .= '<script>handleMessage(' . $this->buildPayload() . ');</script>';
         return $html;
+    }
+
+    /**
+     * Liefert die Kachel als eigenstaendige Webseite (fuer IPSView-WebView/
+     * Popup oder jeden Browser). Aufruf: /hook/nrgdashforecast<InstanzID>.
+     * Mit ?json=1 werden nur die Daten geliefert (fuer die Auto-Aktualisierung).
+     */
+    public function ProcessHookData()
+    {
+        if (isset($_GET['json'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo $this->buildPayload();
+            return;
+        }
+        header('Content-Type: text/html; charset=utf-8');
+        $html = file_get_contents(__DIR__ . '/module.html');
+        $html .= '<script>handleMessage(' . $this->buildPayload() . ');'
+               . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
+               . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
+               . '.catch(function(){});},30000);</script>';
+        echo $html;
     }
 
     // -------------------------------------------------------------------
@@ -766,7 +827,8 @@ class NRGDashboardForecast extends IPSModule
 
     public function GetConfigurationForm()
     {
-        $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        $raw = str_replace('%%HOOK%%', '/hook/nrgdashforecast' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
+        $form = json_decode($raw, true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }

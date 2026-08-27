@@ -12,6 +12,10 @@
         {
           "type": "Label",
           "caption": "Bewusst begrenzter erster Schritt: EMS kennt nur seine eigenen gefundenen Partner, nicht das vollständige Beziehungsgeflecht des gesamten Verbunds (z. B. direkte Verbindungen zwischen anderen Modulen). Ein vollständigerer Graph würde einen zusätzlichen, noch abzustimmenden Vertrag brauchen."
+        },
+        {
+          "type": "Label",
+          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
         }
       ]
     },

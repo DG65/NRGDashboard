@@ -16,6 +16,10 @@
         {
           "type": "Label",
           "caption": "Weder HeishaMon noch WPHub? Unter „Manuelle Datenanbindung“ weiter unten lassen sich eigene, bereits vorhandene Variablen auf dieselben Felder verknüpfen."
+        },
+        {
+          "type": "Label",
+          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
         }
       ]
     },
