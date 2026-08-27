@@ -140,8 +140,8 @@
     100.0% { opacity: 1.00; transform: scale(1.00); clip-path: polygon(0.0% 0.0%, 20.0% 0.0%, 40.0% 0.0%, 60.0% 0.0%, 80.0% 0.0%, 100.0% 0.0%, 100.0% 20.0%, 100.0% 40.0%, 100.0% 60.0%, 100.0% 80.0%, 100.0% 100.0%, 80.0% 100.0%, 60.0% 100.0%, 40.0% 100.0%, 20.0% 100.0%, 0.0% 100.0%, 0.0% 80.0%, 0.0% 60.0%, 0.0% 40.0%, 0.0% 20.0%); }
   }
   [data-anim="scale"] #tabs { transform-origin: -18px 12px; }
-  [data-anim="scale"]:not(.collapsed) #tabs { animation: cornerSuckOut .75s cubic-bezier(.35,.6,.3,1); }
-  [data-anim="scale"].collapsed #tabs { transform: scale(.12); opacity: 0; animation: cornerSuckIn .7s cubic-bezier(.5,.1,.5,.9) forwards; transition: visibility 0s linear .7s; }
+  [data-anim="scale"]:not(.collapsed) #tabs { animation: cornerSuckOut .5s linear; }
+  [data-anim="scale"].collapsed #tabs { transform: scale(.12); opacity: 0; animation: cornerSuckIn .45s linear forwards; transition: visibility 0s linear .45s; }
   /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
   [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
   [data-anim="blur"].collapsed #tabs { filter: blur(14px); transform: scale(1.06); opacity: 0; transition: filter .28s ease-in, transform .28s ease-in, opacity .22s ease-in, visibility 0s linear .28s; }
