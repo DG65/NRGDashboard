@@ -9,26 +9,35 @@
   html, body { margin: 0; height: 100%; background: transparent; }
   .wrap { position: relative; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; padding: 52px 12px 10px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
-  #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; }
-  /* Animiertes Ein-/Ausklappen (Dietmar, 27.08.2026: "coole Animation") -
-     max-width statt display:none, weil display nicht animierbar ist:
-     die Leiste gleitet seitlich zu (max-width -> 0) und blendet dabei
-     aus (opacity + leichte Verschiebung). overflow:hidden verhindert
-     Umbruch/Ueberstand waehrend der Animation. */
-  #tabs { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; max-width: 220px; overflow: hidden; transition: max-width .3s ease, opacity .25s ease, transform .3s ease; }
-  /* Einklappbare Reiterleiste (Dietmar, 27.08.2026: "mehr Platz für die
-     Diagramme") - Pfeil-Knopf statt Hover: Touch-Geräte im WebFront haben
-     kein echtes Hovern, ein Hover-Menü würde dort den ersten Tipp
-     schlucken. Eingeklappt verschwindet die Leiste komplett (Dietmars
-     Wahl), nur der Aufklapp-Pfeil bleibt; Zustand je Gerät in
-     localStorage (tabsCollapsed-Schlüssel, uid-namespaced wie die
-     Legenden-Sichtbarkeit). */
+  #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; position: relative; }
+  /* Reiterleiste als OVERLAY ueber dem stehenden Diagramm (Dietmar,
+     27.08.2026: "Waehrend der Animation macht das Diagramm keine gute
+     Figur und zappelt am rechten Rand rum. Wie waere es, wenn die Leiste
+     sich ueber das stehende Diagramm schieben wuerde?") - #tabs ist
+     absolut positioniert und nimmt KEINEN Layoutplatz mehr ein, das
+     Diagramm behaelt beim Ein-/Ausblenden exakt seine Groesse (kein
+     Resize, kein Zappeln). Nur der schmale Pfeil-Knopf bleibt im
+     Layoutfluss. Milchglas-Optik (backdrop-filter) macht die Leiste auf
+     hellem wie dunklem Kachelhintergrund lesbar, ohne das Diagramm
+     dahinter ganz zu verdecken.
+     Animation (Dietmars Wunsch nach etwas "modernem/hippem"): federnder
+     Einschub mit Overshoot (cubic-bezier laeuft kurz uebers Ziel hinaus
+     und schwingt zurueck) + gestaffeltes Einfliegen der einzelnen
+     Reiter (jeder Knopf 30ms nach seinem Vorgaenger, transition-delay
+     je nth-child) - beim Schliessen ohne Staffelung, damit es knackig
+     zugeht. */
   #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; }
-  #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 20; padding: 8px; border-radius: 12px; background: rgba(127,135,145,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; transition: transform .38s cubic-bezier(.34,1.56,.64,1), opacity .22s ease, visibility 0s linear 0s; }
+  #tabsWrap.collapsed #tabs { transform: translateX(-24px) scale(.92); opacity: 0; pointer-events: none; visibility: hidden; transition: transform .25s ease-in, opacity .18s ease-in, visibility 0s linear .25s; }
+  /* Gestaffeltes Einfliegen der Reiter beim Oeffnen. */
+  #tabs .tab { transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease; }
+  #tabsWrap.collapsed #tabs .tab { transform: translateX(-14px); opacity: 0; transition: none; }
+  #tabs .tab:nth-child(1) { transition-delay: .03s; } #tabs .tab:nth-child(2) { transition-delay: .06s; }
+  #tabs .tab:nth-child(3) { transition-delay: .09s; } #tabs .tab:nth-child(4) { transition-delay: .12s; }
+  #tabs .tab:nth-child(5) { transition-delay: .15s; } #tabs .tab:nth-child(6) { transition-delay: .18s; }
+  #tabs .tab:nth-child(7) { transition-delay: .21s; } #tabs .tab:nth-child(8) { transition-delay: .24s; }
+  #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; transition: transform .38s cubic-bezier(.34,1.56,.64,1); }
   #tabsToggle:hover { opacity: 1; background: rgba(127,135,145,.22); }
-  #tabsWrap.collapsed #tabs { max-width: 0; opacity: 0; transform: translateX(-10px); pointer-events: none; }
-  /* Pfeil dreht sich beim Umschalten mit (Teil der Animation). */
-  #tabsToggle { transition: transform .3s ease; }
   #tabsWrap.collapsed #tabsToggle { transform: rotate(180deg); }
   button.tab { font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; opacity: .6; }
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
@@ -3466,11 +3475,10 @@
     function applyTabsCollapsed(collapsed) {
       // Pfeilrichtung kommt aus der CSS-Rotation (Teil der Animation),
       // kein Glyph-Tausch mehr - der wuerde die Drehung doppelt spiegeln.
+      // KEIN sizeChart() mehr noetig: die Leiste liegt als Overlay UEBER
+      // dem Diagramm (position:absolute, siehe CSS), das Diagramm behaelt
+      // beim Ein-/Ausblenden exakt seine Groesse.
       document.getElementById('tabsWrap').classList.toggle('collapsed', collapsed);
-      // Chart-Groesse NACH der Animation nachfuehren (max-width-Transition
-      // .3s, siehe CSS) - waehrenddessen aendert sich die #chartcol-Breite
-      // laufend, ein einzelner Resize am Ende reicht und flackert nicht.
-      if (chart) { setTimeout(sizeChart, 330); }
     }
     function setTabsCollapsed(collapsed) {
       applyTabsCollapsed(collapsed);
