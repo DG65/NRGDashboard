@@ -62,23 +62,29 @@
   [data-anim="flip"].collapsed #tabs .tab { transform: rotateY(-88deg); opacity: 0; transition: transform .25s ease-in, opacity .2s ease-in; }
   /* 2 "scale": Panel waechst aus dem Pfeil-Knopf heraus (Kontextmenue-Stil). */
   [data-anim="scale"] #tabs { transform-origin: -18px 12px; transition: transform .32s cubic-bezier(.34,1.45,.64,1), opacity .2s ease, visibility 0s linear 0s; }
-  /* Trichter-/Genie-Gefuehl wie beim iOS-Kontextmenue (Dietmars Nachbesserungs-
-     wunsch, 27.08.2026: "soll aussehen wie Trichter bei iOS"): eine reine
-     gleichfoermige Scale-Transition wirkte wie simples Zoomen. Ein echter
-     Genie-Effekt (Mesh-Verzerrung) geht in CSS nicht - die Naeherung ist eine
-     Keyframe-Animation mit UNGLEICHEN Achsen-Skalierungen ueber die Zeit:
-     startet schmal und gestaucht am Pfeil (X waechst schneller als Y),
-     schwingt leicht ueber und setzt sich - das ergibt den trichterfoermig
-     aufziehenden Eindruck. Nur fuers OEFFNEN (Keyframes statt Transition);
-     das Schliessen bleibt die schnelle Rueck-Skalierung zum Pfeil. */
+  /* Trichter-/Genie-Effekt (Dietmars zweite Nachbesserung, 27.08.2026:
+     "erinnert noch immer nicht an die Trichter Animation vom iOS"):
+     ungleiche Achsen-Skalierung allein (voriger Versuch) blieb ein
+     rechteckiges Zoomen. Jetzt verformt eine animierte clip-path-Polygon-
+     Maske die SEITEN der Flaeche waehrend des Aufziehens tatsaechlich
+     trichterfoermig: die linke Kante (am Pfeil) startet zusammengekniffen,
+     die Ober-/Unterkanten woelben sich ueber Zwischenpunkte nach aussen,
+     bis alles im Rechteck endet - gebogene Kanten, wie sie der echte
+     Genie-Effekt hat, angenaehert ueber 8 Polygonpunkte (alle Keyframes
+     brauchen dieselbe Punktzahl, sonst kann der Browser nicht
+     interpolieren). Kombiniert mit der Scale vom Pfeil-Ursprung. Das
+     Schliessen bleibt die schnelle Rueck-Skalierung zum Pfeil. */
   @keyframes funnelIn {
-    0%   { opacity: 0; transform: scale(.03, .12); }
-    30%  { opacity: 1; transform: scale(.75, .35); }
-    62%  { transform: scale(1.03, .9); }
-    82%  { transform: scale(.99, 1.02); }
-    100% { transform: scale(1, 1); }
+    0%   { opacity: 0; transform: scale(.06, .2);
+           clip-path: polygon(0% 42%, 25% 32%, 60% 24%, 100% 18%, 100% 82%, 60% 76%, 25% 68%, 0% 58%); }
+    35%  { opacity: 1; transform: scale(.8, .55);
+           clip-path: polygon(0% 30%, 25% 12%, 60% 3%, 100% 0%, 100% 100%, 60% 97%, 25% 88%, 0% 70%); }
+    70%  { transform: scale(1.02, .96);
+           clip-path: polygon(0% 8%, 25% 1%, 60% 0%, 100% 0%, 100% 100%, 60% 100%, 25% 99%, 0% 92%); }
+    100% { transform: scale(1, 1);
+           clip-path: polygon(0% 0%, 25% 0%, 60% 0%, 100% 0%, 100% 100%, 60% 100%, 25% 100%, 0% 100%); }
   }
-  [data-anim="scale"]:not(.collapsed) #tabs { animation: funnelIn .45s cubic-bezier(.25,.9,.35,1); }
+  [data-anim="scale"]:not(.collapsed) #tabs { animation: funnelIn .5s cubic-bezier(.3,.8,.3,1); }
   [data-anim="scale"].collapsed #tabs { transform: scale(.05); opacity: 0; transition: transform .22s ease-in, opacity .18s ease-in .04s, visibility 0s linear .22s; }
   /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
   [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
