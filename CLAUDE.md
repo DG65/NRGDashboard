@@ -40,6 +40,22 @@ Mehrere Module in einer Bibliothek: `NRGDashboardTile` (Hauptkachel),
 Kachel-HTML — Bedienelemente brauchen echte Instanz-Variablen mit
 `EnableAction()`.
 
+## Zwei Rendering-Engines — bei JEDER Diagramm-Untersuchung beide prüfen (27.08.2026)
+
+Jedes Diagramm-Modul kann wahlweise mit **ECharts** oder **Highcharts**
+rendern (Property `Engine`, je Instanz wählbar). Bei der Suche nach
+einem gemeldeten Anzeigefehler nicht nur mit der eigenen Testdaten-
+Annahme reproduzieren, sondern zuerst die TATSÄCHLICH aktive Engine der
+betroffenen Instanz prüfen (z. B. `IPS_GetConfiguration($id)` per
+`mcp__ips-automation__php_eval`) — sonst testet man am eigentlichen Bug
+vorbei. Live passiert: die WPMonitor-Highcharts-Tooltip-Zeit-Falle
+(Commit `1b75731`) wurde erst gefunden, nachdem Dietmar zweimal gezielt
+auf Highcharts hinwies, weil der erste Reproduktionsversuch nur mit
+ECharts (der falschen Annahme) getestet wurde. Ein in EINER Engine
+gefundener/gefixter Bug (z. B. die Highcharts-`dateFormat()`-Falle) muss
+außerdem in JEDEM Modul, das dieselbe Engine nutzt, gegengeprüft werden
+- nicht nur in dem, wo er gemeldet wurde.
+
 ## Sommer-/Winterzeit (DST) — verbindliche Regel (27.08.2026)
 
 Kalendertag-Grenzen **niemals** über eine feste Sekundenzahl berechnen
