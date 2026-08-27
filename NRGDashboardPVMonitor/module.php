@@ -94,6 +94,28 @@ class NRGDashboardPVMonitor extends IPSModule
         // Vorrang). Format: {"2025": {"1": 436.0, "2": 464.94, ...}}.
         $this->RegisterAttributeString('ManualHistory', '{}');
 
+        // Animationsstil der einklappbaren Reiterleiste, waehlbar hinter
+        // dem Doppelpfeil (Dietmar, 27.08.2026: "Mache doch alle 4 und
+        // baue die Auswahl hinter den Doppelpfeil") - echte Instanz-
+        // Variable mit EnableAction statt Formular-Property (SUITE.md
+        // Punkt 10, Muster HeatSchema/Forecast). Default nur bei ECHTER
+        // Neuanlage setzen: Create() laeuft bei jedem Symcon-Neustart
+        // erneut, ein unbedingtes SetValue() wuerde die Wahl sonst bei
+        // jedem Neustart zuruecksetzen (CometWiFi-Fund, 16.08.2026).
+        if (!IPS_VariableProfileExists('NRGDASHMON.TabAnim')) {
+            IPS_CreateVariableProfile('NRGDASHMON.TabAnim', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, 'Federnder Einschub', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, '3D-Kaskaden-Flip', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Aufblende vom Pfeil', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, 'Blur-Morph', '', -1);
+        $animIsNew = @IPS_GetObjectIDByIdent('TabAnimation', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('TabAnimation', 'Reiterleisten-Animation', 'NRGDASHMON.TabAnim', 10);
+        $this->EnableAction('TabAnimation');
+        if ($animIsNew) {
+            $this->SetValue('TabAnimation', 0);
+        }
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHPVMON_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
@@ -1893,6 +1915,13 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     public function RequestAction($Ident, $Value)
     {
+        // Doppelpfeil-Variable (siehe Create()) - Wert setzen, Kachel neu
+        // rendern (Muster HeatSchema/Forecast::RequestAction()).
+        if ($Ident === 'TabAnimation') {
+            $this->SetValue('TabAnimation', (int) $Value);
+            $this->Render();
+            return;
+        }
         if ($Ident === 'flowPeriod') {
             $req = json_decode((string) $Value, true);
             $start = (int) ($req['start'] ?? 0);
@@ -2435,6 +2464,8 @@ class NRGDashboardPVMonitor extends IPSModule
             // Strompreis-Reiter (Dietmar, 27.08.2026: "hinter dem
             // Netzbezug die Tages, Monats und Jahresenergie").
             'gridEnergy' => $this->GridEnergySummary(),
+            // Animationsstil der Reiterleiste (Doppelpfeil-Variable, 0-3).
+            'tabAnim'  => (int) $this->GetValue('TabAnimation'),
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,

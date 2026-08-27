@@ -26,16 +26,45 @@
      Reiter (jeder Knopf 30ms nach seinem Vorgaenger, transition-delay
      je nth-child) - beim Schliessen ohne Staffelung, damit es knackig
      zugeht. */
-  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; }
-  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 20; padding: 8px; border-radius: 12px; background: rgba(127,135,145,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; transition: transform .38s cubic-bezier(.34,1.56,.64,1), opacity .22s ease, visibility 0s linear 0s; }
-  #tabsWrap.collapsed #tabs { transform: translateX(-24px) scale(.92); opacity: 0; pointer-events: none; visibility: hidden; transition: transform .25s ease-in, opacity .18s ease-in, visibility 0s linear .25s; }
-  /* Gestaffeltes Einfliegen der Reiter beim Oeffnen. */
-  #tabs .tab { transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease; }
-  #tabsWrap.collapsed #tabs .tab { transform: translateX(-14px); opacity: 0; transition: none; }
-  #tabs .tab:nth-child(1) { transition-delay: .03s; } #tabs .tab:nth-child(2) { transition-delay: .06s; }
-  #tabs .tab:nth-child(3) { transition-delay: .09s; } #tabs .tab:nth-child(4) { transition-delay: .12s; }
-  #tabs .tab:nth-child(5) { transition-delay: .15s; } #tabs .tab:nth-child(6) { transition-delay: .18s; }
-  #tabs .tab:nth-child(7) { transition-delay: .21s; } #tabs .tab:nth-child(8) { transition-delay: .24s; }
+  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; perspective: 700px; }
+  /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
+     Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
+     dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 20; padding: 8px; border-radius: 12px; background: rgba(37,40,46,.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
+  body.light #tabs { background: rgba(244,246,249,.97); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+  #tabsWrap.collapsed #tabs { pointer-events: none; visibility: hidden; }
+  /* Vier waehlbare Animationsstile (Dietmar, 27.08.2026: "Mache doch
+     alle 4") - data-anim am #tabsWrap kommt aus der Doppelpfeil-Variable
+     TabAnimation (Payload-Feld tabAnim). Gemeinsames Prinzip: visibility
+     schaltet verzoegert (nach Ende der Ausblend-Transition), damit die
+     Animation durchlaeuft und das Panel danach trotzdem aus Tab-Fokus/
+     Screenreader verschwindet. */
+  /* 0 "spring": federnder Einschub mit Overshoot + gestaffelt einfliegende Reiter. */
+  [data-anim="spring"] #tabs { transition: transform .38s cubic-bezier(.34,1.56,.64,1), opacity .22s ease, visibility 0s linear 0s; }
+  [data-anim="spring"].collapsed #tabs { transform: translateX(-24px) scale(.92); opacity: 0; transition: transform .25s ease-in, opacity .18s ease-in, visibility 0s linear .25s; }
+  [data-anim="spring"] #tabs .tab { transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease; }
+  [data-anim="spring"].collapsed #tabs .tab { transform: translateX(-14px); opacity: 0; transition: none; }
+  /* 1 "flip": Reiter klappen nacheinander wie Karten aus der Tiefe auf (3D). */
+  [data-anim="flip"] #tabs { transition: opacity .2s ease, visibility 0s linear 0s; }
+  [data-anim="flip"].collapsed #tabs { opacity: 0; transition: opacity .25s ease .18s, visibility 0s linear .43s; }
+  [data-anim="flip"] #tabs .tab { transform-origin: left center; transition: transform .45s cubic-bezier(.34,1.4,.64,1), opacity .3s ease; }
+  [data-anim="flip"].collapsed #tabs .tab { transform: rotateY(-88deg); opacity: 0; transition: transform .25s ease-in, opacity .2s ease-in; }
+  /* 2 "scale": Panel waechst aus dem Pfeil-Knopf heraus (Kontextmenue-Stil). */
+  [data-anim="scale"] #tabs { transform-origin: -18px 12px; transition: transform .32s cubic-bezier(.34,1.45,.64,1), opacity .2s ease, visibility 0s linear 0s; }
+  [data-anim="scale"].collapsed #tabs { transform: scale(.05); opacity: 0; transition: transform .22s ease-in, opacity .18s ease-in .04s, visibility 0s linear .22s; }
+  /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
+  [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
+  [data-anim="blur"].collapsed #tabs { filter: blur(14px); transform: scale(1.06); opacity: 0; transition: filter .28s ease-in, transform .28s ease-in, opacity .22s ease-in, visibility 0s linear .28s; }
+  /* Gestaffelte Verzoegerungen (spring + flip nutzen sie beim Oeffnen). */
+  [data-anim="spring"] #tabs .tab:nth-child(1), [data-anim="flip"] #tabs .tab:nth-child(1) { transition-delay: .03s; }
+  [data-anim="spring"] #tabs .tab:nth-child(2), [data-anim="flip"] #tabs .tab:nth-child(2) { transition-delay: .06s; }
+  [data-anim="spring"] #tabs .tab:nth-child(3), [data-anim="flip"] #tabs .tab:nth-child(3) { transition-delay: .09s; }
+  [data-anim="spring"] #tabs .tab:nth-child(4), [data-anim="flip"] #tabs .tab:nth-child(4) { transition-delay: .12s; }
+  [data-anim="spring"] #tabs .tab:nth-child(5), [data-anim="flip"] #tabs .tab:nth-child(5) { transition-delay: .15s; }
+  [data-anim="spring"] #tabs .tab:nth-child(6), [data-anim="flip"] #tabs .tab:nth-child(6) { transition-delay: .18s; }
+  [data-anim="spring"] #tabs .tab:nth-child(7), [data-anim="flip"] #tabs .tab:nth-child(7) { transition-delay: .21s; }
+  [data-anim="spring"] #tabs .tab:nth-child(8), [data-anim="flip"] #tabs .tab:nth-child(8) { transition-delay: .24s; }
+  [data-anim="spring"].collapsed #tabs .tab, [data-anim="flip"].collapsed #tabs .tab { transition-delay: 0s; }
   #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; transition: transform .38s cubic-bezier(.34,1.56,.64,1); }
   #tabsToggle:hover { opacity: 1; background: rgba(127,135,145,.22); }
   #tabsWrap.collapsed #tabsToggle { transform: rotate(180deg); }
@@ -226,7 +255,7 @@
       <span id="quick"></span>
     </div>
     <div id="body">
-      <div id="tabsWrap">
+      <div id="tabsWrap" data-anim="spring">
         <button id="tabsToggle" title="Reiterleiste ein-/ausblenden">&#9664;</button>
         <div id="tabs">
           <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
@@ -3407,6 +3436,10 @@
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
       loadTabsCollapsed(d.uid || 'x');
+      // Animationsstil + Theme-Klasse fuer das Reiter-Panel (siehe CSS
+      // data-anim-Varianten bzw. body.light-Hintergrund).
+      document.getElementById('tabsWrap').setAttribute('data-anim', ['spring', 'flip', 'scale', 'blur'][d.tabAnim || 0] || 'spring');
+      document.body.classList.toggle('light', !!d.lightTheme);
       if (d.bg) { document.body.style.background = d.bg; }
       // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
       // Kachel, bevor das Layout sicher fertig ist (WebFront-Rahmen/Flex-
