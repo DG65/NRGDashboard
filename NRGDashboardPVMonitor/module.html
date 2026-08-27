@@ -26,12 +26,23 @@
      Reiter (jeder Knopf 30ms nach seinem Vorgaenger, transition-delay
      je nth-child) - beim Schliessen ohne Staffelung, damit es knackig
      zugeht. */
-  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; perspective: 700px; }
+  /* position:relative + hoher z-index am Wrapper: im WebFront zeichneten
+     sich Chart-Elemente (Achsenbeschriftung) UEBER das Panel und schluckten
+     dessen Klicks (Dietmars Screenshot, 27.08.2026 - die Achsenzahlen
+     standen scharf VOR dem Panel, also lag das Chart in einer hoeheren
+     Stapelebene als unser z-index 20). Der Wrapper bildet jetzt selbst
+     einen Stapelkontext weit oberhalb der Chart-Bibliotheken; #tabs
+     ankert damit auch an ihm statt an #body (left:30px bleibt optisch
+     gleich, der Wrapper sitzt am linken Rand von #body). */
+  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; perspective: 700px; position: relative; z-index: 900; }
   /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
      Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
      dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
-  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 20; padding: 8px; border-radius: 12px; background: rgba(37,40,46,.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
-  body.light #tabs { background: rgba(244,246,249,.97); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+  /* VOLL deckender Grund (Dietmar, 27.08.2026: selbst bei 97% war "noch
+     immer sehr viel des darunter liegenden Diagramms sichtbar") - solide
+     Farbe statt rgba, backdrop-filter damit ueberfluessig und entfernt. */
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
+  body.light #tabs { background: #f2f4f7; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
   #tabsWrap.collapsed #tabs { pointer-events: none; visibility: hidden; }
   /* Vier waehlbare Animationsstile (Dietmar, 27.08.2026: "Mache doch
      alle 4") - data-anim am #tabsWrap kommt aus der Doppelpfeil-Variable
