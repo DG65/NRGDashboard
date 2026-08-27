@@ -56,9 +56,9 @@
      margin die Legende zu dicht an die Beschriftung heran). */
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
-  /* margin-top 18px statt 20px - Legende 2px naeher ans Diagramm
-     (Dietmar, 27.08.2026, Strompreis-Reiter). */
-  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 18px; font-size: 11px; overflow-x: auto; }
+  /* margin-top 13px statt urspruenglich 20px - Legende naeher ans
+     Diagramm (Dietmar, 27.08.2026: erst 2px, dann weitere 5px hoeher). */
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 13px; font-size: 11px; overflow-x: auto; }
   /* Tagesplan-Reiter (20.08.2026): eigene, NICHT interaktive Farbschluessel-
      Zeile fuer die EMS_OP_*-Hintergrundbaender (markArea/plotBands) -
      getrennt von #legendRow, weil ein Klick hier keine echte Chart-Serie
