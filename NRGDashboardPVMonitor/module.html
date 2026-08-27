@@ -62,30 +62,30 @@
   [data-anim="flip"].collapsed #tabs .tab { transform: rotateY(-88deg); opacity: 0; transition: transform .25s ease-in, opacity .2s ease-in; }
   /* 2 "scale": Panel waechst aus dem Pfeil-Knopf heraus (Kontextmenue-Stil). */
   [data-anim="scale"] #tabs { transform-origin: -18px 12px; transition: transform .32s cubic-bezier(.34,1.45,.64,1), opacity .2s ease, visibility 0s linear 0s; }
-  /* Trichter-/Genie-Effekt (Dietmars zweite Nachbesserung, 27.08.2026:
-     "erinnert noch immer nicht an die Trichter Animation vom iOS"):
-     ungleiche Achsen-Skalierung allein (voriger Versuch) blieb ein
-     rechteckiges Zoomen. Jetzt verformt eine animierte clip-path-Polygon-
-     Maske die SEITEN der Flaeche waehrend des Aufziehens tatsaechlich
-     trichterfoermig: die linke Kante (am Pfeil) startet zusammengekniffen,
-     die Ober-/Unterkanten woelben sich ueber Zwischenpunkte nach aussen,
-     bis alles im Rechteck endet - gebogene Kanten, wie sie der echte
-     Genie-Effekt hat, angenaehert ueber 8 Polygonpunkte (alle Keyframes
-     brauchen dieselbe Punktzahl, sonst kann der Browser nicht
-     interpolieren). Kombiniert mit der Scale vom Pfeil-Ursprung. Das
-     Schliessen bleibt die schnelle Rueck-Skalierung zum Pfeil. */
-  @keyframes funnelIn {
-    0%   { opacity: 0; transform: scale(.06, .2);
-           clip-path: polygon(0% 42%, 25% 32%, 60% 24%, 100% 18%, 100% 82%, 60% 76%, 25% 68%, 0% 58%); }
-    35%  { opacity: 1; transform: scale(.8, .55);
-           clip-path: polygon(0% 30%, 25% 12%, 60% 3%, 100% 0%, 100% 100%, 60% 97%, 25% 88%, 0% 70%); }
-    70%  { transform: scale(1.02, .96);
-           clip-path: polygon(0% 8%, 25% 1%, 60% 0%, 100% 0%, 100% 100%, 60% 100%, 25% 99%, 0% 92%); }
-    100% { transform: scale(1, 1);
-           clip-path: polygon(0% 0%, 25% 0%, 60% 0%, 100% 0%, 100% 100%, 60% 100%, 25% 100%, 0% 100%); }
+  /* "Sprung aus dem Pfeil" (Dietmars dritte Fassung, 27.08.2026: "Du
+     kannst es auch so machen, als wenn das Panel aus dem Pfeil springen
+     wuerde und dann auch wieder in den Pfeil springt") - ersetzt die
+     beiden Trichter-Versuche. Oeffnen: das Panel schnellt mit kraeftigem
+     Ueberschwingen aus dem Pfeil (Ursprung am Knopf), federt zweimal
+     nach und setzt sich. Schliessen: kurzes "Ausholen" (waechst erst
+     minimal), dann springt es zackig in den Pfeil zurueck - beides als
+     Keyframes, weil mehrstufige Bewegungen mit einer Transition nicht
+     abbildbar sind. forwards haelt den Endzustand des Schliessens, bis
+     die statischen .collapsed-Regeln greifen. */
+  @keyframes popOut {
+    0%   { opacity: 0; transform: scale(.04); }
+    55%  { opacity: 1; transform: scale(1.14); }
+    75%  { transform: scale(.94); }
+    90%  { transform: scale(1.03); }
+    100% { transform: scale(1); }
   }
-  [data-anim="scale"]:not(.collapsed) #tabs { animation: funnelIn .5s cubic-bezier(.3,.8,.3,1); }
-  [data-anim="scale"].collapsed #tabs { transform: scale(.05); opacity: 0; transition: transform .22s ease-in, opacity .18s ease-in .04s, visibility 0s linear .22s; }
+  @keyframes popBack {
+    0%   { opacity: 1; transform: scale(1); }
+    25%  { opacity: 1; transform: scale(1.1); }
+    100% { opacity: 0; transform: scale(.04); }
+  }
+  [data-anim="scale"]:not(.collapsed) #tabs { animation: popOut .42s cubic-bezier(.3,.9,.4,1); }
+  [data-anim="scale"].collapsed #tabs { transform: scale(.04); opacity: 0; animation: popBack .3s cubic-bezier(.5,0,.8,.4) forwards; transition: visibility 0s linear .3s; }
   /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
   [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
   [data-anim="blur"].collapsed #tabs { filter: blur(14px); transform: scale(1.06); opacity: 0; transition: filter .28s ease-in, transform .28s ease-in, opacity .22s ease-in, visibility 0s linear .28s; }
@@ -1182,7 +1182,10 @@
         // x-Achse unten abgeschnitten (Dietmar, 28.07.2026).
         // bottom:52 statt 32 - Platz fuer den Zoom-Slider unter der
         // Zeitachsen-Beschriftung (Dietmars Wunsch, 28.07.2026).
-        grid: { left: 46, right: (ax.showRight || tab === 'price') ? 46 : 12, top: 28, bottom: 52 },
+        // Einheitliche, mittige Plotflaeche fuer alle Reiter (Dietmar,
+        // 27.08.2026: "Diagrammflaechen fuer alle Reiter identisch und
+        // horizontal mittig") - fest 58/58 statt reiterabhaengiger Raender.
+        grid: { left: 58, right: 58, top: 28, bottom: 52 },
         legend: { show: false },
         // Dunkler Tooltip passend zu Highcharts (dessen useHTML-Tooltip vom
         // Browser/OS automatisch dunkel dargestellt wird) - ECharts' Tooltip
@@ -1362,7 +1365,9 @@
         // dabei von sich aus einen "Reset zoom"-Knopf (Dietmars Wunsch,
         // 28.07.2026: Zoom in allen Charts, mit erkennbarer Bedienung/
         // Rueckstellung - Pendant zum sichtbaren Slider bei ECharts).
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // marginLeft/-Right fest 58/58 statt Auto-Layout: einheitliche,
+        // mittige Plotflaeche fuer alle Reiter (Dietmar, 27.08.2026).
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // Zarte Gitterlinien fuer Zeit (x-Achse) und die linke Achse (PV-
         // Leistung/kW) - die rechte Achse (Einstrahlung) bekommt bewusst
@@ -1523,7 +1528,7 @@
         // bottom:60 statt 40 - Platz fuer den Zoom-Slider (Dietmars Wunsch,
         // 28.07.2026), zusaetzlich zu den ggf. schraeg gestellten Kategorie-
         // Beschriftungen.
-        grid: { left: 46, right: 12, top: 28, bottom: 60 },
+        grid: { left: 58, right: 58, top: 28, bottom: 60 },
         legend: { show: false },
         // Tooltip-Kopf zeigt die volle Bezeichnung (z.B. "Montag,
         // 27.07.2026" statt nur "Mo 27.07") - Dietmars Wunsch, 28.07.2026,
@@ -1560,7 +1565,9 @@
         time: { useUTC: false },
         // zoomType:'x' - Ziehen auf der Kategorie-Achse zoomt, mit
         // automatischem "Reset zoom"-Knopf (Dietmars Wunsch, 28.07.2026).
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // marginLeft/-Right fest 58/58: einheitliche, mittige Plotflaeche
+        // fuer alle Reiter (Dietmar, 27.08.2026).
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // crosshair auf einer Kategorie-Achse zeichnet bei Highcharts von
         // sich aus ein flaechiges Rechteck ueber die volle Kategorie-
@@ -2219,7 +2226,7 @@
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 46, right: 16, top: 16, bottom: 24 },
+        grid: { left: 58, right: 58, top: 16, bottom: 24 },
         legend: { show: false },
         tooltip: {
           trigger: 'axis',
@@ -2321,7 +2328,7 @@
           // Panels nicht auf gleicher x-Position stehen. marginLeft/-Right
           // erzwingt denselben Plot-Rand fuer beide Panels, wie ECharts'
           // festes grid.left/right (58/16) das schon tat.
-          marginLeft: 58, marginRight: 16,
+          marginLeft: 58, marginRight: 58,
           // Highcharts reserviert unten sonst automatisch Platz fuer
           // Achsen-Label/-Titel, die es hier gar nicht mehr gibt (xAxis[1]
           // ist ohne Label/Linie) - fester, kleiner Rand gibt den Charts
@@ -2464,7 +2471,7 @@
           // ansonsten haben Verbrauch- und Erzeugung-Panel unterschiedlich
           // breite Achsenbeschriftungen und stehen dadurch nicht
           // uebereinander).
-          marginLeft: 58, marginRight: 16,
+          marginLeft: 58, marginRight: 58,
           // Gleiche Randkorrektur wie in der Tagesansicht (Dietmar,
           // 31.07.2026: "die gleichen Werte fuer die Charts und das ganze
           // drumherum fuer Woche, Monat, Jahr etc.").
@@ -2706,8 +2713,8 @@
         grid: [
           // left etwas vergroessert (46->58), damit die "kW"-Achsenbeschriftung
           // links neben den Zahlen Platz hat, ohne sie zu ueberlappen.
-          { left: 58, right: 16, top: 28, height: '40%' },
-          { left: 58, right: 16, top: '50%', height: '46%' }
+          { left: 58, right: 58, top: 28, height: '40%' },
+          { left: 58, right: 58, top: '50%', height: '46%' }
         ],
         title: [
           // Verbrauch bleibt ueber dem oberen, Erzeugung wandert unter das
@@ -2790,8 +2797,8 @@
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
         grid: [
-          { left: 58, right: 16, top: 28, height: '40%' },
-          { left: 58, right: 16, top: '50%', height: '46%' }
+          { left: 58, right: 58, top: 28, height: '40%' },
+          { left: 58, right: 58, top: '50%', height: '46%' }
         ],
         title: [
           { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },

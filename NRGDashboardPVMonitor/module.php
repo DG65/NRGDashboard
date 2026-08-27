@@ -107,7 +107,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, 'Federnder Einschub', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, '3D-Kaskaden-Flip', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Aufblende vom Pfeil', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Sprung aus dem Pfeil', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, 'Blur-Morph', '', -1);
         $animIsNew = @IPS_GetObjectIDByIdent('TabAnimation', $this->InstanceID) === false;
         $this->RegisterVariableInteger('TabAnimation', 'Reiterleisten-Animation', 'NRGDASHMON.TabAnim', 10);
