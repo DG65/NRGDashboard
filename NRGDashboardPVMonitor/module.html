@@ -34,7 +34,14 @@
      einen Stapelkontext weit oberhalb der Chart-Bibliotheken; #tabs
      ankert damit auch an ihm statt an #body (left:30px bleibt optisch
      gleich, der Wrapper sitzt am linken Rand von #body). */
-  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; perspective: 700px; position: relative; z-index: 900; }
+  /* position:absolute statt Flex-Spalte (Dietmar, 28.08.2026: "die
+     Diagramme stehen nicht mittig in der Kachel") - die schmale
+     Pfeil-Spalte hat #chartcol um ~34px nach rechts geschoben, die
+     symmetrischen 58/58-Plotraender waren dadurch in der KACHEL nicht
+     mittig. Jetzt schwebt auch der Pfeil-Knopf ueber dem Diagramm
+     (oben links, dort liegt nur leere Flaeche ueber der Y-Achse),
+     #chartcol nimmt die volle Kachelbreite ein. */
+  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: 0; z-index: 900; }
   /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
      Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
      dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
@@ -1242,7 +1249,10 @@
         // Einheitliche, mittige Plotflaeche fuer alle Reiter (Dietmar,
         // 27.08.2026: "Diagrammflaechen fuer alle Reiter identisch und
         // horizontal mittig") - fest 58/58 statt reiterabhaengiger Raender.
-        grid: { left: 58, right: 58, top: 28, bottom: 52 },
+        // top/bottom ebenfalls vereinheitlicht (28/60, Dietmar 28.08.2026:
+        // "die Groesse ist auch noch unterschiedlich") - alle Reiter nutzen
+        // dieselbe Plotflaeche.
+        grid: { left: 58, right: 58, top: 28, bottom: 60 },
         legend: { show: false },
         // Dunkler Tooltip passend zu Highcharts (dessen useHTML-Tooltip vom
         // Browser/OS automatisch dunkel dargestellt wird) - ECharts' Tooltip
@@ -1424,7 +1434,7 @@
         // Rueckstellung - Pendant zum sichtbaren Slider bei ECharts).
         // marginLeft/-Right fest 58/58 statt Auto-Layout: einheitliche,
         // mittige Plotflaeche fuer alle Reiter (Dietmar, 27.08.2026).
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, marginTop: 28, marginBottom: 60, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // Zarte Gitterlinien fuer Zeit (x-Achse) und die linke Achse (PV-
         // Leistung/kW) - die rechte Achse (Einstrahlung) bekommt bewusst
@@ -1624,7 +1634,7 @@
         // automatischem "Reset zoom"-Knopf (Dietmars Wunsch, 28.07.2026).
         // marginLeft/-Right fest 58/58: einheitliche, mittige Plotflaeche
         // fuer alle Reiter (Dietmar, 27.08.2026).
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 58, marginRight: 58, marginTop: 28, marginBottom: 60, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // crosshair auf einer Kategorie-Achse zeichnet bei Highcharts von
         // sich aus ein flaechiges Rechteck ueber die volle Kategorie-
@@ -2283,7 +2293,7 @@
       chart.setOption({
         backgroundColor: 'transparent',
         textStyle: lastData.font ? { fontFamily: lastData.font } : {},
-        grid: { left: 58, right: 58, top: 16, bottom: 24 },
+        grid: { left: 58, right: 58, top: 28, bottom: 60 },
         legend: { show: false },
         tooltip: {
           trigger: 'axis',
@@ -2321,7 +2331,8 @@
         series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 1.5, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 1 });
       }
       chart = Highcharts.chart(el, {
-        chart: { backgroundColor: 'transparent', style: lastData.font ? { fontFamily: lastData.font } : {} },
+        // Gleiche feste Plotraender wie alle anderen Reiter (58/58/28/60).
+        chart: { backgroundColor: 'transparent', marginLeft: 58, marginRight: 58, marginTop: 28, marginBottom: 60, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         // Highcharts hatte hier ueberhaupt keine eigene Textfarbe gesetzt
         // (lief auf Highcharts' fixem Default) - deshalb "gar keine
