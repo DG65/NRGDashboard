@@ -73,37 +73,37 @@
         (Tropfen) zu eckig (Panel) mit. Schliessen: umgekehrt - Panel
         wird erst flachgedrueckt, dann als duenner Strahl in die Oeffnung
         gesaugt (forwards haelt den Endzustand, bis .collapsed greift). */
-  /* Extremfassung (Dietmar, 27.08.2026: "muss aber noch viel extremer
-     auf diesem Weg werden" + "Die Verformung ist viel zu rechteckig, im
-     Original ist es wie eine Blase"): Strahl hauchduenn und ueber die
-     volle Breite hinausschiessend, kraeftiger Vertikal-Schwapp, mehrfaches
-     Nachwabbeln - und die Silhouette bleibt dabei eine BLASE statt eines
-     skalierten Rechtecks: asymmetrische, prozentbasierte border-radius-
-     Werte (klassische CSS-Blob-Technik, vier ungleiche Ecken je Achse)
-     morphen von Keyframe zu Keyframe, als wuerde die Oberflaechenspannung
-     die Form durchkneten; erst ganz am Ende setzt sich die Blase in die
-     eckige Panelform. */
-  @keyframes squeezeOut {
-    0%   { opacity: 0; transform: scale(.01, .01); border-radius: 50%; }
-    12%  { opacity: 1; transform: scale(.35, .03); border-radius: 80% 20% 70% 30% / 60% 40% 60% 40%; }
-    30%  { transform: scale(1.15, .05); border-radius: 30% 70% 25% 75% / 55% 45% 60% 40%; }
-    48%  { transform: scale(.9, .5); border-radius: 65% 35% 55% 45% / 40% 60% 35% 65%; }
-    62%  { transform: scale(1.08, 1.18); border-radius: 40% 60% 45% 55% / 65% 35% 60% 40%; }
-    74%  { transform: scale(.94, .88); border-radius: 55% 45% 60% 40% / 45% 55% 40% 60%; }
-    84%  { transform: scale(1.04, 1.06); border-radius: 30% 25% 28% 32% / 28% 30% 25% 30%; }
-    93%  { transform: scale(.98, .97); border-radius: 18px; }
-    100% { transform: scale(1, 1); border-radius: 12px; }
+  /* Einsaug-Fassung (Dietmar, 27.08.2026, praezisiertes Zielbild:
+     "Stelle Dir vor, dass das linke obere Eck des Panel in den Pfeil
+     Button eingesaugt wird und der Rest des Panels mit etwas
+     Massetraegheit nachgesaugt wird"): Der Transform-Ursprung liegt am
+     Pfeil-Knopf (links oben, ausserhalb des Panels). Beim Schliessen
+     zieht eine zunehmende SCHERUNG (skew) das panel-eigene linke obere
+     Eck voraus Richtung Knopf, waehrend die knopffernen Bereiche durch
+     die Scherung sichtbar HINTERHERHAENGEN (Massetraegheit), bis alles
+     in den Punkt gesaugt ist; die Deckkraft bleibt fast bis zum Schluss
+     voll, damit das Nachsaugen sichtbar ist. Beim Oeffnen umgekehrt:
+     das Eck schiesst zuerst aus dem Knopf, der Rest wird traege
+     nachgezogen (positive Scherung), ueberschwingt und pendelt sich
+     aus. Blob-Radien halten die Silhouette dabei weich statt eckig. */
+  @keyframes suckOut {
+    0%   { opacity: 0; transform: scale(.01, .01) skew(14deg, 10deg); border-radius: 50%; }
+    20%  { opacity: 1; transform: scale(.38, .22) skew(12deg, 8deg); border-radius: 60% 40% 55% 45% / 50% 50% 45% 55%; }
+    50%  { transform: scale(1.06, .94) skew(4deg, 3deg); border-radius: 30% 25% 28% 32% / 26% 30% 24% 30%; }
+    70%  { transform: scale(.97, 1.05) skew(-2deg, -1.5deg); border-radius: 16px; }
+    85%  { transform: scale(1.02, .99) skew(.5deg, .5deg); border-radius: 13px; }
+    100% { transform: scale(1, 1) skew(0deg, 0deg); border-radius: 12px; }
   }
-  @keyframes squeezeIn {
-    0%   { opacity: 1; transform: scale(1, 1); border-radius: 12px; }
-    22%  { transform: scale(1.12, 1.15); border-radius: 45% 55% 40% 60% / 60% 40% 55% 45%; }
-    45%  { transform: scale(1.1, .35); border-radius: 60% 40% 65% 35% / 45% 55% 40% 60%; }
-    70%  { transform: scale(.5, .04); border-radius: 75% 25% 70% 30% / 55% 45% 60% 40%; }
-    100% { opacity: 0; transform: scale(.01, .01); border-radius: 50%; }
+  @keyframes suckIn {
+    0%   { opacity: 1; transform: scale(1, 1) skew(0deg, 0deg); border-radius: 12px; }
+    25%  { opacity: 1; transform: scale(.78, .86) skew(-6deg, -4deg); border-radius: 35% 30% 32% 36% / 30% 34% 28% 34%; }
+    55%  { opacity: 1; transform: scale(.32, .45) skew(-15deg, -10deg); border-radius: 55% 45% 50% 50% / 45% 55% 40% 60%; }
+    80%  { opacity: .9; transform: scale(.09, .16) skew(-9deg, -6deg); border-radius: 50%; }
+    100% { opacity: 0; transform: scale(.01, .01) skew(0deg, 0deg); border-radius: 50%; }
   }
   [data-anim="scale"] #tabs { transform-origin: -18px 12px; }
-  [data-anim="scale"]:not(.collapsed) #tabs { animation: squeezeOut .9s cubic-bezier(.3,.75,.35,1); }
-  [data-anim="scale"].collapsed #tabs { transform: scale(.01, .01); opacity: 0; animation: squeezeIn .55s cubic-bezier(.55,.05,.7,.4) forwards; transition: visibility 0s linear .55s; }
+  [data-anim="scale"]:not(.collapsed) #tabs { animation: suckOut .7s cubic-bezier(.3,.8,.35,1); }
+  [data-anim="scale"].collapsed #tabs { transform: scale(.01, .01); opacity: 0; animation: suckIn .6s cubic-bezier(.6,.05,.75,.35) forwards; transition: visibility 0s linear .6s; }
   /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
   [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
   [data-anim="blur"].collapsed #tabs { filter: blur(14px); transform: scale(1.06); opacity: 0; transition: filter .28s ease-in, transform .28s ease-in, opacity .22s ease-in, visibility 0s linear .28s; }
