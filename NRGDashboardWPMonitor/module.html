@@ -311,7 +311,15 @@
       tooltip: {
         shared: true, useHTML: true,
         formatter: function () {
-          var lines = ['<b>' + Highcharts.dateFormat('%d.%m.%Y %H:%M', this.x) + '</b>'];
+          // Highcharts.dateFormat() ist eine GLOBALE Funktion und ignoriert
+          // das chart-eigene "time: { useUTC: false }" oben - Zeiten im
+          // Tooltip landen dadurch 2 Stunden (CEST-Offset) neben der
+          // Achsenposition (Muster/Fund: NRGDashboardPVMonitor, Dietmar
+          // 28.07.2026, hier 27.08.2026 wiedergefunden). Deshalb natives
+          // JS-Datum statt Highcharts-API.
+          var dt = new Date(this.x);
+          var p2 = function (n) { return ('0' + n).slice(-2); };
+          var lines = ['<b>' + p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes()) + '</b>'];
           this.points.forEach(function (p) {
             lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
           });
