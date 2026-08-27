@@ -1312,6 +1312,45 @@ class NRGDashboardPVMonitor extends IPSModule
         return ($delta >= 0) ? $delta : null;
     }
 
+    /**
+     * Bezugsenergie heute/laufender Monat/laufendes Jahr (kWh) fuer die
+     * Legende im Strompreis-Reiter (Dietmar, 27.08.2026). Bevorzugt den
+     * ECHTEN Zaehlerstand des Netzzaehlers (MeterHub-"grid"-Zuordnung,
+     * energyImportID, reset-sicher via PeriodEnergyCounter()) - nur ohne
+     * Zaehler faellt der TAGES-Wert auf die Leistungs-Integration zurueck
+     * (PowerToEnergy); Monat/Jahr bleiben dann bewusst null statt einen
+     * teuren Jahres-Archivdurchlauf ueber 5-Minuten-Aggregate zu machen.
+     * Zeitgrenzen ueber strtotime() (DST-Regel, siehe CLAUDE.md).
+     */
+    private function GridEnergySummary(): ?array
+    {
+        $dayStart   = strtotime('today');
+        $monthStart = strtotime(date('Y-m-01 00:00:00'));
+        $yearStart  = strtotime(date('Y-01-01 00:00:00'));
+        $now = time();
+
+        $gridA = $this->BestAssignment($this->MeterHubAssignments(), 'grid');
+        $impID = (int) ($gridA['energyImportID'] ?? 0);
+        if ($impID > 0) {
+            $day   = $this->PeriodEnergyCounter($impID, $dayStart, $now);
+            $month = $this->PeriodEnergyCounter($impID, $monthStart, $now);
+            $year  = $this->PeriodEnergyCounter($impID, $yearStart, $now);
+            if ($day !== null || $month !== null || $year !== null) {
+                return ['day' => $day, 'month' => $month, 'year' => $year];
+            }
+        }
+
+        $gridID = $this->GridPowerID();
+        if ($gridID <= 0) {
+            return null;
+        }
+        // Kanonisch "+ = Einspeisung": Bezug ist der negative Anteil. Bei
+        // MeterHub-Rohwerten ("+ = Bezug", GridPowerSign() == -1) entsprechend
+        // der positive - deshalb -GridPowerSign() als PowerToEnergy-Vorzeichen.
+        $day = $this->PowerToEnergy($gridID, $dayStart, $now, -$this->GridPowerSign($gridID));
+        return ['day' => $day, 'month' => null, 'year' => null];
+    }
+
     private function ArchiveValueAt(int $aid, int $vid, int $t): ?float
     {
         if ($t <= 0) {
@@ -2392,6 +2431,10 @@ class NRGDashboardPVMonitor extends IPSModule
             // vollstaendig erscheinen zu lassen. null bei Echtzeit-Zaehlern
             // (kein Nachlauf, keine Anzeige noetig).
             'gridWatermarkTs' => $this->GridArchiveWatermarkTs(),
+            // Tages-/Monats-/Jahres-Bezugsenergie fuer die Legende im
+            // Strompreis-Reiter (Dietmar, 27.08.2026: "hinter dem
+            // Netzbezug die Tages, Monats und Jahresenergie").
+            'gridEnergy' => $this->GridEnergySummary(),
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,

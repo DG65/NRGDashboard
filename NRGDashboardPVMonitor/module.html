@@ -56,7 +56,9 @@
      margin die Legende zu dicht an die Beschriftung heran). */
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
-  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; font-size: 11px; overflow-x: auto; }
+  /* margin-top 18px statt 20px - Legende 2px naeher ans Diagramm
+     (Dietmar, 27.08.2026, Strompreis-Reiter). */
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 18px; font-size: 11px; overflow-x: auto; }
   /* Tagesplan-Reiter (20.08.2026): eigene, NICHT interaktive Farbschluessel-
      Zeile fuer die EMS_OP_*-Hintergrundbaender (markArea/plotBands) -
      getrennt von #legendRow, weil ein Klick hier keine echte Chart-Serie
@@ -831,7 +833,24 @@
       items.forEach(function (it) {
         var el = document.createElement('span');
         el.className = 'legItem' + (isVisible(it.name) ? '' : ' off');
-        el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name;
+        var extra = '';
+        // Tages-/Monats-/Jahres-Bezugsenergie hinter dem Netzbezug-Eintrag
+        // (Dietmar, 27.08.2026) - nur im Strompreis-Reiter, Werte kommen
+        // aus dem Backend (gridEnergy: echter Zaehlerstand bevorzugt,
+        // Monat/Jahr fehlen bei reiner Leistungs-Integration bewusst).
+        if (tab === 'price' && it.name.indexOf('Netzbezug') === 0 && lastData.gridEnergy) {
+          var ge = lastData.gridEnergy;
+          var fmtE = function (v) {
+            if (v === null || v === undefined) { return null; }
+            return (v >= 100 ? Math.round(v).toLocaleString('de-DE') : v.toLocaleString('de-DE', { maximumFractionDigits: 1 }));
+          };
+          var parts = [];
+          if (fmtE(ge.day) !== null) { parts.push('Tag ' + fmtE(ge.day)); }
+          if (fmtE(ge.month) !== null) { parts.push('Monat ' + fmtE(ge.month)); }
+          if (fmtE(ge.year) !== null) { parts.push('Jahr ' + fmtE(ge.year)); }
+          if (parts.length) { extra = ' <span style="opacity:.65">(' + parts.join(' · ') + ' kWh)</span>'; }
+        }
+        el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name + extra;
         el.onclick = function () { setVisible(it.name, !isVisible(it.name)); render(); };
         row.appendChild(el);
       });
