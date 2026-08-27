@@ -56,9 +56,10 @@
      margin die Legende zu dicht an die Beschriftung heran). */
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
-  /* margin-top 13px statt urspruenglich 20px - Legende naeher ans
-     Diagramm (Dietmar, 27.08.2026: erst 2px, dann weitere 5px hoeher). */
-  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 13px; font-size: 11px; overflow-x: auto; }
+  /* margin-top 8px statt urspruenglich 20px - Legende naeher ans
+     Diagramm (Dietmar, 27.08.2026, in drei Schritten: 2px, 5px, nochmal
+     5px - gilt fuer ALLE Reiter, die Zeile ist geteilt). */
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 8px; font-size: 11px; overflow-x: auto; }
   /* Tagesplan-Reiter (20.08.2026): eigene, NICHT interaktive Farbschluessel-
      Zeile fuer die EMS_OP_*-Hintergrundbaender (markArea/plotBands) -
      getrennt von #legendRow, weil ein Klick hier keine echte Chart-Serie
@@ -834,21 +835,39 @@
         var el = document.createElement('span');
         el.className = 'legItem' + (isVisible(it.name) ? '' : ' off');
         var extra = '';
+        var fmtE = function (v) {
+          if (v === null || v === undefined) { return null; }
+          return (v >= 100 ? Math.round(v).toLocaleString('de-DE') : v.toLocaleString('de-DE', { maximumFractionDigits: 1 }));
+        };
+        var energyExtra = function (day, month, year) {
+          var parts = [];
+          if (fmtE(day) !== null) { parts.push('Tag ' + fmtE(day)); }
+          if (fmtE(month) !== null) { parts.push('Monat ' + fmtE(month)); }
+          if (fmtE(year) !== null) { parts.push('Jahr ' + fmtE(year)); }
+          return parts.length ? ' <span style="opacity:.65">(' + parts.join(' · ') + ' kWh)</span>' : '';
+        };
         // Tages-/Monats-/Jahres-Bezugsenergie hinter dem Netzbezug-Eintrag
         // (Dietmar, 27.08.2026) - nur im Strompreis-Reiter, Werte kommen
         // aus dem Backend (gridEnergy: echter Zaehlerstand bevorzugt,
         // Monat/Jahr fehlen bei reiner Leistungs-Integration bewusst).
         if (tab === 'price' && it.name.indexOf('Netzbezug') === 0 && lastData.gridEnergy) {
-          var ge = lastData.gridEnergy;
-          var fmtE = function (v) {
-            if (v === null || v === undefined) { return null; }
-            return (v >= 100 ? Math.round(v).toLocaleString('de-DE') : v.toLocaleString('de-DE', { maximumFractionDigits: 1 }));
-          };
-          var parts = [];
-          if (fmtE(ge.day) !== null) { parts.push('Tag ' + fmtE(ge.day)); }
-          if (fmtE(ge.month) !== null) { parts.push('Monat ' + fmtE(ge.month)); }
-          if (fmtE(ge.year) !== null) { parts.push('Jahr ' + fmtE(ge.year)); }
-          if (parts.length) { extra = ' <span style="opacity:.65">(' + parts.join(' · ') + ' kWh)</span>'; }
+          extra = energyExtra(lastData.gridEnergy.day, lastData.gridEnergy.month, lastData.gridEnergy.year);
+        }
+        // Dasselbe fuer die PV-Erzeugung im Solar-Reiter (Dietmar,
+        // 27.08.2026: "wie bei Strompreis") - Summen client-seitig aus der
+        // bereits mitgelieferten Tages-kWh-Karte (energy.pv, umfasst
+        // mehrere Jahre, siehe DailyEnergyMap()).
+        if (tab === 'solar' && it.name === 'PV-Erzeugung' && lastData.energy && lastData.energy.pv) {
+          var pvMap = lastData.energy.pv;
+          var todayId = fmtDate(new Date());
+          var monthPrefix = todayId.slice(0, 7), yearPrefix = todayId.slice(0, 4);
+          var pvDay = (pvMap[todayId] !== undefined) ? pvMap[todayId] : null;
+          var pvMonth = 0, pvYear = 0, any = false;
+          for (var k in pvMap) {
+            if (k.slice(0, 4) === yearPrefix) { pvYear += pvMap[k]; any = true; }
+            if (k.slice(0, 7) === monthPrefix) { pvMonth += pvMap[k]; }
+          }
+          extra = energyExtra(pvDay, any ? pvMonth : null, any ? pvYear : null);
         }
         el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name + extra;
         el.onclick = function () { setVisible(it.name, !isVisible(it.name)); render(); };
