@@ -11,6 +11,17 @@
   #bar { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
   #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; }
   #tabs { display: flex; flex-direction: column; gap: 4px; flex: 0 0 auto; padding-top: 2px; }
+  /* Einklappbare Reiterleiste (Dietmar, 27.08.2026: "mehr Platz für die
+     Diagramme") - Pfeil-Knopf statt Hover: Touch-Geräte im WebFront haben
+     kein echtes Hovern, ein Hover-Menü würde dort den ersten Tipp
+     schlucken. Eingeklappt verschwindet die Leiste komplett (Dietmars
+     Wahl), nur der Aufklapp-Pfeil bleibt; Zustand je Gerät in
+     localStorage (tabsCollapsed-Schlüssel, uid-namespaced wie die
+     Legenden-Sichtbarkeit). */
+  #tabsWrap { display: flex; flex-direction: column; flex: 0 0 auto; }
+  #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; }
+  #tabsToggle:hover { opacity: 1; background: rgba(127,135,145,.22); }
+  #tabsWrap.collapsed #tabs { display: none; }
   button.tab { font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; opacity: .6; }
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
   button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
@@ -191,15 +202,18 @@
       <span id="quick"></span>
     </div>
     <div id="body">
-      <div id="tabs">
-        <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
-        <button class="tab" data-tab="mpp">MPP-Tracker</button>
-        <button class="tab" data-tab="battery">Batterie</button>
-        <button class="tab" data-tab="price">Strompreis</button>
-        <button class="tab" data-tab="flow">Energiebilanz</button>
-        <button class="tab" data-tab="balance">Bilanz</button>
-        <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
-        <button class="tab" data-tab="tagesplan">Tagesplan</button>
+      <div id="tabsWrap">
+        <button id="tabsToggle" title="Reiterleiste ein-/ausblenden">&#9664;</button>
+        <div id="tabs">
+          <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
+          <button class="tab" data-tab="mpp">MPP-Tracker</button>
+          <button class="tab" data-tab="battery">Batterie</button>
+          <button class="tab" data-tab="price">Strompreis</button>
+          <button class="tab" data-tab="flow">Energiebilanz</button>
+          <button class="tab" data-tab="balance">Bilanz</button>
+          <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
+          <button class="tab" data-tab="tagesplan">Tagesplan</button>
+        </div>
       </div>
       <div id="chartcol">
         <div id="chart"></div>
@@ -3333,6 +3347,7 @@
       lastData = d;
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
+      loadTabsCollapsed(d.uid || 'x');
       if (d.bg) { document.body.style.background = d.bg; }
       // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
       // Kachel, bevor das Layout sicher fertig ist (WebFront-Rahmen/Flex-
@@ -3393,6 +3408,27 @@
         render();
       };
     });
+    // Einklappbare Reiterleiste (Dietmar, 27.08.2026) - Zustand je Geraet/
+    // Instanz in localStorage, Pfeilrichtung folgt dem Zustand. Nach dem
+    // Umschalten die Chart-Groesse nachfuehren (die Breite von #chartcol
+    // aendert sich), gleiches sizeChart()-Muster wie beim Fenster-Resize.
+    var tabsCollapsedKey = null;
+    function applyTabsCollapsed(collapsed) {
+      document.getElementById('tabsWrap').classList.toggle('collapsed', collapsed);
+      document.getElementById('tabsToggle').innerHTML = collapsed ? '&#9654;' : '&#9664;';
+    }
+    function loadTabsCollapsed(uid) {
+      tabsCollapsedKey = 'nrgdashmon_tabs_' + uid;
+      var collapsed = false;
+      try { collapsed = localStorage.getItem(tabsCollapsedKey) === '1'; } catch (e) {}
+      applyTabsCollapsed(collapsed);
+    }
+    document.getElementById('tabsToggle').onclick = function () {
+      var collapsed = !document.getElementById('tabsWrap').classList.contains('collapsed');
+      applyTabsCollapsed(collapsed);
+      try { if (tabsCollapsedKey) { localStorage.setItem(tabsCollapsedKey, collapsed ? '1' : '0'); } } catch (e) {}
+      if (chart) { setTimeout(sizeChart, 60); }
+    };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {
         if (btn.disabled) { return; }
