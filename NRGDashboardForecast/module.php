@@ -676,7 +676,10 @@ class NRGDashboardForecast extends IPSModule
 
         // 60 min: stuendliches Aggregat (exakt, leichtgewichtig).
         if ($slots <= 24) {
-            $rows = AC_GetAggregatedValues($aid, $vid, 0, $start, $start + 86400 - 1, 0);
+            // strtotime('+1 day', ...) statt +86400: an DST-Tagen sonst zu
+            // kurzes (Oktober) oder in den Folgetag ragendes (Maerz)
+            // Abfragefenster (Verbund-DST-Audit, 27.08.2026).
+            $rows = AC_GetAggregatedValues($aid, $vid, 0, $start, strtotime('+1 day', $start) - 1, 0);
             if (!is_array($rows) || count($rows) === 0) { return null; }
             $out = array_fill(0, $slots, null);
             foreach ($rows as $r) {
@@ -702,8 +705,15 @@ class NRGDashboardForecast extends IPSModule
      */
     private function measuredFine(int $aid, int $vid, int $start, int $slots)
     {
-        $until   = min($start + 86400, time());
-        $slotSec = 86400.0 / $slots;
+        // strtotime('+1 day', ...) statt +86400: die $slots (z.B. 96 x
+        // 15 Min.) sollen den ECHTEN Kalendertag abdecken, der an einem
+        // DST-Tag nur 23 oder 25 Stunden hat, nicht pauschal 24
+        // (Verbund-DST-Audit, 27.08.2026) - sonst fehlen am Umstellungstag
+        // die letzten Slots (Oktober) oder es werden faelschlich schon
+        // Slots des Folgetags mitgezaehlt (Maerz).
+        $dayEnd  = strtotime('+1 day', $start);
+        $until   = min($dayEnd, time());
+        $slotSec = ($dayEnd - $start) / $slots;
 
         $carry = null;
         $pre = AC_GetLoggedValues($aid, $vid, 0, $start - 1, 1);

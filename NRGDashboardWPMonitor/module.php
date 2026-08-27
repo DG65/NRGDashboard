@@ -503,8 +503,13 @@ class NRGDashboardWPMonitor extends IPSModule
 
         $days = [];
         for ($k = 0; $k < self::WINDOW_DAYS; $k++) {
-            $start = $todayStart - $k * 86400;
-            $end = min(time(), $start + 86400);
+            // strtotime('-N day', ...) statt $todayStart - $k*86400: rechnet
+            // ueber Kalendertage (respektiert Sommer-/Winterzeit), nicht
+            // ueber eine feste Sekundenzahl - sonst landet $start ab dem
+            // naechsten DST-Wechsel dauerhaft eine Stunde neben der echten
+            // Mitternacht (Verbund-DST-Audit, 27.08.2026).
+            $start = ($k > 0) ? strtotime('-' . $k . ' day', $todayStart) : $todayStart;
+            $end = min(time(), strtotime('+1 day', $start));
             $dateKey = date('Y-m-d', $start);
 
             $electricPower = ($aid > 0) ? $this->DaySeries($aid, $powerID, $start, $end) : [];
@@ -522,7 +527,10 @@ class NRGDashboardWPMonitor extends IPSModule
                 'label'           => date('d.m.Y', $start),
                 'hasData'         => $hasData,
                 'dayStart'        => $start * 1000,
-                'dayEnd'          => ($start + 86400) * 1000,
+                // strtotime('+1 day', ...) statt +86400: an DST-Tagen sonst
+                // eine falsche x-Achsen-Obergrenze (Verbund-DST-Audit,
+                // 27.08.2026).
+                'dayEnd'          => strtotime('+1 day', $start) * 1000,
                 'electricPower'   => $electricPower,
                 'thermalPower'    => $thermalPower,
                 'mainOutletTemp'  => $mainOutletTemp,

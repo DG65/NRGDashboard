@@ -503,7 +503,14 @@
       if (d) { pick.value = d.id; }
       var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
       labels.forEach(function (l) {
-        var target = days.findIndex(function (d) { return d.id === fmtDate(new Date(Date.now() - l[1] * 86400000)); });
+        // setDate() statt Date.now() - l[1]*86400000: rechnet ueber
+        // Kalendertage (DST-sicher), eine feste Millisekundenzahl kann
+        // rund um die Sommer-/Winterzeit-Umstellung auf den falschen Tag
+        // fallen (Verbund-DST-Audit, 27.08.2026).
+        var refDate = new Date();
+        refDate.setHours(0, 0, 0, 0);
+        refDate.setDate(refDate.getDate() - l[1]);
+        var target = days.findIndex(function (d) { return d.id === fmtDate(refDate); });
         var btn = document.createElement('button');
         btn.className = 'qday' + (target === idx ? ' active' : '');
         btn.textContent = l[0];

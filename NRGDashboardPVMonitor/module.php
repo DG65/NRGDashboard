@@ -565,7 +565,10 @@ class NRGDashboardPVMonitor extends IPSModule
 
     private function PriceDaySlots(int $dayStart): array
     {
-        $dayEnd = $dayStart + 86400;
+        // strtotime('+1 day', ...) statt +86400: an DST-Tagen (23h im
+        // Maerz, 25h im Oktober) sonst 96 Slots, die nicht wirklich
+        // Mitternacht-zu-Mitternacht abdecken (Verbund-DST-Audit, 27.08.2026).
+        $dayEnd = strtotime('+1 day', $dayStart);
         if ($dayStart >= strtotime('today')) {
             $raw = [];
             foreach ($this->PriceCurve() as $slot) {
@@ -1531,7 +1534,7 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function SunRange(int $dayStart): array
     {
-        $dayEnd = $dayStart + 86400;
+        $dayEnd = strtotime('+1 day', $dayStart);
         $coords = $this->Coordinates();
         if ($coords === null) {
             return [$dayStart, $dayEnd];
@@ -1672,7 +1675,7 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($peakDayStart === null || $peakDrawW <= 0.0) {
             return null;
         }
-        $dayEnd = min($monthEnd, $peakDayStart + 86400);
+        $dayEnd = min($monthEnd, strtotime('+1 day', $peakDayStart));
         $bars = $this->SlotEnergyBars($aid, $vid, $peakDayStart, $dayEnd, $sign);
         if (count($bars) === 0) {
             return null;
@@ -1929,12 +1932,12 @@ class NRGDashboardPVMonitor extends IPSModule
             $cursor = $start;
             while ($cursor < $end && $guardMax-- > 0) {
                 $dayStart = strtotime('midnight', $cursor);
-                $dayEnd = min($end, $dayStart + 86400);
+                $dayEnd = min($end, strtotime('+1 day', $dayStart));
                 $t = $this->BalanceTotals($dayStart, $dayEnd);
                 $t['id'] = date('Y-m-d', $dayStart);
                 $t['label'] = date('j', $dayStart);
                 $bars[] = $t;
-                $cursor = $dayStart + 86400;
+                $cursor = $dayEnd;
             }
         } elseif ($granularity === 'year') {
             $cursor = $start;
@@ -2078,8 +2081,13 @@ class NRGDashboardPVMonitor extends IPSModule
         ?array $model
     ): array {
         $todayStart = strtotime('today 00:00:00');
-        $start = $todayStart - $k * 86400;
-        $end   = min(time(), $start + 86400);
+        // strtotime('-N day', ...) statt $todayStart - $k*86400: rechnet
+        // ueber Kalendertage (respektiert Sommer-/Winterzeit), nicht ueber
+        // eine feste Sekundenzahl - sonst landet $start ab dem naechsten
+        // DST-Wechsel dauerhaft eine Stunde neben der echten Mitternacht
+        // (Verbund-DST-Audit, 27.08.2026).
+        $start = ($k > 0) ? strtotime('-' . $k . ' day', $todayStart) : $todayStart;
+        $end   = min(time(), strtotime('+1 day', $start));
         // Ein Tag in der Zukunft (morgen) hat archivseitig grundsaetzlich
         // nichts zu bieten - $start läge dann NACH $end (min(time(),...)
         // bliebe bei "jetzt" haengen), das wuerde AC_GetAggregatedValues
@@ -2173,7 +2181,10 @@ class NRGDashboardPVMonitor extends IPSModule
             // aktuellen Uhrzeit abzuschneiden (Dietmars Wunsch,
             // 28.07.2026).
             'dayStart' => $start * 1000,
-            'dayEnd'   => ($start + 86400) * 1000,
+            // strtotime('+1 day', ...) statt +86400: an DST-Tagen sonst
+            // eine falsche x-Achsen-Obergrenze fuer den Batterie-Reiter
+            // (Verbund-DST-Audit, 27.08.2026).
+            'dayEnd'   => strtotime('+1 day', $start) * 1000,
             'pv'       => $pv,
             'irr'      => $irr,
             'expected' => $expected,
