@@ -56,10 +56,14 @@
      margin die Legende zu dicht an die Beschriftung heran). */
   /* Immer eine Zeile (Dietmar, 31.07.2026) - bei zu wenig Platz lieber
      horizontal scrollen als umbrechen. */
-  /* margin-top 8px statt urspruenglich 20px - Legende naeher ans
-     Diagramm (Dietmar, 27.08.2026, in drei Schritten: 2px, 5px, nochmal
-     5px - gilt fuer ALLE Reiter, die Zeile ist geteilt). */
-  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 8px; font-size: 11px; overflow-x: auto; }
+  /* margin-bottom 7px hebt die Legende vom unteren Rand an (Dietmar,
+     27.08.2026: erst 2px, dann 5px "nach oben"). WICHTIG: margin-top zu
+     verkleinern bewegt die Legende NICHT - #chart hat flex:1 und fuellt
+     den frei werdenden Platz sofort selbst auf, nur das Diagramm wird
+     hoeher (erster, wirkungsloser Versuch in dieser Runde). Nach OBEN
+     kommt die Legende nur ueber zusaetzlichen Abstand UNTER ihr. Gilt
+     fuer alle Reiter, die Zeile ist geteilt. */
+  #legendRow { display: flex; flex-wrap: nowrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 20px; margin-bottom: 7px; font-size: 11px; overflow-x: auto; }
   /* Tagesplan-Reiter (20.08.2026): eigene, NICHT interaktive Farbschluessel-
      Zeile fuer die EMS_OP_*-Hintergrundbaender (markArea/plotBands) -
      getrennt von #legendRow, weil ein Klick hier keine echte Chart-Serie
