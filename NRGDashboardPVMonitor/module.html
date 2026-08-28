@@ -44,8 +44,12 @@
   /* top:-35px hebt den Pfeil-Knopf auf die Hoehe der Zeitsteuerungszeile
      (#bar, 30px hoch, sitzt 8px Body-Abstand darueber; 24px Knopf mittig
      = -(8+30)+3) - Dietmar, 28.08.2026: "der Pfeil ... muss auf genau
-     die gleiche Hoehe der Zeitsteuerungszeile". Das Panel selbst bleibt
-     an der alten Position (#tabs top kompensiert um +35px). */
+     die gleiche Hoehe der Zeitsteuerungszeile". Die Reiterleiste wandert
+     MIT dem Pfeil nach oben (Dietmars Nachtrag: "die Reiterleiste musst
+     Du exakt wie der Pfeilbutton verschieben") - sie haengt am selben
+     Wrapper und beginnt wieder auf Pfeilhoehe (#tabs top:0), wie vor
+     der Verschiebung; damit stimmt auch der Einsaug-Ursprung der
+     Animation wieder exakt mit dem Knopf ueberein. */
   #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: -35px; z-index: 900; }
   /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
      Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
@@ -53,7 +57,7 @@
   /* VOLL deckender Grund (Dietmar, 27.08.2026: selbst bei 97% war "noch
      immer sehr viel des darunter liegenden Diagramms sichtbar") - solide
      Farbe statt rgba, backdrop-filter damit ueberfluessig und entfernt. */
-  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 35px; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
   body.light #tabs { background: #f2f4f7; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
   #tabsWrap.collapsed #tabs { pointer-events: none; visibility: hidden; }
   /* Vier waehlbare Animationsstile (Dietmar, 27.08.2026: "Mache doch
