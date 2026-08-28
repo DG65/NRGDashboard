@@ -709,6 +709,12 @@ class NRGDashboardTile extends IPSModule
                 $devices[$wbIdx]['socHave'] = true;
                 $devices[$wbIdx]['soc'] = round((float) GetValue($v['socID']));
                 $devices[$wbIdx]['sub'] = $v['name'];
+                // Nur bei automatisch erkannten Tessie-Fahrzeugen vorhanden
+                // (manuelle Fahrzeug-Zeilen kennen keine Reichweite) - fuer die
+                // "Für mich"-Kennzahl auf der Wallbox-Detailseite.
+                if (!empty($v['rangeKm'])) {
+                    $devices[$wbIdx]['vehicleRangeKm'] = $v['rangeKm'];
+                }
                 $this->PublishVehicleNameToChargerHub($devices[$wbIdx], $v['name']);
             }
         }
@@ -1269,6 +1275,12 @@ class NRGDashboardTile extends IPSModule
                 'socID' => (int) $state['socID'],
                 'connected' => (bool) ($state['connected'] ?? false),
                 'changedAt' => $this->ChangedAt($changeVid),
+                // Reichweite bei aktuellem Ladestand (Tessie-Vertrag 1.5,
+                // 28.08.2026) - fuer die "Für mich"-Kennzahl auf der Wallbox-
+                // Detailseite (im Krisenfall relevant: "komme ich damit weg?").
+                // null bei aelteren Tessie-Versionen oder deaktiviertem
+                // Datenpunkt - dann zeigt die Detailseite nur den SOC.
+                'rangeKm' => isset($state['rangeKm']) ? (float) $state['rangeKm'] : null,
             ];
         }
         return $out;
@@ -1896,6 +1908,26 @@ class NRGDashboardTile extends IPSModule
                 if ($function === 'battery' && !empty($data['socID'])) {
                     $entry['socID'] = $data['socID'];
                 }
+                // Batterie-Block-Details (InverterHub-Vertrag 1.1, 28.08.2026) -
+                // fuer die Krisen-/Notfall-Kennzahl "Restlaufzeit bei
+                // Stromausfall" (siehe BuildDetailPayload()) sowie generisch
+                // ueber DetailValues() als Temperatur/SOC/SOH je Block. Additiv
+                // pruefen, aeltere InverterHub-Versionen liefern diese Felder
+                // schlicht nicht mit (kein Fehler, nur fehlende Werte).
+                if ($function === 'battery') {
+                    if (!empty($data['batteryTempIDs'])) {
+                        $entry['batteryTempIDs'] = $data['batteryTempIDs'];
+                    }
+                    if (!empty($data['batterySocIDs'])) {
+                        $entry['batterySocIDs'] = $data['batterySocIDs'];
+                    }
+                    if (!empty($data['batterySohIDs'])) {
+                        $entry['batterySohIDs'] = $data['batterySohIDs'];
+                    }
+                    if (!empty($data['batteryCapacityID'])) {
+                        $entry['batteryCapacityID'] = $data['batteryCapacityID'];
+                    }
+                }
                 $results[] = $this->normalizeEntry($entry, 'inverterhub', $id);
             }
         }
@@ -2319,6 +2351,9 @@ class NRGDashboardTile extends IPSModule
         // Wallbox, deren primaere powerID nicht mehr aktualisiert wurde).
         $powerNow = $this->resolvePowerValue($d);
         $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
+        $powerSeries = $this->DaySeries($powerID, $dayStart, $dayEnd);
+        $energy = $this->DailyEnergyBars($d, $dayStart);
+        $isToday = date('Y-m-d', $dayStart) === date('Y-m-d');
         return [
             'ok'        => true,
             'key'       => $key,
@@ -2329,13 +2364,161 @@ class NRGDashboardTile extends IPSModule
             'values'    => $this->DetailValues($d),
             'day'       => date('Y-m-d', $dayStart),
             'dayLabel'  => date('d.m.Y', $dayStart),
-            'isToday'   => date('Y-m-d', $dayStart) === date('Y-m-d'),
-            'power'     => $this->DaySeries($powerID, $dayStart, $dayEnd),
-            'energy'    => $this->DailyEnergyBars($d, $dayStart),
+            'isToday'   => $isToday,
+            'power'     => $powerSeries,
+            'energy'    => $energy,
+            // "Für mich"-Kennzahlen (Dietmar, 28.08.2026: "was einen als
+            // Hausbesitzer interessieren könnte ... auch mit Blick auf
+            // Krisen-/Katastrophenfälle") - siehe BuildHighlights().
+            'highlights' => $this->BuildHighlights($d, $powerSeries, $energy, $isToday, $dayStart),
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
         ];
+    }
+
+    /**
+     * Uebersetzt technische Rohwerte in "was bedeutet das fuer mich"-
+     * Kennzahlen (Dietmar, 28.08.2026). Zwei Schichten:
+     * 1) GENERISCH, fuer JEDES Geraet mit einer Leistungsreihe gleich
+     *    berechnet (Spitzenleistung/Betriebsstunden/Energie des Tages) -
+     *    kein Geraetetyp hart verdrahtet, CLAUDE.md Kernprinzip 2.
+     * 2) Gezielt je Funktion, wo eine einzelne Zahl im Alltag oder im
+     *    Krisenfall (Stromausfall, Evakuierung) tatsaechlich relevant ist:
+     *    Batterie-Restlaufzeit, Netzbezug/-einspeisung getrennt, Fahrzeug-
+     *    Reichweite. Nur mit tatsaechlich vorhandenen Daten - keine Werte
+     *    erfinden/schaetzen, wo die Datengrundlage fehlt (z.B. keine
+     *    Kostenanzeige ohne echten Strompreis-Vertrag).
+     */
+    private function BuildHighlights(array $d, array $powerSeries, array $energy, bool $isToday, int $dayStart): array
+    {
+        $out = [];
+        $fn = (string) ($d['function'] ?? '');
+        $dayWord = $isToday ? 'heute' : 'an diesem Tag';
+
+        // --- 1) Generisch aus der Leistungsreihe -----------------------
+        if (count($powerSeries) >= 2) {
+            $peak = 0.0;
+            $activeSlots = 0;
+            foreach ($powerSeries as [$ts, $w]) {
+                $peak = max($peak, abs((float) $w));
+                if (abs((float) $w) > 20) {
+                    $activeSlots++;
+                }
+            }
+            $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
+            if ($intervalHours > 0) {
+                $out[] = ['label' => 'Spitzenleistung ' . $dayWord, 'value' => $this->FmtWWithUnit($peak)];
+                $out[] = ['label' => 'In Betrieb ' . $dayWord, 'value' => $this->FmtHours($activeSlots * $intervalHours)];
+            }
+        }
+        // Energie des ausgewaehlten Tages aus den bereits berechneten
+        // 14-Tage-Balken herauspicken (kein zweiter Archiv-Zugriff noetig).
+        $dayKey = date('Y-m-d', $dayStart);
+        foreach (($energy['bars'] ?? []) as [$bd, $bv]) {
+            if ($bd === $dayKey) {
+                $unit = $energy['unit'] ?: 'kWh';
+                $approxMark = !empty($energy['approx']) ? '≈ ' : '';
+                $out[] = ['label' => 'Energie ' . $dayWord, 'value' => $approxMark . number_format((float) $bv, 1, ',', '.') . ' ' . $unit];
+                break;
+            }
+        }
+
+        // --- 2) Funktionsspezifisch -------------------------------------
+        if ($fn === 'battery') {
+            $capId = (int) ($d['batteryCapacityID'] ?? 0);
+            $socId = (int) ($d['socID'] ?? 0);
+            $capacityKWh = ($capId > 0) ? $this->resolveVariableValue($capId) : null;
+            $socPercent = ($socId > 0) ? $this->resolveVariableValue($socId) : null;
+            $houseLoadW = $this->EstimateHouseLoadW();
+            if ($capacityKWh !== null && $socPercent !== null && $houseLoadW !== null) {
+                $usableKWh = $capacityKWh * max(0, min(100, $socPercent)) / 100;
+                // Sehr geringe/negative Hauslast (z.B. gerade PV-Ueberschuss)
+                // wuerde eine absurd hohe/negative Laufzeit ergeben - unterhalb
+                // 50 W gilt "reicht praktisch beliebig lange" statt einer
+                // konkreten (falschen) Praezisionszahl.
+                if ($houseLoadW < 50) {
+                    $out[] = ['label' => 'Reicht bei Stromausfall', 'value' => '> 24 Std.', 'hint' => 'Bei aktuell sehr geringer Hauslast'];
+                } else {
+                    $hours = $usableKWh / ($houseLoadW / 1000);
+                    $out[] = [
+                        'label' => 'Reicht bei Stromausfall',
+                        'value' => $this->FmtHours($hours),
+                        'hint' => 'Schätzung bei aktueller Hauslast von ' . $this->FmtWWithUnit($houseLoadW) . ' - im echten Inselbetrieb versorgt die Batterie meist nur die Notstromkreise, nicht das ganze Haus.',
+                    ];
+                }
+            }
+        } elseif ($fn === 'grid' && count($powerSeries) >= 2) {
+            $importKWh = 0.0;
+            $exportKWh = 0.0;
+            $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
+            foreach ($powerSeries as [$ts, $w]) {
+                if ($w < 0) {
+                    $importKWh += abs($w) * $intervalHours / 1000;
+                } else {
+                    $exportKWh += $w * $intervalHours / 1000;
+                }
+            }
+            $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
+            $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+        } elseif ($fn === 'wallbox' && !empty($d['vehicleRangeKm'])) {
+            $out[] = [
+                'label' => 'Geschätzte Reichweite',
+                'value' => round((float) $d['vehicleRangeKm']) . ' km',
+                'hint' => 'Bei aktuellem Ladestand des Fahrzeugs',
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Aktuelle Netto-Hauslast in Watt, dieselbe Formel wie module.html
+     *  (houseW = pv - grid + bat, "+" bei grid/bat = Einspeisung/Entladen) -
+     *  null, wenn keins der beteiligten Geraete aufgeloest werden kann. */
+    private function EstimateHouseLoadW(): ?float
+    {
+        $devices = $this->GetDevices();
+        $pv = null; $grid = null; $bat = null; $house = null;
+        foreach ($devices as $dev) {
+            $val = $this->resolvePowerValue($dev);
+            if ($val === null) {
+                continue;
+            }
+            switch ($dev['function'] ?? '') {
+                case 'house':    $house = $val; break;
+                case 'pv':       $pv = $val; break;
+                case 'grid':     $grid = $val; break;
+                case 'battery':  $bat = $val; break;
+            }
+        }
+        if ($house !== null) {
+            return $house;
+        }
+        if ($pv !== null && $grid !== null) {
+            return $pv - $grid + ($bat ?? 0);
+        }
+        return null;
+    }
+
+    private function FmtWWithUnit(float $w): string
+    {
+        $a = abs($w);
+        return $a >= 10000
+            ? number_format($w / 1000, 1, ',', '.') . ' kW'
+            : number_format($w, 0, ',', '.') . ' W';
+    }
+
+    private function FmtHours(float $hours): string
+    {
+        if ($hours >= 24) {
+            return '> 24 Std.';
+        }
+        $h = floor($hours);
+        $m = round(($hours - $h) * 60);
+        if ($m === 60.0) {
+            $h++; $m = 0;
+        }
+        return $h > 0 ? ($h . ' Std. ' . $m . ' Min.') : ($m . ' Min.');
     }
 
     /**

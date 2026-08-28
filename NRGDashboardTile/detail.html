@@ -56,12 +56,27 @@
   #dayLabel { font-size: 13px; color: #bdc1c6; min-width: 84px; text-align: center; }
   .note { font-size: 11px; color: #9aa0a6; margin-top: 2px; }
   #stamp { font-size: 11px; color: #6b7075; margin-top: 14px; }
+
+  /* "Für mich"-Kennzahlen (28.08.2026): uebersetzte Alltags-/Krisen-Werte
+     statt reiner Messtechnik, deshalb bewusst OBEN vor der technischen
+     Wertetabelle und optisch als eigene Kachelreihe abgesetzt. */
+  #hlWrap { display: none; margin-bottom: 6px; }
+  #hlGrid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .hl-card {
+    background: #2f333a; border: 1px solid #3d424a; border-radius: 10px;
+    padding: 10px 16px; min-width: 148px;
+  }
+  .hl-card .hl-label { font-size: 11px; color: #9aa0a6; margin-bottom: 3px; }
+  .hl-card .hl-value { font-size: 20px; font-weight: 600; color: #e8eaed; font-variant-numeric: tabular-nums; }
+  .hl-card .hl-hint { font-size: 10.5px; color: #7a8189; margin-top: 4px; line-height: 1.4; max-width: 26ch; }
 </style>
 
 <button id="closeBtn"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Schließen</button>
 <div id="head"><span id="title">…</span><span id="powerNow"></span></div>
 <div id="source"></div>
 <div id="err"></div>
+
+<div id="hlWrap"><div id="hlGrid"></div></div>
 
 <div class="grid2">
   <div id="phaseWrap" style="display:none"><h2 id="phaseH">Phasen L1–L3</h2><div id="phaseT"></div></div>
@@ -205,6 +220,19 @@ function renderEnergy(p) {
   }, true);
 }
 
+function renderHighlights(p) {
+  const wrap = document.getElementById('hlWrap');
+  const hl = p.highlights || [];
+  if (!hl.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  document.getElementById('hlGrid').innerHTML = hl.map(h =>
+    '<div class="hl-card"><div class="hl-label">' + esc(h.label) + '</div>' +
+    '<div class="hl-value">' + esc(h.value) + '</div>' +
+    (h.hint ? '<div class="hl-hint">' + esc(h.hint) + '</div>' : '') +
+    '</div>'
+  ).join('');
+}
+
 function handleDetail(p) {
   lastPayload = p;
   if (!p || !p.ok) {
@@ -219,6 +247,7 @@ function handleDetail(p) {
   document.getElementById('title').textContent = p.label;
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
+  renderHighlights(p);
   renderValues(p);
   renderPower(p);
   renderEnergy(p);
