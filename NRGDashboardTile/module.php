@@ -123,6 +123,21 @@ class NRGDashboardTile extends IPSModule
         // Leer = automatisch bei genau einer installierten Instanz, analog
         // PvfInstance/IrradianceID.
         $this->RegisterPropertyInteger('TibberInstance', 0);
+        // Ersatz-Strompreis fuer Kosten-Kennzahlen OHNE Tibber-Instanz
+        // (Dietmar, 28.08.2026: "Quartalsweise den Haushalts-Durchschnitts-
+        // preis bei BDEW anfragen und in eine DB eintragen ... das sollte
+        // auch das ausgelieferte Modul ganz ohne Dich koennen"). Die BDEW-
+        // Strompreisanalyse (bdew.de, vierteljaehrlich Jan/Apr/Jul/Okt) hat
+        // KEINE API/PDF-Parsing noetig - die Uebersichtsseite selbst nennt
+        // die aktuelle Kennzahl bereits als Klartext-Satz ("... betraegt
+        // ... durchschnittlich XX,X ct/kWh"), siehe FetchBdewPrice(). Die
+        // "DB" ist ein einfaches Attribut (JSON-Array aus {fetchedAt,
+        // priceCtPerKWh}), damit auch nach Jahren noch der zuletzt bekannte
+        // Wert vorliegt, selbst wenn ein spaeterer Abruf fehlschlaegt (Seite
+        // umgebaut, kein Internet etc.).
+        $this->RegisterAttributeString('BdewPriceHistory', '[]');
+        $this->RegisterAttributeInteger('BdewLastTry', 0);
+        $this->RegisterTimer('NRGDASH_BdewCheck', 0, 'NRGDASH_CheckBdewPrice($_IPS[\'TARGET\']);');
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
         // dann einschalten... oder umgekehrt ausschalten" - passt besser zu
@@ -145,6 +160,10 @@ class NRGDashboardTile extends IPSModule
     {
         parent::ApplyChanges();
         $this->SetTimerInterval('NRGDASH_Refresh', 5 * 60 * 1000);
+        // Taeglich pruefen, ob ein neuer BDEW-Quartalswert faellig ist (die
+        // Pruefung selbst ist billig, der eigentliche HTTP-Abruf laeuft nur
+        // gedrosselt - siehe CheckBdewPrice()).
+        $this->SetTimerInterval('NRGDASH_BdewCheck', 24 * 60 * 60 * 1000);
         $this->SetVisualizationType(1);
         // Standalone-Webseite fuer IPSView/Browser (WebView/Popup) - Muster
         // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
@@ -166,6 +185,7 @@ class NRGDashboardTile extends IPSModule
         // ApplyChanges() bei JEDEM Kernel-Start fuer jede Instanz auf, das ist
         // also der richtige Ort dafuer, nicht nur der Timer).
         $this->Discover();
+        $this->CheckBdewPrice();
     }
 
     /**
@@ -1748,6 +1768,116 @@ class NRGDashboardTile extends IPSModule
 
     /** Eigene Property gewinnt; sonst automatisch bei genau einer
      *  installierten TibberGridReward-Instanz (analog resolveIrradianceID()). */
+    // Zwischen zwei erfolglosen HTTP-Versuchen mindestens 1 Tag warten
+    // (Seite down/kein Internet) - der taegliche Timer wuerde sonst bei
+    // dauerhaftem Fehler jeden Tag erneut probieren, was fuer diese
+    // Quartalsdaten voellig ausreicht.
+    private const BDEW_RETRY_SECONDS = 24 * 60 * 60;
+    // Ein gespeicherter Wert gilt nach 100 Tagen als faellig fuer eine
+    // Auffrischung (BDEW veroeffentlicht ca. alle 90 Tage/vierteljaehrlich,
+    // etwas Puffer falls die Seite mal spaeter aktualisiert wird).
+    private const BDEW_REFRESH_SECONDS = 100 * 24 * 60 * 60;
+
+    /**
+     * Vom Timer taeglich aufgerufen (oeffentlich, siehe RegisterTimer in
+     * Create()). Holt einen neuen BDEW-Wert nur, wenn der letzte gespeicherte
+     * Eintrag faellig ist UND der letzte Versuch lang genug her ist -
+     * dieselbe Drossel-Idee wie TibberGridReward::GetPriceCurve() fuers
+     * eigene Preis-Nachladen (kein Dauerfeuer bei anhaltendem Fehlschlag).
+     */
+    public function CheckBdewPrice(): void
+    {
+        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        $history = is_array($history) ? $history : [];
+        $latest = end($history);
+        $latestAge = $latest ? (time() - (int) $latest['fetchedAt']) : PHP_INT_MAX;
+        if ($latestAge < self::BDEW_REFRESH_SECONDS) {
+            return;
+        }
+        $lastTry = $this->ReadAttributeInteger('BdewLastTry');
+        if (time() - $lastTry < self::BDEW_RETRY_SECONDS) {
+            return;
+        }
+        $this->WriteAttributeInteger('BdewLastTry', time());
+        $price = $this->FetchBdewPrice();
+        if ($price === null) {
+            $this->SendDebug(__FUNCTION__, 'BDEW-Abruf fehlgeschlagen, naechster Versuch in ' . self::BDEW_RETRY_SECONDS . 's', 0);
+            return;
+        }
+        $history[] = ['fetchedAt' => time(), 'priceCtPerKWh' => $price];
+        // Nie mehr als 40 Eintraege behalten (~10 Jahre Quartalshistorie) -
+        // reine Vorsicht gegen unbegrenztes Wachstum, kein aktueller Bedarf.
+        if (count($history) > 40) {
+            $history = array_slice($history, -40);
+        }
+        $this->WriteAttributeString('BdewPriceHistory', json_encode($history));
+        $this->SendDebug(__FUNCTION__, 'Neuer BDEW-Durchschnittspreis gespeichert: ' . $price . ' ct/kWh', 0);
+    }
+
+    /**
+     * Liest den aktuellen Strompreis-Durchschnitt fuer Haushaltskunden von
+     * der BDEW-Uebersichtsseite (bdew.de) - bewusst NICHT das quartalsweise
+     * veroeffentlichte PDF (kein verlaesslicher PHP-PDF-Textextraktor ohne
+     * Zusatzbibliothek), sondern die HTML-Seite selbst, die die aktuelle
+     * Kennzahl schon als Klartext-Satz enthaelt: "Der durchschnittliche
+     * Strompreis fuer Haushalte ... betraegt ... durchschnittlich XX,X
+     * ct/kWh" (Stand 28.08.2026 lebend geprueft). Liefert null bei jedem
+     * Fehler (Netzwerk, HTTP-Fehler, Satz nicht gefunden - z.B. nach einem
+     * Wortlaut-Wechsel der Seite) - dann bleibt der zuletzt gespeicherte
+     * Wert einfach stehen, es wird nichts erfunden.
+     */
+    private function FetchBdewPrice(): ?float
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://www.bdew.de/service/daten-und-grafiken/bdew-strompreisanalyse/');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (IP-Symcon NRGDashboard)');
+        $html = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($html === false || $code >= 400) {
+            $this->SendDebug(__FUNCTION__, 'HTTP ' . $code . ' ' . $err, 0);
+            return null;
+        }
+        // Zahl vor "ct/kWh" im Satz mit "durchschnittlich" - deutsches
+        // Dezimalkomma. Bewusst kein starres Vollsatz-Match (Wortlaut kann
+        // leicht variieren), nur die fuer uns entscheidende Zahl-Einheit-
+        // Kombination in Satznaehe von "Haushalt"+"durchschnittlich".
+        if (preg_match('/Haushalt[^.]{0,200}?durchschnittlich\s+(\d+[,.]\d+)\s*ct\/?kWh/us', $html, $m)
+            || preg_match('/durchschnittlich\s+(\d+[,.]\d+)\s*ct\/?kWh[^.]{0,200}?Haushalt/us', $html, $m)) {
+            $price = (float) str_replace(',', '.', $m[1]);
+            // Grobe Plausibilitaetsgrenze (20-80 ct/kWh) - ein Wert weit
+            // ausserhalb deutet auf einen falsch getroffenen Satz hin (z.B.
+            // Industriepreis oder ein Datum), lieber ablehnen als falsch
+            // uebernehmen.
+            if ($price >= 20 && $price <= 80) {
+                return $price;
+            }
+            $this->SendDebug(__FUNCTION__, 'Gefundener Wert unplausibel: ' . $price, 0);
+        }
+        return null;
+    }
+
+    /** Zuletzt gespeicherter BDEW-Wert + Alter in Tagen, oder null ohne
+     *  jeden Eintrag (noch nie erfolgreich abgerufen). */
+    private function CurrentBdewPrice(): ?array
+    {
+        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        $latest = is_array($history) ? end($history) : false;
+        if (!$latest) {
+            return null;
+        }
+        return [
+            'priceCtPerKWh' => (float) $latest['priceCtPerKWh'],
+            'ageDays' => (int) floor((time() - (int) $latest['fetchedAt']) / 86400),
+        ];
+    }
+
     private function TibberInstanceID(): int
     {
         $own = $this->readIntProperty('TibberInstance', 0);
@@ -1767,20 +1897,33 @@ class NRGDashboardTile extends IPSModule
      */
     private function PriceSlotsForDay(int $dayStart, int $dayEnd): array
     {
-        if (!function_exists('TIBBERGR_GetPriceCurve')) {
+        $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
+        if ($id > 0) {
+            $slots = @TIBBERGR_GetPriceCurve($id);
+            if (is_array($slots)) {
+                $slots = array_values(array_filter($slots, function ($s) use ($dayStart, $dayEnd) {
+                    return is_array($s) && (int) ($s['end'] ?? 0) > $dayStart && (int) ($s['start'] ?? PHP_INT_MAX) < $dayEnd;
+                }));
+                if (count($slots) > 0) {
+                    return $slots;
+                }
+            }
+        }
+        // Ohne (nutzbare) Tibber-Instanz: BDEW-Haushaltsdurchschnitt als
+        // grober Ersatzwert - ein einzelner, ueber den ganzen Tag flacher
+        // "Slot", ausdruecklich als 'approx' markiert (Dietmar, 28.08.2026:
+        // "das sollte auch das ausgelieferte Modul ganz ohne Dich koennen").
+        $bdew = $this->CurrentBdewPrice();
+        if ($bdew === null) {
             return [];
         }
-        $id = $this->TibberInstanceID();
-        if ($id <= 0) {
-            return [];
-        }
-        $slots = @TIBBERGR_GetPriceCurve($id);
-        if (!is_array($slots)) {
-            return [];
-        }
-        return array_values(array_filter($slots, function ($s) use ($dayStart, $dayEnd) {
-            return is_array($s) && (int) ($s['end'] ?? 0) > $dayStart && (int) ($s['start'] ?? PHP_INT_MAX) < $dayEnd;
-        }));
+        return [[
+            'start' => $dayStart,
+            'end' => $dayEnd,
+            'price' => $bdew['priceCtPerKWh'],
+            'approx' => true,
+            'ageDays' => $bdew['ageDays'],
+        ]];
     }
 
     /** Preis (ct/kWh) des Slots, der $ts enthaelt, oder null. */
@@ -2502,15 +2645,27 @@ class NRGDashboardTile extends IPSModule
         $out = [];
         $fn = (string) ($d['function'] ?? '');
         $dayWord = $isToday ? 'heute' : 'an diesem Tag';
-        // Strompreis-Kurve fuer den Tag - [] ohne TibberGridReward-Instanz
-        // (function_exists()-Wache in PriceSlotsForDay()), dann bleiben alle
-        // Kosten-Kennzahlen unten einfach weg statt eine falsche Zahl zu
-        // zeigen (Dietmar, 28.08.2026: "schau mal welche Module wir haben").
+        // Strompreis-Kurve fuer den Tag: bevorzugt TibberGridReward (echte
+        // stuendliche Preise), sonst automatisch der BDEW-Haushalts-
+        // durchschnitt als grober Ersatzwert (PriceSlotsForDay(), Dietmar
+        // 28.08.2026 - "das sollte auch das ausgelieferte Modul ganz ohne
+        // Dich koennen"). [] nur, wenn WIRKLICH keine Quelle verfuegbar ist
+        // (auch kein je erfolgreich abgerufener BDEW-Wert) - dann bleiben
+        // alle Kosten-Kennzahlen einfach weg statt eine falsche Zahl zu
+        // zeigen.
         $priceSlots = $this->PriceSlotsForDay($dayStart, $dayEnd);
+        $priceApprox = count($priceSlots) > 0 && !empty($priceSlots[0]['approx']);
+        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : '';
         if (count($priceSlots) > 0) {
             $nowPrice = $this->PriceAt($priceSlots, time());
             if ($nowPrice !== null && in_array($fn, ['grid', 'battery', 'wallbox', 'heatpump'], true)) {
-                $out[] = ['label' => 'Strompreis gerade jetzt', 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
+                $label = $priceApprox ? 'Strompreis' : 'Strompreis gerade jetzt';
+                $hint = $priceApprox ? ('Bundesweiter BDEW-Haushaltsdurchschnitt, vor ' . $priceSlots[0]['ageDays'] . ' Tagen abgerufen - keine echte Momentanquelle (z.B. Tibber) konfiguriert.') : null;
+                $item = ['label' => $label . $priceSuffix, 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
+                if ($hint !== null) {
+                    $item['hint'] = $hint;
+                }
+                $out[] = $item;
             }
         }
 
@@ -2584,13 +2739,46 @@ class NRGDashboardTile extends IPSModule
             // schwanken stuendlich, ein Tagesdurchschnitt waere ungenau.
             $importCost = $this->DayCostEUR($powerSeries, $priceSlots, -1);
             if ($importCost !== null) {
-                $out[] = ['label' => 'Netzbezug-Kosten ' . $dayWord, 'value' => number_format($importCost, 2, ',', '.') . ' €'];
+                $out[] = ['label' => 'Netzbezug-Kosten ' . $dayWord . $priceSuffix, 'value' => number_format($importCost, 2, ',', '.') . ' €'];
+            }
+        }
+        if ($fn === 'pv') {
+            // "Was hat die Anlage heute gespart" (Dietmar, 28.08.2026) -
+            // bewusst nur der Direktverbrauchs-Anteil (PV-Erzeugung minus
+            // Einspeisung) mal Strompreis, NICHT zusaetzlich Batterie-
+            // Entladung: die Batterie laedt selbst ueberwiegend aus PV-
+            // Ueberschuss, eine separate Batterie-Ersparnis wuerde denselben
+            // Solarstrom ein zweites Mal gutschreiben (Doppelzaehlung).
+            $dayKey = date('Y-m-d', $dayStart);
+            $pvKWhToday = null;
+            foreach (($energy['bars'] ?? []) as [$bd, $bv]) {
+                if ($bd === $dayKey) {
+                    $pvKWhToday = (float) $bv;
+                    break;
+                }
+            }
+            $grid = $this->GridDayEnergyKWh($dayStart, $dayEnd);
+            if ($pvKWhToday !== null && $grid !== null && count($priceSlots) > 0) {
+                $selfUsedKWh = max(0, $pvKWhToday - $grid['exportKWh']);
+                // Durchschnittspreis des Tages aus den Slots (fuer eine
+                // einzelne Tages-Summe reicht das - im Gegensatz zur
+                // zeitpunktgenauen Kostenberechnung oben, wo es auf die
+                // Stunde ankommt).
+                $avgPrice = array_sum(array_column($priceSlots, 'price')) / count($priceSlots);
+                $out[] = [
+                    'label' => 'Ersparnis ' . $dayWord . $priceSuffix,
+                    'value' => number_format($selfUsedKWh * $avgPrice / 100, 2, ',', '.') . ' €',
+                    'hint' => 'Direkt selbst verbrauchter Solarstrom (' . number_format($selfUsedKWh, 1, ',', '.') . ' kWh) zum ' . ($priceApprox ? 'BDEW-Haushaltsdurchschnitt' : 'Tagesmittel der Strompreise') . ' - ohne zusätzliche Batterie-Ersparnis (sonst würde derselbe Solarstrom doppelt gutgeschrieben).',
+                ];
             }
         }
         if ($fn === 'wallbox' || $fn === 'heatpump') {
             $cost = $this->DayCostEUR($powerSeries, $priceSlots, 1);
             if ($cost !== null) {
-                $out[] = ['label' => 'Kosten ' . $dayWord, 'value' => number_format($cost, 2, ',', '.') . ' €', 'hint' => 'Auf Basis des jeweils gültigen Strompreises'];
+                $hint = $priceApprox
+                    ? 'Näherung mit dem bundesweiten BDEW-Haushaltsdurchschnitt statt einem echten stündlichen Preis.'
+                    : 'Auf Basis des jeweils gültigen Strompreises.';
+                $out[] = ['label' => 'Kosten ' . $dayWord . $priceSuffix, 'value' => number_format($cost, 2, ',', '.') . ' €', 'hint' => $hint];
             }
         }
         if ($fn === 'wallbox' && !empty($d['vehicleRangeKm'])) {
@@ -2602,6 +2790,38 @@ class NRGDashboardTile extends IPSModule
         }
 
         return $out;
+    }
+
+    /** Netzbezug/-einspeisung des Tages in kWh (fuer die PV-"Ersparnis"-
+     *  Kennzahl) - findet das Netz-Geraet selbst und fragt dessen eigene
+     *  Leistungsreihe ab, damit die PV-Detailseite nicht auf Werte
+     *  angewiesen ist, die nur beim Aufruf der Netz-Detailseite berechnet
+     *  werden. null, wenn kein Netz-Geraet aufgeloest werden kann. */
+    private function GridDayEnergyKWh(int $dayStart, int $dayEnd): ?array
+    {
+        foreach ($this->GetDevices() as $dev) {
+            if (($dev['function'] ?? '') !== 'grid') {
+                continue;
+            }
+            $this->resolvePowerValue($dev);
+            $powerID = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
+            $series = $this->DaySeries($powerID, $dayStart, $dayEnd);
+            if (count($series) < 2) {
+                return null;
+            }
+            $intervalHours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
+            $importKWh = 0.0;
+            $exportKWh = 0.0;
+            foreach ($series as [$ts, $w]) {
+                if ($w < 0) {
+                    $importKWh += abs($w) * $intervalHours / 1000;
+                } else {
+                    $exportKWh += $w * $intervalHours / 1000;
+                }
+            }
+            return ['importKWh' => $importKWh, 'exportKWh' => $exportKWh];
+        }
+        return null;
     }
 
     /** Aktuelle Netto-Hauslast in Watt, dieselbe Formel wie module.html

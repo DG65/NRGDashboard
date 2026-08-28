@@ -320,7 +320,7 @@
         },
         {
           "type": "Label",
-          "caption": "Ohne Tibber Grid Rewards-Instanz fehlen nur die Kosten-/Strompreis-Kennzahlen auf den Detailseiten (Netzbezug-Kosten, Ladekosten) - alles andere funktioniert unverändert."
+          "caption": "Ohne Tibber Grid Rewards-Instanz greift automatisch der bundesweite BDEW-Haushaltsstrompreis als grober Richtwert (vierteljährlich selbstständig von bdew.de abgerufen, keine weitere Einrichtung nötig) - nur ganz ohne beide Quellen fehlen die Kosten-/Strompreis-Kennzahlen auf den Detailseiten."
         }
       ]
     },
