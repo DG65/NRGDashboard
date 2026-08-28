@@ -1889,6 +1889,38 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
+     * Grid-Reward-Erloes heute (EUR) - liest die beiden dafuer vorgesehenen
+     * Statusvariablen der TibberGridReward-Instanz direkt (Idents
+     * 'GridRewardEnergyToday' [kWh] und 'GridRewardEffectiveRate' [ct/kWh],
+     * beide fest in deren MaintainVariable()-Aufrufen benannt). KEIN
+     * dokumentierter *_Get*-Vertrag dafuer vorhanden (anders als
+     * GetPriceCurve()/GetActiveControls()) - bewusst trotzdem gelesen, weil
+     * beide Variablen offensichtlich fuer genau diesen Zweck (Anzeige des
+     * Grid-Reward-Ertrags) gedacht sind, aber als roher Ident-Zugriff
+     * FRAGILER als ein formaler Vertrag: aendert TibberGridReward die
+     * Idents, faellt das hier still auf null zurueck (kein Fehler, nur
+     * fehlende Kennzahl) statt zu brechen.
+     */
+    private function GridRewardEarningsTodayEUR(): ?float
+    {
+        $id = $this->TibberInstanceID();
+        if ($id <= 0) {
+            return null;
+        }
+        $energyVid = $this->FindVarByIdent($id, 'GridRewardEnergyToday');
+        $rateVid = $this->FindVarByIdent($id, 'GridRewardEffectiveRate');
+        if ($energyVid <= 0 || $rateVid <= 0) {
+            return null;
+        }
+        $energyKWh = (float) @GetValue($energyVid);
+        $rateCt = (float) @GetValue($rateVid);
+        if ($energyKWh <= 0) {
+            return null;
+        }
+        return $energyKWh * $rateCt / 100;
+    }
+
+    /**
      * Preis-Slots (ct/kWh brutto) fuer den ausgewaehlten Tag, oder [] ohne
      * verfuegbare Tibber-Instanz/Preisdaten - fuer die "Kosten heute"-
      * Kennzahl auf den Detailseiten. function_exists()-Wache: das Modul
@@ -2740,6 +2772,41 @@ class NRGDashboardTile extends IPSModule
             $importCost = $this->DayCostEUR($powerSeries, $priceSlots, -1);
             if ($importCost !== null) {
                 $out[] = ['label' => 'Netzbezug-Kosten ' . $dayWord . $priceSuffix, 'value' => number_format($importCost, 2, ',', '.') . ' €'];
+            }
+            // "Ersparnis durch dynamischen Tarif/zeitvariable Netzentgelte"
+            // (Dietmar, 28.08.2026) - NICHT die PV/Batterie-Ersparnis (die
+            // steht separat beim Solar-Knoten), sondern: fuer EXAKT dieselbe
+            // bezogene Menge Netzstrom, was kostet sie mit dem echten
+            // Tibber-Tarif (inkl. zeitvariabler §14a-Netzentgelte, siehe
+            // TIBBERGR_GetPriceCurve()-Vertrag) gegenueber einem deutschen
+            // Standardtarif (BDEW-Haushaltsdurchschnitt, FLACH über den
+            // ganzen Tag)? Nur sinnvoll/anzeigbar, wenn Tibber TATSAECHLICH
+            // aktiv ist (sonst waere "echter Tarif" = "Standardtarif" und
+            // die Differenz truegerisch 0) UND ein BDEW-Vergleichswert
+            // vorliegt.
+            if (!$priceApprox && $importCost !== null) {
+                $bdewRef = $this->CurrentBdewPrice();
+                if ($bdewRef !== null) {
+                    $standardCost = $importKWh * $bdewRef['priceCtPerKWh'] / 100;
+                    $tariffSaving = $standardCost - $importCost;
+                    $out[] = [
+                        'label' => 'Ersparnis durch dynamischen Tarif ' . $dayWord,
+                        'value' => number_format($tariffSaving, 2, ',', '.') . ' €',
+                        'hint' => 'Dieselbe Netzbezugsmenge (' . number_format($importKWh, 1, ',', '.') . ' kWh) zum dynamischen Tibber-Tarif inkl. zeitvariabler Netzentgelte statt zum deutschen Standardtarif (BDEW-Haushaltsdurchschnitt, ' . number_format($bdewRef['priceCtPerKWh'], 1, ',', '.') . ' ct/kWh).',
+                    ];
+                }
+            }
+            // Grid-Reward-Erloes (bezahlte Flexibilitaet, z.B. Batterie/
+            // Fahrzeug wird von Tibber ferngesteuert entladen/geladen) -
+            // eine echte Einnahme, kein Kostenvorteil, deshalb als eigene
+            // Zeile statt in die Ersparnis eingerechnet.
+            $rewardEUR = $this->GridRewardEarningsTodayEUR();
+            if ($rewardEUR !== null) {
+                $out[] = [
+                    'label' => 'Grid-Reward-Erlös ' . $dayWord,
+                    'value' => number_format($rewardEUR, 2, ',', '.') . ' €',
+                    'hint' => 'Vergütung von Tibber Grid Rewards für ferngesteuerte Flexibilität (z. B. Batterie-/Fahrzeug-Entladung).',
+                ];
             }
         }
         if ($fn === 'pv') {
