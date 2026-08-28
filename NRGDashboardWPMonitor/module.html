@@ -602,8 +602,16 @@
   }
 
   function handleMessage(raw) {
+    // GetVisualizationTile() bettet den Start-Payload als OBJEKT ein,
+    // UpdateVisualizationValue() liefert spaeter STRINGS - das
+    // bedingungslose JSON.parse() hier hat das eingebettete Objekt zu
+    // "[object Object]" gemacht, die Exception geschluckt und den
+    // Start-Payload verworfen: die Kachel blieb beim Oeffnen bis zum
+    // naechsten 5-Minuten-Render leer (Dietmar, 28.08.2026: "Derzeit
+    // steht hier einfach immer eine leere Kachel"). Gleiche
+    // typeof-Weiche wie in NRGDashboardPVMonitor.
     var d;
-    try { d = JSON.parse(raw); } catch (e) { return; }
+    try { d = (typeof raw === 'string') ? JSON.parse(raw) : raw; } catch (e) { return; }
     if (!d || !d.ok) {
       var emptyEl = document.getElementById('empty');
       emptyEl.style.display = '';
