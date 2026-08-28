@@ -745,6 +745,36 @@ class NRGDashboardTile extends IPSModule
             }
         }
 
+        // Diagnose-Warnstufe direkt am betroffenen Knoten sichtbar machen
+        // (Dietmar, 28.08.2026: "Diagnose-Warnungen direkt am Knoten" -
+        // bisher nur im separaten Diagnose-Badge unten rechts, dort leicht
+        // zu uebersehen). Alle aktuell existierenden Diagnose-Eintraege
+        // (yield_vs_forecast/mppt_string_compare/riso) beziehen sich auf
+        // die PV-Anlage - deshalb hier bewusst pauschal auf 'pv'-Geraete
+        // angewendet statt an eine einzelne powerID zu binden, die es in
+        // keinem der drei Eintragstypen einheitlich gibt. Schlechteste
+        // Stufe gewinnt (kritisch > auffaellig > null).
+        $diagnostics = $this->resolveDiagnostics();
+        $worstLevel = null;
+        foreach ($diagnostics as $diag) {
+            $lvl = $diag['level'] ?? null;
+            if ($lvl === 'kritisch') {
+                $worstLevel = 'kritisch';
+                break;
+            }
+            if ($lvl === 'auffaellig' && $worstLevel === null) {
+                $worstLevel = 'auffaellig';
+            }
+        }
+        if ($worstLevel !== null) {
+            foreach ($devices as &$dRef) {
+                if (($dRef['function'] ?? '') === 'pv') {
+                    $dRef['warnLevel'] = $worstLevel;
+                }
+            }
+            unset($dRef);
+        }
+
         // Vom Nutzer ausgeblendete Geraete entfernen (siehe "Automatisch
         // gefundene Geräte"-Liste im Formular) - erst hier bei der Anzeige,
         // NICHT schon beim Discover()/Cache: ein ausgeblendetes Geraet soll
@@ -778,7 +808,7 @@ class NRGDashboardTile extends IPSModule
             // Klick auf einen Geraete-Knoten die bildschirmfuellende
             // Detailseite (?detail=<key>) in einem neuen Browser-Tab.
             'hookPath'    => '/hook/nrgdashtile' . $this->InstanceID,
-            'diagnostics' => $this->resolveDiagnostics(),
+            'diagnostics' => $diagnostics,
         ];
     }
 

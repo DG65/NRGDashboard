@@ -196,6 +196,14 @@
   .node.inactive .node-highlight,
   .node.inactive .node-spec { opacity: 0; }
 
+  .node-liquid { fill: var(--nc, var(--grey)); opacity: 0.30; transition: y var(--trans) var(--ease), height var(--trans) var(--ease); }
+  .node-liquid-low { fill: #e74c3c; }
+
+  .node-warn { pointer-events: none; }
+  .node-warn-tri { fill: #f5a623; stroke: rgba(0,0,0,0.35); stroke-width: 1; }
+  .node-warn-mark { fill: #26221a; font-size: 11px; font-weight: 800; text-anchor: middle; stroke: none; }
+  .node-warn-kritisch .node-warn-tri { fill: #e74c3c; }
+
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -633,6 +641,29 @@ function makeSpecular(r) {
   return c;
 }
 
+// SOC als Fuellstand (28.08.2026, Dietmar: "SOC als Fuellstand statt nur
+// Zahl") - von unten steigendes Rechteck, per clipPath auf die Coin-Flaeche
+// begrenzt. rect.y/height werden in updateOuterNode() aus item.soc gesetzt;
+// group.style.display steuert Sichtbarkeit (nur Batterie-Knoten).
+let liquidClipSeq = 0;
+function makeLiquidFill(r) {
+  liquidClipSeq++;
+  const clipId = 'liquidClip' + liquidClipSeq;
+  const group = el('g', { class: 'node-liquid-group' });
+  group.style.display = 'none';
+  const defs = el('defs', {});
+  const clip = el('clipPath', { id: clipId });
+  clip.appendChild(el('circle', { r }));
+  defs.appendChild(clip);
+  group.appendChild(defs);
+  const rect = el('rect', {
+    class: 'node-liquid', x: -r, width: r * 2, y: 0, height: 0,
+    'clip-path': 'url(#' + clipId + ')'
+  });
+  group.appendChild(rect);
+  return { group, rect, r };
+}
+
 // -- Icon-Katalog: nur die im NRG-Stack-Vokabular tatsächlich vorkommenden
 //    Zeichenfunktionen (Referenzmuster InverterHubTile ICONS, 32x32-Raster
 //    zentriert auf (0,0)). Erweiterbar - neue function-Werte brauchen hier
@@ -939,6 +970,9 @@ function buildItems(devices) {
         color: style.color,
         dir: style.dir,
         battery: !!style.battery,
+        // Diagnose-Warnstufe (28.08.2026) - 'kritisch'/'auffaellig'/null,
+        // siehe buildPayload()/resolveDiagnostics() im Backend.
+        warnLevel: d.warnLevel || null,
       };
     });
 
@@ -967,6 +1001,13 @@ function createOuterNode(item, pt, layout) {
   const glow = attachGlow(el('circle', { class: 'node-glow' }));
   g.appendChild(glow);
   g.appendChild(el('circle', { class: 'node-face', r: DESIGN_R }));
+  // Fuellstand als Ladeanzeige (28.08.2026, Dietmar: "SOC als Fuellstand
+  // statt nur Zahl") - ein von unten steigendes Rechteck, auf die
+  // Knoten-Flaeche geclippt, zusaetzlich zum vorhandenen Batterie-Badge
+  // (das bleibt fuer die genaue Prozentzahl). Nur bei Batterie-Knoten
+  // befuellt (updateOuterNode()), sonst bleibt liquid.style.display none.
+  const liquid = makeLiquidFill(DESIGN_R);
+  g.appendChild(liquid.group);
   g.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
   g.appendChild(makeBevel(DESIGN_R));
   g.appendChild(makeHighlight(DESIGN_R));
@@ -990,7 +1031,17 @@ function createOuterNode(item, pt, layout) {
   const subText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'node-sub' });
   g.appendChild(subText);
 
-  return { g, glow, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  // Diagnose-Warnsymbol (28.08.2026, Dietmar: "Diagnose-Warnungen direkt
+  // am Knoten") - kleines Dreieck oben rechts auf dem Coin, nur sichtbar
+  // bei tatsaechlich vorliegender Warnstufe (updateOuterNode()).
+  const warn = el('g', { class: 'node-warn', transform: 'translate(' + (DESIGN_R * 0.62) + ',' + (-DESIGN_R * 0.62) + ')' });
+  warn.appendChild(el('polygon', { points: '0,-9 8,7 -8,7', class: 'node-warn-tri' }));
+  const warnMark = el('text', { x: 0, y: 5, 'text-anchor': 'middle', class: 'node-warn-mark' });
+  warnMark.textContent = '!';
+  warn.appendChild(warnMark);
+  g.appendChild(warn);
+
+  return { g, glow, liquid, warn, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1353,6 +1404,29 @@ function updateOuterNode(refs, item) {
   refs.iconG.textContent = '';
   ICONS[item.icon](refs.iconG, item.soc ?? null);
   setValueText(refs.valText, magnitude, item.measured);
+
+  // SOC-Fuellstand (nur Batterie-Knoten mit bekanntem SOC) - Rechteck
+  // steigt von unten, Hoehe = SOC-Anteil der Coin-Flaeche (Durchmesser).
+  if (item.battery && item.soc != null) {
+    const r = refs.liquid.r;
+    const frac = Math.max(0, Math.min(100, item.soc)) / 100;
+    const h = r * 2 * frac;
+    refs.liquid.rect.setAttribute('y', (r - h).toFixed(1));
+    refs.liquid.rect.setAttribute('height', h.toFixed(1));
+    refs.liquid.rect.classList.toggle('node-liquid-low', item.soc < 20);
+    refs.liquid.group.style.display = hidden ? 'none' : '';
+  } else {
+    refs.liquid.group.style.display = 'none';
+  }
+
+  // Diagnose-Warnsymbol (28.08.2026) - nur bei tatsaechlicher Warnstufe,
+  // Farbe nach Schwere ('kritisch' rot, 'auffaellig' gelb).
+  if (item.warnLevel === 'kritisch' || item.warnLevel === 'auffaellig') {
+    refs.warn.style.display = hidden ? 'none' : '';
+    refs.warn.setAttribute('class', 'node-warn node-warn-' + item.warnLevel);
+  } else {
+    refs.warn.style.display = 'none';
+  }
 
   // Zugeordnetes Fahrzeug bekannt (item.sub) -> Fahrzeugname wird die
   // groessere/farbige Zeile, Geraetename ruckt klein/grau darunter (statt
