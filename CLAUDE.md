@@ -40,6 +40,19 @@ Mehrere Module in einer Bibliothek: `NRGDashboardTile` (Hauptkachel),
 Kachel-HTML — Bedienelemente brauchen echte Instanz-Variablen mit
 `EnableAction()`.
 
+## Feinheiten dokumentieren — Pflege-Pflicht (28.08.2026)
+
+Dietmar: die eingebauten Details ("schöne Feinheiten die andere so
+nicht haben") sollen dokumentiert und für die Community konserviert
+werden. Bei jedem künftigen Detail-Feature deshalb DREI Orte pflegen:
+1. **"📖 Dokumentation & Hilfe"-Panel** des betroffenen Moduls
+   (✨-Feinheiten-Labels in form.json),
+2. **README.md, Abschnitt "Feinheiten — konservierter Text für Doku &
+   Community"** (paste-fähig für Forum/Store formuliert),
+3. ggf. das News-Panel (bestehende Konvention).
+Bei Unsicherheit, ob ein Detail erwähnenswert ist: Dietmar fragen
+(sein expliziter Wunsch, nicht stillschweigend weglassen).
+
 ## Zwei Rendering-Engines — bei JEDER Diagramm-Untersuchung beide prüfen (27.08.2026)
 
 Jedes Diagramm-Modul kann wahlweise mit **ECharts** oder **Highcharts**

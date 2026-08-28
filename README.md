@@ -1194,6 +1194,57 @@ Wenige Klicks, aber ein bewusster Nutzereingriff — gehört explizit ins
 das Modul veröffentlicht wird (siehe auch `EMS/SUITE.md`, Abschnitt
 „WebFront-Kachel-Wechsel InverterHubTile → NRGDashboardTile").
 
+## Feinheiten — konservierter Text für Doku & Community (28.08.2026)
+
+Dietmars Auftrag: die eingebauten Details sollen im "Dokumentation &
+Hilfe"-Panel dokumentiert UND für die Modulbeschreibung in der Community
+konserviert werden ("das sind schöne Feinheiten die andere so nicht
+haben") — künftige Feinheiten hier NACHTRAGEN (Pflege-Pflicht analog zum
+News-Panel; bei Unsicherheit, ob ein Detail erwähnenswert ist, Dietmar
+fragen). Der folgende Text ist bewusst paste-fähig für Forum/Store:
+
+**PV-Monitoring (`NRGDashboardPVMonitor`):**
+
+- **Selbstaufräumende Reiterleiste:** Reiter, deren Datenquelle gar nicht
+  existiert (keine Instanz/Variable konfiguriert oder discovered), werden
+  komplett ausgeblendet — kommt die Quelle hinzu, erscheinen sie von
+  selbst. Reiter mit Quelle, aber momentan ohne Daten, färben sich leicht
+  rot (so sieht man sofort, was gerade schief läuft), versorgte Reiter
+  leicht grün.
+- **Reiterleiste als schwebendes Panel:** per Pfeil-Knopf (auf Höhe der
+  Zeitsteuerung) ein-/ausblendbar, legt sich ÜBER das stehende Diagramm
+  (kein Layout-Gezappel), klappt nach der Reiterwahl von selbst wieder zu;
+  Zustand wird je Gerät gemerkt. Vier wählbare Animationen hinter dem
+  Doppelpfeil — darunter ein per numerischer Physik-Simulation berechnetes
+  "Einsaugen ins schwarze Loch" (20 Feder-Partikel, 1/r²-Gravitation,
+  Spiral-Einfall; die Ecken fallen echt nacheinander ein).
+- **Sonnenstand-Tattoos:** kleine Sonnen über der Zeitachse zwischen
+  Auf- und Untergang (Höhe = echter Sonnenstand). Mit installiertem
+  Prognose-Modul koppeln sich Größe und Helligkeit an die prognostizierte
+  PV-Leistung — ein bewölkter Vormittag zeigt blasse Sonnen. Auch im
+  Tagesplan.
+- **Kontextsensitiver Reitername:** ohne Einstrahlungssensor heißt der
+  Reiter schlicht "Photovoltaik" statt "PV & Einstrahlung".
+- **Mitlaufende Legenden-Summen:** hinter PV-Erzeugung bzw. Netzbezug
+  stehen Tages-/Monats-/Jahres-kWh, die sich auf den ANGEZEIGTEN Tag
+  beziehen (Monat = Monatsanfang bis einschließlich dieses Tags) — beim
+  Zurückblättern rechnen sie mit. Netzbezug bevorzugt echte
+  Zählerstände des abrechnungsverbindlichen Zählers.
+- **Ehrliches Archiv-Wasserzeichen:** bei verzögert archivierenden
+  Abrechnungszählern (z. B. Inexogy, 15-45 Min. Nachlauf) markiert eine
+  schraffierte Fläche "Zeitbereich ohne Bezugsdaten!" im
+  Strompreis-Reiter, statt Lücken als Nullverbrauch erscheinen zu lassen.
+- **Einheitliche, mittige Diagrammflächen** über alle Reiter (gleiche
+  Plotränder, beide Engines) und **zwei Zeichen-Engines** (ECharts/
+  Highcharts) zur Wahl.
+- **IPSView/Browser-Betrieb:** jede Kachel läuft auch als eigenständige
+  Webseite über einen automatisch registrierten WebHook (URL im
+  Doku-Panel), mit 30-s-Selbstaktualisierung.
+
+**Wärmepumpen-Monitoring (`NRGDashboardWPMonitor`):** startet direkt mit
+der heutigen Tagesansicht samt Vorgestern/Gestern/Heute-Schnellwahl;
+gleiche IPSView-Fähigkeit.
+
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 
 Nachgezogen (27.07.2026, war zuvor komplett vergessen — berechtigte

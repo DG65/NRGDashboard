@@ -16,6 +16,14 @@
         {
           "type": "Label",
           "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+        },
+        {
+          "type": "Label",
+          "caption": "✨ Feinheiten — Reiterleiste: Reiter ohne Datenquelle werden automatisch ausgeblendet; Reiter mit Quelle aber ohne aktuelle Daten färben sich leicht rot (zeigt, was gerade schief läuft), versorgte leicht grün. Die Leiste schwebt als Panel über dem Diagramm (Pfeil-Knopf öffnet, Reiterwahl schließt, Zustand wird je Gerät gemerkt) — mit vier wählbaren Animationen hinter dem Doppelpfeil, darunter ein physikalisch simuliertes Einsaugen ins schwarze Loch."
+        },
+        {
+          "type": "Label",
+          "caption": "✨ Feinheiten — Diagramme: kleine Sonnen über der Zeitachse zeigen den Sonnenstand; mit installiertem Prognose-Modul folgen Größe/Helligkeit der prognostizierten PV-Leistung (bewölkter Vormittag = blasse Sonnen), auch im Tagesplan. Ohne Einstrahlungssensor heißt der erste Reiter schlicht „Photovoltaik“. Die Tages-/Monats-/Jahres-kWh in der Legende beziehen sich auf den angezeigten Tag und rechnen beim Zurückblättern mit. Bei verzögert archivierenden Abrechnungszählern markiert eine schraffierte Fläche den Zeitbereich ohne Bezugsdaten, statt Lücken als Nullverbrauch zu zeigen."
         }
       ]
     },
