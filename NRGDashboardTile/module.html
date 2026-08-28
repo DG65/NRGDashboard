@@ -338,6 +338,12 @@
     <rect class="node-face" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <rect class="node-ring" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <rect class="node-bevel" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
+    <!-- Autarkiegrad-Ringsegment (28.08.2026, Dietmar: "alles direkt
+         umsetzen") - Bogen um den Haus-Chip, Laenge = Anteil des heutigen
+         Verbrauchs, der NICHT aus dem Netz kam. rx=ry=Halbe-Hoehe wie beim
+         Coin selbst (layoutCenterChip() haelt x/y/width/height/rx/ry
+         synchron, +7 Padding nach aussen). -->
+    <rect class="node-autarky-ring" x="-63" y="-63" width="126" height="126" rx="63" ry="63" fill="none"/>
     <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
     <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
     <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
@@ -579,6 +585,7 @@ function layoutCenterChip(hw, hh) {
   setRect('.node-ring', hw, hh);
   setRect('.node-bevel', hw, hh);
   setRect('.node-glow', hw, hh);
+  setRect('.node-autarky-ring', hw + 7, hh + 7);
   // Schatten wie im Original leicht groesser (Faktor 1.13) und nach unten
   // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
   // auf zwei unabhaengige Halbachsen (hw/hh) statt einen einzelnen Radius
@@ -1016,7 +1023,6 @@ function buildItems(devices) {
         priceTrend: Array.isArray(d.priceTrend) ? d.priceTrend : null,
         priceNow: (d.priceNow !== undefined && d.priceNow !== null) ? d.priceNow : null,
         peakTodayW: (d.peakTodayW !== undefined && d.peakTodayW !== null) ? d.peakTodayW : null,
-        autarkyRatio: (d.autarkyRatio !== undefined && d.autarkyRatio !== null) ? d.autarkyRatio : null,
       };
     });
 
@@ -1096,20 +1102,6 @@ function createOuterNode(item, pt, layout) {
   forecastRing.style.display = 'none';
   g.appendChild(forecastRing);
 
-  // Autarkiegrad-Ringsegment (28.08.2026) - Bogen um den Haus-Knoten,
-  // Laenge = Anteil des heutigen Verbrauchs, der NICHT aus dem Netz kam.
-  // Andere Radiusposition als der Prognose-Ring, damit beide (an
-  // verschiedenen Knoten befuellt) nie gleichzeitig am selben Knoten
-  // uebereinander liegen koennten.
-  const autarkyRing = el('circle', {
-    class: 'node-autarky-ring', r: DESIGN_R + 7, fill: 'none',
-    'stroke-dasharray': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
-    'stroke-dashoffset': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
-    transform: 'rotate(-90)'
-  });
-  autarkyRing.style.display = 'none';
-  g.appendChild(autarkyRing);
-
   // Strompreis-Trend-Sparkline (28.08.2026) - kleine Linie unter dem
   // Geraetenamen, nur am Netz-Knoten befuellt (updateOuterNode()).
   const priceSpark = el('polyline', { class: 'node-price-spark', points: '' });
@@ -1153,7 +1145,7 @@ function createOuterNode(item, pt, layout) {
   warn.appendChild(warnMark);
   g.appendChild(warn);
 
-  return { g, glow, liquid, warn, ghostRing, forecastRing, autarkyRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1605,16 +1597,6 @@ function updateOuterNode(refs, item) {
     refs.forecastRing.style.display = 'none';
   }
 
-  // Autarkiegrad-Ringsegment (nur Haus-Knoten).
-  if (item.autarkyRatio != null) {
-    const circ = 2 * Math.PI * (DESIGN_R + 7);
-    const frac = Math.max(0, Math.min(1, item.autarkyRatio));
-    refs.autarkyRing.setAttribute('stroke-dashoffset', (circ * (1 - frac)).toFixed(1));
-    refs.autarkyRing.style.display = hidden ? 'none' : '';
-  } else {
-    refs.autarkyRing.style.display = 'none';
-  }
-
   // Strompreis-Trend-Sparkline: einfache Polyline aus den Tages-Slotpreisen,
   // Skala relativ zum Min/Max des Tages (nicht absolut) - zeigt die Form
   // des Verlaufs, nicht den genauen Wert (der steht bereits als Zahl in der
@@ -1872,6 +1854,23 @@ function handleMessage(raw) {
   // Chip und Speichen im selben Frame konsistent zueinander stehen.
   const chipLayout = computeLayout(items.length);
   layoutCenterChip(chipLayout.hw, chipLayout.hh);
+
+  // Autarkiegrad-Ringsegment - Bogenlaenge = tatsaechlicher Umfang der
+  // Pille (identische Formel wie pillPointPair()s perim2, siehe dort),
+  // damit die Strichlaenge zur sichtbaren Randform passt (Kreis ODER Chip).
+  const autRing = document.querySelector('#node-center .node-autarky-ring');
+  if (autRing) {
+    const rhw = chipLayout.hw + 7, rhh = chipLayout.hh + 7;
+    const perim = 4 * (rhw - rhh) + 2 * Math.PI * rhh;
+    autRing.setAttribute('stroke-dasharray', perim.toFixed(1));
+    if (houseDevice && houseDevice.autarkyRatio != null) {
+      const frac = Math.max(0, Math.min(1, houseDevice.autarkyRatio));
+      autRing.setAttribute('stroke-dashoffset', (perim * (1 - frac)).toFixed(1));
+      autRing.style.display = '';
+    } else {
+      autRing.style.display = 'none';
+    }
+  }
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
