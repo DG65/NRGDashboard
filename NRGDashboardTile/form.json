@@ -364,9 +364,8 @@
           "caption": "Das Tempo der laufenden Dreiecke folgt der Leistung. Bei diesem Wert (und darüber) laufen sie mit Höchsttempo — je kleiner der Wert, desto deutlicher unterscheiden sich typische Alltagsleistungen (z. B. 1 vs. 5 kW) sichtbar im Tempo. Vorgabe: 10000 W."
         },
         {
-          "type": "CheckBox",
-          "name": "HideInactive",
-          "caption": "Inaktive Knotenpunkte ausblenden (statt nur ausgegraut/verkleinert darzustellen)"
+          "type": "Label",
+          "caption": "Weitere Feinheiten (inaktive Knotenpunkte ausblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität) stellt jeder Nutzer selbst im WebFront ein — Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
         }
       ]
     },

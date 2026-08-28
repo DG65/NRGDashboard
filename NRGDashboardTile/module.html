@@ -218,45 +218,6 @@
 
   .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
 
-  .prefs-gear {
-    /* Oben RECHTS, aber unterhalb des WebFront-Doppelpfeils zum Vollbild-
-       Umschalten (Dietmar, 28.08.2026: "hinter den Doppelpfeil oben rechts")
-       - direkt bei top:4px kollidiert es mit dem Host-Icon (siehe
-       InverterHub/CLAUDE.md "Browser-Eigenheiten", derselbe Grund, aus dem
-       das Diagnose-Badge frueher von oben nach unten verschoben wurde).
-       Oben LINKS ist ebenso ungeeignet - dort liegt in manchen Ansichten
-       die Kachel-Titelzeile des Hosts drueber (live gemeldet, 28.08.2026).
-       Kein Zahnrad-Symbol (Dietmars ausdruecklicher Wunsch) - stattdessen
-       ein dezentes "Mehr"-Symbol. */
-    position: absolute; right: 4px; top: 32px; z-index: 3;
-    width: 26px; height: 26px; border-radius: 13px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
-    border: 1px solid rgba(255,255,255,0.10);
-    color: var(--textmuted); font-size: 16px; font-weight: 700; opacity: 0.55;
-    transition: opacity 0.15s ease;
-  }
-  .prefs-gear:hover { opacity: 1; }
-  .prefs-panel {
-    position: absolute; right: 4px; top: 62px; z-index: 3;
-    display: none; min-width: 240px; max-width: 300px;
-    padding: 10px 12px; border-radius: 10px;
-    background: linear-gradient(180deg, rgba(60,64,72,0.96), rgba(28,30,36,0.96));
-    border: 1px solid rgba(255,255,255,0.10);
-    font-family: var(--font); font-size: 12px; color: var(--text);
-  }
-  .prefs-panel.open { display: block; }
-  .prefs-title { font-weight: 700; margin-bottom: 6px; }
-  .prefs-row { display: flex; align-items: center; gap: 7px; padding: 4px 0; cursor: pointer; }
-  .prefs-row-slider { justify-content: space-between; cursor: default; }
-  .prefs-row-slider input[type="range"] { flex: 1; margin: 0 6px; }
-  #prefIntensityVal { font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; opacity: 0.85; }
-  .prefs-reset {
-    margin-top: 6px; width: 100%; padding: 5px 0; border-radius: 6px; cursor: pointer;
-    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-    color: var(--textmuted); font-family: var(--font); font-size: 11.5px;
-  }
-  .prefs-reset:hover { background: rgba(255,255,255,0.12); }
 
   .node-warn { pointer-events: none; }
   .node-warn-tri { fill: #f5a623; stroke: rgba(0,0,0,0.35); stroke-width: 1; }
@@ -308,6 +269,8 @@
 </style>
 </head>
 <body>
+
+<div id="ampelWash"></div>
 
 <svg class="flow-svg" id="svg" viewBox="-17 4 594 594" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
   <defs id="markerDefs"></defs>
@@ -404,44 +367,6 @@
 </div>
 <div id="diagPanel" class="diag-panel"></div>
 
-<!-- Anzeige-Einstellungen (28.08.2026, Dietmar: "Intension, Größe,
-     Helligkeit etc. könnte man jedem Nutzer selbst überlassen ... hinter
-     dem Doppelpfeil oben rechts") - oben RECHTS, aber mit Abstand zur
-     Kachel-Oberkante (top:32px statt 4px), damit es weder mit dem
-     WebFront-Doppelpfeil zum Vollbild-Umschalten (der eigentliche Grund,
-     warum das Diagnose-Badge frueher von oben nach unten wandern musste,
-     siehe InverterHub/CLAUDE.md "Browser-Eigenheiten") noch - bei oben
-     LINKS erstversucht und verworfen, weil dort in manchen Ansichten die
-     Kachel-Titelzeile des Hosts drueberliegt und Klicks abfaengt - mit
-     sonstiger Host-Flaeche kollidiert. Bewusst kein Zahnrad-Symbol
-     (Dietmars ausdruecklicher Wunsch), stattdessen ein dezentes
-     "Mehr"-Symbol. Rein browserlokal (localStorage) - WebFront-Nutzer
-     haben keinen Zugriff auf das Konfigurationsformular (Konsole-only),
-     das ist also der einzige Ort, an dem sie das selbst einstellen
-     koennen. -->
-<div id="prefsGear" class="prefs-gear" onclick="togglePrefsPanel()" title="Anzeige-Einstellungen">⋯</div>
-<div id="prefsPanel" class="prefs-panel">
-  <div class="prefs-title">Anzeige-Einstellungen</div>
-  <label class="prefs-row">
-    <input type="checkbox" id="prefHideInactive">
-    Inaktive Knotenpunkte ausblenden statt nur ausgrauen
-  </label>
-  <label class="prefs-row">
-    <input type="checkbox" id="prefCoupleBolt">
-    Blitzbögen an Leistung koppeln
-  </label>
-  <label class="prefs-row">
-    <input type="checkbox" id="prefCoupleGlow">
-    Leuchtschein an Leistung koppeln
-  </label>
-  <label class="prefs-row prefs-row-slider">
-    Effekt-Intensität
-    <input type="range" id="prefIntensity" min="50" max="150" step="10">
-    <span id="prefIntensityVal">100%</span>
-  </label>
-  <button type="button" class="prefs-reset" onclick="resetPrefs()">Zurücksetzen</button>
-</div>
-
 <script>
 // --- Übernommen aus InverterHubTile/module.html (Referenz-Visualisierung
 // des Verbunds) - Layout-/Effekt-Engine ist geräteartenneutral, daher 1:1
@@ -455,60 +380,18 @@ let HIDE_INACTIVE = false;
 // Nutzer-Anzeigeeinstellungen (28.08.2026) - browserlokal in localStorage,
 // je Kachel-Instanz (Schluessel enthaelt die InstanceID aus dem Hook-Pfad,
 // sonst wuerden mehrere Kacheln im selben Browser sich gegenseitig
-// ueberschreiben). null = "Server-/Vorgabewert nicht ueberschreiben".
-let LAST_RAW = null;
+// ueberschreiben). Seit 28.08.2026 (zweiter Anlauf, Dietmar: "hinter den
+// Doppelpfeil oben rechts auf der Kachel", nicht als selbstgebautes Panel
+// in der Kachel) echte Instanz-Variablen des Hosts statt localStorage -
+// kommen serverseitig im Payload (d.hideInactive/d.coupleBolt/...), siehe
+// module.php Create()/RequestAction(). Ein Klick auf den WebFront-
+// Doppelpfeil oeffnet dafuer NICHT diese Kachel-HTML, sondern die
+// Standardansicht der Instanz-Kinder (SUITE.md Punkt 10) - dort erscheinen
+// die Variablen automatisch als Schalter/Zahlenfeld.
 let COUPLE_BOLT = true;
 let COUPLE_GLOW = true;
 let EFFECT_INTENSITY = 1;
 
-function prefsKey() {
-  return 'nrgdash_prefs_' + (window.location.pathname || 'default');
-}
-function loadPrefs() {
-  try {
-    const raw = localStorage.getItem(prefsKey());
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) { return {}; }
-}
-function savePrefs(p) {
-  try { localStorage.setItem(prefsKey(), JSON.stringify(p)); } catch (e) {}
-}
-function resetPrefs() {
-  try { localStorage.removeItem(prefsKey()); } catch (e) {}
-  applyPrefsToForm();
-  if (LAST_RAW) { handleMessage(LAST_RAW); }
-}
-function applyPrefsToForm() {
-  const p = loadPrefs();
-  document.getElementById('prefHideInactive').checked = !!p.hideInactive;
-  document.getElementById('prefCoupleBolt').checked = p.coupleBolt !== false;
-  document.getElementById('prefCoupleGlow').checked = p.coupleGlow !== false;
-  const intensity = p.intensity != null ? p.intensity : 100;
-  document.getElementById('prefIntensity').value = intensity;
-  document.getElementById('prefIntensityVal').textContent = intensity + '%';
-}
-function togglePrefsPanel() {
-  const panel = document.getElementById('prefsPanel');
-  const open = panel.classList.toggle('open');
-  if (open) { applyPrefsToForm(); }
-}
-function wirePrefsControls() {
-  const onChange = () => {
-    const p = {
-      hideInactive: document.getElementById('prefHideInactive').checked,
-      coupleBolt: document.getElementById('prefCoupleBolt').checked,
-      coupleGlow: document.getElementById('prefCoupleGlow').checked,
-      intensity: +document.getElementById('prefIntensity').value
-    };
-    document.getElementById('prefIntensityVal').textContent = p.intensity + '%';
-    savePrefs(p);
-    if (LAST_RAW) { handleMessage(LAST_RAW); }
-  };
-  ['prefHideInactive', 'prefCoupleBolt', 'prefCoupleGlow', 'prefIntensity'].forEach(id => {
-    document.getElementById(id).addEventListener('input', onChange);
-  });
-}
-document.addEventListener('DOMContentLoaded', wirePrefsControls);
 let lastBoltHw = null; // Chip-Blitzboegen nur bei tatsaechlicher Breitenaenderung neu aufbauen
 const R_MAX = 234;
 const NODE_GAP = 10; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026)
@@ -1889,7 +1772,6 @@ function renderDiagnostics(entries) {
 }
 
 function handleMessage(raw) {
-  LAST_RAW = raw;
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.renderedAt : 0);
   renderDiagnostics(d ? d.diagnostics : []);
@@ -1903,6 +1785,18 @@ function handleMessage(raw) {
     }
     if (d.flowRefW) { FLOW_REF_W = Math.max(500, +d.flowRefW); }
     if (d.hookPath) { HOOK_PATH = d.hookPath; }
+
+    // Netzampel-Farbwaesche (28.08.2026, Dietmar: "alles direkt umsetzen") -
+    // sehr dezenter radialer Verlauf von der Ampelfarbe ins Transparente,
+    // nur sichtbar wenn eine StromGedacht-Instanz Daten liefert.
+    const wash = document.getElementById('ampelWash');
+    if (d.gridAmpel && d.gridAmpel.color) {
+      wash.style.background = 'radial-gradient(circle at 50% 40%, ' + d.gridAmpel.color + '22 0%, transparent 65%)';
+      wash.classList.add('show');
+      wash.title = 'Netzampel: ' + (d.gridAmpel.label || '');
+    } else {
+      wash.classList.remove('show');
+    }
   }
 
   const empty = document.getElementById('nrgdash-empty');
@@ -1967,14 +1861,11 @@ function handleMessage(raw) {
   }
 
   HIDE_INACTIVE = !!(d && d.hideInactive);
-
-  // Nutzer-Anzeigeeinstellungen ueberschreiben den Server-/Vorgabewert,
-  // falls der Nutzer sie im Zahnrad-Panel abweichend gesetzt hat (28.08.2026).
-  const prefs = loadPrefs();
-  if (prefs.hideInactive !== undefined) { HIDE_INACTIVE = !!prefs.hideInactive; }
-  COUPLE_BOLT = prefs.coupleBolt !== false;
-  COUPLE_GLOW = prefs.coupleGlow !== false;
-  EFFECT_INTENSITY = prefs.intensity != null ? (prefs.intensity / 100) : 1;
+  // "Hinter dem Doppelpfeil" (28.08.2026) - echte Instanz-Variablen, kommen
+  // serverseitig im Payload statt aus localStorage, siehe module.php.
+  COUPLE_BOLT = !(d && d.coupleBolt === false);
+  COUPLE_GLOW = !(d && d.coupleGlow === false);
+  EFFECT_INTENSITY = (d && d.effectIntensity != null) ? (d.effectIntensity / 100) : 1;
   const items = buildItems(devices);
   // Chip-Breite des Hausknotens haengt von der Verbraucherzahl ab (siehe
   // CHIP_THRESHOLD/computeLayout()) - VOR ensureNodes() setzen, damit

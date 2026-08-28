@@ -70,6 +70,10 @@ class NRGDashboardTile extends IPSModule
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
 
+    /** Cache fuer legacyValue() - IPS_GetConfiguration() ist teuer genug,
+     *  um sie nicht je Doppelpfeil-Variable erneut aufzurufen. */
+    private ?array $legacyConfigCache = null;
+
     public function Create()
     {
         parent::Create();
@@ -98,7 +102,44 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
         $this->RegisterPropertyInteger('FlowRefW', self::DEF_FLOWREF);
-        $this->RegisterPropertyBoolean('HideInactive', false);
+
+        // Anzeige-Feinheiten "hinter dem Doppelpfeil" (28.08.2026, Dietmar:
+        // "ich möchte, dass Du solche Einstellungen hinter den Doppelpfeil
+        // oben rechts auf der Kachel stellst" - NICHT ein selbstgebautes
+        // Panel in der Kachel, sondern echte Instanz-Variablen mit
+        // EnableAction(). Muster: Prognose/Energiebilanz (Dietmar dort,
+        // 26.08.2026: "Bau alles um" - alle bisher konsolenpflichtigen
+        // Einstellungen hinter den Doppelpfeil legen). Eine aufgezogene
+        // Kachel zeigt beim Klick auf den WebFront-Doppelpfeil NIE das
+        // eigene Kachel-HTML, sondern die Standardansicht der Instanz-
+        // Kinder (SUITE.md Punkt 10) - eigene Variablen mit EnableAction()
+        // erscheinen dort automatisch als Schalter/Zahlenfeld, bedienbar
+        // OHNE Konsolenzugriff (WebFront-Nutzer haben keinen).
+        //
+        // HideInactive war bis hierher eine Property - Migration beim
+        // erstmaligen Anlegen der Variable uebernimmt den zuvor
+        // gespeicherten Property-Wert aus der rohen Konfiguration
+        // (legacyValue()), damit eine bereits angepasste Einstellung beim
+        // Umbau nicht stillschweigend zurueckfaellt.
+        $doppelpfeil = [
+            'HideInactive'    => ['Inaktive Knotenpunkte ausblenden statt nur ausgrauen', 200, false],
+            'CoupleBoltPower' => ['Blitzbögen an Leistung koppeln', 201, true],
+            'CoupleGlowPower' => ['Leuchtschein an Leistung koppeln', 202, true],
+        ];
+        foreach ($doppelpfeil as $ident => [$caption, $pos, $default]) {
+            $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
+            $this->RegisterVariableBoolean($ident, $caption, '', $pos);
+            $this->EnableAction($ident);
+            if ($isNew) {
+                $this->SetValue($ident, (bool) $this->legacyValue($ident, $default));
+            }
+        }
+        $isNewIntensity = @IPS_GetObjectIDByIdent('EffectIntensity', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('EffectIntensity', 'Effekt-Intensität (Blitze/Leuchtschein)', '~Intensity.100', 203);
+        $this->EnableAction('EffectIntensity');
+        if ($isNewIntensity) {
+            $this->SetValue('EffectIntensity', (int) $this->legacyValue('EffectIntensity', 100));
+        }
         // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
         // InverterHubTile - die Kachel muss auch OHNE jedes installierte
         // Partnermodul laufen können, rein über manuell zugewiesene
@@ -216,6 +257,46 @@ class NRGDashboardTile extends IPSModule
         $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
         $this->UpdateFormField('TransitionMs', 'value', self::DEF_TRANSITION);
         $this->UpdateFormField('FlowRefW', 'value', self::DEF_FLOWREF);
+        // Seit 28.08.2026 echte Variablen statt Formularfeld (Doppelpfeil),
+        // deshalb SetValue() statt UpdateFormField() - ueber den
+        // Konsolen-Button weiterhin erreichbar.
+        $this->SetValue('HideInactive', false);
+        $this->SetValue('CoupleBoltPower', true);
+        $this->SetValue('CoupleGlowPower', true);
+        $this->SetValue('EffectIntensity', 100);
+        $this->Render();
+    }
+
+    private function legacyValue(string $name, $default)
+    {
+        if ($this->legacyConfigCache === null) {
+            $cfg = json_decode(IPS_GetConfiguration($this->InstanceID), true);
+            $this->legacyConfigCache = is_array($cfg) ? $cfg : [];
+        }
+        return array_key_exists($name, $this->legacyConfigCache) ? $this->legacyConfigCache[$name] : $default;
+    }
+
+    private function Render(): void
+    {
+        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+    }
+
+    /**
+     * WebFront-Bedienung der Doppelpfeil-Variablen (siehe Create()) - Wert
+     * setzen, Kachel neu rendern. Muster: Prognose/Energiebilanz.
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        $boolIdents = ['HideInactive', 'CoupleBoltPower', 'CoupleGlowPower'];
+        if (in_array($Ident, $boolIdents, true)) {
+            $this->SetValue($Ident, (bool) $Value);
+            $this->Render();
+            return;
+        }
+        if ($Ident === 'EffectIntensity') {
+            $this->SetValue($Ident, max(50, min(150, (int) $Value)));
+            $this->Render();
+        }
     }
 
     /**
@@ -898,12 +979,20 @@ class NRGDashboardTile extends IPSModule
             'font'        => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'transMs'     => $this->TransitionValue(),
             'flowRefW'    => $this->FlowRefValue(),
-            'hideInactive' => $this->ReadPropertyBoolean('HideInactive'),
+            // "Hinter dem Doppelpfeil" (28.08.2026) - echte Instanz-
+            // Variablen statt Formular-Property/localStorage, siehe Create().
+            'hideInactive' => (bool) $this->GetValue('HideInactive'),
+            'coupleBolt'   => (bool) $this->GetValue('CoupleBoltPower'),
+            'coupleGlow'   => (bool) $this->GetValue('CoupleGlowPower'),
+            'effectIntensity' => (int) $this->GetValue('EffectIntensity'),
             // Pfad des eigenen WebHooks - die Kachel oeffnet darueber bei
             // Klick auf einen Geraete-Knoten die bildschirmfuellende
             // Detailseite (?detail=<key>) in einem neuen Browser-Tab.
             'hookPath'    => '/hook/nrgdashtile' . $this->InstanceID,
             'diagnostics' => $diagnostics,
+            // Netzampel-Farbwaesche im Hintergrund (28.08.2026) - null, wenn
+            // keine StromGedacht-Instanz vorhanden/aktiviert ist.
+            'gridAmpel'   => $this->GridAmpel(),
         ];
     }
 
