@@ -199,6 +199,8 @@
   .node-liquid { fill: var(--nc, var(--grey)); opacity: 0.30; transition: y var(--trans) var(--ease), height var(--trans) var(--ease); }
   .node-liquid-low { fill: #e74c3c; }
 
+  .node-ghost-ring { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 2; stroke-dasharray: 3 5; opacity: 0.5; transition: r var(--trans) var(--ease); }
+
   .node-warn { pointer-events: none; }
   .node-warn-tri { fill: #f5a623; stroke: rgba(0,0,0,0.35); stroke-width: 1; }
   .node-warn-mark { fill: #26221a; font-size: 11px; font-weight: 800; text-anchor: middle; stroke: none; }
@@ -973,6 +975,7 @@ function buildItems(devices) {
         // Diagnose-Warnstufe (28.08.2026) - 'kritisch'/'auffaellig'/null,
         // siehe buildPayload()/resolveDiagnostics() im Backend.
         warnLevel: d.warnLevel || null,
+        yesterdayValue: (d.yesterdayValue !== undefined && d.yesterdayValue !== null) ? d.yesterdayValue : null,
       };
     });
 
@@ -1008,6 +1011,14 @@ function createOuterNode(item, pt, layout) {
   // befuellt (updateOuterNode()), sonst bleibt liquid.style.display none.
   const liquid = makeLiquidFill(DESIGN_R);
   g.appendChild(liquid.group);
+  // Gestern-Vergleich als Geisterring (28.08.2026, Dietmar: "alles direkt
+  // umsetzen") - gestrichelter Ring, dessen Radius das Verhaeltnis von
+  // gestern zu heute (zur gleichen Uhrzeit) zeigt: groesser als der feste
+  // Coin-Ring = gestern mehr Leistung, kleiner = gestern weniger. Nur
+  // sichtbar, wenn ein Archivwert vorliegt (updateOuterNode()).
+  const ghostRing = el('circle', { class: 'node-ghost-ring', r: DESIGN_R });
+  ghostRing.style.display = 'none';
+  g.appendChild(ghostRing);
   g.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
   g.appendChild(makeBevel(DESIGN_R));
   g.appendChild(makeHighlight(DESIGN_R));
@@ -1041,7 +1052,7 @@ function createOuterNode(item, pt, layout) {
   warn.appendChild(warnMark);
   g.appendChild(warn);
 
-  return { g, glow, liquid, warn, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  return { g, glow, liquid, warn, ghostRing, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1417,6 +1428,19 @@ function updateOuterNode(refs, item) {
     refs.liquid.group.style.display = hidden ? 'none' : '';
   } else {
     refs.liquid.group.style.display = 'none';
+  }
+
+  // Gestern-Geisterring: Radius kodiert das Verhaeltnis gestern/heute
+  // (gleiche Uhrzeit), gedaempft per Wurzel damit grosse Spruenge den Ring
+  // nicht sofort aus dem Coin heraustreiben.
+  if (item.yesterdayValue != null) {
+    const yMag = Math.abs(item.yesterdayValue);
+    const ratio = Math.sqrt(yMag / Math.max(magnitude, 50));
+    const clamped = Math.max(0.55, Math.min(1.6, ratio));
+    refs.ghostRing.setAttribute('r', (DESIGN_R * clamped).toFixed(1));
+    refs.ghostRing.style.display = hidden ? 'none' : '';
+  } else {
+    refs.ghostRing.style.display = 'none';
   }
 
   // Diagnose-Warnsymbol (28.08.2026) - nur bei tatsaechlicher Warnstufe,

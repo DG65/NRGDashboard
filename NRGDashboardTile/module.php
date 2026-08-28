@@ -78,6 +78,12 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('SeenNews', '');
+        // Gestern-Vergleich als Geisterring (28.08.2026, Dietmar: "alles
+        // direkt umsetzen") - je powerID der zuletzt ermittelte Wert von
+        // "gestern zur gleichen Uhrzeit" + Abrufzeitpunkt, damit
+        // buildPayload() (ereignisgesteuert, sehr haeufig via MessageSink())
+        // nicht bei jedem Aufruf eine Archivabfrage ausloest.
+        $this->RegisterAttributeString('YesterdayCache', '{}');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -719,6 +725,15 @@ class NRGDashboardTile extends IPSModule
             if (!empty($d['plugStateID'])) {
                 $d['plugged'] = $this->resolvePluggedCondition($d);
             }
+            // Gestern-Vergleich als Geisterring (28.08.2026) - nur bei
+            // tatsaechlich vorhandener powerID und Archivwert, sonst bleibt
+            // das Feld weg und der Ring entfaellt in der Darstellung.
+            if (!empty($d['powerID'])) {
+                $yv = $this->GetYesterdayValue((int) $d['powerID']);
+                if ($yv !== null) {
+                    $d['yesterdayValue'] = $yv;
+                }
+            }
             return $d;
         }, $this->GetDevices());
 
@@ -944,6 +959,57 @@ class NRGDashboardTile extends IPSModule
                 return $fbValue;
             }
         }
+        return $value;
+    }
+
+    // Throttle fuer die Gestern-Vergleichsabfrage - buildPayload() laeuft
+    // ereignisgesteuert und viel haeufiger als der Wert sich sinnvoll
+    // aendern kann; eine Archivabfrage je Geraet und Aufruf waere unnoetige
+    // Last auf dem Archiv-Modul.
+    private const YESTERDAY_CACHE_TTL_SEC = 300;
+
+    /**
+     * Wert derselben Variable von "gestern zur gleichen Uhrzeit", fuer den
+     * Geisterring am Knoten (Dietmar, 28.08.2026). Kalendertag-Differenz
+     * bewusst ueber strtotime('-1 day', ...) statt $now-86400 (DST-Regel,
+     * siehe CLAUDE.md) - an den zwei Umstellungstagen waere "vor 24h" sonst
+     * nicht "gestern zur gleichen Uhrzeit".
+     */
+    private function GetYesterdayValue(int $id): ?float
+    {
+        if ($id <= 0 || !IPS_VariableExists($id) || !function_exists('AC_GetLoggedValues')) {
+            return null;
+        }
+        $now = time();
+        $cache = json_decode($this->ReadAttributeString('YesterdayCache'), true);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        $entry = $cache[(string) $id] ?? null;
+        if (is_array($entry) && ($now - ($entry['fetchedAt'] ?? 0)) < self::YESTERDAY_CACHE_TTL_SEC) {
+            return $entry['value'] ?? null;
+        }
+
+        $target = strtotime('-1 day', $now);
+        $rows = @AC_GetLoggedValues($id, $target - 900, $target + 900, 0);
+        $value = null;
+        if (is_array($rows) && count($rows) > 0) {
+            $best = null;
+            $bestDiff = PHP_INT_MAX;
+            foreach ($rows as $row) {
+                $diff = abs(($row['TimeStamp'] ?? 0) - $target);
+                if ($diff < $bestDiff) {
+                    $bestDiff = $diff;
+                    $best = $row;
+                }
+            }
+            if ($best !== null) {
+                $value = (float) ($best['Avg'] ?? $best['Value'] ?? 0);
+            }
+        }
+
+        $cache[(string) $id] = ['value' => $value, 'fetchedAt' => $now];
+        $this->WriteAttributeString('YesterdayCache', json_encode($cache));
         return $value;
     }
 
