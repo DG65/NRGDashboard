@@ -79,6 +79,11 @@
 
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
+<div id="subMeterWrap" style="display:none">
+  <h2>Kaskadierte Zähler</h2>
+  <div id="subMeterT"></div>
+</div>
+
 <div class="grid2">
   <div id="groupWrap"></div>
   <div id="valWrap" style="display:none"><h2>Aktuelle Werte</h2><div id="valT"></div></div>
@@ -262,6 +267,18 @@ function renderHighlights(p) {
   ).join('');
 }
 
+function renderSubMeters(p) {
+  const wrap = document.getElementById('subMeterWrap');
+  const sub = p.subMeters || [];
+  if (!sub.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  let h = '<table>';
+  sub.forEach(s => {
+    h += '<tr><th>' + esc(s.label) + '</th><td class="v">' + esc(s.value) + '</td></tr>';
+  });
+  document.getElementById('subMeterT').innerHTML = h + '</table>';
+}
+
 function handleDetail(p) {
   lastPayload = p;
   if (!p || !p.ok) {
@@ -277,6 +294,7 @@ function handleDetail(p) {
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
+  renderSubMeters(p);
   renderValues(p);
   renderPower(p);
   renderEnergy(p);

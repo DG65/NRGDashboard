@@ -2653,6 +2653,20 @@ class NRGDashboardTile extends IPSModule
             // Hausbesitzer interessieren könnte ... auch mit Blick auf
             // Krisen-/Katastrophenfälle") - siehe BuildHighlights().
             'highlights' => $this->BuildHighlights($d, $powerSeries, $energy, $isToday, $dayStart, $dayEnd),
+            // Kaskadierte Unterzaehler (Dietmar, 28.08.2026: "wenn es
+            // hinter den Knotenpunkten weitere Unterzaehler geben wuerde ...
+            // man koennte diese Erweiterung auch im Overlay fortfuehren").
+            // Generisches Feld 'subMeters' = [{label, powerID}, ...] auf dem
+            // Geraete-Eintrag - AKTUELL liefert das noch KEIN Partnermodul
+            // (MeterHub hat bislang keine Eltern/Kind-Beziehung zwischen
+            // Zaehlpunkten im Vertrag, siehe Dietmars Klarstellung: die
+            // Kaskadierung muss von MeterHub selbst kommen, protokoll-
+            // neutral - explizit NICHT an Zigbee2MQTT o.ae. gebunden). Diese
+            // Zeile ist reine Anzeige-Vorbereitung: erscheint ein solches
+            // Feld kuenftig in einem Geraete-Eintrag (gleich welcher
+            // Quelle), zeigt die Detailseite die Unterzaehler automatisch -
+            // heute ist die Liste in jedem echten Aufruf leer.
+            'subMeters' => $this->ResolveSubMeters($d),
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
@@ -2672,6 +2686,38 @@ class NRGDashboardTile extends IPSModule
      *    erfinden/schaetzen, wo die Datengrundlage fehlt (z.B. keine
      *    Kostenanzeige ohne echten Strompreis-Vertrag).
      */
+    /**
+     * Loest ein generisches 'subMeters'-Feld ([{label,powerID}, ...]) am
+     * Geraete-Eintrag zu Live-Werten auf, falls vorhanden - siehe
+     * Kommentar bei BuildDetailPayload(). Robust gegen jede Form (fehlendes
+     * Feld, kein Array, einzelne kaputte Eintraege) statt einen Fehler zu
+     * werfen, da noch KEIN Partnermodul dieses Feld liefert und ein
+     * kuenftiges Format daher nicht final feststeht.
+     */
+    private function ResolveSubMeters(array $d): array
+    {
+        $raw = $d['subMeters'] ?? null;
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $vid = (int) ($entry['powerID'] ?? 0);
+            if ($vid <= 0 || !IPS_VariableExists($vid)) {
+                continue;
+            }
+            $out[] = [
+                'label' => (string) ($entry['label'] ?? IPS_GetName($vid)),
+                'value' => GetValueFormatted($vid),
+                'powerW' => (float) GetValue($vid),
+            ];
+        }
+        return $out;
+    }
+
     private function BuildHighlights(array $d, array $powerSeries, array $energy, bool $isToday, int $dayStart, int $dayEnd): array
     {
         $out = [];

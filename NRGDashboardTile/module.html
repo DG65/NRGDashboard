@@ -294,11 +294,20 @@
 
   <circle class="ring-decor" id="ring-decor" cx="280" cy="301" r="96" style="display:none"/>
   <g id="node-center" class="node">
-    <circle class="coin-shadow" cx="0" cy="8.96" r="63"/>
-    <circle class="node-glow" r="56"/>
-    <circle class="node-face" r="56"/>
-    <circle class="node-ring" r="56"/>
-    <circle class="node-bevel" r="56"/>
+    <!-- Haus-"Muenze" als <rect> statt <circle> (28.08.2026, Dietmar: ab
+         vielen Knoten soll der Hausknoten zum "Chip"/zur Pille werden statt
+         alle Verbraucher-Kreise weiter zu schrumpfen). rx=ry=Halbe-Hoehe
+         macht ein <rect> optisch UNUNTERSCHEIDBAR von einem Kreis, solange
+         Breite=Hoehe ist - deshalb genuegt EIN Render-Pfad fuer beide
+         Faelle, layoutCenterChip() setzt x/y/width/height/rx/ry jeden
+         Render neu (siehe dort). node-highlight/node-spec bleiben bewusst
+         Kreise (rein dekoratives Glanzlicht nahe der linken Kappe, muss
+         nicht mitskalieren). */ -->
+    <rect class="coin-shadow" x="-63" y="-54.04" width="126" height="126" rx="63" ry="63"/>
+    <rect class="node-glow" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
+    <rect class="node-face" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
+    <rect class="node-ring" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
+    <rect class="node-bevel" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
     <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
     <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
@@ -337,21 +346,215 @@ const CX = 280, CY = 301;
 const DESIGN_R = 56;
 const SCALE_INACTIVE = 44 / 56;
 let HIDE_INACTIVE = false;
+let lastBoltHw = null; // Chip-Blitzboegen nur bei tatsaechlicher Breitenaenderung neu aufbauen
 const R_MAX = 234;
-const NODE_GAP = 10;
+const NODE_GAP = 10; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026)
+// Untergrenze, falls selbst die maximal breite Pille nicht mehr fuer den
+// Regelabstand reicht - dann lieber etwas enger als aus der Kachel wandern.
+const MIN_NODE_GAP = 3;
 const CENTER_R = DESIGN_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
 const BOLT_COUNT = 3;
+// Ab dieser Knotenzahl verlaesst der Hausknoten die Kreisform und wird zum
+// "Chip" (Rechteck mit Halbkreis links/rechts) - Dietmar, 28.08.2026: bei
+// vielen Verbrauchern (er hat ueber 50 einzeln messbare Punkte im Haus)
+// muessten die Kreise sonst immer weiter schrumpfen, um noch auf den
+// Kreisumfang zu passen. Ein breiterer Chip-Umfang waechst dagegen LINEAR
+// mit der Breite (nicht nur mit dem Radius wie beim Kreis) und bietet so
+// zusaetzlichen Platz, ohne die einzelnen Knoten zu verkleinern.
+const CHIP_THRESHOLD = 8;
+
+/**
+ * Liefert EIN zusammengehoeriges Haus/Verbraucher-Punktpaar auf der Pille
+ * bei Bogenlaengen-Anteil tFrac (0..1, 0 = oberste Mitte, im Uhrzeigersinn),
+ * gemessen am HAUS-Umfang (hw,hh) - der Verbraucher-Punkt liegt auf der um
+ * ringGap nach aussen versetzten Pille, aber IMMER in derselben Zone
+ * (gerade Kante bzw. welche Kappe) und mit demselben lokalen Parameter
+ * (x-Position bzw. Winkel) wie sein Haus-Gegenstueck. Nur so ist die
+ * Verbindung zwischen beiden Punkten garantiert entweder rein vertikal
+ * (auf den geraden Kanten) oder radial zum Mittelpunkt DER JEWEILIGEN
+ * Kappe (auf den Rundungen) - Dietmars Vorgabe (28.08.2026).
+ *
+ * Fund/Fix: eine fruehere Fassung hat Haus- und Verbraucher-Punkt UNABHAENGIG
+ * ueber ihre je EIGENEN (unterschiedlich grossen) Pillen-Umfaenge
+ * parametrisiert - dieselbe Bogenlaengen-Position landete dadurch bei
+ * unterschiedlichen Zonen (Verbraucher noch auf der Geraden, Haus schon in
+ * der Rundung oder umgekehrt), was schraege statt vertikale/radiale Linien
+ * erzeugt hat. Jetzt bestimmt AUSSCHLIESSLICH der Haus-Umfang die Zone.
+ */
+function pillPointPair(tFrac, hw, hh, ringGap) {
+  const straight = Math.max(0, hw - hh);
+  const capLen = Math.PI * hh;
+  const perim = 4 * straight + 2 * capLen;
+  let t = ((tFrac % 1) + 1) % 1 * perim;
+  const hh2 = hh + ringGap;
+
+  if (t <= straight) {
+    return { house: { x: t, y: -hh, angleDeg: -90 }, sat: { x: t, y: -hh2, angleDeg: -90 } };
+  }
+  t -= straight;
+  if (t <= capLen) {
+    const a = -90 + (t / capLen) * 180;
+    const rad = a * Math.PI / 180;
+    return {
+      house: { x: straight + hh * Math.cos(rad), y: hh * Math.sin(rad), angleDeg: a },
+      sat: { x: straight + hh2 * Math.cos(rad), y: hh2 * Math.sin(rad), angleDeg: a },
+    };
+  }
+  t -= capLen;
+  if (t <= 2 * straight) {
+    const x = straight - t;
+    return { house: { x, y: hh, angleDeg: 90 }, sat: { x, y: hh2, angleDeg: 90 } };
+  }
+  t -= 2 * straight;
+  if (t <= capLen) {
+    const a = 90 + (t / capLen) * 180;
+    const rad = a * Math.PI / 180;
+    return {
+      house: { x: -straight + hh * Math.cos(rad), y: hh * Math.sin(rad), angleDeg: a },
+      sat: { x: -straight + hh2 * Math.cos(rad), y: hh2 * Math.sin(rad), angleDeg: a },
+    };
+  }
+  t -= capLen;
+  const x = -straight + t;
+  return { house: { x, y: -hh, angleDeg: -90 }, sat: { x, y: -hh2, angleDeg: -90 } };
+}
 
 function computeLayout(n) {
+  const chip = n > CHIP_THRESHOLD;
+  // Verbraucher-Groesse: normale Kreis-Packungsformel, ab dem Schwellwert
+  // aber mit n auf CHIP_THRESHOLD gedeckelt - danach uebernimmt die
+  // Chip-Verbreiterung die zusaetzliche Kapazitaet statt weiterem
+  // Schrumpfen der einzelnen Knoten.
+  const nForSize = chip ? CHIP_THRESHOLD : Math.max(n, 1);
   let outerR = DESIGN_R;
-  if (n >= 3) {
-    const s = Math.sin(Math.PI / n);
+  if (nForSize >= 3) {
+    const s = Math.sin(Math.PI / nForSize);
     outerR = Math.min(DESIGN_R, (R_MAX * s - NODE_GAP / 2) / (1 + s));
   }
   outerR = Math.max(16, outerR);
-  return { outerR, rOuter: R_MAX - outerR };
+  const rOuterCircle = R_MAX - outerR;
+
+  // Radialer Abstand Hausrand -> Verbraucher-MITTELPUNKT, wie im Kreis-Fall
+  // (dort implizit rOuter-CENTER_R, typischerweise 100+ Px) - NICHT nur ein
+  // kleiner Sichtabstand. Dieser Zwischenraum ist notwendig, weil dort die
+  // fliessenden Pfeil-Dreiecke (.flow-tri) entlang der Speiche animiert
+  // werden (Dietmar, 28.08.2026: "der Abstand ist notwendig, weil ja auch
+  // spaeter noch die Dreiecke fliessen sollen"). Fund/Fix: die vorherige
+  // Chip-Fassung hatte hier faelschlich nur outerR+NODE_GAP/2 verwendet
+  // (einen ganz anderen, viel kleineren Wert - NODE_GAP ist der Abstand
+  // ZWISCHEN benachbarten Verbraucher-Knoten, nicht der radiale Abstand
+  // Haus<->Knoten) und dadurch teils sogar negative Speichenlaengen
+  // produziert (Knoten und Haus ueberlappten sich rechnerisch).
+  const ringGap = rOuterCircle - DESIGN_R;
+
+  let hw = DESIGN_R;
+  const hh = DESIGN_R;
+  if (chip) {
+    // Wie viel zusaetzlicher HAUS-Umfang noetig ist, damit n Knoten im
+    // GLEICHEN Abstand wie beim Kreis (2*outerR+GAP) Platz finden - eine
+    // Verbreiterung um delta verlaengert die beiden geraden Seiten um je
+    // 2*delta, also den Gesamtumfang um 4*delta. Bewusst der HAUS-eigene
+    // Umfang (nicht der groessere Verbraucher-Ring) als Bezugsgroesse:
+    // pillPointPair() misst die Knotenverteilung jetzt ausschliesslich am
+    // Haus-Umfang (siehe dortiger Fund/Fix-Kommentar) - auf den geraden
+    // Kanten ist der Verbraucher-Abstand exakt gleich dem Haus-Abstand
+    // (unskaliert uebernommen), auf den Kappen sogar noch grosszuegiger
+    // (groesserer Radius = groessere Bogenlaenge bei gleichem Winkel).
+    const housePerim = 2 * Math.PI * DESIGN_R;
+    const neededPerim = n * (2 * outerR + NODE_GAP);
+    const extra = Math.max(0, neededPerim - housePerim);
+    hw = DESIGN_R + extra / 4;
+
+    // Die Pille darf nicht beliebig breit werden - die Kachel hat eine
+    // feste Leinwandgroesse (viewBox), ein Kappen-Knoten ganz aussen sitzt
+    // bei hw+ringGap vom Mittelpunkt entfernt. HW_MAX begrenzt das auf
+    // GENAU denselben Radius (R_MAX), den auch die Kreis-Satelliten nie
+    // ueberschreiten - der Chip wandert also nie weiter aus der sichtbaren
+    // Flaeche als ein normaler Kreis-Knoten es duerfte.
+    const hwMax = Math.max(DESIGN_R, R_MAX - ringGap);
+    if (hw > hwMax) {
+      hw = hwMax;
+      // Ideal-Abstand (Dietmar, 28.08.2026: "Regelabstand ~10px, darf enger
+      // werden, wenn die Kachel nicht mehr ausreicht") passt bei dieser
+      // Breite nicht mehr fuer alle n Knoten - statt die Pille dennoch
+      // weiter zu verbreitern (und Knoten aus der Kachel wandern zu
+      // lassen), wird JETZT der Kreisradius selbst nachgeben: kleinster
+      // outerR, mit dem n Knoten im Mindestabstand MIN_NODE_GAP noch auf
+      // den (jetzt gedeckelten) Pillen-Umfang passen.
+      const hwMaxPerim = 4 * Math.max(0, hw - hh) + 2 * Math.PI * hh;
+      const spacingAtHwMax = hwMaxPerim / n;
+      if (spacingAtHwMax - NODE_GAP < 2 * outerR) {
+        outerR = Math.max(16, Math.min(outerR, (spacingAtHwMax - MIN_NODE_GAP) / 2));
+      }
+    }
+  }
+
+  // Position je Knoten: bei chip=false 1:1 die alte, rein winkelbasierte
+  // Kreisformel - bei chip=true entlang des GESAMTEN Pillen-Umfangs
+  // (Kappen eingeschlossen) in gleichem Bogenlaengen-Abstand statt
+  // gleichem Winkel (das ist der Grund, warum die Verbreiterung
+  // ueberhaupt zusaetzlichen Platz bringt).
+  const points = [];
+  for (let i = 0; i < n; i++) {
+    if (!chip) {
+      const angleDeg = -90 + (360 / n) * i;
+      const rad = angleDeg * Math.PI / 180;
+      points.push({
+        angleDeg,
+        x: rOuterCircle * Math.cos(rad), y: rOuterCircle * Math.sin(rad),
+        hx: DESIGN_R * Math.cos(rad), hy: DESIGN_R * Math.sin(rad),
+      });
+    } else {
+      const t = i / n;
+      const { house, sat } = pillPointPair(t, hw, hh, ringGap);
+      points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
+    }
+  }
+
+  return { outerR, rOuter: rOuterCircle, chip, hw, hh, points };
+}
+
+/** Setzt die tatsaechliche Chip-Geometrie am Hausknoten (x/y/width/height/
+ *  rx/ry der <rect>-Elemente) - bei hw===hh (unter CHIP_THRESHOLD) optisch
+ *  identisch zum bisherigen Kreis. */
+function layoutCenterChip(hw, hh) {
+  const setRect = (selector, w, h) => {
+    const node = document.querySelector('#node-center ' + selector);
+    if (!node) return;
+    node.setAttribute('x', -w); node.setAttribute('y', -h);
+    node.setAttribute('width', 2 * w); node.setAttribute('height', 2 * h);
+    node.setAttribute('rx', h); node.setAttribute('ry', h);
+  };
+  setRect('.node-face', hw, hh);
+  setRect('.node-ring', hw, hh);
+  setRect('.node-bevel', hw, hh);
+  setRect('.node-glow', hw, hh);
+  // Schatten wie im Original leicht groesser (Faktor 1.13) und nach unten
+  // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
+  // auf zwei unabhaengige Halbachsen (hw/hh) statt einen einzelnen Radius
+  // angewendet.
+  const sw = hw * 1.13, sh = hh * 1.13, oy = hh * 0.16;
+  const shadow = document.querySelector('#node-center .coin-shadow');
+  if (shadow) {
+    shadow.setAttribute('x', -sw); shadow.setAttribute('y', -sh + oy);
+    shadow.setAttribute('width', 2 * sw); shadow.setAttribute('height', 2 * sh);
+    shadow.setAttribute('rx', sh); shadow.setAttribute('ry', sh);
+  }
+  // Blitzboegen (.node-bolt) folgen jetzt dem tatsaechlichen Pillenrand
+  // (jagArc/pillRadiusAt) statt eines starren Kreises - nur bei
+  // tatsaechlicher Breitenaenderung neu aufbauen, sonst wuerde die CSS-
+  // Flacker-Animation (boltFlickerV) bei jedem Render-Tick neu starten und
+  // sichtbar ruckeln.
+  if (hw !== lastBoltHw) {
+    lastBoltHw = hw;
+    const holder = document.getElementById('center-bolts');
+    if (holder) {
+      holder.textContent = '';
+      addNodeBolts(holder, hw, hh, 5);
+    }
+  }
 }
 
 const C_SOLAR  = [255, 179, 0];
@@ -753,10 +956,9 @@ function setValueText(textEl, watts, measured) {
 let builtSig = null;
 const nodeRefs = {};
 
-function createOuterNode(item, angleDeg, layout) {
-  const rad = angleDeg * Math.PI / 180;
-  const cx = CX + layout.rOuter * Math.cos(rad);
-  const cy = CY + layout.rOuter * Math.sin(rad);
+function createOuterNode(item, pt, layout) {
+  const cx = CX + pt.x;
+  const cy = CY + pt.y;
 
   const g = el('g', { class: 'node' });
   g.appendChild(makeCoinShadow(DESIGN_R));
@@ -767,7 +969,7 @@ function createOuterNode(item, angleDeg, layout) {
   g.appendChild(makeBevel(DESIGN_R));
   g.appendChild(makeHighlight(DESIGN_R));
   g.appendChild(makeSpecular(DESIGN_R));
-  addNodeBolts(g, DESIGN_R, Math.round(angleDeg + 360));
+  addNodeBolts(g, DESIGN_R, DESIGN_R, Math.round(pt.angleDeg + 360));
 
   const iconG = el('g', { class: 'node-icon', transform: 'translate(0,-30)', 'stroke-width': 2, fill: 'none', filter: 'url(#relief)' });
   g.appendChild(iconG);
@@ -801,10 +1003,28 @@ function jagPath(p1, p2, amp, seg, seed) {
   }
   return d + ' L' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1);
 }
-function jagArc(r, startDeg, endDeg, amp, seg, seed) {
+/** Abstand vom Mittelpunkt (0,0) zum Pillenrand in Richtung angleDeg -
+ *  degeneriert bei hw===hh exakt zum Kreisradius r=hh. Fuer die Blitzboegen
+ *  (.node-bolt) noetig, die am Hausknoten sonst weiter auf einem starren
+ *  DESIGN_R-Kreis liefen, waehrend der Chip laengst breiter ist (Dietmar,
+ *  28.08.2026: "die Blitze haengen noch voll am Kreis - muessen mit der
+ *  Pille mitwandern"). */
+function pillRadiusAt(angleDeg, hw, hh) {
+  const rad = angleDeg * Math.PI / 180;
+  const cx0 = Math.cos(rad), sy0 = Math.sin(rad);
+  const straight = Math.max(0, hw - hh);
+  if (Math.abs(sy0) < 1e-9) { return hw; }
+  const tFlat = hh / Math.abs(sy0);
+  if (Math.abs(tFlat * cx0) <= straight) { return tFlat; }
+  const cx = (cx0 >= 0 ? 1 : -1) * straight;
+  const b = cx * cx0;
+  const disc = Math.max(0, b * b - (cx * cx - hh * hh));
+  return b + Math.sqrt(disc);
+}
+function jagArc(hw, hh, startDeg, endDeg, amp, seg, seed) {
   const pt = (deg, jitter) => {
     const rad = deg * Math.PI / 180;
-    const rr = r + jitter;
+    const rr = pillRadiusAt(deg, hw, hh) + jitter;
     return (rr * Math.cos(rad)).toFixed(1) + ',' + (rr * Math.sin(rad)).toFixed(1);
   };
   let d = 'M' + pt(startDeg, 0);
@@ -815,11 +1035,11 @@ function jagArc(r, startDeg, endDeg, amp, seg, seed) {
   }
   return d + ' L' + pt(endDeg, 0);
 }
-function addNodeBolts(g, r, seedBase) {
+function addNodeBolts(g, hw, hh, seedBase) {
   for (let i = 0; i < BOLT_COUNT; i++) {
     const start = (seedBase * 47 + i * 120) % 360;
     const span  = 55 + ((seedBase + i) % 3) * 20;
-    const b = el('path', { class: 'node-bolt', d: jagArc(r, start, start + span, 3.2, 8, seedBase * 3 + i + 1) });
+    const b = el('path', { class: 'node-bolt', d: jagArc(hw, hh, start, start + span, 3.2, 8, seedBase * 3 + i + 1) });
     b.style.animationDuration = (1.15 + ((seedBase + i * 2) % 5) * 0.11).toFixed(2) + 's';
     b.style.animationDelay = (((seedBase * 7 + i * 13) % 17) / 10).toFixed(2) + 's';
     g.appendChild(b);
@@ -829,18 +1049,23 @@ function addNodeBolts(g, r, seedBase) {
   const c = document.getElementById('node-center');
   const cg = c.querySelector('.node-glow');
   if (cg) { attachGlow(cg); }
-  const holder = el('g', {});
-  addNodeBolts(holder, DESIGN_R, 5);
+  const holder = el('g', { id: 'center-bolts' });
+  addNodeBolts(holder, DESIGN_R, DESIGN_R, 5);
   c.insertBefore(holder, document.getElementById('center-icon'));
 })();
 
-function createSpoke(angleDeg, layout, layer) {
-  const rad = angleDeg * Math.PI / 180;
-  const c = Math.cos(rad), s = Math.sin(rad);
-  const r1 = CENTER_R + SPOKE_GAP;
-  const r2 = layout.rOuter - layout.outerR - SPOKE_GAP;
-  const p1 = [CX + r1 * c, CY + r1 * s];
-  const p2 = [CX + r2 * c, CY + r2 * s];
+function createSpoke(pt, layout, layer) {
+  // Richtung vom Hausrand-Punkt (pt.hx/hy) zum Verbraucher-Mittelpunkt
+  // (pt.x/y) - bei chip=false ist das exakt die alte radiale Richtung
+  // (hx/hy liegen dann auf demselben Winkel wie x/y), bei chip=true ergibt
+  // sich die Speichen-Richtung automatisch korrekt aus den zwei Punkten,
+  // ohne dass createSpoke() selbst wissen muss, ob/wo die Pille gerade
+  // oder gerundet ist.
+  const dx = pt.x - pt.hx, dy = pt.y - pt.hy;
+  const dist = Math.hypot(dx, dy) || 1;
+  const ux = dx / dist, uy = dy / dist;
+  const p1 = [CX + pt.hx + ux * SPOKE_GAP, CY + pt.hy + uy * SPOKE_GAP];
+  const p2 = [CX + pt.x - ux * (layout.outerR + SPOKE_GAP), CY + pt.y - uy * (layout.outerR + SPOKE_GAP)];
   const line = (cls) => el('line', { class: cls, x1: p1[0].toFixed(1), y1: p1[1].toFixed(1), x2: p2[0].toFixed(1), y2: p2[1].toFixed(1) });
   // Eigene <g> je Speiche (statt aller Elemente direkt im gemeinsamen
   // wiresLayer) - nur so laesst sich eine einzelne Speiche fuer
@@ -1058,8 +1283,8 @@ function ensureNodes(items) {
   const n = items.length;
   const layout = computeLayout(n);
   items.forEach((item, i) => {
-    const angleDeg = -90 + (360 / n) * i;
-    const refs = createOuterNode(item, angleDeg, layout);
+    const pt = layout.points[i];
+    const refs = createOuterNode(item, pt, layout);
     refs.nodeR = layout.outerR;
     // Klick auf den Knoten oeffnet die bildschirmfuellende Detailseite
     // (WebHook) in einem neuen Tab - Diagramme + alle Vertragsfelder des
@@ -1072,7 +1297,7 @@ function ensureNodes(items) {
       refs.g.appendChild(tip);
       refs.g.addEventListener('click', () => openDeviceDetail(item.detailKey, refs.g));
     }
-    refs.spoke = createSpoke(angleDeg, layout, wiresLayer);
+    refs.spoke = createSpoke(pt, layout, wiresLayer);
     nodeRefs[item.key] = refs;
     nodesLayer.appendChild(refs.g);
   });
@@ -1333,6 +1558,11 @@ function handleMessage(raw) {
 
   HIDE_INACTIVE = !!(d && d.hideInactive);
   const items = buildItems(devices);
+  // Chip-Breite des Hausknotens haengt von der Verbraucherzahl ab (siehe
+  // CHIP_THRESHOLD/computeLayout()) - VOR ensureNodes() setzen, damit
+  // Chip und Speichen im selben Frame konsistent zueinander stehen.
+  const chipLayout = computeLayout(items.length);
+  layoutCenterChip(chipLayout.hw, chipLayout.hh);
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
