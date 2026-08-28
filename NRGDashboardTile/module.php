@@ -54,7 +54,7 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.3.0';
+    private const NEWS_VERSION = '0.4.0';
     private const NEWS_ITEMS = [
         'Ereignisgesteuerte Aktualisierung (sofortiger Push bei jeder Wertänderung) statt reinem 5-Minuten-Takt.',
         'Echte Hauslast (IHUBTILE_GetHouseLoad) bevorzugt vor der berechneten Näherung, sofern konfiguriert.',
@@ -65,6 +65,7 @@ class NRGDashboardTile extends IPSModule
         'Gesundheits-/Diagnose-Anzeige (Ertrag vs. Prognose, MPPT-Strangvergleich, Isolationswiderstand) selbst berechnet, keine InverterHubMonitor-Instanz mehr nötig.',
         'Fahrzeug-Erkennung an Wallboxen: Tesla-Fahrzeuge über Tessie vollautomatisch erkannt (Name + Ladestand), auch ChargerHub-Wallboxen jetzt korrekt einbezogen.',
         'Modul heißt jetzt „NRG-Stack Dashboard Energiefluss" (bisher „NRG Dashboard“/„Energiefluss-Kachel“) - bestehende Instanzen bleiben unverändert funktionsfähig.',
+        'Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, bildschirmfüllende Seite (Leistungsverlauf, Energiebilanz, alle Vertragsfelder inkl. Phasenwerte) - komplett automatisch aus den vorhandenen Verträgen, ohne zusätzliche Einrichtung.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
@@ -586,6 +587,24 @@ class NRGDashboardTile extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Geraete-Detailseite (Klick auf einen Knoten der Energiefluss-
+        // Kachel): bildschirmfuellende Ansicht mit allen Vertragsfeldern
+        // des Geraets + Leistungs-/Energie-Diagrammen. Bewusst ueber den
+        // WebHook statt in der Kachel selbst - die Kachel kann im Grid zu
+        // klein fuer Diagramme sein (Dietmar, 28.08.2026).
+        if (isset($_GET['detail'])) {
+            $key = (string) $_GET['detail'];
+            $day = isset($_GET['day']) ? (string) $_GET['day'] : '';
+            if (isset($_GET['json'])) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode($this->BuildDetailPayload($key, $day));
+                return;
+            }
+            header('Content-Type: text/html; charset=utf-8');
+            $html = file_get_contents(__DIR__ . '/detail.html');
+            echo str_replace('/*%%PAYLOAD%%*/', 'handleDetail(' . json_encode($this->BuildDetailPayload($key, $day)) . ');', $html);
+            return;
+        }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($this->buildPayload());
@@ -647,6 +666,11 @@ class NRGDashboardTile extends IPSModule
             $key = $this->deviceKey($d);
             $o = $overrides[$key] ?? null;
             $d['_visible'] = $o['enabled'] ?? true;
+            // Stabiler Schluessel fuer die Klick-Detailansicht (Knoten ->
+            // /hook/...?detail=<key>) - bewusst der discovery-stabile
+            // deviceKey() VOR jeder Umbenennung, damit der Link auch nach
+            // einer Nutzer-Umbenennung dasselbe Geraet trifft.
+            $d['detailKey'] = $key;
             // Nutzer-Bezeichnung (Formular "Automatisch gefundene Geräte",
             // Spalte "Bezeichnung") - leer = Vorgabe der Quelle behalten.
             if (!empty($o['name'])) {
@@ -718,6 +742,10 @@ class NRGDashboardTile extends IPSModule
             'transMs'     => $this->TransitionValue(),
             'flowRefW'    => $this->FlowRefValue(),
             'hideInactive' => $this->ReadPropertyBoolean('HideInactive'),
+            // Pfad des eigenen WebHooks - die Kachel oeffnet darueber bei
+            // Klick auf einen Geraete-Knoten die bildschirmfuellende
+            // Detailseite (?detail=<key>) in einem neuen Browser-Tab.
+            'hookPath'    => '/hook/nrgdashtile' . $this->InstanceID,
             'diagnostics' => $this->resolveDiagnostics(),
         ];
     }
@@ -2195,5 +2223,227 @@ class NRGDashboardTile extends IPSModule
         // Wallbox-Kanäle aus MeterHub (wallbox1..5) und ähnlich
         // präfixierte Verbraucherkanäle fallen ebenfalls auf Verbraucher.
         return 'verbraucher';
+    }
+
+    // ------------------------------------------------------------------
+    // Geraete-Detailansicht (Klick auf einen Knoten, 28.08.2026)
+    // ------------------------------------------------------------------
+
+    /**
+     * Findet ein Geraet ueber seinen discovery-stabilen deviceKey() -
+     * derselbe Schluessel, den buildPayload() als detailKey mitgibt.
+     */
+    private function FindDeviceByKey(string $key): ?array
+    {
+        foreach ($this->GetDevices() as $d) {
+            if ($this->deviceKey($d) === $key) {
+                return $d;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Baut die Nutzlast der Detailseite. Kernprinzip 2 (CLAUDE.md) gilt
+     * auch hier: es wird KEIN Geraetetyp hart verdrahtet - stattdessen
+     * werden generisch ALLE Vertragsfelder mit `ID`/`IDs`-Suffix des
+     * Geraets aufgeloest (Name der Variable + formatierter Wert). Dadurch
+     * zeigen Zaehler automatisch ihre Stromeigenschaften (Spannung/Strom/
+     * cos φ/Frequenz je Phase, sofern MeterHub sie liefert) und Fahrzeuge/
+     * Wallboxen ihre eigenen Felder (SOC, Reichweite, Steckerstatus, ...)
+     * - der Anbieter entscheidet ueber seine GetFunctions-Felder, was
+     * erscheint, ohne dass hier je eine Zeile angepasst werden muss.
+     */
+    private function BuildDetailPayload(string $key, string $dayStr): array
+    {
+        $d = $this->FindDeviceByKey($key);
+        if ($d === null) {
+            return ['ok' => false, 'error' => 'Gerät nicht gefunden - bitte die Kachel neu öffnen (die Geräteliste hat sich geändert).'];
+        }
+        // Nutzer-Umbenennung (Formular) auch auf der Detailseite anzeigen.
+        $overrides = $this->deviceOverrideMap();
+        $o = $overrides[$key] ?? null;
+        $label = !empty($o['name']) ? $o['name'] : ($d['label'] ?? ($d['function'] ?? 'Gerät'));
+
+        // Tagesauswahl (YYYY-MM-DD); DST-Regel: Kalendertag-Grenzen NIE
+        // ueber feste Sekundenzahlen, deshalb strtotime auf dem Datum.
+        $dayStart = strtotime('today');
+        if ($dayStr !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dayStr)) {
+            $parsed = strtotime($dayStr . ' 00:00:00');
+            if ($parsed !== false) {
+                $dayStart = $parsed;
+            }
+        }
+        $dayEnd = min(time(), strtotime('+1 day', $dayStart));
+
+        $instName = '';
+        $modName = '';
+        $iid = (int) ($d['instanceID'] ?? 0);
+        if ($iid > 0 && IPS_InstanceExists($iid)) {
+            $instName = IPS_GetName($iid);
+            $inst = IPS_GetInstance($iid);
+            $modName = $inst['ModuleInfo']['ModuleName'] ?? '';
+        }
+
+        $powerID = (int) ($d['powerID'] ?? 0);
+        return [
+            'ok'        => true,
+            'key'       => $key,
+            'label'     => $label,
+            'function'  => (string) ($d['function'] ?? ''),
+            'source'    => trim($instName . ($modName !== '' ? ' (' . $modName . ')' : '')),
+            'powerNow'  => $this->resolvePowerValue($d),
+            'values'    => $this->DetailValues($d),
+            'day'       => date('Y-m-d', $dayStart),
+            'dayLabel'  => date('d.m.Y', $dayStart),
+            'isToday'   => date('Y-m-d', $dayStart) === date('Y-m-d'),
+            'power'     => $this->DaySeries($powerID, $dayStart, $dayEnd),
+            'energy'    => $this->DailyEnergyBars($d, $dayStart),
+            'renderedAt' => time(),
+            'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
+            'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+        ];
+    }
+
+    /**
+     * Loest generisch alle `ID`-/`IDs`-Vertragsfelder eines Geraets in
+     * Anzeigezeilen auf: Variablenname (vergibt der Anbieter, deshalb
+     * type-neutral verwendbar), formatierter Wert (Profil des Anbieters)
+     * und Aktualitaets-Zeitstempel. Die L1-L3-Gruppierung passiert im
+     * Frontend rein anhand des Namens.
+     */
+    private function DetailValues(array $d): array
+    {
+        $rows = [];
+        $add = function ($vid, string $field) use (&$rows) {
+            $vid = (int) $vid;
+            if ($vid <= 0 || !IPS_VariableExists($vid)) {
+                return;
+            }
+            $v = IPS_GetVariable($vid);
+            $rows[] = [
+                'field' => $field,
+                'name'  => IPS_GetName($vid),
+                'value' => GetValueFormatted($vid),
+                'ts'    => (int) $v['VariableUpdated'],
+            ];
+        };
+        foreach ($d as $field => $val) {
+            if ($field === 'instanceID' || str_starts_with($field, '_')) {
+                continue;
+            }
+            if (preg_match('/IDs$/', $field) && is_array($val)) {
+                foreach ($val as $vid) {
+                    $add($vid, $field);
+                }
+            } elseif (preg_match('/ID$/', $field) && is_numeric($val)) {
+                $add($val, $field);
+            }
+        }
+        return $rows;
+    }
+
+    /** Erste Archiv-Instanz (Standard-Setup: genau eine). */
+    private function ArchiveID(): int
+    {
+        $ids = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+        return count($ids) > 0 ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * 5-Minuten-Verlauf einer Variablen fuer einen Tag ([ms, wert]-Paare,
+     * chronologisch). Leer, wenn Variable fehlt oder nicht archiviert wird
+     * - die Detailseite zeigt dann einen Hinweis statt eines leeren Charts.
+     */
+    private function DaySeries(int $vid, int $from, int $to): array
+    {
+        $arch = $this->ArchiveID();
+        if ($arch <= 0 || $vid <= 0 || !IPS_VariableExists($vid) || !AC_GetLoggingStatus($arch, $vid)) {
+            return [];
+        }
+        $agg = @AC_GetAggregatedValues($arch, $vid, 5, $from, $to, 0);
+        if (!is_array($agg)) {
+            return [];
+        }
+        $out = [];
+        foreach ($agg as $row) {
+            $out[] = [((int) $row['TimeStamp']) * 1000, round((float) $row['Avg'], 1)];
+        }
+        usort($out, function ($a, $b) { return $a[0] <=> $b[0]; });
+        return $out;
+    }
+
+    /**
+     * Tages-Energiebalken der letzten 14 Tage bis einschliesslich des
+     * gewaehlten Tages. Quelle type-neutral: bevorzugt wird die ERSTE
+     * archivierte Zaehler-Variable (Aggregationstyp 1) unter allen
+     * `ID`-Feldern des Geraets - bei Countern liefert AC_GetAggregatedValues
+     * je Periode direkt den Verbrauch (Avg-Feld, IPS-Konvention). Gibt es
+     * keinen Zaehler, wird die Leistung integriert (Tages-Mittel x 24 h) -
+     * eine Naeherung, die die Seite auch so kennzeichnet.
+     */
+    private function DailyEnergyBars(array $d, int $dayStart): array
+    {
+        $arch = $this->ArchiveID();
+        if ($arch <= 0) {
+            return ['bars' => [], 'unit' => '', 'approx' => false];
+        }
+        $from = strtotime('-13 day', $dayStart);
+        $to = min(time(), strtotime('+1 day', $dayStart));
+
+        // Zaehler suchen (type-neutral ueber alle ID-Felder, powerID zuletzt).
+        $counterID = 0;
+        foreach ($d as $field => $val) {
+            if ($field === 'instanceID' || $field === 'powerID' || !preg_match('/ID$/', $field) || !is_numeric($val)) {
+                continue;
+            }
+            $vid = (int) $val;
+            if ($vid > 0 && IPS_VariableExists($vid) && AC_GetLoggingStatus($arch, $vid)
+                && (int) AC_GetAggregationType($arch, $vid) === 1) {
+                $counterID = $vid;
+                break;
+            }
+        }
+
+        $bars = [];
+        if ($counterID > 0) {
+            $agg = @AC_GetAggregatedValues($arch, $counterID, 1, $from, $to, 0);
+            if (is_array($agg)) {
+                foreach ($agg as $row) {
+                    $bars[] = [date('Y-m-d', (int) $row['TimeStamp']), round((float) $row['Avg'], 2)];
+                }
+            }
+            // Einheit vom Profil des Zaehlers uebernehmen (Anbieter-Hoheit).
+            $unit = trim($this->VariableSuffix($counterID));
+            usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
+            return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID)];
+        }
+
+        $powerID = (int) ($d['powerID'] ?? 0);
+        if ($powerID > 0 && IPS_VariableExists($powerID) && AC_GetLoggingStatus($arch, $powerID)) {
+            $agg = @AC_GetAggregatedValues($arch, $powerID, 1, $from, $to, 0);
+            if (is_array($agg)) {
+                foreach ($agg as $row) {
+                    $ts = (int) $row['TimeStamp'];
+                    // Tages-Mittel (W) x tatsaechliche Tageslaenge (DST!) -> kWh.
+                    $hours = (strtotime('+1 day', $ts) - $ts) / 3600;
+                    $bars[] = [date('Y-m-d', $ts), round(abs((float) $row['Avg']) * $hours / 1000, 2)];
+                }
+            }
+            usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
+            return ['bars' => $bars, 'unit' => 'kWh', 'approx' => true];
+        }
+        return ['bars' => [], 'unit' => '', 'approx' => false];
+    }
+
+    /** Profil-Suffix einer Variablen (z.B. " kWh"), leer wenn keins. */
+    private function VariableSuffix(int $vid): string
+    {
+        $v = IPS_GetVariable($vid);
+        $profile = $v['VariableCustomProfile'] !== '' ? $v['VariableCustomProfile'] : $v['VariableProfile'];
+        if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+            return (string) IPS_GetVariableProfile($profile)['Suffix'];
+        }
+        return '';
     }
 }

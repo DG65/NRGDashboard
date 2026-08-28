@@ -676,6 +676,8 @@ function buildItems(devices) {
       const style = resolveStyle(d.function);
       return {
         key: 'dev' + d.instanceID + '_' + d.function + '_' + (d.label || ''),
+        // Discovery-stabiler Schluessel fuers Backend (Klick-Detailseite).
+        detailKey: d.detailKey || '',
         function: d.function,
         label: d.label || d.function,
         icon: style.icon,
@@ -823,6 +825,16 @@ function createSpoke(angleDeg, layout, layer) {
 }
 
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
+let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
+
+// Oeffnet die bildschirmfuellende Geraete-Detailseite in einem neuen Tab.
+// Ohne registrierten WebHook (WebHook-Control-Instanz fehlt) kein Klick-Ziel
+// - dann still nichts tun, statt einen kaputten Link zu oeffnen.
+function openDeviceDetail(detailKey) {
+  if (!HOOK_PATH) return;
+  const url = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
+  window.open(url, '_blank');
+}
 const AURA_REACH_W = 24000; // Dietmars vereinbarter Wert (27.07.2026) - weicht bewusst von InverterHubTiles 25000 ab
 
 function boltBrightness(magnitude, active) {
@@ -896,6 +908,17 @@ function ensureNodes(items) {
     const angleDeg = -90 + (360 / n) * i;
     const refs = createOuterNode(item, angleDeg, layout);
     refs.nodeR = layout.outerR;
+    // Klick auf den Knoten oeffnet die bildschirmfuellende Detailseite
+    // (WebHook) in einem neuen Tab - Diagramme + alle Vertragsfelder des
+    // Geraets. Bewusst nicht in der Kachel selbst (kann im Grid zu klein
+    // fuer Diagramme sein, Dietmar 28.08.2026).
+    if (item.detailKey) {
+      refs.g.style.cursor = 'pointer';
+      const tip = el('title', {});
+      tip.textContent = 'Details von „' + item.label + '“ öffnen';
+      refs.g.appendChild(tip);
+      refs.g.addEventListener('click', () => openDeviceDetail(item.detailKey));
+    }
     refs.spoke = createSpoke(angleDeg, layout, wiresLayer);
     nodeRefs[item.key] = refs;
     nodesLayer.appendChild(refs.g);
@@ -1091,6 +1114,7 @@ function handleMessage(raw) {
       document.documentElement.style.setProperty('--trans', (+d.transMs || 0) + 'ms');
     }
     if (d.flowRefW) { FLOW_REF_W = Math.max(500, +d.flowRefW); }
+    if (d.hookPath) { HOOK_PATH = d.hookPath; }
   }
 
   const empty = document.getElementById('nrgdash-empty');

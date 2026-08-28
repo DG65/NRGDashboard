@@ -1245,6 +1245,22 @@ fragen). Der folgende Text ist bewusst paste-fähig für Forum/Store:
 der heutigen Tagesansicht samt Vorgestern/Gestern/Heute-Schnellwahl;
 gleiche IPSView-Fähigkeit.
 
+**Energiefluss-Kachel (`NRGDashboardTile`):**
+
+- **Klickbare Geräte-Knoten:** ein Klick auf einen Verbraucher/Erzeuger
+  in der Energiefluss-Darstellung öffnet dessen Details als eigene,
+  bildschirmfüllende Seite (neuer Tab) über den WebHook der Kachel — bewusst
+  außerhalb der Kachel, die im Dashboard-Grid für Diagramme oft zu klein ist.
+  Gezeigt werden alle Vertragsfelder des jeweiligen Geräts: bei Zählern z. B.
+  Spannung/Strom/cos φ/Frequenz, automatisch je Phase (L1–L3) gruppiert,
+  bei Wallboxen/Fahrzeugen Ladezustand, Steckerstatus und zugeordnetes
+  Fahrzeug — dazu ein Leistungsverlauf mit Tagesnavigation und die
+  Energiebilanz der letzten 14 Tage als Balken (bevorzugt vom echten
+  Zähler des Geräts, sonst aus der Leistung integriert, als solche
+  gekennzeichnet). Komplett aus den vorhandenen `*_GetFunctions`-Verträgen
+  erzeugt — kein Gerätetyp ist im Code verdrahtet, ein neuer
+  Vertragsanbieter liefert automatisch dieselbe Detailansicht mit.
+
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 
 Nachgezogen (27.07.2026, war zuvor komplett vergessen — berechtigte
