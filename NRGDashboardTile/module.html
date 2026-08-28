@@ -400,10 +400,7 @@ let EFFECT_INTENSITY = 1;
 
 let lastBoltHw = null; // Chip-Blitzboegen nur bei tatsaechlicher Breitenaenderung neu aufbauen
 const R_MAX = 234;
-const NODE_GAP = 15; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026, auf 15px erhoeht am 28.08.2026 - 10px wirkte noch zu dicht)
-// Untergrenze, falls selbst die maximal breite Pille nicht mehr fuer den
-// Regelabstand reicht - dann lieber etwas enger als aus der Kachel wandern.
-const MIN_NODE_GAP = 3;
+const NODE_GAP = 20; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout())
 const CENTER_R = DESIGN_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
@@ -532,15 +529,25 @@ function computeLayout(n) {
       // Breite nicht mehr fuer alle n Knoten - statt die Pille dennoch
       // weiter zu verbreitern (und Knoten aus der Kachel wandern zu
       // lassen), wird JETZT der Kreisradius selbst nachgeben: kleinster
-      // outerR, mit dem n Knoten im Mindestabstand MIN_NODE_GAP noch auf
-      // den (jetzt gedeckelten) RING-Umfang passen (auch hier: gleiche
+      // outerR, mit dem n Knoten im Regelabstand NODE_GAP noch auf den
+      // (jetzt gedeckelten) RING-Umfang passen (auch hier: gleiche
       // Bezugsgroesse wie pillPointPair(), sonst waere die Verteilung im
       // Kompressions-Fall wieder ungleichmaessig).
+      //
+      // BUGFIX (28.08.2026, live gemeldet: "Kreise liegen noch immer zu
+      // dicht", NODE_GAP-Erhoehung zeigte keine Wirkung): Diese Zeile hat
+      // faelschlich MIN_NODE_GAP (den harten Notfall-Boden von 3px) statt
+      // NODE_GAP (den eigentlichen Regelabstand) als Zielgroesse verwendet
+      // - bei vielen Knoten (Chip bereits maximal breit, genau Dietmars
+      // reale ueber-50-Verbraucher-Anlage) kollabierte der Abstand dadurch
+      // IMMER auf ~1-3px, unabhaengig vom eingestellten NODE_GAP-Wert.
+      // Der outerR-Mindestwert (16) bleibt der letzte Boden, falls selbst
+      // NODE_GAP bei extrem vielen Knoten nicht mehr vollstaendig passt.
       const straightMax = Math.max(0, hw - hh);
       const ringPerimAtHwMax = 4 * straightMax + 2 * Math.PI * hh2;
       const spacingAtHwMax = ringPerimAtHwMax / n;
       if (spacingAtHwMax - NODE_GAP < 2 * outerR) {
-        outerR = Math.max(16, Math.min(outerR, (spacingAtHwMax - MIN_NODE_GAP) / 2));
+        outerR = Math.max(16, Math.min(outerR, (spacingAtHwMax - NODE_GAP) / 2));
       }
     }
   }
