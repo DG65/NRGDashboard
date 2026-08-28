@@ -827,13 +827,15 @@ function createSpoke(angleDeg, layout, layer) {
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
 let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
 
-// Oeffnet die bildschirmfuellende Geraete-Detailseite in einem neuen Tab.
-// Ohne registrierten WebHook (WebHook-Control-Instanz fehlt) kein Klick-Ziel
-// - dann still nichts tun, statt einen kaputten Link zu oeffnen.
+// Oeffnet die bildschirmfuellende Geraete-Detailseite IM SELBEN Tab (kein
+// window.open - Dietmar, 28.08.2026: kein neuer Tab). Die Detailseite
+// selbst bringt einen Zurueck-Button mit (history.back()). Ohne
+// registrierten WebHook (WebHook-Control-Instanz fehlt) kein Klick-Ziel -
+// dann still nichts tun, statt einen kaputten Link zu oeffnen.
 function openDeviceDetail(detailKey) {
   if (!HOOK_PATH) return;
   const url = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
-  window.open(url, '_blank');
+  window.location.href = url;
 }
 const AURA_REACH_W = 24000; // Dietmars vereinbarter Wert (27.07.2026) - weicht bewusst von InverterHubTiles 25000 ab
 
@@ -1158,6 +1160,25 @@ function handleMessage(raw) {
   applyNodeState(centerG, centerG.querySelector('.node-glow'),
     centerActive ? centerColor : C_GREY, houseW, centerActive, CX, CY, 1);
   setValueText(document.getElementById('lbl-center-val'), houseW, true);
+  // Haus-Knoten nur klickbar, wenn es ein ECHTES 'house'-Geraet gibt (also
+  // einen Backend-Datensatz mit detailKey) - die reine Naeherung
+  // (pv-grid+bat) ist kein Geraet und hat keine eigenen Vertragsfelder zum
+  // Anzeigen.
+  if (houseDevice && houseDevice.detailKey && !centerG.dataset.clickBound) {
+    centerG.dataset.clickBound = '1';
+    centerG.style.cursor = 'pointer';
+    const tip = el('title', {});
+    tip.textContent = 'Details von „Haus“ öffnen';
+    centerG.appendChild(tip);
+    centerG.addEventListener('click', () => openDeviceDetail(centerG.dataset.detailKey));
+  }
+  if (houseDevice && houseDevice.detailKey) {
+    centerG.dataset.detailKey = houseDevice.detailKey;
+    centerG.style.cursor = 'pointer';
+  } else {
+    centerG.style.cursor = '';
+    delete centerG.dataset.detailKey;
+  }
 
   HIDE_INACTIVE = !!(d && d.hideInactive);
   const items = buildItems(devices);
