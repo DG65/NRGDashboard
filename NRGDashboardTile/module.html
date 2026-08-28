@@ -827,15 +827,19 @@ function createSpoke(angleDeg, layout, layer) {
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
 let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
 
-// Oeffnet die bildschirmfuellende Geraete-Detailseite IM SELBEN Tab (kein
-// window.open - Dietmar, 28.08.2026: kein neuer Tab). Die Detailseite
-// selbst bringt einen Zurueck-Button mit (history.back()). Ohne
-// registrierten WebHook (WebHook-Control-Instanz fehlt) kein Klick-Ziel -
-// dann still nichts tun, statt einen kaputten Link zu oeffnen.
+// Oeffnet die bildschirmfuellende Geraete-Detailseite in einem NEUEN Tab
+// (Dietmar, 28.08.2026 - zweiter Anlauf: eine Navigation im selben Tab
+// sah innerhalb der Kachel/des Symcon-Rahmens unschoen aus, und ein
+// eigener Zurueck-Button kollidierte mit Symcons eigener Titelzeile dort).
+// Die Detailseite bringt stattdessen einen Schliessen-Button mit, der den
+// Tab wieder zumacht (window.close()) - Symcon bleibt im Ursprungstab
+// unveraendert sichtbar. Ohne registrierten WebHook (WebHook-Control-
+// Instanz fehlt) kein Klick-Ziel - dann still nichts tun, statt einen
+// kaputten Link zu oeffnen.
 function openDeviceDetail(detailKey) {
   if (!HOOK_PATH) return;
   const url = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
-  window.location.href = url;
+  window.open(url, '_blank');
 }
 const AURA_REACH_W = 24000; // Dietmars vereinbarter Wert (27.07.2026) - weicht bewusst von InverterHubTiles 25000 ab
 
