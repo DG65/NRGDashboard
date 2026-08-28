@@ -1128,6 +1128,58 @@
       return null;
     }
 
+    // Sonnenstand-"Tattoos" (Dietmar, 28.08.2026): kleine Sonnen oberhalb
+    // der Zeitachse zwischen Sonnenauf- und -untergang, Hoehe/Groesse/
+    // Deckkraft folgen der (sinus-genaeherten) Sonnenhoehe zur jeweiligen
+    // Uhrzeit - im Photovoltaik-Reiter UND im Tagesplan, beide Engines.
+    function sunTattooPoints(sunStart, sunEnd) {
+      if (!sunStart || !sunEnd || sunEnd <= sunStart) { return []; }
+      var pts = [], N = 9;
+      // sunStart/sunEnd sind Sonnenaufgang-1h/-untergang+1h (SunRange) -
+      // die Stunde Rand wieder abziehen, damit die Sonnen wirklich
+      // zwischen Auf- und Untergang stehen.
+      var rise = sunStart + 3600 * 1000, set = sunEnd - 3600 * 1000;
+      if (set <= rise) { rise = sunStart; set = sunEnd; }
+      for (var i = 0; i < N; i++) {
+        var f = i / (N - 1);
+        pts.push({ t: rise + f * (set - rise), elev: Math.sin(Math.PI * f) });
+      }
+      return pts;
+    }
+    function sunTattooSeriesEC(sunStart, sunEnd) {
+      var pts = sunTattooPoints(sunStart, sunEnd);
+      if (!pts.length) { return null; }
+      return {
+        type: 'custom', silent: true, z: 5, animation: false,
+        data: pts.map(function (p) { return [p.t, p.elev]; }),
+        renderItem: function (params, api) {
+          var x = api.coord([api.value(0), 0])[0];
+          var elev = api.value(1);
+          var cs = params.coordSys;
+          if (x < cs.x || x > cs.x + cs.width) { return null; } // ausserhalb (Zoom)
+          return { type: 'text', style: { text: '☀', x: x, y: cs.y + cs.height - 8 - elev * 16, font: (9 + 5 * elev) + 'px sans-serif', fill: '#ffd54a', opacity: .35 + .65 * elev, textAlign: 'center', textVerticalAlign: 'middle' } };
+        },
+        tooltip: { show: false },
+      };
+    }
+    function drawSunTattoosHC(ch, sunStart, sunEnd) {
+      var pts = sunTattooPoints(sunStart, sunEnd);
+      function draw() {
+        if (ch.__sunG) { try { ch.__sunG.destroy(); } catch (e) {} ch.__sunG = null; }
+        if (!pts.length) { return; }
+        var g = ch.renderer.g('sunTattoos').attr({ zIndex: 5 }).add();
+        pts.forEach(function (p) {
+          var x = ch.xAxis[0].toPixels(p.t);
+          if (x < ch.plotLeft || x > ch.plotLeft + ch.plotWidth) { return; }
+          var y = ch.plotTop + ch.plotHeight - 8 - p.elev * 16;
+          ch.renderer.text('☀', x, y).css({ fontSize: (9 + 5 * p.elev) + 'px', color: '#ffd54a' }).attr({ align: 'center', opacity: .35 + .65 * p.elev }).add(g);
+        });
+        ch.__sunG = g;
+      }
+      draw();
+      Highcharts.addEvent(ch, 'redraw', draw);
+    }
+
     function renderECharts(el, tab, d) {
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) {
@@ -1174,6 +1226,11 @@
         }
         return { name: s.name, type: 'line', showSymbol: false, step: s.step === 'middle' ? 'middle' : (s.step ? 'end' : false), data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : {}) };
       });
+      // Sonnenstand-Tattoos im Photovoltaik-Reiter (Dietmar, 28.08.2026).
+      if (tab === 'solar' && d && d.sunStart) {
+        var sunS = sunTattooSeriesEC(d.sunStart, d.sunEnd);
+        if (sunS) { series.push(sunS); }
+      }
       // Strompreis, aktueller Tag: rote vertikale Linie fuer "jetzt"
       // (Dietmars Wunsch, 28.07.2026) - an die erste sichtbare Serie
       // gehaengt, NICHT an eine leere Hilfsserie: eine markLine ohne
@@ -1569,6 +1626,8 @@
         series: series
       });
       chartEngine = 'highcharts';
+      // Sonnenstand-Tattoos im Photovoltaik-Reiter (Dietmar, 28.08.2026).
+      if (tab === 'solar' && d && d.sunStart) { drawSunTattoosHC(chart, d.sunStart, d.sunEnd); }
       // Erklaertext mittig im Wasserzeichen-Band (siehe Kommentar bei
       // wmPlotBands oben) - freihaendig statt ueber plotBands.label, damit
       // er nicht auf die oft schmale Bandbreite geclippt wird. Einzeilig,
@@ -1950,8 +2009,24 @@
           { type: 'value', name: 'SOC %', position: 'right', offset: 46, min: 0, max: 100, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
         ],
         dataZoom: DATA_ZOOM_INSIDE,
-        series: series
+        series: series.concat((function () {
+          // Sonnenstand-Tattoos auch im Tagesplan (Dietmar, 28.08.2026) -
+          // Sonnenzeiten aus dem passenden Tages-Eintrag (heute/morgen).
+          var sun = planDaySun(dp);
+          var s = sun ? sunTattooSeriesEC(sun[0], sun[1]) : null;
+          return s ? [s] : [];
+        })())
       }, true);
+    }
+
+    // Sonnenzeiten (sunStart/sunEnd) fuer den im Tagesplan angezeigten Tag
+    // aus lastData.days ziehen - fuer "morgen" existiert dort ebenfalls ein
+    // Eintrag (das Tage-Fenster beginnt bei morgen).
+    function planDaySun(dp) {
+      var id = fmtDate(new Date(dp.dayStart));
+      var hit = null;
+      ((lastData && lastData.days) || []).forEach(function (d) { if (d && d.id === id && d.sunStart) { hit = [d.sunStart, d.sunEnd]; } });
+      return hit;
     }
 
     function renderDayPlanHighcharts(el, dp) {
@@ -2026,6 +2101,9 @@
         })
       });
       chartEngine = 'highcharts';
+      // Sonnenstand-Tattoos auch im Tagesplan (Dietmar, 28.08.2026).
+      var planSun = planDaySun(dp);
+      if (planSun) { drawSunTattoosHC(chart, planSun[0], planSun[1]); }
     }
 
     // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):
@@ -3266,6 +3344,11 @@
     // (z.B. Tibber-Instanz installiert), erscheint der Reiter von selbst.
     function updateTabStates() {
       if (!lastData) { return; }
+      // Ohne Einstrahlungssensor heisst der Reiter schlicht "Photovoltaik"
+      // (Dietmar, 28.08.2026) - "PV & Einstrahlung" nur, wenn wirklich
+      // eine Einstrahlungs-Variable verknuepft ist.
+      var solarBtn = document.querySelector('button.tab[data-tab="solar"]');
+      if (solarBtn) { solarBtn.textContent = lastData.hasIrr ? 'PV & Einstrahlung' : 'Photovoltaik'; }
       var todayId = fmtDate(new Date());
       var today = null;
       ((lastData.days) || []).forEach(function (d) { if (d && d.id === todayId) { today = d; } });
