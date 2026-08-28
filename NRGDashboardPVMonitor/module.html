@@ -170,6 +170,15 @@
   button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
   button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
   button.tab:disabled { opacity: .3; cursor: default; }
+  /* Automatische Reiter-Sichtbarkeit (Dietmar, 28.08.2026): Reiter OHNE
+     Datenquelle werden komplett ausgeblendet (.tabHidden); Reiter mit
+     Quelle und aktuellen Daten leicht gruen (.tabOk), Reiter mit Quelle
+     aber ohne aktuelle Daten leicht rot (.tabWarn) - "auf diese Art und
+     Weise wird auch deutlich was derzeit schief laeuft". Zustaende
+     werden bei jedem Payload je Reiter neu bewertet (updateTabStates()). */
+  button.tab.tabHidden { display: none; }
+  button.tab.tabOk { color: #a8d5ac; }
+  button.tab.tabWarn { color: #e6a9a9; }
   #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
   button.nav { font: inherit; font-size: 14px; line-height: 1; width: 30px; height: 30px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   button.nav:disabled { opacity: .35; cursor: default; }
@@ -3247,8 +3256,62 @@
       chartEngine = 'highcharts';
     }
 
+    // Automatische Reiter-Sichtbarkeit (Dietmar, 28.08.2026: "nur die
+    // Reiter darstellen, auf deren Diagrammen auch Daten liegen ... eine
+    // manuelle Auswahl mit Schaltern ist nicht wirklich cool"): drei
+    // Zustaende je Reiter - keine QUELLE (Instanz/Variable fehlt) =
+    // ausgeblendet; Quelle vorhanden, aber aktuell keine DATEN = leicht
+    // rot ("was derzeit schief laeuft"); Daten vorhanden = leicht gruen.
+    // Wird bei jedem render() neu bewertet - kommt eine Quelle hinzu
+    // (z.B. Tibber-Instanz installiert), erscheint der Reiter von selbst.
+    function updateTabStates() {
+      if (!lastData) { return; }
+      var todayId = fmtDate(new Date());
+      var today = null;
+      ((lastData.days) || []).forEach(function (d) { if (d && d.id === todayId) { today = d; } });
+      var src = {
+        solar: !!lastData.hasPv,
+        mpp: !!(lastData.mpptKeys && lastData.mpptKeys.length),
+        battery: !!(lastData.hasBat || lastData.hasSoc),
+        price: !!lastData.hasTibber,
+        flow: !!lastData.hasEnergyFlow,
+        balance: !!lastData.hasEnergyFlow,
+        yearcompare: !!lastData.hasPv,
+        tagesplan: !!lastData.hasEms,
+      };
+      var data = {
+        solar: !!(today && today.pv && today.pv.length),
+        mpp: !!(today && today.mppt && Object.keys(today.mppt).some(function (k) { return (today.mppt[k] || []).length; })),
+        battery: !!(today && ((today.bat && today.bat.length) || (today.soc && today.soc.length))),
+        price: !!(today && today.price && today.price.length),
+        flow: !!(today && today.flow && today.flow.hasData),
+        balance: !!(today && today.flow && today.flow.hasData),
+        yearcompare: !!(lastData.energy && lastData.energy.pv && Object.keys(lastData.energy.pv).length),
+        // Tagesplan laedt seine Daten erst beim Reiterwechsel nach
+        // (dayPlanLoad) - solange die EMS-Instanz gefunden ist, gilt er
+        // als versorgt statt faelschlich rot zu starten.
+        tagesplan: true,
+      };
+      var firstVisible = null, activeHidden = false;
+      Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
+        var t = btn.getAttribute('data-tab');
+        var hidden = !src[t];
+        btn.classList.toggle('tabHidden', hidden);
+        btn.classList.toggle('tabOk', !hidden && !!data[t]);
+        btn.classList.toggle('tabWarn', !hidden && !data[t]);
+        if (!hidden && firstVisible === null) { firstVisible = btn; }
+        if (hidden && t === curTab) { activeHidden = true; }
+      });
+      // Aktiver Reiter verlor seine Quelle -> auf den ersten sichtbaren
+      // wechseln (via echtem Klick-Handler, damit alle Nebenwirkungen wie
+      // dayOnly/Bar-Sichtbarkeit mitlaufen). Schleifenschutz: nur wenn es
+      // ueberhaupt einen sichtbaren Reiter gibt.
+      if (activeHidden && firstVisible) { firstVisible.onclick(); }
+    }
+
     function render() {
       syncNav();
+      updateTabStates();
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }

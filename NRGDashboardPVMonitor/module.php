@@ -2451,6 +2451,12 @@ class NRGDashboardPVMonitor extends IPSModule
             'hasMpptModel' => $mpptModelUsable,
             'hasEnergyFlow' => $this->singleInverterHubID() > 0 || count($this->MeterHubAssignments()) > 0,
             'hasGrid'  => $this->GridPowerID() > 0,
+            // Quell-Verfuegbarkeit fuer die automatische Reiter-Sichtbarkeit
+            // (Dietmar, 28.08.2026): Reiter ohne Datenquelle werden
+            // ausgeblendet, Reiter mit Quelle aber ohne aktuelle Daten rot
+            // eingefaerbt (siehe updateTabStates() in module.html).
+            'hasTibber' => $this->TibberInstanceID() > 0,
+            'hasEms'   => $this->EmsInstanceID() > 0,
             // Netzbezug/-einspeisung stammt bei verzoegert archivierenden
             // Zaehlern (Inexogy/MeterHub, MHUB_GetFunctions()-Feld
             // "latency"==="delayed") mit 15-45 Min. Nachlauf aus dem
