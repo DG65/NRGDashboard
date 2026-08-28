@@ -1372,17 +1372,30 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function GridEnergySummary(): ?array
     {
-        $dayStart   = strtotime('today');
-        $monthStart = strtotime(date('Y-m-01 00:00:00'));
-        $yearStart  = strtotime(date('Y-01-01 00:00:00'));
-        $now = time();
+        return $this->GridEnergySummaryFor(strtotime('today'));
+    }
+
+    /**
+     * Bezugsenergie Tag/Monat/Jahr BEZOGEN AUF den angezeigten Tag
+     * (Dietmar, 28.08.2026: "diese Werte [sollten] für genau den
+     * eingestellten Wert gelten. z.B. Erzeugung vom Monatsanfang bis
+     * einschl. dem angezeigten Tag, analog dazu der Jahreswert") -
+     * Monat/Jahr laufen also vom jeweiligen Periodenanfang bis zum ENDE
+     * des angezeigten Tages (bzw. "jetzt" beim heutigen Tag), nicht
+     * pauschal bis jetzt.
+     */
+    private function GridEnergySummaryFor(int $dayStart): ?array
+    {
+        $dayEnd     = min(time(), strtotime('+1 day', $dayStart));
+        $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
+        $yearStart  = strtotime(date('Y-01-01 00:00:00', $dayStart));
 
         $gridA = $this->BestAssignment($this->MeterHubAssignments(), 'grid');
         $impID = (int) ($gridA['energyImportID'] ?? 0);
         if ($impID > 0) {
-            $day   = $this->PeriodEnergyCounter($impID, $dayStart, $now);
-            $month = $this->PeriodEnergyCounter($impID, $monthStart, $now);
-            $year  = $this->PeriodEnergyCounter($impID, $yearStart, $now);
+            $day   = $this->PeriodEnergyCounter($impID, $dayStart, $dayEnd);
+            $month = $this->PeriodEnergyCounter($impID, $monthStart, $dayEnd);
+            $year  = $this->PeriodEnergyCounter($impID, $yearStart, $dayEnd);
             if ($day !== null || $month !== null || $year !== null) {
                 return ['day' => $day, 'month' => $month, 'year' => $year];
             }
@@ -1395,7 +1408,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // Kanonisch "+ = Einspeisung": Bezug ist der negative Anteil. Bei
         // MeterHub-Rohwerten ("+ = Bezug", GridPowerSign() == -1) entsprechend
         // der positive - deshalb -GridPowerSign() als PowerToEnergy-Vorzeichen.
-        $day = $this->PowerToEnergy($gridID, $dayStart, $now, -$this->GridPowerSign($gridID));
+        $day = $this->PowerToEnergy($gridID, $dayStart, $dayEnd, -$this->GridPowerSign($gridID));
         return ['day' => $day, 'month' => null, 'year' => null];
     }
 
@@ -2353,6 +2366,9 @@ class NRGDashboardPVMonitor extends IPSModule
             'price'    => $price,
             'flow'     => $flow,
             'gridDraw' => $gridDraw,
+            // Bezugsenergie Tag/Monat/Jahr bezogen auf DIESEN Tag (fuer die
+            // Legende beim Navigieren, Dietmar 28.08.2026).
+            'gridEnergy' => (!$isFuture) ? $this->GridEnergySummaryFor($start) : null,
             'gridMonthPeak' => $gridMonthPeak,
         ];
     }

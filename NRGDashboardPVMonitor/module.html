@@ -1008,24 +1008,33 @@
           if (fmtE(year) !== null) { parts.push('Jahr ' + fmtE(year)); }
           return parts.length ? ' <span style="opacity:.65">(' + parts.join(' · ') + ' kWh)</span>' : '';
         };
-        // Tages-/Monats-/Jahres-Bezugsenergie hinter dem Netzbezug-Eintrag
-        // (Dietmar, 27.08.2026) - nur im Strompreis-Reiter, Werte kommen
-        // aus dem Backend (gridEnergy: echter Zaehlerstand bevorzugt,
-        // Monat/Jahr fehlen bei reiner Leistungs-Integration bewusst).
-        if (tab === 'price' && it.name.indexOf('Netzbezug') === 0 && lastData.gridEnergy) {
-          extra = energyExtra(lastData.gridEnergy.day, lastData.gridEnergy.month, lastData.gridEnergy.year);
+        // Tag/Monat/Jahr beziehen sich auf den ANGEZEIGTEN Tag (Dietmar,
+        // 28.08.2026: "diese Werte [sollten] fuer genau den eingestellten
+        // Wert gelten. z.B. Erzeugung vom Monatsanfang bis einschl. dem
+        // angezeigten Tag, analog dazu der Jahreswert") - beim Navigieren
+        // in die Vergangenheit laufen Monat/Jahr also nur bis zu diesem
+        // Tag, nicht pauschal bis jetzt.
+        var refDay = (curView === 'day') ? dayAt(idx) : null;
+        var refId = (refDay && refDay.id) ? refDay.id : fmtDate(new Date());
+        // Bezugsenergie hinter dem Netzbezug-Eintrag (Strompreis-Reiter):
+        // je Tag vorberechnet aus dem Backend (d.gridEnergy, echter
+        // Zaehlerstand bevorzugt; Monat/Jahr fehlen bei reiner
+        // Leistungs-Integration bewusst). Fallback auf den Heute-Wert
+        // (lastData.gridEnergy), falls der Tages-Eintrag keinen traegt.
+        if (tab === 'price' && it.name.indexOf('Netzbezug') === 0) {
+          var ge = (refDay && refDay.gridEnergy) ? refDay.gridEnergy : lastData.gridEnergy;
+          if (ge) { extra = energyExtra(ge.day, ge.month, ge.year); }
         }
-        // Dasselbe fuer die PV-Erzeugung im Solar-Reiter (Dietmar,
-        // 27.08.2026: "wie bei Strompreis") - Summen client-seitig aus der
-        // bereits mitgelieferten Tages-kWh-Karte (energy.pv, umfasst
-        // mehrere Jahre, siehe DailyEnergyMap()).
+        // PV-Erzeugung im Solar-Reiter: Summen client-seitig aus der
+        // Tages-kWh-Karte (energy.pv), gefiltert bis einschliesslich des
+        // angezeigten Tages (ISO-Datums-Strings vergleichen korrekt).
         if (tab === 'solar' && it.name === 'PV-Erzeugung' && lastData.energy && lastData.energy.pv) {
           var pvMap = lastData.energy.pv;
-          var todayId = fmtDate(new Date());
-          var monthPrefix = todayId.slice(0, 7), yearPrefix = todayId.slice(0, 4);
-          var pvDay = (pvMap[todayId] !== undefined) ? pvMap[todayId] : null;
+          var monthPrefix = refId.slice(0, 7), yearPrefix = refId.slice(0, 4);
+          var pvDay = (pvMap[refId] !== undefined) ? pvMap[refId] : null;
           var pvMonth = 0, pvYear = 0, any = false;
           for (var k in pvMap) {
+            if (k > refId) { continue; }
             if (k.slice(0, 4) === yearPrefix) { pvYear += pvMap[k]; any = true; }
             if (k.slice(0, 7) === monthPrefix) { pvMonth += pvMap[k]; }
           }
