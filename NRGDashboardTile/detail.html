@@ -19,9 +19,15 @@
     padding: 18px 22px; overflow-x: hidden;
   }
   #closeBtn {
+    /* fixiert statt im Textfluss (Dietmar, 28.08.2026: "auch beim Scrollen
+       sollte der Schliessen-Button statisch stehen bleiben") - die Seite
+       kann bei vielen Vertragsfeldern/Diagrammen laenger als der
+       Bildschirm werden. */
+    position: sticky; top: 14px; z-index: 10;
     display: inline-flex; align-items: center; gap: 6px; background: #3a3f46;
     color: #e8eaed; border: 0; border-radius: 6px; padding: 6px 12px 6px 10px;
     font-size: 13px; font-family: var(--font); cursor: pointer; margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
   }
   #closeBtn:hover { background: #6b3a3a; }
   #closeBtn svg { width: 16px; height: 16px; fill: currentColor; }

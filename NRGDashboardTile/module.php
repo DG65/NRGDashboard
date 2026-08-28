@@ -2265,6 +2265,30 @@ class NRGDashboardTile extends IPSModule
         $o = $overrides[$key] ?? null;
         $label = !empty($o['name']) ? $o['name'] : ($d['label'] ?? ($d['function'] ?? 'Gerät'));
 
+        // MPPT-Strangvergleich + Isolationswiderstand fuer den Solar-Knoten
+        // (Dietmar, 28.08.2026: "wuerden mich die ganzen String- bzw.
+        // MPPT-Daten interessieren, Isolationswiderstand ist auch wichtig").
+        // Diese Werte leben NICHT im Geraete-Vertrag (GetDevices()), sondern
+        // im separaten Diagnose-Vertrag (GetDiagnostics()/resolveDiagnostics(),
+        // von InverterHubMonitor abgeleitet) - deshalb tauchten sie bislang
+        // nicht generisch in DetailValues() auf. Zuordnung bleibt type-
+        // neutral: nicht per Geraete-Instanz verknuepft, sondern ueber den
+        // eigenen 'type'-String der Diagnose-Eintraege ("mppt"/"riso" enthalten)
+        // erkannt - unabhaengig vom Wechselrichter-Hersteller. Die gefundenen
+        // *ID(s)-Felder werden einfach in $d gemischt, DetailValues() rendert
+        // sie danach automatisch mit, ohne eigene Sonderbehandlung.
+        if (($d['function'] ?? '') === 'pv') {
+            foreach ($this->resolveDiagnostics() as $diag) {
+                $type = (string) ($diag['type'] ?? '');
+                if (stripos($type, 'mppt') !== false && !empty($diag['stringPowerIDs']) && is_array($diag['stringPowerIDs'])) {
+                    $d['mpptStringIDs'] = $diag['stringPowerIDs'];
+                }
+                if (stripos($type, 'riso') !== false && !empty($diag['measuredID'])) {
+                    $d['insulationResistanceID'] = $diag['measuredID'];
+                }
+            }
+        }
+
         // Tagesauswahl (YYYY-MM-DD); DST-Regel: Kalendertag-Grenzen NIE
         // ueber feste Sekundenzahlen, deshalb strtotime auf dem Datum.
         $dayStart = strtotime('today');
@@ -2285,14 +2309,23 @@ class NRGDashboardTile extends IPSModule
             $modName = $inst['ModuleInfo']['ModuleName'] ?? '';
         }
 
-        $powerID = (int) ($d['powerID'] ?? 0);
+        // resolvePowerValue() modifiziert $d per Referenz (setzt 'usingFallback',
+        // falls die primaere powerID gerade veraltet/leer ist und stattdessen
+        // die redundante fallbackPowerID greift, siehe AssignRedundancy()).
+        // MUSS vor der ID-Wahl fuer die Archiv-Diagramme laufen - sonst fragen
+        // "Leistung" und "Energie je Tag" weiterhin die (ggf. tote/unarchivierte)
+        // primaere Quelle ab, obwohl die Kachel laengst auf die Fallback-Quelle
+        // umgeschaltet hat (Fund 28.08.2026: leeres Leistungsdiagramm bei einer
+        // Wallbox, deren primaere powerID nicht mehr aktualisiert wurde).
+        $powerNow = $this->resolvePowerValue($d);
+        $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
         return [
             'ok'        => true,
             'key'       => $key,
             'label'     => $label,
             'function'  => (string) ($d['function'] ?? ''),
             'source'    => trim($instName . ($modName !== '' ? ' (' . $modName . ')' : '')),
-            'powerNow'  => $this->resolvePowerValue($d),
+            'powerNow'  => $powerNow,
             'values'    => $this->DetailValues($d),
             'day'       => date('Y-m-d', $dayStart),
             'dayLabel'  => date('d.m.Y', $dayStart),
@@ -2419,7 +2452,9 @@ class NRGDashboardTile extends IPSModule
             return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID)];
         }
 
-        $powerID = (int) ($d['powerID'] ?? 0);
+        // Gleiche Fallback-Logik wie in BuildDetailPayload() - siehe Kommentar
+        // dort (Fund 28.08.2026).
+        $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
         if ($powerID > 0 && IPS_VariableExists($powerID) && AC_GetLoggingStatus($arch, $powerID)) {
             $agg = @AC_GetAggregatedValues($arch, $powerID, 1, $from, $to, 0);
             if (is_array($agg)) {
