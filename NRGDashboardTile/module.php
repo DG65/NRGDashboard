@@ -117,6 +117,12 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterPropertyInteger('IrradianceID', 0);
         $this->RegisterPropertyInteger('PvfInstance', 0);
         $this->RegisterPropertyInteger('RisoWarnKOhm', 0);
+        // Strompreis-Quelle fuer die "Kosten heute"-Kennzahl auf den
+        // Detailseiten (Dietmar, 28.08.2026: "schau mal welche Module wir
+        // haben" - TibberGridReward liefert TIBBERGR_GetPriceCurve()).
+        // Leer = automatisch bei genau einer installierten Instanz, analog
+        // PvfInstance/IrradianceID.
+        $this->RegisterPropertyInteger('TibberInstance', 0);
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
         // dann einschalten... oder umgekehrt ausschalten" - passt besser zu
@@ -1740,6 +1746,88 @@ class NRGDashboardTile extends IPSModule
         return 0;
     }
 
+    /** Eigene Property gewinnt; sonst automatisch bei genau einer
+     *  installierten TibberGridReward-Instanz (analog resolveIrradianceID()). */
+    private function TibberInstanceID(): int
+    {
+        $own = $this->readIntProperty('TibberInstance', 0);
+        if ($own > 0 && @IPS_InstanceExists($own)) {
+            return $own;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_TIBBERGRIDREWARD);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Preis-Slots (ct/kWh brutto) fuer den ausgewaehlten Tag, oder [] ohne
+     * verfuegbare Tibber-Instanz/Preisdaten - fuer die "Kosten heute"-
+     * Kennzahl auf den Detailseiten. function_exists()-Wache: das Modul
+     * darf ohne TibberGridReward voll funktionsfaehig bleiben (Verbund-
+     * Konvention, kein Partnermodul vorausgesetzt).
+     */
+    private function PriceSlotsForDay(int $dayStart, int $dayEnd): array
+    {
+        if (!function_exists('TIBBERGR_GetPriceCurve')) {
+            return [];
+        }
+        $id = $this->TibberInstanceID();
+        if ($id <= 0) {
+            return [];
+        }
+        $slots = @TIBBERGR_GetPriceCurve($id);
+        if (!is_array($slots)) {
+            return [];
+        }
+        return array_values(array_filter($slots, function ($s) use ($dayStart, $dayEnd) {
+            return is_array($s) && (int) ($s['end'] ?? 0) > $dayStart && (int) ($s['start'] ?? PHP_INT_MAX) < $dayEnd;
+        }));
+    }
+
+    /** Preis (ct/kWh) des Slots, der $ts enthaelt, oder null. */
+    private function PriceAt(array $slots, int $ts): ?float
+    {
+        foreach ($slots as $s) {
+            if ($ts >= (int) ($s['start'] ?? 0) && $ts < (int) ($s['end'] ?? 0)) {
+                return (float) $s['price'];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Kosten (EUR) einer Leistungsreihe ueber den ausgewaehlten Tag, mit
+     * dem je Zeitpunkt tatsaechlich gueltigen Slot-Preis gewichtet (nicht
+     * nur dem aktuellen Preis - Tibber-Preise schwanken stuendlich). $sign
+     * waehlt, welche Vorzeichenhaelfte der Leistung zaehlt: 1 = nur
+     * Verbrauch/positive Werte (Wallbox, Waermepumpe), -1 = nur Bezug/
+     * negative Werte (Netz, "+"=Einspeisung in unserer Konvention). null,
+     * falls fuer keinen Zeitpunkt ein Preis vorlag (z.B. Luecke in der
+     * Preiskurve) - dann lieber keine (ggf. falsche) Zahl zeigen.
+     */
+    private function DayCostEUR(array $powerSeries, array $priceSlots, int $sign): ?float
+    {
+        if (count($powerSeries) < 2 || count($priceSlots) === 0) {
+            return null;
+        }
+        $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
+        $costCt = 0.0;
+        $any = false;
+        foreach ($powerSeries as [$tsMs, $w]) {
+            $w = (float) $w;
+            if (($sign > 0 && $w <= 0) || ($sign < 0 && $w >= 0)) {
+                continue;
+            }
+            $price = $this->PriceAt($priceSlots, intdiv((int) $tsMs, 1000));
+            if ($price === null) {
+                continue;
+            }
+            $any = true;
+            $kwh = abs($w) * $intervalHours / 1000;
+            $costCt += $kwh * $price;
+        }
+        return $any ? ($costCt / 100) : null;
+    }
+
     private function singleInverterHubCoreID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUB);
@@ -1926,6 +2014,21 @@ class NRGDashboardTile extends IPSModule
                     }
                     if (!empty($data['batteryCapacityID'])) {
                         $entry['batteryCapacityID'] = $data['batteryCapacityID'];
+                    }
+                }
+                // MPPT-Strangdetails (InverterHub-Vertrag 1.2, 28.08.2026) -
+                // fuer die Stromwerte-Tabelle je Strang auf der Solar-
+                // Detailseite (DetailValues() gruppiert *IDs-Arrays generisch
+                // per Index zu einer Tabelle, siehe detail.html splitGroups()).
+                if ($function === 'pv') {
+                    if (!empty($data['mpptPowerIDs'])) {
+                        $entry['mpptPowerIDs'] = $data['mpptPowerIDs'];
+                    }
+                    if (!empty($data['mpptCurrentIDs'])) {
+                        $entry['mpptCurrentIDs'] = $data['mpptCurrentIDs'];
+                    }
+                    if (!empty($data['mpptVoltageIDs'])) {
+                        $entry['mpptVoltageIDs'] = $data['mpptVoltageIDs'];
                     }
                 }
                 $results[] = $this->normalizeEntry($entry, 'inverterhub', $id);
@@ -2312,7 +2415,11 @@ class NRGDashboardTile extends IPSModule
         if (($d['function'] ?? '') === 'pv') {
             foreach ($this->resolveDiagnostics() as $diag) {
                 $type = (string) ($diag['type'] ?? '');
-                if (stripos($type, 'mppt') !== false && !empty($diag['stringPowerIDs']) && is_array($diag['stringPowerIDs'])) {
+                // Fallback nur, wenn InverterHub-Vertrag 1.2 (mpptPowerIDs)
+                // noch fehlt (aeltere Version oder anderer WR-Hersteller) -
+                // sonst gaebe es die Strangleistung doppelt (einmal aus dem
+                // Geraete-Vertrag, einmal aus der Diagnose).
+                if (empty($d['mpptPowerIDs']) && stripos($type, 'mppt') !== false && !empty($diag['stringPowerIDs']) && is_array($diag['stringPowerIDs'])) {
                     $d['mpptStringIDs'] = $diag['stringPowerIDs'];
                 }
                 if (stripos($type, 'riso') !== false && !empty($diag['measuredID'])) {
@@ -2370,7 +2477,7 @@ class NRGDashboardTile extends IPSModule
             // "Für mich"-Kennzahlen (Dietmar, 28.08.2026: "was einen als
             // Hausbesitzer interessieren könnte ... auch mit Blick auf
             // Krisen-/Katastrophenfälle") - siehe BuildHighlights().
-            'highlights' => $this->BuildHighlights($d, $powerSeries, $energy, $isToday, $dayStart),
+            'highlights' => $this->BuildHighlights($d, $powerSeries, $energy, $isToday, $dayStart, $dayEnd),
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
@@ -2390,11 +2497,22 @@ class NRGDashboardTile extends IPSModule
      *    erfinden/schaetzen, wo die Datengrundlage fehlt (z.B. keine
      *    Kostenanzeige ohne echten Strompreis-Vertrag).
      */
-    private function BuildHighlights(array $d, array $powerSeries, array $energy, bool $isToday, int $dayStart): array
+    private function BuildHighlights(array $d, array $powerSeries, array $energy, bool $isToday, int $dayStart, int $dayEnd): array
     {
         $out = [];
         $fn = (string) ($d['function'] ?? '');
         $dayWord = $isToday ? 'heute' : 'an diesem Tag';
+        // Strompreis-Kurve fuer den Tag - [] ohne TibberGridReward-Instanz
+        // (function_exists()-Wache in PriceSlotsForDay()), dann bleiben alle
+        // Kosten-Kennzahlen unten einfach weg statt eine falsche Zahl zu
+        // zeigen (Dietmar, 28.08.2026: "schau mal welche Module wir haben").
+        $priceSlots = $this->PriceSlotsForDay($dayStart, $dayEnd);
+        if (count($priceSlots) > 0) {
+            $nowPrice = $this->PriceAt($priceSlots, time());
+            if ($nowPrice !== null && in_array($fn, ['grid', 'battery', 'wallbox', 'heatpump'], true)) {
+                $out[] = ['label' => 'Strompreis gerade jetzt', 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
+            }
+        }
 
         // --- 1) Generisch aus der Leistungsreihe -----------------------
         if (count($powerSeries) >= 2) {
@@ -2461,7 +2579,21 @@ class NRGDashboardTile extends IPSModule
             }
             $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
             $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
-        } elseif ($fn === 'wallbox' && !empty($d['vehicleRangeKm'])) {
+            // Bezugskosten mit dem je Zeitpunkt tatsaechlich gueltigen
+            // Tibber-Preis gewichtet (nicht dem aktuellen) - Preise
+            // schwanken stuendlich, ein Tagesdurchschnitt waere ungenau.
+            $importCost = $this->DayCostEUR($powerSeries, $priceSlots, -1);
+            if ($importCost !== null) {
+                $out[] = ['label' => 'Netzbezug-Kosten ' . $dayWord, 'value' => number_format($importCost, 2, ',', '.') . ' €'];
+            }
+        }
+        if ($fn === 'wallbox' || $fn === 'heatpump') {
+            $cost = $this->DayCostEUR($powerSeries, $priceSlots, 1);
+            if ($cost !== null) {
+                $out[] = ['label' => 'Kosten ' . $dayWord, 'value' => number_format($cost, 2, ',', '.') . ' €', 'hint' => 'Auf Basis des jeweils gültigen Strompreises'];
+            }
+        }
+        if ($fn === 'wallbox' && !empty($d['vehicleRangeKm'])) {
             $out[] = [
                 'label' => 'Geschätzte Reichweite',
                 'value' => round((float) $d['vehicleRangeKm']) . ' km',

@@ -43,7 +43,8 @@
   th { color: #9aa0a6; font-weight: 500; }
   td.v { font-variant-numeric: tabular-nums; }
   td.stale { color: #9aa0a6; }
-  #phaseWrap table td, #phaseWrap table th { padding-right: 22px; }
+  #groupWrap table td, #groupWrap table th { padding-right: 22px; }
+  #groupWrap > div { margin-bottom: 18px; }
   .grid2 { display: flex; gap: 40px; flex-wrap: wrap; align-items: flex-start; }
   /* Diagramme */
   .chartbox { width: 100%; height: 320px; }
@@ -79,7 +80,7 @@
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
 <div class="grid2">
-  <div id="phaseWrap" style="display:none"><h2 id="phaseH">Phasen L1–L3</h2><div id="phaseT"></div></div>
+  <div id="groupWrap"></div>
   <div id="valWrap" style="display:none"><h2>Aktuelle Werte</h2><div id="valT"></div></div>
 </div>
 
@@ -117,24 +118,54 @@ function fmtW(w) {
 // L1-L3-Gruppierung rein anhand des Variablennamens (Anbieter benennt) -
 // "Spannung L1"/"Strom L2 "/"cos φ L3" usw. landen in einer Phasentabelle,
 // alles andere in der einfachen Werteliste.
-function splitPhases(rows) {
-  const groups = new Map(); const rest = [];
+// Erkennt WIEDERHOLTE Werte-Gruppen rein am Variablennamen (Anbieter
+// benennt) und baut daraus Tabellen mit einer Spalte je Index - ohne
+// jeden Geraetetyp/Hersteller zu kennen (CLAUDE.md Kernprinzip 2). Deckt
+// zwei Namensmuster ab: Index NACH der Messgroesse ("Spannung L1", die
+// urspruengliche Drehstrom-Phasentabelle) und Index VOR der Messgroesse
+// ("MPPT1 Leistung", "Bat.1 Temperatur" - Batterie-Bloecke/MPPT-Straenge).
+// Mehrere Gruppentypen auf demselben Geraet sind moeglich (je eigene
+// Tabelle); Gruppen mit nur einem Treffer wandern zurueck in die
+// einfache Werteliste, damit ein Einzelwert nicht als "Tabelle mit einer
+// Spalte" erscheint.
+const GROUP_PATTERNS = [
+  { key: 'phase', heading: 'Phasen', re: /^(.*?)[\s\-_]*L([123])\s*$/i, col: m => 'L' + m[2], base: m => m[1].trim() },
+  { key: 'mppt', heading: 'MPPT-Stränge', re: /^MPPT\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => 'Strang ' + m[1], base: m => m[2].trim() },
+  { key: 'block', heading: 'Batterie-Blöcke', re: /^(?:Bat\.?|Batterie|Turm)\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => 'Block ' + m[1], base: m => m[2].trim() },
+];
+
+function splitGroups(rows) {
+  const byType = new Map(); // key -> { heading, groups: Map(base -> {col: row}) }
+  const rest = [];
   rows.forEach(r => {
-    const m = /^(.*?)[\s\-_]*L([123])\s*$/.exec(r.name || '');
-    if (m) {
-      const base = m[1].trim() || r.field;
-      if (!groups.has(base)) groups.set(base, {});
-      groups.get(base)['L' + m[2]] = r;
-    } else {
-      rest.push(r);
+    const name = r.name || '';
+    let matched = false;
+    for (const p of GROUP_PATTERNS) {
+      const m = p.re.exec(name);
+      if (m) {
+        const base = p.base(m) || r.field;
+        if (!byType.has(p.key)) byType.set(p.key, { heading: p.heading, groups: new Map() });
+        const g = byType.get(p.key).groups;
+        if (!g.has(base)) g.set(base, {});
+        g.get(base)[p.col(m)] = r;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) rest.push(r);
+  });
+  const tables = [];
+  byType.forEach(({ heading, groups }) => {
+    const rowsOut = [];
+    groups.forEach((g, base) => {
+      if (Object.keys(g).length >= 2) rowsOut.push({ base, g }); else Object.values(g).forEach(r => rest.push(r));
+    });
+    if (rowsOut.length) {
+      const cols = [...new Set(rowsOut.flatMap(({ g }) => Object.keys(g)))].sort();
+      tables.push({ heading, cols, rows: rowsOut });
     }
   });
-  // Gruppen mit nur einer Phase zurueck in die einfache Liste.
-  const phased = [];
-  groups.forEach((g, base) => {
-    if (Object.keys(g).length >= 2) phased.push({ base, g }); else Object.values(g).forEach(r => rest.push(r));
-  });
-  return { phased, rest };
+  return { tables, rest };
 }
 
 function staleCls(ts, renderedAt) {
@@ -143,20 +174,18 @@ function staleCls(ts, renderedAt) {
 }
 
 function renderValues(p) {
-  const { phased, rest } = splitPhases(p.values || []);
-  const pw = document.getElementById('phaseWrap');
-  if (phased.length) {
-    let h = '<table><tr><th></th><th>L1</th><th>L2</th><th>L3</th></tr>';
-    phased.forEach(({ base, g }) => {
+  const { tables, rest } = splitGroups(p.values || []);
+  document.getElementById('groupWrap').innerHTML = tables.map(t => {
+    let h = '<h2>' + esc(t.heading) + '</h2><table><tr><th></th>' + t.cols.map(c => '<th>' + esc(c) + '</th>').join('') + '</tr>';
+    t.rows.forEach(({ base, g }) => {
       h += '<tr><th>' + esc(base) + '</th>';
-      ['L1','L2','L3'].forEach(k => {
-        h += g[k] ? '<td' + staleCls(g[k].ts, p.renderedAt) + '>' + esc(g[k].value) + '</td>' : '<td></td>';
+      t.cols.forEach(c => {
+        h += g[c] ? '<td' + staleCls(g[c].ts, p.renderedAt) + '>' + esc(g[c].value) + '</td>' : '<td></td>';
       });
       h += '</tr>';
     });
-    document.getElementById('phaseT').innerHTML = h + '</table>';
-    pw.style.display = '';
-  } else pw.style.display = 'none';
+    return '<div>' + h + '</table></div>';
+  }).join('');
 
   const vw = document.getElementById('valWrap');
   if (rest.length) {
