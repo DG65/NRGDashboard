@@ -86,6 +86,9 @@ class NRGDashboardPVMonitor extends IPSModule
         // erwarteter Jahresertrag + Anlagenleistung (auto aus Prognose ODER
         // manuell) + 12 Monatsanteile in % - siehe YearCompareConfig().
         $this->RegisterAttributeString('YearCompareConfig', '{}');
+        // 15-Minuten-Cache der PV-Prognose fuer die Sonnen-Tattoos
+        // (PvfSunForecast()).
+        $this->RegisterAttributeString('PvfSunCache', '');
         // Manuell nachgetragene Vorjahreswerte (Dietmar, 05.08.2026): Monate
         // vor Inbetriebnahme des Archivs/der Anlage haben keine Zaehler-
         // historie - hier lassen sich pro Jahr/Monat feste kWh-Werte
@@ -1198,6 +1201,29 @@ class NRGDashboardPVMonitor extends IPSModule
      * Zeitreihe zusammengefuegt - gleiches Vertragsformat bei PVF und LFC
      * ('resolution' als "<n>min"-String, 'mean' je Slot in W).
      */
+    /**
+     * PV-Prognose (heute+morgen) fuer die Sonnen-Tattoos, mit 15-Minuten-
+     * Attribut-Cache: der Haupt-Payload wird alle 5 Minuten gebaut, und
+     * PVF_GetForecast() gehoert laut der Tagesplan-Lazy-Load-Begruendung
+     * (21.08.2026, "Laden benoetigt sehr lange") nicht in jeden eager-
+     * Render - der Cache haelt die Prognose-Kopplung trotzdem aktuell
+     * genug (die Prognose selbst aktualisiert sich nur stuendlich).
+     */
+    private function PvfSunForecast(): array
+    {
+        $pvf = $this->PvfInstanceID();
+        if ($pvf <= 0 || !function_exists('PVF_GetForecast')) {
+            return [];
+        }
+        $cache = json_decode($this->ReadAttributeString('PvfSunCache'), true);
+        if (is_array($cache) && (time() - (int) ($cache['ts'] ?? 0)) < 900 && is_array($cache['pts'] ?? null)) {
+            return $cache['pts'];
+        }
+        $pts = $this->ForecastSeries($pvf, 'PVF_GetForecast');
+        $this->WriteAttributeString('PvfSunCache', json_encode(['ts' => time(), 'pts' => $pts]));
+        return $pts;
+    }
+
     private function ForecastSeries(int $instanceId, string $function): array
     {
         if ($instanceId <= 0 || !function_exists($function)) {
@@ -2472,6 +2498,11 @@ class NRGDashboardPVMonitor extends IPSModule
             'gridEnergy' => $this->GridEnergySummary(),
             // Animationsstil der Reiterleiste (Doppelpfeil-Variable, 0-3).
             'tabAnim'  => (int) $this->GetValue('TabAnimation'),
+            // PV-Prognoseprofil (heute+morgen) fuer die Helligkeit der
+            // Sonnenstand-Tattoos (Dietmar, 28.08.2026: "die Sonnen und
+            // irgendwie auch deren Intensität an die PV Prognose koppeln")
+            // - leer, wenn kein Prognose-Modul installiert ist.
+            'pvfSun'   => $this->PvfSunForecast(),
             'mpptShare' => $mpptShare,
             'hasBat'   => $batID > 0,
             'hasSoc'   => $socID > 0,

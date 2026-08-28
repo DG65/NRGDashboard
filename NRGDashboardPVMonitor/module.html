@@ -41,14 +41,19 @@
      mittig. Jetzt schwebt auch der Pfeil-Knopf ueber dem Diagramm
      (oben links, dort liegt nur leere Flaeche ueber der Y-Achse),
      #chartcol nimmt die volle Kachelbreite ein. */
-  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: 0; z-index: 900; }
+  /* top:-35px hebt den Pfeil-Knopf auf die Hoehe der Zeitsteuerungszeile
+     (#bar, 30px hoch, sitzt 8px Body-Abstand darueber; 24px Knopf mittig
+     = -(8+30)+3) - Dietmar, 28.08.2026: "der Pfeil ... muss auf genau
+     die gleiche Hoehe der Zeitsteuerungszeile". Das Panel selbst bleibt
+     an der alten Position (#tabs top kompensiert um +35px). */
+  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: -35px; z-index: 900; }
   /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
      Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
      dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
   /* VOLL deckender Grund (Dietmar, 27.08.2026: selbst bei 97% war "noch
      immer sehr viel des darunter liegenden Diagramms sichtbar") - solide
      Farbe statt rgba, backdrop-filter damit ueberfluessig und entfernt. */
-  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 35px; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
   body.light #tabs { background: #f2f4f7; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
   #tabsWrap.collapsed #tabs { pointer-events: none; visibility: hidden; }
   /* Vier waehlbare Animationsstile (Dietmar, 27.08.2026: "Mache doch
@@ -1140,9 +1145,32 @@
       // zwischen Auf- und Untergang stehen.
       var rise = sunStart + 3600 * 1000, set = sunEnd - 3600 * 1000;
       if (set <= rise) { rise = sunStart; set = sunEnd; }
+      // Intensitaet an die PV-Prognose koppeln (Dietmar, 28.08.2026,
+      // "wenn das Prognose Modul installiert ist"): die HOEHE der Sonne
+      // bleibt der echte Sonnenstand (Sinus), aber Groesse und Helligkeit
+      // folgen der prognostizierten PV-Leistung zur jeweiligen Uhrzeit,
+      // normiert auf das Tagesmaximum des Prognosefensters - ein bewoelkter
+      // Vormittag zeigt also blasse tief stehende UND blasse hoch stehende
+      // Sonnen. Ohne Prognose-Modul (pvfSun leer) faellt die Intensitaet
+      // auf den Sonnenstand selbst zurueck.
+      var fc = (lastData && lastData.pvfSun) || [];
+      var fcWin = fc.filter(function (p) { return p[0] >= rise && p[0] <= set; });
+      var fcMax = fcWin.reduce(function (m, p) { return Math.max(m, p[1] || 0); }, 0);
+      function fcAt(t) {
+        var best = null, bd = Infinity;
+        fcWin.forEach(function (p) { var d = Math.abs(p[0] - t); if (d < bd) { bd = d; best = p; } });
+        return best ? best[1] : null;
+      }
       for (var i = 0; i < N; i++) {
         var f = i / (N - 1);
-        pts.push({ t: rise + f * (set - rise), elev: Math.sin(Math.PI * f) });
+        var t = rise + f * (set - rise);
+        var elev = Math.sin(Math.PI * f);
+        var inten = elev;
+        if (fcMax > 0) {
+          var w = fcAt(t);
+          if (w !== null) { inten = Math.max(.08, w / fcMax); }
+        }
+        pts.push({ t: t, elev: elev, inten: inten });
       }
       return pts;
     }
@@ -1151,13 +1179,14 @@
       if (!pts.length) { return null; }
       return {
         type: 'custom', silent: true, z: 5, animation: false,
-        data: pts.map(function (p) { return [p.t, p.elev]; }),
+        data: pts.map(function (p) { return [p.t, p.elev, p.inten]; }),
         renderItem: function (params, api) {
           var x = api.coord([api.value(0), 0])[0];
-          var elev = api.value(1);
+          var elev = api.value(1), inten = api.value(2);
           var cs = params.coordSys;
           if (x < cs.x || x > cs.x + cs.width) { return null; } // ausserhalb (Zoom)
-          return { type: 'text', style: { text: '☀', x: x, y: cs.y + cs.height - 8 - elev * 16, font: (9 + 5 * elev) + 'px sans-serif', fill: '#ffd54a', opacity: .35 + .65 * elev, textAlign: 'center', textVerticalAlign: 'middle' } };
+          // Hoehe = Sonnenstand, Groesse/Helligkeit = Prognose-Intensitaet.
+          return { type: 'text', style: { text: '☀', x: x, y: cs.y + cs.height - 8 - elev * 16, font: (9 + 5 * inten) + 'px sans-serif', fill: '#ffd54a', opacity: .25 + .75 * inten, textAlign: 'center', textVerticalAlign: 'middle' } };
         },
         tooltip: { show: false },
       };
@@ -1172,7 +1201,7 @@
           var x = ch.xAxis[0].toPixels(p.t);
           if (x < ch.plotLeft || x > ch.plotLeft + ch.plotWidth) { return; }
           var y = ch.plotTop + ch.plotHeight - 8 - p.elev * 16;
-          ch.renderer.text('☀', x, y).css({ fontSize: (9 + 5 * p.elev) + 'px', color: '#ffd54a' }).attr({ align: 'center', opacity: .35 + .65 * p.elev }).add(g);
+          ch.renderer.text('☀', x, y).css({ fontSize: (9 + 5 * p.inten) + 'px', color: '#ffd54a' }).attr({ align: 'center', opacity: .25 + .75 * p.inten }).add(g);
         });
         ch.__sunG = g;
       }
