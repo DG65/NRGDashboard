@@ -197,6 +197,40 @@
   .node.inactive .node-spec { opacity: 0; }
 
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
+
+  /* Geraete-Detail-Overlay (28.08.2026): bildschirmfuellend statt in der
+     (fuer Diagramme oft zu kleinen) Kachel - laedt die eigenstaendige
+     Detailseite per <iframe> ueber den WebHook (gleicher Inhalt wie ein
+     eigener Tab, nur ohne Tab-Wechsel). Ein-/Ausblende-Animation wirkt wie
+     ein "Fluessigkeit verschwindet im Abfluss"-Strudel (Dietmars Bild,
+     28.08.2026): die Gravitation setzt gedanklich in der Panel-Mitte an
+     und zieht die Kontur spiralig in den jeweils angeklickten Knoten. Die
+     Kontur-Physik (20 Rand-Partikel als weicher Koerper, Federn,
+     1/r^2-Gravitation, tangentialer Drall = der Strudel-Dreh, viskose
+     Daempfung, Einfangradius - identisches Modell wie die PVMonitor-
+     Reiterleiste) wird deshalb NICHT als starre @keyframes uebernommen
+     (die waren fest auf eine obere-linke Ecke ausgelegt), sondern bei
+     JEDEM Klick live in JS einmal vorwaerts simuliert (simulatePanelSuck()
+     unten, Lochziel = tatsaechliche Bildschirmposition des Knotens) -
+     das Schliessen spielt die entstandenen Frames vorwaerts ab, das
+     Oeffnen exakt dieselben Frames rueckwaerts (Auftauchen aus dem Strudel
+     = Zeitumkehr, 1:1 das Prinzip von PVMonitors cornerSuckIn/-Out). Das
+     Ergebnis wird als @keyframes cornerSuckIn/-Out in einen eigenen
+     <style>-Block injiziert (injectSuckKeyframes()), bevor die Animation
+     startet. */
+  #detailOverlay {
+    position: fixed; inset: 0; z-index: 9999; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(10, 12, 15, .55);
+  }
+  #detailPanel {
+    width: min(1100px, 94vw); height: min(820px, 90vh);
+    border-radius: 16px; overflow: hidden; background: #26292e;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  }
+  #detailFrame { width: 100%; height: 100%; border: 0; display: block; background: #26292e; }
+  #detailPanel.opening { animation: cornerSuckOut .5s linear; }
+  #detailPanel.closing { animation: cornerSuckIn .45s linear forwards; }
 </style>
 </head>
 <body>
@@ -271,6 +305,10 @@
 </svg>
 
 <div id="nrgdash-empty">Keine Geräte gefunden - NRGDASH_Discover() ausführen.</div>
+
+<div id="detailOverlay">
+  <div id="detailPanel"><iframe id="detailFrame" title="Gerätedetails"></iframe></div>
+</div>
 
 <div id="status" class="status-overlay">
   <span id="dot" class="status-dot"></span>
@@ -827,20 +865,194 @@ function createSpoke(angleDeg, layout, layer) {
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
 let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
 
-// Oeffnet die bildschirmfuellende Geraete-Detailseite in einem NEUEN Tab
-// (Dietmar, 28.08.2026 - zweiter Anlauf: eine Navigation im selben Tab
-// sah innerhalb der Kachel/des Symcon-Rahmens unschoen aus, und ein
-// eigener Zurueck-Button kollidierte mit Symcons eigener Titelzeile dort).
-// Die Detailseite bringt stattdessen einen Schliessen-Button mit, der den
-// Tab wieder zumacht (window.close()) - Symcon bleibt im Ursprungstab
-// unveraendert sichtbar. Ohne registrierten WebHook (WebHook-Control-
-// Instanz fehlt) kein Klick-Ziel - dann still nichts tun, statt einen
-// kaputten Link zu oeffnen.
-function openDeviceDetail(detailKey) {
-  if (!HOOK_PATH) return;
-  const url = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
-  window.open(url, '_blank');
+// Physikalische Strudel-Simulation fuer das Oeffnen/Schliessen des
+// Detail-Overlays (Dietmar, 28.08.2026: "Fluessigkeit verschwindet im
+// Abfluss" - Gravitation setzt in der Panel-Mitte an, ein weicher Koerper
+// aus 20 Rand-Partikeln wird spiralig in den angeklickten Knoten gesaugt).
+// Identisches physikalisches Modell wie NRGDashboardPVMonitor/module.html
+// (Federn zu Nachbarn, 1/r^2-Gravitation, tangentialer Drall, viskose
+// Daempfung, Einfangradius, semi-implizite Euler-Integration) - hier aber
+// NICHT als vorab von Hand generierte @keyframes (die waren fest auf eine
+// obere-linke Ecke ausgelegt), sondern bei jedem Klick live simuliert,
+// weil das Lochziel (= Knotenposition) bei jedem Klick woanders liegt.
+// buildBoundaryPoints() liefert dieselben 20 Randpunkte (in Prozent) wie
+// die urspruengliche PVMonitor-Kontur.
+function buildBoundaryPoints() {
+  const top = [0, 20, 40, 60, 80, 100].map(x => [x, 0]);
+  const right = [20, 40, 60, 80, 100].map(y => [100, y]);
+  const bottom = [80, 60, 40, 20, 0].map(x => [x, 100]);
+  const left = [80, 60, 40, 20].map(y => [0, y]);
+  return [...top, ...right, ...bottom, ...left]; // 20 Punkte, im Uhrzeigersinn
 }
+
+/**
+ * Simuliert das Einsaugen der Panel-Kontur in ein Loch bei (holeX, holeY)
+ * (Panel-lokale Pixel-Koordinaten) und liefert 17 Zeitschritte als
+ * {opacity, scale, clip}-Frames (clip als fertiger clip-path()-Wert in
+ * Prozent) - exakt das Frame-Format, das die urspruengliche PVMonitor-
+ * Reiterleiste per Hand-Generator erzeugt hat. Physik NICHT in echten
+ * Panel-Pixeln, sondern seitenverhaeltnistreu auf dieselbe DIAGONALE wie
+ * der urspruengliche PVMonitor-Generator normiert (dort 100x200, Diagonale
+ * ~223.6) - nur so bleiben G/K/EPS/CAPTURE aus dessen Parameter-Sweep
+ * uebertragbar. Eine Normierung nur auf die Breite (=100) waere bei einem
+ * flacheren Panel wie unserem (breiter als hoch) zu "kompakt": die
+ * Gravitation faellt mit 1/r^2, ein kleineres Arbeitsgebiet macht JEDEN
+ * Punkt unabhaengig von seiner Lage ueberproportional staerker angezogen
+ * und zerstoert das gewollte gestaffelte Einsaugen ("erst der naechste
+ * Punkt, dann die weiter entfernten") - real beim ersten Test beobachtet
+ * (28.08.2026): alle 20 Punkte waren bereits nach ~16% der Animationszeit
+ * am Ziel, statt wie im Original gestaffelt ueber die volle Laufzeit.
+ */
+function simulatePanelSuck(panelW, panelH, holeXpx, holeYpx) {
+  const G = 4e7, K = 18, DAMP = 1.2, EPS = 9, CAPTURE = 10, T = 0.95, STEPS = 2400, SWIRL = 200;
+  const dt = T / STEPS;
+  const REF_DIAG = Math.hypot(100, 200); // Massstab des PVMonitor-Originals
+  const toSim = REF_DIAG / Math.hypot(panelW, panelH);
+  const simW = panelW * toSim, simH = panelH * toSim;
+  const holeX = holeXpx * toSim, holeY = holeYpx * toSim;
+  const base = buildBoundaryPoints();
+  const n = base.length;
+  const px = base.map(([x]) => x / 100 * simW);
+  const py = base.map(([, y]) => y / 100 * simH);
+  const restLen = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    restLen.push(Math.hypot(px[j] - px[i], py[j] - py[i]));
+  }
+  // Tangentiale Anfangsgeschwindigkeit um die Panel-Mitte - der Strudel-Dreh.
+  const vx = new Array(n), vy = new Array(n);
+  const cx = simW / 2, cy = simH / 2;
+  for (let i = 0; i < n; i++) {
+    const dx = px[i] - cx, dy = py[i] - cy;
+    const r = Math.hypot(dx, dy) || 1;
+    vx[i] = -dy / r * SWIRL;
+    vy[i] = dx / r * SWIRL;
+  }
+  const captured = new Array(n).fill(false);
+  const FRAME_COUNT = 17;
+  const frames = [];
+  const maxDist = Math.hypot(simW, simH) / 2;
+  for (let step = 0; step <= STEPS; step++) {
+    if (Math.round(step / STEPS * (FRAME_COUNT - 1)) === frames.length) {
+      const clipPts = [];
+      for (let i = 0; i < n; i++) {
+        const xp = Math.max(-20, Math.min(120, px[i] / simW * 100));
+        const yp = Math.max(-20, Math.min(120, py[i] / simH * 100));
+        clipPts.push(xp.toFixed(1) + '% ' + yp.toFixed(1) + '%');
+      }
+      const meanDist = px.reduce((s, x, i) => s + Math.hypot(x - holeX, py[i] - holeY), 0) / n;
+      const scaleF = Math.max(0.08, Math.min(1, meanDist / maxDist));
+      const frac = step / STEPS;
+      const opacity = frac < 0.9 ? 1 : Math.max(0, 1 - (frac - 0.9) / 0.1);
+      frames.push({ opacity, scale: scaleF, clip: 'polygon(' + clipPts.join(', ') + ')' });
+    }
+    const ax = new Array(n).fill(0), ay = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      if (captured[i]) continue;
+      // Feder zum naechsten Nachbarn (Ruhelaenge restLen[i]) und zum
+      // vorherigen (Ruhelaenge restLen[vorherigerIndex]).
+      const prev = (i - 1 + n) % n, next = (i + 1) % n;
+      [[next, restLen[i]], [prev, restLen[prev]]].forEach(([j, rl]) => {
+        const dx = px[j] - px[i], dy = py[j] - py[i];
+        const dist = Math.hypot(dx, dy) || 1;
+        const f = K * (dist - rl) / dist;
+        ax[i] += f * dx; ay[i] += f * dy;
+      });
+      const dx = holeX - px[i], dy = holeY - py[i];
+      const r2 = dx * dx + dy * dy + EPS * EPS;
+      const r = Math.sqrt(r2);
+      const g = G / r2;
+      ax[i] += g * dx / r; ay[i] += g * dy / r;
+      ax[i] -= DAMP * vx[i]; ay[i] -= DAMP * vy[i];
+    }
+    for (let i = 0; i < n; i++) {
+      if (captured[i]) continue;
+      vx[i] += ax[i] * dt; vy[i] += ay[i] * dt;
+      px[i] += vx[i] * dt; py[i] += vy[i] * dt;
+      if (Math.hypot(holeX - px[i], holeY - py[i]) < CAPTURE) {
+        captured[i] = true; px[i] = holeX; py[i] = holeY;
+      }
+    }
+  }
+  while (frames.length < FRAME_COUNT) frames.push(frames[frames.length - 1]);
+  // Offener Ausgangszustand ist per Definition die unveraenderte Panel-
+  // groesse (scale 1) - die grobe meanDist/maxDist-Naeherung liegt beim
+  // allerersten Frame je nach Lochposition leicht darunter, was einen
+  // sichtbaren Sprung beim Animationsstart verursachen wuerde.
+  frames[0].scale = 1;
+  return frames;
+}
+
+/** Baut aus den simulierten Frames die beiden @keyframes-Regeln und ersetzt
+ *  einen vorherigen Injektions-<style>-Block (jeder Klick simuliert neu -
+ *  der alte Frame-Satz passte zum vorigen Knoten). "In" = Frames vorwaerts
+ *  (Abfluss schluckt die Kontur), "Out" = dieselben Frames rueckwaerts
+ *  (Auftauchen aus dem Strudel = Zeitumkehr). */
+function injectSuckKeyframes(frames) {
+  let style = document.getElementById('suckKeyframesStyle');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'suckKeyframesStyle';
+    document.head.appendChild(style);
+  }
+  const step = (f, i) => (i / (frames.length - 1) * 100).toFixed(1) + '% { opacity: ' + f.opacity.toFixed(2) + '; transform: scale(' + f.scale.toFixed(2) + '); clip-path: ' + f.clip + '; }';
+  const inCss = frames.map(step).join('\n');
+  const outCss = frames.slice().reverse().map(step).join('\n');
+  style.textContent = '@keyframes cornerSuckIn {\n' + inCss + '\n}\n@keyframes cornerSuckOut {\n' + outCss + '\n}';
+}
+
+// Oeffnet die bildschirmfuellende Geraete-Detailseite als Overlay im
+// SELBEN Fenster (Dietmar, 28.08.2026 - dritter Anlauf: window.open() in
+// einem neuen Tab vermied zwar das Platzproblem, aber "richtig geil" waere
+// es, wenn die Detailseite genau wie ein Strudel aus dem angeklickten
+// Knoten herausgequetscht wuerde und beim Schliessen wieder darin
+// verschwindet). Laedt die eigenstaendige Detailseite (gleicher Inhalt wie
+// im eigenen Tab) per <iframe> - kein Tab-Wechsel, keine Kollision mit
+// Symcons Titelzeile. Der Schliessen-Button der Detailseite meldet sich
+// im Overlay per postMessage ab (siehe window "message"-Listener unten).
+// Ohne registrierten WebHook (WebHook-Control-Instanz fehlt) kein
+// Klick-Ziel - dann still nichts tun.
+function openDeviceDetail(detailKey, clickEvent) {
+  if (!HOOK_PATH) return;
+  const overlay = document.getElementById('detailOverlay');
+  const panel = document.getElementById('detailPanel');
+  const frame = document.getElementById('detailFrame');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => {
+    const r = panel.getBoundingClientRect();
+    const holeX = clickEvent ? clickEvent.clientX - r.left : r.width / 2;
+    const holeY = clickEvent ? clickEvent.clientY - r.top : r.height / 2;
+    injectSuckKeyframes(simulatePanelSuck(r.width, r.height, holeX, holeY));
+    panel.classList.remove('closing');
+    // reflow erzwingen, damit ein Neustart derselben Animation (schneller
+    // Doppelklick auf verschiedene Knoten) wieder von vorn abspielt.
+    void panel.offsetWidth;
+    panel.classList.add('opening');
+    frame.src = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
+  });
+}
+
+function closeDeviceDetail() {
+  const overlay = document.getElementById('detailOverlay');
+  const panel = document.getElementById('detailPanel');
+  if (overlay.style.display !== 'flex') return;
+  panel.classList.remove('opening');
+  panel.classList.add('closing');
+  setTimeout(() => {
+    overlay.style.display = 'none';
+    panel.classList.remove('closing');
+    document.getElementById('detailFrame').src = 'about:blank';
+  }, 460);
+}
+window.addEventListener('message', function (e) {
+  if (e.data === 'nrgdash-detail-close') closeDeviceDetail();
+});
+document.getElementById('detailOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closeDeviceDetail();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeDeviceDetail();
+});
 const AURA_REACH_W = 24000; // Dietmars vereinbarter Wert (27.07.2026) - weicht bewusst von InverterHubTiles 25000 ab
 
 function boltBrightness(magnitude, active) {
@@ -923,7 +1135,7 @@ function ensureNodes(items) {
       const tip = el('title', {});
       tip.textContent = 'Details von „' + item.label + '“ öffnen';
       refs.g.appendChild(tip);
-      refs.g.addEventListener('click', () => openDeviceDetail(item.detailKey));
+      refs.g.addEventListener('click', (ev) => openDeviceDetail(item.detailKey, ev));
     }
     refs.spoke = createSpoke(angleDeg, layout, wiresLayer);
     nodeRefs[item.key] = refs;
@@ -1174,7 +1386,7 @@ function handleMessage(raw) {
     const tip = el('title', {});
     tip.textContent = 'Details von „Haus“ öffnen';
     centerG.appendChild(tip);
-    centerG.addEventListener('click', () => openDeviceDetail(centerG.dataset.detailKey));
+    centerG.addEventListener('click', (ev) => openDeviceDetail(centerG.dataset.detailKey, ev));
   }
   if (houseDevice && houseDevice.detailKey) {
     centerG.dataset.detailKey = houseDevice.detailKey;

@@ -233,12 +233,26 @@ function shiftDay(delta) {
   const s = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   loadDay(s);
 }
-// Schliesst den Tab wieder (die Seite wurde per window.open() aus der
-// Kachel heraus geoeffnet) - Symcon/die Kachel bleibt im Ursprungstab
-// unveraendert sichtbar. window.close() wirkt nur auf Tabs, die per
-// Skript geoeffnet wurden; bei Direktaufruf der URL (kein Opener) bleibt
-// der Klick wirkungslos - das ist ein bewusster Normalfall (z.B. Lesezeichen).
-document.getElementById('closeBtn').onclick = () => { window.close(); };
+// Schliessen: laeuft die Seite im Overlay-<iframe> der Kachel (Regelfall,
+// 28.08.2026), meldet sich die Seite per postMessage beim Elternfenster ab
+// - das spielt dort die Einsaug-Animation rueckwaerts ab. Bei einem echten
+// eigenen Tab/Fenster (Direktaufruf der Hook-URL, z.B. IPSView-Popup oder
+// Lesezeichen - kein iframe-Parent) faellt der Klick auf window.close()
+// zurueck; ohne Skript-Opener bleibt er dann wirkungslos, ein bewusster
+// Normalfall.
+function closeOrCloseTab() {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage('nrgdash-detail-close', window.location.origin);
+  } else {
+    window.close();
+  }
+}
+document.getElementById('closeBtn').onclick = closeOrCloseTab;
+// Escape schliesst auch dann, wenn der Fokus (z.B. nach einem Klick ins
+// Diagramm) im iframe liegt - ein Escape-Listener am Elternfenster wuerde
+// hier NICHT feuern, da Tastaturereignisse bei iframe-Fokus nicht zum
+// Elterndokument durchgereicht werden.
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeOrCloseTab(); });
 document.getElementById('prevDay').onclick = () => shiftDay(-1);
 document.getElementById('nextDay').onclick = () => shiftDay(1);
 document.getElementById('todayBtn').onclick = () => loadDay('');
