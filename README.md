@@ -1260,6 +1260,57 @@ gleiche IPSView-Fähigkeit.
   gekennzeichnet). Komplett aus den vorhandenen `*_GetFunctions`-Verträgen
   erzeugt — kein Gerätetyp ist im Code verdrahtet, ein neuer
   Vertragsanbieter liefert automatisch dieselbe Detailansicht mit.
+- **Chip-Form ab vielen Verbrauchern:** der Haus-Knoten wechselt ab einer
+  größeren Anzahl an Verbraucher-Knoten automatisch von der Kreis- in eine
+  "Chip"-Form (Pille mit geraden Seiten) — so bleiben die einzelnen Knoten
+  auch bei sehr vielen Geräten (Dietmars Anlage hat über 50 einzeln
+  messbare Punkte) auf einer sinnvollen Größe, statt immer weiter zu
+  schrumpfen. Die Breite wächst dabei linear mit der Verbraucherzahl statt
+  wie beim Kreis nur mit dem Radius.
+- **Echte Strompreise statt fester Werte:** die Kostenersparnis-Berechnung
+  auf der Geräte-Detailseite nutzt automatisch Tibber Grid Rewards, falls
+  installiert, sonst holt sich das Modul selbstständig (ohne API-Schlüssel)
+  quartalsweise den BDEW-Haushaltsdurchschnittspreis von der offiziellen
+  BDEW-Übersichtsseite — inklusive Aufschlüsselung der Ersparnis nach
+  zeitvariablen Netzentgelten, dynamischem Tarif und Grid-Reward-Erlös
+  gegenüber dem deutschen Standardtarif.
+- **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
+  eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
+  (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
+  Mehrblock-Anlagen), erkannt rein am Namensmuster der Variablen — kein
+  Gerätetyp ist dafür im Code verdrahtet.
+- **SOC als Füllstand:** der Batterie-Knoten zeigt den Ladestand
+  zusätzlich als von unten steigendes Rechteck (zusätzlich zur genauen
+  Prozentzahl im Icon).
+- **Diagnose-Warnungen direkt am Knoten:** ein rotes/gelbes Warndreieck
+  erscheint direkt am betroffenen Knoten, sobald eine Diagnose auffällig
+  oder kritisch wird — vorher nur im separaten, leicht zu übersehenden
+  Diagnose-Badge unten rechts.
+- **Gestern-Geisterring:** ein gestrichelter Ring um jeden Knoten
+  vergleicht die aktuelle Leistung mit dem Wert von gestern zur gleichen
+  Uhrzeit (größer als der feste Ring = gestern mehr, kleiner = gestern
+  weniger) — throttled aus dem Archiv, kalendertag-sicher auch an den zwei
+  Zeitumstellungstagen im Jahr.
+- **PV-Prognose-Fortschrittsring und Strompreis-Sparkline:** der
+  Solar-Knoten trägt (bei installierter PV-Prognose) einen Fortschrittsring
+  für den heutigen Ertrag gegenüber der Tagesprognose; der Netz-Knoten
+  zeigt eine kleine Sparkline des Tagespreisverlaufs und wechselt alle paar
+  Sekunden zwischen Watt und Kosten pro Stunde.
+- **Autarkiegrad-Bogen am Haus-Chip:** ein grüner Bogen um den Haus-Knoten
+  zeigt den Anteil des heutigen Verbrauchs, der nicht aus dem Netz kam.
+- **Flussdicke und Tagesspitzen-Marker:** die Verbindungslinien werden mit
+  der fließenden Leistung dicker (nicht nur schneller animiert) und tragen
+  einen kleinen Querstrich an der Position der heutigen Tagesspitze.
+- **Netzampel-Farbwäsche:** bei installierter StromGedacht-Instanz färbt
+  ein sehr dezenter Farbverlauf im Hintergrund die aktuelle Netzampel-Stufe
+  ein.
+- **Anzeige-Feinheiten hinter dem Doppelpfeil:** ob inaktive Knotenpunkte
+  aus- oder eingeblendet werden, ob Blitzbögen/Leuchtschein an die Leistung
+  gekoppelt sind und wie stark diese Effekte wirken, stellt jeder Nutzer
+  direkt im WebFront ein — die Kachel über den Doppelpfeil (Symbol zum
+  Vollbild-Umschalten) aufziehen öffnet die Standard-Objektansicht der
+  Instanz mit den entsprechenden Schaltern/Reglern, ganz ohne
+  Konsolenzugriff.
 
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 

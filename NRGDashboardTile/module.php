@@ -54,8 +54,16 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.4.0';
+    private const NEWS_VERSION = '0.5.0';
     private const NEWS_ITEMS = [
+        'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
+        'Kostenersparnis-Berechnung nutzt jetzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) statt eines festen Werts, inklusive Aufschlüsselung nach Netzentgelt/Tarif/Grid-Reward-Erlös auf der Geräte-Detailseite.',
+        'Detailseite zeigt jetzt eine Tabelle aller relevanten Stromwerte je Gerät, auch je MPPT-Strang und je Batterie-Turm.',
+        'Batterie-Knoten zeigt den Ladestand zusätzlich als steigenden Füllstand, Diagnose-Warnungen erscheinen jetzt direkt am betroffenen Knoten statt nur im separaten Diagnose-Badge.',
+        'Gestrichelter „Geisterring“ vergleicht die aktuelle Leistung jedes Knotens mit gestern zur gleichen Uhrzeit.',
+        'Solar-Knoten zeigt einen Fortschrittsring (heutiger Ertrag vs. Tagesprognose), Netz-Knoten eine Strompreis-Sparkline mit Kosten-Ticker, Haus-Knoten einen Autarkiegrad-Bogen.',
+        'Verbindungslinien werden mit der Leistung dicker und markieren die heutige Tagesspitze; bei installierter StromGedacht-Instanz färbt die Netzampel den Kachelhintergrund dezent ein.',
+        'Anzeige-Feinheiten (inaktive Knoten aus-/einblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität) stellt jeder Nutzer selbst im WebFront ein - Kachel über den Doppelpfeil aufziehen.',
         'Ereignisgesteuerte Aktualisierung (sofortiger Push bei jeder Wertänderung) statt reinem 5-Minuten-Takt.',
         'Echte Hauslast (IHUBTILE_GetHouseLoad) bevorzugt vor der berechneten Näherung, sofern konfiguriert.',
         'Manuelle Datenpunkte und frei editierbare Verbraucherliste - die Kachel läuft jetzt auch ganz ohne installiertes Partnermodul.',
