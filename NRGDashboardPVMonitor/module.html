@@ -1229,7 +1229,7 @@
               // Dietmar, 27.08.2026: einzeilig, 90 Grad gegen den
               // Uhrzeigersinn gedreht statt zweizeilig waagerecht.
               label: { show: true, position: 'inside', align: 'center', verticalAlign: 'middle', formatter: '{b}', rotate: 90, color: 'rgba(226,232,240,.75)', fontSize: 18 },
-              data: [[{ xAxis: wmMs, name: 'Noch keine Datensätze der Bezugsenergie vorhanden!' }, { xAxis: wmShadeEnd }]],
+              data: [[{ xAxis: wmMs, name: 'Zeitbereich ohne Bezugsdaten!' }, { xAxis: wmShadeEnd }]],
             };
             var wmPrevData = (gridSeriesW.markLine && gridSeriesW.markLine.data) ? gridSeriesW.markLine.data : [];
             gridSeriesW.markLine = Object.assign({}, gridSeriesW.markLine, {
@@ -1576,7 +1576,7 @@
         // seitlicher Versatz zeigt, der mit der Schriftgroesse waechst
         // (Dietmars Fund, 27.08.2026, bei steigender Schriftgroesse
         // zunehmend sichtbar geworden).
-        chart.renderer.text('Noch keine Datensätze der Bezugsenergie vorhanden!', wmX, wmY)
+        chart.renderer.text('Zeitbereich ohne Bezugsdaten!', wmX, wmY)
           .css({ color: 'rgba(226,232,240,.75)', fontSize: '18px' })
           .attr({ align: 'center', rotation: -90, zIndex: 6, 'dominant-baseline': 'central' })
           .add();
