@@ -84,6 +84,11 @@ class NRGDashboardTile extends IPSModule
         // buildPayload() (ereignisgesteuert, sehr haeufig via MessageSink())
         // nicht bei jedem Aufruf eine Archivabfrage ausloest.
         $this->RegisterAttributeString('YesterdayCache', '{}');
+        // PV-Prognose-Fortschrittsring (28.08.2026) - Tagesertrag bislang
+        // vs. Prognose-Tagesgesamtwert, throttled aus demselben Grund wie
+        // YesterdayCache (Tagesintegration ueber DaySeries() waere sonst bei
+        // jedem ereignisgesteuerten buildPayload()-Aufruf zu teuer).
+        $this->RegisterAttributeString('PvForecastCache', '{}');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -737,6 +742,51 @@ class NRGDashboardTile extends IPSModule
             return $d;
         }, $this->GetDevices());
 
+        // Strompreis-Trend-Sparkline am Netz-Knoten (28.08.2026, Dietmar:
+        // "alles direkt umsetzen") - nutzt dieselbe Preisquelle wie die
+        // Detailseite (Tibber, sonst BDEW-Naeherung) - PriceSlotsForDay()
+        // liest nur bereits vorliegende/gecachte Werte, keine eigene
+        // Netzabfrage, daher ohne zusaetzlichen Throttle bei jedem
+        // buildPayload()-Aufruf vertretbar.
+        $gridIdx = null;
+        foreach ($devices as $i => $dd) {
+            if (($dd['function'] ?? '') === 'grid') {
+                $gridIdx = $i;
+                break;
+            }
+        }
+        if ($gridIdx !== null) {
+            $dayStart = strtotime('today');
+            $dayEnd = strtotime('+1 day', $dayStart);
+            $slots = $this->PriceSlotsForDay($dayStart, $dayEnd);
+            if (count($slots) > 0) {
+                $trend = [];
+                foreach ($slots as $s) {
+                    $trend[] = ['t' => (int) ($s['start'] ?? 0), 'price' => (float) ($s['price'] ?? 0)];
+                }
+                $devices[$gridIdx]['priceTrend'] = $trend;
+                $devices[$gridIdx]['priceNow'] = $this->PriceAt($slots, time());
+            }
+        }
+
+        // PV-Prognose-Fortschrittsring am Solar-Knoten (28.08.2026).
+        $pvIdx = null;
+        foreach ($devices as $i => $dd) {
+            if (($dd['function'] ?? '') === 'pv') {
+                $pvIdx = $i;
+                break;
+            }
+        }
+        if ($pvIdx !== null) {
+            $pvPowerID = (int) (!empty($devices[$pvIdx]['usingFallback'])
+                ? ($devices[$pvIdx]['fallbackPowerID'] ?? 0)
+                : ($devices[$pvIdx]['powerID'] ?? 0));
+            $ring = $this->PvForecastRing($pvPowerID);
+            if ($ring !== null) {
+                $devices[$pvIdx]['forecastRatio'] = $ring['ratio'];
+            }
+        }
+
         // Fahrzeug-Zuordnung fuer Wallboxen (Dietmar, 29.07.2026: bei
         // eingestecktem Auto sollen subText/SOC-Ring das ERKANNTE Fahrzeug
         // zeigen, nicht nur "Wallbox aktiv") - muss VOR dem Ausblenden/
@@ -1011,6 +1061,54 @@ class NRGDashboardTile extends IPSModule
         $cache[(string) $id] = ['value' => $value, 'fetchedAt' => $now];
         $this->WriteAttributeString('YesterdayCache', json_encode($cache));
         return $value;
+    }
+
+    private const PV_FORECAST_CACHE_TTL_SEC = 300;
+
+    /**
+     * PV-Prognose-Fortschrittsring (28.08.2026): Tagesertrag bisher (aus dem
+     * Archiv integriert, DaySeries()) im Verhaeltnis zur Tagesprognose
+     * (Statusvariable "Today" der Prognose-Instanz - bewusst NICHT
+     * PVF_GetForecast(), das koennte einen Wetter-API-Abruf ausloesen,
+     * siehe InverterHub/CLAUDE.md "PVF_GetForecast NICHT pollen"). Throttled
+     * wie GetYesterdayValue().
+     */
+    private function PvForecastRing(int $pvPowerID): ?array
+    {
+        if ($pvPowerID <= 0) {
+            return null;
+        }
+        $now = time();
+        $cache = json_decode($this->ReadAttributeString('PvForecastCache'), true);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        if (is_array($cache) && ($now - ($cache['fetchedAt'] ?? 0)) < self::PV_FORECAST_CACHE_TTL_SEC) {
+            return $cache['ratio'] !== null ? $cache : null;
+        }
+
+        $result = ['ratio' => null, 'todayKWh' => null, 'forecastKWh' => null, 'fetchedAt' => $now];
+        $pvfId = $this->PvfInstanceID();
+        if ($pvfId > 0) {
+            $forecastVid = $this->FindVarByIdent($pvfId, 'Today');
+            $forecastKWh = $forecastVid > 0 ? (float) GetValue($forecastVid) : 0.0;
+            if ($forecastKWh > 0) {
+                $dayStart = strtotime('today');
+                $series = $this->DaySeries($pvPowerID, $dayStart, $now);
+                if (count($series) >= 2) {
+                    $intervalHours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
+                    $todayKWh = 0.0;
+                    foreach ($series as [, $w]) {
+                        $todayKWh += max(0.0, $w) * $intervalHours / 1000;
+                    }
+                    $result['ratio'] = max(0.0, min(1.2, $todayKWh / $forecastKWh));
+                    $result['todayKWh'] = $todayKWh;
+                    $result['forecastKWh'] = $forecastKWh;
+                }
+            }
+        }
+        $this->WriteAttributeString('PvForecastCache', json_encode($result));
+        return $result['ratio'] !== null ? $result : null;
     }
 
     private function isStaleOrMissing(int $id, ?float $value): bool

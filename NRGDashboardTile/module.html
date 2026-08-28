@@ -201,6 +201,11 @@
 
   .node-ghost-ring { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 2; stroke-dasharray: 3 5; opacity: 0.5; transition: r var(--trans) var(--ease); }
 
+  .node-forecast-ring { stroke: var(--nc, var(--grey)); stroke-width: 3; stroke-linecap: round; opacity: 0.85; transition: stroke-dashoffset var(--trans) var(--ease); }
+  .node-forecast-ring-over { stroke: #4caf50; }
+
+  .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
+
   .prefs-gear {
     position: absolute; left: 4px; top: 4px; z-index: 3;
     width: 26px; height: 26px; border-radius: 13px; cursor: pointer;
@@ -1098,6 +1103,8 @@ function buildItems(devices) {
         // siehe buildPayload()/resolveDiagnostics() im Backend.
         warnLevel: d.warnLevel || null,
         yesterdayValue: (d.yesterdayValue !== undefined && d.yesterdayValue !== null) ? d.yesterdayValue : null,
+        forecastRatio: (d.forecastRatio !== undefined && d.forecastRatio !== null) ? d.forecastRatio : null,
+        priceTrend: Array.isArray(d.priceTrend) ? d.priceTrend : null,
       };
     });
 
@@ -1142,6 +1149,25 @@ function createOuterNode(item, pt, layout) {
   ghostRing.style.display = 'none';
   g.appendChild(ghostRing);
   g.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
+
+  // PV-Prognose-Fortschrittsring (28.08.2026, Dietmar: "alles direkt
+  // umsetzen") - Bogen ausserhalb des Coin-Rings, Laenge = Tagesertrag
+  // bisher / Tagesprognose. Nur am Solar-Knoten befuellt (updateOuterNode()).
+  const forecastRing = el('circle', {
+    class: 'node-forecast-ring', r: DESIGN_R + 7, fill: 'none',
+    'stroke-dasharray': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
+    'stroke-dashoffset': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
+    transform: 'rotate(-90)'
+  });
+  forecastRing.style.display = 'none';
+  g.appendChild(forecastRing);
+
+  // Strompreis-Trend-Sparkline (28.08.2026) - kleine Linie unter dem
+  // Geraetenamen, nur am Netz-Knoten befuellt (updateOuterNode()).
+  const priceSpark = el('polyline', { class: 'node-price-spark', points: '' });
+  priceSpark.style.display = 'none';
+  priceSpark.setAttribute('transform', 'translate(-18,50)');
+  g.appendChild(priceSpark);
   g.appendChild(makeBevel(DESIGN_R));
   g.appendChild(makeHighlight(DESIGN_R));
   g.appendChild(makeSpecular(DESIGN_R));
@@ -1174,7 +1200,7 @@ function createOuterNode(item, pt, layout) {
   warn.appendChild(warnMark);
   g.appendChild(warn);
 
-  return { g, glow, liquid, warn, ghostRing, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1568,6 +1594,38 @@ function updateOuterNode(refs, item) {
     refs.ghostRing.style.display = hidden ? 'none' : '';
   } else {
     refs.ghostRing.style.display = 'none';
+  }
+
+  // PV-Prognose-Fortschrittsring: Bogenlaenge = min(1, ratio) der
+  // Ring-Umfangs, Farbe wechselt bei Uebererfuellung (ratio > 1).
+  if (item.forecastRatio != null) {
+    const circ = 2 * Math.PI * (DESIGN_R + 7);
+    const frac = Math.max(0, Math.min(1, item.forecastRatio));
+    refs.forecastRing.setAttribute('stroke-dashoffset', (circ * (1 - frac)).toFixed(1));
+    refs.forecastRing.classList.toggle('node-forecast-ring-over', item.forecastRatio > 1);
+    refs.forecastRing.style.display = hidden ? 'none' : '';
+  } else {
+    refs.forecastRing.style.display = 'none';
+  }
+
+  // Strompreis-Trend-Sparkline: einfache Polyline aus den Tages-Slotpreisen,
+  // Skala relativ zum Min/Max des Tages (nicht absolut) - zeigt die Form
+  // des Verlaufs, nicht den genauen Wert (der steht bereits als Zahl in der
+  // Detailansicht).
+  if (item.priceTrend && item.priceTrend.length > 1) {
+    const prices = item.priceTrend.map(p => p.price);
+    const lo = Math.min(...prices), hi = Math.max(...prices);
+    const span = Math.max(0.01, hi - lo);
+    const w = 36, h = 12;
+    const pts = item.priceTrend.map((p, i) => {
+      const x = (i / (item.priceTrend.length - 1)) * w;
+      const y = h - ((p.price - lo) / span) * h;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    refs.priceSpark.setAttribute('points', pts);
+    refs.priceSpark.style.display = hidden ? 'none' : '';
+  } else {
+    refs.priceSpark.style.display = 'none';
   }
 
   // Diagnose-Warnsymbol (28.08.2026) - nur bei tatsaechlicher Warnstufe,
