@@ -89,6 +89,10 @@ class NRGDashboardTile extends IPSModule
         // YesterdayCache (Tagesintegration ueber DaySeries() waere sonst bei
         // jedem ereignisgesteuerten buildPayload()-Aufruf zu teuer).
         $this->RegisterAttributeString('PvForecastCache', '{}');
+        // Peak-Marker auf der Speiche + Autarkiegrad-Ring am Haus-Knoten
+        // (28.08.2026) - dieselbe Throttle-Begruendung wie YesterdayCache.
+        $this->RegisterAttributeString('PeakTodayCache', '{}');
+        $this->RegisterAttributeString('AutarkyCache', '{}');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
@@ -787,6 +791,32 @@ class NRGDashboardTile extends IPSModule
             }
         }
 
+        // Peak-Marker auf der Speiche - je Geraet mit powerID, throttled.
+        foreach ($devices as $i => $dd) {
+            $pid = (int) (!empty($dd['usingFallback']) ? ($dd['fallbackPowerID'] ?? 0) : ($dd['powerID'] ?? 0));
+            if ($pid > 0) {
+                $peak = $this->GetPeakTodayW($pid);
+                if ($peak !== null) {
+                    $devices[$i]['peakTodayW'] = $peak;
+                }
+            }
+        }
+
+        // Autarkiegrad-Ringsegment am Haus-Knoten.
+        $houseIdx = null;
+        foreach ($devices as $i => $dd) {
+            if (($dd['function'] ?? '') === 'house') {
+                $houseIdx = $i;
+                break;
+            }
+        }
+        if ($houseIdx !== null && !empty($devices[$houseIdx]['powerID'])) {
+            $autarky = $this->AutarkyRatioToday((int) $devices[$houseIdx]['powerID']);
+            if ($autarky !== null) {
+                $devices[$houseIdx]['autarkyRatio'] = $autarky;
+            }
+        }
+
         // Fahrzeug-Zuordnung fuer Wallboxen (Dietmar, 29.07.2026: bei
         // eingestecktem Auto sollen subText/SOC-Ring das ERKANNTE Fahrzeug
         // zeigen, nicht nur "Wallbox aktiv") - muss VOR dem Ausblenden/
@@ -1040,8 +1070,12 @@ class NRGDashboardTile extends IPSModule
             return $entry['value'] ?? null;
         }
 
+        $arch = $this->ArchiveID();
+        if ($arch <= 0) {
+            return null;
+        }
         $target = strtotime('-1 day', $now);
-        $rows = @AC_GetLoggedValues($id, $target - 900, $target + 900, 0);
+        $rows = @AC_GetLoggedValues($arch, $id, $target - 900, $target + 900, 0);
         $value = null;
         if (is_array($rows) && count($rows) > 0) {
             $best = null;
@@ -1109,6 +1143,101 @@ class NRGDashboardTile extends IPSModule
         }
         $this->WriteAttributeString('PvForecastCache', json_encode($result));
         return $result['ratio'] !== null ? $result : null;
+    }
+
+    private const PEAK_CACHE_TTL_SEC = 300;
+
+    /** Tagesspitze (Betrag, W) fuer den Peak-Marker auf der Speiche - throttled
+     *  wie GetYesterdayValue(), gleiche DaySeries()-Quelle wie der PV-Prognose-Ring. */
+    private function GetPeakTodayW(int $id): ?float
+    {
+        if ($id <= 0) {
+            return null;
+        }
+        $now = time();
+        $cache = json_decode($this->ReadAttributeString('PeakTodayCache'), true);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        $entry = $cache[(string) $id] ?? null;
+        if (is_array($entry) && ($now - ($entry['fetchedAt'] ?? 0)) < self::PEAK_CACHE_TTL_SEC) {
+            return $entry['value'] ?? null;
+        }
+        $series = $this->DaySeries($id, strtotime('today'), $now);
+        $peak = null;
+        foreach ($series as [, $w]) {
+            $abs = abs($w);
+            if ($peak === null || $abs > $peak) {
+                $peak = $abs;
+            }
+        }
+        $cache[(string) $id] = ['value' => $peak, 'fetchedAt' => $now];
+        $this->WriteAttributeString('PeakTodayCache', json_encode($cache));
+        return $peak;
+    }
+
+    private function SgwInstanceID(): int
+    {
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_STROMGEDACHT);
+        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+    }
+
+    private const SG_COLORS = [-1 => '#00bfa5', 1 => '#00c853', 2 => '#ffd600', 3 => '#ff6d00', 4 => '#d50000'];
+
+    /** Netzampel-Farbwaesche im Hintergrund (28.08.2026) - liest nur die
+     *  bereits vom StromGedacht-Timer aktualisierte Statusvariable, keine
+     *  eigene Netzabfrage, daher ungedrosselt vertretbar. */
+    private function GridAmpel(): ?array
+    {
+        if (!function_exists('SGW_GetState')) {
+            return null;
+        }
+        $id = $this->SgwInstanceID();
+        if ($id <= 0) {
+            return null;
+        }
+        $state = @SGW_GetState($id);
+        if (!is_array($state) || $state['state'] === null) {
+            return null;
+        }
+        $s = (int) $state['state'];
+        return ['state' => $s, 'color' => self::SG_COLORS[$s] ?? null, 'label' => $state['label'] ?? ''];
+    }
+
+    private const AUTARKY_CACHE_TTL_SEC = 300;
+
+    /** Autarkiegrad heute (28.08.2026): 1 - Netzbezug/Hauslast, aus den
+     *  bereits vorhandenen Bausteinen GridDayEnergyKWh()+DaySeries() des
+     *  Haus-Knotens - throttled, gleiche Begruendung wie oben. */
+    private function AutarkyRatioToday(int $housePowerID): ?float
+    {
+        if ($housePowerID <= 0) {
+            return null;
+        }
+        $now = time();
+        $cache = json_decode($this->ReadAttributeString('AutarkyCache'), true);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        if (is_array($cache) && ($now - ($cache['fetchedAt'] ?? 0)) < self::AUTARKY_CACHE_TTL_SEC) {
+            return $cache['ratio'] ?? null;
+        }
+        $dayStart = strtotime('today');
+        $ratio = null;
+        $grid = $this->GridDayEnergyKWh($dayStart, $now);
+        $houseSeries = $this->DaySeries($housePowerID, $dayStart, $now);
+        if ($grid !== null && count($houseSeries) >= 2) {
+            $intervalHours = ((float) ($houseSeries[1][0] - $houseSeries[0][0])) / 3600000;
+            $houseKWh = 0.0;
+            foreach ($houseSeries as [, $w]) {
+                $houseKWh += max(0.0, $w) * $intervalHours / 1000;
+            }
+            if ($houseKWh > 0.01) {
+                $ratio = max(0.0, min(1.0, 1 - ($grid['importKWh'] / $houseKWh)));
+            }
+        }
+        $this->WriteAttributeString('AutarkyCache', json_encode(['ratio' => $ratio, 'fetchedAt' => $now]));
+        return $ratio;
     }
 
     private function isStaleOrMissing(int $id, ?float $value): bool
