@@ -122,7 +122,8 @@
 
   .spoke { transition: opacity var(--trans) var(--ease); }
 
-  .wire { fill: none; stroke: var(--wire); stroke-width: 2.5; stroke-linecap: round; }
+  .wire { fill: none; stroke: var(--wire); stroke-width: 2.5; stroke-linecap: round; transition: stroke-width var(--trans) var(--ease); }
+  .flow-peak-mark { stroke-width: 2.5; stroke-linecap: round; opacity: 0.85; }
 
   .flow-core {
     fill: none; stroke-width: 3.5; stroke-linecap: round;
@@ -203,21 +204,41 @@
 
   .node-forecast-ring { stroke: var(--nc, var(--grey)); stroke-width: 3; stroke-linecap: round; opacity: 0.85; transition: stroke-dashoffset var(--trans) var(--ease); }
   .node-forecast-ring-over { stroke: #4caf50; }
+  .node-autarky-ring { stroke: #4caf50; stroke-width: 3; stroke-linecap: round; opacity: 0.85; transition: stroke-dashoffset var(--trans) var(--ease); }
+
+  /* Netzampel-Farbwaesche (28.08.2026) - dezenter Farbverlauf hinter dem
+     Flow-Diagramm, nur sichtbar wenn eine StromGedacht-Instanz Daten
+     liefert (d.gridAmpel, handleMessage()). Eigene Ebene UNTER dem SVG,
+     damit sie den Node-Kontrast nicht beeintraechtigt. */
+  #ampelWash {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    opacity: 0; transition: opacity 1.2s ease, background 1.2s ease;
+  }
+  #ampelWash.show { opacity: 1; }
 
   .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
 
   .prefs-gear {
-    position: absolute; left: 4px; top: 4px; z-index: 3;
+    /* Oben RECHTS, aber unterhalb des WebFront-Doppelpfeils zum Vollbild-
+       Umschalten (Dietmar, 28.08.2026: "hinter den Doppelpfeil oben rechts")
+       - direkt bei top:4px kollidiert es mit dem Host-Icon (siehe
+       InverterHub/CLAUDE.md "Browser-Eigenheiten", derselbe Grund, aus dem
+       das Diagnose-Badge frueher von oben nach unten verschoben wurde).
+       Oben LINKS ist ebenso ungeeignet - dort liegt in manchen Ansichten
+       die Kachel-Titelzeile des Hosts drueber (live gemeldet, 28.08.2026).
+       Kein Zahnrad-Symbol (Dietmars ausdruecklicher Wunsch) - stattdessen
+       ein dezentes "Mehr"-Symbol. */
+    position: absolute; right: 4px; top: 32px; z-index: 3;
     width: 26px; height: 26px; border-radius: 13px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
     border: 1px solid rgba(255,255,255,0.10);
-    color: var(--textmuted); font-size: 14px; opacity: 0.55;
+    color: var(--textmuted); font-size: 16px; font-weight: 700; opacity: 0.55;
     transition: opacity 0.15s ease;
   }
   .prefs-gear:hover { opacity: 1; }
   .prefs-panel {
-    position: absolute; left: 4px; top: 34px; z-index: 3;
+    position: absolute; right: 4px; top: 62px; z-index: 3;
     display: none; min-width: 240px; max-width: 300px;
     padding: 10px 12px; border-radius: 10px;
     background: linear-gradient(180deg, rgba(60,64,72,0.96), rgba(28,30,36,0.96));
@@ -385,15 +406,20 @@
 
 <!-- Anzeige-Einstellungen (28.08.2026, Dietmar: "Intension, Größe,
      Helligkeit etc. könnte man jedem Nutzer selbst überlassen ... hinter
-     dem Doppelpfeil oben rechts") - der WebFront-Doppelpfeil zum
-     Vollbild-Umschalten liegt oben RECHTS und gehoert dem Host (siehe
-     InverterHub/CLAUDE.md "Browser-Eigenheiten": Kollisionen dort haben
-     schon einmal den Diagnose-Badge unbedienbar gemacht) - unser Zahnrad
-     liegt deshalb oben LINKS, frei von jeder Host-Flaeche. Rein
-     browserlokal (localStorage) - WebFront-Nutzer haben keinen Zugriff
-     auf das Konfigurationsformular (Konsole-only), das ist also der
-     einzige Ort, an dem sie das selbst einstellen koennen. -->
-<div id="prefsGear" class="prefs-gear" onclick="togglePrefsPanel()" title="Anzeige-Einstellungen">⚙</div>
+     dem Doppelpfeil oben rechts") - oben RECHTS, aber mit Abstand zur
+     Kachel-Oberkante (top:32px statt 4px), damit es weder mit dem
+     WebFront-Doppelpfeil zum Vollbild-Umschalten (der eigentliche Grund,
+     warum das Diagnose-Badge frueher von oben nach unten wandern musste,
+     siehe InverterHub/CLAUDE.md "Browser-Eigenheiten") noch - bei oben
+     LINKS erstversucht und verworfen, weil dort in manchen Ansichten die
+     Kachel-Titelzeile des Hosts drueberliegt und Klicks abfaengt - mit
+     sonstiger Host-Flaeche kollidiert. Bewusst kein Zahnrad-Symbol
+     (Dietmars ausdruecklicher Wunsch), stattdessen ein dezentes
+     "Mehr"-Symbol. Rein browserlokal (localStorage) - WebFront-Nutzer
+     haben keinen Zugriff auf das Konfigurationsformular (Konsole-only),
+     das ist also der einzige Ort, an dem sie das selbst einstellen
+     koennen. -->
+<div id="prefsGear" class="prefs-gear" onclick="togglePrefsPanel()" title="Anzeige-Einstellungen">⋯</div>
 <div id="prefsPanel" class="prefs-panel">
   <div class="prefs-title">Anzeige-Einstellungen</div>
   <label class="prefs-row">
@@ -1105,6 +1131,9 @@ function buildItems(devices) {
         yesterdayValue: (d.yesterdayValue !== undefined && d.yesterdayValue !== null) ? d.yesterdayValue : null,
         forecastRatio: (d.forecastRatio !== undefined && d.forecastRatio !== null) ? d.forecastRatio : null,
         priceTrend: Array.isArray(d.priceTrend) ? d.priceTrend : null,
+        priceNow: (d.priceNow !== undefined && d.priceNow !== null) ? d.priceNow : null,
+        peakTodayW: (d.peakTodayW !== undefined && d.peakTodayW !== null) ? d.peakTodayW : null,
+        autarkyRatio: (d.autarkyRatio !== undefined && d.autarkyRatio !== null) ? d.autarkyRatio : null,
       };
     });
 
@@ -1120,6 +1149,28 @@ function setValueText(textEl, watts, measured) {
   const unitEl = textEl.querySelector('.node-value-unit');
   if (unitEl && unitEl.textContent !== f.unit) { unitEl.textContent = f.unit; }
 }
+
+// Kosten-Ticker (28.08.2026, Dietmar: "alles direkt umsetzen") - der
+// Netz-Knoten wechselt periodisch zwischen Watt und Kosten pro Stunde
+// (aus item.priceNow, derselben Preisquelle wie die Sparkline). Eigene
+// Anzeigefunktion statt Direktaufruf von setValueText(), damit der Timer
+// unabhaengig vom Server-Push (der viel seltener/unregelmaessiger kommt)
+// zwischen beiden Darstellungen umschalten kann.
+let COST_TICKER_ON = false;
+function renderValueDisplay(refs) {
+  if (refs.isGrid && COST_TICKER_ON && refs.priceNow != null && refs.active) {
+    const eurPerHour = (refs.magnitude / 1000) * (refs.priceNow / 100);
+    refs.valText.firstChild.nodeValue = eurPerHour.toFixed(eurPerHour < 1 ? 3 : 2);
+    const unitEl = refs.valText.querySelector('.node-value-unit');
+    if (unitEl) { unitEl.textContent = '€/h'; }
+  } else {
+    setValueText(refs.valText, refs.magnitude, refs.measured);
+  }
+}
+setInterval(() => {
+  COST_TICKER_ON = !COST_TICKER_ON;
+  Object.values(nodeRefs).forEach(r => { if (r.isGrid) { renderValueDisplay(r); } });
+}, 4000);
 
 let builtSig = null;
 const nodeRefs = {};
@@ -1162,6 +1213,20 @@ function createOuterNode(item, pt, layout) {
   forecastRing.style.display = 'none';
   g.appendChild(forecastRing);
 
+  // Autarkiegrad-Ringsegment (28.08.2026) - Bogen um den Haus-Knoten,
+  // Laenge = Anteil des heutigen Verbrauchs, der NICHT aus dem Netz kam.
+  // Andere Radiusposition als der Prognose-Ring, damit beide (an
+  // verschiedenen Knoten befuellt) nie gleichzeitig am selben Knoten
+  // uebereinander liegen koennten.
+  const autarkyRing = el('circle', {
+    class: 'node-autarky-ring', r: DESIGN_R + 7, fill: 'none',
+    'stroke-dasharray': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
+    'stroke-dashoffset': (2 * Math.PI * (DESIGN_R + 7)).toFixed(1),
+    transform: 'rotate(-90)'
+  });
+  autarkyRing.style.display = 'none';
+  g.appendChild(autarkyRing);
+
   // Strompreis-Trend-Sparkline (28.08.2026) - kleine Linie unter dem
   // Geraetenamen, nur am Netz-Knoten befuellt (updateOuterNode()).
   const priceSpark = el('polyline', { class: 'node-price-spark', points: '' });
@@ -1193,14 +1258,19 @@ function createOuterNode(item, pt, layout) {
   // Diagnose-Warnsymbol (28.08.2026, Dietmar: "Diagnose-Warnungen direkt
   // am Knoten") - kleines Dreieck oben rechts auf dem Coin, nur sichtbar
   // bei tatsaechlich vorliegender Warnstufe (updateOuterNode()).
-  const warn = el('g', { class: 'node-warn', transform: 'translate(' + (DESIGN_R * 0.62) + ',' + (-DESIGN_R * 0.62) + ')' });
+  // Position exakt auf dem Ring-Radius bei 45° (klassische Notification-
+  // Badge-Optik, haelftig innen/aussen auf dem Ring) statt vorher weiter
+  // innen, wo das Dreieck mit Icon-Elementen kollidierte (z.B. dem
+  // rechten oberen Sonnenstrahl beim PV-Knoten - Dietmar, 28.08.2026).
+  const warnOff = DESIGN_R * Math.SQRT1_2;
+  const warn = el('g', { class: 'node-warn', transform: 'translate(' + warnOff.toFixed(1) + ',' + (-warnOff).toFixed(1) + ')' });
   warn.appendChild(el('polygon', { points: '0,-9 8,7 -8,7', class: 'node-warn-tri' }));
   const warnMark = el('text', { x: 0, y: 5, 'text-anchor': 'middle', class: 'node-warn-mark' });
   warnMark.textContent = '!';
   warn.appendChild(warnMark);
   g.appendChild(warn);
 
-  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  return { g, glow, liquid, warn, ghostRing, forecastRing, autarkyRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1284,7 +1354,8 @@ function createSpoke(pt, layout, layer) {
   // HIDE_INACTIVE ein-/ausblenden, ohne alle anderen mitzunehmen.
   const g = el('g', { class: 'spoke' });
   layer.appendChild(g);
-  g.appendChild(line('wire'));
+  const wire = line('wire');
+  g.appendChild(wire);
   const core = line('flow-core');
   g.appendChild(core);
   const bolts = [];
@@ -1299,8 +1370,14 @@ function createSpoke(pt, layout, layer) {
     g.appendChild(t);
     tris.push(t);
   }
+  // Peak-Marker (28.08.2026, Dietmar: "alles direkt umsetzen") - kleiner
+  // Querstrich auf der Speiche an der Stelle, die der heutigen Tagesspitze
+  // entspricht (Anteil an FLOW_REF_W, updateSpoke() positioniert ihn).
+  const peakMark = el('line', { class: 'flow-peak-mark' });
+  peakMark.style.display = 'none';
+  g.appendChild(peakMark);
   return {
-    g, tris, bolts, core,
+    g, tris, bolts, core, wire, peakMark, p1, p2,
     dIn:  'M' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1) + ' L' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1),
     dOut: 'M' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1) + ' L' + p2[0].toFixed(1) + ',' + p2[1].toFixed(1),
   };
@@ -1462,13 +1539,41 @@ function updateNodeAura(refs, magnitude, active, color) {
   });
 }
 
-function updateSpoke(sp, color, magnitude, active, flowing, dir) {
+function updateSpoke(sp, color, magnitude, active, flowing, dir, peakTodayW) {
   const col = rgb(color);
   const d = (dir === 'in') ? sp.dIn : sp.dOut;
   sp.core.style.stroke = col;
   sp.core.style.opacity = active ? '0.5' : '0';
   const k = Math.sqrt(Math.max(0, Math.min(1, magnitude / FLOW_REF_W)));
   const dur = 3.0 - 2.6 * k;
+
+  // Flussdicke (28.08.2026, Dietmar: "alles direkt umsetzen") - Speiche wird
+  // mit der Leistung dicker, nicht nur schneller animiert. Wurzel-Skala wie
+  // bei den anderen Leistungsmappings, damit kleine Lasten noch sichtbar
+  // bleiben statt im 1px-Minimum zu verschwinden.
+  const width = active ? (1.6 + 3.4 * k) : 1.6;
+  sp.wire.style.strokeWidth = width.toFixed(1);
+  sp.core.style.strokeWidth = Math.max(1, width - 1).toFixed(1);
+
+  // Peak-Marker: Querstrich an der Position der heutigen Tagesspitze
+  // entlang der Speiche (Anteil an FLOW_REF_W), senkrecht zur Speichenachse.
+  if (active && peakTodayW != null && sp.p1 && sp.p2) {
+    const f = Math.max(0, Math.min(1, peakTodayW / FLOW_REF_W));
+    const mx = sp.p1[0] + (sp.p2[0] - sp.p1[0]) * f;
+    const my = sp.p1[1] + (sp.p2[1] - sp.p1[1]) * f;
+    const dx = sp.p2[0] - sp.p1[0], dy = sp.p2[1] - sp.p1[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;
+    const half = 6;
+    sp.peakMark.setAttribute('x1', (mx - px * half).toFixed(1));
+    sp.peakMark.setAttribute('y1', (my - py * half).toFixed(1));
+    sp.peakMark.setAttribute('x2', (mx + px * half).toFixed(1));
+    sp.peakMark.setAttribute('y2', (my + py * half).toFixed(1));
+    sp.peakMark.style.stroke = col;
+    sp.peakMark.style.display = '';
+  } else {
+    sp.peakMark.style.display = 'none';
+  }
   sp.tris.forEach((t, i) => {
     t.style.display = flowing ? '' : 'none';
     if (!flowing) { return; }
@@ -1562,12 +1667,17 @@ function updateOuterNode(refs, item) {
 
   applyNodeState(refs.g, refs.glow, color, magnitude, active, refs.cx, refs.cy, refs.baseScale, hidden);
   refs.spoke.g.style.opacity = hidden ? '0' : '1';
-  updateSpoke(refs.spoke, color, magnitude, active, flowing, item.dir(w));
+  updateSpoke(refs.spoke, color, magnitude, active, flowing, item.dir(w), item.peakTodayW);
   updateNodeAura(refs, magnitude, active, color);
 
   refs.iconG.textContent = '';
   ICONS[item.icon](refs.iconG, item.soc ?? null);
-  setValueText(refs.valText, magnitude, item.measured);
+  refs.isGrid = item.function === 'grid';
+  refs.priceNow = item.priceNow != null ? item.priceNow : null;
+  refs.magnitude = magnitude;
+  refs.measured = item.measured;
+  refs.active = active;
+  renderValueDisplay(refs);
 
   // SOC-Fuellstand (nur Batterie-Knoten mit bekanntem SOC) - Rechteck
   // steigt von unten, Hoehe = SOC-Anteil der Coin-Flaeche (Durchmesser).
@@ -1589,7 +1699,11 @@ function updateOuterNode(refs, item) {
   if (item.yesterdayValue != null) {
     const yMag = Math.abs(item.yesterdayValue);
     const ratio = Math.sqrt(yMag / Math.max(magnitude, 50));
-    const clamped = Math.max(0.55, Math.min(1.6, ratio));
+    // Enger geklammert als der erste Wurf (28.08.2026, Dietmar: "die Kreise
+    // liegen zu eng beieinander") - bei extremen Verhaeltnissen (z.B.
+    // heute nahe 0, gestern gross) reichte der Ring vorher bis zu 60%
+    // ueber den Coin-Rand hinaus und stiess mit Nachbarknoten zusammen.
+    const clamped = Math.max(0.72, Math.min(1.22, ratio));
     refs.ghostRing.setAttribute('r', (DESIGN_R * clamped).toFixed(1));
     refs.ghostRing.style.display = hidden ? 'none' : '';
   } else {
@@ -1606,6 +1720,16 @@ function updateOuterNode(refs, item) {
     refs.forecastRing.style.display = hidden ? 'none' : '';
   } else {
     refs.forecastRing.style.display = 'none';
+  }
+
+  // Autarkiegrad-Ringsegment (nur Haus-Knoten).
+  if (item.autarkyRatio != null) {
+    const circ = 2 * Math.PI * (DESIGN_R + 7);
+    const frac = Math.max(0, Math.min(1, item.autarkyRatio));
+    refs.autarkyRing.setAttribute('stroke-dashoffset', (circ * (1 - frac)).toFixed(1));
+    refs.autarkyRing.style.display = hidden ? 'none' : '';
+  } else {
+    refs.autarkyRing.style.display = 'none';
   }
 
   // Strompreis-Trend-Sparkline: einfache Polyline aus den Tages-Slotpreisen,
