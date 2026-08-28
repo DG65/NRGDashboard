@@ -198,44 +198,46 @@
 
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
-  /* Geraete-Detail-Overlay (28.08.2026): bildschirmfuellend statt in der
-     (fuer Diagramme oft zu kleinen) Kachel - laedt die eigenstaendige
-     Detailseite per <iframe> ueber den WebHook (gleicher Inhalt wie ein
-     eigener Tab, nur ohne Tab-Wechsel). Ein-/Ausblende-Animation wirkt wie
-     ein "Fluessigkeit verschwindet im Abfluss"-Strudel (Dietmars Bild,
-     28.08.2026): die Gravitation setzt gedanklich in der Panel-Mitte an
-     und zieht die Kontur spiralig in den jeweils angeklickten Knoten. Die
-     Kontur-Physik (20 Rand-Partikel als weicher Koerper, Federn,
-     1/r^2-Gravitation, tangentialer Drall = der Strudel-Dreh, viskose
-     Daempfung, Einfangradius - identisches Modell wie die PVMonitor-
-     Reiterleiste) wird deshalb NICHT als starre @keyframes uebernommen
-     (die waren fest auf eine obere-linke Ecke ausgelegt), sondern bei
-     JEDEM Klick live in JS einmal vorwaerts simuliert (simulatePanelSuck()
-     unten, Lochziel = tatsaechliche Bildschirmposition des Knotens) -
-     das Schliessen spielt die entstandenen Frames vorwaerts ab, das
-     Oeffnen exakt dieselben Frames rueckwaerts (Auftauchen aus dem Strudel
-     = Zeitumkehr, 1:1 das Prinzip von PVMonitors cornerSuckIn/-Out). Das
-     Ergebnis wird als @keyframes cornerSuckIn/-Out in einen eigenen
-     <style>-Block injiziert (injectSuckKeyframes()), bevor die Animation
-     startet. */
+  /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
+     statt in der (fuer Diagramme oft zu kleinen) Kachel - laedt die
+     eigenstaendige Detailseite per <iframe> ueber den WebHook (gleicher
+     Inhalt wie ein eigener Tab, nur ohne Tab-Wechsel).
+     Ein-/Ausblende-Animation ist ein "Container-Transform"-Morph (Material-
+     Design-Begriff): der angeklickte Knoten WAECHST direkt zur Detailkachel
+     - keine Physik-Simulation mehr. Die fruehere Strudel-Simulation (20
+     Rand-Partikel, Gravitation, tangentialer Drall) hatte zwei echte
+     Probleme: (1) Dietmar gefiel der Drall optisch nicht mehr, (2) ein rein
+     geometrischer Bug - das Flow-Diagramm ist klein, alle Knoten liegen nah
+     beieinander, das Panel aber (auf Wunsch) fast bildschirmfuellend; die
+     reale Pixel-Distanz zwischen z.B. "Haus" und einem Verbraucher-Knoten
+     war dadurch im Verhaeltnis zur Panel-Groesse winzig, das Ziel landete
+     praktisch immer nur knapp neben dem Haus-Knoten. Der Morph-Ansatz
+     umgeht das strukturell: das Panel STARTET exakt an Position/Groesse
+     des geklickten Knotens (openDeviceDetail() setzt einen inversen
+     transform via FLIP-Technik: translate+scale vom Panel-Mittelpunkt zum
+     Knoten-Mittelpunkt, border-radius:50% fuer die Kreisform) und
+     transitioniert dann zur echten Panel-Groesse - unabhaengig davon, wie
+     nah/fern der Knoten am Panel-Zentrum liegt, IMMER korrekt. Schliessen
+     spielt denselben Uebergang exakt rueckwaerts (dieselbe Knotenposition
+     wird beim Klick erneut vermessen, siehe LAST_ORIGIN_EL). */
   #detailOverlay {
     position: fixed; inset: 0; z-index: 9999; display: none;
     align-items: center; justify-content: center;
-    background: rgba(10, 12, 15, .55);
+    background: rgba(10, 12, 15, 0);
+    transition: background .5s ease;
   }
+  #detailOverlay.visible { background: rgba(10, 12, 15, .55); }
   #detailPanel {
     /* volle Breite (Dietmar, 28.08.2026: "darf die gesamte Kachelbreite
-       einnehmen") statt auf 1100px gedeckelt - nur ein kleiner Seitenrand
-       bleibt, damit der Strudel-Rand noch sichtbar ist. */
+       einnehmen") statt auf 1100px gedeckelt. */
     width: 97vw; height: min(860px, 92vh);
     border-radius: 16px; overflow: hidden; background: #26292e;
     box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+    transform-origin: center center;
+    transition: transform .55s cubic-bezier(.32, .72, 0, 1), border-radius .55s cubic-bezier(.32, .72, 0, 1);
   }
+  #detailPanel.closingMorph { transition-timing-function: cubic-bezier(.55, 0, .68, .12); }
   #detailFrame { width: 100%; height: 100%; border: 0; display: block; background: #26292e; }
-  /* Dauer verdoppelt (Dietmar, 28.08.2026: "Animation ist zu schnell") -
-     Timing bleibt linear, siehe Kommentar bei simulatePanelSuck(). */
-  #detailPanel.opening { animation: cornerSuckOut 1.0s linear; }
-  #detailPanel.closing { animation: cornerSuckIn .9s linear forwards; }
 </style>
 </head>
 <body>
@@ -870,184 +872,73 @@ function createSpoke(angleDeg, layout, layer) {
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
 let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
 
-// Physikalische Strudel-Simulation fuer das Oeffnen/Schliessen des
-// Detail-Overlays (Dietmar, 28.08.2026: "Fluessigkeit verschwindet im
-// Abfluss" - Gravitation setzt in der Panel-Mitte an, ein weicher Koerper
-// aus 20 Rand-Partikeln wird spiralig in den angeklickten Knoten gesaugt).
-// Identisches physikalisches Modell wie NRGDashboardPVMonitor/module.html
-// (Federn zu Nachbarn, 1/r^2-Gravitation, tangentialer Drall, viskose
-// Daempfung, Einfangradius, semi-implizite Euler-Integration) - hier aber
-// NICHT als vorab von Hand generierte @keyframes (die waren fest auf eine
-// obere-linke Ecke ausgelegt), sondern bei jedem Klick live simuliert,
-// weil das Lochziel (= Knotenposition) bei jedem Klick woanders liegt.
-// buildBoundaryPoints() liefert dieselben 20 Randpunkte (in Prozent) wie
-// die urspruengliche PVMonitor-Kontur.
-function buildBoundaryPoints() {
-  const top = [0, 20, 40, 60, 80, 100].map(x => [x, 0]);
-  const right = [20, 40, 60, 80, 100].map(y => [100, y]);
-  const bottom = [80, 60, 40, 20, 0].map(x => [x, 100]);
-  const left = [80, 60, 40, 20].map(y => [0, y]);
-  return [...top, ...right, ...bottom, ...left]; // 20 Punkte, im Uhrzeigersinn
-}
+// Container-Transform-Morph fuers Oeffnen/Schliessen des Detail-Overlays
+// (Dietmar, 28.08.2026 - abgeloest: die vorherige Strudel-Physik-Simulation
+// hatte einen echten geometrischen Bug bei einem bildschirmfuellenden
+// Panel und einem kompakten Flow-Diagramm, siehe CSS-Kommentar oben bei
+// #detailOverlay). FLIP-Technik (First/Last/Invert/Play): das Panel wird
+// per transform (translate+scale) exakt auf Position/Groesse des
+// angeklickten Knotens "zurueckversetzt" (First=aktuelle Knotenposition,
+// Last=natuerliche Panel-Position/-Groesse), dann in einem Frame auf
+// transform:none zurueckgesetzt - CSS transitioniert dazwischen glatt.
+// LAST_ORIGIN_EL merkt sich den zuletzt geoeffneten Knoten, damit
+// closeDeviceDetail() exakt denselben Uebergang rueckwaerts spielen kann.
+let LAST_ORIGIN_EL = null;
 
-/**
- * Simuliert das Einsaugen der Panel-Kontur in ein Loch bei (holeX, holeY)
- * (Panel-lokale Pixel-Koordinaten) und liefert 17 Zeitschritte als
- * {opacity, scale, clip}-Frames (clip als fertiger clip-path()-Wert in
- * Prozent) - exakt das Frame-Format, das die urspruengliche PVMonitor-
- * Reiterleiste per Hand-Generator erzeugt hat. Physik NICHT in echten
- * Panel-Pixeln, sondern seitenverhaeltnistreu auf dieselbe DIAGONALE wie
- * der urspruengliche PVMonitor-Generator normiert (dort 100x200, Diagonale
- * ~223.6) - nur so bleiben G/K/EPS/CAPTURE aus dessen Parameter-Sweep
- * uebertragbar. Eine Normierung nur auf die Breite (=100) waere bei einem
- * flacheren Panel wie unserem (breiter als hoch) zu "kompakt": die
- * Gravitation faellt mit 1/r^2, ein kleineres Arbeitsgebiet macht JEDEN
- * Punkt unabhaengig von seiner Lage ueberproportional staerker angezogen
- * und zerstoert das gewollte gestaffelte Einsaugen ("erst der naechste
- * Punkt, dann die weiter entfernten") - real beim ersten Test beobachtet
- * (28.08.2026): alle 20 Punkte waren bereits nach ~16% der Animationszeit
- * am Ziel, statt wie im Original gestaffelt ueber die volle Laufzeit.
- */
-function simulatePanelSuck(panelW, panelH, holeXpx, holeYpx) {
-  // EPS gegenueber dem PVMonitor-Original (9) auf 5 verkleinert und SWIRL
-  // von 200 auf 250 erhoeht (Dietmar, 28.08.2026: "Unterschied zwischen
-  // Anfangs- und Endbeschleunigung muss groesser sein") - staerkerer Drall
-  // fuer den langsamen, schwungvollen Start, kleineres Softening fuer eine
-  // schaerfere (schnellere) Gravitationsspitze kurz vorm Einfangen. 250
-  // bleibt unter dem im PVMonitor-Parameter-Sweep gefundenen Grenzwert
-  // ~280, ab dem Punkte der Gravitation entkommen.
-  const G = 4e7, K = 18, DAMP = 1.2, EPS = 5, CAPTURE = 10, T = 0.95, STEPS = 2400, SWIRL = 250;
-  const dt = T / STEPS;
-  const REF_DIAG = Math.hypot(100, 200); // Massstab des PVMonitor-Originals
-  const toSim = REF_DIAG / Math.hypot(panelW, panelH);
-  const simW = panelW * toSim, simH = panelH * toSim;
-  const holeX = holeXpx * toSim, holeY = holeYpx * toSim;
-  const base = buildBoundaryPoints();
-  const n = base.length;
-  const px = base.map(([x]) => x / 100 * simW);
-  const py = base.map(([, y]) => y / 100 * simH);
-  const restLen = [];
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    restLen.push(Math.hypot(px[j] - px[i], py[j] - py[i]));
+/** Liefert {dx, dy, sx, sy} - den Transform, der das (natuerlich
+ *  positionierte) Panel exakt auf originEl's aktuelle Position/Groesse
+ *  legt. sx/sy nach unten begrenzt, damit eine sehr kleine Knoten-Bounding-
+ *  Box (z.B. 0 waehrend eines Layout-Uebergangs) nicht zu transform:
+ *  scale(0) fuehrt (nicht animierbar/unsichtbar haengenbleibend). */
+function panelMorphTransform(panel, originEl) {
+  const p = panel.getBoundingClientRect();
+  if (!originEl || p.width === 0 || p.height === 0) {
+    return { dx: 0, dy: 0, sx: 0.05, sy: 0.05 };
   }
-  // Tangentiale Anfangsgeschwindigkeit um die Panel-Mitte - der Strudel-Dreh.
-  const vx = new Array(n), vy = new Array(n);
-  const cx = simW / 2, cy = simH / 2;
-  for (let i = 0; i < n; i++) {
-    const dx = px[i] - cx, dy = py[i] - cy;
-    const r = Math.hypot(dx, dy) || 1;
-    vx[i] = -dy / r * SWIRL;
-    vy[i] = dx / r * SWIRL;
-  }
-  const captured = new Array(n).fill(false);
-  const FRAME_COUNT = 17;
-  const frames = [];
-  const maxDist = Math.hypot(simW, simH) / 2;
-  for (let step = 0; step <= STEPS; step++) {
-    if (Math.round(step / STEPS * (FRAME_COUNT - 1)) === frames.length) {
-      const clipPts = [];
-      for (let i = 0; i < n; i++) {
-        const xp = Math.max(-20, Math.min(120, px[i] / simW * 100));
-        const yp = Math.max(-20, Math.min(120, py[i] / simH * 100));
-        clipPts.push(xp.toFixed(1) + '% ' + yp.toFixed(1) + '%');
-      }
-      const meanDist = px.reduce((s, x, i) => s + Math.hypot(x - holeX, py[i] - holeY), 0) / n;
-      const scaleF = Math.max(0.08, Math.min(1, meanDist / maxDist));
-      const frac = step / STEPS;
-      const opacity = frac < 0.9 ? 1 : Math.max(0, 1 - (frac - 0.9) / 0.1);
-      frames.push({ opacity, scale: scaleF, clip: 'polygon(' + clipPts.join(', ') + ')' });
-    }
-    const ax = new Array(n).fill(0), ay = new Array(n).fill(0);
-    for (let i = 0; i < n; i++) {
-      if (captured[i]) continue;
-      // Feder zum naechsten Nachbarn (Ruhelaenge restLen[i]) und zum
-      // vorherigen (Ruhelaenge restLen[vorherigerIndex]).
-      const prev = (i - 1 + n) % n, next = (i + 1) % n;
-      [[next, restLen[i]], [prev, restLen[prev]]].forEach(([j, rl]) => {
-        const dx = px[j] - px[i], dy = py[j] - py[i];
-        const dist = Math.hypot(dx, dy) || 1;
-        const f = K * (dist - rl) / dist;
-        ax[i] += f * dx; ay[i] += f * dy;
-      });
-      const dx = holeX - px[i], dy = holeY - py[i];
-      const r2 = dx * dx + dy * dy + EPS * EPS;
-      const r = Math.sqrt(r2);
-      const g = G / r2;
-      ax[i] += g * dx / r; ay[i] += g * dy / r;
-      ax[i] -= DAMP * vx[i]; ay[i] -= DAMP * vy[i];
-    }
-    for (let i = 0; i < n; i++) {
-      if (captured[i]) continue;
-      vx[i] += ax[i] * dt; vy[i] += ay[i] * dt;
-      px[i] += vx[i] * dt; py[i] += vy[i] * dt;
-      if (Math.hypot(holeX - px[i], holeY - py[i]) < CAPTURE) {
-        captured[i] = true; px[i] = holeX; py[i] = holeY;
-      }
-    }
-  }
-  while (frames.length < FRAME_COUNT) frames.push(frames[frames.length - 1]);
-  // Offener Ausgangszustand ist per Definition die unveraenderte Panel-
-  // groesse (scale 1) - die grobe meanDist/maxDist-Naeherung liegt beim
-  // allerersten Frame je nach Lochposition leicht darunter, was einen
-  // sichtbaren Sprung beim Animationsstart verursachen wuerde.
-  frames[0].scale = 1;
-  return frames;
-}
-
-/** Baut aus den simulierten Frames die beiden @keyframes-Regeln und ersetzt
- *  einen vorherigen Injektions-<style>-Block (jeder Klick simuliert neu -
- *  der alte Frame-Satz passte zum vorigen Knoten). "In" = Frames vorwaerts
- *  (Abfluss schluckt die Kontur), "Out" = dieselben Frames rueckwaerts
- *  (Auftauchen aus dem Strudel = Zeitumkehr). */
-function injectSuckKeyframes(frames) {
-  let style = document.getElementById('suckKeyframesStyle');
-  if (!style) {
-    style = document.createElement('style');
-    style.id = 'suckKeyframesStyle';
-    document.head.appendChild(style);
-  }
-  const step = (f, i) => (i / (frames.length - 1) * 100).toFixed(1) + '% { opacity: ' + f.opacity.toFixed(2) + '; transform: scale(' + f.scale.toFixed(2) + '); clip-path: ' + f.clip + '; }';
-  const inCss = frames.map(step).join('\n');
-  const outCss = frames.slice().reverse().map(step).join('\n');
-  style.textContent = '@keyframes cornerSuckIn {\n' + inCss + '\n}\n@keyframes cornerSuckOut {\n' + outCss + '\n}';
+  const o = originEl.getBoundingClientRect();
+  return {
+    dx: (o.left + o.width / 2) - (p.left + p.width / 2),
+    dy: (o.top + o.height / 2) - (p.top + p.height / 2),
+    sx: Math.max(0.05, o.width / p.width),
+    sy: Math.max(0.05, o.height / p.height),
+  };
 }
 
 // Oeffnet die bildschirmfuellende Geraete-Detailseite als Overlay im
 // SELBEN Fenster (Dietmar, 28.08.2026 - dritter Anlauf: window.open() in
-// einem neuen Tab vermied zwar das Platzproblem, aber "richtig geil" waere
-// es, wenn die Detailseite genau wie ein Strudel aus dem angeklickten
-// Knoten herausgequetscht wuerde und beim Schliessen wieder darin
-// verschwindet). Laedt die eigenstaendige Detailseite (gleicher Inhalt wie
-// im eigenen Tab) per <iframe> - kein Tab-Wechsel, keine Kollision mit
-// Symcons Titelzeile. Der Schliessen-Button der Detailseite meldet sich
-// im Overlay per postMessage ab (siehe window "message"-Listener unten).
-// Ohne registrierten WebHook (WebHook-Control-Instanz fehlt) kein
-// Klick-Ziel - dann still nichts tun.
+// einem neuen Tab vermied zwar das Platzproblem). Laedt die eigenstaendige
+// Detailseite (gleicher Inhalt wie im eigenen Tab) per <iframe> - kein
+// Tab-Wechsel, keine Kollision mit Symcons Titelzeile. Der
+// Schliessen-Button der Detailseite meldet sich im Overlay per
+// postMessage ab (siehe window "message"-Listener unten). Ohne
+// registrierten WebHook (WebHook-Control-Instanz fehlt) kein Klick-Ziel -
+// dann still nichts tun.
 //
-// Lochziel = Bildschirmposition des angeklickten KNOTEN-ELEMENTS selbst
-// (dessen eigene getBoundingClientRect()-Mitte), NICHT die Klick-Koordinate
-// aus dem Event. Fund 28.08.2026: mit der Event-Koordinate landete das Loch
-// in der Praxis immer auf dem Haus-Knoten in der Mitte, unabhaengig vom
-// tatsaechlich angeklickten Knoten - robuster ist deshalb, den Knoten
-// direkt zu uebergeben und seine eigene Position zu vermessen.
+// Morph-Ursprung = das angeklickte KNOTEN-ELEMENT selbst (dessen eigene
+// getBoundingClientRect()), NICHT die Klick-Koordinate aus dem Event -
+// robuster gegenueber Layout-Eigenheiten und noetig, damit
+// closeDeviceDetail() denselben Knoten fuer den Rueckweg wiederfindet.
 function openDeviceDetail(detailKey, originEl) {
   if (!HOOK_PATH) return;
+  LAST_ORIGIN_EL = originEl || null;
   const overlay = document.getElementById('detailOverlay');
   const panel = document.getElementById('detailPanel');
   const frame = document.getElementById('detailFrame');
   overlay.style.display = 'flex';
+  panel.classList.remove('closingMorph');
+  // reflow erzwingen: 'display:flex' muss layoutet sein, bevor wir sowohl
+  // die (natuerliche) Panel-Groesse als auch die Knotenposition vermessen.
+  void overlay.offsetWidth;
+  const t = panelMorphTransform(panel, originEl);
+  panel.style.transition = 'none';
+  panel.style.transform = 'translate(' + t.dx + 'px,' + t.dy + 'px) scale(' + t.sx + ',' + t.sy + ')';
+  panel.style.borderRadius = '50%';
+  void panel.offsetWidth; // erzwingt Anwendung des Start-Transforms vor dem Zuruecksetzen der transition
   requestAnimationFrame(() => {
-    const r = panel.getBoundingClientRect();
-    const nr = originEl ? originEl.getBoundingClientRect() : null;
-    const holeX = nr ? (nr.left + nr.width / 2 - r.left) : r.width / 2;
-    const holeY = nr ? (nr.top + nr.height / 2 - r.top) : r.height / 2;
-    injectSuckKeyframes(simulatePanelSuck(r.width, r.height, holeX, holeY));
-    panel.classList.remove('closing');
-    // reflow erzwingen, damit ein Neustart derselben Animation (schneller
-    // Doppelklick auf verschiedene Knoten) wieder von vorn abspielt.
-    void panel.offsetWidth;
-    panel.classList.add('opening');
+    panel.style.transition = '';
+    overlay.classList.add('visible');
+    panel.style.transform = 'translate(0,0) scale(1,1)';
+    panel.style.borderRadius = '16px';
     frame.src = HOOK_PATH + '?detail=' + encodeURIComponent(detailKey);
   });
 }
@@ -1056,14 +947,38 @@ function closeDeviceDetail() {
   const overlay = document.getElementById('detailOverlay');
   const panel = document.getElementById('detailPanel');
   if (overlay.style.display !== 'flex') return;
-  panel.classList.remove('opening');
-  panel.classList.add('closing');
-  setTimeout(() => { // Dauer muss zur CSS-Animation (.9s) passen
+  // Knotenposition JETZT neu vermessen (nicht die von openDeviceDetail()
+  // gecachte) - falls sich waehrend die Detailseite offen war am
+  // Flow-Diagramm etwas verschoben hat (neue Werte, andere Anzahl
+  // Geraete), morpht das Panel trotzdem an die aktuell richtige Stelle
+  // zurueck. Ist der Ursprungsknoten nicht mehr vorhanden (z.B. Geraet
+  // ausgeblendet), faellt panelMorphTransform() auf ein kleines
+  // Verschwinden zur Panel-Mitte zurueck statt einen Fehler zu werfen.
+  const t = panelMorphTransform(panel, LAST_ORIGIN_EL && document.body.contains(LAST_ORIGIN_EL) ? LAST_ORIGIN_EL : null);
+  overlay.classList.remove('visible');
+  panel.classList.add('closingMorph');
+  panel.style.transform = 'translate(' + t.dx + 'px,' + t.dy + 'px) scale(' + t.sx + ',' + t.sy + ')';
+  panel.style.borderRadius = '50%';
+  setTimeout(() => { // Dauer muss zur CSS-Transition (.55s) passen
     overlay.style.display = 'none';
-    panel.classList.remove('closing');
+    panel.classList.remove('closingMorph');
+    panel.style.transition = 'none';
+    panel.style.transform = '';
+    panel.style.borderRadius = '';
+    void panel.offsetWidth;
+    panel.style.transition = '';
     document.getElementById('detailFrame').src = 'about:blank';
-  }, 920);
+  }, 580);
 }
+window.addEventListener('message', function (e) {
+  if (e.data === 'nrgdash-detail-close') closeDeviceDetail();
+});
+document.getElementById('detailOverlay').addEventListener('click', function (e) {
+  if (e.target === this) closeDeviceDetail();
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') closeDeviceDetail();
+});
 window.addEventListener('message', function (e) {
   if (e.data === 'nrgdash-detail-close') closeDeviceDetail();
 });
