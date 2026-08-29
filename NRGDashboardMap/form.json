@@ -79,6 +79,11 @@
       "type": "Button",
       "caption": "Stil zurücksetzen",
       "onClick": "NRGDASHMAP_ResetStyle($id);"
+    },
+    {
+      "type": "Button",
+      "caption": "Einführungs-Tour erneut anzeigen",
+      "onClick": "NRGDASHMAP_ResetTour($id);"
     }
   ],
   "status": [

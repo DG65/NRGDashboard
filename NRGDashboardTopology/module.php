@@ -47,6 +47,15 @@ class NRGDashboardTopology extends IPSModule
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('PartnerNamesCache', '[]');
 
+        // Einfuehrungs-Tour bei erster Benutzung (29.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig (nicht nur Konsole, da die Kartenfeinheiten gerade dort
+        // erlebt werden). Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHTOPO_Render($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
@@ -113,6 +122,14 @@ class NRGDashboardTopology extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Einfuehrungs-Tour bestaetigt (29.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         $payload = $this->buildPayload();
         $this->updateInstanceStatus($payload);
         if (isset($_GET['json'])) {
@@ -296,6 +313,13 @@ class NRGDashboardTopology extends IPSModule
         $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
     }
 
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour - fuer den Fall, dass
+     *  ein Nutzer sich die Feinheiten nochmal zeigen lassen will. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
+    }
+
     /**
      * Fuegt "Was ist Neu" (versionsscharf dismissible) und den Forum-Hinweis
      * (einmalig dismissible) um die statische form.json herum ein, traegt die
@@ -451,6 +475,9 @@ class NRGDashboardTopology extends IPSModule
             'nodes'        => $nodes,
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            'hookPath'  => '/hook/nrgdashtopology' . $this->InstanceID,
+            // Einfuehrungs-Tour bei erster Benutzung (29.08.2026).
+            'showTour'  => !$this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 }

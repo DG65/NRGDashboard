@@ -66,8 +66,19 @@ class NRGDashboardMap extends IPSModule
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('CategoryCache', '{}');
 
+        // Einfuehrungs-Tour bei erster Benutzung (29.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, in der
+        // WebFront-Karte selbst (nicht nur Konsole, da die 3D-Feinheiten
+        // gerade dort erlebt werden). Bestaetigung kommt ueber den WebHook
+        // zurueck (ProcessHookData(), ?dismissTour=1) - die Karte ist ein
+        // direkt generiertes HTML-Dokument in einer ~HTMLBox-Variable ohne
+        // sonstigen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
+
         $this->RegisterVariableString('MapHTML', 'NRG-Stack Map', '~HTMLBox');
         $this->RegisterTimer('NRGDASHMAP_Discover', 0, 'NRGDASHMAP_Discover($_IPS[\'TARGET\']);');
+        $this->RegisterHook('/hook/nrgdashmap' . $this->InstanceID);
         $this->SetStatus(102);
     }
 
@@ -134,6 +145,60 @@ class NRGDashboardMap extends IPSModule
     {
         $this->UpdateFormField('ColorBackground', 'value', self::DEF_BACKGROUND);
         $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
+    }
+
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour - fuer den Fall, dass
+     *  ein Nutzer sich die Feinheiten der 3D-Karte nochmal zeigen lassen
+     *  will. Regeneriert die Karte sofort, damit die Tour ohne Warten auf
+     *  den naechsten Discovery-Zyklus wieder erscheint. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
+        $this->Discover();
+    }
+
+    /**
+     * Nimmt die Bestaetigung der Einfuehrungs-Tour entgegen (per fetch()
+     * aus der in GenerateHTML() erzeugten Karte selbst - 1:1 Muster
+     * NRGDashboardTile::ProcessHookData()). Die Karte hat als direkt
+     * generiertes HTML-Dokument in einer ~HTMLBox-Variable sonst keinen
+     * Rueckkanal in die Instanz.
+     */
+    public function ProcessHookData()
+    {
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
+    }
+
+    /** WebHook beim WebHook-Control registrieren (Standard-Muster, 1:1 aus NRGDashboardTile). */
+    private function RegisterHook(string $WebHook): void
+    {
+        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
+        if (count($ids) === 0) {
+            return;
+        }
+        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
+        if (!is_array($hooks)) {
+            $hooks = [];
+        }
+        foreach ($hooks as $index => $hook) {
+            if ($hook['Hook'] === $WebHook) {
+                if ((int) $hook['TargetID'] === $this->InstanceID) {
+                    return;
+                }
+                $hooks[$index]['TargetID'] = $this->InstanceID;
+                IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
+                IPS_ApplyChanges($ids[0]);
+                return;
+            }
+        }
+        $hooks[] = ['Hook' => $WebHook, 'TargetID' => $this->InstanceID];
+        IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
+        IPS_ApplyChanges($ids[0]);
     }
 
     /**
@@ -422,6 +487,8 @@ class NRGDashboardMap extends IPSModule
         $font = $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT));
         $bgCss = $bg !== '' ? $bg : '#1a1a1a';
         $fontCss = $font !== '' ? $font : 'system-ui';
+        $hookPathJs = json_encode('/hook/nrgdashmap' . $this->InstanceID);
+        $showTour = (!$this->ReadAttributeBoolean('TourSeen')) ? 'true' : 'false';
 
         return <<<HTML
 <!DOCTYPE html>
@@ -467,6 +534,44 @@ class NRGDashboardMap extends IPSModule
   }
   #tooltip b { font-weight: 700; }
   #tooltip .tt-sub { opacity: .75; font-size: 10.5px; }
+
+  /* Einfuehrungs-Tour bei erster Benutzung (29.08.2026, Dietmar: "eine
+     Tour die bei der ersten Benutzung eingeblendet und nur per Haken
+     ausgeblendet werden kann"). Bewusst KEIN X/Escape zum Wegklicken -
+     nur der Haken-Button am Ende jedes Schritts markiert die Tour als
+     gesehen. */
+  .tour-overlay {
+    position: absolute; inset: 0; z-index: 10; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(10,11,14,0.72);
+    font-family: {$fontCss}, system-ui;
+  }
+  .tour-overlay.show { display: flex; }
+  .tour-card {
+    max-width: 340px; width: calc(100% - 48px);
+    padding: 18px 20px 16px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    color: #eef2f6;
+  }
+  .tour-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .tour-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.2s ease, transform 0.2s ease; }
+  .tour-dot.active { background: #6cb4ff; transform: scale(1.3); }
+  .tour-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .tour-text { font-size: 12.5px; line-height: 1.5; color: #b7c1cc; text-align: center; }
+  .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  .tour-btn {
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.14);
+    font-family: {$fontCss}, system-ui; font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.06); color: #eef2f6;
+  }
+  .tour-btn:hover { background: rgba(255,255,255,0.12); }
+  .tour-btn-ghost { color: #b7c1cc; }
+  .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
+  .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
+  .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -474,6 +579,19 @@ class NRGDashboardMap extends IPSModule
 <div id="labels"></div>
 <div id="info"></div>
 <div id="tooltip"></div>
+
+<div id="tourOverlay" class="tour-overlay">
+  <div class="tour-card">
+    <div class="tour-dots" id="tourDots"></div>
+    <div class="tour-title" id="tourTitle"></div>
+    <div class="tour-text" id="tourText"></div>
+    <div class="tour-nav">
+      <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
+      <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
+      <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+    </div>
+  </div>
+</div>
 
 <script>
 $three
@@ -491,6 +609,22 @@ var CAT_LABEL = {
 
 var nodesData = $nodes;
 var edgesData = $edges;
+var HOOK_PATH = {$hookPathJs};
+var SHOW_TOUR = {$showTour};
+
+// Einfuehrungs-Tour bei erster Benutzung (29.08.2026) - EIN Schritt je
+// echter Feinheit der 3D-Karte, siehe module.php GenerateHTML()-Docblock.
+var TOUR_SHOWN_LOCAL = false;
+var TOUR_STEP = 0;
+var TOUR_STEPS = [
+  { title: 'Willkommen bei der NRG-Stack Karte', text: 'Diese 3D-Karte zeigt den gesamten Verbund raeumlich: der Wechselrichter im Zentrum, alle Geraete-Kategorien radial darum. Alle Geraete werden automatisch ueber die installierten Partnermodule gefunden - keine manuelle Verknuepfung noetig.' },
+  { title: 'Wechselrichter als Mittelpunkt', text: 'Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Straenge und Batterie haengen direkt an ihm.' },
+  { title: 'Sammelknoten bei mehreren Instanzen', text: 'Gibt es mehrere Geraete einer Kategorie (z. B. zwei Netzzaehler oder zwei Wallboxen), erscheint EIN Cluster-Knoten auf dem Hauptring - die einzelnen Instanzen faechern sich lokal weiter aussen auf. Das haelt die Karte uebersichtlich, egal wie viele Zaehler dazukommen.' },
+  { title: 'Jede MeterHub-Zuordnung sichtbar', text: 'Nicht nur Netz und Hausverbrauch: auch Waermepumpe, Herd, Carport-Verbraucher & Co. aus MeterHub erscheinen als eigener Knoten in der Kategorie „Verbraucher".' },
+  { title: 'Drehen und Zoomen', text: 'Mit gedrueckter Maustaste ziehen, um die Karte zu drehen - die Drehung klingt nach dem Loslassen sanft aus, statt abrupt zu stoppen. Mit dem Mausrad zoomen.' },
+  { title: 'Details per Hover', text: 'Fahren Sie mit der Maus ueber einen Knoten, um Bezeichnung, Kategorie und - bei Sammelknoten - die Anzahl der zusammengefassten Instanzen zu sehen.' },
+  { title: 'Farbige Sektoren am Boden', text: 'Jede Kategorie bekommt eine dezente, transparente Bodenflaeche in ihrer Farbe - so bleibt die Gruppierung auch beim Drehen sofort erkennbar, ganz ohne Verbindungslinien lesen zu muessen.' }
+];
 
 var R_TYPE = 42;    // Hauptring: Einzelinstanz oder Cluster-Hub
 var R_MEMBER = 68;  // Faecher-Ring: Mitglieder innerhalb eines Clusters
@@ -817,6 +951,50 @@ function animate() {
     }
   });
 }
+
+function renderTour() {
+  var dots = document.getElementById('tourDots');
+  dots.innerHTML = '';
+  TOUR_STEPS.forEach(function (_, i) {
+    var d = document.createElement('div');
+    d.className = 'tour-dot' + (i === TOUR_STEP ? ' active' : '');
+    dots.appendChild(d);
+  });
+  var step = TOUR_STEPS[TOUR_STEP];
+  document.getElementById('tourTitle').textContent = step.title;
+  document.getElementById('tourText').textContent = step.text;
+  var prevBtn = document.getElementById('tourPrev');
+  var nextBtn = document.getElementById('tourNext');
+  prevBtn.disabled = TOUR_STEP === 0;
+  var isLast = TOUR_STEP === TOUR_STEPS.length - 1;
+  nextBtn.style.display = isLast ? 'none' : '';
+}
+
+function showTourOverlay() {
+  if (TOUR_SHOWN_LOCAL) { return; }
+  TOUR_SHOWN_LOCAL = true;
+  TOUR_STEP = 0;
+  renderTour();
+  document.getElementById('tourOverlay').classList.add('show');
+}
+
+function dismissTour() {
+  document.getElementById('tourOverlay').classList.remove('show');
+  if (HOOK_PATH) {
+    fetch(HOOK_PATH + '?dismissTour=1').catch(function () {});
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.getElementById('tourPrev').addEventListener('click', function () {
+    if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
+  });
+  document.getElementById('tourNext').addEventListener('click', function () {
+    if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
+  });
+  document.getElementById('tourDone').addEventListener('click', dismissTour);
+  if (SHOW_TOUR) { showTourOverlay(); }
+});
 
 if (typeof THREE !== 'undefined') {
   initScene();

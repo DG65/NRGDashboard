@@ -46,6 +46,46 @@
   #tooltip .tt-sub { opacity: .75; font-size: 10.5px; font-weight: 500; }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #4caf50; }
   .empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; text-align: center; font-size: 13px; opacity: .75; }
+
+  /* Einfuehrungs-Tour (29.08.2026, Dietmar: "eine Tour die bei der ersten
+     Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
+     Bewusst KEIN X/Escape zum Wegklicken - nur der Haken-Button am Ende
+     jedes Schritts markiert die Tour als gesehen. Modul kennt keine
+     --text/--textmuted/--nc-Variablen (anders als NRGDashboardTile) -
+     Farben deshalb direkt an der bestehenden Frosted-Glass-Palette
+     dieses Moduls ausgerichtet. */
+  .tour-overlay {
+    position: absolute; inset: 0; z-index: 10; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(10,11,14,0.72);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .tour-overlay.show { display: flex; }
+  .tour-card {
+    max-width: 340px; width: calc(100% - 48px);
+    padding: 18px 20px 16px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    color: #eef2f6;
+  }
+  .tour-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .tour-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.2s ease, transform 0.2s ease; }
+  .tour-dot.active { background: #6cb4ff; transform: scale(1.3); }
+  .tour-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .tour-text { font-size: 12.5px; line-height: 1.5; color: rgba(220,226,232,.8); text-align: center; }
+  .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  .tour-btn {
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.14);
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.06); color: #eef2f6;
+  }
+  .tour-btn:hover { background: rgba(255,255,255,0.12); }
+  .tour-btn-ghost { color: rgba(220,226,232,.8); }
+  .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
+  .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
+  .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -68,6 +108,23 @@
       <span id="summaryText"></span>
     </div>
     <div id="tooltip"></div>
+  </div>
+
+  <!-- Einfuehrungs-Tour (29.08.2026, Dietmar: "eine Tour die bei der ersten
+       Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
+       Bewusst KEIN X/Escape zum Wegklicken - nur der Haken-Button am Ende
+       jedes Schritts markiert die Tour als gesehen. -->
+  <div id="tourOverlay" class="tour-overlay">
+    <div class="tour-card">
+      <div class="tour-dots" id="tourDots"></div>
+      <div class="tour-title" id="tourTitle"></div>
+      <div class="tour-text" id="tourText"></div>
+      <div class="tour-nav">
+        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
+        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
+        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -106,6 +163,69 @@
     };
 
     var gradientCache = {};
+    var HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php) - fuer die Tour-Bestaetigung per fetch().
+
+    // Einfuehrungs-Tour bei erster Benutzung (29.08.2026, Dietmar: "eine
+    // Tour die bei der ersten Benutzung eingeblendet und nur per Haken
+    // ausgeblendet werden kann") - Muster/Wortlaut 1:1 aus NRGDashboardTile
+    // uebernommen. TOUR_SHOWN_LOCAL verhindert erneutes Aufpoppen innerhalb
+    // derselben Sitzung, bevor die Server-Bestaetigung zurueckkommt.
+    var TOUR_SHOWN_LOCAL = false;
+    var TOUR_STEP = 0;
+    var TOUR_STEPS = [
+      { title: 'Willkommen bei der NRG-Stack Topologie', text: 'Diese Kachel zeigt den gesamten Modul-Verbund als radiale Karte - jedes installierte Partnermodul erscheint automatisch als eigener Knoten, ohne manuelle Verknüpfung.' },
+      { title: 'Immer voll ausgefüllt', text: 'Die Darstellung probiert beim Zeichnen automatisch alle Drehwinkel durch und wählt die Ausrichtung, die den verfügbaren Platz der Kachel am besten ausfüllt - kein Verschnitt durch ungünstige Seitenverhältnisse.' },
+      { title: 'Knoten bleiben immer gleich groß', text: 'Anders als man erwarten würde, schrumpfen die Knoten nicht mit steigender Modulanzahl - stattdessen wächst der Abstand zwischen ihnen. Die Karte bleibt dadurch bei 3 wie bei 15 Partnern gleich gut lesbar.' },
+      { title: 'Lesbare Beschriftungen, egal wie lang', text: 'Kurze Namen wie „WB 1" bleiben kompakt, lange wie „InverterHub WR1 (GoodWe)" weiten die Beschriftung automatisch auf oder brechen zweizeilig um - statt wie sonst üblich einfach abgeschnitten zu werden.' },
+      { title: 'Sektor-Einfärbung', text: 'Jede Modul-Kategorie bekommt eine dezente, transparente Tortenstück-Fläche im Hintergrund - die Gruppierung bleibt so auch ohne Verbindungslinien sofort erkennbar.' },
+      { title: 'Details per Hover', text: 'Fahren Sie mit der Maus über einen Knoten, um weitere Informationen dazu einzublenden.' }
+    ];
+
+    function renderTour() {
+      var dots = document.getElementById('tourDots');
+      dots.innerHTML = '';
+      TOUR_STEPS.forEach(function (_, i) {
+        var d = document.createElement('div');
+        d.className = 'tour-dot' + (i === TOUR_STEP ? ' active' : '');
+        dots.appendChild(d);
+      });
+      var step = TOUR_STEPS[TOUR_STEP];
+      document.getElementById('tourTitle').textContent = step.title;
+      document.getElementById('tourText').textContent = step.text;
+      var prevBtn = document.getElementById('tourPrev');
+      var nextBtn = document.getElementById('tourNext');
+      prevBtn.disabled = TOUR_STEP === 0;
+      var isLast = TOUR_STEP === TOUR_STEPS.length - 1;
+      nextBtn.style.display = isLast ? 'none' : '';
+    }
+
+    function showTourOverlay() {
+      if (TOUR_SHOWN_LOCAL) { return; }
+      TOUR_SHOWN_LOCAL = true;
+      TOUR_STEP = 0;
+      renderTour();
+      document.getElementById('tourOverlay').classList.add('show');
+    }
+
+    // Bewusst KEIN X/Escape zum Wegklicken (Dietmar: "nur per Haken
+    // ausgeblendet werden kann") - dismissTour() ist der EINZIGE Weg, die
+    // Tour zu schliessen, und meldet das per WebHook an die Instanz zurueck.
+    function dismissTour() {
+      document.getElementById('tourOverlay').classList.remove('show');
+      if (HOOK_PATH) {
+        fetch(HOOK_PATH + '?dismissTour=1').catch(function () {});
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('tourPrev').addEventListener('click', function () {
+        if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
+      });
+      document.getElementById('tourNext').addEventListener('click', function () {
+        if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
+      });
+      document.getElementById('tourDone').addEventListener('click', dismissTour);
+    });
 
     function svgEl(tag, attrs) {
       var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -443,6 +563,8 @@
 
       if (d && d.bg) { document.body.style.background = d.bg; }
       if (d && d.font) { document.documentElement.style.setProperty('--font', d.font); document.body.style.fontFamily = d.font; }
+      if (d && d.hookPath) { HOOK_PATH = d.hookPath; }
+      if (d && d.showTour) { showTourOverlay(); }
 
       if (!d || !d.ok) {
         svg.style.display = 'none';
