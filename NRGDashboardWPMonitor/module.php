@@ -82,6 +82,13 @@ class NRGDashboardWPMonitor extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig. Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHWPMON_Render($_IPS[\'TARGET\']);');
     }
@@ -143,6 +150,14 @@ class NRGDashboardWPMonitor extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create()/dismissTour().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         $payload = $this->buildPayload();
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
@@ -226,6 +241,12 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
         $this->UpdateFormField('ReviewHint', 'visible', false);
+    }
+
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -645,6 +666,11 @@ class NRGDashboardWPMonitor extends IPSModule
             ],
             'days'   => $days,
             'energy' => $energy,
+            // Bestaetigung per WebHook, siehe ProcessHookData()/dismissTour()
+            // in module.html - die Kachel selbst hat als sandboxed HTML-SDK-
+            // Tile keinen anderen Rueckkanal in die Instanz.
+            'hookPath' => '/hook/nrgdashwpmonitor' . $this->InstanceID,
+            'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 }

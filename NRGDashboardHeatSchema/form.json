@@ -263,6 +263,11 @@
           "caption": "Heizkörper/Fußbodenheizung je Heizkreis, Anlagenbauart (Split/Monoblock, Puffer, Warmwasser-Tank), Wasserfluss-Darstellung und Simulation: als Schalter direkt unter dieser Instanz im Objektbaum bzw. in der aufgezogenen Kachelansicht (Doppelpfeil), nicht hier im Formular."
         }
       ]
+    },
+    {
+      "type": "Button",
+      "caption": "Einführungs-Tour erneut anzeigen",
+      "onClick": "NRGDASHHEAT_ResetTour($id);"
     }
   ]
 }

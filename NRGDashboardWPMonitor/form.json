@@ -24,6 +24,11 @@
         {
           "type": "Label",
           "caption": "✨ Feinheiten: Die Kachel startet direkt mit der heutigen Tagesansicht samt Vorgestern/Gestern/Heute-Schnellwahl - kein leerer Startzustand."
+        },
+        {
+          "type": "Button",
+          "caption": "Einführungs-Tour erneut anzeigen",
+          "onClick": "NRGDASHWPMON_ResetTour($id);"
         }
       ]
     },

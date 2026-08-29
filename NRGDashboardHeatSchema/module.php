@@ -100,6 +100,13 @@ class NRGDashboardHeatSchema extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig. Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
         // "Hat wirklich 2 Luefter"-Gedaechtnis (HeishaMon-Fund, 25.08.2026):
         // fan2SpeedID liegt bei JEDER HeishaMon-Installation an einer festen
         // Byte-Position im CN-CNT-Protokoll und wird IMMER dekodiert/
@@ -373,6 +380,14 @@ class NRGDashboardHeatSchema extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         $payload = $this->buildPayload();
         $this->updateInstanceStatus($payload);
         if (isset($_GET['json'])) {
@@ -451,6 +466,12 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
         $this->UpdateFormField('NewsPanel', 'visible', false);
+    }
+
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
     }
 
     public function DismissReviewHint(): void
@@ -812,8 +833,10 @@ class NRGDashboardHeatSchema extends IPSModule
         $heatpumps = $this->DiscoverHeatpumps();
         if (count($heatpumps) === 0) {
             return [
-                'ok'    => false,
-                'error' => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren, oder im Formular unter "Manuelle Datenanbindung" eigene Variablen verknüpfen.',
+                'ok'       => false,
+                'error'    => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren, oder im Formular unter "Manuelle Datenanbindung" eigene Variablen verknüpfen.',
+                'hookPath' => '/hook/nrgdashheatschema' . $this->InstanceID,
+                'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
             ];
         }
         $meterhubPower = $this->ResolveMeterHubPower();
@@ -989,6 +1012,8 @@ class NRGDashboardHeatSchema extends IPSModule
             'dhwLiters'   => (int) $this->GetValue('DhwLiters'),
             'renderedAt'  => time(),
             'units'       => $units,
+            'hookPath'    => '/hook/nrgdashheatschema' . $this->InstanceID,
+            'showTour'    => !$this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 
