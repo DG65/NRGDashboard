@@ -350,10 +350,74 @@
   .ycSum { text-align: right; opacity: .8; margin: 4px 0; }
   .ycSum.bad { color: #ff8a80; }
   .ycDialogFoot { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; }
+
+  /* Einfuehrungs-Tour bei erster Benutzung (29.08.2026), Muster 1:1 aus
+     NRGDashboardTile - siehe module.php::ProcessHookData()/ResetTour() und
+     handleMessage()/showTourOverlay() weiter unten. Keine CSS-Variablen in
+     diesem Modul (siehe #tabs/.ycDialog oben) - Farben direkt an den
+     dunklen Grundton dieser Kachel angepasst, body.light dreht sie um. */
+  .tour-overlay {
+    position: absolute; inset: 0; z-index: 950; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(10,11,14,0.72);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .tour-overlay.show { display: flex; }
+  .tour-card {
+    max-width: 340px; width: calc(100% - 48px);
+    padding: 18px 20px 16px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    color: #e8e8e8;
+  }
+  body.light .tour-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(240,242,246,0.98));
+    border-color: rgba(0,0,0,0.10);
+    color: #222;
+  }
+  .tour-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+  .tour-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.2s ease, transform 0.2s ease; }
+  body.light .tour-dot { background: rgba(0,0,0,0.18); }
+  .tour-dot.active { background: #6cb4ff; transform: scale(1.3); }
+  .tour-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+  .tour-text { font-size: 12.5px; line-height: 1.5; color: #9aa4b0; text-align: center; }
+  body.light .tour-text { color: #555; }
+  .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  .tour-btn {
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.14);
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.06); color: #e8e8e8;
+  }
+  body.light .tour-btn { border-color: rgba(0,0,0,0.14); background: rgba(0,0,0,0.05); color: #222; }
+  .tour-btn:hover { background: rgba(255,255,255,0.12); }
+  body.light .tour-btn:hover { background: rgba(0,0,0,0.10); }
+  .tour-btn-ghost { color: #9aa4b0; }
+  body.light .tour-btn-ghost { color: #666; }
+  .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
+  .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
+  .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
 </style>
 </head>
 <body>
   <div class="wrap">
+    <!-- Einfuehrungs-Tour (29.08.2026, Dietmar: "eine Tour die bei der ersten
+         Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
+         Bewusst KEIN X/Escape zum Wegklicken - nur der Haken-Button am Ende
+         jedes Schritts markiert die Tour als gesehen. -->
+    <div id="tourOverlay" class="tour-overlay">
+      <div class="tour-card">
+        <div class="tour-dots" id="tourDots"></div>
+        <div class="tour-title" id="tourTitle"></div>
+        <div class="tour-text" id="tourText"></div>
+        <div class="tour-nav">
+          <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
+          <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
+          <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+        </div>
+      </div>
+    </div>
     <div id="bar">
       <select id="type" class="sel">
         <option value="day">Tag (Verlauf)</option>
@@ -406,6 +470,13 @@
     // Oeffnen der Kachel bleibt "heute" (Dietmars Wunsch, 28.07.2026:
     // "morgen" per Vor-Navigation erreichbar machen, ohne den Standard-
     // Einstieg fuer die anderen Reiter zu verschieben).
+    // Rueckkanal fuer die Einfuehrungs-Tour (29.08.2026) - als sandboxed
+    // HTML-SDK-Tile hat diese Kachel keinen anderen Weg, der Instanz etwas
+    // mitzuteilen, als ihren eigenen WebHook (module.php::ProcessHookData(),
+    // ?dismissTour=1). Kommt aus d.hookPath (nur im WebFront gesetzt - die
+    // eigenstaendige IPSView/Browser-Seite braucht den Ruecklauf nicht, dort
+    // ist showTour ohnehin immer false, siehe ProcessHookData()).
+    var HOOK_PATH = null;
     var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
     // Tage ausserhalb des kleinen, eager mitgeschickten Fensters (Dietmar,
     // 23.08.2026: "warum komme ich beim Strompreis nur bis zum 17.08.2026
@@ -3730,6 +3801,8 @@
         return;
       }
       lastData = d;
+      if (d.hookPath) { HOOK_PATH = d.hookPath; }
+      if (d.showTour) { showTourOverlay(); }
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');
       loadVis();
       loadTabsCollapsed(d.uid || 'x');
@@ -3885,6 +3958,87 @@
     window.addEventListener('resize', function () {
       if (chart) { setTimeout(sizeChart, 60); }
       setTimeout(function () { sizeAmpelChart('ampelStrip'); }, 60);
+    });
+
+    // Einfuehrungs-Tour bei erster Benutzung (29.08.2026), Muster 1:1 aus
+    // NRGDashboardTile - siehe module.php::ProcessHookData()/ResetTour().
+    // Jeder Schritt beschreibt ein ECHTES, im Code vorhandenes Detail dieses
+    // Moduls (keine erfundenen/generischen Punkte) - siehe README.md,
+    // Abschnitt "PV-Monitoring (NRGDashboardPVMonitor)".
+    var TOUR_SHOWN_LOCAL = false;
+    var TOUR_STEP = 0;
+    var TOUR_STEPS = [
+      {
+        title: 'Diese Reiterleiste räumt sich selbst auf',
+        text: 'Kein PV-Monitoring wie jedes andere: Reiter ohne passende Datenquelle werden komplett ausgeblendet – kommt später z. B. ein Batteriespeicher oder eine Wallbox dazu, erscheint der Reiter von selbst, ohne dass irgendwo eine Einstellung geändert werden müsste. Reiter mit Quelle, aber gerade ohne aktuelle Daten, färben sich leicht rot – so sieht man sofort, was gerade klemmt.'
+      },
+      {
+        title: 'Die Leiste schwebt, statt Platz zu fressen',
+        text: 'Über den Doppelpfeil neben der Zeitsteuerung lässt sich die Reiterleiste ein- und ausklappen. Sie legt sich dabei ÜBER das stehende Diagramm statt das Layout zu verschieben, und klappt nach der Auswahl von selbst wieder zu. Hinter dem Pfeil warten vier wählbare Animationen – darunter ein physikalisch simuliertes „Einsaugen ins schwarze Loch“ mit 20 Partikeln auf Spiralbahnen.'
+      },
+      {
+        title: 'Kleine Sonnen, die wissen, wie das Wetter wird',
+        text: 'Über der Zeitachse laufen kleine Sonnen zwischen Auf- und Untergang mit – ihre Höhe zeigt den echten Sonnenstand. Ist ein Prognose-Modul installiert, koppeln sich Größe und Helligkeit zusätzlich an die vorhergesagte PV-Leistung: An einem bewölkten Vormittag erscheinen die Sonnen blass, nicht strahlend. Auch im Tagesplan-Reiter zu sehen.'
+      },
+      {
+        title: 'Der Reiter heißt nur, was er auch kann',
+        text: 'Ohne angeschlossenen Einstrahlungssensor heißt der erste Reiter schlicht „Photovoltaik“ statt „PV & Einstrahlung“ – die Beschriftung verspricht nie mehr, als die Anlage tatsächlich liefert.'
+      },
+      {
+        title: 'Legenden, die mitrechnen',
+        text: 'Hinter PV-Erzeugung und Netzbezug stehen laufend aktualisierte Tages-, Monats- und Jahres-kWh, die sich immer auf den GERADE ANGEZEIGTEN Tag beziehen – beim Zurückblättern rechnen sie live mit. Der Netzbezug bevorzugt dabei echte Zählerstände des abrechnungsverbindlichen Zählers, wo vorhanden.'
+      },
+      {
+        title: 'Ehrliche Lücken statt erfundener Nullen',
+        text: 'Manche Abrechnungszähler (z. B. Inexogy) archivieren erst mit 15–45 Minuten Verzögerung. Statt diese Lücke stillschweigend als Nullverbrauch anzuzeigen, markiert der Strompreis-Reiter den betroffenen Zeitbereich schraffiert als „Zeitbereich ohne Bezugsdaten!“ – lieber ehrlich unvollständig als falsch vollständig.'
+      },
+      {
+        title: 'Auch außerhalb des Dashboards nutzbar',
+        text: 'Diese Kachel läuft zusätzlich als eigenständige Webseite über einen automatisch registrierten WebHook (Adresse im Dokumentations-Panel) – ideal für IPSView oder einen beliebigen Browser-Tab, mit automatischer Aktualisierung alle 30 Sekunden.'
+      }
+    ];
+
+    function renderTour() {
+      var dots = document.getElementById('tourDots');
+      dots.innerHTML = '';
+      TOUR_STEPS.forEach(function (_, i) {
+        var d = document.createElement('div');
+        d.className = 'tour-dot' + (i === TOUR_STEP ? ' active' : '');
+        dots.appendChild(d);
+      });
+      var step = TOUR_STEPS[TOUR_STEP];
+      document.getElementById('tourTitle').textContent = step.title;
+      document.getElementById('tourText').textContent = step.text;
+      var prevBtn = document.getElementById('tourPrev');
+      var nextBtn = document.getElementById('tourNext');
+      prevBtn.disabled = TOUR_STEP === 0;
+      var isLast = TOUR_STEP === TOUR_STEPS.length - 1;
+      nextBtn.style.display = isLast ? 'none' : '';
+    }
+
+    function showTourOverlay() {
+      if (TOUR_SHOWN_LOCAL) { return; }
+      TOUR_SHOWN_LOCAL = true;
+      TOUR_STEP = 0;
+      renderTour();
+      document.getElementById('tourOverlay').classList.add('show');
+    }
+
+    function dismissTour() {
+      document.getElementById('tourOverlay').classList.remove('show');
+      if (HOOK_PATH) {
+        fetch(HOOK_PATH + '?dismissTour=1').catch(function () {});
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('tourPrev').addEventListener('click', function () {
+        if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
+      });
+      document.getElementById('tourNext').addEventListener('click', function () {
+        if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
+      });
+      document.getElementById('tourDone').addEventListener('click', dismissTour);
     });
   </script>
 </body>

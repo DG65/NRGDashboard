@@ -96,6 +96,13 @@ class NRGDashboardPVMonitor extends IPSModule
         // Archiv selbst keinen Wert liefert (echte Messwerte haben immer
         // Vorrang). Format: {"2025": {"1": 436.0, "2": 464.94, ...}}.
         $this->RegisterAttributeString('ManualHistory', '{}');
+        // Einfuehrungs-Tour bei erster Benutzung (29.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig. Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
 
         // Animationsstil der einklappbaren Reiterleiste, waehlbar hinter
         // dem Doppelpfeil (Dietmar, 27.08.2026: "Mache doch alle 4 und
@@ -186,6 +193,14 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Einfuehrungs-Tour bestaetigt (29.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create()/dismissTour().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($this->buildPayload());
@@ -268,6 +283,12 @@ class NRGDashboardPVMonitor extends IPSModule
     public function DismissReviewHint(): void
     {
         $this->WriteAttributeString('ReviewHintDismissed', '1');
+    }
+
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -2540,6 +2561,11 @@ class NRGDashboardPVMonitor extends IPSModule
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            // Einfuehrungs-Tour (29.08.2026) - Rueckkanal fuer die
+            // Bestaetigung per WebHook, siehe ProcessHookData()/dismissTour()
+            // in module.html.
+            'hookPath' => '/hook/nrgdashpvmonitor' . $this->InstanceID,
+            'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 
