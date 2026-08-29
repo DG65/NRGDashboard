@@ -20,6 +20,11 @@
         {
           "type": "Label",
           "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+        },
+        {
+          "type": "Button",
+          "caption": "Einführungs-Tour erneut anzeigen",
+          "onClick": "NRGDASHHEAT_ResetTour($id);"
         }
       ]
     },
@@ -263,11 +268,6 @@
           "caption": "Heizkörper/Fußbodenheizung je Heizkreis, Anlagenbauart (Split/Monoblock, Puffer, Warmwasser-Tank), Wasserfluss-Darstellung und Simulation: als Schalter direkt unter dieser Instanz im Objektbaum bzw. in der aufgezogenen Kachelansicht (Doppelpfeil), nicht hier im Formular."
         }
       ]
-    },
-    {
-      "type": "Button",
-      "caption": "Einführungs-Tour erneut anzeigen",
-      "onClick": "NRGDASHHEAT_ResetTour($id);"
     }
   ]
 }

@@ -16,6 +16,11 @@
         {
           "type": "Label",
           "caption": "Mit der Maus ziehen zum Drehen (mit sanftem Ausklingen), Mausrad zum Zoomen."
+        },
+        {
+          "type": "Button",
+          "caption": "Einführungs-Tour erneut anzeigen",
+          "onClick": "NRGDASHMAP_ResetTour($id);"
         }
       ]
     },
@@ -79,11 +84,6 @@
       "type": "Button",
       "caption": "Stil zurücksetzen",
       "onClick": "NRGDASHMAP_ResetStyle($id);"
-    },
-    {
-      "type": "Button",
-      "caption": "Einführungs-Tour erneut anzeigen",
-      "onClick": "NRGDASHMAP_ResetTour($id);"
     }
   ],
   "status": [
