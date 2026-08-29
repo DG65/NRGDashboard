@@ -92,6 +92,13 @@ class NRGDashboardForecast extends IPSModule
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
+        // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig. Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
 
         // Kein eigener Timer mehr (1:1 wie Prognoses Energiebilanz): wir
         // lesen PVF_Today/LFC_Today & Co. jetzt direkt und reagieren rein
@@ -426,6 +433,14 @@ class NRGDashboardForecast extends IPSModule
      */
     public function ProcessHookData()
     {
+        // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
             echo $this->buildPayload();
@@ -466,6 +481,8 @@ class NRGDashboardForecast extends IPSModule
             'yMaxManual' => max(0.0, (float) $this->GetValue('YMaxManual')),
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
+            'hookPath'   => '/hook/nrgdashforecast' . $this->InstanceID,
+            'showTour'   => !$this->ReadAttributeBoolean('TourSeen'),
         ];
 
         return json_encode(array_merge($style, $this->trimToOwnSettings($this->buildFullDaysData())));
@@ -892,6 +909,12 @@ class NRGDashboardForecast extends IPSModule
     public function DismissReviewHint(): void
     {
         $this->WriteAttributeString('ReviewHintDismissed', '1');
+    }
+
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
     }
 
     /** Alle Doppelpfeil-Einstellungen auf den Modul-Default zuruecksetzen (Konsolen-Button). */

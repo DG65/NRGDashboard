@@ -62,6 +62,45 @@
         #scrollHintL span { left: 0; }
         #scrollHintR span { right: 0; }
         #scrollHintL span.show, #scrollHintR span.show { opacity: .92; }
+        /* Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
+           "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+           Haken ausgeblendet werden kann"). Bewusst mit fest hinterlegter
+           dunkler Kartenfarbe statt CSS-Theme-Variablen (die es in dieser
+           Kachel - anders als das restliche Rendering - nicht gibt; die
+           Textfarben hier werden sonst zur Laufzeit aus D.dark berechnet)
+           - die Karte bleibt so auf jedem Kachel-Hintergrund lesbar. */
+        .tour-overlay {
+            position: absolute; inset: 0; z-index: 10; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(10,11,14,0.72);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .tour-overlay.show { display: flex; }
+        .tour-card {
+            max-width: 340px; width: calc(100% - 48px);
+            padding: 18px 20px 16px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+            color: #e8edf2;
+        }
+        .tour-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 12px; }
+        .tour-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); transition: background 0.2s ease, transform 0.2s ease; }
+        .tour-dot.active { background: #6cb4ff; transform: scale(1.3); }
+        .tour-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+        .tour-text { font-size: 12.5px; line-height: 1.5; color: #b7c2cc; text-align: center; }
+        .tour-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+        .tour-btn {
+            padding: 7px 14px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.14);
+            font-family: inherit; font-size: 12px; font-weight: 600;
+            background: rgba(255,255,255,0.06); color: #e8edf2;
+        }
+        .tour-btn:hover { background: rgba(255,255,255,0.12); }
+        .tour-btn-ghost { color: #b7c2cc; }
+        .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
+        .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
+        .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
         #chart { width: 100%; height: 360px; }
         /* +5px Abstand zur X-Achsen-Zeitbeschriftung des Charts direkt darüber
            (Dietmars Feedback: zu eng, dadurch waren die Uhrzeiten schlecht
@@ -81,6 +120,23 @@
         </div>
         <div id="scrollHintL"><span>&lsaquo;</span></div>
         <div id="scrollHintR"><span>&rsaquo;</span></div>
+
+        <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
+             Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
+             Bewusst KEIN X/Escape zum Wegklicken - nur der Haken-Button am Ende
+             jedes Schritts markiert die Tour als gesehen. -->
+        <div id="tourOverlay" class="tour-overlay">
+            <div class="tour-card">
+                <div class="tour-dots" id="tourDots"></div>
+                <div class="tour-title" id="tourTitle"></div>
+                <div class="tour-text" id="tourText"></div>
+                <div class="tour-nav">
+                    <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
+                    <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
+                    <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -105,15 +161,102 @@
             };
         }
 
+        // Fuer die Tour-Bestaetigung (dismissTour, siehe unten) - kommt mit
+        // jeder Nachricht aus module.php (buildPayload()) neu mit.
+        var HOOK_PATH = null;
+
         function handleMessage(payload) {
             var data = (typeof payload === 'string') ? JSON.parse(payload) : payload;
             if (!data) { return; }
             lastData = data;
+            HOOK_PATH = data.hookPath || HOOK_PATH;
             // Hintergrundfarbe gilt für die GANZE Kachel/Seite, nicht nur das Diagramm.
             document.body.style.background = data.bg ? data.bg : 'transparent';
             document.documentElement.style.background = data.bg ? data.bg : 'transparent';
             render();
+            if (data.showTour) { showTourOverlay(); }
         }
+
+        // ---- Einfuehrungs-Tour (28.08.2026) -------------------------------
+        let TOUR_SHOWN_LOCAL = false;
+        let TOUR_STEP = 0;
+        const TOUR_STEPS = [
+            {
+                title: 'Diese Kachel merkt sich, was sie gestern versprochen hat',
+                text: 'Die meisten Prognose-Widgets zeigen nur "was kommt". Diese hier speichert zusätzlich einen Schnappschuss der Vortages-Prognose und legt ihn "Gestern" neben den tatsächlich gemessenen Verlauf – Sie sehen auf einen Blick, wie gut PV- und Verbrauchsprognose wirklich getroffen haben, nicht nur, was für heute erwartet wird.'
+            },
+            {
+                title: 'PV gegen Verbrauch – die Lücke ist Ihr Netzbezug',
+                text: 'Zwei Kurven in einem Chart: PV-Erzeugung und Hausverbrauch als Prognose (P50) über bis zu 5 Tage. Der Tooltip beim Antippen/Hovern zeigt zusätzlich den Saldo zur jeweiligen Uhrzeit – genau der EMS-Blick, ob Netzbezug oder Einspeisung ansteht.'
+            },
+            {
+                title: 'Unsicherheitsband bei der Lastprognose',
+                text: 'Um die Verbrauchskurve legt sich ein P10–P90-Band – die Bandbreite, in der die tatsächliche Last mit hoher Wahrscheinlichkeit liegt. Die PV-Prognose ist dagegen physikbasiert (kein Streubereich) und bleibt bewusst als reine Linie.'
+            },
+            {
+                title: 'Ist-Werte live überlagert',
+                text: 'Mit zwei eigenen Ist-Leistungsvariablen (Konsole: "Ist-Werte") erscheint der Momentanwert in der Legende, ein Punkt auf der "jetzt"-Linie und der bisherige Tagesverlauf als gestrichelte Linie – unter den Soll-kWh steht zusätzlich, was tatsächlich schon geflossen ist.'
+            },
+            {
+                title: 'Legende zum Klicken',
+                text: 'Ein Klick auf "PV" oder "Verbrauch" in der Legende blendet die jeweilige Kurve samt Band und Ist-Linie aus – praktisch, um bei überlagerten Kurven kurz nur eine Seite zu sehen.'
+            },
+            {
+                title: 'Mehr als 3 Tage? Es wird gescrollt, nicht gequetscht',
+                text: 'Ab mehr als 3 angezeigten Tagen wird das Diagramm proportional breiter statt die Kurven zusammenzudrücken – die Y-Achse links bleibt dabei beim Scrollen sichtbar stehen (Pfeile links/rechts zeigen an, dass es weitergeht).'
+            },
+            {
+                title: 'Zwei Diagramm-Engines zur Wahl',
+                text: 'ECharts (quelloffen, auch kommerziell nutzbar) oder Highcharts (nur privat/nicht-kommerziell) – umschaltbar direkt in der aufgezogenen Kachelansicht über den Doppelpfeil, ganz ohne Formular.'
+            },
+            {
+                title: 'Auch außerhalb von Symcon nutzbar',
+                text: 'Diese Kachel läuft zusätzlich als eigenständige Webseite mit Auto-Aktualisierung – ideal für IPSView per WebView/Popup oder einen beliebigen Browser im Netzwerk. Die Adresse findet sich im Konsolenformular unter "Dokumentation & Hilfe".'
+            }
+        ];
+
+        function renderTour() {
+            var dots = document.getElementById('tourDots');
+            dots.innerHTML = '';
+            TOUR_STEPS.forEach(function (_, i) {
+                var d = document.createElement('div');
+                d.className = 'tour-dot' + (i === TOUR_STEP ? ' active' : '');
+                dots.appendChild(d);
+            });
+            var step = TOUR_STEPS[TOUR_STEP];
+            document.getElementById('tourTitle').textContent = step.title;
+            document.getElementById('tourText').textContent = step.text;
+            var prevBtn = document.getElementById('tourPrev');
+            var nextBtn = document.getElementById('tourNext');
+            prevBtn.disabled = TOUR_STEP === 0;
+            var isLast = TOUR_STEP === TOUR_STEPS.length - 1;
+            nextBtn.style.display = isLast ? 'none' : '';
+        }
+
+        function showTourOverlay() {
+            if (TOUR_SHOWN_LOCAL) { return; }
+            TOUR_SHOWN_LOCAL = true;
+            TOUR_STEP = 0;
+            renderTour();
+            document.getElementById('tourOverlay').classList.add('show');
+        }
+
+        function dismissTour() {
+            document.getElementById('tourOverlay').classList.remove('show');
+            if (HOOK_PATH) {
+                fetch(HOOK_PATH + '?dismissTour=1').catch(function () {});
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('tourPrev').addEventListener('click', function () {
+                if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
+            });
+            document.getElementById('tourNext').addEventListener('click', function () {
+                if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
+            });
+            document.getElementById('tourDone').addEventListener('click', dismissTour);
+        });
 
         function pad(x) { return (x < 10 ? '0' : '') + x; }
         function kw(w) { return (w / 1000).toFixed(2); }

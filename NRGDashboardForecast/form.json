@@ -73,6 +73,11 @@
   "actions": [
     {
       "type": "Button",
+      "caption": "Einführungs-Tour erneut anzeigen",
+      "onClick": "NRGDASHFC_ResetTour($id);"
+    },
+    {
+      "type": "Button",
       "caption": "Doppelpfeil-Einstellungen auf Standard zurücksetzen",
       "onClick": "NRGDASHFC_ResetStyle($id);"
     },
