@@ -385,6 +385,11 @@
       "type": "Button",
       "caption": "Stil zurücksetzen",
       "onClick": "NRGDASH_ResetStyle($id);"
+    },
+    {
+      "type": "Button",
+      "caption": "Einführungs-Tour erneut anzeigen",
+      "onClick": "NRGDASH_ResetTour($id);"
     }
   ]
 }

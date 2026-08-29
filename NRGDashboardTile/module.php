@@ -106,6 +106,14 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeString('PeakTodayCache', '{}');
         $this->RegisterAttributeString('AutarkyCache', '{}');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
+        // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
+        // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
+        // seitig (nicht nur Konsole, da die Kachel-Feinheiten gerade dort
+        // erlebt werden). Bestaetigung kommt ueber den WebHook zurueck
+        // (ProcessHookData(), ?dismissTour=1) - die Kachel selbst hat als
+        // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
+        $this->RegisterAttributeBoolean('TourSeen', false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
@@ -530,6 +538,13 @@ class NRGDashboardTile extends IPSModule
         $this->UpdateFormField('NewsPanel', 'visible', false);
     }
 
+    /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour - fuer den Fall, dass
+     *  ein Nutzer sich die Feinheiten nochmal zeigen lassen will. */
+    public function ResetTour(): void
+    {
+        $this->WriteAttributeBoolean('TourSeen', false);
+    }
+
     public function DismissReviewHint(): void
     {
         $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
@@ -722,6 +737,14 @@ class NRGDashboardTile extends IPSModule
         // des Geraets + Leistungs-/Energie-Diagrammen. Bewusst ueber den
         // WebHook statt in der Kachel selbst - die Kachel kann im Grid zu
         // klein fuer Diagramme sein (Dietmar, 28.08.2026).
+        // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
+        // module.html per fetch() aufgerufen, siehe Create().
+        if (isset($_GET['dismissTour'])) {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
         if (isset($_GET['detail'])) {
             $key = (string) $_GET['detail'];
             $day = isset($_GET['day']) ? (string) $_GET['day'] : '';
@@ -1001,6 +1024,8 @@ class NRGDashboardTile extends IPSModule
             // Netzampel-Farbwaesche im Hintergrund (28.08.2026) - null, wenn
             // keine StromGedacht-Instanz vorhanden/aktiviert ist.
             'gridAmpel'   => $this->GridAmpel(),
+            // Einfuehrungs-Tour bei erster Benutzung (28.08.2026).
+            'showTour'    => !$this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 
