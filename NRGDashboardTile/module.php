@@ -73,7 +73,7 @@ class NRGDashboardTile extends IPSModule
         'Gesundheits-/Diagnose-Anzeige (Ertrag vs. Prognose, MPPT-Strangvergleich, Isolationswiderstand) selbst berechnet, keine InverterHubMonitor-Instanz mehr nötig.',
         'Fahrzeug-Erkennung an Wallboxen: Tesla-Fahrzeuge über Tessie vollautomatisch erkannt (Name + Ladestand), auch ChargerHub-Wallboxen jetzt korrekt einbezogen.',
         'Modul heißt jetzt „NRG-Stack Dashboard Energiefluss" (bisher „NRG Dashboard“/„Energiefluss-Kachel“) - bestehende Instanzen bleiben unverändert funktionsfähig.',
-        'Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, bildschirmfüllende Seite (Leistungsverlauf, Energiebilanz, alle Vertragsfelder inkl. Phasenwerte) - komplett automatisch aus den vorhandenen Verträgen, ohne zusätzliche Einrichtung.',
+        'Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, kachelfüllende Seite (Leistungsverlauf, Energiebilanz, alle Vertragsfelder inkl. Phasenwerte) - komplett automatisch aus den vorhandenen Verträgen, ohne zusätzliche Einrichtung.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';

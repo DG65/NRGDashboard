@@ -1249,7 +1249,7 @@ gleiche IPSView-Fähigkeit.
 
 - **Klickbare Geräte-Knoten:** ein Klick auf einen Verbraucher/Erzeuger
   in der Energiefluss-Darstellung öffnet dessen Details als eigene,
-  bildschirmfüllende Seite (neuer Tab) über den WebHook der Kachel — bewusst
+  kachelfüllende Seite über den WebHook der Kachel — bewusst
   außerhalb der Kachel, die im Dashboard-Grid für Diagramme oft zu klein ist.
   Gezeigt werden alle Vertragsfelder des jeweiligen Geräts: bei Zählern z. B.
   Spannung/Strom/cos φ/Frequenz, automatisch je Phase (L1–L3) gruppiert,
@@ -1279,9 +1279,9 @@ gleiche IPSView-Fähigkeit.
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
   Mehrblock-Anlagen), erkannt rein am Namensmuster der Variablen — kein
   Gerätetyp ist dafür im Code verdrahtet.
-- **SOC als Füllstand:** der Batterie-Knoten zeigt den Ladestand
-  zusätzlich als von unten steigendes Rechteck (zusätzlich zur genauen
-  Prozentzahl im Icon).
+- **SOC als Füllstand:** der Batterie-Knoten füllt sich zusätzlich wie
+  ein Glas - von unten steigend, im Kreis des Knotens (zusätzlich zur
+  genauen Prozentzahl im Icon).
 - **Diagnose-Warnungen direkt am Knoten:** ein rotes/gelbes Warndreieck
   erscheint direkt am betroffenen Knoten, sobald eine Diagnose auffällig
   oder kritisch wird — vorher nur im separaten, leicht zu übersehenden

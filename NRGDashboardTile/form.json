@@ -19,7 +19,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten: Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, bildschirmfüllende Seite (neuer Tab) - mit allen Vertragsfeldern des Geräts (z. B. Spannung/Strom/cos φ je Phase bei Zählern, Ladezustand/Steckerstatus bei Wallboxen/Fahrzeugen), Leistungsverlauf mit Tagesnavigation und Energie-Balken der letzten 14 Tage. Rein aus den vorhandenen Verträgen erzeugt - kein zusätzlicher Konfigurationsaufwand je Gerät."
+          "caption": "✨ Feinheiten: Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, kachelfüllende Seite - mit allen Vertragsfeldern des Geräts (z. B. Spannung/Strom/cos φ je Phase bei Zählern, Ladezustand/Steckerstatus bei Wallboxen/Fahrzeugen), Leistungsverlauf mit Tagesnavigation und Energie-Balken der letzten 14 Tage. Rein aus den vorhandenen Verträgen erzeugt - kein zusätzlicher Konfigurationsaufwand je Gerät."
         },
         {
           "type": "Label",
