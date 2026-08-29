@@ -617,7 +617,7 @@ var SHOW_TOUR = {$showTour};
 var TOUR_SHOWN_LOCAL = false;
 var TOUR_STEP = 0;
 var TOUR_STEPS = [
-  { title: 'Willkommen bei der NRG-Stack Karte', text: 'Diese 3D-Karte zeigt den gesamten Verbund raeumlich: der Wechselrichter im Zentrum, alle Geraete-Kategorien radial darum. Alle Geraete werden automatisch ueber die installierten Partnermodule gefunden - keine manuelle Verknuepfung noetig.' },
+  { title: 'Keine Tabelle - ein 3D-Raum', text: 'Statt Listen und Balken zeigt diese Karte Ihre Anlage als frei drehbaren 3D-Raum, in dem sich Geraete bei vielen Instanzen automatisch zu Clustern zusammenfassen, statt die Uebersicht zu ueberladen. Alles wird automatisch ueber die installierten Partnermodule gefunden - keine manuelle Verknuepfung noetig.' },
   { title: 'Wechselrichter als Mittelpunkt', text: 'Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Straenge und Batterie haengen direkt an ihm.' },
   { title: 'Sammelknoten bei mehreren Instanzen', text: 'Gibt es mehrere Geraete einer Kategorie (z. B. zwei Netzzaehler oder zwei Wallboxen), erscheint EIN Cluster-Knoten auf dem Hauptring - die einzelnen Instanzen faechern sich lokal weiter aussen auf. Das haelt die Karte uebersichtlich, egal wie viele Zaehler dazukommen.' },
   { title: 'Jede MeterHub-Zuordnung sichtbar', text: 'Nicht nur Netz und Hausverbrauch: auch Waermepumpe, Herd, Carport-Verbraucher & Co. aus MeterHub erscheinen als eigener Knoten in der Kategorie „Verbraucher".' },
