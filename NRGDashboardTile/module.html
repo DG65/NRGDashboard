@@ -1789,23 +1789,59 @@ let TOUR_STEP = 0;
 const TOUR_STEPS = [
   {
     title: 'Willkommen bei der Energiefluss-Kachel',
-    text: 'Sie zeigt live, wie die Leistung zwischen Solar, Netz, Batterie und Ihren Verbrauchern fließt. Ein kurzer Rundgang durch die wichtigsten Feinheiten - jederzeit über „Einführungs-Tour erneut anzeigen" in der Konsole wiederholbar.'
+    text: 'Sie zeigt live, wie die Leistung zwischen Solar, Netz, Batterie und Ihren Verbrauchern fließt. Ein kurzer Rundgang durch alle Feinheiten - jederzeit über „Einführungs-Tour erneut anzeigen" in der Konsole wiederholbar.'
   },
   {
     title: 'Details zu jedem Gerät',
-    text: 'Ein Klick auf einen Knotenpunkt öffnet dessen vollständige Detailseite - Leistungsverlauf, Energiebilanz und alle verfügbaren Messwerte, auch je Phase oder MPPT-Strang.'
+    text: 'Ein Klick auf einen Knotenpunkt öffnet dessen vollständige, bildschirmfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet.'
   },
   {
-    title: 'Batterie-Füllstand & Warnsymbol',
-    text: 'Der Batterie-Knoten zeigt den Ladestand zusätzlich als steigenden Füllstand. Ein rotes oder gelbes Dreieck erscheint direkt an einem Knoten, sobald dort eine Diagnose auffällig oder kritisch wird.'
+    title: 'Vollständige Messwerte-Tabelle',
+    text: 'Auf der Detailseite stehen alle verfügbaren elektrischen Werte in automatisch gruppierten Tabellen - z. B. je Phase (L1-L3) bei Zählern, je MPPT-Strang unter Solar oder je Batterie-Turm bei Mehrblock-Anlagen.'
+  },
+  {
+    title: 'Echte Kostenersparnis',
+    text: 'Die Ersparnis-Berechnung auf der Detailseite nutzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) und schlüsselt sie nach Netzentgelt, dynamischem Tarif und Grid-Reward-Erlös auf - statt eines einzelnen pauschalen Werts.'
+  },
+  {
+    title: 'Batterie-Füllstand',
+    text: 'Der Batterie-Knoten zeigt den Ladestand zusätzlich als von unten steigendes Rechteck - zusätzlich zur genauen Prozentzahl im Icon.'
+  },
+  {
+    title: 'Diagnose-Warnsymbol',
+    text: 'Ein rotes oder gelbes Dreieck erscheint direkt an einem Knoten, sobald dort eine Diagnose auffällig oder kritisch wird - vorher nur im separaten, leicht zu übersehenden Diagnose-Badge unten rechts.'
   },
   {
     title: 'Gestern-Vergleich',
-    text: 'Der gestrichelte „Geisterring" um jeden Knoten vergleicht die aktuelle Leistung mit dem Wert von gestern zur gleichen Uhrzeit - größer als der feste Ring bedeutet: gestern floss mehr.'
+    text: 'Der gestrichelte „Geisterring" um jeden Knoten vergleicht die aktuelle Leistung mit dem Wert von gestern zur gleichen Uhrzeit - größer als der feste Ring bedeutet: gestern floss mehr, kleiner: weniger.'
   },
   {
-    title: 'Prognose, Strompreis & Autarkie',
-    text: 'Ist eine PV-Prognose installiert, zeigt der Solar-Knoten einen Fortschrittsring für den heutigen Ertrag. Bei installierter Preisquelle wechselt der Netz-Knoten zwischen Watt und Kosten pro Stunde. Der grüne Bogen am Haus-Knoten zeigt den heutigen Autarkiegrad.'
+    title: 'PV-Prognose-Fortschritt',
+    text: 'Ist eine PV-Prognose-Instanz installiert, trägt der Solar-Knoten einen Fortschrittsring: wie viel vom heutigen prognostizierten Ertrag bereits erreicht ist.'
+  },
+  {
+    title: 'Strompreis am Netz-Knoten',
+    text: 'Bei installierter Preisquelle zeigt der Netz-Knoten eine kleine Sparkline des Tagespreisverlaufs und wechselt alle paar Sekunden zwischen Watt und Kosten pro Stunde.'
+  },
+  {
+    title: 'Autarkiegrad',
+    text: 'Der grüne Bogen um den Haus-Knoten zeigt den Anteil des heutigen Verbrauchs, der nicht aus dem Netz kam.'
+  },
+  {
+    title: 'Flussdicke & Tagesspitze',
+    text: 'Die Verbindungslinien werden mit der fließenden Leistung dicker, nicht nur schneller animiert - und tragen einen kleinen Querstrich an der Position der heutigen Tagesspitze.'
+  },
+  {
+    title: 'Netzampel-Hintergrund',
+    text: 'Ist eine StromGedacht-Instanz installiert, färbt ein sehr dezenter Farbverlauf im Hintergrund die aktuelle Netzampel-Stufe ein.'
+  },
+  {
+    title: 'Fahrzeug-Erkennung',
+    text: 'An Wallboxen wird ein angestecktes Tesla-Fahrzeug über Tessie automatisch erkannt - Name und Ladestand erscheinen direkt am Knoten, ohne manuelle Zuordnung.'
+  },
+  {
+    title: 'Chip-Form bei vielen Verbrauchern',
+    text: 'Ab einer größeren Anzahl an Verbraucher-Knoten wechselt der Haus-Knoten automatisch von der Kreis- in eine „Chip"-Form (Pille mit geraden Seiten) - so bleiben die einzelnen Knoten auch bei sehr vielen Geräten auf einer sinnvollen Größe.'
   },
   {
     title: 'Eigene Anzeige-Einstellungen',
