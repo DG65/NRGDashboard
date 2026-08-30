@@ -723,7 +723,24 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($message === VM_UPDATE) {
-            $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+            // Guard gegen "InstanceInterface is not available": VM_UPDATE-
+            // Nachrichten fuer beobachtete Geraete-Variablen (subscribeToDeviceVariables())
+            // koennen noch zugestellt werden, waehrend der Kernel diese eigene
+            // Instanz gerade neu laedt (z.B. Modulverwaltung-Update eines
+            // Partnermoduls loest einen Kernel-Zyklus aus) - in diesem Fenster
+            // ist $this->buildPayload() (ReadAttribute/GetValue) nicht
+            // aufrufbar. Gefunden 31.08.2026 (Systemlog-Fund EMS-Sitzung),
+            // wiederholt waehrend eines OCPPHub-Modulupdates in der Nacht.
+            if (IPS_GetKernelRunlevel() !== KR_READY || !IPS_InstanceExists($this->InstanceID)) {
+                return;
+            }
+            try {
+                $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+            } catch (\Throwable $e) {
+                // Kein Absturz der Instanz durch ein einzelnes verpasstes
+                // Update - der naechste VM_UPDATE oder Discover()-Tick holt
+                // den aktuellen Stand ohnehin nach.
+            }
         }
     }
 
