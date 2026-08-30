@@ -1612,9 +1612,13 @@ function updateOuterNode(refs, item) {
   refs.active = active;
   renderValueDisplay(refs);
 
-  // SOC-Fuellstand (nur Batterie-Knoten mit bekanntem SOC) - Rechteck
-  // steigt von unten, Hoehe = SOC-Anteil der Coin-Flaeche (Durchmesser).
-  if (item.battery && item.soc != null) {
+  // SOC-Fuellstand (30.08.2026, Dietmar: "wenn Du den Kreis beim Speicher
+  // von unten auffuellst, waere es nur konsequent, das bei Auto-/Wallbox-
+  // Kreisen genauso zu tun, wenn der SOC anwesend ist") - jeder Knoten mit
+  // bekanntem SOC (Batterie, Fahrzeug/Wallbox) bekommt den Fuellstand,
+  // nicht nur Batterie-Knoten. Rechteck steigt von unten, Hoehe = SOC-
+  // Anteil der Coin-Flaeche (Durchmesser).
+  if (item.soc != null) {
     const r = refs.liquid.r;
     const frac = Math.max(0, Math.min(100, item.soc)) / 100;
     const h = r * 2 * frac;
