@@ -19,6 +19,7 @@ define('NRGDASH_GUID_INVERTERHUBTILE', '{9A2E5C7F-3B1D-4A6E-8C9F-2D5B7E1A4C8F}')
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
+define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
 define('NRGDASH_GUID_TESSIE',         '{3F1F7E31-8BA0-4B8F-9B62-47DAD7A0B6C9}');
 define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}');
@@ -54,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.5.0';
+    private const NEWS_VERSION = '0.6.0';
     private const NEWS_ITEMS = [
+        'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt - inklusive direkter Steuerung (Laden starten/stoppen, Tages-Override) auf der Geräte-Detailseite, sofern keine andere Instanz die Regelhoheit hält.',
         'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
         'Kostenersparnis-Berechnung nutzt jetzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) statt eines festen Werts, inklusive Aufschlüsselung nach Netzentgelt/Tarif/Grid-Reward-Erlös auf der Geräte-Detailseite.',
         'Detailseite zeigt jetzt eine Tabelle aller relevanten Stromwerte je Gerät, auch je MPPT-Strang und je Batterie-Turm.',
@@ -598,6 +600,14 @@ class NRGDashboardTile extends IPSModule
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
         $devices = array_merge($devices, $chargerHub);
 
+        // OCPPHub (30.08.2026) - Geschwistermodul zu ChargerHub (OCPP statt
+        // Modbus), feldgleicher Vertrag (contractVersion 1.1: liefert die
+        // eigene Ladepunkt-instanceID je Eintrag mit, NICHT die des
+        // aufrufenden Splitters - siehe normalizeEntry()).
+        $ocppHub = $this->discoverListContract(NRGDASH_GUID_OCPPHUB, 'OHUB_GetFunctions', 'ocpphub');
+        $this->checkSourceCoverage('OCPPHub', NRGDASH_GUID_OCPPHUB, count($ocppHub));
+        $devices = array_merge($devices, $ocppHub);
+
         // IHUBTILE_GetConsumers NUR noch fuer Eintraege, die durch KEINE der
         // permanenten Quellen oben abgedeckt sind (z.B. eine manuell in der
         // Kachel eingetragene Klimaanlage ohne eigenes Hub-Modul). Abgleich
@@ -742,6 +752,40 @@ class NRGDashboardTile extends IPSModule
         if (isset($_GET['dismissTour'])) {
             $this->WriteAttributeBoolean('TourSeen', true);
             header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['ok' => true]);
+            return;
+        }
+        // Wallbox-Steuerung von der Detailseite aus (30.08.2026) - die
+        // Detailseite laeuft in einem eigenen iframe/Kontext ohne direkten
+        // PHP-Rueckkanal, deshalb ueber denselben WebHook wie dismissTour.
+        // Zielinstanz kommt IMMER vom Aufrufer mit (detail.html kennt sie
+        // aus dem 'control'-Feld ihres eigenen Payloads) - wir vertrauen
+        // ihr hier NICHT blind: FindDeviceByKey() muss dieselbe instanceID
+        // fuer den mitgesendeten Geraete-Key bestaetigen, sonst koennte
+        // jeder beliebige Aufrufer eine fremde Instanz-ID unterschieben.
+        if (isset($_GET['wallboxAction'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $key = (string) ($_GET['key'] ?? '');
+            $d = $this->FindDeviceByKey($key);
+            $instanceID = (int) ($d['instanceID'] ?? 0);
+            $expected = (int) ($_GET['instanceId'] ?? 0);
+            if ($d === null || $instanceID <= 0 || $instanceID !== $expected || ($d['function'] ?? '') !== 'charger' || !empty($d['externallyManaged'])) {
+                http_response_code(403);
+                echo json_encode(['ok' => false, 'error' => 'Ungültiges oder nicht steuerbares Gerät.']);
+                return;
+            }
+            $action = (string) $_GET['wallboxAction'];
+            if ($action === 'start' && function_exists('OHUBL_ManualStart')) {
+                OHUBL_ManualStart($instanceID, 0);
+            } elseif ($action === 'stop' && function_exists('OHUBL_ManualStop')) {
+                OHUBL_ManualStop($instanceID);
+            } elseif ($action === 'override' && function_exists('OHUBL_SetDailyOverride')) {
+                OHUBL_SetDailyOverride($instanceID, ($_GET['active'] ?? '1') === '1');
+            } else {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => 'Unbekannte oder nicht verfügbare Aktion.']);
+                return;
+            }
             echo json_encode(['ok' => true]);
             return;
         }
@@ -2948,8 +2992,15 @@ class NRGDashboardTile extends IPSModule
      */
     private function normalizeEntry(array $entry, string $source, int $instanceID): array
     {
-        $entry['source']     = $source;
-        $entry['instanceID'] = $instanceID;
+        $entry['source'] = $source;
+        // Bevorzugt die vom Vertrag selbst gelieferte instanceID (Fall
+        // OCPPHub, 30.08.2026: der Splitter sammelt ueber OHUB_GetFunctions()
+        // die Eintraege ALLER eigenen Ladepunkt-Kinder ein - die Splitter-ID
+        // selbst waere fuer Steuerungsaufrufe wie OHUBL_ManualStart() falsch,
+        // jeder Eintrag braucht seine EIGENE Instanz-ID). Faellt sonst wie
+        // bisher auf die Instanz zurueck, auf der die Vertragsfunktion
+        // aufgerufen wurde (1:1-Faelle wie ChargerHub/MeterHub).
+        $entry['instanceID'] = $entry['instanceID'] ?? $instanceID;
         $entry['category']   = $this->functionCategory((string) $entry['function']);
         return $entry;
     }
@@ -3115,7 +3166,45 @@ class NRGDashboardTile extends IPSModule
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
+            // Wallbox-Steuerung (30.08.2026, Dietmar: "na bau mal", nach
+            // Abstimmung mit OCPPHub) - Start/Stop/Tages-Override direkt von
+            // der Detailseite aus. Bewusst NUR bei OCPP-Ladepunkten (aktuell
+            // einziger Transport mit diesen Funktionen; ChargerHub/Modbus
+            // hat sie (noch) nicht) und NICHT, wenn eine andere Instanz die
+            // Regelhoheit haelt (`externallyManaged`, z.B. EMS/Tibber/§14a) -
+            // ein manueller Eingriff daneben waere genau die "zwei Regler auf
+            // derselben Batterie"-Situation, die dieser Verbund vermeidet.
+            'control'   => $this->ChargerControlInfo($d),
         ];
+    }
+
+    /**
+     * Liefert null, wenn dieses Geraet keine Wallbox-Steuerung anbietet
+     * (kein Ladepunkt, falscher Transport, oder eine andere Instanz haelt
+     * bereits die Regelhoheit). $HOOK_PATH-Aktionen siehe ProcessHookData()
+     * ('wallboxAction'), Zielinstanz ist IMMER die im Vertrag selbst
+     * mitgelieferte instanceID des Ladepunkts (normalizeEntry()).
+     */
+    private function ChargerControlInfo(array $d): ?array
+    {
+        if (($d['function'] ?? '') !== 'charger') {
+            return null;
+        }
+        if (!empty($d['externallyManaged'])) {
+            return null;
+        }
+        $instanceID = (int) ($d['instanceID'] ?? 0);
+        if ($instanceID <= 0 || !IPS_InstanceExists($instanceID)) {
+            return null;
+        }
+        if (($d['transport'] ?? '') === 'ocpp' && function_exists('OHUBL_ManualStart')) {
+            // Kein aktueller Override-Status verfuegbar - DailyOverride ist
+            // bei OCPPHub ein internes Attribut, kein oeffentlicher Getter
+            // (Stand 30.08.2026). Die Schaltflaeche wirkt trotzdem (Ein/Aus),
+            // zeigt aber keinen "ist gerade aktiv"-Zustand an.
+            return ['instanceID' => $instanceID];
+        }
+        return null;
     }
 
     /**

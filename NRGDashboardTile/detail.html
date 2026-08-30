@@ -30,6 +30,13 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
   }
   #closeBtn:hover { background: #6b3a3a; }
+  .ctlBtn {
+    background: #3a3f46; color: #e8eaed; border: 0; border-radius: 6px;
+    padding: 7px 14px; font-size: 13px; font-family: var(--font); cursor: pointer;
+  }
+  .ctlBtn:hover { background: #4a5058; }
+  .ctlBtn:disabled { opacity: .5; cursor: default; }
+  .ctlBtn.active { background: #3a5a3f; }
   #closeBtn svg { width: 16px; height: 16px; fill: currentColor; }
   #head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   #title { font-size: 24px; font-weight: 600; }
@@ -75,6 +82,14 @@
 <button id="closeBtn"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Schließen</button>
 <div id="head"><span id="title">…</span><span id="powerNow"></span></div>
 <div id="source"></div>
+<!-- Wallbox-Steuerung (30.08.2026) - nur sichtbar, wenn p.control gesetzt
+     ist (OCPP-Ladepunkt, keine externe Regelhoheit, siehe
+     ChargerControlInfo() in module.php). -->
+<div id="controlWrap" style="display:none; margin: 10px 0 4px; gap: 8px;">
+  <button id="ctlStart" class="ctlBtn">▶ Laden starten</button>
+  <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
+  <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
+</div>
 <div id="err"></div>
 
 <div id="hlWrap"><div id="hlGrid"></div></div>
@@ -294,12 +309,50 @@ function handleDetail(p) {
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
+  renderControl(p);
   renderSubMeters(p);
   renderValues(p);
   renderPower(p);
   renderEnergy(p);
   document.getElementById('stamp').textContent = 'Stand: ' + new Date(p.renderedAt * 1000).toLocaleTimeString('de-DE');
 }
+
+// Wallbox-Steuerung (30.08.2026) - der iframe hat keinen direkten PHP-
+// Rueckkanal, deshalb per fetch() auf denselben WebHook wie die restliche
+// Detailseite (?wallboxAction=..., siehe ProcessHookData() in module.php).
+// key+instanceId werden serverseitig gegeneinander geprueft (FindDeviceByKey()),
+// ein Aufrufer kann also keine fremde Instanz unterschieben.
+function renderControl(p) {
+  const wrap = document.getElementById('controlWrap');
+  if (!p.control || !p.control.instanceID) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+}
+
+function wallboxAction(action, extra) {
+  if (!lastPayload || !lastPayload.control) return;
+  const u = new URL(window.location.href);
+  u.search = '';
+  u.searchParams.set('wallboxAction', action);
+  u.searchParams.set('key', lastPayload.key);
+  u.searchParams.set('instanceId', lastPayload.control.instanceID);
+  if (extra) { Object.keys(extra).forEach(k => u.searchParams.set(k, extra[k])); }
+  fetch(u.toString()).then(r => r.json()).then(res => {
+    if (!res || !res.ok) {
+      alert((res && res.error) || 'Aktion fehlgeschlagen.');
+    }
+  }).catch(() => alert('Aktion fehlgeschlagen (keine Verbindung).'));
+}
+
+document.getElementById('ctlStart').addEventListener('click', () => wallboxAction('start'));
+document.getElementById('ctlStop').addEventListener('click', () => wallboxAction('stop'));
+document.getElementById('ctlOverride').addEventListener('click', () => {
+  const btn = document.getElementById('ctlOverride');
+  const nowActive = btn.classList.toggle('active');
+  wallboxAction('override', { active: nowActive ? '1' : '0' });
+});
 
 function loadDay(dayStr) {
   const u = new URL(window.location.href);
