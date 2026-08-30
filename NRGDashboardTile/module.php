@@ -800,11 +800,29 @@ class NRGDashboardTile extends IPSModule
                 $amps = max($min, min($max, (int) ($_GET['amps'] ?? $min)));
                 IPS_RequestAction($vid, $amps);
             } elseif ($action === 'start' && function_exists('OHUBL_ManualStart')) {
-                OHUBL_ManualStart($instanceID, 0);
+                try {
+                    OHUBL_ManualStart($instanceID, 0);
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
+                    return;
+                }
             } elseif ($action === 'stop' && function_exists('OHUBL_ManualStop')) {
-                OHUBL_ManualStop($instanceID);
+                try {
+                    OHUBL_ManualStop($instanceID);
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
+                    return;
+                }
             } elseif ($action === 'override' && function_exists('OHUBL_SetDailyOverride')) {
-                OHUBL_SetDailyOverride($instanceID, ($_GET['active'] ?? '1') === '1');
+                try {
+                    OHUBL_SetDailyOverride($instanceID, ($_GET['active'] ?? '1') === '1');
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
+                    return;
+                }
             } else {
                 http_response_code(400);
                 echo json_encode(['ok' => false, 'error' => 'Unbekannte oder nicht verfügbare Aktion.']);
