@@ -1902,24 +1902,35 @@ class NRGDashboardTile extends IPSModule
      */
     /**
      * Spiegelt das Ergebnis unserer bereits bestehenden Fahrzeug-Wallbox-
-     * Zuordnung (AssignVehicles()) an ChargerHub, damit deren eigene
-     * Instanz den Fahrzeugnamen ebenfalls sichtbar hat - Anlass war eine
-     * Rueckfrage von ChargerHub/Tessie (26.08.2026), ob wir bei einer
-     * Zuordnung zusaetzlich CHUB_SetVehicleName() aufrufen koennen, statt
-     * dass ChargerHub eine zweite, potenziell abweichende Korrelation baut
-     * (Zustaendigkeit liegt seit dem InverterHubTile-Praezedenzfall,
-     * 29.07.2026, exklusiv bei uns). Additiver Vertrag (CHUB_GetFunctions
-     * contractVersion 1.1 -> 1.2) - function_exists()-Guard, damit
-     * Dietmars Anlage vor einem ChargerHub-Update nicht mit einem Fatal
-     * Error kollidiert.
+     * Zuordnung (AssignVehicles()) an die jeweilige Wallbox-Quelle, damit
+     * deren eigene Instanz den Fahrzeugnamen ebenfalls sichtbar hat -
+     * Anlass war eine Rueckfrage von ChargerHub/Tessie (26.08.2026), ob wir
+     * bei einer Zuordnung zusaetzlich einen dummen Setter aufrufen koennen,
+     * statt dass jede Wallbox-Quelle eine zweite, potenziell abweichende
+     * Korrelation baut (Zustaendigkeit liegt seit dem InverterHubTile-
+     * Praezedenzfall, 29.07.2026, exklusiv bei uns).
+     *
+     * Transport-Dispatch ueber $wallbox['transport'] (30.08.2026, OCPPHub-
+     * Anfrage): CHUB_SetVehicleName() fuer ChargerHub-Wallboxen (kein
+     * 'transport'-Feld -> Default), OHUBL_SetVehicleName() fuer OCPPHub-
+     * Ladepunkte ('transport' === 'ocpp'). function_exists()-Guard je Zweig,
+     * damit ein fehlendes/aelteres Partnermodul nicht zum Fatal Error fuehrt.
      */
     private function PublishVehicleNameToChargerHub(array $wallbox, string $vehicleName): void
     {
         $instanceID = (int) ($wallbox['instanceID'] ?? 0);
-        if ($instanceID <= 0 || !IPS_InstanceExists($instanceID) || !function_exists('CHUB_SetVehicleName')) {
+        if ($instanceID <= 0 || !IPS_InstanceExists($instanceID)) {
             return;
         }
-        @CHUB_SetVehicleName($instanceID, $vehicleName);
+        if (($wallbox['transport'] ?? '') === 'ocpp') {
+            if (function_exists('OHUBL_SetVehicleName')) {
+                @OHUBL_SetVehicleName($instanceID, $vehicleName);
+            }
+            return;
+        }
+        if (function_exists('CHUB_SetVehicleName')) {
+            @CHUB_SetVehicleName($instanceID, $vehicleName);
+        }
     }
 
     private function AssignVehicles(array $rows, array $vehicles): array
