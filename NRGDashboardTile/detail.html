@@ -83,12 +83,28 @@
 <div id="head"><span id="title">…</span><span id="powerNow"></span></div>
 <div id="source"></div>
 <!-- Wallbox-Steuerung (30.08.2026) - nur sichtbar, wenn p.control gesetzt
-     ist (OCPP-Ladepunkt, keine externe Regelhoheit, siehe
-     ChargerControlInfo() in module.php). -->
-<div id="controlWrap" style="display:none; margin: 10px 0 4px; gap: 8px;">
-  <button id="ctlStart" class="ctlBtn">▶ Laden starten</button>
-  <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
-  <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
+     ist (Ladepunkt ohne externe Regelhoheit, siehe ChargerControlInfo() in
+     module.php). Zwei Ebenen: die Freigabe/Stromlimit-Zeile ist
+     transportneutral (ChargerHub UND OCPPHub, ueber die gemeinsame
+     chargeEnableID/currentLimitID-Vertragsvariable) - die Start/Stop/
+     Override-Knoepfe darunter sind reine OCPP-Zusatzfunktionen (echte
+     RemoteStart/Stop-Transaktion) und nur bei p.control.ocppActions da. -->
+<div id="controlWrap" style="display:none; margin: 10px 0 4px; flex-direction: column; gap: 8px;">
+  <div id="ctlEnableRow" style="display:none; align-items: center; gap: 10px;">
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+      <input type="checkbox" id="ctlEnable"> Ladefreigabe
+    </label>
+  </div>
+  <div id="ctlLimitRow" style="display:none; align-items: center; gap: 10px;">
+    <label for="ctlLimit" style="font-size:13px;">Stromlimit</label>
+    <input type="range" id="ctlLimit" style="width:160px;">
+    <span id="ctlLimitVal" style="font-size:13px; font-variant-numeric: tabular-nums; min-width: 4ch;"></span>
+  </div>
+  <div id="ctlOcppRow" style="display:none; gap: 8px;">
+    <button id="ctlStart" class="ctlBtn">▶ Laden starten</button>
+    <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
+    <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
+  </div>
 </div>
 <div id="err"></div>
 
@@ -324,11 +340,31 @@ function handleDetail(p) {
 // ein Aufrufer kann also keine fremde Instanz unterschieben.
 function renderControl(p) {
   const wrap = document.getElementById('controlWrap');
+  const enableRow = document.getElementById('ctlEnableRow');
+  const limitRow = document.getElementById('ctlLimitRow');
+  const ocppRow = document.getElementById('ctlOcppRow');
   if (!p.control || !p.control.instanceID) {
     wrap.style.display = 'none';
     return;
   }
+  const c = p.control;
   wrap.style.display = 'flex';
+
+  enableRow.style.display = c.enableID ? 'flex' : 'none';
+  if (c.enableID) {
+    document.getElementById('ctlEnable').checked = !!c.enableValue;
+  }
+
+  limitRow.style.display = c.limitID ? 'flex' : 'none';
+  if (c.limitID) {
+    const range = document.getElementById('ctlLimit');
+    range.min = c.minCurrent;
+    range.max = c.maxCurrent;
+    range.value = c.limitValue;
+    document.getElementById('ctlLimitVal').textContent = c.limitValue + ' A';
+  }
+
+  ocppRow.style.display = c.ocppActions ? 'flex' : 'none';
 }
 
 function wallboxAction(action, extra) {
@@ -339,13 +375,23 @@ function wallboxAction(action, extra) {
   u.searchParams.set('key', lastPayload.key);
   u.searchParams.set('instanceId', lastPayload.control.instanceID);
   if (extra) { Object.keys(extra).forEach(k => u.searchParams.set(k, extra[k])); }
-  fetch(u.toString()).then(r => r.json()).then(res => {
+  return fetch(u.toString()).then(r => r.json()).then(res => {
     if (!res || !res.ok) {
       alert((res && res.error) || 'Aktion fehlgeschlagen.');
     }
+    return res;
   }).catch(() => alert('Aktion fehlgeschlagen (keine Verbindung).'));
 }
 
+document.getElementById('ctlEnable').addEventListener('change', (e) => {
+  wallboxAction('setEnable', { active: e.target.checked ? '1' : '0' });
+});
+document.getElementById('ctlLimit').addEventListener('input', (e) => {
+  document.getElementById('ctlLimitVal').textContent = e.target.value + ' A';
+});
+document.getElementById('ctlLimit').addEventListener('change', (e) => {
+  wallboxAction('setCurrent', { amps: e.target.value });
+});
 document.getElementById('ctlStart').addEventListener('click', () => wallboxAction('start'));
 document.getElementById('ctlStop').addEventListener('click', () => wallboxAction('stop'));
 document.getElementById('ctlOverride').addEventListener('click', () => {

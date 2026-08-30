@@ -57,7 +57,7 @@ class NRGDashboardTile extends IPSModule
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
     private const NEWS_VERSION = '0.6.0';
     private const NEWS_ITEMS = [
-        'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt - inklusive direkter Steuerung (Laden starten/stoppen, Tages-Override) auf der Geräte-Detailseite, sofern keine andere Instanz die Regelhoheit hält.',
+        'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',
         'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
         'Kostenersparnis-Berechnung nutzt jetzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) statt eines festen Werts, inklusive Aufschlüsselung nach Netzentgelt/Tarif/Grid-Reward-Erlös auf der Geräte-Detailseite.',
         'Detailseite zeigt jetzt eine Tabelle aller relevanten Stromwerte je Gerät, auch je MPPT-Strang und je Batterie-Turm.',
@@ -775,7 +775,31 @@ class NRGDashboardTile extends IPSModule
                 return;
             }
             $action = (string) $_GET['wallboxAction'];
-            if ($action === 'start' && function_exists('OHUBL_ManualStart')) {
+            // Transportneutral, ueber die vom Vertrag gelieferte Variable
+            // (chargeEnableID/currentLimitID) - wirkt gleichermassen bei
+            // ChargerHub und OCPPHub, ohne dass wir hier deren jeweiliges
+            // Praefix kennen muessen (IPS_RequestAction() dispatcht selbst
+            // an die Instanz, die die Variable besitzt).
+            if ($action === 'setEnable') {
+                $vid = (int) ($d['chargeEnableID'] ?? 0);
+                if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar.']);
+                    return;
+                }
+                IPS_RequestAction($vid, ($_GET['active'] ?? '1') === '1');
+            } elseif ($action === 'setCurrent') {
+                $vid = (int) ($d['currentLimitID'] ?? 0);
+                if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
+                    http_response_code(400);
+                    echo json_encode(['ok' => false, 'error' => 'Stromlimit an diesem Gerät nicht steuerbar.']);
+                    return;
+                }
+                $min = (int) ($d['minCurrent'] ?? 6);
+                $max = (int) ($d['maxCurrent'] ?? 32);
+                $amps = max($min, min($max, (int) ($_GET['amps'] ?? $min)));
+                IPS_RequestAction($vid, $amps);
+            } elseif ($action === 'start' && function_exists('OHUBL_ManualStart')) {
                 OHUBL_ManualStart($instanceID, 0);
             } elseif ($action === 'stop' && function_exists('OHUBL_ManualStop')) {
                 OHUBL_ManualStop($instanceID);
@@ -3191,10 +3215,26 @@ class NRGDashboardTile extends IPSModule
 
     /**
      * Liefert null, wenn dieses Geraet keine Wallbox-Steuerung anbietet
-     * (kein Ladepunkt, falscher Transport, oder eine andere Instanz haelt
-     * bereits die Regelhoheit). $HOOK_PATH-Aktionen siehe ProcessHookData()
+     * (kein Ladepunkt, oder eine andere Instanz haelt bereits die
+     * Regelhoheit). $HOOK_PATH-Aktionen siehe ProcessHookData()
      * ('wallboxAction'), Zielinstanz ist IMMER die im Vertrag selbst
      * mitgelieferte instanceID des Ladepunkts (normalizeEntry()).
+     *
+     * Zwei Ebenen (30.08.2026, Dietmar: "die ChargerHub-Wallboxen genauso,
+     * und eigentlich gäbe es noch mehr sinnvolle Steuerbefehle"):
+     * 1) TRANSPORTNEUTRAL ueber den gemeinsamen Verbund-Vertrag (CHUB_
+     *    GetFunctions 1.2, den OCPPHub feldgleich implementiert):
+     *    'chargeEnableID'/'currentLimitID' sind normale, per EnableAction()
+     *    RequestAction-gebundene IPS-Variablen - IPS_RequestAction() wirkt
+     *    darauf unabhaengig vom Hersteller/Transport, OHNE dass wir
+     *    irgendeine modulspezifische Funktion kennen muessen (CLAUDE.md
+     *    Kernprinzip 2: type-neutral, kein Gerätetyp hart verdrahtet).
+     *    Deckt ChargerHub UND OCPPHub gleichermassen ab.
+     * 2) OCPP-SPEZIFISCH (echte RemoteStart/Stop-Transaktion, Tages-
+     *    Override) - hat keine Entsprechung bei den Modbus-Wallboxen von
+     *    ChargerHub (die kennen keine "Transaktion", nur den Dauerzustand
+     *    ctl_enable) und bleibt deshalb an OHUBL_ManualStart() & Co.
+     *    gebunden, nur wenn $d['transport'] === 'ocpp'.
      */
     private function ChargerControlInfo(array $d): ?array
     {
@@ -3208,14 +3248,37 @@ class NRGDashboardTile extends IPSModule
         if ($instanceID <= 0 || !IPS_InstanceExists($instanceID)) {
             return null;
         }
+
+        $info = ['instanceID' => $instanceID];
+
+        $enableID = (int) ($d['chargeEnableID'] ?? 0);
+        if ($enableID > 0 && IPS_VariableExists($enableID) && (IPS_GetVariable($enableID)['VariableAction'] ?? 0) > 0) {
+            $info['enableID'] = $enableID;
+            $info['enableValue'] = (bool) GetValueBoolean($enableID);
+        }
+
+        $limitID = (int) ($d['currentLimitID'] ?? 0);
+        if ($limitID > 0 && IPS_VariableExists($limitID) && (IPS_GetVariable($limitID)['VariableAction'] ?? 0) > 0) {
+            $info['limitID'] = $limitID;
+            $info['limitValue'] = (int) round(GetValue($limitID));
+            $info['minCurrent'] = (int) ($d['minCurrent'] ?? 6);
+            $info['maxCurrent'] = (int) ($d['maxCurrent'] ?? 32);
+        }
+
         if (($d['transport'] ?? '') === 'ocpp' && function_exists('OHUBL_ManualStart')) {
             // Kein aktueller Override-Status verfuegbar - DailyOverride ist
             // bei OCPPHub ein internes Attribut, kein oeffentlicher Getter
             // (Stand 30.08.2026). Die Schaltflaeche wirkt trotzdem (Ein/Aus),
             // zeigt aber keinen "ist gerade aktiv"-Zustand an.
-            return ['instanceID' => $instanceID];
+            $info['ocppActions'] = true;
         }
-        return null;
+
+        // Nichts Steuerbares gefunden - dann lieber gar kein Panel zeigen
+        // als eines ohne Inhalt.
+        if (!isset($info['enableID']) && !isset($info['limitID']) && empty($info['ocppActions'])) {
+            return null;
+        }
+        return $info;
     }
 
     /**

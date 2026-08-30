@@ -1311,13 +1311,16 @@ gleiche IPSView-Fähigkeit.
   Vollbild-Umschalten) aufziehen öffnet die Standard-Objektansicht der
   Instanz mit den entsprechenden Schaltern/Reglern, ganz ohne
   Konsolenzugriff.
-- **Wallbox-Steuerung direkt aus der Detailseite:** ist die Wallbox über
-  OCPPHub (OCPP-Ladepunkte) angebunden und wird sie von keiner anderen
-  Instanz geregelt (EMS/Tibber/§14a/etc.), zeigt die Geräte-Detailseite
-  Schaltflächen zum Laden starten/stoppen und für einen einmaligen
-  Tages-Override ("heute trotzdem vollladen") — die Kachel bleibt dabei
-  reine Darstellungsschicht, die eigentliche Steuerungslogik liegt bei
-  OCPPHub selbst.
+- **Wallbox-Steuerung direkt aus der Detailseite:** wird eine Wallbox
+  (ChargerHub oder OCPPHub) von keiner anderen Instanz geregelt (EMS/
+  Tibber/§14a/etc.), zeigt die Geräte-Detailseite Schaltflächen für
+  Ladefreigabe und Stromlimit — herstellerunabhängig über die
+  gemeinsame Vertragsvariable (`chargeEnableID`/`currentLimitID`),
+  ganz ohne modulspezifischen Code. Bei OCPP-Ladepunkten kommen
+  zusätzlich echte Lade-Start/Stopp-Befehle und ein einmaliger
+  Tages-Override ("heute trotzdem vollladen") dazu — die Kachel bleibt
+  dabei reine Darstellungsschicht, die eigentliche Steuerungslogik
+  liegt bei ChargerHub/OCPPHub selbst.
 
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 

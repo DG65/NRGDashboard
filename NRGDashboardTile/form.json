@@ -35,7 +35,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Wallbox-Steuerung, 30.08.2026): Ist die Wallbox über OCPPHub angebunden und wird sie von keiner anderen Instanz geregelt (z. B. EMS/Tibber/§14a), erscheinen auf der Geräte-Detailseite direkte Schaltflächen zum Laden starten/stoppen und für einen einmaligen Tages-Override ('heute trotzdem vollladen')."
+          "caption": "✨ Feinheit (Wallbox-Steuerung, 30.08.2026): Wird eine Wallbox (ChargerHub oder OCPPHub) von keiner anderen Instanz geregelt (z. B. EMS/Tibber/§14a), zeigt die Geräte-Detailseite direkte Schaltflächen für Ladefreigabe und Stromlimit - herstellerunabhängig über die gemeinsame Vertragsvariable. Bei OCPP-Ladepunkten kommen zusätzlich echte Lade-Start/Stopp-Befehle und ein einmaliger Tages-Override ('heute trotzdem vollladen') dazu."
         },
         {
           "type": "Button",
