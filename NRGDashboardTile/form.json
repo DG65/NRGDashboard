@@ -38,6 +38,10 @@
           "caption": "✨ Feinheit (Wallbox-Steuerung, 30.08.2026): Wird eine Wallbox (ChargerHub oder OCPPHub) von keiner anderen Instanz geregelt (z. B. EMS/Tibber/§14a), zeigt die Geräte-Detailseite direkte Schaltflächen für Ladefreigabe und Stromlimit - herstellerunabhängig über die gemeinsame Vertragsvariable. Bei OCPP-Ladepunkten kommen zusätzlich echte Lade-Start/Stopp-Befehle und ein einmaliger Tages-Override ('heute trotzdem vollladen') dazu."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Rückmeldung bei Wallbox-Befehlen, 31.08.2026): Jeder Klick auf Freigabe/Limit/Start/Stopp zeigt sofort einen Sendestatus an. Bei Start/Stopp wird zusätzlich nach kurzer Zeit die tatsächliche Leistung der Wallbox nachgeladen - bleibt sie bei „Laden starten“ auf 0 W, erscheint ein Hinweis, dass die Wallbox den Befehl vermutlich abgelehnt hat, statt einen scheinbaren Erfolg stumm zu melden."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

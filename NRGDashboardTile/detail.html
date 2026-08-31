@@ -37,6 +37,11 @@
   .ctlBtn:hover { background: #4a5058; }
   .ctlBtn:disabled { opacity: .5; cursor: default; }
   .ctlBtn.active { background: #3a5a3f; }
+  #ctlStatus { font-size: 13px; min-height: 18px; transition: opacity .4s; }
+  #ctlStatus.pending { color: #c9c9c9; }
+  #ctlStatus.ok { color: #8fd18f; }
+  #ctlStatus.err { color: #e6a9a9; }
+  #ctlStatus.fade { opacity: 0; }
   #closeBtn svg { width: 16px; height: 16px; fill: currentColor; }
   #head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   #title { font-size: 24px; font-weight: 600; }
@@ -105,6 +110,7 @@
     <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
     <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
   </div>
+  <div id="ctlStatus"></div>
 </div>
 <div id="err"></div>
 
@@ -367,6 +373,19 @@ function renderControl(p) {
   ocppRow.style.display = c.ocppActions ? 'flex' : 'none';
 }
 
+// Rueckmeldung (31.08.2026, Dietmar: "das ueberhaupt keine Rueckmeldungen
+// kommen ist echt schlecht") - unser eigener Request meldet nur, dass der
+// PHP-Aufruf durchging (ok:true), nicht ob die Wallbox den Befehl real
+// angenommen hat (siehe go-e-Rejected-Fall, den OCPPHub erst per Debug-Dump
+// fand). Deshalb bei Start/Stop/Override zusaetzlich kurz danach den echten
+// Leistungswert nachladen (loadDay()) statt uns auf das stumme ok:true zu
+// verlassen - der Statustext bleibt bis zur naechsten Aktion sichtbar,
+// solange sie noch nicht sichtbar gewirkt hat.
+function setCtlStatus(text, kind) {
+  const el = document.getElementById('ctlStatus');
+  el.textContent = text;
+  el.className = kind || '';
+}
 function wallboxAction(action, extra) {
   if (!lastPayload || !lastPayload.control) return;
   const u = new URL(window.location.href);
@@ -375,12 +394,32 @@ function wallboxAction(action, extra) {
   u.searchParams.set('key', lastPayload.key);
   u.searchParams.set('instanceId', lastPayload.control.instanceID);
   if (extra) { Object.keys(extra).forEach(k => u.searchParams.set(k, extra[k])); }
+  setCtlStatus('Befehl wird gesendet …', 'pending');
   return fetch(u.toString()).then(r => r.json()).then(res => {
     if (!res || !res.ok) {
-      alert((res && res.error) || 'Aktion fehlgeschlagen.');
+      setCtlStatus((res && res.error) || 'Aktion fehlgeschlagen.', 'err');
+      return res;
+    }
+    if (action === 'start' || action === 'stop') {
+      setCtlStatus('Befehl gesendet, prüfe Wallbox …', 'pending');
+      setTimeout(() => {
+        loadDay('');
+        setTimeout(() => {
+          const stillZero = action === 'start' && lastPayload && !lastPayload.powerNow;
+          if (stillZero) {
+            setCtlStatus('Befehl gesendet, aber Wallbox lädt noch nicht - evtl. abgelehnt (siehe OCPPHub-Systemlog).', 'err');
+          } else {
+            setCtlStatus('Befehl angenommen ✓', 'ok');
+            setTimeout(() => document.getElementById('ctlStatus').classList.add('fade'), 3000);
+          }
+        }, 300);
+      }, 4000);
+    } else {
+      setCtlStatus('Befehl gesendet ✓', 'ok');
+      setTimeout(() => document.getElementById('ctlStatus').classList.add('fade'), 3000);
     }
     return res;
-  }).catch(() => alert('Aktion fehlgeschlagen (keine Verbindung).'));
+  }).catch(() => setCtlStatus('Aktion fehlgeschlagen (keine Verbindung).', 'err'));
 }
 
 document.getElementById('ctlEnable').addEventListener('change', (e) => {

@@ -1321,6 +1321,16 @@ gleiche IPSView-Fähigkeit.
   Tages-Override ("heute trotzdem vollladen") dazu — die Kachel bleibt
   dabei reine Darstellungsschicht, die eigentliche Steuerungslogik
   liegt bei ChargerHub/OCPPHub selbst.
+- **Rückmeldung bei Wallbox-Befehlen:** jeder Klick auf Freigabe/
+  Limit/Start/Stopp zeigt sofort einen Sendestatus statt bei Erfolg
+  komplett stumm zu bleiben. Bei Start/Stopp wird zusätzlich kurz
+  danach die tatsächliche Leistung der Wallbox nachgeladen — bleibt
+  sie nach "Laden starten" bei 0 W, erscheint ein Hinweis, dass die
+  Wallbox den Befehl vermutlich abgelehnt hat (Beispiel aus der
+  Praxis: ein OCPP-Ladepunkt mit mehreren Connectors lehnte
+  `RemoteStartTransaction` ohne genaue Connector-Angabe kommentarlos
+  ab — unser eigener Request meldete trotzdem `ok:true`, weil der
+  PHP-Aufruf fehlerfrei durchlief).
 
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 
