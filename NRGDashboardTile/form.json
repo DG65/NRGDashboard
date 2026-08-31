@@ -43,6 +43,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Stromlimit-Schieberegler, 31.08.2026): Ober-/Untergrenze kommen ausschließlich aus dem Vertrag des jeweiligen Geräts (z. B. 5 A bei manchen Tesla-Wallboxen statt pauschal 6 A) - nie ein fest verdrahteter Wert. Der Regler zeigt zusätzlich den Prozentwert der maximalen Ladeleistung, ein Tick-Raster und markiert die halbe Leistung als eigenen Punkt, damit auch bei größeren Wallboxen (z. B. 32 A/22 kW) sofort erkennbar ist, wo man sich auf der Skala befindet."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Rückmeldung bei Wallbox-Befehlen, 31.08.2026): Jeder Klick auf Freigabe/Limit/Start/Stopp zeigt sofort einen Sendestatus an. Bei Start/Stopp wird zusätzlich nach kurzer Zeit die tatsächliche Leistung der Wallbox nachgeladen - bleibt sie bei „Laden starten“ auf 0 W, erscheint ein Hinweis, dass die Wallbox den Befehl vermutlich abgelehnt hat. Liefert das Partnermodul über das optionale Vertragsfeld „blockReasonID“ einen konkreten Ablehnungsgrund, erscheint dieser prominent direkt über den Steuer-Schaltflächen - herstellerunabhängig, kein Sonderfall je Anbieter."
         },
         {

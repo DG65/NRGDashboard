@@ -1327,6 +1327,14 @@ gleiche IPSView-Fähigkeit.
   Tages-Override ("heute trotzdem vollladen") dazu — die Kachel bleibt
   dabei reine Darstellungsschicht, die eigentliche Steuerungslogik
   liegt bei ChargerHub/OCPPHub selbst.
+- **Stromlimit-Schieberegler mit echten Gerätegrenzen:** Ober-/Unter-
+  grenze kommen ausschließlich aus dem Vertrag des jeweiligen Geräts
+  (z. B. 5 A statt pauschal 6 A bei manchen Tesla-Wallboxen), nie ein
+  fest verdrahteter Wert. Der Regler zeigt zusätzlich den Prozentwert
+  der maximalen Ladeleistung, ein Tick-Raster und markiert die halbe
+  Leistung als eigenen Punkt, damit auch bei größeren Wallboxen
+  (z. B. 32 A/22 kW) sofort erkennbar ist, wo man sich auf der Skala
+  befindet.
 - **Rückmeldung bei Wallbox-Befehlen:** jeder Klick auf Freigabe/
   Limit/Start/Stopp zeigt sofort einen Sendestatus statt bei Erfolg
   komplett stumm zu bleiben. Bei Start/Stopp wird zusätzlich kurz

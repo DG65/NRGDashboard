@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.1';
+    private const NEWS_VERSION = '0.7.2';
     private const NEWS_ITEMS = [
+        'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
         'Das Leistungsdiagramm der Geräte-Detailseite aktiviert die Archivierung der zugrunde liegenden Variable jetzt selbst, statt nur "keine Archivdaten" zu melden - ab dem ersten Aufruf sammelt sich der Verlauf automatisch.',
         'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
         'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',

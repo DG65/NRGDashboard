@@ -103,7 +103,8 @@
   </div>
   <div id="ctlLimitRow" style="display:none; align-items: center; gap: 10px;">
     <label for="ctlLimit" style="font-size:13px;">Stromlimit</label>
-    <input type="range" id="ctlLimit" style="width:160px;">
+    <input type="range" id="ctlLimit" list="ctlLimitTicks" style="width:160px;">
+    <datalist id="ctlLimitTicks"></datalist>
     <span id="ctlLimitVal" style="font-size:13px; font-variant-numeric: tabular-nums; min-width: 4ch;"></span>
   </div>
   <!-- Ablehnungsgrund (31.08.2026, blockReasonID-Vertragsfeld, contractVersion
@@ -354,6 +355,40 @@ function handleDetail(p) {
   document.getElementById('stamp').textContent = 'Stand: ' + new Date(p.renderedAt * 1000).toLocaleTimeString('de-DE');
 }
 
+// Stromlimit-Einordnung (31.08.2026, Dietmar: "bevor Du ein Stromlimit
+// darstellst, solltest Du zuerst ueberpruefen welche Leistung die Wallbox
+// kann") - min/maxCurrent kommen bereits vom Vertrag (echte Geraetegrenzen,
+// kein geratener Default), die Prozentanzeige macht sie am Schieberegler
+// selbst sichtbar, statt nur eine nackte Amperezahl zu zeigen.
+function limitLabel(amps, max) {
+  const pct = max > 0 ? Math.round((amps / max) * 100) : null;
+  return amps + ' A' + (pct !== null ? ' (' + pct + ' %)' : '');
+}
+// Raster + Halbierungs-Kennung auf dem Schieberegler (Dietmar: "den
+// Schieberegler bei 16A mit einer Kennung halbieren und auch mit einem
+// Raster versehen") - <datalist> lässt den Browser native Tick-Striche
+// zeichnen. Die Mitte (halbe Leistung, bei 6-32 A z.B. 16 A) wird IMMER
+// als eigener Tick erzwungen, auch wenn sie nicht exakt auf das Raster
+// faellt - Grenzen sind geraeteabhaengig (Vertrag), nicht fest verdrahtet.
+function populateLimitTicks(min, max) {
+  const dl = document.getElementById('ctlLimitTicks');
+  dl.innerHTML = '';
+  const span = max - min;
+  const step = span <= 20 ? 2 : (span <= 40 ? 4 : 8);
+  for (let v = min; v <= max; v += step) {
+    const o = document.createElement('option');
+    o.value = v;
+    dl.appendChild(o);
+  }
+  const half = Math.round((min + max) / 2);
+  if (![...dl.options].some(o => Number(o.value) === half)) {
+    const o = document.createElement('option');
+    o.value = half;
+    o.label = 'halbe Leistung';
+    dl.appendChild(o);
+  }
+}
+
 // Wallbox-Steuerung (30.08.2026) - der iframe hat keinen direkten PHP-
 // Rueckkanal, deshalb per fetch() auf denselben WebHook wie die restliche
 // Detailseite (?wallboxAction=..., siehe ProcessHookData() in module.php).
@@ -382,7 +417,8 @@ function renderControl(p) {
     range.min = c.minCurrent;
     range.max = c.maxCurrent;
     range.value = c.limitValue;
-    document.getElementById('ctlLimitVal').textContent = c.limitValue + ' A';
+    populateLimitTicks(c.minCurrent, c.maxCurrent);
+    document.getElementById('ctlLimitVal').textContent = limitLabel(c.limitValue, c.maxCurrent);
   }
 
   ocppRow.style.display = c.ocppActions ? 'flex' : 'none';
@@ -454,7 +490,7 @@ document.getElementById('ctlEnable').addEventListener('change', (e) => {
   wallboxAction('setEnable', { active: e.target.checked ? '1' : '0' });
 });
 document.getElementById('ctlLimit').addEventListener('input', (e) => {
-  document.getElementById('ctlLimitVal').textContent = e.target.value + ' A';
+  document.getElementById('ctlLimitVal').textContent = limitLabel(Number(e.target.value), Number(e.target.max));
 });
 document.getElementById('ctlLimit').addEventListener('change', (e) => {
   wallboxAction('setCurrent', { amps: e.target.value });
