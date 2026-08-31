@@ -3724,8 +3724,15 @@ class NRGDashboardTile extends IPSModule
                 'ts'    => (int) $v['VariableUpdated'],
             ];
         };
+        // Felder, die ChargerControlInfo() bereits prominent im Steuer-Panel
+        // zeigt (Freigabe/Limit/Ablehnungsgrund) - hier ausschliessen, sonst
+        // stehen dieselben Werte doppelt und ohne den erklaerenden Kontext
+        // des Steuer-Panels da (Dietmar 31.08.2026: "Beschriftung und
+        // Aussage gehoeren zusammen", genau das ist die Aufgabe des
+        // Steuer-Panels, nicht dieser generischen Tabelle).
+        $controlFields = ['chargeEnableID', 'currentLimitID', 'blockReasonID'];
         foreach ($d as $field => $val) {
-            if ($field === 'instanceID' || str_starts_with($field, '_')) {
+            if ($field === 'instanceID' || str_starts_with($field, '_') || in_array($field, $controlFields, true)) {
                 continue;
             }
             if (preg_match('/IDs$/', $field) && is_array($val)) {
