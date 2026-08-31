@@ -761,6 +761,26 @@ class NRGDashboardTile extends IPSModule
      * ArgumentCountError haette ohne diesen Schutz die Antwort verstuemmelt).
      * Rueckgabe: null bei Erfolg, sonst Fehlertext fuer die JSON-Antwort.
      */
+    /**
+     * Loest zu einer RequestAction-gebundenen Variablen-ID das Paar
+     * [InstanzID, Ident] auf, das IPS_RequestAction() tatsaechlich braucht.
+     * KORRIGIERT 31.08.2026 (OCPPHub-Befund): IPS_RequestAction() hat KEINE
+     * Variablen-ID+Wert-Form - der Kernel-Einstiegspunkt ist immer
+     * IPS_RequestAction($InstanceID, $Ident, $Value), siehe der gleiche Fund
+     * bei ChargerHub/InverterHub (25.07.2026, EMS::setGoodweMode()-
+     * Kommentar). Unser bisheriger 2-Parameter-Aufruf war schlicht falsch.
+     */
+    private function resolveActionTarget(int $vid): ?array
+    {
+        $obj = IPS_GetObject($vid);
+        $ident = (string) ($obj['ObjectIdent'] ?? '');
+        $parentID = (int) ($obj['ParentID'] ?? 0);
+        if ($ident === '' || $parentID <= 0) {
+            return null;
+        }
+        return [$parentID, $ident];
+    }
+
     private function runPartnerCall(callable $fn): ?string
     {
         ob_start();
@@ -822,8 +842,9 @@ class NRGDashboardTile extends IPSModule
             // Transportneutral, ueber die vom Vertrag gelieferte Variable
             // (chargeEnableID/currentLimitID) - wirkt gleichermassen bei
             // ChargerHub und OCPPHub, ohne dass wir hier deren jeweiliges
-            // Praefix kennen muessen (IPS_RequestAction() dispatcht selbst
-            // an die Instanz, die die Variable besitzt).
+            // Praefix kennen muessen. IPS_RequestAction() braucht InstanzID+
+            // Ident, nicht die VariablenID - resolveActionTarget() loest das
+            // aus dem Variablenobjekt auf (siehe deren Docblock).
             if ($action === 'setEnable') {
                 $vid = (int) ($d['chargeEnableID'] ?? 0);
                 if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
@@ -831,8 +852,14 @@ class NRGDashboardTile extends IPSModule
                     echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar.']);
                     return;
                 }
-                $err = $this->runPartnerCall(function () use ($vid) {
-                    IPS_RequestAction($vid, ($_GET['active'] ?? '1') === '1');
+                $target = $this->resolveActionTarget($vid);
+                if ($target === null) {
+                    http_response_code(400);
+                    echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar (kein Ident ermittelbar).']);
+                    return;
+                }
+                $err = $this->runPartnerCall(function () use ($target) {
+                    IPS_RequestAction($target[0], $target[1], ($_GET['active'] ?? '1') === '1');
                 });
             } elseif ($action === 'setCurrent') {
                 $vid = (int) ($d['currentLimitID'] ?? 0);
@@ -841,11 +868,17 @@ class NRGDashboardTile extends IPSModule
                     echo json_encode(['ok' => false, 'error' => 'Stromlimit an diesem Gerät nicht steuerbar.']);
                     return;
                 }
+                $target = $this->resolveActionTarget($vid);
+                if ($target === null) {
+                    http_response_code(400);
+                    echo json_encode(['ok' => false, 'error' => 'Stromlimit an diesem Gerät nicht steuerbar (kein Ident ermittelbar).']);
+                    return;
+                }
                 $min = (int) ($d['minCurrent'] ?? 6);
                 $max = (int) ($d['maxCurrent'] ?? 32);
                 $amps = max($min, min($max, (int) ($_GET['amps'] ?? $min)));
-                $err = $this->runPartnerCall(function () use ($vid, $amps) {
-                    IPS_RequestAction($vid, $amps);
+                $err = $this->runPartnerCall(function () use ($target, $amps) {
+                    IPS_RequestAction($target[0], $target[1], $amps);
                 });
             } elseif ($action === 'start' && function_exists('OHUBL_ManualStart')) {
                 $err = $this->runPartnerCall(function () use ($instanceID) {
