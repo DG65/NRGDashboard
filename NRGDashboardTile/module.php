@@ -1099,8 +1099,8 @@ class NRGDashboardTile extends IPSModule
         $vehicles = $this->AllVehicles();
         if (count($vehicles) > 0) {
             $assign = $this->AssignVehicles($devices, $vehicles);
-            foreach ($assign as $wbIdx => $vIdx) {
-                $v = $vehicles[$vIdx];
+            foreach ($assign as $wbIdx => $a) {
+                $v = $vehicles[$a['v']];
                 $devices[$wbIdx]['socHave'] = true;
                 $devices[$wbIdx]['soc'] = round((float) GetValue($v['socID']));
                 $devices[$wbIdx]['sub'] = $v['name'];
@@ -1110,7 +1110,7 @@ class NRGDashboardTile extends IPSModule
                 if (!empty($v['rangeKm'])) {
                     $devices[$wbIdx]['vehicleRangeKm'] = $v['rangeKm'];
                 }
-                $this->PublishVehicleNameToChargerHub($devices[$wbIdx], $v['name']);
+                $this->PublishVehicleNameToChargerHub($devices[$wbIdx], $v['name'], $a['correlated']);
             }
         }
 
@@ -2033,8 +2033,18 @@ class NRGDashboardTile extends IPSModule
      * 'transport'-Feld -> Default), OHUBL_SetVehicleName() fuer OCPPHub-
      * Ladepunkte ('transport' === 'ocpp'). function_exists()-Guard je Zweig,
      * damit ein fehlendes/aelteres Partnermodul nicht zum Fatal Error fuehrt.
+     *
+     * $timeCorrelated (31.08.2026, OCPPHub-Autocharge-Feature): gibt weiter,
+     * ob AssignVehicles() eine ECHTE Zeitkorrelation gefunden hat oder nur
+     * einen der beiden Sonderfaelle (Ausschlussverfahren ohne geprueften
+     * Zeitstempel, siehe deren Docblock) - OCPPHub autorisiert automatisch
+     * nur bei true. PFLICHTPARAMETER bei OHUB_SetVehicleName() (Symcons
+     * generierte Instanzfunktion ignoriert PHP-Standardwerte, derselbe
+     * Fund wie beim OHUB_RemoteStart()-ArgumentCountError vom 31.08.2026) -
+     * deshalb hier KEIN Default, CHUB_SetVehicleName() bleibt unveraendert
+     * bei 2 Argumenten, da ChargerHub das Feld (noch) nicht angefragt hat.
      */
-    private function PublishVehicleNameToChargerHub(array $wallbox, string $vehicleName): void
+    private function PublishVehicleNameToChargerHub(array $wallbox, string $vehicleName, bool $timeCorrelated): void
     {
         $instanceID = (int) ($wallbox['instanceID'] ?? 0);
         if ($instanceID <= 0 || !IPS_InstanceExists($instanceID)) {
@@ -2042,7 +2052,7 @@ class NRGDashboardTile extends IPSModule
         }
         if (($wallbox['transport'] ?? '') === 'ocpp') {
             if (function_exists('OHUBL_SetVehicleName')) {
-                @OHUBL_SetVehicleName($instanceID, $vehicleName);
+                @OHUBL_SetVehicleName($instanceID, $vehicleName, $timeCorrelated);
             }
             return;
         }
@@ -2110,13 +2120,18 @@ class NRGDashboardTile extends IPSModule
             return $a['d'] <=> $b['d'];
         });
 
+        // Werte sind ['v' => Fahrzeug-Index, 'correlated' => bool] - Letzteres
+        // seit 31.08.2026 fuer OCPPHubs OHUBL_SetVehicleName()-Konfidenzflag
+        // (Autocharge-Feature): true nur bei echter Zeitkorrelation ueber
+        // $pairs unten, false bei den beiden Sonderfaellen weiter unten
+        // (reines Ausschlussverfahren, keine geprueften Zeitstempel).
         $map = [];
         $usedV = [];
         foreach ($pairs as $p) {
             if (isset($map[$p['w']]) || isset($usedV[$p['v']])) {
                 continue;
             }
-            $map[$p['w']] = $p['v'];
+            $map[$p['w']] = ['v' => $p['v'], 'correlated' => true];
             $usedV[$p['v']] = true;
         }
 
@@ -2135,7 +2150,7 @@ class NRGDashboardTile extends IPSModule
         $wbRemaining = array_diff_key($wbConnected, $map);
         $vRemaining = array_diff_key($vConnected, $usedV);
         if (count($wbRemaining) === 1 && count($vRemaining) === 1) {
-            $map[array_key_first($wbRemaining)] = array_key_first($vRemaining);
+            $map[array_key_first($wbRemaining)] = ['v' => array_key_first($vRemaining), 'correlated' => false];
         }
 
         // Sonderfall genau eine Wallbox / genau ein Fahrzeug: die Lage ist
@@ -2153,7 +2168,7 @@ class NRGDashboardTile extends IPSModule
                 ? $vehicles[0]['connected']
                 : $this->CondMet((int) $vehicles[0]['plugID'], (string) $vehicles[0]['plugOp'], (string) $vehicles[0]['plugVal']);
             if ($wbState !== false && $vState !== false) {
-                $map[$i] = 0;
+                $map[$i] = ['v' => 0, 'correlated' => false];
             }
         }
 
