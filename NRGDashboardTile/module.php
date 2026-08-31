@@ -753,6 +753,32 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
+     * Fuehrt einen Steuerbefehl an einem Partnermodul (ChargerHub/OCPPHub)
+     * ab und faengt sowohl echte Exceptions als auch jede unerwartet
+     * ausgegebene Textausgabe (PHP-Warning/Notice, die per try/catch NICHT
+     * abgefangen wuerde) auf - beides koennte sonst unsere JSON-Antwort im
+     * Hook korrumpieren (Fund 31.08.2026, OCPPHubLadepunkt::RemoteStart()-
+     * ArgumentCountError haette ohne diesen Schutz die Antwort verstuemmelt).
+     * Rueckgabe: null bei Erfolg, sonst Fehlertext fuer die JSON-Antwort.
+     */
+    private function runPartnerCall(callable $fn): ?string
+    {
+        ob_start();
+        try {
+            $fn();
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            return $e->getMessage();
+        }
+        $stray = ob_get_clean();
+        if ($stray !== '') {
+            IPS_LogMessage('NRGDashboardTile', 'Unerwartete Ausgabe bei Wallbox-Steuerbefehl: ' . substr($stray, 0, 500));
+            return 'Unerwartete Antwort vom Partnermodul (siehe IPS-Systemlog).';
+        }
+        return null;
+    }
+
+    /**
      * Liefert die Kachel als eigenstaendige Webseite (fuer IPSView-WebView/
      * Popup oder jeden Browser). Aufruf: /hook/nrgdashtile<InstanzID>.
      * Mit ?json=1 werden nur die Daten geliefert (fuer die Auto-Aktualisierung).
@@ -805,13 +831,9 @@ class NRGDashboardTile extends IPSModule
                     echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar.']);
                     return;
                 }
-                try {
+                $err = $this->runPartnerCall(function () use ($vid) {
                     IPS_RequestAction($vid, ($_GET['active'] ?? '1') === '1');
-                } catch (\Throwable $e) {
-                    http_response_code(500);
-                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
-                    return;
-                }
+                });
             } elseif ($action === 'setCurrent') {
                 $vid = (int) ($d['currentLimitID'] ?? 0);
                 if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
@@ -822,40 +844,29 @@ class NRGDashboardTile extends IPSModule
                 $min = (int) ($d['minCurrent'] ?? 6);
                 $max = (int) ($d['maxCurrent'] ?? 32);
                 $amps = max($min, min($max, (int) ($_GET['amps'] ?? $min)));
-                try {
+                $err = $this->runPartnerCall(function () use ($vid, $amps) {
                     IPS_RequestAction($vid, $amps);
-                } catch (\Throwable $e) {
-                    http_response_code(500);
-                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
-                    return;
-                }
+                });
             } elseif ($action === 'start' && function_exists('OHUBL_ManualStart')) {
-                try {
+                $err = $this->runPartnerCall(function () use ($instanceID) {
                     OHUBL_ManualStart($instanceID, 0);
-                } catch (\Throwable $e) {
-                    http_response_code(500);
-                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
-                    return;
-                }
+                });
             } elseif ($action === 'stop' && function_exists('OHUBL_ManualStop')) {
-                try {
+                $err = $this->runPartnerCall(function () use ($instanceID) {
                     OHUBL_ManualStop($instanceID);
-                } catch (\Throwable $e) {
-                    http_response_code(500);
-                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
-                    return;
-                }
+                });
             } elseif ($action === 'override' && function_exists('OHUBL_SetDailyOverride')) {
-                try {
+                $err = $this->runPartnerCall(function () use ($instanceID) {
                     OHUBL_SetDailyOverride($instanceID, ($_GET['active'] ?? '1') === '1');
-                } catch (\Throwable $e) {
-                    http_response_code(500);
-                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
-                    return;
-                }
+                });
             } else {
                 http_response_code(400);
                 echo json_encode(['ok' => false, 'error' => 'Unbekannte oder nicht verfügbare Aktion.']);
+                return;
+            }
+            if ($err !== null) {
+                http_response_code(500);
+                echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $err]);
                 return;
             }
             echo json_encode(['ok' => true]);
