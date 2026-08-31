@@ -2135,6 +2135,21 @@ class NRGDashboardTile extends IPSModule
             $usedV[$p['v']] = true;
         }
 
+        // Physische Eindeutigkeit ueber das Label, nicht die Zeilenzahl -
+        // Regression 31.08.2026 (Dietmar: "diesen Fall ... hatten wir doch
+        // schon einmal"): bei bewusster Mehrfach-Discovery derselben
+        // Wallbox (Testbetrieb ueber ChargerHub UND OCPPHub gleichzeitig,
+        // 30.08.2026) zaehlten die beiden Sonderfaelle unten "1 verbundene
+        // Wallbox" faelschlich als 2 Zeilen - der Sonderfall griff nicht
+        // mehr, Fahrzeugname/SOC verschwanden trotz eindeutiger Lage
+        // (derselbe Zaehl-Fehler wie a3a3f19, nur eine Ebene hoeher). Beide
+        // Sonderfaelle gruppieren deshalb erst nach Label und zaehlen
+        // GRUPPEN statt Zeilen; bei Treffer werden ALLE Zeilen der Gruppe
+        // zugeordnet, nicht nur die erste.
+        $labelOf = function (int $i) use ($rows): string {
+            return strtolower(trim((string) ($rows[$i]['label'] ?? '')));
+        };
+
         // Sonderfall genau eine VERBUNDENE Wallbox / genau ein VERBUNDENES
         // Fahrzeug (nach Abzug der bereits zeitkorrelierten Paare): auch
         // ohne zeitliche Naehe eindeutig, wer zu wem gehoert - Dietmar,
@@ -2149,26 +2164,53 @@ class NRGDashboardTile extends IPSModule
         // nur je eine(r) davon ueberhaupt verbunden ist.
         $wbRemaining = array_diff_key($wbConnected, $map);
         $vRemaining = array_diff_key($vConnected, $usedV);
-        if (count($wbRemaining) === 1 && count($vRemaining) === 1) {
-            $map[array_key_first($wbRemaining)] = ['v' => array_key_first($vRemaining), 'correlated' => false];
+        $wbRemainingGroups = [];
+        foreach (array_keys($wbRemaining) as $i) {
+            $wbRemainingGroups[$labelOf($i)][] = $i;
+        }
+        if (count($wbRemainingGroups) === 1 && count($vRemaining) === 1) {
+            $vIdx = array_key_first($vRemaining);
+            foreach (reset($wbRemainingGroups) as $i) {
+                $map[$i] = ['v' => $vIdx, 'correlated' => false];
+            }
         }
 
         // Sonderfall genau eine Wallbox / genau ein Fahrzeug: die Lage ist
         // auch ohne Zeitkorrelation eindeutig - hier darf die Verbunden-
         // Bedingung des Fahrzeugs sogar fehlen.
-        if (count($map) === 0 && count($wbAllIdx) === 1 && count($vehicles) === 1) {
-            $i = $wbAllIdx[0];
-            $row = $rows[$i];
-            $wbState = $this->CondMet(
-                (int) ($row['plugStateID'] ?? 0),
-                (string) ($row['plugOp'] ?? 'truthy'),
-                (string) ($row['plugVal'] ?? '')
-            );
+        $wbGroups = [];
+        foreach ($wbAllIdx as $i) {
+            $wbGroups[$labelOf($i)][] = $i;
+        }
+        if (count($map) === 0 && count($wbGroups) === 1 && count($vehicles) === 1) {
+            $groupIdxs = reset($wbGroups);
+            $wbState = false;
+            foreach ($groupIdxs as $i) {
+                $row = $rows[$i];
+                $s = $this->CondMet(
+                    (int) ($row['plugStateID'] ?? 0),
+                    (string) ($row['plugOp'] ?? 'truthy'),
+                    (string) ($row['plugVal'] ?? '')
+                );
+                // null (kein plugStateID konfiguriert) laesst durch wie
+                // bisher, true gewinnt sofort - false von EINER Quelle darf
+                // eine andere Quelle derselben physischen Wallbox nicht
+                // blockieren.
+                if ($s === true) {
+                    $wbState = true;
+                    break;
+                }
+                if ($s === null) {
+                    $wbState = null;
+                }
+            }
             $vState = array_key_exists('connected', $vehicles[0])
                 ? $vehicles[0]['connected']
                 : $this->CondMet((int) $vehicles[0]['plugID'], (string) $vehicles[0]['plugOp'], (string) $vehicles[0]['plugVal']);
             if ($wbState !== false && $vState !== false) {
-                $map[$i] = ['v' => 0, 'correlated' => false];
+                foreach ($groupIdxs as $i) {
+                    $map[$i] = ['v' => 0, 'correlated' => false];
+                }
             }
         }
 
