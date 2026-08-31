@@ -1260,6 +1260,12 @@ gleiche IPSView-Fähigkeit.
   gekennzeichnet). Komplett aus den vorhandenen `*_GetFunctions`-Verträgen
   erzeugt — kein Gerätetyp ist im Code verdrahtet, ein neuer
   Vertragsanbieter liefert automatisch dieselbe Detailansicht mit.
+- **Archivierung selbst aktivieren:** war die Leistungs-Variable eines
+  Geräts noch nicht protokolliert, aktiviert die Detailseite die
+  Archivierung beim ersten Aufruf des Leistungsdiagramms automatisch
+  selbst, statt nur "keine Archivdaten" zu melden und es dabei zu
+  belassen — der erste Aufruf zeigt noch keine Historie, ab da sammelt
+  sich der Verlauf von selbst.
 - **Chip-Form ab vielen Verbrauchern:** der Haus-Knoten wechselt ab einer
   größeren Anzahl an Verbraucher-Knoten automatisch von der Kreis- in eine
   "Chip"-Form (Pille mit geraden Seiten) — so bleiben die einzelnen Knoten

@@ -23,6 +23,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Archivierung selbst aktivieren, 31.08.2026): War die Leistungs-Variable eines Geräts noch nicht protokolliert, aktiviert die Detailseite die Archivierung beim ersten Aufruf des Leistungsdiagramms automatisch selbst - statt nur „keine Archivdaten“ zu melden. Der erste Aufruf zeigt noch keine Historie, ab da sammelt sich der Verlauf von selbst."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheiten (Knoten-Anzeige, 28.08.2026): Batterie-Knoten zeigt den Ladestand zusätzlich als steigenden Füllstand; ein rotes Warndreieck erscheint direkt am betroffenen Knoten, sobald eine Diagnose auffällig/kritisch wird; ein gestrichelter „Geisterring“ vergleicht die aktuelle Leistung mit gestern zur gleichen Uhrzeit; der Solar-Knoten trägt einen Fortschrittsring (heutiger Ertrag vs. Tagesprognose, sofern eine PV-Prognose-Instanz vorhanden ist); der Netz-Knoten zeigt eine Strompreis-Sparkline und wechselt alle paar Sekunden zwischen Watt und Kosten pro Stunde (sofern eine Preisquelle - Tibber Grid Rewards oder automatisch der BDEW-Haushaltsdurchschnitt - vorhanden ist); der Haus-Chip trägt einen grünen Autarkiegrad-Bogen (Anteil des heutigen Verbrauchs ohne Netzbezug); die Verbindungslinien werden mit der Leistung dicker und zeigen einen kleinen Querstrich an der Position der heutigen Tagesspitze; bei installierter StromGedacht-Instanz färbt die Netzampel den Kachelhintergrund dezent ein."
         },
         {

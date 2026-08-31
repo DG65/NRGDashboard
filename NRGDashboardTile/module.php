@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.0';
+    private const NEWS_VERSION = '0.7.1';
     private const NEWS_ITEMS = [
+        'Das Leistungsdiagramm der Geräte-Detailseite aktiviert die Archivierung der zugrunde liegenden Variable jetzt selbst, statt nur "keine Archivdaten" zu melden - ab dem ersten Aufruf sammelt sich der Verlauf automatisch.',
         'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
         'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',
         'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
@@ -3256,6 +3257,7 @@ class NRGDashboardTile extends IPSModule
         // Wallbox, deren primaere powerID nicht mehr aktualisiert wurde).
         $powerNow = $this->resolvePowerValue($d);
         $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
+        $archivingJustEnabled = $this->EnsureArchiving($powerID);
         $powerSeries = $this->DaySeries($powerID, $dayStart, $dayEnd);
         $energy = $this->DailyEnergyBars($d, $dayStart);
         $isToday = date('Y-m-d', $dayStart) === date('Y-m-d');
@@ -3271,6 +3273,7 @@ class NRGDashboardTile extends IPSModule
             'dayLabel'  => date('d.m.Y', $dayStart),
             'isToday'   => $isToday,
             'power'     => $powerSeries,
+            'archivingJustEnabled' => $archivingJustEnabled,
             'energy'    => $energy,
             // "Für mich"-Kennzahlen (Dietmar, 28.08.2026: "was einen als
             // Hausbesitzer interessieren könnte ... auch mit Blick auf
@@ -3751,6 +3754,29 @@ class NRGDashboardTile extends IPSModule
     {
         $ids = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
         return count($ids) > 0 ? (int) $ids[0] : 0;
+    }
+
+    /**
+     * Aktiviert die Archivierung fuer eine Variable, falls noch nicht aktiv
+     * - Dietmar 31.08.2026: "wenn Du schon eine Auswertung anbietest, dann
+     * solltest Du auch alle betreffenden Datenpunkte archivieren", statt nur
+     * "keine Archivdaten" anzuzeigen und es dabei zu belassen. Wirkt nur
+     * lazy beim tatsaechlichen Aufruf der Leistungsgrafik (nicht pauschal
+     * fuer jedes discovered Geraet), damit nicht ungefragt Dutzende fremde
+     * Variablen archiviert werden, die nie jemand ansieht. Rueckgabe true,
+     * wenn die Archivierung GERADE erst aktiviert wurde (fuer die Detail-
+     * seite: dann liegen naturgemaess noch keine historischen Daten vor,
+     * das ist kein Fehler mehr, sondern nur eine Frage der Zeit).
+     */
+    private function EnsureArchiving(int $vid): bool
+    {
+        $arch = $this->ArchiveID();
+        if ($arch <= 0 || $vid <= 0 || !IPS_VariableExists($vid) || AC_GetLoggingStatus($arch, $vid)) {
+            return false;
+        }
+        AC_SetLoggingStatus($arch, $vid, true);
+        IPS_ApplyChanges($arch);
+        return true;
     }
 
     /**

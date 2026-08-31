@@ -140,7 +140,7 @@
   </div>
   <div id="powerChart" class="chartbox"></div>
 </div>
-<div id="powerNote" class="note" style="display:none">Für die Leistung dieses Geräts liegen keine Archivdaten vor (Variable nicht protokolliert).</div>
+<div id="powerNote" class="note" style="display:none"></div>
 
 <div id="energyWrap" style="display:none">
   <h2 id="energyH">Energie je Tag</h2>
@@ -254,6 +254,15 @@ function renderPower(p) {
   document.getElementById('nextDay').disabled = !!p.isToday;
   if (!p.power || !p.power.length) {
     wrap.style.display = (p.day ? '' : 'none');
+    // Archivierung (31.08.2026, Dietmar: "wenn Du schon eine Auswertung
+    // anbietest, dann solltest Du auch alle betreffenden Datenpunkte
+    // archivieren") - EnsureArchiving() in module.php aktiviert die
+    // Protokollierung jetzt selbst, statt es nur zu bemaengeln. Beim
+    // allerersten Aufruf gibt es trotzdem noch keine historischen Daten -
+    // das ist dann kein Fehler mehr, nur eine Frage der Zeit.
+    note.textContent = p.archivingJustEnabled
+      ? 'Archivierung für diese Leistung wurde soeben aktiviert - ab jetzt werden Daten gesammelt, das Diagramm füllt sich mit der Zeit.'
+      : 'Für die Leistung dieses Geräts liegen keine Archivdaten vor (Variable nicht protokolliert).';
     note.style.display = '';
     if (powerChart) powerChart.clear();
     return;
