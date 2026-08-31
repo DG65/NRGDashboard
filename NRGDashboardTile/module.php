@@ -57,7 +57,7 @@ class NRGDashboardTile extends IPSModule
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
     private const NEWS_VERSION = '0.7.0';
     private const NEWS_ITEMS = [
-        'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben.',
+        'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
         'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',
         'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
         'Kostenersparnis-Berechnung nutzt jetzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) statt eines festen Werts, inklusive Aufschlüsselung nach Netzentgelt/Tarif/Grid-Reward-Erlös auf der Geräte-Detailseite.',
@@ -3365,9 +3365,24 @@ class NRGDashboardTile extends IPSModule
             $info['ocppActions'] = true;
         }
 
+        // blockReasonID (31.08.2026, contractVersion 1.2, additiv) - generischer,
+        // vom Anbieter interpretierter Klartext, WARUM eine Wallbox einen
+        // Ladebefehl gerade ablehnt/blockiert (z.B. OCPP-Reject-Grund). Bereits
+        // interpretierter Wert (kein ID-Suffix im Ergebnis), da direkt in der
+        // Detailseite angezeigt - jedes Partnermodul (ChargerHub genauso wie
+        // OCPPHub) kann das Feld optional befuellen, ohne dass wir hier
+        // OCPP-Spezifika kennen muessen (CLAUDE.md Kernprinzip 2).
+        $reasonID = (int) ($d['blockReasonID'] ?? 0);
+        if ($reasonID > 0 && IPS_VariableExists($reasonID)) {
+            $reason = trim((string) GetValue($reasonID));
+            if ($reason !== '') {
+                $info['blockReason'] = $reason;
+            }
+        }
+
         // Nichts Steuerbares gefunden - dann lieber gar kein Panel zeigen
         // als eines ohne Inhalt.
-        if (!isset($info['enableID']) && !isset($info['limitID']) && empty($info['ocppActions'])) {
+        if (!isset($info['enableID']) && !isset($info['limitID']) && empty($info['ocppActions']) && !isset($info['blockReason'])) {
             return null;
         }
         return $info;

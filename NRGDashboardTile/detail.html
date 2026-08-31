@@ -37,6 +37,7 @@
   .ctlBtn:hover { background: #4a5058; }
   .ctlBtn:disabled { opacity: .5; cursor: default; }
   .ctlBtn.active { background: #3a5a3f; }
+  #ctlBlockReason { background: #4a2b2b; color: #e6a9a9; padding: 6px 10px; border-radius: 4px; font-size: 13px; }
   #ctlStatus { font-size: 13px; min-height: 18px; transition: opacity .4s; }
   #ctlStatus.pending { color: #c9c9c9; }
   #ctlStatus.ok { color: #8fd18f; }
@@ -105,6 +106,11 @@
     <input type="range" id="ctlLimit" style="width:160px;">
     <span id="ctlLimitVal" style="font-size:13px; font-variant-numeric: tabular-nums; min-width: 4ch;"></span>
   </div>
+  <!-- Ablehnungsgrund (31.08.2026, blockReasonID-Vertragsfeld, contractVersion
+       1.2) - prominent VOR den Buttons, damit er nicht wie ein beliebiger
+       Messwert untergeht, sondern sofort erklaert, warum ein Ladebefehl
+       gerade nicht wirkt. -->
+  <div id="ctlBlockReason" style="display:none;"></div>
   <div id="ctlOcppRow" style="display:none; gap: 8px;">
     <button id="ctlStart" class="ctlBtn">▶ Laden starten</button>
     <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
@@ -371,6 +377,14 @@ function renderControl(p) {
   }
 
   ocppRow.style.display = c.ocppActions ? 'flex' : 'none';
+
+  const reasonEl = document.getElementById('ctlBlockReason');
+  if (c.blockReason) {
+    reasonEl.textContent = '⚠ ' + c.blockReason;
+    reasonEl.style.display = '';
+  } else {
+    reasonEl.style.display = 'none';
+  }
 }
 
 // Rueckmeldung (31.08.2026, Dietmar: "das ueberhaupt keine Rueckmeldungen
@@ -407,7 +421,12 @@ function wallboxAction(action, extra) {
         setTimeout(() => {
           const stillZero = action === 'start' && lastPayload && !lastPayload.powerNow;
           if (stillZero) {
-            setCtlStatus('Befehl gesendet, aber Wallbox lädt noch nicht - evtl. abgelehnt (siehe OCPPHub-Systemlog).', 'err');
+            // blockReason (frisch nachgeladen via loadDay()->renderControl())
+            // ist die vom Anbieter gelieferte echte Ablehnungsursache - die
+            // steht bereits prominent in #ctlBlockReason, hier nur kurz
+            // darauf verweisen statt sie zu duplizieren.
+            const reason = lastPayload && lastPayload.control && lastPayload.control.blockReason;
+            setCtlStatus(reason ? 'Abgelehnt: ' + reason : 'Befehl gesendet, aber Wallbox lädt noch nicht - evtl. abgelehnt (siehe Systemlog des Partnermoduls).', 'err');
           } else {
             setCtlStatus('Befehl angenommen ✓', 'ok');
             setTimeout(() => document.getElementById('ctlStatus').classList.add('fade'), 3000);

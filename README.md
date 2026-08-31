@@ -1330,7 +1330,11 @@ gleiche IPSView-Fähigkeit.
   Praxis: ein OCPP-Ladepunkt mit mehreren Connectors lehnte
   `RemoteStartTransaction` ohne genaue Connector-Angabe kommentarlos
   ab — unser eigener Request meldete trotzdem `ok:true`, weil der
-  PHP-Aufruf fehlerfrei durchlief).
+  PHP-Aufruf fehlerfrei durchlief). Liefert das Partnermodul über das
+  optionale Vertragsfeld `blockReasonID` (additiv, contractVersion 1.2)
+  einen konkreten Ablehnungsgrund als Klartext, zeigt die Detailseite
+  ihn prominent direkt über den Steuer-Schaltflächen an — herstellerunabhängig,
+  jedes Partnermodul kann das Feld optional befüllen.
 
 ## Formular-Konvention (SUITE.md "Einheitliche Formular-Optik")
 
