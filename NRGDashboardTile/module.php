@@ -805,7 +805,13 @@ class NRGDashboardTile extends IPSModule
                     echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar.']);
                     return;
                 }
-                IPS_RequestAction($vid, ($_GET['active'] ?? '1') === '1');
+                try {
+                    IPS_RequestAction($vid, ($_GET['active'] ?? '1') === '1');
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
+                    return;
+                }
             } elseif ($action === 'setCurrent') {
                 $vid = (int) ($d['currentLimitID'] ?? 0);
                 if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
@@ -816,7 +822,13 @@ class NRGDashboardTile extends IPSModule
                 $min = (int) ($d['minCurrent'] ?? 6);
                 $max = (int) ($d['maxCurrent'] ?? 32);
                 $amps = max($min, min($max, (int) ($_GET['amps'] ?? $min)));
-                IPS_RequestAction($vid, $amps);
+                try {
+                    IPS_RequestAction($vid, $amps);
+                } catch (\Throwable $e) {
+                    http_response_code(500);
+                    echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $e->getMessage()]);
+                    return;
+                }
             } elseif ($action === 'start' && function_exists('OHUBL_ManualStart')) {
                 try {
                     OHUBL_ManualStart($instanceID, 0);
