@@ -2564,7 +2564,14 @@ class NRGDashboardTile extends IPSModule
     {
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
         if ($id > 0) {
-            $slots = @TIBBERGR_GetPriceCurve($id);
+            // try/catch (31.08.2026, Anlass: Tibber-eigener Fatal Error in
+            // GetPriceApiToken()) - @ faengt keinen Fatal Error/uncaught
+            // Throwable aus der aufgerufenen Funktion selbst ab.
+            try {
+                $slots = @TIBBERGR_GetPriceCurve($id);
+            } catch (\Throwable $e) {
+                $slots = null;
+            }
             if (is_array($slots)) {
                 $slots = array_values(array_filter($slots, function ($s) use ($dayStart, $dayEnd) {
                     return is_array($s) && (int) ($s['end'] ?? 0) > $dayStart && (int) ($s['start'] ?? PHP_INT_MAX) < $dayEnd;

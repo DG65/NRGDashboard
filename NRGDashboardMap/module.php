@@ -393,18 +393,27 @@ class NRGDashboardMap extends IPSModule
         // Fahrzeuge (Tessie) - haengen physisch an der Wallbox, mangels
         // Zeitkorrelations-Zuordnung (wie in NRGDashboardTile) hier am
         // ersten gefundenen Wallbox-Cluster, sonst am Hausverbrauch.
-        foreach (@IPS_GetInstanceListByModuleID(self::TESSIE_GUID) as $id) {
-            $id = (int) $id;
-            $state = @TESSIE_GetVehicleState($id);
-            if (is_string($state)) {
-                $state = json_decode($state, true);
+        // function_exists()-Guard (31.08.2026, OCPPHub-Fund im Systemlog):
+        // "Call to undefined function TESSIE_GetVehicleState()" - Timing-
+        // Fall, in dem Tessie-Instanzen zwar schon existieren (IPS_Get
+        // InstanceListByModuleID() findet sie), das Modul selbst aber noch
+        // nicht geladen/aktiv ist. @ unterdrueckt nur Warnings, keine
+        // Fatal Errors bei undefinierten Funktionen - Verbund-Regel 1
+        // (keine harte Abhaengigkeit ohne Existenzpruefung).
+        if (function_exists('TESSIE_GetVehicleState')) {
+            foreach (@IPS_GetInstanceListByModuleID(self::TESSIE_GUID) as $id) {
+                $id = (int) $id;
+                $state = @TESSIE_GetVehicleState($id);
+                if (is_string($state)) {
+                    $state = json_decode($state, true);
+                }
+                if (!is_array($state)) {
+                    continue;
+                }
+                $key = 'vehicle_' . $id;
+                $nodes[] = ['id' => $key, 'label' => (string) ($state['name'] ?? 'Fahrzeug'), 'category' => 'vehicle'];
+                $edges[] = ['source' => $wbIds[0] ?? ($houseId ?? $centerId), 'target' => $key];
             }
-            if (!is_array($state)) {
-                continue;
-            }
-            $key = 'vehicle_' . $id;
-            $nodes[] = ['id' => $key, 'label' => (string) ($state['name'] ?? 'Fahrzeug'), 'category' => 'vehicle'];
-            $edges[] = ['source' => $wbIds[0] ?? ($houseId ?? $centerId), 'target' => $key];
         }
 
         $result = ['nodes' => $nodes, 'edges' => $edges];

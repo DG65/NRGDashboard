@@ -591,7 +591,17 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($id <= 0 || !function_exists('TIBBERGR_GetPriceCurve')) {
             return [];
         }
-        $curve = @TIBBERGR_GetPriceCurve($id);
+        // try/catch (31.08.2026, Anlass: Tibber-eigener Fatal Error in
+        // GetPriceApiToken()) - @ unterdrueckt nur Warnings/Notices, keinen
+        // Fatal Error/uncaught Throwable AUS der aufgerufenen Funktion
+        // selbst. Ohne diesen Schutz reisst ein Absturz bei Tibber unsere
+        // gesamte Seite mit, statt dass der Strompreis-Reiter einfach leer
+        // bleibt (Muster: runPartnerCall() in NRGDashboardTile).
+        try {
+            $curve = @TIBBERGR_GetPriceCurve($id);
+        } catch (\Throwable $e) {
+            return [];
+        }
         if (!is_array($curve)) {
             return [];
         }
@@ -1236,7 +1246,15 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($pvf <= 0 || !function_exists('PVF_GetForecast')) {
             return [];
         }
-        $cache = json_decode($this->ReadAttributeString('PvfSunCache'), true);
+        // is_string()-Guard (31.08.2026, OCPPHub-Fund im Systemlog: "json_decode():
+        // Argument #1 ($json) must be of type string, false given" genau in
+        // dieser Funktion) - ReadAttributeString() sollte immer einen String
+        // liefern, aber json_decode() reagiert auf jeden Nicht-String-Wert
+        // mit einem Fatal Error statt eines harmlosen null - lieber hier
+        // defensiv wie an jeder anderen Stelle dieser Datei (is_string()-
+        // Muster) als der Ursache einzeln hinterherjagen.
+        $raw = $this->ReadAttributeString('PvfSunCache');
+        $cache = is_string($raw) ? json_decode($raw, true) : null;
         if (is_array($cache) && (time() - (int) ($cache['ts'] ?? 0)) < 900 && is_array($cache['pts'] ?? null)) {
             return $cache['pts'];
         }
