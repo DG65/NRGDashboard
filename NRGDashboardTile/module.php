@@ -2146,8 +2146,14 @@ class NRGDashboardTile extends IPSModule
         // Sonderfaelle gruppieren deshalb erst nach Label und zaehlen
         // GRUPPEN statt Zeilen; bei Treffer werden ALLE Zeilen der Gruppe
         // zugeordnet, nicht nur die erste.
+        //
+        // NACHTRAG selber Tag: die reine trim()-Normalisierung reichte
+        // NICHT - Live-Check per php_eval zeigte ChargerHub liefert "WB 2"
+        // (mit Leerzeichen), OCPPHub "WB2" (ohne) fuer dieselbe physische
+        // Wallbox. Alle Leerraeume raus, nicht nur an den Raendern -
+        // beide Schreibweisen sonst weiterhin zwei verschiedene Gruppen.
         $labelOf = function (int $i) use ($rows): string {
-            return strtolower(trim((string) ($rows[$i]['label'] ?? '')));
+            return preg_replace('/\s+/', '', strtolower((string) ($rows[$i]['label'] ?? '')));
         };
 
         // Sonderfall genau eine VERBUNDENE Wallbox / genau ein VERBUNDENES
