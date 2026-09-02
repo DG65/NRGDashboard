@@ -1320,6 +1320,14 @@ gleiche IPSView-Fähigkeit.
   allem beim Jahresvergleich mit vielen Jahren hilfreich, wo die
   wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt.
   Gilt reiterübergreifend, kein Sonderfall je Ansicht.
+- **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
+  Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
+  Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`
+  (stündlicher Pfad über `AC_GetAggregatedValues()`) und
+  `measuredFine()` (15/30-Minuten-Pfad über rohe Log-Punkte, dort ohne
+  Max/Min einer Aggregationszeile — Rohwerte werden direkt beim
+  Einlesen geprüft) — beide verwerfen jetzt unplausible Werte, statt
+  sie in den "Ist"-Vergleich zur Prognose einfließen zu lassen.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei

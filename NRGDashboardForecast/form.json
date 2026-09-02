@@ -19,6 +19,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) wird jetzt verworfen statt den „Ist“-Vergleich zur Prognose zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+        },
+        {
+          "type": "Label",
           "caption": "Gestern: zeigt den Vortag mit gemessener Kurve (ganzer Tag) und der damaligen Prognose. So sieht man, wie gut die Prognose getroffen hat."
         },
         {

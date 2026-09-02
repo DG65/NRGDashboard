@@ -54,6 +54,25 @@ class NRGDashboardForecast extends IPSModule
     private const DEF_BANDOP = 0.16;
     private const DEF_GRID   = true;
     private const DEF_YMAX   = 0.0; // 0 = automatisch
+    // Sanity-Obergrenze fuer archivierte Leistungswerte (01.09.2026, Fund
+    // bei NRGDashboardTile/PVMonitor/WPMonitor: 261.554.185 W durch einen
+    // Modbus-TID-Bug bei InverterHub, hat dort Tages-/Monatswerte auf
+    // absurde Werte gezogen - derselbe Fehlermechanismus betrifft
+    // readMeasured() hier 1:1, das den "Ist"-Vergleich zur Prognose aus
+    // AC_GetAggregatedValues()-Stundenmittelwerten baut). Bewusst KEIN
+    // anlagenspezifischer Wert (CLAUDE.md Kernprinzip 2) - 1 MW ist fuer
+    // jede denkbare Heim-/Kleingewerbe-Anlage implausibel.
+    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+
+    /** Siehe NRGDashboardPVMonitor::RowHasImplausiblePower() - identische
+     *  Logik, 'Max'/'Min' statt 'Avg' pruefen (Avg verduennt einen
+     *  einzelnen Ausreisser ueber den Aggregationszeitraum). */
+    private function RowHasImplausiblePower(array $row): bool
+    {
+        $max = isset($row['Max']) ? abs((float) $row['Max']) : 0.0;
+        $min = isset($row['Min']) ? abs((float) $row['Min']) : 0.0;
+        return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
+    }
 
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
 
@@ -62,8 +81,9 @@ class NRGDashboardForecast extends IPSModule
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.0';
+    private const NEWS_VERSION = '0.2.1';
     private const NEWS_ITEMS = [
+        'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) verzerrte bisher den "Ist"-Vergleich zur Prognose - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
         'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel ueber den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',
         'Eigene Ist-Leistungsvariablen (Konsole: "Ist-Werte") mit eigener Einheiten-Erkennung und Archiv-Cache-Intervall - unabhaengig von Prognoses eigener Konfiguration.',
@@ -761,6 +781,10 @@ class NRGDashboardForecast extends IPSModule
             if (!is_array($rows) || count($rows) === 0) { return null; }
             $out = array_fill(0, $slots, null);
             foreach ($rows as $r) {
+                if ($this->RowHasImplausiblePower($r)) {
+                    $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $r['TimeStamp']), (float) ($r['Max'] ?? 0)), 0);
+                    continue;
+                }
                 $h = (int) date('G', $r['TimeStamp']);
                 if ($h >= 0 && $h < $slots) { $out[$h] = (float) $r['Avg'] * $f; }
             }
@@ -793,12 +817,26 @@ class NRGDashboardForecast extends IPSModule
         $until   = min($dayEnd, time());
         $slotSec = ($dayEnd - $start) / $slots;
 
+        // Rohwerte (kein Max/Min einer Aggregationszeile hier, siehe
+        // RowHasImplausiblePower()) - ein einzelner unplausibler Wert wird
+        // direkt beim Einlesen verworfen, statt zeitgewichtet mit einzufliessen
+        // (01.09.2026, siehe IMPLAUSIBLE_POWER_W-Docblock oben).
         $carry = null;
         $pre = AC_GetLoggedValues($aid, $vid, 0, $start - 1, 1);
-        if (is_array($pre) && count($pre) > 0) { $carry = (float) $pre[0]['Value']; }
+        if (is_array($pre) && count($pre) > 0 && abs((float) $pre[0]['Value']) <= self::IMPLAUSIBLE_POWER_W) {
+            $carry = (float) $pre[0]['Value'];
+        }
 
         $rows = AC_GetLoggedValues($aid, $vid, $start, $until, 0);
         if (!is_array($rows)) { $rows = []; }
+        $rows = array_filter($rows, function ($r) use ($vid) {
+            $ok = abs((float) $r['Value']) <= self::IMPLAUSIBLE_POWER_W;
+            if (!$ok) {
+                $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f', $vid, date('Y-m-d H:i', (int) $r['TimeStamp']), (float) $r['Value']), 0);
+            }
+            return $ok;
+        });
+        $rows = array_values($rows);
         usort($rows, function ($a, $b) { return $a['TimeStamp'] <=> $b['TimeStamp']; });
 
         $points = [];
