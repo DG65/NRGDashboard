@@ -43,6 +43,24 @@ class NRGDashboardPVMonitor extends IPSModule
     // 1 MW ist fuer jede denkbare Heim-/Kleingewerbe-PV-Anlage implausibel.
     private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
 
+    /**
+     * NACHTRAG 01.09.2026 (Dietmar: "Passt aber immer noch nicht die
+     * Anzeige!" - der erste Ausreisser-Fix pruefte nur 'Avg', das verduennt
+     * einen einzelnen Ausreisser aber ueber Tag/Monat so stark, dass er
+     * unauffaellig unter der Implausibilitaetsgrenze bleibt (261.554.185 W
+     * wurden als Tages-Avg zu 91.871 W, als Monats-Avg noch viel kleiner -
+     * beides < 1 MW, der Fix griff also gar nicht). 'Max'/'Min' derselben
+     * Aggregationszeile enthalten dagegen den tatsaechlichen Rohwert
+     * UNVERDUENNT, auch bei grober Aggregation (Monat/Jahr) - das ist die
+     * richtige Pruefstelle, nicht 'Avg'.
+     */
+    private function RowHasImplausiblePower(array $row): bool
+    {
+        $max = isset($row['Max']) ? abs((float) $row['Max']) : 0.0;
+        $min = isset($row['Min']) ? abs((float) $row['Min']) : 0.0;
+        return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
+    }
+
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
     private const DEF_ENGINE     = 'echarts';
@@ -795,10 +813,10 @@ class NRGDashboardPVMonitor extends IPSModule
             if (!isset($row['Avg'])) {
                 continue;
             }
-            if (abs((float) $row['Avg']) > self::IMPLAUSIBLE_POWER_W) {
+            if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m', (int) $row['TimeStamp']), (float) $row['Avg']),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -1502,10 +1520,10 @@ class NRGDashboardPVMonitor extends IPSModule
         $kwh = 0.0;
         foreach ($data as $row) {
             $avg = (float) $row['Avg'];
-            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+            if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $avg),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -1800,10 +1818,10 @@ class NRGDashboardPVMonitor extends IPSModule
         $pts = [];
         foreach ($data as $row) {
             $w = (float) $row['Avg'];
-            if (abs($w) > self::IMPLAUSIBLE_POWER_W) {
+            if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $w),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -1963,10 +1981,10 @@ class NRGDashboardPVMonitor extends IPSModule
         $out = [];
         foreach ($data as $row) {
             $avg = (float) $row['Avg'];
-            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+            if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), $avg),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;

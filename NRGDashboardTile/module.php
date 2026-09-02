@@ -4006,6 +4006,22 @@ class NRGDashboardTile extends IPSModule
     // Schutz davor, dass EIN kaputter Messwert die Darstellung sprengt.
     private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
 
+    /**
+     * NACHTRAG 01.09.2026 (Dietmar: "Passt aber immer noch nicht die
+     * Anzeige!" - bei PVMonitor/WPMonitor pruefte der erste Fix nur 'Avg',
+     * das verduennt einen einzelnen Ausreisser ueber Tag/Monat so stark,
+     * dass er unauffaellig unter der Implausibilitaetsgrenze bleibt. Hier
+     * bei der 5-Minuten-Reihe ist die Verduennung zwar kleiner, aber
+     * 'Max'/'Min' bleiben trotzdem die korrektere, konsistente Pruefstelle
+     * (zeigen den Rohwert unverduennt, unabhaengig von der Aggregationsstufe).
+     */
+    private function RowHasImplausiblePower(array $row): bool
+    {
+        $max = isset($row['Max']) ? abs((float) $row['Max']) : 0.0;
+        $min = isset($row['Min']) ? abs((float) $row['Min']) : 0.0;
+        return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
+    }
+
     private function DaySeries(int $vid, int $from, int $to): array
     {
         $arch = $this->ArchiveID();
@@ -4019,10 +4035,10 @@ class NRGDashboardTile extends IPSModule
         $out = [];
         foreach ($agg as $row) {
             $w = (float) $row['Avg'];
-            if (abs($w) > self::IMPLAUSIBLE_POWER_W) {
+            if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $w),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
