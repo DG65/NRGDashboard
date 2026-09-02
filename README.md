@@ -1297,6 +1297,13 @@ gleiche IPSView-Fähigkeit.
   Vorführmodus ist (`OHUB_IsDemoMode()`) und blendet die Steuerung dann
   auch bei ausgeschaltetem eigenem Vorführmodus für dieses Gerät aus —
   koordinierter Schutz statt zweier unabhängiger Mechanismen.
+- **Ausreißer-Schutz bei Archivwerten:** ein einzelner defekter Messwert
+  im Archiv eines Partnermoduls (real gefunden: 261.554.185 W nachts bei
+  einer 9,18-kWp-Solaranlage, wodurch der Tagesbalken 2204,91 kWh
+  statt eines plausiblen Werts zeigte) wird jetzt verworfen statt
+  ungeprüft in Leistungsdiagramm, 14-Tage-Energiebalken, Geisterring,
+  Autarkiegrad und PV-Prognose-Ring einzufließen — eine generische
+  Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei

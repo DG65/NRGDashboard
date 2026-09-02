@@ -31,6 +31,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert eines Partnermoduls (real gefunden: 261.554.185 W nachts bei einer 9,18-kWp-Solaranlage) wird jetzt verworfen statt den Tagesbalken/das Leistungsdiagramm zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Preis-Vertrag für den Verbund, 31.08.2026): Andere Module können den zu jedem Zeitpunkt gültigen Strompreis über NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries() direkt bei uns abrufen - echte Tibber-Preisslots, wo verfügbar, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert. Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht nur den heutigen Tag - eine Preisermittlung reicht für den ganzen Verbund."
         },
         {

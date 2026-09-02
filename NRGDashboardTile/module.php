@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.5';
+    private const NEWS_VERSION = '0.7.6';
     private const NEWS_ITEMS = [
+        'Leistungsdiagramm, Energie-Balken der letzten 14 Tage und Geisterring/Autarkiegrad/PV-Prognose-Ring verwerfen jetzt einzelne unplausible Archivwerte (z. B. ein defekter Messwert in der Größenordnung von Megawatt bei einer Haushaltsanlage) statt sie ungeprüft in die Darstellung einfließen zu lassen.',
         'Vorführmodus erkennt jetzt auch, wenn OCPPHub selbst im Vorführmodus ist (OHUB_IsDemoMode()) - unsere Wallbox-Steuerung blendet sich dann für dieses Gerät ebenfalls aus, statt Buttons zu zeigen, die beim Klick ohnehin nur abgelehnt würden.',
         'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
         'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
@@ -3993,6 +3994,18 @@ class NRGDashboardTile extends IPSModule
      * chronologisch). Leer, wenn Variable fehlt oder nicht archiviert wird
      * - die Detailseite zeigt dann einen Hinweis statt eines leeren Charts.
      */
+    // Sanity-Obergrenze fuer archivierte Leistungswerte (01.09.2026, Dietmar:
+    // "2204,91 kWh von einer 9,18 kWp PV Anlage" - ein einzelner defekter
+    // Messwert von 261.554.185 W nachts in InverterHubs eigenem Archiv hat
+    // den kompletten Tagesbalken auf einen absurden Wert gezogen). Bewusst
+    // KEIN anlagenspezifischer Wert (waere hart verdrahtet, CLAUDE.md
+    // Kernprinzip 2) - 1 MW ist fuer jede denkbare Heim-/Kleingewerbe-Anlage
+    // (Solar, Wallbox, Waermepumpe, Hausanschluss) implausibel, unabhaengig
+    // von Geraetetyp/Hersteller. Der eigentliche Defekt (woher der
+    // Fantasiewert kommt) liegt beim archivierenden Partnermodul - hier nur
+    // Schutz davor, dass EIN kaputter Messwert die Darstellung sprengt.
+    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+
     private function DaySeries(int $vid, int $from, int $to): array
     {
         $arch = $this->ArchiveID();
@@ -4005,7 +4018,16 @@ class NRGDashboardTile extends IPSModule
         }
         $out = [];
         foreach ($agg as $row) {
-            $out[] = [((int) $row['TimeStamp']) * 1000, round((float) $row['Avg'], 1)];
+            $w = (float) $row['Avg'];
+            if (abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $w),
+                    0
+                );
+                continue;
+            }
+            $out[] = [((int) $row['TimeStamp']) * 1000, round($w, 1)];
         }
         usort($out, function ($a, $b) { return $a[0] <=> $b[0]; });
         return $out;
@@ -4058,17 +4080,28 @@ class NRGDashboardTile extends IPSModule
         }
 
         // Gleiche Fallback-Logik wie in BuildDetailPayload() - siehe Kommentar
-        // dort (Fund 28.08.2026).
+        // dort (Fund 28.08.2026). Integration UEBER die bereits sanitisierte
+        // DaySeries() (5-Minuten-Punkte, siehe IMPLAUSIBLE_POWER_W dort) statt
+        // einer einzelnen Tages-Durchschnitts-Abfrage - eine Tages-Aggregation
+        // mit period=1 gewichtet jeden archivierten Rohwert gleich stark,
+        // ein einzelner defekter Ausreisser (Fund 01.09.2026: 261.554.185 W
+        // nachts) zieht dadurch den GESAMTEN Tageswert absurd hoch. Ueber die
+        // 5-Minuten-Reihe integriert bleibt ein bereits verworfener Ausreisser
+        // (dort behandelt) tatsaechlich draussen, statt nur verduennt zu sein.
         $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
         if ($powerID > 0 && IPS_VariableExists($powerID) && AC_GetLoggingStatus($arch, $powerID)) {
-            $agg = @AC_GetAggregatedValues($arch, $powerID, 1, $from, $to, 0);
-            if (is_array($agg)) {
-                foreach ($agg as $row) {
-                    $ts = (int) $row['TimeStamp'];
-                    // Tages-Mittel (W) x tatsaechliche Tageslaenge (DST!) -> kWh.
-                    $hours = (strtotime('+1 day', $ts) - $ts) / 3600;
-                    $bars[] = [date('Y-m-d', $ts), round(abs((float) $row['Avg']) * $hours / 1000, 2)];
+            for ($ts = $from; $ts < $to; $ts = strtotime('+1 day', $ts)) {
+                $dayEnd = min($to, strtotime('+1 day', $ts));
+                $series = $this->DaySeries($powerID, $ts, $dayEnd);
+                if (count($series) < 2) {
+                    continue;
                 }
+                $intervalHours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
+                $kwh = 0.0;
+                foreach ($series as [, $w]) {
+                    $kwh += abs((float) $w) * $intervalHours / 1000;
+                }
+                $bars[] = [date('Y-m-d', $ts), round($kwh, 2)];
             }
             usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
             return ['bars' => $bars, 'unit' => 'kWh', 'approx' => true];
