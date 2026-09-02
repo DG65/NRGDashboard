@@ -1743,9 +1743,19 @@ function fitTextWidth(textEl, y) {
   textEl.removeAttribute('lengthAdjust');
   const pad = 8; // Rand-/Stroke-Puffer innerhalb des Rings
   const r = DESIGN_R - pad;
-  const maxW = Math.abs(y) >= r ? 20 : 2 * Math.sqrt(r * r - y * y);
+  // Math.max(0, ...) gegen Fliesskomma-Rundung nahe der Kreisgrenze
+  // (01.09.2026, Safari-Fund: "Invalid value for <text> attribute
+  // textLength=''") - bei y knapp unter r kann r*r - y*y durch
+  // Rundungsfehler hauchduenn NEGATIV werden, Math.sqrt() liefert dann
+  // NaN, NaN.toFixed(1) wiederum "NaN". Chrome/Firefox ignorieren einen
+  // ungueltigen SVG-Attributwert stillschweigend, Safaris strengere
+  // SVG-Engine bricht dagegen die KOMPLETTE Kachel-Darstellung ab -
+  // deshalb zusaetzlich ein expliziter isFinite()-Riegel, statt sich
+  // auf browserspezifisches Fehlerverhalten zu verlassen.
+  const maxW = Math.abs(y) >= r ? 20 : 2 * Math.sqrt(Math.max(0, r * r - y * y));
   let bbox;
   try { bbox = textEl.getBBox(); } catch (e) { return; }
+  if (!bbox || !isFinite(bbox.width) || !isFinite(maxW) || maxW <= 0) { return; }
   if (bbox.width > maxW) {
     textEl.setAttribute('textLength', maxW.toFixed(1));
     textEl.setAttribute('lengthAdjust', 'spacingAndGlyphs');

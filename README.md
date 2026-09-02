@@ -1348,6 +1348,14 @@ gleiche IPSView-Fähigkeit.
   (Kachel-Vollansicht), mit dem der Knopf sonst kollidiert (Fund
   01.09.2026: Dietmar konnte ihn dadurch nicht erreichen). Auffällig
   groß und deckend statt eines kaum sichtbaren kleinen Icons.
+- **Safari-Fix bei Knotenbeschriftungen:** bei bestimmten Kombinationen
+  aus Knotenposition und Beschriftungslänge brach die komplette
+  Kachel-Darstellung in Safari ab (`Invalid value for <text> attribute
+  textLength=""`), während Chrome/Firefox den fehlerhaften Wert
+  stillschweigend ignorierten — ein Rundungsfehler bei `Math.sqrt()`
+  nahe der Kreisgrenze (`fitTextWidth()`) wird jetzt explizit
+  abgefangen, statt sich auf browserspezifisches Fehlerverhalten zu
+  verlassen.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
