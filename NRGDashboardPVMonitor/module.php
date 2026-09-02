@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.1';
+    private const NEWS_VERSION = '0.10.2';
     private const NEWS_ITEMS = [
+        'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten. Der Positionsfehler des Reiterleisten-Pfeils (5px zu weit oben) wurde ebenfalls behoben.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
         'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
@@ -793,18 +794,30 @@ class NRGDashboardPVMonitor extends IPSModule
      * Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026): ein
      * Archivdurchlauf ueber die GESAMTE verfuegbare Historie (nicht auf
      * SPAN_YEARS/5 Jahre begrenzt wie DailyEnergyMap - hier soll bewusst
-     * "seit Inbetriebnahme" verglichen werden koennen), Monatswerte statt
-     * Tageswerte (aggregation level 3 = Monat), IPS liefert nur Zeilen fuer
-     * Monate mit tatsaechlichen Logeintraegen - daraus ergeben sich die
-     * vorhandenen Jahre von selbst, keine separate "erstes Jahr"-Abfrage
-     * noetig.
+     * "seit Inbetriebnahme" verglichen werden koennen).
+     *
+     * GEAENDERT 01.09.2026 (Dietmar: "der August scheint keinen Wert mehr zu
+     * haben. Und in der Demo geht 2025 erst ab September los. Ich moechte
+     * aber auch dort 2025 komplett."): urspruenglich lief das ueber
+     * Monats-Aggregation (level 3) UND verwarf beim Ausreisser-Fix den
+     * KOMPLETTEN Monat, sobald irgendein einzelner archivierter Wert darin
+     * implausibel war. Bei InverterHubs (mittlerweile behobenem) Modbus-
+     * TID-Bug betraf das offenbar fast jeden Monat seit Inbetriebnahme -
+     * die historischen Archivwerte bleiben trotz Fix fehlerhaft, deshalb
+     * fehlte praktisch das ganze Jahr 2025. Jetzt: TAGES-Aggregation
+     * (level 1) ueber dieselbe volle Historie in EINEM Archivdurchlauf,
+     * nur der einzelne betroffene TAG wird verworfen und zu Monaten
+     * aufsummiert - alle anderen Tage bleiben erhalten. Macht die vorherige
+     * "tatsaechlich abgedeckte Stunden"-Hochrechnung (Fund 05.08.2026)
+     * ueberfluessig: ein noch laufender Monat hat im Archiv ohnehin nur
+     * Zeilen fuer die bereits vergangenen Tage, die Summe stimmt automatisch.
      */
     private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
     {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return [];
         }
-        $data = @AC_GetAggregatedValues($aid, $vid, 3, $start, $end, 0);
+        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
         if (!is_array($data)) {
             return [];
         }
@@ -816,30 +829,20 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
             }
-            $ts = (int) $row['TimeStamp'];
-            // Hochrechnung mit den TATSAECHLICH abgedeckten Stunden statt
-            // immer den kompletten Kalendertagen des Monats - sonst wird der
-            // noch laufende Monat massiv ueberschaetzt: AC_GetAggregatedValues
-            // mittelt bei einem noch nicht abgeschlossenen Monat nur ueber die
-            // bisher vergangenen Tage, aber date('t', $ts) liefert immer den
-            // vollen Monat (z.B. 31 fuer August), egal ob der erst begonnen
-            // hat. Realer Fund, 05.08.2026: August zeigte 1325 kWh statt der
-            // tatsaechlichen ~299 kWh (Vergleich mit der Tagesansicht) - die
-            // ersten paar sonnenreichen Augusttage wurden auf den ganzen
-            // Monat hochgerechnet.
-            $monthStart = strtotime(date('Y-m-01 00:00:00', $ts));
-            $monthEnd = strtotime('+1 month', $monthStart);
-            $coverageEnd = min($end, $monthEnd);
-            $hours = max(0.0, ($coverageEnd - $monthStart) / 3600.0);
-            $kwh = round(((float) $row['Avg']) * $hours / 1000.0, 2);
-            if (is_finite($kwh) && $kwh >= 0) {
-                $out[date('Y-n', $ts)] = $kwh;
+            $kwh = ((float) $row['Avg']) * 24.0 / 1000.0;
+            if (!is_finite($kwh) || $kwh < 0) {
+                continue;
             }
+            $ym = date('Y-n', (int) $row['TimeStamp']);
+            $out[$ym] = ($out[$ym] ?? 0.0) + $kwh;
+        }
+        foreach ($out as $ym => $v) {
+            $out[$ym] = round($v, 2);
         }
         return $out;
     }

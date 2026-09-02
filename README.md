@@ -1308,6 +1308,12 @@ gleiche IPSView-Fähigkeit.
   Jahresvergleich, Energiebilanz) und `NRGDashboardWPMonitor`
   (Tagesansicht, Energiebilanz) — beide teilen dasselbe Muster
   (`AC_GetAggregatedValues()`-Leistungswerte zu kWh hochgerechnet).
+  Der Jahresvergleich prüft dabei bewusst auf TAGES-Granularität statt
+  Monats-Granularität: verworfen wird nur der einzelne betroffene Tag,
+  nicht der komplette Monat — bei häufigeren historischen Ausreißern
+  (z. B. über einen längeren Zeitraum vor einem Partnermodul-Fix)
+  bleibt so der Großteil eines Monats/Jahres real erhalten, statt
+  komplett zu verschwinden.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei

@@ -50,7 +50,13 @@
      Wrapper und beginnt wieder auf Pfeilhoehe (#tabs top:0), wie vor
      der Verschiebung; damit stimmt auch der Einsaug-Ursprung der
      Animation wieder exakt mit dem Knopf ueberein. */
-  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: -35px; z-index: 900; }
+  /* top:-30px statt -35px (01.09.2026, Dietmar: "der Pfeil kommt oben
+     links unter die Titelzeile der Kachel, so dass ich den Pfeil nicht
+     mehr erreiche. Ich denke 5px sollten reichen.") - in manchen Kontexten
+     (z.B. Demo-/Vorstellungs-Instanz mit sichtbarer Instanz-Titelzeile
+     ueber der Kachel) ragte der Pfeil-Knopf 5px zu weit nach oben unter
+     diese Titelzeile. */
+  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: -30px; z-index: 900; }
   /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
      Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
      dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
