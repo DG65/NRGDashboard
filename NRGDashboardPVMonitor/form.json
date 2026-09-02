@@ -42,6 +42,10 @@
           "caption": "✨ Feinheit (Automatisches Durchschalten, 01.09.2026): die Einstellung „Reiter automatisch alle 10 s weiterschalten“ (unten unter „Darstellung“, Standard aus) versetzt die Kachel in einen Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert - z. B. für eine Demo-Instanz gedacht."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Diagrammtitel, 03.09.2026): oben mittig über dem Diagramm steht jetzt der Name des gerade aktiven Reiters - direkt aus der Reiterleiste übernommen, keine zweite, separat zu pflegende Beschriftung."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

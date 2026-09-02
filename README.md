@@ -1327,6 +1327,10 @@ gleiche IPSView-Fähigkeit.
   Reiter ohne Datenquelle werden übersprungen) — über denselben echten
   Klick-Pfad wie ein manueller Reiterwechsel, damit alle Nebeneffekte
   korrekt mitlaufen. Gedacht für Demo-/Vorstellungs-Instanzen.
+- **Diagrammtitel (`NRGDashboardPVMonitor`):** oben mittig über dem
+  Diagramm steht der Name des gerade aktiven Reiters — 1:1 aus der
+  Reiterleiste übernommen (keine zweite, separat zu pflegende
+  Beschriftungsliste), bleibt auch beim Diagramm-Zoom sichtbar.
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`

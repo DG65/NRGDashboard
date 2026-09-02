@@ -206,6 +206,7 @@
   select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; position: relative; }
+  #chartTitle { text-align: center; font-size: 13px; font-weight: 700; opacity: .8; padding: 2px 30px 4px; }
   /* Diagramm-Zoom (01.09.2026, Dietmar: "mit den kompletten Daten wird das
      Diagramm immer kleiner. Kannst Du einen Zoom via einer schoen
      sichtbaren Schaltflaeche mit einem + das Diagramm auf die ganze
@@ -220,7 +221,7 @@
   #chartZoomBtn { position: absolute; top: 0; right: 0; z-index: 850; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(127,135,145,.35); background: #26292e; color: inherit; font: inherit; font-size: 16px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: .75; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
   #chartZoomBtn:hover { opacity: 1; background: rgba(127,135,145,.28); }
   body.light #chartZoomBtn { background: #f2f4f7; }
-  #chartcol.zoomed > *:not(#chart):not(#chartZoomBtn) { display: none !important; }
+  #chartcol.zoomed > *:not(#chart):not(#chartZoomBtn):not(#chartTitle) { display: none !important; }
   /* Zwei eigene, per JS gesteuerte Tooltip-"Schilder" fuer die Bilanz-
      Tagesansicht (Dietmar, 31.07.2026) - ECharts' eingebaute Tooltip-
      Komponenten aktivieren sich nur einzeln je nach gehoverter Achse,
@@ -488,6 +489,7 @@
         </div>
       </div>
       <div id="chartcol">
+        <div id="chartTitle"></div>
         <button id="chartZoomBtn" title="Diagramm auf Kachelgröße vergrößern">+</button>
         <div id="chart"></div>
         <div id="priceUnitRow" class="ycSubTabs" style="display:none">
@@ -3974,11 +3976,22 @@
     document.getElementById('tabsToggle').onclick = function () {
       setTabsCollapsed(!document.getElementById('tabsWrap').classList.contains('collapsed'));
     };
+    // Diagrammtitel oben mittig - Text kommt direkt aus dem angeklickten
+    // Reiter (Dietmars Wunsch, 03.09.2026: "aus dem Menü bekommst Du die
+    // Namen"), keine zweite, separat zu pflegende Beschriftungsliste.
+    function updateChartTitle() {
+      var el = document.getElementById('chartTitle');
+      if (!el) { return; }
+      var active = document.querySelector('button.tab.active');
+      el.textContent = active ? active.textContent : '';
+    }
+    updateChartTitle();
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       btn.onclick = function () {
         if (btn.disabled) { return; }
         var leavingBalance = (curTab === 'balance' && btn.getAttribute('data-tab') !== 'balance');
         curTab = btn.getAttribute('data-tab');
+        updateChartTitle();
         if (leavingBalance) {
           unlockChartHeight();
           // Bilanz haengt eigene Mousemove-Tooltip-Schilder an dieselbe
