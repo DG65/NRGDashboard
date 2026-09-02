@@ -30,6 +30,10 @@
           "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (real gefunden: 261.554.185 W nachts durch einen Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht, Jahresvergleich oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Diagramm-Zoom, 01.09.2026): der „+“-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

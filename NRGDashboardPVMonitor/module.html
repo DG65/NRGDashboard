@@ -206,6 +206,21 @@
   select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
   #chart { width: 100%; flex: 1 1 auto; min-height: 160px; position: relative; }
+  /* Diagramm-Zoom (01.09.2026, Dietmar: "mit den kompletten Daten wird das
+     Diagramm immer kleiner. Kannst Du einen Zoom via einer schoen
+     sichtbaren Schaltflaeche mit einem + das Diagramm auf die ganze
+     Kachelgroesse zoomen?") - Anlass: der Jahresvergleich mit 12+ Jahren
+     laesst Legende/Tabelle (#legendRow/#yearComparePanel) auf mehrere
+     Zeilen umbrechen, das schrumpft #chart (flex:1) immer weiter. Der
+     Knopf blendet alle Nicht-Diagramm-Geschwister von #chart innerhalb
+     #chartcol aus (.zoomed-Klasse dort) - #chart uebernimmt dann per
+     flex:1 automatisch die volle verfuegbare Hoehe, kein Sonderfall je
+     Reiter noetig. Gilt fuer JEDEN Reiter, nicht nur den Jahresvergleich
+     (Dietmars Frage war allgemein gestellt). */
+  #chartZoomBtn { position: absolute; top: 0; right: 0; z-index: 850; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(127,135,145,.35); background: #26292e; color: inherit; font: inherit; font-size: 16px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: .75; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+  #chartZoomBtn:hover { opacity: 1; background: rgba(127,135,145,.28); }
+  body.light #chartZoomBtn { background: #f2f4f7; }
+  #chartcol.zoomed > *:not(#chart):not(#chartZoomBtn) { display: none !important; }
   /* Zwei eigene, per JS gesteuerte Tooltip-"Schilder" fuer die Bilanz-
      Tagesansicht (Dietmar, 31.07.2026) - ECharts' eingebaute Tooltip-
      Komponenten aktivieren sich nur einzeln je nach gehoverter Achse,
@@ -455,6 +470,7 @@
         </div>
       </div>
       <div id="chartcol">
+        <button id="chartZoomBtn" title="Diagramm auf Kachelgröße vergrößern">+</button>
         <div id="chart"></div>
         <div id="priceUnitRow" class="ycSubTabs" style="display:none">
           <button data-unit="kwh">kWh</button>
@@ -1002,6 +1018,25 @@
       if (!chart) { return; }
       if (chartEngine === 'highcharts') { chart.reflow(); } else { chart.resize(); }
     }
+
+    // Diagramm-Zoom (01.09.2026, siehe CSS-Kommentar bei #chartZoomBtn) -
+    // reiner Sichtbarkeits-Umschalter, kein Reiter-/Datenwechsel noetig.
+    // setTimeout(sizeChart) statt direktem Aufruf: die Hoehenaenderung
+    // durch das Aus-/Einblenden der Geschwister-Elemente braucht einen
+    // Layout-Reflow, bevor ECharts/Highcharts die neue Containergroesse
+    // korrekt auslesen kann (dasselbe Timing-Muster wie beim window-
+    // resize-Listener unten).
+    (function () {
+      var btn = document.getElementById('chartZoomBtn');
+      if (!btn) { return; }
+      btn.onclick = function () {
+        var col = document.getElementById('chartcol');
+        var zoomed = col.classList.toggle('zoomed');
+        btn.textContent = zoomed ? '−' : '+';
+        btn.title = zoomed ? 'Diagramm wieder verkleinern' : 'Diagramm auf Kachelgröße vergrößern';
+        setTimeout(sizeChart, 60);
+      };
+    })();
 
     function destroyChart() {
       if (chart) { try { if (chartEngine === 'highcharts') { chart.destroy(); } else { chart.dispose(); } } catch (e) {} }

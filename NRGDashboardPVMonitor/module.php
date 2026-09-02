@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.3';
+    private const NEWS_VERSION = '0.10.4';
     private const NEWS_ITEMS = [
+        'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
         'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
         'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',

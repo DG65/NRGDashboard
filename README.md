@@ -1314,6 +1314,12 @@ gleiche IPSView-Fähigkeit.
   (z. B. über einen längeren Zeitraum vor einem Partnermodul-Fix)
   bleibt so der Großteil eines Monats/Jahres real erhalten, statt
   komplett zu verschwinden.
+- **Diagramm-Zoom (`NRGDashboardPVMonitor`):** ein „+“-Knopf oben rechts
+  am Diagramm blendet Legende/Tabelle/Zusatzleisten desselben Reiters
+  aus und lässt das Diagramm die volle Kachelgröße einnehmen — vor
+  allem beim Jahresvergleich mit vielen Jahren hilfreich, wo die
+  wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt.
+  Gilt reiterübergreifend, kein Sonderfall je Ansicht.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
