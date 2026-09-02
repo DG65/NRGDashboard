@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.2';
+    private const NEWS_VERSION = '0.7.3';
     private const NEWS_ITEMS = [
+        'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
         'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
         'Das Leistungsdiagramm der Geräte-Detailseite aktiviert die Archivierung der zugrunde liegenden Variable jetzt selbst, statt nur "keine Archivdaten" zu melden - ab dem ersten Aufruf sammelt sich der Verlauf automatisch.',
         'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
@@ -2602,48 +2603,131 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Preis-Slots (ct/kWh brutto) fuer den ausgewaehlten Tag, oder [] ohne
-     * verfuegbare Tibber-Instanz/Preisdaten - fuer die "Kosten heute"-
-     * Kennzahl auf den Detailseiten. function_exists()-Wache: das Modul
-     * darf ohne TibberGridReward voll funktionsfaehig bleiben (Verbund-
-     * Konvention, kein Partnermodul vorausgesetzt).
+     * Preis-Slots (ct/kWh brutto) fuer den ausgewaehlten Tag - duennes
+     * Kompatibilitaets-Wrapper um PriceSlotsForRange() (31.08.2026, siehe
+     * dort), bestehende Aufrufer unveraendert.
      */
     private function PriceSlotsForDay(int $dayStart, int $dayEnd): array
     {
+        return $this->PriceSlotsForRange($dayStart, $dayEnd);
+    }
+
+    /**
+     * Preis-Slots (ct/kWh brutto) fuer einen BELIEBIGEN Zeitraum - Tag,
+     * Monat, Jahr, Lebenszeit (31.08.2026, MeterHub-Anfrage: Kostenauswertung
+     * ueber Zeit fuer Sammelkategorien wie "Beleuchtung"). function_exists()-
+     * Wache: das Modul darf ohne TibberGridReward voll funktionsfaehig
+     * bleiben (Verbund-Konvention, kein Partnermodul vorausgesetzt).
+     *
+     * Zwei Quellen KOMBINIERT statt alles-oder-nichts: Tibber liefert nur
+     * echte Slots fuer heute/nahe Zukunft (kein Preis-Archiv der Vergangenheit
+     * bei uns) - genau dieser Ausschnitt wird bevorzugt uebernommen. Fuer
+     * jeden Zeitabschnitt, den Tibber NICHT abdeckt (z.B. der Rest eines
+     * angefragten Monats/Jahres), fuellt BdewHistorySlots() aus der bei uns
+     * gespeicherten BDEW-Preishistorie auf - echte, zeitlich zutreffende
+     * Quartalswerte statt eines einzigen flachen Naeherungswerts fuer den
+     * gesamten Zeitraum (Verbesserung auch fuer den bisherigen Tagesfall:
+     * ein Monatswechsel des BDEW-Werts mitten am Tag wurde vorher ignoriert).
+     */
+    private function PriceSlotsForRange(int $from, int $to): array
+    {
+        $slots = [];
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
         if ($id > 0) {
             // try/catch (31.08.2026, Anlass: Tibber-eigener Fatal Error in
             // GetPriceApiToken()) - @ faengt keinen Fatal Error/uncaught
             // Throwable aus der aufgerufenen Funktion selbst ab.
             try {
-                $slots = @TIBBERGR_GetPriceCurve($id);
+                $raw = @TIBBERGR_GetPriceCurve($id);
             } catch (\Throwable $e) {
-                $slots = null;
+                $raw = null;
             }
-            if (is_array($slots)) {
-                $slots = array_values(array_filter($slots, function ($s) use ($dayStart, $dayEnd) {
-                    return is_array($s) && (int) ($s['end'] ?? 0) > $dayStart && (int) ($s['start'] ?? PHP_INT_MAX) < $dayEnd;
-                }));
-                if (count($slots) > 0) {
-                    return $slots;
+            if (is_array($raw)) {
+                foreach ($raw as $s) {
+                    if (is_array($s) && (int) ($s['end'] ?? 0) > $from && (int) ($s['start'] ?? PHP_INT_MAX) < $to) {
+                        $slots[] = $s;
+                    }
                 }
             }
         }
-        // Ohne (nutzbare) Tibber-Instanz: BDEW-Haushaltsdurchschnitt als
-        // grober Ersatzwert - ein einzelner, ueber den ganzen Tag flacher
-        // "Slot", ausdruecklich als 'approx' markiert (Dietmar, 28.08.2026:
-        // "das sollte auch das ausgelieferte Modul ganz ohne Dich koennen").
-        $bdew = $this->CurrentBdewPrice();
-        if ($bdew === null) {
+        $covered = $slots;
+        usort($covered, function ($a, $b) { return $a['start'] <=> $b['start']; });
+        $cursor = $from;
+        foreach ($covered as $s) {
+            $sStart = max($from, (int) $s['start']);
+            if ($sStart > $cursor) {
+                foreach ($this->BdewHistorySlots($cursor, $sStart) as $bs) {
+                    $slots[] = $bs;
+                }
+            }
+            $cursor = max($cursor, min($to, (int) $s['end']));
+        }
+        if ($cursor < $to) {
+            foreach ($this->BdewHistorySlots($cursor, $to) as $bs) {
+                $slots[] = $bs;
+            }
+        }
+        return $slots;
+    }
+
+    /**
+     * Rekonstruiert Preis-Slots aus der eigenen BDEW-Preishistorie
+     * (BdewPriceHistory-Attribut, siehe CheckBdewPrice()): jeder gespeicherte
+     * Wert gilt ab seinem Abrufzeitpunkt bis zum naechsten Eintrag (bzw. bis
+     * "jetzt" beim letzten) - eine grobe, aber echte Zeitreihe statt eines
+     * einzigen flachen Naeherungswerts. [] ohne jeden gespeicherten Wert.
+     */
+    private function BdewHistorySlots(int $from, int $to): array
+    {
+        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        if (!is_array($history) || count($history) === 0) {
             return [];
         }
-        return [[
-            'start' => $dayStart,
-            'end' => $dayEnd,
-            'price' => $bdew['priceCtPerKWh'],
-            'approx' => true,
-            'ageDays' => $bdew['ageDays'],
-        ]];
+        usort($history, function ($a, $b) { return ((int) $a['fetchedAt']) <=> ((int) $b['fetchedAt']); });
+        $slots = [];
+        $n = count($history);
+        for ($i = 0; $i < $n; $i++) {
+            $segStart = (int) $history[$i]['fetchedAt'];
+            $segEnd = ($i + 1 < $n) ? (int) $history[$i + 1]['fetchedAt'] : time();
+            if ($segEnd <= $from || $segStart >= $to) {
+                continue;
+            }
+            $slots[] = [
+                'start' => max($from, $segStart),
+                'end' => min($to, $segEnd),
+                'price' => (float) $history[$i]['priceCtPerKWh'],
+                'approx' => true,
+                'ageDays' => (int) floor((time() - $segStart) / 86400),
+            ];
+        }
+        return $slots;
+    }
+
+    /**
+     * Vertrag fuer andere Verbund-Module (31.08.2026, MeterHub-Anfrage):
+     * Preis (ct/kWh) zu einem einzelnen Zeitpunkt, echte Tibber-Slots wo
+     * verfuegbar, sonst BDEW-Historie. null, wenn fuer diesen Zeitpunkt gar
+     * keine Preisquelle vorliegt (kein Wert erfinden).
+     */
+    public function GetPriceAt(int $Timestamp): ?float
+    {
+        return $this->PriceAt($this->PriceSlotsForRange($Timestamp, $Timestamp + 1), $Timestamp);
+    }
+
+    /**
+     * Vertrag fuer andere Verbund-Module (31.08.2026, MeterHub-Anfrage:
+     * "Kriterienabrechnung" - Kostenauswertung ueber Zeit fuer eigene
+     * Sammelkategorien): Preis-Slots fuer einen beliebigen Zeitraum, damit
+     * ein Konsument seine eigene Energie-Zeitreihe damit gewichten kann,
+     * ohne BDEW-Abruf/Tibber-Kopplung selbst nachzubauen (Kernprinzip
+     * "Bewertung/Datenerhebung nicht doppelt bauen" - hier sind WIR der
+     * Anbieter der Preisdaten). Format je Slot: {start, end (Unix-Sekunden),
+     * price (ct/kWh), approx (bool - true bei BDEW-Naeherung statt echtem
+     * Tibber-Slot), ageDays (nur bei approx)}.
+     */
+    public function GetPriceSeries(int $From, int $To): array
+    {
+        return $this->PriceSlotsForRange($From, $To);
     }
 
     /** Preis (ct/kWh) des Slots, der $ts enthaelt, oder null. */

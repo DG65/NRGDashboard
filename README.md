@@ -1280,6 +1280,13 @@ gleiche IPSView-Fähigkeit.
   BDEW-Übersichtsseite — inklusive Aufschlüsselung der Ersparnis nach
   zeitvariablen Netzentgelten, dynamischem Tarif und Grid-Reward-Erlös
   gegenüber dem deutschen Standardtarif.
+- **Preis-Vertrag für den ganzen Verbund:** `NRGDASH_GetPriceAt($ts)`/
+  `NRGDASH_GetPriceSeries($from, $to)` geben den zu jedem Zeitpunkt
+  gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen
+  BDEW-Preishistorie rekonstruiert) an andere Module weiter, damit die
+  Preisermittlung nicht in jedem Modul neu gebaut werden muss — Basis
+  für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/
+  Lebenszeit), nicht mehr nur den heutigen Tag.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
