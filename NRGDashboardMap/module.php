@@ -32,8 +32,9 @@ class NRGDashboardMap extends IPSModule
     // 30.07.2026) + Doku-Panel mit dauerhafter Versionszeile + Forum-Hinweis
     // (einmalig dismissible). NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.7.0';
+    private const NEWS_VERSION = '0.7.1';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: Geraete werden jetzt nach Kategorie geclustert dargestellt (wie die Verbund-Gesundheit-Kachel) - deutlich uebersichtlicher bei mehreren Netzzaehlern/Wallboxen/Fahrzeugen.',
         'Neu: alle MeterHub-Funktionen erscheinen jetzt als eigener Knoten (vorher nur Netz/Hausverbrauch, andere Verbraucher fielen still raus).',
         'Neu: ruhigere 3D-Navigation mit Traegheit statt direktem 1:1-Mitziehen.',
@@ -581,9 +582,21 @@ class NRGDashboardMap extends IPSModule
   .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
   .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
   .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
+  /* Tour jederzeit selbst starten (01.09.2026) - siehe JS-Kommentar bei
+     restartBtn weiter unten. */
+  #tourRestartBtn {
+    position: fixed; top: 8px; right: 8px; z-index: 950;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(20,22,26,.85);
+    color: #eef2f6; font-family: {$fontCss}, system-ui; font-size: 14px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; opacity: .6; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  }
+  #tourRestartBtn:hover { opacity: 1; background: rgba(255,255,255,.15); }
 </style>
 </head>
 <body>
+<button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div id="wrap"></div>
 <div id="labels"></div>
 <div id="info"></div>
@@ -1002,6 +1015,17 @@ document.addEventListener('DOMContentLoaded', function () {
     if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
   });
   document.getElementById('tourDone').addEventListener('click', dismissTour);
+  // Manueller Neustart (01.09.2026, Dietmar: "jedem Gast ermoeglichen die
+  // Tour zu starten" - Demo-Instanz teilt sich EINEN Login unter allen
+  // Besuchern, TourSeen ist serverseitig geteilter Zustand). Ignoriert
+  // TOUR_SHOWN_LOCAL bewusst.
+  var restartBtn = document.getElementById('tourRestartBtn');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () {
+      TOUR_SHOWN_LOCAL = false;
+      showTourOverlay();
+    });
+  }
   if (SHOW_TOUR) { showTourOverlay(); }
 });
 

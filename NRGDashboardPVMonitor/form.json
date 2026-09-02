@@ -34,6 +34,10 @@
           "caption": "✨ Feinheit (Diagramm-Zoom, 01.09.2026): der „+“-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein „?“-Knopf oben rechts in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

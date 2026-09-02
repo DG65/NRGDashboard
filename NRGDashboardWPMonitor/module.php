@@ -79,8 +79,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.1';
+    private const NEWS_VERSION = '0.2.2';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Heim-Wärmepumpe) verzerrte bisher Tagesansicht und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         'Architektur an NRGDashboardPVMonitor angeglichen: Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht laufen jetzt rein clientseitig (kein Nachladen bei jedem Ansichtswechsel mehr), plus wahlweise Highcharts oder ECharts als Zeichen-Engine (Formular "Darstellung").',
     ];

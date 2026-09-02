@@ -419,9 +419,22 @@
   .tour-btn-accent { background: rgba(108,180,255,0.18); border-color: rgba(108,180,255,0.4); }
   .tour-btn-check { background: rgba(76,175,80,0.18); border-color: rgba(76,175,80,0.45); }
   .tour-btn[disabled] { opacity: 0.35; cursor: default; pointer-events: none; }
+  /* Tour jederzeit selbst starten (01.09.2026) - siehe JS-Kommentar bei
+     restartBtn. */
+  #tourRestartBtn {
+    position: fixed; top: 8px; right: 8px; z-index: 950;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid rgba(154,164,176,.35); background: rgba(38,41,46,.85);
+    color: inherit; font: inherit; font-size: 14px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; opacity: .6; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+  }
+  #tourRestartBtn:hover { opacity: 1; background: rgba(154,164,176,.28); }
+  body.light #tourRestartBtn { background: rgba(242,244,247,.9); }
 </style>
 </head>
 <body>
+  <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
   <div class="wrap">
     <!-- Einfuehrungs-Tour (29.08.2026, Dietmar: "eine Tour die bei der ersten
          Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
@@ -4089,6 +4102,17 @@
         if (TOUR_STEP < TOUR_STEPS.length - 1) { TOUR_STEP++; renderTour(); }
       });
       document.getElementById('tourDone').addEventListener('click', dismissTour);
+      // Manueller Neustart (01.09.2026, Dietmar: "jedem Gast ermoeglichen
+      // die Tour zu starten" - Demo-Instanz teilt sich EINEN Login unter
+      // allen Besuchern, TourSeen ist serverseitig geteilter Zustand).
+      // Ignoriert TOUR_SHOWN_LOCAL bewusst.
+      var restartBtn = document.getElementById('tourRestartBtn');
+      if (restartBtn) {
+        restartBtn.addEventListener('click', function () {
+          TOUR_SHOWN_LOCAL = false;
+          showTourOverlay();
+        });
+      }
     });
   </script>
 </body>

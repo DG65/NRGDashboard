@@ -27,8 +27,9 @@ class NRGDashboardTopology extends IPSModule
     // (versionsscharf dismissible) + Forum-Hinweis (einmalig dismissible) +
     // Versionszeile im Doku-Panel. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung an diesem Modul erhoehen.
-    private const NEWS_VERSION = '0.6.0';
+    private const NEWS_VERSION = '0.6.1';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: Verbund-Gesundheit als Stern-Topologie um die EMS-Instanz - Partnermodule farbig nach Verbindungsstatus.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';

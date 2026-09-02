@@ -81,8 +81,9 @@ class NRGDashboardForecast extends IPSModule
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.1';
+    private const NEWS_VERSION = '0.2.2';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) verzerrte bisher den "Ist"-Vergleich zur Prognose - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
         'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel ueber den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',

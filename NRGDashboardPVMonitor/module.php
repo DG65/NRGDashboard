@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.4';
+    private const NEWS_VERSION = '0.10.5';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
         'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
         'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten.',

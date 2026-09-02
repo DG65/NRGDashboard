@@ -85,8 +85,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.4.0';
+    private const NEWS_VERSION = '0.4.1';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
         'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
         'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',

@@ -62,6 +62,10 @@
           "caption": "✨ Feinheit (Rückmeldung bei Wallbox-Befehlen, 31.08.2026): Jeder Klick auf Freigabe/Limit/Start/Stopp zeigt sofort einen Sendestatus an. Bei Start/Stopp wird zusätzlich nach kurzer Zeit die tatsächliche Leistung der Wallbox nachgeladen - bleibt sie bei „Laden starten“ auf 0 W, erscheint ein Hinweis, dass die Wallbox den Befehl vermutlich abgelehnt hat. Liefert das Partnermodul über das optionale Vertragsfeld „blockReasonID“ einen konkreten Ablehnungsgrund, erscheint dieser prominent direkt über den Steuer-Schaltflächen - herstellerunabhängig, kein Sonderfall je Anbieter."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein „?“-Knopf oben rechts in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

@@ -30,6 +30,10 @@
           "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein „?“-Knopf oben rechts in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHWPMON_ResetTour($id);"

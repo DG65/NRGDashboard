@@ -1328,6 +1328,15 @@ gleiche IPSView-Fähigkeit.
   Max/Min einer Aggregationszeile — Rohwerte werden direkt beim
   Einlesen geprüft) — beide verwerfen jetzt unplausible Werte, statt
   sie in den "Ist"-Vergleich zur Prognose einfließen zu lassen.
+- **Tour jederzeit selbst starten (alle sieben Kacheln):** ein "?"-Knopf
+  oben rechts zeigt die Einführungs-Tour erneut, unabhängig vom
+  gespeicherten "schon gesehen"-Status. Anlass: eine gemeinsam genutzte
+  Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle
+  Besucher — sobald ein Besucher die Tour bestätigt, würde sie den
+  nächsten Besuchern sonst gar nicht mehr angezeigt (der Status ist
+  serverseitig geteilter Zustand, nicht pro Besucher). Rein
+  client-seitig, ändert nichts am bisherigen automatischen
+  Erstanzeige-Verhalten.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei

@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.6';
+    private const NEWS_VERSION = '0.7.7';
     private const NEWS_ITEMS = [
+        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Leistungsdiagramm, Energie-Balken der letzten 14 Tage und Geisterring/Autarkiegrad/PV-Prognose-Ring verwerfen jetzt einzelne unplausible Archivwerte (z. B. ein defekter Messwert in der Größenordnung von Megawatt bei einer Haushaltsanlage) statt sie ungeprüft in die Darstellung einfließen zu lassen.',
         'Vorführmodus erkennt jetzt auch, wenn OCPPHub selbst im Vorführmodus ist (OHUB_IsDemoMode()) - unsere Wallbox-Steuerung blendet sich dann für dieses Gerät ebenfalls aus, statt Buttons zu zeigen, die beim Klick ohnehin nur abgelehnt würden.',
         'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
