@@ -3946,6 +3946,15 @@
         // dafuer sichtbar, nur die Ansichts-Auswahl (Tag/Woche/...) ist
         // ausgeblendet, da hier wirkungslos.
         document.getElementById('bar').style.display = (curTab === 'yearcompare') ? 'none' : '';
+        // Pfeil-Knopf (#tabsWrap) mitverschieben, wenn #bar verschwindet
+        // (01.09.2026, Dietmar: "warum steht der ausgerechnet im
+        // Jahresvergleich nicht an der gleichen Stelle?") - top:-30px ist
+        // auf die HOEHE von #bar kalibriert (siehe CSS-Kommentar dort);
+        // fehlt #bar, rueckt #body nach oben, der Pfeil landet mit
+        // demselben festen Offset zu weit oben (unter der Kachel-Titelzeile).
+        // 0px laesst ihn stattdessen direkt am oberen #body-Rand sitzen,
+        // wo ohne #bar sonst Leerraum waere.
+        document.getElementById('tabsWrap').style.top = (curTab === 'yearcompare') ? '0px' : '';
         if (lastData.hasStromGedacht && curTab === 'tagesplan') { ensureStromGedacht(); }
         // Nach der Reiterwahl klappt die Leiste automatisch wieder zu
         // (Dietmar, 27.08.2026: "wenn man einen Reiter ausgewaehlt hat
