@@ -3570,6 +3570,10 @@
     function render() {
       syncNav();
       updateTabStates();
+      // updateTabStates() kann den Reiter-Text umbenennen (z.B. "PV &
+      // Einstrahlung" -> "Photovoltaik" ohne Einstrahlungssensor) - der
+      // Titel muss das mitbekommen, nicht nur ein echter Reiterklick.
+      updateChartTitle();
       var el = document.getElementById('chart');
       if (curTab !== 'balance') { document.getElementById('balancePanel').style.display = 'none'; }
       if (curTab !== 'yearcompare') { document.getElementById('yearComparePanel').style.display = 'none'; }
