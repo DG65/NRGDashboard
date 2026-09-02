@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.5';
+    private const NEWS_VERSION = '0.10.6';
     private const NEWS_ITEMS = [
+        'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
         'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
@@ -111,6 +112,14 @@ class NRGDashboardPVMonitor extends IPSModule
         // Query-Parameter, prefers-color-scheme spiegelt nur die
         // Betriebssystem-Einstellung, nicht Symcons eigenen Umschalter).
         $this->RegisterPropertyBoolean('LightTheme', false);
+        // Automatisches Reiter-Durchschalten (01.09.2026, Dietmar: "die PV
+        // Monitor Kachel alle 10 s auf das nächste Diagramm durchschalten
+        // lassen") - Default AUS, damit die normale Anzeige nicht ungefragt
+        // durcheinandergewirbelt wird. Gedacht fuer Demo-/Vorstellungs-
+        // Instanzen (Kiosk-artige Slideshow), bewusst NICHT konfigurierbares
+        // Intervall - 10s war Dietmars konkreter Wunsch, kein generisches
+        // Feature mit Einstellmoeglichkeit.
+        $this->RegisterPropertyBoolean('AutoCycleTabs', false);
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
@@ -2594,6 +2603,7 @@ class NRGDashboardPVMonitor extends IPSModule
             // Manuelle Theme-Angabe statt Erkennung (siehe Kommentar bei
             // RegisterPropertyBoolean('LightTheme',...) in Create()).
             'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
+            'autoCycleTabs' => $this->ReadPropertyBoolean('AutoCycleTabs'),
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,

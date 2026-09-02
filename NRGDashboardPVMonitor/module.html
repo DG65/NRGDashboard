@@ -427,7 +427,7 @@
      ist hier frei - der Diagramm-Zoom-Knopf (#chartZoomBtn) sitzt oben
      rechts AM DIAGRAMM, nicht am Kachelrand, keine Ueberschneidung. */
   #tourRestartBtn {
-    position: fixed; bottom: 30px; left: 10px; z-index: 950;
+    position: fixed; bottom: 40px; left: 10px; z-index: 950;
     width: 36px; height: 36px; border-radius: 50%;
     border: 1px solid rgba(154,164,176,.5); background: rgba(38,41,46,.92);
     color: inherit; font: inherit; font-size: 19px; font-weight: 700; line-height: 1;
@@ -518,6 +518,7 @@
     // ist showTour ohnehin immer false, siehe ProcessHookData()).
     var HOOK_PATH = null;
     var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
+    var autoCycleTimer = null;
     // Tage ausserhalb des kleinen, eager mitgeschickten Fensters (Dietmar,
     // 23.08.2026: "warum komme ich beim Strompreis nur bis zum 17.08.2026
     // zurueck? Prinzipiell moechte ich in allen Reitern alle Tage sehen") -
@@ -3870,6 +3871,24 @@
       document.getElementById('tabsWrap').setAttribute('data-anim', ['spring', 'flip', 'scale', 'blur'][d.tabAnim || 0] || 'spring');
       document.body.classList.toggle('light', !!d.lightTheme);
       if (d.bg) { document.body.style.background = d.bg; }
+      // Automatisches Reiter-Durchschalten (01.09.2026, Dietmar: "die PV
+      // Monitor Kachel alle 10 s auf das nächste Diagramm durchschalten
+      // lassen") - startet erst bei d.autoCycleTabs=true (Instanz-Property
+      // AutoCycleTabs, Default aus). Ueberspringt ausgeblendete Reiter
+      // (.tabHidden, siehe updateTabStates()) und ruft denselben echten
+      // onclick()-Handler wie ein manueller Klick auf, damit alle
+      // Nebenwirkungen (Bilanz-Tooltip-Aufraeumen etc.) mitlaufen.
+      if (d.autoCycleTabs && !autoCycleTimer) {
+        autoCycleTimer = setInterval(function () {
+          var tabs = Array.prototype.filter.call(document.querySelectorAll('button.tab'), function (b) {
+            return !b.classList.contains('tabHidden') && !b.disabled;
+          });
+          if (tabs.length < 2) { return; }
+          var curIdx = -1;
+          for (var i = 0; i < tabs.length; i++) { if (tabs[i].getAttribute('data-tab') === curTab) { curIdx = i; break; } }
+          tabs[(curIdx + 1) % tabs.length].onclick();
+        }, 10000);
+      }
       // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
       // Kachel, bevor das Layout sicher fertig ist (WebFront-Rahmen/Flex-
       // Boxen noch nicht final vermessen) - echarts.init() auf einem noch

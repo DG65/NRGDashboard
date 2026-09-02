@@ -38,6 +38,10 @@
           "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Automatisches Durchschalten, 01.09.2026): die Einstellung „Reiter automatisch alle 10 s weiterschalten“ (unten unter „Darstellung“, Standard aus) versetzt die Kachel in einen Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert - z. B. für eine Demo-Instanz gedacht."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"
@@ -149,6 +153,11 @@
           "type": "CheckBox",
           "name": "LightTheme",
           "caption": "Symcon-Oberfläche ist auf Hell gestellt (für theme-abhängige Textfarben, z.B. Sankey-Beschriftung - Symcon bietet der Kachel keine automatische Erkennung an)"
+        },
+        {
+          "type": "CheckBox",
+          "name": "AutoCycleTabs",
+          "caption": "Reiter automatisch alle 10 s weiterschalten (Kiosk-/Vorführmodus, z.B. für eine Demo-Instanz)"
         }
       ]
     }

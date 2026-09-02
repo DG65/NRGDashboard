@@ -1320,6 +1320,13 @@ gleiche IPSView-Fähigkeit.
   allem beim Jahresvergleich mit vielen Jahren hilfreich, wo die
   wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt.
   Gilt reiterübergreifend, kein Sonderfall je Ansicht.
+- **Automatisches Durchschalten (`NRGDashboardPVMonitor`):** die
+  Instanz-Einstellung "Reiter automatisch alle 10 s weiterschalten"
+  (Standard aus) versetzt die Kachel in einen Kiosk-/Vorführmodus, der
+  selbstständig durch alle aktuell sichtbaren Reiter blättert (ausgeblendete
+  Reiter ohne Datenquelle werden übersprungen) — über denselben echten
+  Klick-Pfad wie ein manueller Reiterwechsel, damit alle Nebeneffekte
+  korrekt mitlaufen. Gedacht für Demo-/Vorstellungs-Instanzen.
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`
