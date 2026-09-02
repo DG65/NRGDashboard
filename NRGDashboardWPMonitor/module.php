@@ -48,6 +48,14 @@ class NRGDashboardWPMonitor extends IPSModule
     // jedem Klick.
     private const WINDOW_DAYS  = 8;
     private const SPAN_YEARS   = 5;
+    // Sanity-Obergrenze fuer archivierte Leistungswerte (01.09.2026, Fund
+    // bei NRGDashboardTile/PVMonitor: 261.554.185 W durch einen Modbus-TID-
+    // Bug bei InverterHub, hat dort einen Tagesbalken auf einen absurden
+    // Wert gezogen - derselbe Fehlermechanismus betrifft DailyEnergyMap()
+    // hier 1:1). Bewusst KEIN anlagenspezifischer Wert (CLAUDE.md
+    // Kernprinzip 2) - 1 MW ist fuer jede denkbare Heim-Waermepumpe
+    // implausibel.
+    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
@@ -59,8 +67,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.0';
+    private const NEWS_VERSION = '0.2.1';
     private const NEWS_ITEMS = [
+        'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Heim-Wärmepumpe) verzerrte bisher Tagesansicht und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         'Architektur an NRGDashboardPVMonitor angeglichen: Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht laufen jetzt rein clientseitig (kein Nachladen bei jedem Ansichtswechsel mehr), plus wahlweise Highcharts oder ECharts als Zeichen-Engine (Formular "Darstellung").',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -381,7 +390,16 @@ class NRGDashboardWPMonitor extends IPSModule
         usort($data, function ($a, $b) { return (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']; });
         $pts = [];
         foreach ($data as $row) {
-            $pts[] = [(int) $row['TimeStamp'] * 1000, round((float) $row['Avg'], 1)];
+            $w = (float) $row['Avg'];
+            if (abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $w),
+                    0
+                );
+                continue;
+            }
+            $pts[] = [(int) $row['TimeStamp'] * 1000, round($w, 1)];
         }
         return $pts;
     }
@@ -430,7 +448,16 @@ class NRGDashboardWPMonitor extends IPSModule
         }
         $kwh = 0.0;
         foreach ($data as $row) {
-            $kwh += max(0.0, (float) $row['Avg']) * (5.0 / 60.0) / 1000.0;
+            $avg = (float) $row['Avg'];
+            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $avg),
+                    0
+                );
+                continue;
+            }
+            $kwh += max(0.0, $avg) * (5.0 / 60.0) / 1000.0;
         }
         return $kwh;
     }
@@ -455,7 +482,16 @@ class NRGDashboardWPMonitor extends IPSModule
         }
         $out = [];
         foreach ($data as $row) {
-            $kwh = round(((float) $row['Avg']) * 24.0 / 1000.0, 2);
+            $avg = (float) $row['Avg'];
+            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), $avg),
+                    0
+                );
+                continue;
+            }
+            $kwh = round($avg * 24.0 / 1000.0, 2);
             if (is_finite($kwh) && $kwh >= 0) {
                 $out[date('Y-m-d', (int) $row['TimeStamp'])] = $kwh;
             }

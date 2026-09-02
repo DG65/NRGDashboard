@@ -26,6 +26,10 @@
           "caption": "✨ Feinheiten: Die Kachel startet direkt mit der heutigen Tagesansicht samt Vorgestern/Gestern/Heute-Schnellwahl - kein leerer Startzustand."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHWPMON_ResetTour($id);"

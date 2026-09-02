@@ -33,6 +33,15 @@ class NRGDashboardPVMonitor extends IPSModule
     private const WINDOW_DAYS      = 8;
     private const SPAN_YEARS       = 5;
     private const SUN_MARGIN_SEC   = 3600;
+    // Sanity-Obergrenze fuer archivierte Leistungswerte (01.09.2026, Fund
+    // bei NRGDashboardTile: 261.554.185 W nachts durch einen Modbus-TID-Bug
+    // bei InverterHub, hat dort einen Tagesbalken auf 2204,91 kWh statt eines
+    // plausiblen Werts gezogen - derselbe Fehlermechanismus betrifft hier
+    // DailyEnergyMap()/MonthlyEnergyMap(), da beide unveraendert AC_
+    // GetAggregatedValues()-Tages-/Monats-Mittelwerte in kWh hochrechnen).
+    // Bewusst KEIN anlagenspezifischer Wert (CLAUDE.md Kernprinzip 2) -
+    // 1 MW ist fuer jede denkbare Heim-/Kleingewerbe-PV-Anlage implausibel.
+    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
 
     private const DEF_BACKGROUND = -1;
     private const DEF_FONT       = 'system';
@@ -44,8 +53,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.0';
+    private const NEWS_VERSION = '0.10.1';
     private const NEWS_ITEMS = [
+        'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
         'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
         'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
@@ -785,6 +795,14 @@ class NRGDashboardPVMonitor extends IPSModule
             if (!isset($row['Avg'])) {
                 continue;
             }
+            if (abs((float) $row['Avg']) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m', (int) $row['TimeStamp']), (float) $row['Avg']),
+                    0
+                );
+                continue;
+            }
             $ts = (int) $row['TimeStamp'];
             // Hochrechnung mit den TATSAECHLICH abgedeckten Stunden statt
             // immer den kompletten Kalendertagen des Monats - sonst wird der
@@ -1484,6 +1502,14 @@ class NRGDashboardPVMonitor extends IPSModule
         $kwh = 0.0;
         foreach ($data as $row) {
             $avg = (float) $row['Avg'];
+            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $avg),
+                    0
+                );
+                continue;
+            }
             $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
             $kwh += $part * (5.0 / 60.0) / 1000.0;
         }
@@ -1773,7 +1799,16 @@ class NRGDashboardPVMonitor extends IPSModule
         usort($data, function ($a, $b) { return (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']; });
         $pts = [];
         foreach ($data as $row) {
-            $pts[] = [(int) $row['TimeStamp'] * 1000, round((float) $row['Avg'], 1)];
+            $w = (float) $row['Avg'];
+            if (abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), $w),
+                    0
+                );
+                continue;
+            }
+            $pts[] = [(int) $row['TimeStamp'] * 1000, round($w, 1)];
         }
         return $pts;
     }
@@ -1927,7 +1962,16 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $out = [];
         foreach ($data as $row) {
-            $kwh = round(((float) $row['Avg']) * 24.0 / 1000.0, 2);
+            $avg = (float) $row['Avg'];
+            if (abs($avg) > self::IMPLAUSIBLE_POWER_W) {
+                $this->SendDebug(
+                    __FUNCTION__,
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), $avg),
+                    0
+                );
+                continue;
+            }
+            $kwh = round($avg * 24.0 / 1000.0, 2);
             if (is_finite($kwh) && $kwh >= 0) {
                 $out[date('Y-m-d', (int) $row['TimeStamp'])] = $kwh;
             }

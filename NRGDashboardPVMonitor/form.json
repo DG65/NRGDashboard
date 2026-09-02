@@ -26,6 +26,10 @@
           "caption": "✨ Feinheiten — Diagramme: kleine Sonnen über der Zeitachse zeigen den Sonnenstand; mit installiertem Prognose-Modul folgen Größe/Helligkeit der prognostizierten PV-Leistung (bewölkter Vormittag = blasse Sonnen), auch im Tagesplan. Ohne Einstrahlungssensor heißt der erste Reiter schlicht „Photovoltaik“. Die Tages-/Monats-/Jahres-kWh in der Legende beziehen sich auf den angezeigten Tag und rechnen beim Zurückblättern mit. Bei verzögert archivierenden Abrechnungszählern markiert eine schraffierte Fläche den Zeitbereich ohne Bezugsdaten, statt Lücken als Nullverbrauch zu zeigen."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (real gefunden: 261.554.185 W nachts durch einen Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht, Jahresvergleich oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

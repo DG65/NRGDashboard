@@ -1303,7 +1303,11 @@ gleiche IPSView-Fähigkeit.
   statt eines plausiblen Werts zeigte) wird jetzt verworfen statt
   ungeprüft in Leistungsdiagramm, 14-Tage-Energiebalken, Geisterring,
   Autarkiegrad und PV-Prognose-Ring einzufließen — eine generische
-  Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert.
+  Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert. Dieselbe
+  Absicherung gilt für `NRGDashboardPVMonitor` (Tagesansicht,
+  Jahresvergleich, Energiebilanz) und `NRGDashboardWPMonitor`
+  (Tagesansicht, Energiebilanz) — beide teilen dasselbe Muster
+  (`AC_GetAggregatedValues()`-Leistungswerte zu kWh hochgerechnet).
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
