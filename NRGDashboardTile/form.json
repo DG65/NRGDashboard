@@ -19,7 +19,7 @@
         },
         {
           "type": "Label",
-          "caption": "Vorführmodus (01.09.2026): eine eigene Instanz mit aktiviertem Häkchen zeigt weiterhin alle Geräte/Werte an, blendet aber jede Wallbox-Steuerung (Freigabe/Limit/Start/Stopp) komplett aus - weder das Frontend zeigt Schalter, noch nimmt der WebHook Steuerbefehle an. Gedacht für Demo-/Vorstellungs-Instanzen, die keine Auswirkung auf echte Geräte haben dürfen."
+          "caption": "Vorführmodus (01.09.2026): eine eigene Instanz mit aktiviertem Häkchen zeigt weiterhin alle Geräte/Werte an, blendet aber jede Wallbox-Steuerung (Freigabe/Limit/Start/Stopp) komplett aus - weder das Frontend zeigt Schalter, noch nimmt der WebHook Steuerbefehle an. Gedacht für Demo-/Vorstellungs-Instanzen, die keine Auswirkung auf echte Geräte haben dürfen. Erkennt zusätzlich automatisch, wenn OCPPHub selbst im eigenen Vorführmodus ist (OHUB_IsDemoMode()) und blendet die Steuerung dann auch bei ausgeschaltetem eigenem Vorführmodus für dieses Gerät aus."
         },
         {
           "type": "Label",

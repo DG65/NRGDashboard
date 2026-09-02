@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.4';
+    private const NEWS_VERSION = '0.7.5';
     private const NEWS_ITEMS = [
+        'Vorführmodus erkennt jetzt auch, wenn OCPPHub selbst im Vorführmodus ist (OHUB_IsDemoMode()) - unsere Wallbox-Steuerung blendet sich dann für dieses Gerät ebenfalls aus, statt Buttons zu zeigen, die beim Klick ohnehin nur abgelehnt würden.',
         'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
         'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
         'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
@@ -861,6 +862,18 @@ class NRGDashboardTile extends IPSModule
                 http_response_code(403);
                 echo json_encode(['ok' => false, 'error' => 'Ungültiges oder nicht steuerbares Gerät.']);
                 return;
+            }
+            // OCPPHub-eigener Vorfuehrmodus (01.09.2026) - OCPPHub lehnt den
+            // Befehl ohnehin an der eigenen Absendestelle ab (unser
+            // runPartnerCall() faengt das sauber ab), hier nur fuer eine
+            // klare Fehlermeldung statt eines generischen Partnermodul-Fehlers.
+            if (($d['transport'] ?? '') === 'ocpp' && function_exists('OHUB_IsDemoMode')) {
+                $splitterId = (int) @IPS_GetProperty($instanceID, 'SplitterID');
+                if ($splitterId > 0 && @OHUB_IsDemoMode($splitterId)) {
+                    http_response_code(403);
+                    echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert (OCPPHub).']);
+                    return;
+                }
             }
             $action = (string) $_GET['wallboxAction'];
             // Transportneutral, ueber die vom Vertrag gelieferte Variable
@@ -3525,6 +3538,19 @@ class NRGDashboardTile extends IPSModule
         $instanceID = (int) ($d['instanceID'] ?? 0);
         if ($instanceID <= 0 || !IPS_InstanceExists($instanceID)) {
             return null;
+        }
+
+        // OCPPHub-eigener Vorfuehrmodus (01.09.2026, OHUB_IsDemoMode() -
+        // Splitter-Property, lehnt echte OCPP-Befehle serverseitig ab).
+        // Auch wenn UNSER DemoMode aus ist: zeigt OCPPHub selbst Buttons an,
+        // die dort ohnehin nur abgelehnt wuerden, waere das verwirrend
+        // ("Start geklickt, nichts passiert") statt einer klaren Aussage.
+        // Defense-in-depth analog unserem eigenen zweistufigen Schutz.
+        if (($d['transport'] ?? '') === 'ocpp' && function_exists('OHUB_IsDemoMode')) {
+            $splitterId = (int) @IPS_GetProperty($instanceID, 'SplitterID');
+            if ($splitterId > 0 && @OHUB_IsDemoMode($splitterId)) {
+                return null;
+            }
         }
 
         $info = ['instanceID' => $instanceID];

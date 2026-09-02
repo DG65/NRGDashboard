@@ -1293,6 +1293,10 @@ gleiche IPSView-Fähigkeit.
   entgegen (serverseitig zusätzlich abgesichert, nicht nur versteckt).
   Gedacht für Demo-/Vorstellungs-Instanzen, die alle Geräte/Werte zeigen
   sollen, aber garantiert keine Auswirkung auf echte Geräte haben dürfen.
+  Erkennt zusätzlich automatisch, wenn OCPPHub selbst im eigenen
+  Vorführmodus ist (`OHUB_IsDemoMode()`) und blendet die Steuerung dann
+  auch bei ausgeschaltetem eigenem Vorführmodus für dieses Gerät aus —
+  koordinierter Schutz statt zweier unabhängiger Mechanismen.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
