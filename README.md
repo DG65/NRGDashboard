@@ -1329,14 +1329,18 @@ gleiche IPSView-Fähigkeit.
   Einlesen geprüft) — beide verwerfen jetzt unplausible Werte, statt
   sie in den "Ist"-Vergleich zur Prognose einfließen zu lassen.
 - **Tour jederzeit selbst starten (alle sieben Kacheln):** ein "?"-Knopf
-  oben rechts zeigt die Einführungs-Tour erneut, unabhängig vom
+  unten links zeigt die Einführungs-Tour erneut, unabhängig vom
   gespeicherten "schon gesehen"-Status. Anlass: eine gemeinsam genutzte
   Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle
   Besucher — sobald ein Besucher die Tour bestätigt, würde sie den
   nächsten Besuchern sonst gar nicht mehr angezeigt (der Status ist
   serverseitig geteilter Zustand, nicht pro Besucher). Rein
   client-seitig, ändert nichts am bisherigen automatischen
-  Erstanzeige-Verhalten.
+  Erstanzeige-Verhalten. Position bewusst unten links, nicht oben
+  rechts — dort sitzt WebFronts eigenes, natives Doppelpfeil-Symbol
+  (Kachel-Vollansicht), mit dem der Knopf sonst kollidiert (Fund
+  01.09.2026: Dietmar konnte ihn dadurch nicht erreichen). Auffällig
+  groß und deckend statt eines kaum sichtbaren kleinen Icons.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei

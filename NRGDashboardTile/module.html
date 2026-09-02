@@ -310,15 +310,21 @@
      Klick zeigt die Tour sofort erneut, unabhaengig vom serverseitigen
      Stand. Dezent in der Ecke, damit er im Alltag (Dietmars eigene
      Instanz) nicht stoert, aber fuer Demo-Besucher immer auffindbar bleibt. */
+  /* Position/Größe korrigiert (01.09.2026, Dietmar: "direkt über dem
+     Doppelpfeil und damit nicht erreichbar... Knöpfchen ziemlich
+     unsichtbar") - oben rechts kollidierte mit WebFronts eigenem,
+     nativem Doppelpfeil-Symbol (Kachel-Vollansicht), das dort immer
+     sitzt. Unten links ist frei, groesser (36px statt 26px) und von
+     Anfang an deutlich sichtbar statt nur .6 Deckkraft. */
   #tourRestartBtn {
-    position: fixed; top: 8px; right: 8px; z-index: 950;
-    width: 26px; height: 26px; border-radius: 50%;
-    border: 1px solid rgba(127,135,145,.35); background: rgba(38,41,46,.85);
-    color: inherit; font: inherit; font-size: 14px; line-height: 1;
+    position: fixed; bottom: 10px; left: 10px; z-index: 950;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(127,135,145,.5); background: rgba(38,41,46,.92);
+    color: inherit; font: inherit; font-size: 19px; font-weight: 700; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; opacity: .6; box-shadow: 0 4px 14px rgba(0,0,0,.3);
+    cursor: pointer; opacity: .9; box-shadow: 0 4px 14px rgba(0,0,0,.4);
   }
-  #tourRestartBtn:hover { opacity: 1; background: rgba(127,135,145,.28); }
+  #tourRestartBtn:hover { opacity: 1; background: rgba(127,135,145,.35); }
   body.light #tourRestartBtn { background: rgba(242,244,247,.9); }
 </style>
 </head>
