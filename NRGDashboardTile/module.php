@@ -55,8 +55,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.3';
+    private const NEWS_VERSION = '0.7.4';
     private const NEWS_ITEMS = [
+        'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
         'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
         'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
         'Das Leistungsdiagramm der Geräte-Detailseite aktiviert die Archivierung der zugrunde liegenden Variable jetzt selbst, statt nur "keine Archivdaten" zu melden - ab dem ersten Aufruf sammelt sich der Verlauf automatisch.',
@@ -226,6 +227,15 @@ class NRGDashboardTile extends IPSModule
         // (Store-Review-Regel: berechnete Anzeigespalten nicht zurueckschreiben,
         // "loadValuesFromConfiguration": false in form.json).
         $this->RegisterPropertyString('DeviceVisibility', '[]');
+        // Vorfuehr-/Demomodus (01.09.2026, Dietmar: "EMS Modulvorstellung" -
+        // eine zusaetzliche Instanz zur Praesentation des ganzen Verbunds,
+        // "sie duerfen keine Auswirkungen auf das System haben"). Schaltet
+        // die Wallbox-Steuerung (Start/Stopp/Freigabe/Limit,
+        // ChargerControlInfo()) instanzweise hart ab, statt sie nur zu
+        // verstecken - kuenftige Steuerbefehle muessen hier NICHT einzeln
+        // ergaenzt werden, sie laufen alle ueber denselben ChargerControlInfo()-
+        // Rueckgabewert.
+        $this->RegisterPropertyBoolean('DemoMode', false);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -832,6 +842,17 @@ class NRGDashboardTile extends IPSModule
         // jeder beliebige Aufrufer eine fremde Instanz-ID unterschieben.
         if (isset($_GET['wallboxAction'])) {
             header('Content-Type: application/json; charset=utf-8');
+            // Demomodus-Verteidigung (01.09.2026) - ChargerControlInfo()
+            // liefert im Demomodus zwar kein 'control'-Feld mehr, die
+            // Detailseite zeigt also keine Buttons an, aber eine bereits
+            // im Browser offene/gecachte Seite koennte den Request trotzdem
+            // absetzen. Serverseitig zusaetzlich hart blockieren, damit
+            // "keine Auswirkungen auf das System" (Dietmar) auch dann gilt.
+            if ($this->readBoolProperty('DemoMode', false)) {
+                http_response_code(403);
+                echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert.']);
+                return;
+            }
             $key = (string) ($_GET['key'] ?? '');
             $d = $this->FindDeviceByKey($key);
             $instanceID = (int) ($d['instanceID'] ?? 0);
@@ -3488,6 +3509,13 @@ class NRGDashboardTile extends IPSModule
      */
     private function ChargerControlInfo(array $d): ?array
     {
+        // Demomodus (01.09.2026) - siehe Property-Docblock in Create():
+        // steuert die Wallbox NICHT nur aus, sondern liefert direkt kein
+        // 'control'-Feld, damit die Detailseite gar nicht erst versucht,
+        // Schalter/Regler zu zeichnen - kein Sonderfall im Frontend noetig.
+        if ($this->readBoolProperty('DemoMode', false)) {
+            return null;
+        }
         if (($d['function'] ?? '') !== 'charger') {
             return null;
         }

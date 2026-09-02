@@ -1287,6 +1287,12 @@ gleiche IPSView-Fähigkeit.
   Preisermittlung nicht in jedem Modul neu gebaut werden muss — Basis
   für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/
   Lebenszeit), nicht mehr nur den heutigen Tag.
+- **Vorführmodus:** eine Instanz-Eigenschaft ("Vorführmodus") blendet die
+  Wallbox-Steuerung (Freigabe/Limit/Start/Stopp) komplett aus - weder
+  zeigt das Frontend Schalter, noch nimmt der WebHook Steuerbefehle
+  entgegen (serverseitig zusätzlich abgesichert, nicht nur versteckt).
+  Gedacht für Demo-/Vorstellungs-Instanzen, die alle Geräte/Werte zeigen
+  sollen, aber garantiert keine Auswirkung auf echte Geräte haben dürfen.
 - **Vollständige Stromwerte-Tabelle je Gerät:** die Detailseite zeigt jetzt
   eine automatisch gruppierte Tabelle aller relevanten elektrischen Werte
   (z. B. auch je MPPT-Strang unter Solar oder je Batterie-Turm bei
