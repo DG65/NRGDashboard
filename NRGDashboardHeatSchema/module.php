@@ -85,8 +85,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.4.2';
+    private const NEWS_VERSION = '0.4.3';
     private const NEWS_ITEMS = [
+        'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
         'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
@@ -1047,7 +1048,13 @@ class NRGDashboardHeatSchema extends IPSModule
             // heaterActive per Default an - realistischer waere er meist
             // aus, aber Dietmar soll das Badge SEHEN koennen, ohne extra
             // danach suchen zu muessen.
-            'fan2Speed' => 380.0, 'heaterActive' => true,
+            // heaterActive standardmaessig AUS (Dietmar, 03.09.2026: "den
+            // Heizstab wuerde ich auf gar keinen Fall im Kuehlbetrieb
+            // eingeblendet lassen, generell fuer die Demo ausgeblendet") -
+            // sichtbar nur noch im Abtaubetrieb (Fall 5), wo ein Zuheizer
+            // realistisch ist. So bleibt das Badge demonstrierbar, ohne in
+            // Heiz-/Kuehl-/WW-Betrieb ein falsches Bild zu zeichnen.
+            'fan2Speed' => 380.0, 'heaterActive' => false,
             'suctionTemp' => 17.0,
             'copEstimate' => 4.2, 'copMeasured' => 4.0, 'dailyPerformanceFactor' => 3.8,
             'extPump' => true, 'extMixingValve' => 0,
@@ -1104,6 +1111,10 @@ class NRGDashboardHeatSchema extends IPSModule
                 break;
             case 5: // Abtaubetrieb
                 $u['defrosting'] = true;
+                // Einzige Betriebsart, in der der Heizstab in der
+                // Simulation gezeigt wird (Zuheizer waehrend des Abtauens
+                // ist realistisch, siehe Basis-Kommentar zu heaterActive).
+                $u['heaterActive'] = true;
                 break;
             case 1: // Heizbetrieb - Default oben bereits gesetzt
             default:

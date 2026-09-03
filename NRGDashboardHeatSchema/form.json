@@ -30,6 +30,10 @@
           "caption": "✨ Feinheit (Simulation hydraulisch schlüssig, 03.09.2026): im simulierten Warmwasserbetrieb stehen beide Heizkreise still - das Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der Heizkreis-Temperatur."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Heizstab nur wo er hingehört, 03.09.2026): in der Simulation ist der Heizstab standardmäßig aus und erscheint nur noch im Abtaubetrieb - ein Zuheizer im Kühlbetrieb wäre fachlich falsch, in Heiz-/Warmwasserbetrieb bei einer gesunden Anlage die Ausnahme."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHHEAT_ResetTour($id);"

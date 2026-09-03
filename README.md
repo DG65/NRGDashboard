@@ -1366,6 +1366,10 @@ gleiche IPSView-Fähigkeit.
   gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der
   Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der
   Heizkreis-Temperatur.
+- **Heizstab nur wo er hingehört (`NRGDashboardHeatSchema`):** in der
+  Simulation ist der Heizstab standardmäßig aus und erscheint nur noch
+  im Abtaubetrieb — ein Zuheizer im Kühlbetrieb wäre fachlich falsch,
+  in Heiz-/Warmwasserbetrieb bei einer gesunden Anlage die Ausnahme.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den
