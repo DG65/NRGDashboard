@@ -1349,6 +1349,12 @@ gleiche IPSView-Fähigkeit.
   extremer Breite wächst zusätzlich die Höhe des Haus-Tisches
   proportional mit, damit er ein rundliches Rechteck bleibt statt
   eines dünnen Balkens.
+- **Beliebige Zusatzwerte (`NRGDashboardTile`):** eine manuell
+  eingetragene Wallbox oder ein sonstiger Verbraucher kann zusätzlich
+  beliebig viele eigene Wertfelder tragen (JSON-Zeile, Feldname endet
+  auf `ID`/`IDs`, z. B. `vinID`) — erscheinen automatisch in der
+  „Aktuelle Werte“-Tabelle der Detailseite, exakt wie bei automatisch
+  erkannten Geräten.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

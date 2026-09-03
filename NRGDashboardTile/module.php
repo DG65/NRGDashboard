@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.3';
+    private const NEWS_VERSION = '0.8.4';
     private const NEWS_ITEMS = [
+        'Neu: eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher ("Weitere Verbraucher") kann jetzt beliebig viele zusätzliche Wertfelder tragen (JSON-Zeile, z.B. "vinID"/"rangeKmID") - erscheinen automatisch in der "Aktuelle Werte"-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten.',
         'Fix: bei sehr vielen Geräten wirkte der breit gezogene Haus-Tisch wie ein dünner Balken - die Höhe wächst jetzt bei extremer Breite proportional mit, bleibt also ein rundliches Rechteck.',
         'Fix: bei einer breiten Kachel blieb links/rechts viel Platz ungenutzt (die Anordnung durfte nie breiter als hoch werden) - die Leinwand passt sich jetzt der tatsächlichen Kachel-Breite an, wodurch bei vielen Geräten (Chip-Form) deutlich mehr davon Platz finden, ohne kleiner zu werden.',
         'Neu: "Isolierter Demo-Modus" (Instanz-Eigenschaft) schaltet jede automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern geht sonst rechnerisch nicht auf).',
@@ -3264,6 +3265,28 @@ class NRGDashboardTile extends IPSModule
             if (!empty($row['SocID'])) {
                 $entry['socID'] = (int) $row['SocID'];
             }
+            // Beliebige weitere *ID-/*IDs-Felder generisch durchreichen
+            // (03.09.2026, Dietmar: "es fehlen Werte, Werte und nochmals
+            // Werte") - DetailValues() zeigt ohnehin JEDES *ID-/*IDs-Feld
+            // automatisch in der "Aktuelle Werte"-Tabelle an (type-neutral,
+            // Kernprinzip 2), das gilt jetzt auch fuer manuell eingetragene
+            // Verbraucher, nicht nur fuer Hub-Vertraege. Feldname direkt wie
+            // vom Aufrufer (JSON-Zeile) vorgegeben uebernehmen, z.B.
+            // "chargeEnableID"/"currentLimitID" fuer eine Demo-Wallbox mit
+            // funktionierenden Steuer-Buttons, oder "vinID"/"rangeKmID" fuer
+            // zusaetzliche Fahrzeug-Kennwerte. Bereits behandelte Felder
+            // (Type/Name/VariableID/PlugID/PlugOp/PlugVal/SocID) ausnehmen.
+            $handled = ['Type', 'Name', 'VariableID', 'PlugID', 'PlugOp', 'PlugVal', 'SocID'];
+            foreach ($row as $field => $val) {
+                if (in_array($field, $handled, true)) {
+                    continue;
+                }
+                if (preg_match('/IDs$/', $field) && is_array($val)) {
+                    $entry[$field] = array_map('intval', $val);
+                } elseif (preg_match('/ID$/', $field) && is_numeric($val)) {
+                    $entry[$field] = (int) $val;
+                }
+            }
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
         return $results;
@@ -3604,7 +3627,12 @@ class NRGDashboardTile extends IPSModule
         if ($this->readBoolProperty('DemoMode', false)) {
             return null;
         }
-        if (($d['function'] ?? '') !== 'charger') {
+        // normalizeDeviceCategory() statt eines woertlichen Vergleichs auf
+        // 'charger' (03.09.2026, Fund: eine manuell eingetragene Wallbox
+        // ohne Hub-Modul traegt 'function'=>'wallbox', nicht 'charger' -
+        // beide meinen dieselbe Geraeteart, siehe AssignVehicles()-
+        // Kommentar vom 29.07.2026 zum selben Muster).
+        if ($this->normalizeDeviceCategory($d['function'] ?? '') !== 'wallbox') {
             return null;
         }
         if (!empty($d['externallyManaged'])) {

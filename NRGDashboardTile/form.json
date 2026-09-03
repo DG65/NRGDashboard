@@ -82,6 +82,10 @@
           "caption": "✨ Feinheit (Breite Kachel besser genutzt, 03.09.2026): die Anordnung passt sich jetzt der tatsächlichen Kachel-Breite an, statt immer in einem festen Quadrat zu bleiben - bei vielen Geräten (Chip-Form des Haus-Knotens) finden dadurch deutlich mehr davon nebeneinander Platz, ohne kleiner werden zu müssen."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Beliebige Zusatzwerte, 03.09.2026): eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher kann zusätzlich beliebig viele eigene Wertfelder tragen (JSON-Zeile, Feldname endet auf „ID“/„IDs“, z.B. „vinID“) - erscheinen automatisch in der „Aktuelle Werte“-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"
