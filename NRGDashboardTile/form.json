@@ -70,6 +70,14 @@
           "caption": "✨ Feinheit (EMS-Begründung, 03.09.2026): sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt, zeigt die Kachel unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl. Klartext-Begründung (z. B. „Netzladen – Grid Rewards (Tibber)“) - rein informativ, ohne dass das Dashboard selbst etwas schaltet oder interpretiert."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ladestand bei manueller Wallbox, 03.09.2026): eine manuell eingetragene Wallbox („Weitere Verbraucher“) kann zusätzlich ein „SocID“ tragen (direkt in der gespeicherten Liste, kein eigenes Formularfeld) - zeigt dann wie bei automatisch erkannten Fahrzeugen den Ladestand am Knoten."
+        },
+        {
+          "type": "Label",
+          "caption": "✨ Feinheit (Isolierter Demo-Modus, 03.09.2026): das Häkchen „Isolierter Demo-Modus“ (oben unter „Vorführmodus“) schaltet JEDE automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten - eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern würde sonst nicht aufgehen."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"
@@ -80,6 +88,11 @@
       "type": "CheckBox",
       "name": "DemoMode",
       "caption": "Vorführmodus (keine Steuerbefehle an echte Geräte, z.B. für eine Demo-/Vorstellungs-Instanz)"
+    },
+    {
+      "type": "CheckBox",
+      "name": "DemoIsolated",
+      "caption": "Isolierter Demo-Modus: keine echten Geräte erkennen, nur die manuell eingetragenen Kern-/Verbraucher-Felder verwenden (für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich stimmigen Werten)"
     },
     {
       "type": "Button",

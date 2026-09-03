@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.9';
+    private const NEWS_VERSION = '0.8.1';
     private const NEWS_ITEMS = [
+        'Neu: "Isolierter Demo-Modus" (Instanz-Eigenschaft) schaltet jede automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern geht sonst rechnerisch nicht auf).',
+        'Neu: eine manuell eingetragene Wallbox ("Weitere Verbraucher") kann jetzt zusätzlich ein SocID tragen (JSON-Zeile, kein eigenes Formularfeld) - zeigt dann wie bei automatisch erkannten Fahrzeugen den Ladestand am Knoten.',
         'Neu: die Kachel zeigt jetzt unten ein kleines Feld mit der aktuellen EMS-Schaltentscheidung inkl. Begründung (z. B. "Netzladen – Grid Rewards (Tibber)"), sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt. Rein informativ, ohne Rückwirkung.',
         'Fix: bei bestimmten Knotenbeschriftungen brach die komplette Kachel-Darstellung in Safari ab ("Invalid value for <text> attribute textLength"), während Chrome/Firefox den fehlerhaften Wert stillschweigend ignorierten - ein Rundungsfehler nahe der Kreisgrenze wird jetzt zuverlässig abgefangen.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
@@ -242,6 +244,12 @@ class NRGDashboardTile extends IPSModule
         // ergaenzt werden, sie laufen alle ueber denselben ChargerControlInfo()-
         // Rueckgabewert.
         $this->RegisterPropertyBoolean('DemoMode', false);
+        // Isolierter Demo-Modus (03.09.2026) - eigene Property, bewusst
+        // getrennt von DemoMode (das blendet nur Steuer-Buttons aus, lässt
+        // aber echte Live-Werte durch). Bei aktivem Schalter überspringt
+        // Discover() JEDE automatische Geräte-Erkennung; Netz/PV/Batterie/
+        // Haus kommen dann ausschließlich aus den manuellen Kern-Feldern.
+        $this->RegisterPropertyBoolean('DemoIsolated', false);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -583,6 +591,18 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = [];
 
+        // Isolierter Demo-Modus (03.09.2026, Dietmar: "die Summe aller
+        // Ströme sind natürlich nicht logisch") - eine reine Vorstellungs-
+        // Instanz braucht ein in sich stimmiges Bild, keine Mischung aus
+        // echten Live-Messwerten und erfundenen Verbrauchern. Bei aktivem
+        // Schalter wird JEDE automatische Geraete-Erkennung uebersprungen
+        // (kein Zugriff auf reale Hub-Module) - Netz/PV/Batterie/Haus kommen
+        // dann ausschliesslich aus den ohnehin vorhandenen manuellen
+        // Kern-Feldern (discoverManualCore(), fuer Haushalte ganz ohne
+        // Hub-Modul gedacht) weiter unten; Rest von Discover() (Caching,
+        // Live-Abonnements, Status) laeuft unveraendert weiter.
+        $demoIsolated = $this->readBoolProperty('DemoIsolated', false);
+
         // Jede Quelle einzeln einsammeln UND sofort auf stille Vertragsbrueche
         // pruefen (checkSourceCoverage) - Verbund-Zielbild "Zuverlaessigkeit
         // ohne KI-Krücke" (SUITE.md, 27.07.2026): genau das haette den realen
@@ -591,6 +611,7 @@ class NRGDashboardTile extends IPSModule
         // automatisch im Log gemeldet, statt erst durch eine Live-Sitzung beim
         // Nutzer aufzufallen. Ein Endnutzer hat keine Sitzung, die das nachtraeglich
         // repariert.
+        if (!$demoIsolated) {
         $inverterHub = $this->discoverInverterHub();
         $this->checkSourceCoverage('InverterHub', NRGDASH_GUID_INVERTERHUB, count($inverterHub));
         $devices = array_merge($devices, $inverterHub);
@@ -655,6 +676,7 @@ class NRGDashboardTile extends IPSModule
         }
 
         $devices = array_merge($devices, $this->discoverTessie());
+        } // !$demoIsolated
 
         // Manuelle Konfiguration IMMER zusaetzlich auswerten (kein Hub-Modul
         // vorausgesetzt) - fuer Haushalte ganz ohne InverterHub/MeterHub/etc.
@@ -668,7 +690,7 @@ class NRGDashboardTile extends IPSModule
         $hasManualHouse = (bool) array_filter($devices, function (array $d) {
             return ($d['function'] ?? '') === 'house';
         });
-        if (!$hasManualHouse) {
+        if (!$hasManualHouse && !$demoIsolated) {
             $devices = array_merge($devices, $this->discoverInverterHubTileHouseLoad());
         }
 
@@ -3232,6 +3254,13 @@ class NRGDashboardTile extends IPSModule
                 $entry['plugStateID'] = (int) $row['PlugID'];
                 $entry['plugOp']      = $row['PlugOp']  ?? 'truthy';
                 $entry['plugVal']     = $row['PlugVal'] ?? '';
+            }
+            // Optionales SocID (kein eigenes Formularfeld, JSON-Zeile reicht -
+            // z.B. fuer eine manuell eingetragene Wallbox mit Fahrzeug ohne
+            // eigenes Partnermodul): buildPayload() loest 'soc' daraus auf,
+            // exakt wie bei automatisch erkannten Geraeten (Zeile 1038).
+            if (!empty($row['SocID'])) {
+                $entry['socID'] = (int) $row['SocID'];
             }
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }

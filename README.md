@@ -1336,6 +1336,18 @@ gleiche IPSView-Fähigkeit.
   unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl.
   Klartext-Begründung (z. B. „Netzladen – Grid Rewards (Tibber)“) —
   rein informativ, ohne Rückwirkung.
+- **Ladestand bei manueller Wallbox (`NRGDashboardTile`):** eine
+  manuell eingetragene Wallbox („Weitere Verbraucher“) kann
+  zusätzlich ein `SocID` tragen (direkt in der gespeicherten Liste,
+  kein eigenes Formularfeld) — zeigt dann wie bei automatisch
+  erkannten Fahrzeugen den Ladestand am Knoten.
+- **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
+  „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
+  ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den
+  manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz
+  mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine
+  Mischung aus echten Live-Messwerten und erfundenen Zusatz-
+  verbrauchern geht sonst rechnerisch nicht auf).
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`
