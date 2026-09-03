@@ -86,6 +86,10 @@
           "caption": "✨ Feinheit (Beliebige Zusatzwerte, 03.09.2026): eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher kann zusätzlich beliebig viele eigene Wertfelder tragen (JSON-Zeile, Feldname endet auf „ID“/„IDs“, z.B. „vinID“) - erscheinen automatisch in der „Aktuelle Werte“-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ruhigere Blitzbögen bei breiter Pille, 03.09.2026): die Blitzbögen am Haus-Knoten passen Amplitude und Feinheit jetzt dem Seitenverhältnis der Pille an - bei vielen Geräten (breite, flache Pille) wirken sie dadurch fein statt zappelig, bei kreisrunder Form unverändert."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

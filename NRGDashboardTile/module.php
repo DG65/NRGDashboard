@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.4';
+    private const NEWS_VERSION = '0.8.5';
     private const NEWS_ITEMS = [
+        'Fix: die Blitzbögen am Haus-Knoten wirkten bei einer sehr breiten Pille (viele Geräte) zappelig, weil ihr Sampling entlang des Randes bei Rundung und Geradseite unterschiedlich große Sprünge macht - Amplitude/Feinheit passen sich jetzt dem Seitenverhältnis an, bleiben bei kreisrunder Form unverändert.',
         'Neu: eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher ("Weitere Verbraucher") kann jetzt beliebig viele zusätzliche Wertfelder tragen (JSON-Zeile, z.B. "vinID"/"rangeKmID") - erscheinen automatisch in der "Aktuelle Werte"-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten.',
         'Fix: bei sehr vielen Geräten wirkte der breit gezogene Haus-Tisch wie ein dünner Balken - die Höhe wächst jetzt bei extremer Breite proportional mit, bleibt also ein rundliches Rechteck.',
         'Fix: bei einer breiten Kachel blieb links/rechts viel Platz ungenutzt (die Anordnung durfte nie breiter als hoch werden) - die Leinwand passt sich jetzt der tatsächlichen Kachel-Breite an, wodurch bei vielen Geräten (Chip-Form) deutlich mehr davon Platz finden, ohne kleiner zu werden.',

@@ -1326,10 +1326,20 @@ function jagArc(hw, hh, startDeg, endDeg, amp, seg, seed) {
   return d + ' L' + pt(endDeg, 0);
 }
 function addNodeBolts(g, hw, hh, seedBase) {
+  // Bei einer sehr breiten Pille (hw >> hh) verzerrt das winkelbasierte
+  // Sampling in jagArc() die Punktabstaende stark - je nachdem, ob ein
+  // Winkelschritt auf der geraden Kante oder der Rundung landet, legt er
+  // einen ganz anderen Bogenlaengen-Abstand zurueck. Sichtbar als
+  // "zappeliger" Blitz (Dietmar, 03.09.2026). Fein statt hektisch: Amplitude
+  // sinkt proportional zur Streckung (aspect = hw/hh), Segmentzahl steigt -
+  // bei hw===hh (Kreis-Fall) identisch zum bisherigen Verhalten (aspect=1).
+  const aspect = Math.max(1, hw / hh);
+  const amp = 3.2 / aspect;
+  const seg = Math.max(8, Math.round(8 * Math.sqrt(aspect)));
   for (let i = 0; i < BOLT_COUNT; i++) {
     const start = (seedBase * 47 + i * 120) % 360;
     const span  = 55 + ((seedBase + i) % 3) * 20;
-    const b = el('path', { class: 'node-bolt', d: jagArc(hw, hh, start, start + span, 3.2, 8, seedBase * 3 + i + 1) });
+    const b = el('path', { class: 'node-bolt', d: jagArc(hw, hh, start, start + span, amp, seg, seedBase * 3 + i + 1) });
     b.style.animationDuration = (1.15 + ((seedBase + i * 2) % 5) * 0.11).toFixed(2) + 's';
     b.style.animationDelay = (((seedBase * 7 + i * 13) % 17) / 10).toFixed(2) + 's';
     g.appendChild(b);

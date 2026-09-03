@@ -1355,6 +1355,11 @@ gleiche IPSView-Fähigkeit.
   auf `ID`/`IDs`, z. B. `vinID`) — erscheinen automatisch in der
   „Aktuelle Werte“-Tabelle der Detailseite, exakt wie bei automatisch
   erkannten Geräten.
+- **Ruhigere Blitzbögen bei breiter Pille (`NRGDashboardTile`):** die
+  Blitzbögen am Haus-Knoten passen Amplitude und Feinheit jetzt dem
+  Seitenverhältnis der Pille an — bei vielen Geräten (breite, flache
+  Pille) wirken sie dadurch fein statt zappelig, bei kreisrunder Form
+  unverändert.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den
