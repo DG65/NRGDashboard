@@ -609,7 +609,7 @@ function computeLayout(n) {
   const ringGap = rOuterCircle - DESIGN_R;
 
   let hw = DESIGN_R;
-  const hh = DESIGN_R;
+  let hh = DESIGN_R;
   if (chip) {
     // Wie viel zusaetzlicher Umfang noetig ist, damit n Knoten im GLEICHEN
     // Abstand wie beim Kreis (2*outerR+GAP) Platz finden - ueberall gleich
@@ -662,6 +662,19 @@ function computeLayout(n) {
       if (spacingAtHwMax - NODE_GAP < 2 * outerR) {
         outerR = Math.max(16, Math.min(outerR, (spacingAtHwMax - NODE_GAP) / 2));
       }
+    }
+
+    // Hoehe mitwachsen lassen (03.09.2026, Dietmar: "Tisch liegt unförmig
+    // in der Mitte" bei sehr vielen Geraeten) - eine sehr breite, aber
+    // starr niedrige Pille wirkt wie ein duenner Balken statt eines
+    // Tisches. Ab einem Seitenverhaeltnis von mehr als MAX_CHIP_ASPECT
+    // waechst hh proportional mit, bleibt aber ein rundliches Rechteck.
+    // Laeuft NACH dem hwMax-Deckel, aber VOR der Punktepositionierung
+    // unten, damit die Knoten auf dem tatsaechlich sichtbaren Pillenrand
+    // sitzen, nicht auf dem alten, schmaleren.
+    const MAX_CHIP_ASPECT = 3.2;
+    if (hw / hh > MAX_CHIP_ASPECT) {
+      hh = hw / MAX_CHIP_ASPECT;
     }
   }
 

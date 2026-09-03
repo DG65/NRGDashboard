@@ -1345,7 +1345,10 @@ gleiche IPSView-Fähigkeit.
   Geräte-Anordnung passt sich jetzt der tatsächlichen Kachel-Breite
   an, statt immer in einem festen Quadrat zu bleiben — bei vielen
   Geräten (Chip-Form des Haus-Knotens) finden dadurch deutlich mehr
-  davon nebeneinander Platz, ohne kleiner werden zu müssen.
+  davon nebeneinander Platz, ohne kleiner werden zu müssen. Bei
+  extremer Breite wächst zusätzlich die Höhe des Haus-Tisches
+  proportional mit, damit er ein rundliches Rechteck bleibt statt
+  eines dünnen Balkens.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den
