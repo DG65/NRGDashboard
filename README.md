@@ -1341,6 +1341,11 @@ gleiche IPSView-Fähigkeit.
   zusätzlich ein `SocID` tragen (direkt in der gespeicherten Liste,
   kein eigenes Formularfeld) — zeigt dann wie bei automatisch
   erkannten Fahrzeugen den Ladestand am Knoten.
+- **Breite Kachel besser genutzt (`NRGDashboardTile`):** die
+  Geräte-Anordnung passt sich jetzt der tatsächlichen Kachel-Breite
+  an, statt immer in einem festen Quadrat zu bleiben — bei vielen
+  Geräten (Chip-Form des Haus-Knotens) finden dadurch deutlich mehr
+  davon nebeneinander Platz, ohne kleiner werden zu müssen.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

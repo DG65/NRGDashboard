@@ -494,6 +494,20 @@ let EFFECT_INTENSITY = 1;
 
 let lastBoltHw = null; // Chip-Blitzboegen nur bei tatsaechlicher Breitenaenderung neu aufbauen
 const R_MAX = 234;
+// Breite Kacheln in die Breite nutzen statt links/rechts leer zu lassen
+// (Dietmar, 03.09.2026: "die Anordnung auch in die Breite ziehen ... sehr
+// viel mehr Verbraucher an den Tisch"): die urspruengliche, feste 594x594-
+// Leinwand liess bei einer breiten Kachel (viewBox mit preserveAspectRatio
+// "meet") viel Platz links/rechts ungenutzt, weil der Kreis/Chip nie breiter
+// als der quadratische Rahmen werden durfte. VIEW_W wird pro Render an die
+// tatsaechliche Kachel-Breite angepasst (Hoehe bleibt bei 594, damit alle
+// bestehenden Radien/DESIGN_R weiter stimmen); VIEW_HALF_W_DEFAULT ist der
+// urspruengliche halbe Boxrand (594/2-17=280, gerundet 297), an dem R_MAX
+// kalibriert ist - der Puffer (297-R_MAX) wird bei jeder Breite gleich
+// gehalten, statt neu zu raten.
+const VIEW_HALF_W_DEFAULT = 297;
+let VIEW_W = VIEW_HALF_W_DEFAULT * 2;
+let VIEW_HALF_W = VIEW_HALF_W_DEFAULT;
 const NODE_GAP = 20; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout())
 const CENTER_R = DESIGN_R;
 const SPOKE_GAP = 9;
@@ -615,7 +629,12 @@ function computeLayout(n) {
     // GENAU denselben Radius (R_MAX), den auch die Kreis-Satelliten nie
     // ueberschreiten - der Chip wandert also nie weiter aus der sichtbaren
     // Flaeche als ein normaler Kreis-Knoten es duerfte.
-    const hwMax = Math.max(DESIGN_R, R_MAX - ringGap);
+    // Sicherheitsabstand zum Leinwandrand ist bei jeder Breite derselbe wie
+    // urspruenglich im Quadrat-Fall (VIEW_HALF_W_DEFAULT - R_MAX) - bei
+    // einer breiteren Kachel (VIEW_HALF_W > VIEW_HALF_W_DEFAULT) darf die
+    // Pille dadurch entsprechend weiter nach aussen wachsen.
+    const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
+    const hwMax = Math.max(DESIGN_R, VIEW_HALF_W - marginX - ringGap);
     if (hw > hwMax) {
       hw = hwMax;
       // Ideal-Abstand (Dietmar, 28.08.2026: "Regelabstand ~10px, darf enger
@@ -1569,7 +1588,10 @@ function updateSpoke(sp, color, magnitude, active, flowing, dir, peakTodayW) {
 }
 
 function ensureNodes(items) {
-  const sig = items.map(x => x.key + ':' + x.label + ':' + x.icon).join(',');
+  // VIEW_W in die Signatur aufgenommen (03.09.2026) - sonst wuerde eine
+  // reine Breitenaenderung (Kachel-Resize, gleiche Geraeteliste) NICHT neu
+  // layouten, weil sig sich sonst nicht aendert.
+  const sig = items.map(x => x.key + ':' + x.label + ':' + x.icon).join(',') + '|' + Math.round(VIEW_W);
   if (sig === builtSig) return;
   builtSig = sig;
   const nodesLayer = document.getElementById('nodes-layer');
@@ -1997,7 +2019,31 @@ function renderDiagnostics(entries) {
   }).join('');
 }
 
+let lastRawPayload = null; // fuer erneutes Rendern bei Kachel-Resize (updateViewBox())
+
+function updateViewBox() {
+  const svgEl = document.getElementById('svg');
+  if (!svgEl) return;
+  const rect = svgEl.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  const aspect = rect.width / rect.height;
+  // Nur in die Breite ziehen, nie in die Hoehe (Hoehe bleibt die Referenz,
+  // an der DESIGN_R/R_MAX kalibriert sind) - auf das 2,6-fache der
+  // urspruenglichen Breite gedeckelt, damit die Pille bei extrem breiten
+  // Kacheln nicht ins Absurde waechst.
+  const w = Math.max(VIEW_HALF_W_DEFAULT * 2, Math.min(VIEW_HALF_W_DEFAULT * 2 * 2.6, 594 * aspect));
+  VIEW_W = w;
+  VIEW_HALF_W = w / 2;
+  svgEl.setAttribute('viewBox', (CX - w / 2).toFixed(1) + ' 4 ' + w.toFixed(1) + ' 594');
+}
+window.addEventListener('resize', function () {
+  updateViewBox();
+  if (lastRawPayload !== null) { handleMessage(lastRawPayload); }
+});
+
 function handleMessage(raw) {
+  lastRawPayload = raw;
+  updateViewBox();
   const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
   renderStatus(d ? d.renderedAt : 0);
   renderDiagnostics(d ? d.diagnostics : []);

@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.1';
+    private const NEWS_VERSION = '0.8.2';
     private const NEWS_ITEMS = [
+        'Fix: bei einer breiten Kachel blieb links/rechts viel Platz ungenutzt (die Anordnung durfte nie breiter als hoch werden) - die Leinwand passt sich jetzt der tatsächlichen Kachel-Breite an, wodurch bei vielen Geräten (Chip-Form) deutlich mehr davon Platz finden, ohne kleiner zu werden.',
         'Neu: "Isolierter Demo-Modus" (Instanz-Eigenschaft) schaltet jede automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern geht sonst rechnerisch nicht auf).',
         'Neu: eine manuell eingetragene Wallbox ("Weitere Verbraucher") kann jetzt zusätzlich ein SocID tragen (JSON-Zeile, kein eigenes Formularfeld) - zeigt dann wie bei automatisch erkannten Fahrzeugen den Ladestand am Knoten.',
         'Neu: die Kachel zeigt jetzt unten ein kleines Feld mit der aktuellen EMS-Schaltentscheidung inkl. Begründung (z. B. "Netzladen – Grid Rewards (Tibber)"), sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt. Rein informativ, ohne Rückwirkung.',
