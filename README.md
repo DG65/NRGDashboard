@@ -1360,6 +1360,12 @@ gleiche IPSView-Fähigkeit.
   Seitenverhältnis der Pille an — bei vielen Geräten (breite, flache
   Pille) wirken sie dadurch fein statt zappelig, bei kreisrunder Form
   unverändert.
+- **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
+  simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
+  Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
+  gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der
+  Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der
+  Heizkreis-Temperatur.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

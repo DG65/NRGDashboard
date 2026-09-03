@@ -85,8 +85,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.4.1';
+    private const NEWS_VERSION = '0.4.2';
     private const NEWS_ITEMS = [
+        'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
         'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
@@ -1071,6 +1072,19 @@ class NRGDashboardHeatSchema extends IPSModule
             case 3: // Warmwasserbetrieb
                 $u['threeWayValve'] = 1;
                 $u['operatingModeNorm'] = 3;
+                // Dreiwegeventil steht auf WW - der gesamte Volumenstrom
+                // geht in den Warmwasser-Tank, KEIN Heizkreis kann dann
+                // aktiv sein (Dietmar, 03.09.2026: "Wenn die Warmwasser-
+                // bereitung laeuft, darf aber kein Heizkreis aktiv sein").
+                // Bisher blieben extPump (HK1) und z2Pump (HK2) auf ihrem
+                // Basiswert true und animierten beide Kreise weiter -
+                // dieselbe Falle wie frueher im Standby (siehe Fall 4).
+                $u['extPump'] = false;
+                $u['z2Pump'] = false;
+                // Speicher wird gerade geladen: Vorlauf hoeher als im
+                // Heizbetrieb (WW-Ziel ~50 °C statt Heizkreis ~35 °C).
+                $u['mainOutletTemp'] = 52.0;
+                $u['mainInletTemp']  = 45.0;
                 break;
             case 4: // Standby: kein Durchfluss, Verdichter aus
                 $u['compressorFreq'] = 0.0;

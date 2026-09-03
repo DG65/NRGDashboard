@@ -26,6 +26,10 @@
           "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Simulation hydraulisch schlüssig, 03.09.2026): im simulierten Warmwasserbetrieb stehen beide Heizkreise still - das Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der Heizkreis-Temperatur."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHHEAT_ResetTour($id);"
