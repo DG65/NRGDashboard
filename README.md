@@ -1331,6 +1331,11 @@ gleiche IPSView-Fähigkeit.
   Diagramm steht der Name des gerade aktiven Reiters — 1:1 aus der
   Reiterleiste übernommen (keine zweite, separat zu pflegende
   Beschriftungsliste), bleibt auch beim Diagramm-Zoom sichtbar.
+- **EMS-Begründung (`NRGDashboardTile`):** sofern das EMS-Modul den
+  Vertrag `EMS_GetCurrentDecision()` bereitstellt, zeigt die Kachel
+  unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl.
+  Klartext-Begründung (z. B. „Netzladen – Grid Rewards (Tibber)“) —
+  rein informativ, ohne Rückwirkung.
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`

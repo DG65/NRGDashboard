@@ -249,6 +249,20 @@
   }
   #ampelWash.show { opacity: 1; }
 
+  /* EMS-Begruendung (03.09.2026, Dietmar: "was und warum das EMS schaltet")
+     - kleines, dezentes Badge unten in der Kachel, nur sichtbar wenn eine
+     EMS-Instanz EMS_GetCurrentDecision() liefert. */
+  #emsDecision {
+    position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5;
+    display: none; align-items: baseline; gap: 6px;
+    font-size: 11px; line-height: 1.3; padding: 5px 9px; border-radius: 8px;
+    background: rgba(127,135,145,.14); backdrop-filter: blur(2px);
+    pointer-events: none; overflow: hidden;
+  }
+  #emsDecision.show { display: flex; }
+  #emsDecision .mode { font-weight: 700; white-space: nowrap; }
+  #emsDecision .reason { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
   .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
 
 
@@ -332,6 +346,7 @@
 
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div id="ampelWash"></div>
+<div id="emsDecision"><span class="mode"></span><span class="reason"></span></div>
 
 <svg class="flow-svg" id="svg" viewBox="-17 4 594 594" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
   <defs id="markerDefs"></defs>
@@ -2008,6 +2023,19 @@ function handleMessage(raw) {
       wash.title = 'Netzampel: ' + (d.gridAmpel.label || '');
     } else {
       wash.classList.remove('show');
+    }
+
+    // EMS-Begruendung (03.09.2026) - rein lesend, kein eigener Automatismus.
+    const emsBadge = document.getElementById('emsDecision');
+    if (d.emsDecision && d.emsDecision.mode) {
+      emsBadge.querySelector('.mode').textContent = d.emsDecision.mode;
+      emsBadge.querySelector('.reason').textContent = d.emsDecision.reason || '';
+      emsBadge.title = 'EMS: ' + d.emsDecision.mode
+        + (d.emsDecision.reason ? ' – ' + d.emsDecision.reason : '')
+        + (d.emsDecision.source ? ' (Quelle: ' + d.emsDecision.source + ')' : '');
+      emsBadge.classList.add('show');
+    } else {
+      emsBadge.classList.remove('show');
     }
   }
 

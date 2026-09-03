@@ -66,6 +66,10 @@
           "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (EMS-Begründung, 03.09.2026): sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt, zeigt die Kachel unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl. Klartext-Begründung (z. B. „Netzladen – Grid Rewards (Tibber)“) - rein informativ, ohne dass das Dashboard selbst etwas schaltet oder interpretiert."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

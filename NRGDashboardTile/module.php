@@ -23,6 +23,7 @@ define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
 define('NRGDASH_GUID_TESSIE',         '{3F1F7E31-8BA0-4B8F-9B62-47DAD7A0B6C9}');
 define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}');
+define('NRGDASH_GUID_EMS',            '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}');
 define('NRGDASH_GUID_STROMGEDACHT',   '{D5A8C3A1-2222-4A55-8888-123456789003}');
 define('NRGDASH_GUID_PVPROGNOSE',     '{257DD4E8-9705-462E-89FC-56D0A1038353}');
 define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
@@ -55,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.7.8';
+    private const NEWS_VERSION = '0.7.9';
     private const NEWS_ITEMS = [
+        'Neu: die Kachel zeigt jetzt unten ein kleines Feld mit der aktuellen EMS-Schaltentscheidung inkl. Begründung (z. B. "Netzladen – Grid Rewards (Tibber)"), sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt. Rein informativ, ohne Rückwirkung.',
         'Fix: bei bestimmten Knotenbeschriftungen brach die komplette Kachel-Darstellung in Safari ab ("Invalid value for <text> attribute textLength"), während Chrome/Firefox den fehlerhaften Wert stillschweigend ignorierten - ein Rundungsfehler nahe der Kreisgrenze wird jetzt zuverlässig abgefangen.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Leistungsdiagramm, Energie-Balken der letzten 14 Tage und Geisterring/Autarkiegrad/PV-Prognose-Ring verwerfen jetzt einzelne unplausible Archivwerte (z. B. ein defekter Messwert in der Größenordnung von Megawatt bei einer Haushaltsanlage) statt sie ungeprüft in die Darstellung einfließen zu lassen.',
@@ -1226,6 +1228,45 @@ class NRGDashboardTile extends IPSModule
             'gridAmpel'   => $this->GridAmpel(),
             // Einfuehrungs-Tour bei erster Benutzung (28.08.2026).
             'showTour'    => !$this->ReadAttributeBoolean('TourSeen'),
+            // Aktuelle EMS-Schaltentscheidung inkl. Begruendung (03.09.2026,
+            // Dietmar: "was und warum das EMS schaltet") - Vertrag
+            // EMS_GetCurrentDecision(), rein lesend. null, wenn kein EMS
+            // installiert/aktiv oder der Vertrag (noch) fehlt.
+            'emsDecision' => $this->ReadEmsDecision(),
+        ];
+    }
+
+    /**
+     * Liest EMS_GetCurrentDecision() (Verbund-Vertrag, contractVersion "1.0")
+     * - mode/reason/source/since. function_exists()-Waechter (Kernprinzip:
+     * kein Modul setzt ein anderes voraus), zusaetzlich try/catch gegen
+     * einen Fehler auf EMS-Seite. Type-neutral: reicht das Feld einfach
+     * durch, keine eigene Interpretation von source/modeCode.
+     */
+    private function ReadEmsDecision(): ?array
+    {
+        if (!function_exists('EMS_GetCurrentDecision')) {
+            return null;
+        }
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS);
+        if (!is_array($ids) || count($ids) !== 1) {
+            return null;
+        }
+        try {
+            $raw = @EMS_GetCurrentDecision((int) $ids[0]);
+        } catch (Throwable $e) {
+            return null;
+        }
+        $state = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (!is_array($state) || !isset($state['mode'], $state['reason'])) {
+            return null;
+        }
+        return [
+            'active' => (bool) ($state['active'] ?? true),
+            'mode'   => (string) $state['mode'],
+            'reason' => (string) $state['reason'],
+            'source' => (string) ($state['source'] ?? ''),
+            'since'  => (int) ($state['since'] ?? 0),
         ];
     }
 
