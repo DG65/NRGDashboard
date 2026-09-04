@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.7';
+    private const NEWS_VERSION = '0.9.8';
     private const NEWS_ITEMS = [
+        'Fix: der "Isolierte Demo-Modus" versuchte für die Strompreis-Sparkline gar nicht erst eine vorhandene echte Tibber-Instanz - läuft sie auf demselben Symcon wie die Demo-Kachel (Regelfall), werden jetzt wie bei jeder anderen Instanz zuerst die echten Preise verwendet; nur ohne jede echte Quelle (weder Tibber noch ausreichend BDEW-Historie) springt die Demo auf eine synthetische Näherungskurve.',
         'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',
         'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
         'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
@@ -2907,19 +2908,27 @@ class NRGDashboardTile extends IPSModule
      */
     private function PriceSlotsForRange(int $from, int $to): array
     {
+        $slots = $this->RealPriceSlotsForRange($from, $to);
         // Isolierte Demo (10.09.2026, Dietmar: "schon wieder keine
-        // Preiskurve sichtbar") - ohne echte Tibber-Instanz bleibt nur
-        // BdewHistorySlots() uebrig, die aus dem BDEW-Attribut hoechstens
-        // EINEN Slot pro Tag baut (ein Eintrag gilt bis zum naechsten
-        // Quartals-Abruf) - buildPayload() setzt 'priceTrend' zwar (count()
-        // > 0), aber module.html zeichnet die Sparkline erst ab 2 Punkten
-        // (Kurve WAERE damit technisch "gesetzt", aber unsichtbar). Die
-        // Demo bekommt deshalb eine eigene, klar als Naeherung markierte
-        // Tageskurve statt der echten Quellen.
-        if ($this->readBoolProperty('DemoIsolated', false)) {
+        // Preiskurve sichtbar", dann "warum kopierst Du nicht einfach die
+        // Original Tibber Preise?") - Dietmars eigene TibberGridReward-
+        // Instanz laeuft auf DEMSELBEN Symcon wie die Demo-Kachel, ist also
+        // ganz normal ueber TIBBERGR_GetPriceCurve() erreichbar. Deshalb
+        // erst die ECHTEN Quellen versuchen (Tibber, sonst BDEW) wie bei
+        // jeder anderen Instanz auch - der Strompreis ist keine private
+        // Anlagen-Kennzahl, gegen die "kein Live-Messwert in der Demo"-
+        // Regel (Discover()) spricht hier nichts. Nur wenn das (mangels
+        // Tibber-Instanz UND mit hoechstens einem BDEW-Slot pro Tag) zu
+        // duenn fuer eine sichtbare Sparkline bleibt, springt die isolierte
+        // Demo auf eine synthetische Naeherungskurve.
+        if (count($slots) < 2 && $this->readBoolProperty('DemoIsolated', false)) {
             return $this->demoPriceSlots($from, $to);
         }
+        return $slots;
+    }
 
+    private function RealPriceSlotsForRange(int $from, int $to): array
+    {
         $slots = [];
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
         if ($id > 0) {
@@ -2960,23 +2969,22 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Synthetische Tages-Preiskurve fuer die isolierte Demo (10.09.2026) -
-     * dieselbe stuendliche Slot-Form wie PriceSlotsForRange() liefert
-     * (start/end/price/approx), aber deterministisch aus einer typischen
-     * dynamischen Tarifkurve erzeugt (Nachttal, Morgen-/Abendspitze) statt
-     * aus echten Tibber-/BDEW-Daten - die Demo hat keine echte
-     * Tibber-Instanz, und die BDEW-Historie liefert dort hoechstens EINEN
-     * Slot pro Tag (siehe Kommentar bei PriceSlotsForRange()), was die
-     * Sparkline in module.html (zeichnet erst ab 2 Punkten) unsichtbar
-     * macht. Ankerpreis: letzter echter BDEW-Wert falls vorhanden (auch in
-     * der Demo kann die Instanz gelegentlich einen echten Abruf gemacht
-     * haben), sonst ein plausibler Festwert. 'approx' => true nutzt
-     * automatisch denselben ungefaehr-Hinweistext wie jede andere
-     * Naeherung (siehe BuildDetailPayload()). Deckt einen BELIEBIGEN
-     * Zeitraum ab (nicht nur einen einzelnen Tag) - GetPriceSeries() ist
-     * ein Verbund-Vertrag (MeterHub-"Kriterienabrechnung"), den auch die
-     * Demo-Instanz ueber Wochen/Monate hinweg plausibel bedienen muss,
-     * nicht nur die eigene Tages-Sparkline.
+     * LETZTER Rueckfallschritt fuer die isolierte Demo (10.09.2026,
+     * geloest ueber PriceSlotsForRange() - siehe dort), NUR falls weder
+     * eine echte Tibber-Instanz noch die BDEW-Historie genug Slots fuer
+     * eine sichtbare Sparkline liefern (die BDEW-Historie allein liefert
+     * hoechstens EINEN Slot pro Tag, ein Eintrag gilt bis zum naechsten
+     * Quartals-Abruf - module.html zeichnet die Sparkline aber erst ab 2
+     * Punkten). Deterministische, typische dynamische Tarifkurve
+     * (Nachttal, Morgen-/Abendspitze) statt echter Daten, klar als
+     * 'approx' markiert - nutzt automatisch denselben Naeherungs-
+     * Hinweistext wie jede andere Naeherung (siehe BuildDetailPayload()).
+     * Ankerpreis: letzter echter BDEW-Wert falls vorhanden, sonst ein
+     * plausibler Festwert. Deckt einen BELIEBIGEN Zeitraum ab (nicht nur
+     * einen einzelnen Tag) - GetPriceSeries() ist ein Verbund-Vertrag
+     * (MeterHub-"Kriterienabrechnung"), den auch die Demo-Instanz ueber
+     * Wochen/Monate hinweg plausibel bedienen muss, nicht nur die eigene
+     * Tages-Sparkline.
      */
     private function demoPriceSlots(int $from, int $to): array
     {

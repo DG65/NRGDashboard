@@ -75,7 +75,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Isolierter Demo-Modus, 03.09.2026): das Häkchen „Isolierter Demo-Modus“ (oben unter „Vorführmodus“) schaltet JEDE automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten - eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern würde sonst nicht aufgehen. Auch die Strompreis-Sparkline am Netz-Knoten bekommt dort (10.09.2026) eine eigene, klar als Näherung markierte stündliche Tageskurve statt aus einer echten Tibber-Instanz oder der BDEW-Historie zu stammen, die ohne echten Tibber höchstens einen Slot pro Tag liefert - zu wenig für eine sichtbare Kurve."
+          "caption": "✨ Feinheit (Isolierter Demo-Modus, 03.09.2026): das Häkchen „Isolierter Demo-Modus“ (oben unter „Vorführmodus“) schaltet JEDE automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten - eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern würde sonst nicht aufgehen. Auch die Strompreis-Sparkline am Netz-Knoten nutzt dort (10.09.2026) zuerst eine vorhandene echte TibberGridReward-Instanz wie jede andere Instanz auch - erst wenn weder Tibber noch die BDEW-Historie genug Slots liefern (ohne Tibber höchstens einer pro Tag, zu wenig für eine sichtbare Kurve), springt die Demo auf eine eigene, klar als Näherung markierte stündliche Tageskurve."
         },
         {
           "type": "Label",

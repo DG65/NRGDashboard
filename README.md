@@ -1441,12 +1441,14 @@ gleiche IPSView-Fähigkeit.
   mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine
   Mischung aus echten Live-Messwerten und erfundenen Zusatz-
   verbrauchern geht sonst rechnerisch nicht auf). Die Strompreis-
-  Sparkline am Netz-Knoten bekommt dabei eine eigene, deutlich als
+  Sparkline am Netz-Knoten nutzt dabei, wie jede andere Instanz auch,
+  zuerst eine vorhandene echte TibberGridReward-Instanz (läuft meist auf
+  demselben Symcon wie die Demo-Kachel, der Strompreis ist keine private
+  Anlagen-Kennzahl) — nur wenn weder Tibber noch die BDEW-Preishistorie
+  genug Slots liefern (ohne Tibber höchstens einer pro Tag, zu wenig für
+  eine sichtbare Kurve), springt die Demo auf eine eigene, deutlich als
   Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abend-
-  spitze, verankert am zuletzt bekannten BDEW-Wert) statt aus einer
-  echten Tibber-Instanz oder der BDEW-Preishistorie zu stammen — die
-  liefert ohne echten Tibber höchstens einen Slot pro Tag, zu wenig für
-  eine sichtbare Kurve.
+  spitze, verankert am zuletzt bekannten BDEW-Wert).
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`
