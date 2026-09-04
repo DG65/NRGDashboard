@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.5';
+    private const NEWS_VERSION = '0.9.6';
     private const NEWS_ITEMS = [
+        'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
         'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
         'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Aussenknoten an die tatsächliche Pillengeometrie angepasst.',
         'Fix: das Rück-Badge beim Aufschachteln saß mittig in der Pille - sitzt jetzt wie die anderen Badges (Warn-Dreieck, Zähler-Badge, Minus-Badge) direkt auf dem Pillenrand, oben links, dem einzigen dort noch freien Eckplatz.',

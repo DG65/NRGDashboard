@@ -285,10 +285,22 @@
   .node-minus-bg { fill: #7a2e2a; stroke: rgba(255,255,255,.5); stroke-width: 1.2; }
   .node-minus-txt { fill: #fff; font-size: 12px; font-weight: 900; text-anchor: middle; stroke: none; }
 
-  /* Langer Klick (500 ms): Fuellring, der sich waehrend des Haltens
-     schliesst - sichtbares Feedback, loslassen = abbrechen. */
-  .node-press-ring { fill: none; stroke: #e8eaed; stroke-width: 3; opacity: 0; transform: rotate(-90deg); pointer-events: none; }
+  /* Druck-Fuellring (09.09.2026, Dietmar-Korrektur): baut sich bei JEDEM
+     Druck/Klick in Gelb auf, egal ob am Ende kurz (Detailseite) oder lang
+     (Ebene wechseln) losgelassen wird - loslassen VOR dem vollen Ring =
+     kurz = Detailseite. Wird der Ring waehrend des Haltens komplett voll,
+     wechselt die Farbe kurz: Gruen = die Ebene wechselt jetzt tatsaechlich
+     (Sammelknoten oeffnet sich / Pille geht eine Ebene zurueck), Rot = es
+     geht in diese Richtung nicht weiter (Blatt hat nichts aufzuschachteln
+     bzw. Ebene 1 hat nichts ueber sich) - dann passiert nichts. */
+  .node-press-ring { fill: none; stroke: #f4c430; stroke-width: 3; opacity: 0; transform: rotate(-90deg); pointer-events: none; }
   .node-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
+  .node-press-ring.press-ok { stroke: #43a047; }
+  .node-press-ring.press-blocked { stroke: #e53935; }
+  .center-press-ring { fill: none; stroke: #f4c430; stroke-width: 3; opacity: 0; pointer-events: none; }
+  .center-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
+  .center-press-ring.press-ok { stroke: #43a047; }
+  .center-press-ring.press-blocked { stroke: #e53935; }
 
   /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
   /* HTML-Overlays am Kachelrand (oben UND unten) geraten zuverlaessig in
@@ -475,6 +487,15 @@
          Coin selbst (layoutCenterChip() haelt x/y/width/height/rx/ry
          synchron, +7 Padding nach aussen). -->
     <rect class="node-autarky-ring" x="-63" y="-63" width="126" height="126" rx="63" ry="63" fill="none"/>
+    <!-- Druck-Fuellring der Pille (09.09.2026) - Aequivalent zu .node-press-ring
+         an den Aussenknoten, nur als Rechteck statt Kreis (die Pille ist bei
+         vielen Geraeten breiter als hoch, siehe layoutCenterChip()). Kurzer
+         Druck/Klick oeffnet die Detailseite des aktuell gezeigten Sammelzaehlers
+         (Ebene 1: Haus, sonst der aufgeschachtelte Knoten selbst); ein langer
+         Druck bis der Ring komplett gelb ist wechselt auf Gruen und geht eine
+         Ebene zurueck - auf Ebene 1 (nichts darueber) stattdessen auf Rot ohne
+         Wirkung. Geometrie/Umfang werden in layoutCenterChip() gepflegt. -->
+    <rect id="center-press-ring" class="center-press-ring" x="-59" y="-59" width="118" height="118" rx="59" ry="59"/>
     <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
     <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
     <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
@@ -779,6 +800,29 @@ function layoutCenterChip(hw, hh) {
   setRect('.node-bevel', hw, hh);
   setRect('.node-glow', hw, hh);
   setRect('.node-autarky-ring', hw + 7, hh + 7);
+  // Druck-Fuellring der Pille (09.09.2026) - Geometrie wie die anderen
+  // Rechtecke, zusaetzlich der tatsaechliche Umfang der "Stadion"-Form
+  // (Rechteck mit zwei Halbkreis-Kappen, rx=ry=Halbhoehe) als Dash-Basis:
+  // zwei gerade Seiten (je 2*straight) plus die beiden Kappen zusammen
+  // (= ein voller Kreis vom Radius rh). Degeneriert bei hw===hh exakt zum
+  // Kreisumfang, den die Aussenknoten-Ringe schon verwenden. Nur die
+  // GEOMETRIE hier aktualisieren, dashoffset/pressing bleibt Sache des
+  // Druck-Handlers (attachCenterPressHandlers()) - sonst wuerde ein
+  // Render-Tick waehrend des Haltens den Ring zuruecksetzen.
+  const cpr = document.getElementById('center-press-ring');
+  if (cpr) {
+    const rw = hw + 3, rh = hh + 3;
+    cpr.setAttribute('x', -rw); cpr.setAttribute('y', -rh);
+    cpr.setAttribute('width', 2 * rw); cpr.setAttribute('height', 2 * rh);
+    cpr.setAttribute('rx', rh); cpr.setAttribute('ry', rh);
+    const straight = Math.max(0, rw - rh);
+    const perim = 4 * straight + 2 * Math.PI * rh;
+    cpr.dataset.perim = perim.toFixed(1);
+    cpr.setAttribute('stroke-dasharray', perim.toFixed(1));
+    if (!cpr.classList.contains('pressing')) {
+      cpr.setAttribute('stroke-dashoffset', perim.toFixed(1));
+    }
+  }
   // Schatten wie im Original leicht groesser (Faktor 1.13) und nach unten
   // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
   // auf zwei unabhaengige Halbachsen (hw/hh) statt einen einzelnen Radius
@@ -1761,16 +1805,20 @@ function ensureNodes(items) {
     // (WebHook) in einem neuen Tab - Diagramme + alle Vertragsfelder des
     // Geraets. Bewusst nicht in der Kachel selbst (kann im Grid zu klein
     // fuer Diagramme sein, Dietmar 28.08.2026).
-    // Aufschachteln (03.09.2026): Klick-Verhalten haengt vom Item ab -
-    // Sammelknoten: kurzer Klick = naechste Ebene, langer Klick (500 ms,
-    // Fuellring) = Detailseite. Blatt: kurzer Klick = Detailseite wie
-    // bisher. Beides ueber Pointer-Ereignisse statt 'click', damit der lange
-    // Druck nicht zusaetzlich einen Klick ausloest (attachPressHandlers()).
+    // Aufschachteln (09.09.2026, Dietmar-Korrektur - vorher war kurz/lang
+    // genau umgekehrt): kurzer Klick/Druck OEFFNET IMMER die Detailseite,
+    // gleich ob Blatt oder Sammelknoten - Zeit-/Fuellring-Feedback dabei
+    // in Gelb wie gehabt. Erst ein LANGER Druck bis der Ring komplett
+    // gelb ist, wechselt bei einem Sammelknoten auf Gruen und oeffnet die
+    // naechste Ebene; bei einem Blatt (kein "tiefer" moeglich) wechselt er
+    // stattdessen auf Rot und passiert nichts (attachPressHandlers()).
+    // Pointer-Ereignisse statt 'click', damit der lange Druck nicht
+    // zusaetzlich einen Klick ausloest.
     if (item.detailKey || item.hasMembers) {
       refs.g.style.cursor = 'pointer';
       const tip = el('title', {});
       tip.textContent = item.hasMembers
-        ? ('„' + item.label + '“ aufschachteln (kurz) · Details (lang drücken)')
+        ? ('Details von „' + item.label + '“ (kurz) · aufschachteln (lang drücken)')
         : ('Details von „' + item.label + '“ öffnen');
       refs.g.appendChild(tip);
       attachPressHandlers(refs, item);
@@ -2074,7 +2122,7 @@ const TOUR_STEPS = [
   },
   {
     title: 'Details zu jedem Gerät',
-    text: 'Ein Klick auf einen Knotenpunkt öffnet dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Bei Sammelknoten (Zähler-Badge) öffnet der kurze Klick die nächste Ebene, die Detailseite erreichen Sie dort per langem Druck.'
+    text: 'Ein kurzer Klick/Druck auf einen Knoten oder die Mittelpille öffnet immer dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Halten Sie stattdessen länger gedrückt, bis der gelbe Ring komplett voll ist: an einem Sammelknoten (Zähler-Badge) wechselt er dann auf Grün und öffnet eine Ebene tiefer, an der Mittelpille auf Grün und geht eine Ebene zurück - geht es in diese Richtung nicht weiter, wird der Ring stattdessen kurz Rot.'
   },
   {
     title: 'Vollständige Messwerte-Tabelle',
@@ -2130,7 +2178,7 @@ const TOUR_STEPS = [
   },
   {
     title: 'Aufschachteln: Ebene für Ebene',
-    text: 'Ein Knoten mit Zähler-Badge ist so ein Sammelzähler. Kurzer Klick: er wird zur Mittelpille, seine Mitglieder ordnen sich darum an - mit allen Funktionen dieser Ansicht, beliebig tief. Zurück per Klick auf die Pille oder die Brotkrumen-Zeile oben links. Langer Klick (Füllring, ½ Sekunde) öffnet die Detailseite des Sammelzählers selbst. Abgezogene Mitglieder sind gestrichelt mit Minus markiert.'
+    text: 'Ein Knoten mit Zähler-Badge ist so ein Sammelzähler: lange gedrückt (bis der Ring grün wird) wird er zur Mittelpille, seine Mitglieder ordnen sich darum an - mit allen Funktionen dieser Ansicht, beliebig tief. Zurück geht es ebenso per langem Druck auf die Pille selbst. Abgezogene Mitglieder sind gestrichelt mit Minus markiert.'
   },
   {
     title: 'Eigene Anzeige-Einstellungen',
@@ -2230,13 +2278,15 @@ function renderDiagnostics(entries) {
 }
 
 /* ======================================================================
- * Aufschachteln (03.09.2026, Dietmar): Sammelknoten (virtuelle Zaehler mit
- * Unterzaehlern) oeffnen per kurzem Klick die naechste Ebene - der Knoten
- * morpht zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen
- * Funktionen der ersten Ebene. Rekursiv bis ein Zaehler keine Mitglieder
- * mehr hat. Zurueck: Klick auf die Pille (eine Ebene) oder Brotkrumen-
- * Zeile (direkt). Langer Klick (500 ms, Fuellring) = Detailseite.
- * Immer Start auf Ebene 1 (kein Merken - Demo mit wechselnden Besuchern).
+ * Aufschachteln (03.09.2026, Dietmar; Kurz-/Lang-Zuordnung am 09.09.2026
+ * korrigiert - vorher genau umgekehrt): Sammelknoten (virtuelle Zaehler
+ * mit Unterzaehlern) morphen per LANGEM Druck (Ring gelb -> gruen) zur
+ * Mittelpille, ihre Mitglieder ordnen sich darum an, mit allen Funktionen
+ * der ersten Ebene. Rekursiv bis ein Zaehler keine Mitglieder mehr hat.
+ * Zurueck: ebenfalls langer Druck, jetzt auf die Pille selbst. Kurzer
+ * Druck/Klick oeffnet an JEDEM Knoten UND an der Pille immer die
+ * Detailseite. Immer Start auf Ebene 1 (kein Merken - Demo mit
+ * wechselnden Besuchern).
  * Die Mitgliederliste kommt je Ebene frisch vom Backend (?members=<key>),
  * das die Hierarchie aus dem MeterHubVirtual-Vertrag 1.3 bzw. aus
  * verschachtelten manuellen Verbrauchern aufloest - die Kachel selbst
@@ -2271,12 +2321,13 @@ function restoreCenterForLevel1() {
 }
 
 // Ruecknavigation IN der Pille statt einer separaten HTML-Ebene am
-// Kachelrand (04.09.2026, siehe CSS-Kommentar bei .pill-back-label) - eine
-// kleine Zeile ueber dem Gruppennamen zeigt die uebergeordnete Ebene
-// ("‹ Erdgeschoss"), Klick auf die GESAMTE Pille geht wie gehabt eine
-// Ebene zurueck (bestehender Listener auf #node-center). Volle Brotkrumen-
-// Kette faellt damit weg (nur noch ein Schritt sichtbar), dafuer garantiert
-// keine Kollision mehr mit WebFront-eigenem Chrome.
+// Kachelrand (04.09.2026, siehe CSS-Kommentar bei .pill-back-badge) - ein
+// kleines "‹"-Badge oben links zeigt an, dass eine uebergeordnete Ebene
+// existiert (Name als Hover-Tooltip); langer Druck auf die GESAMTE Pille
+// geht dorthin zurueck (attachCenterPressHandlers(), 09.09.2026 - vorher
+// ein einfacher Klick). Volle Brotkrumen-Kette faellt damit weg (nur noch
+// ein Schritt sichtbar), dafuer garantiert keine Kollision mehr mit
+// WebFront-eigenem Chrome.
 function renderLevelBar() {
   const badgeG = document.getElementById('center-back-badge');
   const titleEl = document.getElementById('lbl-center-back-title');
@@ -2456,12 +2507,21 @@ function attachSwitchHandler(refs, item) {
 }
 
 // Kurz-/Langklick auf einem Knoten (Pointer-Ereignisse statt 'click').
-const PRESS_MS = 500, PRESS_MOVE_PX = 8;
+// Korrektur 09.09.2026 (Dietmar, vorher war kurz/lang genau umgekehrt):
+// JEDER Druck baut ab pointerdown denselben gelben Ring auf. Loslassen
+// VOR dem vollen Ring = kurz -> IMMER Detailseite (Blatt wie Sammelknoten
+// gleichermassen). Bleibt der Finger/Klick liegen, bis der Ring komplett
+// gelb ist, entscheidet sich dort live, waehrend weiter gehalten wird:
+// Sammelknoten -> kurz Gruen, dann naechste Ebene; Blatt (kann nicht
+// tiefer) -> kurz Rot, dann keine Wirkung. PRESS_FLASH_MS ist die kurze
+// Farb-Anzeigedauer nach Erreichen des vollen Rings, bevor navigiert wird
+// bzw. der Ring zurueckgesetzt wird.
+const PRESS_MS = 500, PRESS_MOVE_PX = 8, PRESS_FLASH_MS = 220;
 function attachPressHandlers(refs, item) {
   const g = refs.g;
   let timer = null, startX = 0, startY = 0, longFired = false, down = false;
   const resetRing = () => {
-    refs.pressRing.classList.remove('pressing');
+    refs.pressRing.classList.remove('pressing', 'press-ok', 'press-blocked');
     refs.pressRing.style.transition = 'none';
     refs.pressRing.setAttribute('stroke-dashoffset', refs.pressCirc.toFixed(1));
     void refs.pressRing.getBoundingClientRect();
@@ -2471,14 +2531,18 @@ function attachPressHandlers(refs, item) {
   g.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
     down = true; longFired = false; startX = e.clientX; startY = e.clientY;
-    if (item.hasMembers && item.detailKey) {
-      refs.pressRing.classList.add('pressing');
-      refs.pressRing.setAttribute('stroke-dashoffset', '0');
-      timer = setTimeout(() => {
-        timer = null; longFired = true; resetRing(); down = false;
-        openDeviceDetail(item.detailKey, g);
-      }, PRESS_MS);
-    }
+    refs.pressRing.classList.add('pressing');
+    refs.pressRing.setAttribute('stroke-dashoffset', '0');
+    timer = setTimeout(() => {
+      timer = null; longFired = true;
+      const canGoDeeper = !!item.hasMembers;
+      refs.pressRing.classList.remove('pressing');
+      refs.pressRing.classList.add(canGoDeeper ? 'press-ok' : 'press-blocked');
+      setTimeout(() => {
+        resetRing(); down = false;
+        if (canGoDeeper) { enterLevel(item, refs); }
+      }, PRESS_FLASH_MS);
+    }, PRESS_MS);
   });
   g.addEventListener('pointerup', e => {
     if (!down) return;
@@ -2486,17 +2550,71 @@ function attachPressHandlers(refs, item) {
     const wasLong = longFired;
     clear();
     if (wasLong || moved) return;
-    if (item.hasMembers) { enterLevel(item, refs); }
-    else if (item.detailKey) { openDeviceDetail(item.detailKey, g); }
+    if (item.detailKey) { openDeviceDetail(item.detailKey, g); }
   });
   g.addEventListener('pointerleave', clear);
   g.addEventListener('pointercancel', clear);
 }
 
-// Pillen-Klick auf Ebene 2+: eine Ebene zurueck (Ebene 1: Haus-Detail, s.u.).
-document.getElementById('node-center').addEventListener('click', () => {
-  if (LEVEL_STACK.length > 0) { leaveLevel(); }
-});
+// Pillen-Druck (09.09.2026, dieselbe Korrektur wie bei den Aussenknoten,
+// nur die "Tiefe" ist umgekehrt: die Pille IST die aktuelle Ebene, ein
+// langer Druck geht deshalb EINE EBENE ZURUECK statt tiefer). Kurzer
+// Druck/Klick oeffnet immer die Detailseite des aktuell gezeigten
+// Sammelzaehlers (Ebene 1: "Haus", falls ein echtes Hausgeraet existiert;
+// sonst der Schluessel des gerade aufgeschachtelten Knotens selbst - das
+// ist exakt derselbe Schluessel, mit dem auch dessen Mitgliederliste
+// geladen wurde). Langer Druck bis der Ring komplett gelb ist wechselt
+// auf Gruen und geht zurueck; auf Ebene 1 (nichts darueber) auf Rot ohne
+// Wirkung - einmalig gebunden, das Element selbst ist statisches Markup.
+function centerCurrentDetailKey() {
+  if (LEVEL_STACK.length > 0) {
+    return LEVEL_STACK[LEVEL_STACK.length - 1].key || null;
+  }
+  const centerG = document.getElementById('node-center');
+  return (centerG && centerG.dataset.detailKey) ? centerG.dataset.detailKey : null;
+}
+function attachCenterPressHandlers() {
+  const g = document.getElementById('node-center');
+  const ring = document.getElementById('center-press-ring');
+  if (!g || !ring) return;
+  let timer = null, startX = 0, startY = 0, longFired = false, down = false;
+  const resetRing = () => {
+    ring.classList.remove('pressing', 'press-ok', 'press-blocked');
+    ring.style.transition = 'none';
+    ring.setAttribute('stroke-dashoffset', ring.dataset.perim || '0');
+    void ring.getBoundingClientRect();
+    ring.style.transition = '';
+  };
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); down = false; };
+  g.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button !== 0) return;
+    down = true; longFired = false; startX = e.clientX; startY = e.clientY;
+    ring.classList.add('pressing');
+    ring.setAttribute('stroke-dashoffset', '0');
+    timer = setTimeout(() => {
+      timer = null; longFired = true;
+      const canGoUp = LEVEL_STACK.length > 0;
+      ring.classList.remove('pressing');
+      ring.classList.add(canGoUp ? 'press-ok' : 'press-blocked');
+      setTimeout(() => {
+        resetRing(); down = false;
+        if (canGoUp) { leaveLevel(); }
+      }, PRESS_FLASH_MS);
+    }, PRESS_MS);
+  });
+  g.addEventListener('pointerup', e => {
+    if (!down) return;
+    const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > PRESS_MOVE_PX;
+    const wasLong = longFired;
+    clear();
+    if (wasLong || moved) return;
+    const key = centerCurrentDetailKey();
+    if (key) { openDeviceDetail(key, g); }
+  });
+  g.addEventListener('pointerleave', clear);
+  g.addEventListener('pointercancel', clear);
+}
+attachCenterPressHandlers();
 
 /* ---------------------------------------------------------------------
  * Automatische Vorfuehrung (03.09.2026, Dietmar: "Detailseiten in der Demo
@@ -2691,16 +2809,14 @@ function handleMessage(raw) {
   // Haus-Knoten nur klickbar, wenn es ein ECHTES 'house'-Geraet gibt (also
   // einen Backend-Datensatz mit detailKey) - die reine Naeherung
   // (pv-grid+bat) ist kein Geraet und hat keine eigenen Vertragsfelder zum
-  // Anzeigen.
-  if (houseDevice && houseDevice.detailKey && !centerG.dataset.clickBound) {
-    centerG.dataset.clickBound = '1';
-    centerG.style.cursor = 'pointer';
+  // Anzeigen. Die eigentliche Kurz-/Lang-Druck-Logik haengt einmalig an
+  // attachCenterPressHandlers() (09.09.2026) - hier nur noch Tooltip/
+  // Cursor, kein eigener 'click'-Listener mehr.
+  if (houseDevice && houseDevice.detailKey && !centerG.dataset.tipBound) {
+    centerG.dataset.tipBound = '1';
     const tip = el('title', {});
-    tip.textContent = 'Details von „Haus“ öffnen';
+    tip.textContent = 'Details von „Haus“ öffnen (kurzer Druck)';
     centerG.appendChild(tip);
-    // Auf Ebene 2+ bedeutet der Pillen-Klick "eine Ebene zurueck" (eigener
-    // Listener im Aufschachteln-Block) - dann KEINE Haus-Detailseite oeffnen.
-    centerG.addEventListener('click', () => { if (LEVEL_STACK.length === 0) { openDeviceDetail(centerG.dataset.detailKey, centerG); } });
   }
   if (houseDevice && houseDevice.detailKey) {
     centerG.dataset.detailKey = houseDevice.detailKey;

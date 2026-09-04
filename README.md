@@ -1363,14 +1363,20 @@ gleiche IPSView-Fähigkeit.
 - **Aufschachteln (`NRGDashboardTile`):** Sammelknoten — virtuelle
   Zähler mit Unterzählern (MeterHubVirtual-Vertrag 1.3 `members`) oder
   manuelle Verbraucher mit verschachteltem `Members` — tragen ein
-  Zähler-Badge. Kurzer Klick öffnet die nächste Ebene: der Knoten wird
-  zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen
-  Funktionen der ersten Ebene, beliebig tief. Zurück per Klick auf die
-  Pille (eine Ebene) — die übergeordnete Ebene steht dazu als "‹ Name"
-  direkt in der Pille selbst, oberhalb des Namens (kein eigenes
-  HTML-Element am Kachelrand, siehe Feinheit weiter unten). Langer Klick
-  (500 ms, Füllring) öffnet die Detailseite — auch für Mitglieder ohne
-  eigenes Gerät (synthetisch aus dem Mitgliedseintrag). Abgezogene
+  Zähler-Badge. Kurzer Klick/Druck öffnet — wie bei jedem Knoten und der
+  Mittelpille selbst — immer die Detailseite (auch für Mitglieder ohne
+  eigenes Gerät, synthetisch aus dem Mitgliedseintrag), mit demselben
+  gelb aufbauenden Zeitring wie eh und je. Erst ein langer Druck, bei
+  dem der Ring komplett gelb wird, wechselt die Ebene: an einem
+  Sammelknoten färbt sich der Ring dabei grün und der Knoten wird zur
+  Mittelpille, seine Mitglieder ordnen sich darum an — mit allen
+  Funktionen der ersten Ebene, beliebig tief. Zurück geht es ebenso per
+  langem Druck, jetzt auf die Pille selbst — die übergeordnete Ebene
+  steht dazu als kleines "‹"-Badge oben links auf dem Pillenrand (Name
+  als Hover-Tooltip, kein eigenes HTML-Element am Kachelrand, siehe
+  Feinheit weiter unten). Geht es in die jeweilige Richtung nicht (ein
+  Blatt ohne Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber),
+  wird der Ring stattdessen kurz rot — ohne Wirkung. Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
   Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,
   die Rekursion löst das Dashboard über die Quell-Instanz der
