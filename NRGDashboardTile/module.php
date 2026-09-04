@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.3';
+    private const NEWS_VERSION = '0.9.4';
     private const NEWS_ITEMS = [
+        'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Aussenknoten an die tatsächliche Pillengeometrie angepasst.',
+        'Fix: das Rück-Badge beim Aufschachteln saß mittig in der Pille - sitzt jetzt wie die anderen Badges (Warn-Dreieck, Zähler-Badge, Minus-Badge) direkt auf dem Pillenrand, oben links, dem einzigen dort noch freien Eckplatz.',
         'Neu: die Detailseite eines Schaltgruppen-Mitglieds (MeterHubVirtual-Vertrag 1.4) zeigt jetzt einen echten Schalt-Knopf bzw. bei einer Gruppe ohne eigenes Ganzes den Zustand (aus/teilweise/an) - bisher gab es das nur am Knoten selbst, der während der geöffneten Detailseite genau verdeckt ist.',
         'Fix: das Rück-Badge beim Aufschachteln ist jetzt ein kleiner Kreis mit "‹" statt eines Text-Chips - dieselbe Optik wie das bereits vorhandene "›"-Badge an Sammelknoten ohne bekannte Mitgliederzahl. Der Name der übergeordneten Ebene steht als Hover-Tooltip.',
         'Neu: die "Automatische Vorführung" blendet jetzt gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - der "Isolierte Demo-Modus" erzeugt dafür eine plausible, aus dem aktuellen Solar-Wert abgeleitete Diagnose, da dort keine echte InverterHub-Instanz vorhanden ist.',

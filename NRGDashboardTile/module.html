@@ -303,15 +303,17 @@
      Fuellring-Fix (03.09.2026) bleibt hier stehen, .node-count/.node-minus
      ebenso - nur die alte #levelBar-Regel entfaellt. */
   #node-center.can-go-up { cursor: pointer; }
-  /* Rueck-Badge (09.09.2026, Dietmar: Position gut, aber "ein weiteres
-     Badge wie z.B. einen Pfeil nach links" - und dann konsequent dieselbe
-     Badge-Optik wie der schon vorhandene Rechts-Pfeil "›" auf Sammelknoten
-     ohne bekannte Mitgliederzahl, siehe updateOuterNode()) - deshalb
-     dieselben Klassen .node-count-bg/.node-count-txt wiederverwendet,
-     nur mit "‹" statt "›" und ohne Zahl. Der Name der uebergeordneten
-     Ebene steht als <title> (Hover-Tooltip), nicht mehr als sichtbarer
-     Text - konsistent mit dem Vorbild-Badge, der den Zielnamen auch nicht
-     ausschreibt. */
+  /* Rueck-Badge (09.09.2026, Dietmar: erst "ein weiteres Badge wie z.B.
+     einen Pfeil nach links" statt frei schwebendem Text, dann "nicht
+     Mitten rein - wie waere es oben links auf den Kreis" analog zum
+     bereits vorhandenen Rechts-Pfeil "›" auf Sammelknoten ohne bekannte
+     Mitgliederzahl) - deshalb dieselben Klassen .node-count-bg/.node-
+     count-txt wiederverwendet (nur "‹" statt "›"/Zahl) UND auf denselben
+     Eck-Platz gesetzt: oben links auf dem Pillenrand, wie Warn-Dreieck
+     (oben rechts)/Zaehler-Badge (unten rechts)/Minus-Badge (unten links)
+     an Aussenknoten - Position wird in layoutCenterChip() per
+     pillRadiusAt() gesetzt, nicht hier fest verdrahtet. Der Name der
+     uebergeordneten Ebene steht als <title> (Hover-Tooltip). */
   .pill-back-badge { pointer-events: none; }
 
   /* Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - kleiner Schalt-
@@ -479,7 +481,7 @@
       <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
     </g>
     <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
-    <g id="center-back-badge" class="pill-back-badge" transform="translate(0,-8)" style="display:none">
+    <g id="center-back-badge" class="pill-back-badge" style="display:none">
       <title id="lbl-center-back-title">zurück</title>
       <circle r="9" class="node-count-bg"/>
       <text x="0" y="3.5" class="node-count-txt">‹</text>
@@ -800,6 +802,22 @@ function layoutCenterChip(hw, hh) {
       holder.textContent = '';
       addNodeBolts(holder, hw, hh, 5);
     }
+  }
+  // Rueck-Badge (09.09.2026, Dietmar: "nicht Mitten rein", stattdessen wie
+  // die anderen Badges AUF den Pillenrand setzen) - oben links ist der
+  // einzige der vier Eck-Plaetze, den kein anderes Badge belegt (Warn-
+  // Dreieck oben rechts, Zaehler-Badge unten rechts, Minus-Badge unten
+  // links - alle an Aussenknoten, hier 1:1 auf die Mittelpille uebertragen).
+  // pillRadiusAt() liefert den tatsaechlichen Pillenrand bei hw=hh exakt
+  // denselben Kreisradius wie warnOff dort, bleibt bei einer breiten Chip-
+  // Pille aber korrekt auf dem tatsaechlichen (nicht mehr kreisrunden) Rand.
+  const backBadge = document.getElementById('center-back-badge');
+  if (backBadge) {
+    const angDeg = -135;
+    const angRad = angDeg * Math.PI / 180;
+    const br = pillRadiusAt(angDeg, hw, hh);
+    const bx = br * Math.cos(angRad), by = br * Math.sin(angRad);
+    backBadge.setAttribute('transform', 'translate(' + bx.toFixed(1) + ',' + by.toFixed(1) + ')');
   }
 }
 
@@ -1947,11 +1965,23 @@ function updateOuterNode(refs, item) {
   fitTextWidth(refs.subText, subY);
 }
 
-function fitTextWidth(textEl, y) {
+// hw/hh optional (09.09.2026, Fund: "Küche & Haushalt" rutscht beim
+// Aufschachteln über den Kreisrand) - die Mittelpille kann als Chip breiter
+// als hoch sein (hw > hh, siehe computeLayout()), eine reine Kreissehne
+// (nur ein Radius) waere dort falsch. Ohne Angabe (Regelfall: Aussenknoten,
+// immer kreisrund) faellt hw/hh auf DESIGN_R zurueck - unveraendertes
+// Verhalten fuer alle bisherigen Aufrufer.
+function fitTextWidth(textEl, y, hw, hh) {
   textEl.removeAttribute('textLength');
   textEl.removeAttribute('lengthAdjust');
-  const pad = 8; // Rand-/Stroke-Puffer innerhalb des Rings
-  const r = DESIGN_R - pad;
+  const pad = 8; // Rand-/Stroke-Puffer innerhalb des Rings/der Pille
+  const rw = Math.max(0, (hw === undefined ? DESIGN_R : hw) - pad);
+  const rh = Math.max(0, (hh === undefined ? DESIGN_R : hh) - pad);
+  // "Stadion"-Form (Rechteck mit zwei Halbkreis-Kappen, rx=ry=hh, siehe
+  // layoutCenterChip()): die geraden Seiten tragen 2*straight zur Breite
+  // bei, der Rest kommt aus der Kappen-Sehne bei y - degeneriert bei
+  // hw===hh exakt zur bisherigen Kreissehnen-Formel.
+  const straight = Math.max(0, rw - rh);
   // Math.max(0, ...) gegen Fliesskomma-Rundung nahe der Kreisgrenze
   // (01.09.2026, Safari-Fund: "Invalid value for <text> attribute
   // textLength=''") - bei y knapp unter r kann r*r - y*y durch
@@ -1961,7 +1991,7 @@ function fitTextWidth(textEl, y) {
   // SVG-Engine bricht dagegen die KOMPLETTE Kachel-Darstellung ab -
   // deshalb zusaetzlich ein expliziter isFinite()-Riegel, statt sich
   // auf browserspezifisches Fehlerverhalten zu verlassen.
-  const maxW = Math.abs(y) >= r ? 20 : 2 * Math.sqrt(Math.max(0, r * r - y * y));
+  const maxW = Math.abs(y) >= rh ? 20 : 2 * (straight + Math.sqrt(Math.max(0, rh * rh - y * y)));
   let bbox;
   try { bbox = textEl.getBBox(); } catch (e) { return; }
   if (!bbox || !isFinite(bbox.width) || !isFinite(maxW) || maxW <= 0) { return; }
@@ -2376,6 +2406,11 @@ function renderLevelView() {
   const chipLayout = computeLayout(items.length);
   LAST_CHIP = chipLayout;
   layoutCenterChip(chipLayout.hw, chipLayout.hh);
+  // Fund 09.09.2026 (Dietmar): "Küche & Haushalt" rutschte über den
+  // Kreisrand hinaus - der Aussenknoten-Fall clippt lange Namen laengst
+  // (fitTextWidth() bei jedem updateOuterNode()), fuer den NAMEN DER
+  // MITTELPILLE selbst (hier gesetzt) fehlte der Aufruf bislang komplett.
+  if (nm) { fitTextWidth(nm, 33, chipLayout.hw, chipLayout.hh); }
   const autRing = document.querySelector('#node-center .node-autarky-ring');
   if (autRing) { autRing.style.display = 'none'; }
   if (items.length === 0) {

@@ -1407,8 +1407,14 @@ gleiche IPSView-Fähigkeit.
   Rücknavigation in der Mittelpille (siehe oben) ist ein kleiner Kreis
   mit „‹“ — dieselbe Badge-Optik wie das bereits vorhandene „›“ an
   Sammelknoten ohne bekannte Mitgliederzahl, statt eines eigenen
-  Text-Chip-Designs. Der Name der übergeordneten Ebene steht als
-  Hover-Tooltip am Badge.
+  Text-Chip-Designs. Sitzt oben links direkt auf dem Pillenrand, wie die
+  anderen Badges (Warn-Dreieck oben rechts, Zähler-Badge unten rechts,
+  Minus-Badge unten links) — nicht mittig in der Pille. Der Name der
+  übergeordneten Ebene steht als Hover-Tooltip am Badge.
+- **Lange Namen bleiben im Kreis (`NRGDashboardTile`):** auch der Name
+  der Mittelpille selbst (beim Aufschachteln, z. B. „Küche & Haushalt“)
+  wird jetzt wie jeder Außenknoten-Name an die tatsächliche
+  Pillengeometrie angepasst und ragt nicht mehr über den Rand hinaus.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
