@@ -291,8 +291,17 @@
   .node-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
 
   /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
+  /* Oben kollidiert die Zeile zuverlaessig mit der vom WebFront selbst
+     ueber die Kachel gelegten Titelzeile ("Kachelbezeichnung") - die liegt
+     ALS EIGENE EBENE ueber dem Kachel-Inhalt, nicht nur optisch daneben,
+     und faengt dort Klicks ab (Dietmar, 04.09.2026, Screenshot: Brotkrumen-
+     Text und Kachelbezeichnung ueberlagern sich exakt, "immer das Gleiche"
+     - ein zweiter Versuch mit +20px sass IMMER NOCH darunter). Einzige
+     zuverlaessig kollisionsfreie Zone ist unten (dort sitzt bereits
+     #emsDecision unbeanstandet) - deshalb komplett dorthin verlegt statt
+     erneut am Pixelwert oben zu raten. */
   #levelBar {
-    position: absolute; left: 10px; top: 28px; z-index: 6;
+    position: absolute; left: 8px; right: 8px; bottom: 40px; z-index: 6;
     display: none; align-items: center; gap: 4px; flex-wrap: wrap;
     font-size: 12px; line-height: 1.2; padding: 5px 9px; border-radius: 8px;
     background: rgba(127,135,145,.16); backdrop-filter: blur(2px);
