@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.1';
+    private const NEWS_VERSION = '0.9.2';
     private const NEWS_ITEMS = [
+        'Neu: die "Automatische Vorführung" blendet jetzt gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - der "Isolierte Demo-Modus" erzeugt dafür eine plausible, aus dem aktuellen Solar-Wert abgeleitete Diagnose, da dort keine echte InverterHub-Instanz vorhanden ist.',
         'Fix: die Ruecknavigation beim Aufschachteln kollidierte an JEDEM Kachelrand (oben mit der Titelzeile, unten ebenfalls) mit WebFront-eigenem Chrome, das dort als eigene Ebene über dem Inhalt liegt - sitzt jetzt direkt in der Mittelpille selbst ("‹ übergeordnete Ebene" über dem Namen), wo garantiert nichts überdeckt.',
         'Die automatische Vorführung wartet jetzt 8 statt 20 Sekunden Inaktivität, bis sie startet - bei vorhandenen Sammelknoten schachtelt sie bevorzugt einen davon auf, zeigt eine Detailseite darin und schachtelt wieder zu.',
         'Fix: die Brotkrumen-Zeile (Aufschachteln) saß zu weit oben und geriet in eingebetteten Ansichten in Kollision mit dem WebFront-eigenen Kachel-Rahmen - 20px tiefer gerückt.',
@@ -2460,6 +2461,16 @@ class NRGDashboardTile extends IPSModule
      */
     private function discoverDiagnostics(): array
     {
+        // Isolierte Demo (09.09.2026, Dietmar: "in der Demo Automatik auch
+        // immer wieder mal die Gesundheit von Solar einblenden") - die Demo
+        // hat keine echte InverterHub-Instanz, computeOwnDiagnostics() liefert
+        // dort also immer leer. computeDemoDiagnostics() erzeugt stattdessen
+        // eine plausible, aus dem manuellen Solar-Wert abgeleitete Diagnose,
+        // damit das Diagnose-Panel in der Vorfuehrung etwas zu zeigen hat.
+        if ($this->readBoolProperty('DemoIsolated', false)) {
+            return $this->computeDemoDiagnostics();
+        }
+
         $results = [];
         if (function_exists('IHUBMON_GetDiagnostics')) {
             foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUBMON) as $id) {
@@ -2485,6 +2496,70 @@ class NRGDashboardTile extends IPSModule
             $results[] = $entry;
         }
         return $results;
+    }
+
+    /**
+     * Synthetische Solar-Diagnose fuer die isolierte Demo (09.09.2026) -
+     * dieselben drei Anzeige-Typen wie computeOwnDiagnostics() (Ertrag vs.
+     * Erwartung, MPPT-Strangvergleich, Isolationswiderstand), aber ohne
+     * echte InverterHub-Instanz: die "Erwartung"/Strang-/Riso-Werte werden
+     * aus dem aktuellen manuellen Solar-Messwert (ManualPvID) mit kleiner,
+     * bei jedem Discover()-Lauf neu gewuerfelter Abweichung abgeleitet -
+     * meist "unauffaellig", gelegentlich "auffaellig", damit die
+     * Diagnose-Anzeige in der Vorfuehrung auch mal etwas zu zeigen hat.
+     * Reines Demo-Feature, laeuft NIE bei einer echten Anlage (nur bei
+     * DemoIsolated=true).
+     */
+    private function computeDemoDiagnostics(): array
+    {
+        $entries = [];
+        $pvVid = $this->readIntProperty('ManualPvID', 0);
+        if ($pvVid <= 0 || !IPS_VariableExists($pvVid)) {
+            return $entries;
+        }
+        $measured = (float) GetValue($pvVid);
+        if ($measured <= 50.0) {
+            return $entries; // nachts/kein Ertrag: keine sinnvolle Aussage
+        }
+
+        $factor = mt_rand(78, 108) / 100;
+        $expected = $measured / $factor;
+        $ratio = $expected > 0 ? $measured / $expected : 1.0;
+        if ($ratio < 0.5) {
+            $level = 'kritisch';
+            $reason = 'Gemessener Ertrag liegt unter 50 % der Erwartung — Verschmutzung oder Defekt möglich.';
+        } elseif ($ratio < 0.8) {
+            $level = 'auffaellig';
+            $reason = 'Gemessener Ertrag liegt unter 80 % der Erwartung.';
+        } else {
+            $level = 'normal';
+            $reason = '';
+        }
+        $entries[] = [
+            'type' => 'yield_vs_forecast', 'label' => 'Solar-Ertrag', 'level' => $level, 'unit' => 'W',
+            'measured' => round($measured), 'expected' => round($expected), 'reason' => $reason,
+        ];
+
+        $split = mt_rand(44, 56) / 100;
+        $strings = [1 => $measured * $split, 2 => $measured * (1 - $split)];
+        $maxV = max($strings);
+        $diffRatio = $maxV > 0 ? (max($strings) - min($strings)) / $maxV : 0;
+        $entries[] = [
+            'type' => 'mppt_string_compare', 'label' => 'MPPT-Strangvergleich',
+            'level' => $diffRatio > 0.3 ? 'auffaellig' : 'normal', 'unit' => 'W',
+            'stringValues' => array_map(fn ($v) => round($v), $strings),
+            'reason' => $diffRatio > 0.3 ? 'Ein Strang liefert deutlich weniger als der andere.' : '',
+        ];
+
+        $riso = mt_rand(800, 1400);
+        $entries[] = [
+            'type' => 'riso', 'label' => 'Isolationswiderstand', 'unit' => 'kΩ',
+            'level' => $riso < 500 ? 'kritisch' : ($riso < 1000 ? 'auffaellig' : 'normal'),
+            'measuredValue' => $riso, 'threshold' => 1000,
+            'reason' => $riso < 1000 ? 'Isolationswiderstand nahe der Warnschwelle.' : '',
+        ];
+
+        return $entries;
     }
 
     /**

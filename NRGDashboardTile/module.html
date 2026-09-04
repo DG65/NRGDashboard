@@ -2500,7 +2500,20 @@ async function autoTourStep() {
       await tourWait(12000);
       closeDeviceDetail();
     }
-    await tourWait(15000);
+    await tourWait(4000);
+    if (!autoTourAllowed()) return;
+    // 3) Gesundheits-/Diagnose-Panel (09.09.2026, Dietmar: "immer wieder mal
+    // die Gesundheit von Solar einblenden") - nur wenn tatsaechlich Eintraege
+    // vorhanden sind (isolierte Demo liefert dafuer eine synthetische
+    // Solar-Diagnose, siehe computeDemoDiagnostics() im Backend), nicht bei
+    // jedem Durchlauf, damit es nicht die anderen Vorfuehr-Schritte verdraengt.
+    const diagBadge = document.getElementById('diagBadge');
+    if (diagBadge && diagBadge.classList.contains('show') && Math.random() < 0.5) {
+      toggleDiagPanel();
+      await tourWait(9000);
+      toggleDiagPanel();
+    }
+    await tourWait(11000);
   } finally {
     TOUR_RUNNING = false;
   }

@@ -1389,7 +1389,11 @@ gleiche IPSView-Fähigkeit.
 - **Automatische Vorführung (`NRGDashboardTile`):** Instanz-Eigenschaft
   (Standard aus). Bei Inaktivität öffnet die Kachel von selbst
   Detailseiten und schachtelt Sammelknoten auf und zu; jede Berührung
-  pausiert das für zwei Minuten. Für Vorstellungs-Instanzen.
+  pausiert das für zwei Minuten. Für Vorstellungs-Instanzen. Blendet
+  gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs.
+  Erwartung, MPPT-Strangvergleich, Isolationswiderstand) — der Isolierte
+  Demo-Modus erzeugt dafür mangels echter InverterHub-Instanz eine
+  plausible, aus dem aktuellen Solar-Wert abgeleitete Diagnose.
 - **Schaltgruppen (`NRGDashboardTile`):** liefert MeterHubVirtual
   `switchID`/`switchStateID` (Vertrag 1.4), zeigt die Kachel einen
   kleinen Schalt-Knopf am Knoten — grau/gelb/grün für aus/teilweise/an.

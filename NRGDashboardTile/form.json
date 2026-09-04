@@ -99,6 +99,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (09.09.2026): Die automatische Vorführung blendet gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - im Isolierten Demo-Modus ohne echte InverterHub-Instanz aus dem aktuellen Solar-Wert plausibel abgeleitet, damit Interessenten auch diese Funktion in der Vorführung sehen."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Automatische Vorführung, 03.09.2026): das Häkchen „Automatische Vorführung“ (oben, Standard aus) lässt die Kachel bei Inaktivität von selbst Detailseiten öffnen und Sammelknoten auf- und zuschachteln - jede Berührung pausiert das für zwei Minuten. Gedacht für Vorstellungs-Instanzen, damit Interessenten alle Ansichten sehen, ohne klicken zu müssen."
         },
         {
