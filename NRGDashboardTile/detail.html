@@ -43,6 +43,11 @@
   #ctlStatus.ok { color: #8fd18f; }
   #ctlStatus.err { color: #e6a9a9; }
   #ctlStatus.fade { opacity: 0; }
+  #switchStatus { font-size: 13px; min-height: 18px; transition: opacity .4s; }
+  #switchStatus.pending { color: #c9c9c9; }
+  #switchStatus.ok { color: #8fd18f; }
+  #switchStatus.err { color: #e6a9a9; }
+  #switchStatus.fade { opacity: 0; }
   #closeBtn svg { width: 16px; height: 16px; fill: currentColor; }
   #head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   #title { font-size: 24px; font-weight: 600; }
@@ -118,6 +123,20 @@
     <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
   </div>
   <div id="ctlStatus"></div>
+</div>
+<!-- Schaltgruppen (09.09.2026, Dietmar: "man sieht auf der Detailseite
+     nichts von den Schaltern") - eigenes, vom Wallbox-Panel unabhaengiges
+     Steuer-Feld fuer Aufschachteln-Mitglieder mit switchID/switchStateID
+     (MeterHubVirtual-Vertrag 1.4, siehe SwitchControlInfo() in module.php).
+     Ein einzeln schaltbares Mitglied bekommt eine echte Checkbox, ein
+     Gruppen-Zustand ohne eigene switchID nur eine informative Farbe/Text -
+     identisch zur Unterscheidung am Knoten selbst (updateOuterNode()). -->
+<div id="switchWrap" style="display:none; margin: 10px 0 4px; align-items: center; gap: 10px;">
+  <label id="switchRow" style="display:none; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+    <input type="checkbox" id="ctlSwitch"> <span id="switchLabel">Schalten</span>
+  </label>
+  <div id="switchStateRow" style="display:none; font-size:13px;"></div>
+  <div id="switchStatus"></div>
 </div>
 <div id="err"></div>
 
@@ -348,6 +367,7 @@ function handleDetail(p) {
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
   renderControl(p);
+  renderSwitchControl(p);
   renderSubMeters(p);
   renderValues(p);
   renderPower(p);
@@ -431,6 +451,61 @@ function renderControl(p) {
     reasonEl.style.display = 'none';
   }
 }
+
+// Schaltgruppen (09.09.2026) - siehe Markup-Kommentar bei #switchWrap.
+// stateValue (0 aus/1 teilweise/2 an) ist rein informativ, wenn KEINE
+// eigene switchID vorliegt (Gruppen-Summe ohne eigenes schaltbares Ganzes,
+// gleiche Unterscheidung wie am Knoten selbst) - dann keine Checkbox,
+// sondern nur ein farbiger Statustext.
+const SWITCH_STATE_TEXT = { 0: 'aus', 1: 'teilweise an', 2: 'an' };
+const SWITCH_STATE_COLOR = { 0: '#9e9e9e', 1: '#c9a227', 2: '#43a047' };
+function renderSwitchControl(p) {
+  const wrap = document.getElementById('switchWrap');
+  const row = document.getElementById('switchRow');
+  const stateRow = document.getElementById('switchStateRow');
+  if (!p.switchControl) {
+    wrap.style.display = 'none';
+    return;
+  }
+  const s = p.switchControl;
+  wrap.style.display = 'flex';
+  row.style.display = s.switchID ? 'flex' : 'none';
+  if (s.switchID) {
+    document.getElementById('ctlSwitch').checked = !!s.switchValue;
+    document.getElementById('switchLabel').textContent = s.switchValue ? 'An' : 'Aus';
+  }
+  if (!s.switchID && s.stateValue !== undefined && s.stateValue !== null) {
+    stateRow.style.display = '';
+    stateRow.textContent = 'Zustand: ' + (SWITCH_STATE_TEXT[s.stateValue] || '–');
+    stateRow.style.color = SWITCH_STATE_COLOR[s.stateValue] || '';
+  } else {
+    stateRow.style.display = 'none';
+  }
+}
+function setSwitchStatus(text, kind) {
+  const el = document.getElementById('switchStatus');
+  el.textContent = text;
+  el.className = kind || '';
+}
+function switchAction(on) {
+  if (!lastPayload || !lastPayload.switchControl || !lastPayload.switchControl.switchID) return;
+  const u = new URL(window.location.href);
+  u.search = '';
+  u.searchParams.set('switchAction', '1');
+  u.searchParams.set('key', lastPayload.key);
+  u.searchParams.set('value', on ? '1' : '0');
+  setSwitchStatus('Befehl wird gesendet …', 'pending');
+  fetch(u.toString()).then(r => r.json()).then(res => {
+    if (!res || !res.ok) {
+      setSwitchStatus((res && res.error) || 'Aktion fehlgeschlagen.', 'err');
+      return;
+    }
+    document.getElementById('switchLabel').textContent = on ? 'An' : 'Aus';
+    setSwitchStatus('Befehl gesendet ✓', 'ok');
+    setTimeout(() => document.getElementById('switchStatus').classList.add('fade'), 3000);
+  }).catch(() => setSwitchStatus('Aktion fehlgeschlagen (keine Verbindung).', 'err'));
+}
+document.getElementById('ctlSwitch').addEventListener('change', (e) => { switchAction(e.target.checked); });
 
 // Rueckmeldung (31.08.2026, Dietmar: "das ueberhaupt keine Rueckmeldungen
 // kommen ist echt schlecht") - unser eigener Request meldet nur, dass der

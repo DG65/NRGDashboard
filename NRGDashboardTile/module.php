@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.2';
+    private const NEWS_VERSION = '0.9.3';
     private const NEWS_ITEMS = [
+        'Neu: die Detailseite eines Schaltgruppen-Mitglieds (MeterHubVirtual-Vertrag 1.4) zeigt jetzt einen echten Schalt-Knopf bzw. bei einer Gruppe ohne eigenes Ganzes den Zustand (aus/teilweise/an) - bisher gab es das nur am Knoten selbst, der während der geöffneten Detailseite genau verdeckt ist.',
+        'Fix: das Rück-Badge beim Aufschachteln ist jetzt ein kleiner Kreis mit "‹" statt eines Text-Chips - dieselbe Optik wie das bereits vorhandene "›"-Badge an Sammelknoten ohne bekannte Mitgliederzahl. Der Name der übergeordneten Ebene steht als Hover-Tooltip.',
         'Neu: die "Automatische Vorführung" blendet jetzt gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - der "Isolierte Demo-Modus" erzeugt dafür eine plausible, aus dem aktuellen Solar-Wert abgeleitete Diagnose, da dort keine echte InverterHub-Instanz vorhanden ist.',
         'Fix: die Ruecknavigation beim Aufschachteln kollidierte an JEDEM Kachelrand (oben mit der Titelzeile, unten ebenfalls) mit WebFront-eigenem Chrome, das dort als eigene Ebene über dem Inhalt liegt - sitzt jetzt direkt in der Mittelpille selbst ("‹ übergeordnete Ebene" über dem Namen), wo garantiert nichts überdeckt.',
         'Die automatische Vorführung wartet jetzt 8 statt 20 Sekunden Inaktivität, bis sie startet - bei vorhandenen Sammelknoten schachtelt sie bevorzugt einen davon auf, zeigt eine Detailseite darin und schachtelt wieder zu.',
@@ -4008,6 +4010,10 @@ class NRGDashboardTile extends IPSModule
             // ein manueller Eingriff daneben waere genau die "zwei Regler auf
             // derselben Batterie"-Situation, die dieser Verbund vermeidet.
             'control'   => $this->ChargerControlInfo($d),
+            // Schaltgruppen (09.09.2026) - siehe SwitchControlInfo(), analog
+            // zu 'control' aber fuer geschaltete Aufschachteln-Mitglieder
+            // statt Wallboxen; beide koennen nebeneinander null sein.
+            'switchControl' => $this->SwitchControlInfo($d),
         ];
     }
 
@@ -4117,6 +4123,40 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         return $info;
+    }
+
+    /**
+     * Schalt-Steuerung fuer Aufschachteln-Mitglieder (MeterHubVirtual-
+     * Vertrag 1.4, 09.09.2026: "man sieht auf der Detailseite nichts von
+     * den Schaltern") - bislang zeigte NUR die Knotenansicht selbst den
+     * Schalt-Knopf (updateOuterNode()/attachSwitchHandler() in module.html);
+     * die per Klick/langem Druck geoeffnete Detailseite verdeckt genau
+     * diesen Knoten vollflaechig und hatte keine eigene Entsprechung.
+     * switchID (real schaltbares Einzelmitglied, per EnableAction() an eine
+     * echte RequestAction-Variable gebunden) und switchStateID (nur
+     * informativer Gruppenzustand 0 aus/1 teilweise/2 an, siehe Kommentar
+     * bei updateOuterNode()) werden hier unveraendert durchgereicht wie am
+     * Knoten selbst - die eigentliche Aktion laeuft ueber denselben
+     * ?switchAction=-Hook (ProcessHookData()), inkl. dessen eigener
+     * DemoMode-Sperre serverseitig; hier wird bewusst NICHT zusaetzlich
+     * gegen DemoMode geprueft (die Sichtbarkeit des Zustands ist harmlos,
+     * nur der schreibende Aufruf ist geschuetzt - identisch zum Verhalten
+     * des Schalt-Knopfs am Knoten selbst, der ebenfalls unabhaengig vom
+     * Vorfuehrmodus sichtbar bleibt).
+     */
+    private function SwitchControlInfo(array $d): ?array
+    {
+        $info = [];
+        $switchVid = (int) ($d['switchID'] ?? 0);
+        if ($switchVid > 0 && IPS_VariableExists($switchVid) && (IPS_GetVariable($switchVid)['VariableAction'] ?? 0) > 0) {
+            $info['switchID'] = $switchVid;
+            $info['switchValue'] = (bool) GetValueBoolean($switchVid);
+        }
+        $stateVid = (int) ($d['switchStateID'] ?? 0);
+        if ($stateVid > 0 && IPS_VariableExists($stateVid)) {
+            $info['stateValue'] = (int) GetValue($stateVid);
+        }
+        return count($info) > 0 ? $info : null;
     }
 
     /**

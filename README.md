@@ -1400,7 +1400,15 @@ gleiche IPSView-Fähigkeit.
   Ein einzelnes Mitglied lässt sich direkt schalten, eine Gruppe
   schaltet alle schaltbaren (nur positiven) Mitglieder auf einmal —
   über denselben transportneutralen RequestAction-Weg wie die
-  Wallbox-Steuerung, respektiert also auch den Vorführmodus.
+  Wallbox-Steuerung, respektiert also auch den Vorführmodus. Der Schalt-
+  Knopf steht seit 09.09.2026 auch auf der Detailseite (langer Klick)
+  zur Verfügung — sie verdeckt sonst genau den Knoten, an dem er sitzt.
+- **Rück-Badge im Aufschachteln-Design (`NRGDashboardTile`):** die
+  Rücknavigation in der Mittelpille (siehe oben) ist ein kleiner Kreis
+  mit „‹“ — dieselbe Badge-Optik wie das bereits vorhandene „›“ an
+  Sammelknoten ohne bekannte Mitgliederzahl, statt eines eigenen
+  Text-Chip-Designs. Der Name der übergeordneten Ebene steht als
+  Hover-Tooltip am Badge.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
