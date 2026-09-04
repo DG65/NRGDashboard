@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.7';
+    private const NEWS_VERSION = '0.8.8';
     private const NEWS_ITEMS = [
+        'Fix: die Brotkrumen-Zeile (Aufschachteln) saß zu weit oben und geriet in eingebetteten Ansichten in Kollision mit dem WebFront-eigenen Kachel-Rahmen - 20px tiefer gerückt.',
         'Neu: Schaltgruppen (MeterHubVirtual-Vertrag 1.4) - ein kleiner Schalt-Knopf am Knoten schaltet ein einzelnes Mitglied (z. B. eine Z-Wave-Leuchte) oder eine ganze Gruppe (aus/teilweise/an) direkt in der Kachel, transportneutral über dieselbe RequestAction-Bindung wie bei Wallboxen - respektiert den Vorführmodus.',
         'Neu: Aufschachteln - Sammelknoten (virtuelle Zähler mit Unterzählern, MeterHubVirtual-Vertrag 1.3 oder verschachtelte "Weitere Verbraucher") tragen ein Zähler-Badge; kurzer Klick öffnet die nächste Ebene (der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an - beliebig tief), Klick auf die Pille oder die Brotkrumen-Zeile führt zurück. Langer Klick (500 ms, Füllring) öffnet weiterhin die Detailseite. Abgezogene Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus.',
         'Neu: "Automatische Vorführung" (Instanz-Eigenschaft, Standard aus) - die Kachel öffnet bei Inaktivität von selbst Detailseiten und schachtelt Sammelknoten auf/zu, pausiert bei jeder Berührung. Für Vorstellungs-Instanzen.',
