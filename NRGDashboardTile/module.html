@@ -271,6 +271,39 @@
   .node-warn-mark { fill: #26221a; font-size: 11px; font-weight: 800; text-anchor: middle; stroke: none; }
   .node-warn-kritisch .node-warn-tri { fill: #e74c3c; }
 
+  /* Aufschachteln (03.09.2026, Dietmar): Sammelknoten tragen ein kleines
+     Zaehler-Badge (Mitgliederzahl) unten rechts - Gegenstueck zum Diagnose-
+     Dreieck oben rechts, gleiche Ring-Position (45 Grad, haelftig auf dem
+     Ring). Abgezogene Mitglieder (negativer Faktor) bekommen einen
+     gestrichelten Ring plus Minus-Badge. */
+  .node-count { pointer-events: none; }
+  .node-count-bg { fill: #26292e; stroke: rgba(255,255,255,.55); stroke-width: 1.2; }
+  .node-count-txt { fill: #e8eaed; font-size: 10px; font-weight: 800; text-anchor: middle; stroke: none; }
+  .node.aggregate { cursor: pointer; }
+  .node.subtracted .node-ring { stroke-dasharray: 5 4; opacity: .85; }
+  .node-minus { pointer-events: none; }
+  .node-minus-bg { fill: #7a2e2a; stroke: rgba(255,255,255,.5); stroke-width: 1.2; }
+  .node-minus-txt { fill: #fff; font-size: 12px; font-weight: 900; text-anchor: middle; stroke: none; }
+
+  /* Langer Klick (500 ms): Fuellring, der sich waehrend des Haltens
+     schliesst - sichtbares Feedback, loslassen = abbrechen. */
+  .node-press-ring { fill: none; stroke: #e8eaed; stroke-width: 3; opacity: 0; transform: rotate(-90deg); pointer-events: none; }
+  .node-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
+
+  /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
+  #levelBar {
+    position: absolute; left: 10px; top: 8px; z-index: 6;
+    display: none; align-items: center; gap: 4px; flex-wrap: wrap;
+    font-size: 12px; line-height: 1.2; padding: 5px 9px; border-radius: 8px;
+    background: rgba(127,135,145,.16); backdrop-filter: blur(2px);
+  }
+  #levelBar.show { display: flex; }
+  #levelBar .crumb { cursor: pointer; opacity: .75; }
+  #levelBar .crumb:hover { opacity: 1; text-decoration: underline; }
+  #levelBar .crumb.current { opacity: 1; font-weight: 700; cursor: default; text-decoration: none; }
+  #levelBar .sep { opacity: .45; }
+  #node-center.can-go-up { cursor: pointer; }
+
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -347,6 +380,7 @@
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div id="ampelWash"></div>
 <div id="emsDecision"><span class="mode"></span><span class="reason"></span></div>
+<div id="levelBar"></div>
 
 <svg class="flow-svg" id="svg" viewBox="-17 4 594 594" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
   <defs id="markerDefs"></defs>
@@ -426,7 +460,7 @@
       <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
     </g>
     <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
-    <text x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
+    <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
   </g>
 
   <g id="nodes-layer"></g>
@@ -1156,6 +1190,11 @@ function buildItems(devices) {
         priceTrend: Array.isArray(d.priceTrend) ? d.priceTrend : null,
         priceNow: (d.priceNow !== undefined && d.priceNow !== null) ? d.priceNow : null,
         peakTodayW: (d.peakTodayW !== undefined && d.peakTodayW !== null) ? d.peakTodayW : null,
+        // Aufschachteln (03.09.2026): Sammelknoten-Kennung + abgezogene
+        // Mitglieder (negativer Faktor) - siehe attachMembers() im Backend.
+        hasMembers: !!d.hasMembers,
+        memberCount: d.memberCount || 0,
+        factor: (typeof d.factor === 'number') ? d.factor : 100,
       };
     });
 
@@ -1278,7 +1317,36 @@ function createOuterNode(item, pt, layout) {
   warn.appendChild(warnMark);
   g.appendChild(warn);
 
-  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R };
+  // Aufschachteln (03.09.2026): Zaehler-Badge unten rechts (Mitgliederzahl,
+  // gleiche Ring-Position wie das Diagnose-Dreieck, nur unten), Minus-Badge
+  // unten links fuer abgezogene Mitglieder (negativer Faktor) und der
+  // Fuellring fuer den langen Klick. Alle drei unsichtbar, bis
+  // updateOuterNode() sie je nach Item einblendet.
+  const countG = el('g', { class: 'node-count', transform: 'translate(' + warnOff.toFixed(1) + ',' + warnOff.toFixed(1) + ')' });
+  countG.appendChild(el('circle', { r: 9, class: 'node-count-bg' }));
+  const countTxt = el('text', { x: 0, y: 3.5, class: 'node-count-txt' });
+  countTxt.textContent = '';
+  countG.appendChild(countTxt);
+  countG.style.display = 'none';
+  g.appendChild(countG);
+
+  const minusG = el('g', { class: 'node-minus', transform: 'translate(' + (-warnOff).toFixed(1) + ',' + warnOff.toFixed(1) + ')' });
+  minusG.appendChild(el('circle', { r: 8, class: 'node-minus-bg' }));
+  const minusTxt = el('text', { x: 0, y: 4, class: 'node-minus-txt' });
+  minusTxt.textContent = '−';
+  minusG.appendChild(minusTxt);
+  minusG.style.display = 'none';
+  g.appendChild(minusG);
+
+  const pressCirc = 2 * Math.PI * (DESIGN_R + 3);
+  const pressRing = el('circle', {
+    class: 'node-press-ring', r: DESIGN_R + 3,
+    'stroke-dasharray': pressCirc.toFixed(1), 'stroke-dashoffset': pressCirc.toFixed(1)
+  });
+  g.appendChild(pressRing);
+
+  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
+           countG, countTxt, minusG, pressRing, pressCirc };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1633,12 +1701,19 @@ function ensureNodes(items) {
     // (WebHook) in einem neuen Tab - Diagramme + alle Vertragsfelder des
     // Geraets. Bewusst nicht in der Kachel selbst (kann im Grid zu klein
     // fuer Diagramme sein, Dietmar 28.08.2026).
-    if (item.detailKey) {
+    // Aufschachteln (03.09.2026): Klick-Verhalten haengt vom Item ab -
+    // Sammelknoten: kurzer Klick = naechste Ebene, langer Klick (500 ms,
+    // Fuellring) = Detailseite. Blatt: kurzer Klick = Detailseite wie
+    // bisher. Beides ueber Pointer-Ereignisse statt 'click', damit der lange
+    // Druck nicht zusaetzlich einen Klick ausloest (attachPressHandlers()).
+    if (item.detailKey || item.hasMembers) {
       refs.g.style.cursor = 'pointer';
       const tip = el('title', {});
-      tip.textContent = 'Details von „' + item.label + '“ öffnen';
+      tip.textContent = item.hasMembers
+        ? ('„' + item.label + '“ aufschachteln (kurz) · Details (lang drücken)')
+        : ('Details von „' + item.label + '“ öffnen');
       refs.g.appendChild(tip);
-      refs.g.addEventListener('click', () => openDeviceDetail(item.detailKey, refs.g));
+      attachPressHandlers(refs, item);
     }
     refs.spoke = createSpoke(pt, layout, wiresLayer);
     nodeRefs[item.key] = refs;
@@ -1675,6 +1750,7 @@ function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale, hi
 }
 
 function updateOuterNode(refs, item) {
+  refs.__item = item; // fuer Aufschachteln/Auto-Vorfuehrung (Item am Knoten wiederfinden)
   const w = item.value ?? 0;
   const magnitude = Math.abs(w);
   // "aktiv" (volle Farbe/Größe) darf auch ohne Leistung gelten, z.B.
@@ -1775,6 +1851,20 @@ function updateOuterNode(refs, item) {
   } else {
     refs.warn.style.display = 'none';
   }
+
+  // Aufschachteln (03.09.2026): Sammelknoten-Badge (Mitgliederzahl, sonst
+  // ein Pfeil, wenn nur "hat Mitglieder" bekannt ist), abgezogene
+  // Mitglieder gestrichelt + Minus. Fuellring-Umfang an die tatsaechliche
+  // Knotengroesse (baseScale) anpassen, sonst stimmt die Animation nicht.
+  refs.g.classList.toggle('aggregate', !!item.hasMembers);
+  refs.g.classList.toggle('subtracted', typeof item.factor === 'number' && item.factor < 0);
+  if (item.hasMembers && !hidden) {
+    refs.countTxt.textContent = (item.memberCount && item.memberCount > 0) ? String(item.memberCount) : '›';
+    refs.countG.style.display = '';
+  } else {
+    refs.countG.style.display = 'none';
+  }
+  refs.minusG.style.display = (typeof item.factor === 'number' && item.factor < 0 && !hidden) ? '' : 'none';
 
   // Zugeordnetes Fahrzeug bekannt (item.sub) -> Fahrzeugname wird die
   // groessere/farbige Zeile, Geraetename ruckt klein/grau darunter (statt
@@ -1891,11 +1981,11 @@ let TOUR_STEP = 0;
 const TOUR_STEPS = [
   {
     title: 'Mehr als noch eine Energiefluss-Kachel',
-    text: 'Diese Kachel merkt sich, was gestern zur gleichen Uhrzeit los war, rechnet mit Ihren echten Strompreisen statt einem Pauschalwert, warnt direkt am betroffenen Gerät - und wächst automatisch von 3 auf 50+ Verbraucher, ohne dass die Knoten unlesbar klein werden. 15 kurze Schritte, jederzeit über „Einführungs-Tour erneut anzeigen" in der Konsole wiederholbar.'
+    text: 'Diese Kachel merkt sich, was gestern zur gleichen Uhrzeit los war, rechnet mit Ihren echten Strompreisen statt einem Pauschalwert, warnt direkt am betroffenen Gerät - und wächst automatisch von 3 auf 50+ Verbraucher, ohne dass die Knoten unlesbar klein werden. 17 kurze Schritte, jederzeit über „Einführungs-Tour erneut anzeigen" in der Konsole wiederholbar.'
   },
   {
     title: 'Details zu jedem Gerät',
-    text: 'Ein Klick auf einen Knotenpunkt öffnet dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet.'
+    text: 'Ein Klick auf einen Knotenpunkt öffnet dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Bei Sammelknoten (Zähler-Badge) öffnet der kurze Klick die nächste Ebene, die Detailseite erreichen Sie dort per langem Druck.'
   },
   {
     title: 'Vollständige Messwerte-Tabelle',
@@ -1944,6 +2034,14 @@ const TOUR_STEPS = [
   {
     title: 'Chip-Form bei vielen Verbrauchern',
     text: 'Ab einer größeren Anzahl an Verbraucher-Knoten wechselt der Haus-Knoten automatisch von der Kreis- in eine „Chip"-Form (Pille mit geraden Seiten) - so bleiben die einzelnen Knoten auch bei sehr vielen Geräten auf einer sinnvollen Größe.'
+  },
+  {
+    title: 'Virtuelle Zähler - die stille Stärke von MeterHub',
+    text: 'MeterHub ist das Modul, das man nie sieht - hier wird sichtbar, was es leistet: Beliebige Zähler und Steckdosen lassen sich zu virtuellen Zählern zusammenfassen (Summen, Abzüge, sogar prozentuale Aufteilung wie 60/40 zwischen zwei Parteien), und virtuelle Zähler lassen sich wieder zu neuen verketten - Gerät → Raum → Geschoss → Haus. Diese Hierarchie liefert MeterHub über einen offenen Vertrag, das Dashboard legt keine eigenen Gruppen an.'
+  },
+  {
+    title: 'Aufschachteln: Ebene für Ebene',
+    text: 'Ein Knoten mit Zähler-Badge ist so ein Sammelzähler. Kurzer Klick: er wird zur Mittelpille, seine Mitglieder ordnen sich darum an - mit allen Funktionen dieser Ansicht, beliebig tief. Zurück per Klick auf die Pille oder die Brotkrumen-Zeile oben links. Langer Klick (Füllring, ½ Sekunde) öffnet die Detailseite des Sammelzählers selbst. Abgezogene Mitglieder sind gestrichelt mit Minus markiert.'
   },
   {
     title: 'Eigene Anzeige-Einstellungen',
@@ -2041,6 +2139,304 @@ function renderDiagnostics(entries) {
       '</div>';
   }).join('');
 }
+
+/* ======================================================================
+ * Aufschachteln (03.09.2026, Dietmar): Sammelknoten (virtuelle Zaehler mit
+ * Unterzaehlern) oeffnen per kurzem Klick die naechste Ebene - der Knoten
+ * morpht zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen
+ * Funktionen der ersten Ebene. Rekursiv bis ein Zaehler keine Mitglieder
+ * mehr hat. Zurueck: Klick auf die Pille (eine Ebene) oder Brotkrumen-
+ * Zeile (direkt). Langer Klick (500 ms, Fuellring) = Detailseite.
+ * Immer Start auf Ebene 1 (kein Merken - Demo mit wechselnden Besuchern).
+ * Die Mitgliederliste kommt je Ebene frisch vom Backend (?members=<key>),
+ * das die Hierarchie aus dem MeterHubVirtual-Vertrag 1.3 bzw. aus
+ * verschachtelten manuellen Verbrauchern aufloest - die Kachel selbst
+ * kennt keine Gruppen (Kernprinzip: Hierarchie liegt beim Anbieter).
+ * ====================================================================== */
+let LEVEL_STACK = [];      // [{ key, label, fromItemKey }]
+let LEVEL1_DEVICES = [];   // letzter Ebene-1-Payload (devices)
+let LAST_CHIP = null;      // letztes computeLayout()-Ergebnis (fuer Morph-Ziel)
+let AUTO_TOUR = false;     // Instanz-Eigenschaft DemoAutoTour (Payload d.autoTour)
+const MEMBER_CACHE = {};   // key -> { ts, label, value, members[] }
+const MEMBER_TTL_MS = 5000;
+let LEVEL_BUSY = false;    // waehrend einer Morph-Animation keine zweite starten
+
+function restoreCenterForLevel1() {
+  const centerG = document.getElementById('node-center');
+  const nm = document.getElementById('lbl-center-name');
+  if (nm) { nm.textContent = 'Haus'; }
+  if (centerG) { centerG.classList.remove('can-go-up'); }
+  renderLevelBar();
+}
+
+function renderLevelBar() {
+  const bar = document.getElementById('levelBar');
+  if (!bar) return;
+  bar.textContent = '';
+  if (LEVEL_STACK.length === 0) { bar.classList.remove('show'); return; }
+  const crumbs = [{ label: 'Haus', idx: 0 }].concat(LEVEL_STACK.map((lv, i) => ({ label: lv.label, idx: i + 1 })));
+  crumbs.forEach((c, i) => {
+    if (i > 0) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; bar.appendChild(s); }
+    const sp = document.createElement('span');
+    const isCurrent = (i === crumbs.length - 1);
+    sp.className = 'crumb' + (isCurrent ? ' current' : '');
+    sp.textContent = c.label;
+    if (!isCurrent) { sp.addEventListener('click', () => gotoLevel(c.idx)); }
+    bar.appendChild(sp);
+  });
+  bar.classList.add('show');
+}
+
+function fetchMembers(key) {
+  if (!HOOK_PATH) return Promise.resolve(null);
+  const c = MEMBER_CACHE[key];
+  if (c && (Date.now() - c.ts) < MEMBER_TTL_MS) return Promise.resolve(c);
+  return fetch(HOOK_PATH + '?members=' + encodeURIComponent(key))
+    .then(r => r.json())
+    .then(j => {
+      if (!j || !j.ok) return null;
+      const entry = { ts: Date.now(), label: j.label || '', value: j.value, members: Array.isArray(j.members) ? j.members : [] };
+      MEMBER_CACHE[key] = entry;
+      return entry;
+    })
+    .catch(() => null);
+}
+
+// Mitglied (Backend-Normalform) -> Geraete-Schema, das buildItems() versteht.
+function memberToDevice(m) {
+  return {
+    instanceID: m.key,             // eindeutiger Item-Schluessel je Ebene
+    function: m.function || 'other',
+    label: m.label || 'Mitglied',
+    detailKey: m.detailKey || m.key,
+    value: (m.value === undefined) ? null : m.value,
+    soc: (m.soc === undefined) ? null : m.soc,
+    measured: true,
+    factor: (typeof m.factor === 'number') ? m.factor : 100,
+    hasMembers: !!m.hasMembers,
+    memberCount: m.memberCount || 0,
+  };
+}
+
+// Interpolierte Transform-Animation auf dem SVG-Attribut (CSS-Transitions
+// greifen auf dem Attribut nicht; style.transform wuerde das Attribut
+// ueberschreiben und mit applyNodeState() kollidieren).
+function animateNodeTransform(g, from, to, ms, done) {
+  const t0 = performance.now();
+  const ease = x => (x < 0.5) ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  function step(now) {
+    const p = Math.min(1, (now - t0) / ms), e = ease(p);
+    const x = from.x + (to.x - from.x) * e, y = from.y + (to.y - from.y) * e;
+    const sx = from.sx + (to.sx - from.sx) * e, sy = from.sy + (to.sy - from.sy) * e;
+    g.setAttribute('transform', 'translate(' + x.toFixed(2) + ',' + y.toFixed(2) + ') scale(' + sx.toFixed(4) + ',' + sy.toFixed(4) + ')');
+    if (p < 1) { requestAnimationFrame(step); } else if (done) { done(); }
+  }
+  requestAnimationFrame(step);
+}
+
+function fadeOthers(exceptG, opacity) {
+  document.querySelectorAll('#nodes-layer > g').forEach(g => { if (g !== exceptG) { g.style.transition = 'opacity .3s'; g.style.opacity = String(opacity); } });
+  const wires = document.getElementById('wires-layer');
+  if (wires) { wires.style.transition = 'opacity .3s'; wires.style.opacity = String(opacity); }
+}
+
+function enterLevel(item, refs) {
+  if (LEVEL_BUSY || !HOOK_PATH || !item || !item.hasMembers) return;
+  LEVEL_BUSY = true;
+  fetchMembers(item.detailKey || item.key).then(entry => {
+    if (!entry || entry.members.length === 0) { LEVEL_BUSY = false; return; }
+    const nextChip = computeLayout(entry.members.length);
+    const from = { x: refs.cx, y: refs.cy, sx: refs.baseScale, sy: refs.baseScale };
+    const to = { x: CX, y: CY, sx: nextChip.hw / DESIGN_R, sy: nextChip.hh / DESIGN_R };
+    const g = refs.g;
+    g.parentNode.appendChild(g); // nach oben
+    fadeOthers(g, 0);
+    animateNodeTransform(g, from, to, 550, () => {
+      LEVEL_STACK.push({ key: item.detailKey || item.key, label: item.label, fromItemKey: item.key });
+      renderLevelView();
+      LEVEL_BUSY = false;
+    });
+  });
+}
+
+function leaveLevel() { gotoLevel(LEVEL_STACK.length - 1); }
+
+function gotoLevel(targetDepth) {
+  if (LEVEL_BUSY) return;
+  targetDepth = Math.max(0, Math.min(targetDepth, LEVEL_STACK.length));
+  if (targetDepth === LEVEL_STACK.length) return;
+  LEVEL_BUSY = true;
+  const leaving = LEVEL_STACK[targetDepth]; // Ebene, aus der wir (bis) zurueckkehren
+  LEVEL_STACK = LEVEL_STACK.slice(0, targetDepth);
+  // Zielebene aufbauen ...
+  if (LEVEL_STACK.length === 0) {
+    if (lastRawPayload !== null) { handleMessage(lastRawPayload); } else { restoreCenterForLevel1(); }
+  } else {
+    renderLevelView();
+  }
+  // ... und den Knoten, der eben noch die Pille war, von dort zurueckfliegen lassen.
+  const refs = leaving ? nodeRefs[leaving.fromItemKey] : null;
+  if (refs && LAST_CHIP) {
+    const g = refs.g;
+    g.parentNode.appendChild(g);
+    fadeOthers(g, 0);
+    const from = { x: CX, y: CY, sx: LAST_CHIP.hw / DESIGN_R, sy: LAST_CHIP.hh / DESIGN_R };
+    const to = { x: refs.cx, y: refs.cy, sx: refs.baseScale, sy: refs.baseScale };
+    animateNodeTransform(g, from, to, 550, () => { fadeOthers(null, 1); LEVEL_BUSY = false; });
+  } else {
+    fadeOthers(null, 1);
+    LEVEL_BUSY = false;
+  }
+}
+
+function renderLevelView() {
+  const top = LEVEL_STACK[LEVEL_STACK.length - 1];
+  if (!top) { return; }
+  const entry = MEMBER_CACHE[top.key];
+  if (!entry) { fetchMembers(top.key).then(e => { if (e) renderLevelView(); }); return; }
+  if ((Date.now() - entry.ts) >= MEMBER_TTL_MS) { fetchMembers(top.key).then(e => { if (e) renderLevelView(); }); }
+
+  // Mittelpille = der Sammelzaehler selbst
+  const centerG = document.getElementById('node-center');
+  const nm = document.getElementById('lbl-center-name');
+  if (nm) { nm.textContent = top.label; }
+  centerG.classList.add('can-go-up');
+  const w = (typeof entry.value === 'number') ? entry.value : 0;
+  const active = Math.abs(w) > 20;
+  applyNodeState(centerG, centerG.querySelector('.node-glow'), active ? C_GREEN : C_GREY, w, active, CX, CY, 1);
+  setValueText(document.getElementById('lbl-center-val'), w, true);
+  renderLevelBar();
+
+  const devices = entry.members.map(memberToDevice);
+  const items = buildItems(devices);
+  const chipLayout = computeLayout(items.length);
+  LAST_CHIP = chipLayout;
+  layoutCenterChip(chipLayout.hw, chipLayout.hh);
+  const autRing = document.querySelector('#node-center .node-autarky-ring');
+  if (autRing) { autRing.style.display = 'none'; }
+  if (items.length === 0) {
+    document.getElementById('nodes-layer').textContent = '';
+    document.getElementById('wires-layer').textContent = '';
+    builtSig = null;
+    return;
+  }
+  ensureNodes(items);
+  items.forEach(item => updateOuterNode(nodeRefs[item.key], item));
+  fadeOthers(null, 1);
+}
+
+// Kurz-/Langklick auf einem Knoten (Pointer-Ereignisse statt 'click').
+const PRESS_MS = 500, PRESS_MOVE_PX = 8;
+function attachPressHandlers(refs, item) {
+  const g = refs.g;
+  let timer = null, startX = 0, startY = 0, longFired = false, down = false;
+  const resetRing = () => {
+    refs.pressRing.classList.remove('pressing');
+    refs.pressRing.style.transition = 'none';
+    refs.pressRing.setAttribute('stroke-dashoffset', refs.pressCirc.toFixed(1));
+    void refs.pressRing.getBoundingClientRect();
+    refs.pressRing.style.transition = '';
+  };
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); down = false; };
+  g.addEventListener('pointerdown', e => {
+    if (e.button !== undefined && e.button !== 0) return;
+    down = true; longFired = false; startX = e.clientX; startY = e.clientY;
+    if (item.hasMembers && item.detailKey) {
+      refs.pressRing.classList.add('pressing');
+      refs.pressRing.setAttribute('stroke-dashoffset', '0');
+      timer = setTimeout(() => {
+        timer = null; longFired = true; resetRing(); down = false;
+        openDeviceDetail(item.detailKey, g);
+      }, PRESS_MS);
+    }
+  });
+  g.addEventListener('pointerup', e => {
+    if (!down) return;
+    const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > PRESS_MOVE_PX;
+    const wasLong = longFired;
+    clear();
+    if (wasLong || moved) return;
+    if (item.hasMembers) { enterLevel(item, refs); }
+    else if (item.detailKey) { openDeviceDetail(item.detailKey, g); }
+  });
+  g.addEventListener('pointerleave', clear);
+  g.addEventListener('pointercancel', clear);
+}
+
+// Pillen-Klick auf Ebene 2+: eine Ebene zurueck (Ebene 1: Haus-Detail, s.u.).
+document.getElementById('node-center').addEventListener('click', () => {
+  if (LEVEL_STACK.length > 0) { leaveLevel(); }
+});
+
+/* ---------------------------------------------------------------------
+ * Automatische Vorfuehrung (03.09.2026, Dietmar: "Detailseiten in der Demo
+ * einblenden, damit ein Interessent vollumfaenglich sieht was ihn erwarten
+ * kann") - nur mit Instanz-Eigenschaft DemoAutoTour. Laeuft nur bei
+ * Inaktivitaet (>= 20 s ohne Eingabe), jede Beruehrung pausiert 2 Minuten.
+ * Nutzt ausschliesslich dieselben Funktionen wie ein echter Klick.
+ * ------------------------------------------------------------------- */
+let LAST_INTERACTION = Date.now();
+let TOUR_RUNNING = false;
+['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev =>
+  document.addEventListener(ev, () => { LAST_INTERACTION = Date.now(); }, { capture: true, passive: true }));
+function autoTourAllowed() {
+  if (!AUTO_TOUR || !HOOK_PATH) return false;
+  if (Date.now() - LAST_INTERACTION < 20000) return false;
+  const tour = document.getElementById('tourOverlay');
+  if (tour && getComputedStyle(tour).display !== 'none' && tour.classList.contains('show')) return false;
+  return true;
+}
+function pickRandom(arr) { return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null; }
+function visibleItems() {
+  return Object.keys(nodeRefs).map(k => nodeRefs[k]).filter(r => r && r.g && r.g.style.display !== 'none');
+}
+function tourWait(ms) { return new Promise(res => setTimeout(res, ms)); }
+async function autoTourStep() {
+  if (TOUR_RUNNING || !autoTourAllowed()) return;
+  TOUR_RUNNING = true;
+  try {
+    // 1) Ein Sammelknoten? -> aufschachteln, dort ein Mitglied zeigen, zurueck.
+    const aggKeys = LEVEL_STACK.length === 0
+      ? Object.keys(nodeRefs).filter(k => nodeRefs[k].g.classList.contains('aggregate'))
+      : [];
+    const aggKey = pickRandom(aggKeys);
+    if (aggKey && autoTourAllowed()) {
+      const refs = nodeRefs[aggKey];
+      const item = refs.__item;
+      if (item) {
+        enterLevel(item, refs);
+        await tourWait(1200 + 10000);
+        if (!autoTourAllowed()) { if (LEVEL_STACK.length) gotoLevel(0); return; }
+        const r2 = pickRandom(visibleItems().filter(r => r.__item && r.__item.detailKey));
+        if (r2) {
+          openDeviceDetail(r2.__item.detailKey, r2.g);
+          await tourWait(12000);
+          closeDeviceDetail();
+          await tourWait(2500);
+        }
+        if (LEVEL_STACK.length) { leaveLevel(); await tourWait(9000); }
+      }
+    }
+    if (!autoTourAllowed()) return;
+    // 2) Detailseite eines Ebene-1-Knotens (oder des Hauses).
+    const cands = visibleItems().filter(r => r.__item && r.__item.detailKey);
+    const centerG = document.getElementById('node-center');
+    const pick = pickRandom(cands);
+    if (pick) {
+      openDeviceDetail(pick.__item.detailKey, pick.g);
+      await tourWait(12000);
+      closeDeviceDetail();
+    } else if (centerG && centerG.dataset.detailKey) {
+      openDeviceDetail(centerG.dataset.detailKey, centerG);
+      await tourWait(12000);
+      closeDeviceDetail();
+    }
+    await tourWait(15000);
+  } finally {
+    TOUR_RUNNING = false;
+  }
+}
+setInterval(() => { autoTourStep(); }, 3000);
 
 let lastRawPayload = null; // fuer erneutes Rendern bei Kachel-Resize (updateViewBox())
 
@@ -2159,7 +2555,9 @@ function handleMessage(raw) {
     const tip = el('title', {});
     tip.textContent = 'Details von „Haus“ öffnen';
     centerG.appendChild(tip);
-    centerG.addEventListener('click', () => openDeviceDetail(centerG.dataset.detailKey, centerG));
+    // Auf Ebene 2+ bedeutet der Pillen-Klick "eine Ebene zurueck" (eigener
+    // Listener im Aufschachteln-Block) - dann KEINE Haus-Detailseite oeffnen.
+    centerG.addEventListener('click', () => { if (LEVEL_STACK.length === 0) { openDeviceDetail(centerG.dataset.detailKey, centerG); } });
   }
   if (houseDevice && houseDevice.detailKey) {
     centerG.dataset.detailKey = houseDevice.detailKey;
@@ -2175,11 +2573,23 @@ function handleMessage(raw) {
   COUPLE_BOLT = !(d && d.coupleBolt === false);
   COUPLE_GLOW = !(d && d.coupleGlow === false);
   EFFECT_INTENSITY = (d && d.effectIntensity != null) ? (d.effectIntensity / 100) : 1;
+  // Aufschachteln (03.09.2026): Ebene 1 merken (fuer Brotkrumen/Rueckweg);
+  // steht der Nutzer gerade in einer tieferen Ebene, rendert renderLevelView()
+  // die Mitglieder statt der Ebene-1-Geraete - mit derselben Pipeline.
+  AUTO_TOUR = !!(d && d.autoTour);
+  LEVEL1_DEVICES = devices;
+  if (LEVEL_STACK.length > 0) {
+    renderLevelView();
+    return;
+  }
+  restoreCenterForLevel1();
+
   const items = buildItems(devices);
   // Chip-Breite des Hausknotens haengt von der Verbraucherzahl ab (siehe
   // CHIP_THRESHOLD/computeLayout()) - VOR ensureNodes() setzen, damit
   // Chip und Speichen im selben Frame konsistent zueinander stehen.
   const chipLayout = computeLayout(items.length);
+  LAST_CHIP = chipLayout;
   layoutCenterChip(chipLayout.hw, chipLayout.hh);
 
   // Autarkiegrad-Ringsegment - Bogenlaenge = tatsaechlicher Umfang der

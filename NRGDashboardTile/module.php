@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.5';
+    private const NEWS_VERSION = '0.8.6';
     private const NEWS_ITEMS = [
+        'Neu: Aufschachteln - Sammelknoten (virtuelle Zähler mit Unterzählern, MeterHubVirtual-Vertrag 1.3 oder verschachtelte "Weitere Verbraucher") tragen ein Zähler-Badge; kurzer Klick öffnet die nächste Ebene (der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an - beliebig tief), Klick auf die Pille oder die Brotkrumen-Zeile führt zurück. Langer Klick (500 ms, Füllring) öffnet weiterhin die Detailseite. Abgezogene Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus.',
+        'Neu: "Automatische Vorführung" (Instanz-Eigenschaft, Standard aus) - die Kachel öffnet bei Inaktivität von selbst Detailseiten und schachtelt Sammelknoten auf/zu, pausiert bei jeder Berührung. Für Vorstellungs-Instanzen.',
         'Fix: die Blitzbögen am Haus-Knoten wirkten bei einer sehr breiten Pille (viele Geräte) zappelig, weil ihr Sampling entlang des Randes bei Rundung und Geradseite unterschiedlich große Sprünge macht - Amplitude/Feinheit passen sich jetzt dem Seitenverhältnis an, bleiben bei kreisrunder Form unverändert.',
         'Neu: eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher ("Weitere Verbraucher") kann jetzt beliebig viele zusätzliche Wertfelder tragen (JSON-Zeile, z.B. "vinID"/"rangeKmID") - erscheinen automatisch in der "Aktuelle Werte"-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten.',
         'Fix: bei sehr vielen Geräten wirkte der breit gezogene Haus-Tisch wie ein dünner Balken - die Höhe wächst jetzt bei extremer Breite proportional mit, bleibt also ein rundliches Rechteck.',
@@ -254,6 +256,13 @@ class NRGDashboardTile extends IPSModule
         // Discover() JEDE automatische Geräte-Erkennung; Netz/PV/Batterie/
         // Haus kommen dann ausschließlich aus den manuellen Kern-Feldern.
         $this->RegisterPropertyBoolean('DemoIsolated', false);
+        // Automatische Vorfuehrung (03.09.2026, Dietmar: "Es sollten auch
+        // Detailseiten in der Demo eingeblendet werden, damit ein Interessent
+        // vollumfaenglich sieht was ihn erwarten kann"): die Kachel oeffnet
+        // bei Inaktivitaet von selbst Detailseiten und schachtelt Sammel-
+        // knoten auf/zu. Rein clientseitig (module.html), pausiert bei jeder
+        // Nutzerinteraktion. Nur fuer Vorstellungs-Instanzen gedacht.
+        $this->RegisterPropertyBoolean('DemoAutoTour', false);
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -704,6 +713,13 @@ class NRGDashboardTile extends IPSModule
         // beim ersten Scan.
         $devices = $this->mergeRedundantSources($devices);
 
+        // Aufschachteln (03.09.2026): Mitglieder eines Sammelzaehlers auf EINE
+        // Normalform bringen (MeterHubVirtual-Vertrag 1.3 'members' bzw.
+        // verschachtelte 'Members' manueller Verbraucher) und je Mitglied
+        // vermerken, ob es selbst wieder Mitglieder hat - die Kachel zeigt
+        // dafuer ein Zaehler-Badge und erlaubt den Klick in die naechste Ebene.
+        $devices = array_map(function (array $d) { return $this->attachMembers($d); }, $devices);
+
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
@@ -971,6 +987,22 @@ class NRGDashboardTile extends IPSModule
                 return;
             }
             echo json_encode(['ok' => true]);
+            return;
+        }
+        // Aufschachteln (03.09.2026): Mitglieder eines Sammelknotens fuer die
+        // naechste Ebene - Schluessel ist ein Top-Level-Geraet ODER selbst
+        // schon ein Mitglied (<Key>'>'<Index>...), beliebig tief.
+        if (isset($_GET['members'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $key = (string) $_GET['members'];
+            $parent = $this->FindDeviceByKey($key);
+            echo json_encode([
+                'ok'      => $parent !== null,
+                'key'     => $key,
+                'label'   => (string) ($parent['label'] ?? ''),
+                'value'   => $parent !== null ? $this->resolvePowerValue($parent) : null,
+                'members' => $this->MembersForKey($key),
+            ]);
             return;
         }
         if (isset($_GET['detail'])) {
@@ -1259,6 +1291,8 @@ class NRGDashboardTile extends IPSModule
             // EMS_GetCurrentDecision(), rein lesend. null, wenn kein EMS
             // installiert/aktiv oder der Vertrag (noch) fehlt.
             'emsDecision' => $this->ReadEmsDecision(),
+            // Automatische Vorfuehrung (03.09.2026) - nur Vorstellungs-Instanzen.
+            'autoTour'    => $this->readBoolProperty('DemoAutoTour', false),
         ];
     }
 
@@ -3288,6 +3322,15 @@ class NRGDashboardTile extends IPSModule
                     $entry[$field] = (int) $val;
                 }
             }
+            // Verschachtelte Mitglieder (03.09.2026, Aufschachteln): eine manuell
+            // eingetragene Zeile darf ein 'Members'-Array tragen (gleiche
+            // Feldnamen wie eine Zeile: Type/Name/VariableID/Factor/..., beliebig
+            // tief). Gedacht fuer Haushalte ohne MeterHub UND fuer die
+            // Vorstellungs-Instanz - die echte Hierarchie kommt sonst aus
+            // MeterHubVirtual (Vertrag 1.3 'members'), siehe attachMembers().
+            if (!empty($row['Members']) && is_array($row['Members'])) {
+                $entry['members'] = $this->normalizeManualMembers($row['Members']);
+            }
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
         return $results;
@@ -3455,8 +3498,234 @@ class NRGDashboardTile extends IPSModule
      * Findet ein Geraet ueber seinen discovery-stabilen deviceKey() -
      * derselbe Schluessel, den buildPayload() als detailKey mitgibt.
      */
+    /* ==================================================================
+     * Aufschachteln (03.09.2026, Dietmar): Sammelknoten (virtuelle Zaehler
+     * mit Unterzaehlern) lassen sich in der Kachel per Klick in die naechste
+     * Ebene oeffnen. Zwei Quellen, EINE Normalform je Mitglied:
+     *   ['key','label','function','factor','powerID','energyImportID',
+     *    'energyExportID','instanceID','hasMembers']
+     * - MeterHubVirtual, Vertrag 1.3: 'members' je Zuordnung (Ebene 1) und
+     *   auf INSTANZEBENE (jede weitere Ebene - Zwischenknoten einer
+     *   Verkettung haben typischerweise keine Dashboard-Funktion, dort ist
+     *   'assignments' leer; MeterHub-Hinweis 03.09.2026).
+     * - Manuelle Verbraucher: verschachteltes 'Members' in der Zeile.
+     * Rekursion: ist der Parent einer Mitglieds-powerID selbst eine
+     * MeterHubVirtual-Instanz, liefert deren GetFunctions() die naechste
+     * Ebene - MeterHub selbst gibt nur die eigene Ebene aus (abgestimmt).
+     * Mitglieds-Schluessel = <Geraete-Key>'>'<Index>['>'<Index>...] - damit
+     * FindDeviceByKey() ein Mitglied jeder Tiefe als synthetisches Geraet
+     * aufloesen kann (Detailseite ueber dieselbe DetailValues()-Mechanik).
+     * ================================================================== */
+
+    private const MEMBER_MAX_DEPTH = 6;
+
+    /** Normalisiert die Mitglieder eines Top-Level-Geraets (nur EINE Ebene). */
+    private function attachMembers(array $d): array
+    {
+        $raw = $d['members'] ?? null;
+        if (!is_array($raw) || count($raw) === 0) {
+            // MHUBV-Eintrag ohne eigene Zuordnungs-Mitglieder (z.B. aeltere
+            // Vertragsversion) - Instanz-Feld als Rueckfall versuchen.
+            $inst = (int) ($d['instanceID'] ?? 0);
+            if (($d['source'] ?? '') === 'meterhub' && $inst > 0 && $this->isMhubvInstance($inst)) {
+                $raw = $this->mhubvMembersOf($inst);
+            }
+        }
+        if (!is_array($raw) || count($raw) === 0) {
+            unset($d['members']);
+            $d['hasMembers'] = false;
+            $d['memberCount'] = 0;
+            return $d;
+        }
+        $d['members'] = $this->normalizeMemberList($raw, $this->deviceKey($d), (string) ($d['function'] ?? 'other'), 1);
+        $d['hasMembers'] = count($d['members']) > 0;
+        $d['memberCount'] = count($d['members']);
+        return $d;
+    }
+
+    /** Manuelle 'Members'-Zeilen (Type/Name/VariableID/Factor/...) -> Vertragsform. */
+    private function normalizeManualMembers(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) { continue; }
+            $vid = (int) ($row['VariableID'] ?? $row['powerID'] ?? 0);
+            if ($vid <= 0) { continue; }
+            $m = [
+                'name'           => (string) ($row['Name'] ?? $row['name'] ?? ''),
+                'function'       => (string) ($row['Type'] ?? $row['function'] ?? 'other'),
+                'factor'         => (float) ($row['Factor'] ?? $row['factor'] ?? 100),
+                'powerID'        => $vid,
+                'energyImportID' => (int) ($row['EnergyImportID'] ?? $row['energyImportID'] ?? 0),
+                'energyExportID' => (int) ($row['EnergyExportID'] ?? $row['energyExportID'] ?? 0),
+            ];
+            if (!empty($row['SocID'])) { $m['socID'] = (int) $row['SocID']; }
+            if (!empty($row['Members']) && is_array($row['Members'])) {
+                $m['members'] = $this->normalizeManualMembers($row['Members']);
+            }
+            $out[] = $m;
+        }
+        return $out;
+    }
+
+    /**
+     * Eine Mitgliederliste (Vertragsform) auf die Kachel-Normalform bringen.
+     * $parentFunction: Rueckfall fuer Mitglieder ohne eigene 'function'
+     * (MeterHub liefert keine - ein Mitglied ist dort nur "ein Term").
+     */
+    private function normalizeMemberList(array $raw, string $parentKey, string $parentFunction, int $depth): array
+    {
+        $out = [];
+        foreach (array_values($raw) as $i => $m) {
+            if (!is_array($m)) { continue; }
+            $pid = (int) ($m['powerID'] ?? 0);
+            $srcInst = ($pid > 0 && IPS_VariableExists($pid)) ? (int) IPS_GetParent($pid) : 0;
+            $nested = $m['members'] ?? null; // manuelle Verschachtelung
+            $hasKids = is_array($nested) && count($nested) > 0;
+            if (!$hasKids && $depth < self::MEMBER_MAX_DEPTH && $srcInst > 0 && $this->isMhubvInstance($srcInst)) {
+                $hasKids = count($this->mhubvMembersOf($srcInst)) > 0;
+            }
+            $out[] = [
+                'key'            => $parentKey . '>' . $i,
+                'label'          => trim((string) ($m['name'] ?? $m['label'] ?? '')) ?: ('Mitglied ' . ($i + 1)),
+                'function'       => (string) ($m['function'] ?? $parentFunction),
+                'factor'         => (float) ($m['factor'] ?? 100),
+                'powerID'        => $pid,
+                'energyImportID' => (int) ($m['energyImportID'] ?? 0),
+                'energyExportID' => (int) ($m['energyExportID'] ?? 0),
+                'socID'          => (int) ($m['socID'] ?? 0),
+                'instanceID'     => $srcInst,
+                'hasMembers'     => $hasKids,
+            ];
+        }
+        return $out;
+    }
+
+    private function isMhubvInstance(int $inst): bool
+    {
+        if ($inst <= 0 || !IPS_InstanceExists($inst)) { return false; }
+        return (IPS_GetInstance($inst)['ModuleInfo']['ModuleID'] ?? '') === NRGDASH_GUID_METERHUBV;
+    }
+
+    /** Instanz-Feld 'members' einer MeterHubVirtual-Instanz (Vertrag 1.3), leer wenn nicht vorhanden. */
+    private function mhubvMembersOf(int $inst): array
+    {
+        if (!function_exists('MHUBV_GetFunctions') || !$this->isMhubvInstance($inst)) { return []; }
+        try {
+            $raw = @MHUBV_GetFunctions($inst);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $data = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (!is_array($data)) { return []; }
+        // Instanz-Feld bevorzugen (immer da, auch bei Zwischenknoten ohne
+        // Funktion), Zuordnungs-Feld als Rueckfall.
+        if (!empty($data['members']) && is_array($data['members'])) { return $data['members']; }
+        foreach (($data['assignments'] ?? []) as $a) {
+            if (is_array($a) && !empty($a['members']) && is_array($a['members'])) { return $a['members']; }
+        }
+        return [];
+    }
+
+    /**
+     * Mitglieder eines beliebigen Schluessels (Top-Level-Geraet ODER Mitglied
+     * jeder Tiefe) - fuer den ?members=-Hook. Liefert die Kachel-Normalform
+     * inkl. aufgeloestem Momentanwert ('value') und SOC.
+     */
+    private function MembersForKey(string $key): array
+    {
+        $parent = $this->FindDeviceByKey($key);
+        if ($parent === null) { return []; }
+        $parentFunction = (string) ($parent['function'] ?? 'other');
+        $depth = substr_count($key, '>') + 1;
+        $list = null;
+        if (!empty($parent['members']) && is_array($parent['members'])) {
+            // Top-Level (schon normalisiert) oder manuell verschachtelt (roh)
+            $first = reset($parent['members']);
+            $list = (is_array($first) && isset($first['key']))
+                ? $parent['members']
+                : $this->normalizeMemberList($parent['members'], $key, $parentFunction, $depth);
+        } elseif (($parent['instanceID'] ?? 0) > 0 && $this->isMhubvInstance((int) $parent['instanceID'])) {
+            $list = $this->normalizeMemberList($this->mhubvMembersOf((int) $parent['instanceID']), $key, $parentFunction, $depth);
+        }
+        if (!is_array($list)) { return []; }
+        foreach ($list as &$m) {
+            $m['value'] = ($m['powerID'] > 0) ? $this->resolveVariableValue((int) $m['powerID']) : null;
+            $m['soc'] = (!empty($m['socID']) && IPS_VariableExists((int) $m['socID'])) ? $this->resolveVariableValue((int) $m['socID']) : null;
+            $m['detailKey'] = $m['key'];
+        }
+        unset($m);
+        return $list;
+    }
+
+    /** Loest einen Mitglieds-Schluessel (<Key>'>'<i>...) zu einem synthetischen Geraet auf. */
+    private function resolveMemberChain(string $key): ?array
+    {
+        $parts = explode('>', $key);
+        $rootKey = array_shift($parts);
+        $node = null;
+        foreach ($this->GetDevices() as $d) {
+            if ($this->deviceKey($d) === $rootKey) { $node = $d; break; }
+        }
+        if ($node === null) { return null; }
+        $curKey = $rootKey;
+        foreach ($parts as $idxStr) {
+            if (!ctype_digit((string) $idxStr)) { return null; }
+            $idx = (int) $idxStr;
+            $depth = substr_count($curKey, '>') + 1;
+            $parentFunction = (string) ($node['function'] ?? 'other');
+            $list = null;
+            if (!empty($node['members']) && is_array($node['members'])) {
+                $first = reset($node['members']);
+                $list = (is_array($first) && isset($first['key']))
+                    ? $node['members']
+                    : $this->normalizeMemberList($node['members'], $curKey, $parentFunction, $depth);
+                $rawList = $node['members'];
+            } elseif (($node['instanceID'] ?? 0) > 0 && $this->isMhubvInstance((int) $node['instanceID'])) {
+                $rawList = $this->mhubvMembersOf((int) $node['instanceID']);
+                $list = $this->normalizeMemberList($rawList, $curKey, $parentFunction, $depth);
+            } else {
+                return null;
+            }
+            if (!isset($list[$idx])) { return null; }
+            $m = $list[$idx];
+            // Manuell verschachtelte Roh-Mitglieder mitfuehren, damit die
+            // naechste Runde sie wiederfindet.
+            $rawChild = (isset($rawList) && is_array($rawList)) ? (array_values($rawList)[$idx] ?? []) : [];
+            $node = $this->synthesizeMemberDevice($m, isset($rawChild['members']) ? $rawChild['members'] : null);
+            $curKey = $m['key'];
+        }
+        return $node;
+    }
+
+    /** Ein Mitglied als vollwertiges Geraet (fuer BuildDetailPayload/DetailValues). */
+    private function synthesizeMemberDevice(array $m, ?array $rawNested): array
+    {
+        $d = [
+            'function'       => (string) ($m['function'] ?? 'other'),
+            'label'          => (string) ($m['label'] ?? 'Mitglied'),
+            'powerID'        => (int) ($m['powerID'] ?? 0),
+            'energyImportID' => (int) ($m['energyImportID'] ?? 0),
+            'energyExportID' => (int) ($m['energyExportID'] ?? 0),
+            'measured'       => true,
+            'source'         => 'member',
+            'instanceID'     => (int) ($m['instanceID'] ?? 0),
+            'category'       => 'verbraucher',
+            'factor'         => (float) ($m['factor'] ?? 100),
+            'detailKey'      => (string) ($m['key'] ?? ''),
+            'hasMembers'     => (bool) ($m['hasMembers'] ?? false),
+        ];
+        if (!empty($m['socID'])) { $d['socID'] = (int) $m['socID']; }
+        if (is_array($rawNested) && count($rawNested) > 0) { $d['members'] = $rawNested; }
+        return $d;
+    }
+
     private function FindDeviceByKey(string $key): ?array
     {
+        // Mitglieds-Schluessel (Aufschachteln): <Geraete-Key>'>'<Index>...
+        if (strpos($key, '>') !== false) {
+            return $this->resolveMemberChain($key);
+        }
         foreach ($this->GetDevices() as $d) {
             if ($this->deviceKey($d) === $key) {
                 return $d;

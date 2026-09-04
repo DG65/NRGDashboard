@@ -1360,6 +1360,23 @@ gleiche IPSView-Fähigkeit.
   Seitenverhältnis der Pille an — bei vielen Geräten (breite, flache
   Pille) wirken sie dadurch fein statt zappelig, bei kreisrunder Form
   unverändert.
+- **Aufschachteln (`NRGDashboardTile`):** Sammelknoten — virtuelle
+  Zähler mit Unterzählern (MeterHubVirtual-Vertrag 1.3 `members`) oder
+  manuelle Verbraucher mit verschachteltem `Members` — tragen ein
+  Zähler-Badge. Kurzer Klick öffnet die nächste Ebene: der Knoten wird
+  zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen
+  Funktionen der ersten Ebene, beliebig tief. Zurück per Klick auf die
+  Pille (eine Ebene) oder die Brotkrumen-Zeile (direkt). Langer Klick
+  (500 ms, Füllring) öffnet die Detailseite — auch für Mitglieder ohne
+  eigenes Gerät (synthetisch aus dem Mitgliedseintrag). Abgezogene
+  Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
+  Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,
+  die Rekursion löst das Dashboard über die Quell-Instanz der
+  Mitglieds-Variable), die Kachel legt keine eigenen Gruppen an.
+- **Automatische Vorführung (`NRGDashboardTile`):** Instanz-Eigenschaft
+  (Standard aus). Bei Inaktivität öffnet die Kachel von selbst
+  Detailseiten und schachtelt Sammelknoten auf und zu; jede Berührung
+  pausiert das für zwei Minuten. Für Vorstellungs-Instanzen.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
