@@ -2448,7 +2448,7 @@ let TOUR_RUNNING = false;
   document.addEventListener(ev, () => { LAST_INTERACTION = Date.now(); }, { capture: true, passive: true }));
 function autoTourAllowed() {
   if (!AUTO_TOUR || !HOOK_PATH) return false;
-  if (Date.now() - LAST_INTERACTION < 20000) return false;
+  if (Date.now() - LAST_INTERACTION < 8000) return false;
   const tour = document.getElementById('tourOverlay');
   if (tour && getComputedStyle(tour).display !== 'none' && tour.classList.contains('show')) return false;
   return true;
