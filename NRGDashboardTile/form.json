@@ -91,7 +91,11 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Aufschachteln, 03.09.2026): Sammelknoten - virtuelle Zähler mit Unterzählern (MeterHubVirtual-Vertrag 1.3 „members“) oder manuelle Verbraucher mit verschachteltem „Members“ - tragen ein Zähler-Badge. Kurzer Klick öffnet die nächste Ebene: der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen Funktionen der ersten Ebene - beliebig tief, bis ein Zähler keine Unterzähler mehr hat. Zurück per Klick auf die Pille (eine Ebene) oder die Brotkrumen-Zeile oben links (direkt). Langer Klick (500 ms, Füllring) öffnet die Detailseite - auch für Mitglieder ohne eigenes Gerät. Abgezogene Mitglieder (negativer Faktor, z. B. „Hausverbrauch ohne Wallboxen“) erscheinen gestrichelt mit Minus - die Hierarchie kommt vom Anbieter (MeterHub), die Kachel legt keine eigenen Gruppen an."
+          "caption": "✨ Feinheit (Aufschachteln, 03.09.2026): Sammelknoten - virtuelle Zähler mit Unterzählern (MeterHubVirtual-Vertrag 1.3 „members“) oder manuelle Verbraucher mit verschachteltem „Members“ - tragen ein Zähler-Badge. Kurzer Klick öffnet die nächste Ebene: der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen Funktionen der ersten Ebene - beliebig tief, bis ein Zähler keine Unterzähler mehr hat. Zurück per Klick auf die Pille (eine Ebene) - die übergeordnete Ebene steht dazu als „‹ Name“ direkt in der Pille selbst. Langer Klick (500 ms, Füllring) öffnet die Detailseite - auch für Mitglieder ohne eigenes Gerät. Abgezogene Mitglieder (negativer Faktor, z. B. „Hausverbrauch ohne Wallboxen“) erscheinen gestrichelt mit Minus - die Hierarchie kommt vom Anbieter (MeterHub), die Kachel legt keine eigenen Gruppen an."
+        },
+        {
+          "type": "Label",
+          "caption": "✨ Feinheit (09.09.2026): Bedienelemente sitzen bewusst im SVG-Inhalt der Kachel, nicht als eigenes HTML-Element am Kachelrand - WebFront legt in der eingebetteten Ansicht eigenes, natives Chrome sowohl über den oberen (Titelzeile) als auch den unteren Kachelrand, das dort jedes HTML-Overlay verdeckt oder unklickbar macht, egal welcher Abstand gewählt wird."
         },
         {
           "type": "Label",

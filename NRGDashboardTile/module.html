@@ -291,27 +291,19 @@
   .node-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
 
   /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
-  /* Oben kollidiert die Zeile zuverlaessig mit der vom WebFront selbst
-     ueber die Kachel gelegten Titelzeile ("Kachelbezeichnung") - die liegt
-     ALS EIGENE EBENE ueber dem Kachel-Inhalt, nicht nur optisch daneben,
-     und faengt dort Klicks ab (Dietmar, 04.09.2026, Screenshot: Brotkrumen-
-     Text und Kachelbezeichnung ueberlagern sich exakt, "immer das Gleiche"
-     - ein zweiter Versuch mit +20px sass IMMER NOCH darunter). Einzige
-     zuverlaessig kollisionsfreie Zone ist unten (dort sitzt bereits
-     #emsDecision unbeanstandet) - deshalb komplett dorthin verlegt statt
-     erneut am Pixelwert oben zu raten. */
-  #levelBar {
-    position: absolute; left: 8px; right: 8px; bottom: 40px; z-index: 6;
-    display: none; align-items: center; gap: 4px; flex-wrap: wrap;
-    font-size: 12px; line-height: 1.2; padding: 5px 9px; border-radius: 8px;
-    background: rgba(127,135,145,.16); backdrop-filter: blur(2px);
-  }
-  #levelBar.show { display: flex; }
-  #levelBar .crumb { cursor: pointer; opacity: .75; }
-  #levelBar .crumb:hover { opacity: 1; text-decoration: underline; }
-  #levelBar .crumb.current { opacity: 1; font-weight: 700; cursor: default; text-decoration: none; }
-  #levelBar .sep { opacity: .45; }
+  /* HTML-Overlays am Kachelrand (oben UND unten) geraten zuverlaessig in
+     Kollision mit WebFront-eigenem Chrome, das dort als EIGENE EBENE ueber
+     dem Kachel-Inhalt liegt und Klicks abfaengt (Dietmar, 04.09.2026, zwei
+     Fehlversuche: oben mit der Kachel-Titelzeile, unten ebenfalls mit
+     etwas Unbenanntem - "auch die ueberdeckt etwas"). Einzige nachweislich
+     kollisionsfreie Flaeche ist der SVG-Inhalt selbst (Knoten/Pille rendern
+     dort unstrittig richtig) - die Ruecknavigation zieht deshalb komplett
+     IN die Pille um (.pill-back-label, siehe layoutCenterChip()), keine
+     separate HTML-Ebene mehr.
+     Fuellring-Fix (03.09.2026) bleibt hier stehen, .node-count/.node-minus
+     ebenso - nur die alte #levelBar-Regel entfaellt. */
   #node-center.can-go-up { cursor: pointer; }
+  .pill-back-label { fill: #9fe6d2; font-size: 11px; font-weight: 700; text-anchor: middle; pointer-events: none; }
 
   /* Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - kleiner Schalt-
      Knopf unten am Knoten, Farbe nach Zustand: aus=grau, teilweise=gelb
@@ -399,7 +391,6 @@
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div id="ampelWash"></div>
 <div id="emsDecision"><span class="mode"></span><span class="reason"></span></div>
-<div id="levelBar"></div>
 
 <svg class="flow-svg" id="svg" viewBox="-17 4 594 594" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
   <defs id="markerDefs"></defs>
@@ -479,6 +470,7 @@
       <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
     </g>
     <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
+    <text id="lbl-center-back" x="0" y="-5" class="pill-back-label" style="display:none">‹ zurück</text>
     <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
   </g>
 
@@ -2223,22 +2215,23 @@ function restoreCenterForLevel1() {
   renderLevelBar();
 }
 
+// Ruecknavigation IN der Pille statt einer separaten HTML-Ebene am
+// Kachelrand (04.09.2026, siehe CSS-Kommentar bei .pill-back-label) - eine
+// kleine Zeile ueber dem Gruppennamen zeigt die uebergeordnete Ebene
+// ("‹ Erdgeschoss"), Klick auf die GESAMTE Pille geht wie gehabt eine
+// Ebene zurueck (bestehender Listener auf #node-center). Volle Brotkrumen-
+// Kette faellt damit weg (nur noch ein Schritt sichtbar), dafuer garantiert
+// keine Kollision mehr mit WebFront-eigenem Chrome.
 function renderLevelBar() {
-  const bar = document.getElementById('levelBar');
-  if (!bar) return;
-  bar.textContent = '';
-  if (LEVEL_STACK.length === 0) { bar.classList.remove('show'); return; }
-  const crumbs = [{ label: 'Haus', idx: 0 }].concat(LEVEL_STACK.map((lv, i) => ({ label: lv.label, idx: i + 1 })));
-  crumbs.forEach((c, i) => {
-    if (i > 0) { const s = document.createElement('span'); s.className = 'sep'; s.textContent = '›'; bar.appendChild(s); }
-    const sp = document.createElement('span');
-    const isCurrent = (i === crumbs.length - 1);
-    sp.className = 'crumb' + (isCurrent ? ' current' : '');
-    sp.textContent = c.label;
-    if (!isCurrent) { sp.addEventListener('click', () => gotoLevel(c.idx)); }
-    bar.appendChild(sp);
-  });
-  bar.classList.add('show');
+  const backLbl = document.getElementById('lbl-center-back');
+  if (!backLbl) return;
+  if (LEVEL_STACK.length === 0) {
+    backLbl.style.display = 'none';
+    return;
+  }
+  const parentLabel = LEVEL_STACK.length >= 2 ? LEVEL_STACK[LEVEL_STACK.length - 2].label : 'Haus';
+  backLbl.textContent = '‹ ' + parentLabel;
+  backLbl.style.display = '';
 }
 
 function fetchMembers(key) {

@@ -1366,13 +1366,26 @@ gleiche IPSView-Fähigkeit.
   Zähler-Badge. Kurzer Klick öffnet die nächste Ebene: der Knoten wird
   zur Mittelpille, seine Mitglieder ordnen sich darum an, mit allen
   Funktionen der ersten Ebene, beliebig tief. Zurück per Klick auf die
-  Pille (eine Ebene) oder die Brotkrumen-Zeile (direkt). Langer Klick
+  Pille (eine Ebene) — die übergeordnete Ebene steht dazu als "‹ Name"
+  direkt in der Pille selbst, oberhalb des Namens (kein eigenes
+  HTML-Element am Kachelrand, siehe Feinheit weiter unten). Langer Klick
   (500 ms, Füllring) öffnet die Detailseite — auch für Mitglieder ohne
   eigenes Gerät (synthetisch aus dem Mitgliedseintrag). Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
   Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,
   die Rekursion löst das Dashboard über die Quell-Instanz der
   Mitglieds-Variable), die Kachel legt keine eigenen Gruppen an.
+- **Kein HTML-Overlay am Kachelrand (`NRGDashboardTile`):** WebFront legt
+  in der eingebetteten Ansicht eigenes, natives Chrome sowohl über den
+  oberen (Kachel-Titelzeile) als auch den unteren Kachelrand — jedes dort
+  per CSS `position:absolute` platzierte HTML-Element wird davon verdeckt
+  oder unklickbar, unabhängig vom gewählten Abstand. Betroffen war die
+  Rücknavigation beim Aufschachteln; sie sitzt deshalb nicht mehr als
+  eigenes Element am Rand, sondern als "‹ Name" direkt im SVG-Inhalt der
+  Mittelpille selbst — der einzige nachweislich kollisionsfreie Bereich.
+  Grundsatz für künftige Bedienelemente: alles was in der eingebetteten
+  WebFront-Ansicht klickbar sein muss, gehört ins SVG, nicht in ein
+  eigenes HTML-Overlay am Kachelrand.
 - **Automatische Vorführung (`NRGDashboardTile`):** Instanz-Eigenschaft
   (Standard aus). Bei Inaktivität öffnet die Kachel von selbst
   Detailseiten und schachtelt Sammelknoten auf und zu; jede Berührung
