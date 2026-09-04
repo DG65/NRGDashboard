@@ -2253,7 +2253,19 @@ let LEVEL_BUSY = false;    // waehrend einer Morph-Animation keine zweite starte
 function restoreCenterForLevel1() {
   const centerG = document.getElementById('node-center');
   const nm = document.getElementById('lbl-center-name');
-  if (nm) { nm.textContent = 'Haus'; }
+  if (nm) {
+    nm.textContent = 'Haus';
+    // Fund 10.09.2026 (Dietmar: "'Haus' brauchst Du nicht so zu ziehen") -
+    // fitTextWidth() setzt bei einem LANGEN Namen (z.B. "Küche & Haushalt")
+    // ein festes textLength-Attribut, das den Text auf genau diese Breite
+    // ZWINGT. Ohne das hier zu loeschen blieb dieses Attribut beim
+    // Zurueckwechseln auf Ebene 1 stehen und streckte das viel kuerzere
+    // "Haus" auf die alte, groessere Breite. fitTextWidth() selbst entfernt
+    // beide Attribute immer zuerst und setzt sie nur bei tatsaechlicher
+    // Ueberbreite neu - fuer "Haus" (und jeden anderen kurzen Namen) bleibt
+    // es beim reinen Loeschen.
+    fitTextWidth(nm, 33);
+  }
   if (centerG) { centerG.classList.remove('can-go-up'); }
   renderLevelBar();
 }

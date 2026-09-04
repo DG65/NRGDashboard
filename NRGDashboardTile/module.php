@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.4';
+    private const NEWS_VERSION = '0.9.5';
     private const NEWS_ITEMS = [
+        'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
         'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Aussenknoten an die tatsächliche Pillengeometrie angepasst.',
         'Fix: das Rück-Badge beim Aufschachteln saß mittig in der Pille - sitzt jetzt wie die anderen Badges (Warn-Dreieck, Zähler-Badge, Minus-Badge) direkt auf dem Pillenrand, oben links, dem einzigen dort noch freien Eckplatz.',
         'Neu: die Detailseite eines Schaltgruppen-Mitglieds (MeterHubVirtual-Vertrag 1.4) zeigt jetzt einen echten Schalt-Knopf bzw. bei einer Gruppe ohne eigenes Ganzes den Zustand (aus/teilweise/an) - bisher gab es das nur am Knoten selbst, der während der geöffneten Detailseite genau verdeckt ist.',

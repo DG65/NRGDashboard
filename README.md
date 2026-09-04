@@ -1414,7 +1414,10 @@ gleiche IPSView-Fähigkeit.
 - **Lange Namen bleiben im Kreis (`NRGDashboardTile`):** auch der Name
   der Mittelpille selbst (beim Aufschachteln, z. B. „Küche & Haushalt“)
   wird jetzt wie jeder Außenknoten-Name an die tatsächliche
-  Pillengeometrie angepasst und ragt nicht mehr über den Rand hinaus.
+  Pillengeometrie angepasst und ragt nicht mehr über den Rand hinaus —
+  nur gestaucht, nie gestreckt: die feste Breitenvorgabe eines langen
+  Namens wird beim Zurückwechseln auf „Haus“ wieder zurückgesetzt, statt
+  den viel kürzeren Namen künstlich in die Breite zu ziehen.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
