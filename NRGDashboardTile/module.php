@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.8.6';
+    private const NEWS_VERSION = '0.8.7';
     private const NEWS_ITEMS = [
+        'Neu: Schaltgruppen (MeterHubVirtual-Vertrag 1.4) - ein kleiner Schalt-Knopf am Knoten schaltet ein einzelnes Mitglied (z. B. eine Z-Wave-Leuchte) oder eine ganze Gruppe (aus/teilweise/an) direkt in der Kachel, transportneutral über dieselbe RequestAction-Bindung wie bei Wallboxen - respektiert den Vorführmodus.',
         'Neu: Aufschachteln - Sammelknoten (virtuelle Zähler mit Unterzählern, MeterHubVirtual-Vertrag 1.3 oder verschachtelte "Weitere Verbraucher") tragen ein Zähler-Badge; kurzer Klick öffnet die nächste Ebene (der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an - beliebig tief), Klick auf die Pille oder die Brotkrumen-Zeile führt zurück. Langer Klick (500 ms, Füllring) öffnet weiterhin die Detailseite. Abgezogene Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus.',
         'Neu: "Automatische Vorführung" (Instanz-Eigenschaft, Standard aus) - die Kachel öffnet bei Inaktivität von selbst Detailseiten und schachtelt Sammelknoten auf/zu, pausiert bei jeder Berührung. Für Vorstellungs-Instanzen.',
         'Fix: die Blitzbögen am Haus-Knoten wirkten bei einer sehr breiten Pille (viele Geräte) zappelig, weil ihr Sampling entlang des Randes bei Rundung und Geradseite unterschiedlich große Sprünge macht - Amplitude/Feinheit passen sich jetzt dem Seitenverhältnis an, bleiben bei kreisrunder Form unverändert.',
@@ -992,6 +993,46 @@ class NRGDashboardTile extends IPSModule
         // Aufschachteln (03.09.2026): Mitglieder eines Sammelknotens fuer die
         // naechste Ebene - Schluessel ist ein Top-Level-Geraet ODER selbst
         // schon ein Mitglied (<Key>'>'<Index>...), beliebig tief.
+        // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026): switchID ist eine
+        // ganz normale, per EnableAction() RequestAction-gebundene Bool-
+        // Variable - derselbe transportneutrale Weg wie chargeEnableID
+        // (resolveActionTarget() liest Parent-Instanz+Ident direkt aus dem
+        // Variablenobjekt, kein Partnermodul-Wissen noetig). Funktioniert
+        // identisch fuer Top-Level-Geraete UND Mitglieder jeder Tiefe, weil
+        // beide ueber FindDeviceByKey()/'switchID' aufgeloest werden.
+        if (isset($_GET['switchAction'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            if ($this->readBoolProperty('DemoMode', false)) {
+                http_response_code(403);
+                echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert.']);
+                return;
+            }
+            $key = (string) ($_GET['key'] ?? '');
+            $d = $this->FindDeviceByKey($key);
+            $vid = (int) ($d['switchID'] ?? 0);
+            if ($d === null || $vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'error' => 'Ungültiges oder nicht schaltbares Gerät.']);
+                return;
+            }
+            $target = $this->resolveActionTarget($vid);
+            if ($target === null) {
+                http_response_code(500);
+                echo json_encode(['ok' => false, 'error' => 'Ziel-Instanz konnte nicht ermittelt werden.']);
+                return;
+            }
+            $value = ($_GET['value'] ?? '1') === '1';
+            $err = $this->runPartnerCall(function () use ($target, $value) {
+                IPS_RequestAction($target[0], $target[1], $value);
+            });
+            if ($err !== null) {
+                http_response_code(500);
+                echo json_encode(['ok' => false, 'error' => 'Schalten fehlgeschlagen: ' . $err]);
+                return;
+            }
+            echo json_encode(['ok' => true]);
+            return;
+        }
         if (isset($_GET['members'])) {
             header('Content-Type: application/json; charset=utf-8');
             $key = (string) $_GET['members'];
@@ -1097,6 +1138,18 @@ class NRGDashboardTile extends IPSModule
             }
             if (!empty($d['socID'])) {
                 $d['soc'] = $this->resolveVariableValue((int) $d['socID']);
+            }
+            // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - switchID/
+            // switchStateID sind *ID-Referenzen, hier auf fertige Werte
+            // aufgeloest (Muster: socID -> soc direkt darueber).
+            $switchVid = (int) ($d['switchID'] ?? 0);
+            if ($switchVid > 0 && IPS_VariableExists($switchVid)) {
+                $d['switchable'] = true;
+                $d['switchOn'] = (bool) GetValueBoolean($switchVid);
+            }
+            $switchStateVid = (int) ($d['switchStateID'] ?? 0);
+            if ($switchStateVid > 0 && IPS_VariableExists($switchStateVid)) {
+                $d['switchState'] = (int) GetValue($switchStateVid);
             }
             // Wallbox-Sonderfall (InverterHub, 27.07.2026): "eingesteckt aber
             // nicht ladend" (0 W) gilt trotzdem als aktiv/volle Farbe, nicht
@@ -3560,6 +3613,8 @@ class NRGDashboardTile extends IPSModule
                 'energyExportID' => (int) ($row['EnergyExportID'] ?? $row['energyExportID'] ?? 0),
             ];
             if (!empty($row['SocID'])) { $m['socID'] = (int) $row['SocID']; }
+            if (!empty($row['SwitchID'])) { $m['switchID'] = (int) $row['SwitchID']; }
+            if (!empty($row['SwitchStateID'])) { $m['switchStateID'] = (int) $row['SwitchStateID']; }
             if (!empty($row['Members']) && is_array($row['Members'])) {
                 $m['members'] = $this->normalizeManualMembers($row['Members']);
             }
@@ -3596,6 +3651,14 @@ class NRGDashboardTile extends IPSModule
                 'socID'          => (int) ($m['socID'] ?? 0),
                 'instanceID'     => $srcInst,
                 'hasMembers'     => $hasKids,
+                // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026): switchID
+                // (Bool, per EnableAction() steuerbar wie chargeEnableID) je
+                // Mitglied - auch bei abgezogenen Zeilen (einzeln bleibt ein
+                // Mitglied schaltbar, auch wenn es nicht zur Gruppensumme
+                // zaehlt). switchStateID (0 aus/1 teilweise/2 an) nur bei
+                // Mitgliedern, die selbst wieder eine Gruppe sind.
+                'switchID'       => (int) ($m['switchID'] ?? 0),
+                'switchStateID'  => (int) ($m['switchStateID'] ?? 0),
             ];
         }
         return $out;
@@ -3652,6 +3715,9 @@ class NRGDashboardTile extends IPSModule
         foreach ($list as &$m) {
             $m['value'] = ($m['powerID'] > 0) ? $this->resolveVariableValue((int) $m['powerID']) : null;
             $m['soc'] = (!empty($m['socID']) && IPS_VariableExists((int) $m['socID'])) ? $this->resolveVariableValue((int) $m['socID']) : null;
+            $m['switchable'] = (!empty($m['switchID']) && IPS_VariableExists((int) $m['switchID']));
+            $m['switchOn'] = $m['switchable'] ? (bool) GetValueBoolean((int) $m['switchID']) : null;
+            $m['switchState'] = (!empty($m['switchStateID']) && IPS_VariableExists((int) $m['switchStateID'])) ? (int) GetValue((int) $m['switchStateID']) : null;
             $m['detailKey'] = $m['key'];
         }
         unset($m);
@@ -3716,6 +3782,8 @@ class NRGDashboardTile extends IPSModule
             'hasMembers'     => (bool) ($m['hasMembers'] ?? false),
         ];
         if (!empty($m['socID'])) { $d['socID'] = (int) $m['socID']; }
+        if (!empty($m['switchID'])) { $d['switchID'] = (int) $m['switchID']; }
+        if (!empty($m['switchStateID'])) { $d['switchStateID'] = (int) $m['switchStateID']; }
         if (is_array($rawNested) && count($rawNested) > 0) { $d['members'] = $rawNested; }
         return $d;
     }

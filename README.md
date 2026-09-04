@@ -1377,6 +1377,13 @@ gleiche IPSView-Fähigkeit.
   (Standard aus). Bei Inaktivität öffnet die Kachel von selbst
   Detailseiten und schachtelt Sammelknoten auf und zu; jede Berührung
   pausiert das für zwei Minuten. Für Vorstellungs-Instanzen.
+- **Schaltgruppen (`NRGDashboardTile`):** liefert MeterHubVirtual
+  `switchID`/`switchStateID` (Vertrag 1.4), zeigt die Kachel einen
+  kleinen Schalt-Knopf am Knoten — grau/gelb/grün für aus/teilweise/an.
+  Ein einzelnes Mitglied lässt sich direkt schalten, eine Gruppe
+  schaltet alle schaltbaren (nur positiven) Mitglieder auf einmal —
+  über denselben transportneutralen RequestAction-Weg wie die
+  Wallbox-Steuerung, respektiert also auch den Vorführmodus.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein

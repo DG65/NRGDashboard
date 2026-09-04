@@ -304,6 +304,16 @@
   #levelBar .sep { opacity: .45; }
   #node-center.can-go-up { cursor: pointer; }
 
+  /* Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - kleiner Schalt-
+     Knopf unten am Knoten, Farbe nach Zustand: aus=grau, teilweise=gelb
+     (nur Gruppen), an=gruen. Eigener Klick-Bereich, damit er sich nicht
+     mit dem Kurz-/Lang-Klick des restlichen Knotens beisst. */
+  .node-switch { cursor: pointer; }
+  .node-switch-bg { fill: #26292e; stroke: rgba(255,255,255,.55); stroke-width: 1.2; }
+  .node-switch.on .node-switch-bg { fill: #2e6b32; }
+  .node-switch.partial .node-switch-bg { fill: #8a6d1a; }
+  .node-switch-ico { stroke: #e8eaed; stroke-width: 1.6; fill: none; }
+
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -1195,6 +1205,12 @@ function buildItems(devices) {
         hasMembers: !!d.hasMembers,
         memberCount: d.memberCount || 0,
         factor: (typeof d.factor === 'number') ? d.factor : 100,
+        // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - switchID/
+        // switchStateID selbst sind *ID-Referenzen (server-seitig aufgeloest,
+        // siehe backend), hier kommen nur die fertigen Werte an.
+        switchable: !!d.switchable,
+        switchOn: (d.switchOn === undefined) ? null : d.switchOn,
+        switchState: (d.switchState === undefined) ? null : d.switchState, // 0 aus/1 teilweise/2 an (nur Gruppen)
       };
     });
 
@@ -1345,8 +1361,20 @@ function createOuterNode(item, pt, layout) {
   });
   g.appendChild(pressRing);
 
+  // Schaltgruppen (03.09.2026) - kleiner Kreis unten am Knoten (Power-Icon),
+  // eigenes Klick-Ziel (stopPropagation, damit der Kurz-/Lang-Klick des
+  // Knotens selbst nicht mitausloest).
+  const switchG = el('g', { class: 'node-switch', transform: 'translate(0,' + (DESIGN_R + 15).toFixed(1) + ')' });
+  switchG.appendChild(el('circle', { r: 10, class: 'node-switch-bg' }));
+  const switchIco = el('g', { class: 'node-switch-ico' });
+  switchIco.appendChild(el('path', { d: 'M0,-5 L0,0' }));
+  switchIco.appendChild(el('path', { d: 'M-4,-2 A5,5 0 1 0 4,-2' }));
+  switchG.appendChild(switchIco);
+  switchG.style.display = 'none';
+  g.appendChild(switchG);
+
   return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
-           countG, countTxt, minusG, pressRing, pressCirc };
+           countG, countTxt, minusG, pressRing, pressCirc, switchG };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -1715,6 +1743,7 @@ function ensureNodes(items) {
       refs.g.appendChild(tip);
       attachPressHandlers(refs, item);
     }
+    attachSwitchHandler(refs, item);
     refs.spoke = createSpoke(pt, layout, wiresLayer);
     nodeRefs[item.key] = refs;
     nodesLayer.appendChild(refs.g);
@@ -1865,6 +1894,22 @@ function updateOuterNode(refs, item) {
     refs.countG.style.display = 'none';
   }
   refs.minusG.style.display = (typeof item.factor === 'number' && item.factor < 0 && !hidden) ? '' : 'none';
+
+  // Schaltgruppen (03.09.2026): switchable = einzeln schaltbar (switchOn
+  // bestimmt die Farbe), sonst switchState (nur Gruppen: 0 aus/1 teilweise/
+  // 2 an) rein informativ ohne Klick-Wirkung (Gruppe mit switchable=false
+  // aber switchState gesetzt gibt es laut Vertrag nicht, defensiv trotzdem
+  // beruecksichtigt).
+  if ((item.switchable || item.switchState != null) && !hidden) {
+    refs.switchG.style.display = '';
+    refs.switchG.style.cursor = item.switchable ? 'pointer' : 'default';
+    const on = item.switchable ? !!item.switchOn : (item.switchState === 2);
+    const partial = !item.switchable && item.switchState === 1;
+    refs.switchG.classList.toggle('on', on);
+    refs.switchG.classList.toggle('partial', partial);
+  } else {
+    refs.switchG.style.display = 'none';
+  }
 
   // Zugeordnetes Fahrzeug bekannt (item.sub) -> Fahrzeugname wird die
   // groessere/farbige Zeile, Geraetename ruckt klein/grau darunter (statt
@@ -2215,6 +2260,9 @@ function memberToDevice(m) {
     factor: (typeof m.factor === 'number') ? m.factor : 100,
     hasMembers: !!m.hasMembers,
     memberCount: m.memberCount || 0,
+    switchable: !!m.switchable,
+    switchOn: (m.switchOn === undefined) ? null : m.switchOn,
+    switchState: (m.switchState === undefined) ? null : m.switchState,
   };
 }
 
@@ -2323,6 +2371,25 @@ function renderLevelView() {
   ensureNodes(items);
   items.forEach(item => updateOuterNode(nodeRefs[item.key], item));
   fadeOthers(null, 1);
+}
+
+// Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - eigener, vom Knoten
+// entkoppelter Klick-Bereich: einmal registriert, danach nur die Sichtbar-
+// keit/den Klick-Schluessel in updateOuterNode() aktualisieren.
+function attachSwitchHandler(refs, item) {
+  if (refs.switchBound) return;
+  refs.switchBound = true;
+  refs.switchG.addEventListener('pointerdown', e => e.stopPropagation());
+  refs.switchG.addEventListener('pointerup', e => {
+    e.stopPropagation();
+    const it = refs.__item;
+    if (!it || !it.switchable || !HOOK_PATH) return;
+    const next = !it.switchOn;
+    refs.switchG.style.opacity = '.4';
+    fetch(HOOK_PATH + '?switchAction=1&key=' + encodeURIComponent(it.detailKey || it.key) + '&value=' + (next ? '1' : '0'))
+      .then(() => { refs.switchG.style.opacity = ''; })
+      .catch(() => { refs.switchG.style.opacity = ''; });
+  });
 }
 
 // Kurz-/Langklick auf einem Knoten (Pointer-Ereignisse statt 'click').
