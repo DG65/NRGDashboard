@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.6';
+    private const NEWS_VERSION = '0.9.7';
     private const NEWS_ITEMS = [
+        'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',
         'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
         'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
         'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Aussenknoten an die tatsächliche Pillengeometrie angepasst.',
@@ -2906,6 +2907,19 @@ class NRGDashboardTile extends IPSModule
      */
     private function PriceSlotsForRange(int $from, int $to): array
     {
+        // Isolierte Demo (10.09.2026, Dietmar: "schon wieder keine
+        // Preiskurve sichtbar") - ohne echte Tibber-Instanz bleibt nur
+        // BdewHistorySlots() uebrig, die aus dem BDEW-Attribut hoechstens
+        // EINEN Slot pro Tag baut (ein Eintrag gilt bis zum naechsten
+        // Quartals-Abruf) - buildPayload() setzt 'priceTrend' zwar (count()
+        // > 0), aber module.html zeichnet die Sparkline erst ab 2 Punkten
+        // (Kurve WAERE damit technisch "gesetzt", aber unsichtbar). Die
+        // Demo bekommt deshalb eine eigene, klar als Naeherung markierte
+        // Tageskurve statt der echten Quellen.
+        if ($this->readBoolProperty('DemoIsolated', false)) {
+            return $this->demoPriceSlots($from, $to);
+        }
+
         $slots = [];
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
         if ($id > 0) {
@@ -2941,6 +2955,60 @@ class NRGDashboardTile extends IPSModule
             foreach ($this->BdewHistorySlots($cursor, $to) as $bs) {
                 $slots[] = $bs;
             }
+        }
+        return $slots;
+    }
+
+    /**
+     * Synthetische Tages-Preiskurve fuer die isolierte Demo (10.09.2026) -
+     * dieselbe stuendliche Slot-Form wie PriceSlotsForRange() liefert
+     * (start/end/price/approx), aber deterministisch aus einer typischen
+     * dynamischen Tarifkurve erzeugt (Nachttal, Morgen-/Abendspitze) statt
+     * aus echten Tibber-/BDEW-Daten - die Demo hat keine echte
+     * Tibber-Instanz, und die BDEW-Historie liefert dort hoechstens EINEN
+     * Slot pro Tag (siehe Kommentar bei PriceSlotsForRange()), was die
+     * Sparkline in module.html (zeichnet erst ab 2 Punkten) unsichtbar
+     * macht. Ankerpreis: letzter echter BDEW-Wert falls vorhanden (auch in
+     * der Demo kann die Instanz gelegentlich einen echten Abruf gemacht
+     * haben), sonst ein plausibler Festwert. 'approx' => true nutzt
+     * automatisch denselben ungefaehr-Hinweistext wie jede andere
+     * Naeherung (siehe BuildDetailPayload()). Deckt einen BELIEBIGEN
+     * Zeitraum ab (nicht nur einen einzelnen Tag) - GetPriceSeries() ist
+     * ein Verbund-Vertrag (MeterHub-"Kriterienabrechnung"), den auch die
+     * Demo-Instanz ueber Wochen/Monate hinweg plausibel bedienen muss,
+     * nicht nur die eigene Tages-Sparkline.
+     */
+    private function demoPriceSlots(int $from, int $to): array
+    {
+        $anchor = $this->CurrentBdewPrice();
+        $base = $anchor !== null ? $anchor['priceCtPerKWh'] : 30.0;
+        // Tagesform relativ zum Mittelwert (24 stuendliche Faktoren) - grobe,
+        // aber typische Kurvenform eines dynamischen Stromtarifs: Nachttal,
+        // Mittags-Solar-Delle, Morgen-/Abendspitze. Fuer JEDEN Kalendertag
+        // im angefragten Zeitraum identisch angewendet (DST-Regel: ueber
+        // strtotime('+1 day', ...) iteriert, nie mit fester Sekundenzahl).
+        $shape = [
+            0.85, 0.80, 0.78, 0.78, 0.82, 0.90, 1.05, 1.15,
+            1.10, 1.00, 0.92, 0.88, 0.85, 0.88, 0.92, 0.98,
+            1.10, 1.22, 1.25, 1.15, 1.05, 0.98, 0.92, 0.88,
+        ];
+        $slots = [];
+        $dayStart = strtotime('today', $from);
+        while ($dayStart < $to) {
+            for ($h = 0; $h < 24; $h++) {
+                $sStart = strtotime("+{$h} hours", $dayStart);
+                $sEnd = strtotime('+1 hour', $sStart);
+                if ($sEnd <= $from || $sStart >= $to) {
+                    continue;
+                }
+                $slots[] = [
+                    'start' => max($from, $sStart),
+                    'end' => min($to, $sEnd),
+                    'price' => round($base * $shape[$h], 2),
+                    'approx' => true,
+                ];
+            }
+            $dayStart = strtotime('+1 day', $dayStart);
         }
         return $slots;
     }

@@ -1440,7 +1440,13 @@ gleiche IPSView-Fähigkeit.
   manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz
   mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine
   Mischung aus echten Live-Messwerten und erfundenen Zusatz-
-  verbrauchern geht sonst rechnerisch nicht auf).
+  verbrauchern geht sonst rechnerisch nicht auf). Die Strompreis-
+  Sparkline am Netz-Knoten bekommt dabei eine eigene, deutlich als
+  Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abend-
+  spitze, verankert am zuletzt bekannten BDEW-Wert) statt aus einer
+  echten Tibber-Instanz oder der BDEW-Preishistorie zu stammen — die
+  liefert ohne echten Tibber höchstens einen Slot pro Tag, zu wenig für
+  eine sichtbare Kurve.
 - **Ausreißer-Schutz auch in `NRGDashboardForecast`:** derselbe
   Fehlermechanismus (ein defekter Archivwert verzerrt eine aus
   Leistungswerten berechnete Anzeige) betrifft dort `readMeasured()`
