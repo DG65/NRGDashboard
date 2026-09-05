@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.10';
+    private const NEWS_VERSION = '0.9.11';
     private const NEWS_ITEMS = [
+        'Neu: das Verbotszeichen aus 0.9.10 ist wieder weg ("gefällt mir überhaupt nicht") - stattdessen gibt es jetzt für jede Ebenenwechsel-Richtung 3 auswählbare Animationen plus "Zufällig" (hinter dem Doppelpfeil): wechselt die Ebene tatsächlich, spielt wahlweise ein Funkenschauer (Standard), eine Irisblende/Strudel oder ein Ping-Puls; geht es nicht weiter, statt eines Verbotszeichens jetzt ein Kopfschütteln, Schwindel-Sternchen oder eine zerplatzende Seifenblase.',
         'Neu: ein langer Druck, der nicht weiterführt (Blatt-Knoten ohne Mitglieder, oder die Mittelpille auf Ebene 1 ohne Ebene darüber), zeigt jetzt statt eines kurzen roten Aufblitzens ein echtes Verbotszeichen - der Ring wird dicker und bekommt einen diagonalen Balken, hält eine Sekunde und zerfällt dann sichtbar zu Asche (Grau, ausblendend). Signalisiert deutlich: hier geht es nicht weiter, man bleibt auf derselben Ebene.',
         'Neu: alle Steuermöglichkeiten für die Animation sitzen jetzt gemeinsam hinter dem Doppelpfeil oben rechts (Kachel im WebFront aufziehen) - dazu sind "Übergangszeit aktiv/inaktiv", "Fluss-Tempo" und die "Automatische Vorführung" von der Konsole dorthin gewandert. Damit lässt sich z. B. eine gerade laufende automatische Vorführung direkt im WebFront stoppen, ohne Konsolenzugriff.',
         'Fix: der "Isolierte Demo-Modus" versuchte für die Strompreis-Sparkline gar nicht erst eine vorhandene echte Tibber-Instanz - läuft sie auf demselben Symcon wie die Demo-Kachel (Regelfall), werden jetzt wie bei jeder anderen Instanz zuerst die echten Preise verwendet; nur ohne jede echte Quelle (weder Tibber noch ausreichend BDEW-Historie) springt die Demo auf eine synthetische Näherungskurve.',
@@ -212,6 +213,31 @@ class NRGDashboardTile extends IPSModule
         if ($isNewTransition) {
             $this->SetValue('TransitionMs', (int) $this->legacyValue('TransitionMs', self::DEF_TRANSITION));
         }
+        // Ebenenwechsel-Animationen (10.09.2026, Dietmar: erst ein
+        // Verbotszeichen fuer den blockierten Fall vorgeschlagen, dann
+        // verworfen ("das gefällt mir überhaupt nicht") - stattdessen je 3
+        // Varianten fuer Erfolg (Ebene wechselt tatsaechlich) UND Blockiert
+        // (geht nicht weiter), plus "Zufällig". Auswahl-Profile (Ganzzahl
+        // mit Assoziationen) statt Bool/freier Zahl, damit WebFront eine
+        // Auswahlliste statt eines Zahlenfelds zeigt.
+        $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
+            0 => 'Funkenschauer', 1 => 'Irisblende/Strudel', 2 => 'Ping-Puls', 3 => 'Zufällig',
+        ]);
+        $isNewOpenAnim = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('OpenAnimStyle', 'Animation bei Ebenenwechsel', 'NRGDASH.OpenAnimStyle', 207);
+        $this->EnableAction('OpenAnimStyle');
+        if ($isNewOpenAnim) {
+            $this->SetValue('OpenAnimStyle', 0);
+        }
+        $this->ensureEnumProfile('NRGDASH.BlockedAnimStyle', [
+            0 => 'Kopfschütteln', 1 => 'Schwindel-Sternchen', 2 => 'Seifenblase', 3 => 'Zufällig',
+        ]);
+        $isNewBlockedAnim = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('BlockedAnimStyle', 'Animation, wenn keine Ebene mehr möglich ist', 'NRGDASH.BlockedAnimStyle', 208);
+        $this->EnableAction('BlockedAnimStyle');
+        if ($isNewBlockedAnim) {
+            $this->SetValue('BlockedAnimStyle', 0);
+        }
         // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
         // InverterHubTile - die Kachel muss auch OHNE jedes installierte
         // Partnermodul laufen können, rein über manuell zugewiesene
@@ -362,6 +388,8 @@ class NRGDashboardTile extends IPSModule
         $this->SetValue('FlowRefW', self::DEF_FLOWREF);
         $this->SetValue('TransitionMs', self::DEF_TRANSITION);
         $this->SetValue('DemoAutoTour', false);
+        $this->SetValue('OpenAnimStyle', 0);
+        $this->SetValue('BlockedAnimStyle', 0);
         $this->Render();
     }
 
@@ -372,6 +400,24 @@ class NRGDashboardTile extends IPSModule
             $this->legacyConfigCache = is_array($cfg) ? $cfg : [];
         }
         return array_key_exists($name, $this->legacyConfigCache) ? $this->legacyConfigCache[$name] : $default;
+    }
+
+    /**
+     * Legt bei Bedarf ein Ganzzahl-Variablenprofil mit Assoziationen an
+     * (WebFront zeigt dafuer eine Auswahlliste statt eines Zahlenfelds) -
+     * genutzt fuer OpenAnimStyle/BlockedAnimStyle (10.09.2026). Idempotent:
+     * ein bereits vorhandenes Profil wird nur bei den Assoziationen
+     * aufgefrischt, nie neu angelegt (IPS_SetVariableProfileAssociation
+     * ersetzt einen vorhandenen Wert ohnehin, kein doppelter Eintrag).
+     */
+    private function ensureEnumProfile(string $profile, array $captions): void
+    {
+        if (!IPS_VariableProfileExists($profile)) {
+            IPS_CreateVariableProfile($profile, VARIABLETYPE_INTEGER);
+        }
+        foreach ($captions as $value => $caption) {
+            IPS_SetVariableProfileAssociation($profile, $value, $caption, '', -1);
+        }
     }
 
     private function Render(): void
@@ -403,6 +449,11 @@ class NRGDashboardTile extends IPSModule
         }
         if ($Ident === 'TransitionMs') {
             $this->SetValue($Ident, max(0, min(5000, (int) $Value)));
+            $this->Render();
+            return;
+        }
+        if ($Ident === 'OpenAnimStyle' || $Ident === 'BlockedAnimStyle') {
+            $this->SetValue($Ident, max(0, min(3, (int) $Value)));
             $this->Render();
         }
     }
@@ -1377,6 +1428,10 @@ class NRGDashboardTile extends IPSModule
             'coupleBolt'   => (bool) $this->GetValue('CoupleBoltPower'),
             'coupleGlow'   => (bool) $this->GetValue('CoupleGlowPower'),
             'effectIntensity' => (int) $this->GetValue('EffectIntensity'),
+            // Ebenenwechsel-Animationen (10.09.2026) - 0-2 = feste Wahl,
+            // 3 = "Zufällig" (module.html wuerfelt dann selbst je Ereignis).
+            'openAnimStyle'    => (int) $this->GetValue('OpenAnimStyle'),
+            'blockedAnimStyle' => (int) $this->GetValue('BlockedAnimStyle'),
             // Pfad des eigenen WebHooks - die Kachel oeffnet darueber bei
             // Klick auf einen Geraete-Knoten die bildschirmfuellende
             // Detailseite (?detail=<key>) in einem neuen Browser-Tab.

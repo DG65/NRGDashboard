@@ -1374,12 +1374,14 @@ gleiche IPSView-Fähigkeit.
   langem Druck, jetzt auf die Pille selbst — die übergeordnete Ebene
   steht dazu als kleines "‹"-Badge oben links auf dem Pillenrand (Name
   als Hover-Tooltip, kein eigenes HTML-Element am Kachelrand, siehe
-  Feinheit weiter unten). Geht es in die jeweilige Richtung nicht (ein
-  Blatt ohne Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber),
-  erscheint stattdessen ein echtes Verbotszeichen: der Ring wird dicker
-  und bekommt einen diagonalen Balken, hält eine Sekunde lang und zerfällt
-  danach sichtbar zu Asche (verblassendes Grau) — ohne Wirkung, aber
-  deutlich als "hier geht's nicht weiter" erkennbar. Abgezogene
+  Feinheit weiter unten). Ein tatsächlicher Ebenenwechsel spielt dabei
+  eine kleine Erfolgs-Animation ab (Funkenschauer, Irisblende/Strudel
+  oder Ping-Puls — Auswahl inkl. "Zufällig" hinter dem Doppelpfeil).
+  Geht es in die jeweilige Richtung nicht (ein Blatt ohne Mitglieder,
+  oder die Pille auf Ebene 1 ohne Ebene darüber), spielt stattdessen
+  eine der drei Blockiert-Animationen (Kopfschütteln, Schwindel-Sternchen
+  oder eine zerplatzende Seifenblase — ebenfalls mit "Zufällig" wählbar),
+  ohne Wirkung. Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
   Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,
   die Rekursion löst das Dashboard über die Quell-Instanz der
