@@ -1375,13 +1375,16 @@ gleiche IPSView-Fähigkeit.
   steht dazu als kleines "‹"-Badge oben links auf dem Pillenrand (Name
   als Hover-Tooltip, kein eigenes HTML-Element am Kachelrand, siehe
   Feinheit weiter unten). Ein tatsächlicher Ebenenwechsel spielt dabei
-  eine kleine Erfolgs-Animation ab (Funkenschauer, Portal-Iris oder
-  Kreiswellen — Auswahl inkl. "Zufällig" hinter dem Doppelpfeil).
-  Geht es in die jeweilige Richtung nicht (ein Blatt ohne Mitglieder,
-  oder die Pille auf Ebene 1 ohne Ebene darüber), spielt stattdessen
-  eine der drei Blockiert-Animationen (Kopfschütteln, Schwindel-Sternchen
-  oder ein zu einem Häufchen zerfließender Morph — ebenfalls mit
-  "Zufällig" wählbar),
+  eine kleine Erfolgs-Animation ab (Funkenschauer, Portal-Iris — echte
+  überlappende Lamellen um einen randnahen Drehpunkt, wie bei einer
+  Kamerablende — oder Kreiswellen, die aus der Mitte nach außen wachsen
+  wie ein Stein im Wasser; Auswahl inkl. "Zufällig" hinter dem
+  Doppelpfeil). Geht es in die jeweilige Richtung nicht (ein Blatt ohne
+  Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber), spielt
+  stattdessen eine der drei Blockiert-Animationen — Kopfschütteln (der
+  echte Knoten/die echte Pille dreht sich um die vertikale Achse),
+  Schwindel-Sternchen oder Häufchen (dieselbe echte Fläche staucht sich
+  sichtbar nach unten zusammen) — ebenfalls mit "Zufällig" wählbar,
   ohne Wirkung. Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
   Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,

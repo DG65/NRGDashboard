@@ -322,52 +322,79 @@
     0% { opacity: 1; transform: translate(0, 0) scale(1); }
     100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.25); }
   }
-  /* Portal-Iris (ueberarbeitet: Dietmar "sieht man nicht" - jetzt ein
-     segmentierter, kraeftiger Blenden-Ring (Kamera-Iris-Optik durch
-     stroke-dasharray) statt einer duennen, kaum sichtbaren Linie. */
-  .fx-iris { fill: none; stroke: #43a047; stroke-width: 9; stroke-dasharray: 13 9; opacity: .95; transform-origin: center; animation: fxIrisClose .65s cubic-bezier(.55,0,.85,.35) forwards; }
-  @keyframes fxIrisClose {
-    0% { transform: scale(1.15) rotate(0deg); opacity: .95; }
-    70% { transform: scale(.4) rotate(170deg); opacity: .95; }
-    100% { transform: scale(0) rotate(210deg); opacity: 0; }
+  /* Portal-Iris (10.09.2026 komplett neu, Dietmar: "hat mit einer Iris
+     nichts zu tun, recherchiere wie eine Kamera-Iris funktioniert") - eine
+     echte Kamera-Blende besteht aus mehreren ueberlappenden Lamellen, die
+     sich beim Schliessen gleichzeitig zur Mitte drehen (kein einzelner
+     schrumpfender Ring). Nachgebaut mit N Lamellen-Dreiecken: jede sitzt
+     in einer eigenen <g transform="rotate(i*360/N)"> (statisches SVG-
+     Attribut, gefahrlos - siehe JS fuer die Erzeugung), die eigentliche
+     Schliessbewegung ist eine CSS-Rotation auf dem <path> DARIN. */
+  .fx-iris-blade { fill: #2e7d32; stroke: #66bb6a; stroke-width: 1; opacity: 0; transform-origin: 0 0; }
+  .fx-iris-blade.closing { opacity: .95; animation: fxIrisBladeClose .6s cubic-bezier(.6,0,.85,.3) forwards; }
+  @keyframes fxIrisBladeClose {
+    0% { transform: rotate(0deg); opacity: .95; }
+    100% { transform: rotate(78deg); opacity: .95; }
   }
-  /* Kreiswellen (ueberarbeitet: Dietmar "Ping-Puls ist nicht besser, eher
-     wie ein Stein der ins Wasser faellt") - 3 zeitversetzte Ringe statt
-     einem einzelnen. */
-  .fx-ripple { fill: none; stroke: #43a047; stroke-width: 3; opacity: 0; transform-origin: center; animation: fxRippleOut .85s ease-out forwards; }
+  /* Kreiswellen (10.09.2026 komplett neu, Dietmar: "das sind keine Wellen,
+     du schmeisst einfach 3 Kreise weg") - eine echte Wasserwelle entsteht
+     KLEIN am Einschlagpunkt und waechst dann nach aussen, statt bereits
+     gross zu erscheinen und nur zu verblassen. */
+  .fx-ripple { fill: none; stroke: #43a047; stroke-width: 3; opacity: 0; transform-origin: center; animation: fxRippleOut 1.1s cubic-bezier(.2,.6,.35,1) forwards; }
   @keyframes fxRippleOut {
-    0% { transform: scale(.85); opacity: .85; }
-    100% { transform: scale(1.9); opacity: 0; }
+    0% { transform: scale(.05); opacity: .9; }
+    15% { opacity: .85; }
+    100% { transform: scale(1.85); opacity: 0; }
   }
-  /* Kopfschuetteln (ueberarbeitet: Dietmar "sieht man gar nichts" - jetzt
-     dreht sich eine sichtbare Kopie der Knoten-/Pillenflaeche (fx-shake-
-     overlay, siehe JS) tatsaechlich um die vertikale Mittelachse hin und
-     her, statt eine leere Gruppe zu verschieben. */
-  .fx-shake-overlay { fill: rgba(229,57,53,.4); pointer-events: none; }
-  .fx-layer.fx-shake3d { animation: fxShakeY .7s ease-in-out; }
+  /* Kopfschuetteln (10.09.2026 komplett neu, Dietmar: "du machst eine rote
+     Scheibe die du VOR dem Knoten drehst - das ist Quark, dreh den Knoten
+     oder die Pille SELBST ... Rhythmus soll einem echten Kopfschuetteln
+     aehneln") - die Animation sitzt jetzt direkt auf .node-visual/
+     #center-visual (der echte, sichtbare Knoten-/Pillen-Inhalt, siehe
+     Markup-Kommentare) statt auf einer zusaetzlichen Kopie. Rhythmus: 4
+     gleichmaessige Ausschlaege nach links/rechts um die vertikale
+     Mittelachse (rotateY), wie eine reale "Nein"-Kopfbewegung, am Ende
+     kurz gedaempft ausklingend statt abrupt zu stoppen. */
+  .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY .9s ease-in-out; transform-origin: center; }
   @keyframes fxShakeY {
-    0%, 100% { transform: perspective(280px) rotateY(0deg); }
-    20% { transform: perspective(280px) rotateY(-24deg); }
-    40% { transform: perspective(280px) rotateY(19deg); }
-    60% { transform: perspective(280px) rotateY(-13deg); }
-    80% { transform: perspective(280px) rotateY(6deg); }
+    0%, 100% { transform: perspective(320px) rotateY(0deg); }
+    12% { transform: perspective(320px) rotateY(-22deg); }
+    25% { transform: perspective(320px) rotateY(20deg); }
+    38% { transform: perspective(320px) rotateY(-22deg); }
+    51% { transform: perspective(320px) rotateY(20deg); }
+    64% { transform: perspective(320px) rotateY(-14deg); }
+    77% { transform: perspective(320px) rotateY(10deg); }
+    88% { transform: perspective(320px) rotateY(-4deg); }
   }
-  /* Schwindel-Sternchen (ueberarbeitet: Dietmar "viel zu schnell" - deutlich
-     laenger laufende Umkreisung + Sternchen-Einblendung). */
+  /* Schwindel-Sternchen (ueberarbeitet: Dietmar "immer noch zu schnell" -
+     nochmals deutlich verlangsamt). */
   .fx-star { fill: #ffd54f; font-size: 17px; opacity: 0; }
-  .fx-layer.fx-dizzy { animation: fxDizzySpin 1.5s linear forwards; transform-origin: center; }
+  .fx-layer.fx-dizzy { animation: fxDizzySpin 2.4s linear forwards; transform-origin: center; }
   @keyframes fxDizzySpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(320deg); } }
-  .fx-layer.fx-dizzy .fx-star { animation: fxStarShow 1.5s ease-out forwards; }
-  @keyframes fxStarShow { 0% { opacity: 0; } 10% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
-  /* Haeufchen (ersetzt die Seifenblase: Dietmar "ist nichts, wie waere es
-     mit einem Morph zu einem Haeufchen") - dieselbe Overlay-Kopie wie beim
-     Kopfschuetteln, staucht sich aber nach unten zusammen und zerfliesst. */
-  .fx-crumble-overlay { fill: rgba(150,150,150,.5); pointer-events: none; transform-box: fill-box; transform-origin: bottom center; }
-  .fx-layer.fx-crumble .fx-crumble-overlay { animation: fxCrumble 1.1s cubic-bezier(.55,0,.85,.4) forwards; }
-  @keyframes fxCrumble {
-    0% { transform: scaleY(1) scaleX(1) translateY(0); opacity: .85; }
-    60% { transform: scaleY(.32) scaleX(1.35) translateY(28%); opacity: .75; }
-    100% { transform: scaleY(.05) scaleX(1.55) translateY(42%); opacity: 0; }
+  .fx-layer.fx-dizzy .fx-star { animation: fxStarShow 2.4s ease-out forwards; }
+  @keyframes fxStarShow { 0% { opacity: 0; } 8% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; } }
+  /* Haeufchen (10.09.2026 komplett neu, Dietmar: "du laesst eine graue
+     Scheibe VOR dem Knoten zerfallen - lass den Knoten oder die Pille
+     SELBST zerfallen") - dieselbe .node-visual/#center-visual staucht sich
+     jetzt tatsaechlich nach unten zusammen (transform-box: fill-box laesst
+     eine Gruppe aus mehreren Kind-Elementen wie einen einzigen Block
+     schrumpfen), begleitet von ein paar kleinen "Kruemel"-Fragmenten
+     (fx-crumb, eigene fx-layer-Elemente) fuer den Haeufchen-Eindruck. */
+  .node-visual.fx-crumble, #center-visual.fx-crumble {
+    transform-box: fill-box; transform-origin: bottom center;
+    animation: fxCrumbleShape 1.2s cubic-bezier(.55,0,.85,.4) forwards;
+  }
+  @keyframes fxCrumbleShape {
+    0% { transform: scaleY(1) scaleX(1) translateY(0); opacity: 1; }
+    55% { transform: scaleY(.4) scaleX(1.25) translateY(24%); opacity: .9; }
+    100% { transform: scaleY(.08) scaleX(1.4) translateY(38%); opacity: .55; }
+  }
+  .fx-crumb { fill: #8d8d8d; opacity: 0; }
+  .fx-crumb.falling { animation: fxCrumbFall 1.1s ease-in forwards; }
+  @keyframes fxCrumbFall {
+    0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+    15% { opacity: .9; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
   }
 
   /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
@@ -544,6 +571,14 @@
          Render neu (siehe dort). node-highlight/node-spec bleiben bewusst
          Kreise (rein dekoratives Glanzlicht nahe der linken Kappe, muss
          nicht mitskalieren). */ -->
+    <!-- Sichtbarer Pillen-Inhalt in einer eigenen Untergruppe OHNE eigenes
+         SVG-transform-Attribut (10.09.2026, Dietmar: Kopfschuetteln/
+         Haeufchen sollen die ECHTE Pille drehen/zerfallen lassen, keine
+         Kopie davor) - playBlockedAnim() wendet CSS-transform direkt auf
+         "center-visual" an. center-press-ring/center-fx-layer bleiben
+         bewusst AUSSERHALB (Timing-Ring bzw. zusaetzliche Effekt-Ebene,
+         kein Teil der "Pille selbst"). -->
+    <g id="center-visual">
     <rect class="coin-shadow" x="-63" y="-54.04" width="126" height="126" rx="63" ry="63"/>
     <rect class="node-glow" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <rect class="node-face" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
@@ -555,6 +590,19 @@
          Coin selbst (layoutCenterChip() haelt x/y/width/height/rx/ry
          synchron, +7 Padding nach aussen). -->
     <rect class="node-autarky-ring" x="-63" y="-63" width="126" height="126" rx="63" ry="63" fill="none"/>
+    <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
+    <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
+    <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
+      <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
+    </g>
+    <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
+    <g id="center-back-badge" class="pill-back-badge" style="display:none">
+      <title id="lbl-center-back-title">zurück</title>
+      <circle r="9" class="node-count-bg"/>
+      <text x="0" y="3.5" class="node-count-txt">‹</text>
+    </g>
+    <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
+    </g>
     <!-- Druck-Fuellring der Pille (09.09.2026) - Aequivalent zu .node-press-ring
          an den Aussenknoten, nur als Rechteck statt Kreis (die Pille ist bei
          vielen Geraeten breiter als hoch, siehe layoutCenterChip()). Kurzer
@@ -569,18 +617,6 @@
          Attribut, damit playOpenAnim()/playBlockedAnim() dort gefahrlos
          CSS-transform verwenden koennen. -->
     <g id="center-fx-layer" class="fx-layer"></g>
-    <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
-    <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
-    <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
-      <polygon points="0,-15 17,-1 17,15 -17,15 -17,-1" data-hollow="1"/>
-    </g>
-    <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
-    <g id="center-back-badge" class="pill-back-badge" style="display:none">
-      <title id="lbl-center-back-title">zurück</title>
-      <circle r="9" class="node-count-bg"/>
-      <text x="0" y="3.5" class="node-count-txt">‹</text>
-    </g>
-    <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
   </g>
 
   <g id="nodes-layer"></g>
@@ -1410,17 +1446,25 @@ function createOuterNode(item, pt, layout) {
   const cy = CY + pt.y;
 
   const g = el('g', { class: 'node' });
-  g.appendChild(makeCoinShadow(DESIGN_R));
+  // Sichtbarer Knoten-Inhalt in einer eigenen Untergruppe OHNE eigenes
+  // SVG-transform-Attribut (10.09.2026, Dietmar: Kopfschuetteln/Haeufchen
+  // sollen den ECHTEN Knoten drehen/zerfallen lassen, keine Kopie davor) -
+  // playBlockedAnim() wendet CSS-transform (rotateY/Stauchen) direkt auf
+  // "visual" an. Das AEUSSERE "g" behaelt sein Positions-transform-Attribut
+  // unangetastet (animateNodeTransform() manipuliert das direkt, siehe
+  // dort - ein CSS-transform DORT wuerde damit kollidieren).
+  const visual = el('g', { class: 'node-visual' });
+  visual.appendChild(makeCoinShadow(DESIGN_R));
   const glow = attachGlow(el('circle', { class: 'node-glow' }));
-  g.appendChild(glow);
-  g.appendChild(el('circle', { class: 'node-face', r: DESIGN_R }));
+  visual.appendChild(glow);
+  visual.appendChild(el('circle', { class: 'node-face', r: DESIGN_R }));
   // Fuellstand als Ladeanzeige (28.08.2026, Dietmar: "SOC als Fuellstand
   // statt nur Zahl") - ein von unten steigendes Rechteck, auf die
   // Knoten-Flaeche geclippt, zusaetzlich zum vorhandenen Batterie-Badge
   // (das bleibt fuer die genaue Prozentzahl). Nur bei Batterie-Knoten
   // befuellt (updateOuterNode()), sonst bleibt liquid.style.display none.
   const liquid = makeLiquidFill(DESIGN_R);
-  g.appendChild(liquid.group);
+  visual.appendChild(liquid.group);
   // Gestern-Vergleich als Geisterring (28.08.2026, Dietmar: "alles direkt
   // umsetzen") - gestrichelter Ring, dessen Radius das Verhaeltnis von
   // gestern zu heute (zur gleichen Uhrzeit) zeigt: groesser als der feste
@@ -1428,8 +1472,8 @@ function createOuterNode(item, pt, layout) {
   // sichtbar, wenn ein Archivwert vorliegt (updateOuterNode()).
   const ghostRing = el('circle', { class: 'node-ghost-ring', r: DESIGN_R });
   ghostRing.style.display = 'none';
-  g.appendChild(ghostRing);
-  g.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
+  visual.appendChild(ghostRing);
+  visual.appendChild(el('circle', { class: 'node-ring', r: DESIGN_R }));
 
   // PV-Prognose-Fortschrittsring (28.08.2026, Dietmar: "alles direkt
   // umsetzen") - Bogen ausserhalb des Coin-Rings, Laenge = Tagesertrag
@@ -1441,35 +1485,35 @@ function createOuterNode(item, pt, layout) {
     transform: 'rotate(-90)'
   });
   forecastRing.style.display = 'none';
-  g.appendChild(forecastRing);
+  visual.appendChild(forecastRing);
 
   // Strompreis-Trend-Sparkline (28.08.2026) - kleine Linie unter dem
   // Geraetenamen, nur am Netz-Knoten befuellt (updateOuterNode()).
   const priceSpark = el('polyline', { class: 'node-price-spark', points: '' });
   priceSpark.style.display = 'none';
   priceSpark.setAttribute('transform', 'translate(-18,50)');
-  g.appendChild(priceSpark);
-  g.appendChild(makeBevel(DESIGN_R));
-  g.appendChild(makeHighlight(DESIGN_R));
-  g.appendChild(makeSpecular(DESIGN_R));
+  visual.appendChild(priceSpark);
+  visual.appendChild(makeBevel(DESIGN_R));
+  visual.appendChild(makeHighlight(DESIGN_R));
+  visual.appendChild(makeSpecular(DESIGN_R));
   addNodeBolts(g, DESIGN_R, DESIGN_R, Math.round(pt.angleDeg + 360));
 
   const iconG = el('g', { class: 'node-icon', transform: 'translate(0,-30)', 'stroke-width': 2, fill: 'none', filter: 'url(#relief)' });
-  g.appendChild(iconG);
+  visual.appendChild(iconG);
 
   const valText = el('text', { x: 0, y: 9, 'text-anchor': 'middle', class: 'node-value', filter: 'url(#relief)' });
   valText.appendChild(document.createTextNode('0'));
   const unit = el('tspan', { class: 'node-value-unit', dx: 2 });
   unit.textContent = 'kW';
   valText.appendChild(unit);
-  g.appendChild(valText);
+  visual.appendChild(valText);
 
   const labelText = el('text', { x: 0, y: 33, 'text-anchor': 'middle', class: 'node-label' });
   labelText.textContent = item.label;
-  g.appendChild(labelText);
+  visual.appendChild(labelText);
 
   const subText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'node-sub' });
-  g.appendChild(subText);
+  visual.appendChild(subText);
 
   // Diagnose-Warnsymbol (28.08.2026, Dietmar: "Diagnose-Warnungen direkt
   // am Knoten") - kleines Dreieck oben rechts auf dem Coin, nur sichtbar
@@ -1484,7 +1528,7 @@ function createOuterNode(item, pt, layout) {
   const warnMark = el('text', { x: 0, y: 5, 'text-anchor': 'middle', class: 'node-warn-mark' });
   warnMark.textContent = '!';
   warn.appendChild(warnMark);
-  g.appendChild(warn);
+  visual.appendChild(warn);
 
   // Aufschachteln (03.09.2026): Zaehler-Badge unten rechts (Mitgliederzahl,
   // gleiche Ring-Position wie das Diagnose-Dreieck, nur unten), Minus-Badge
@@ -1497,7 +1541,7 @@ function createOuterNode(item, pt, layout) {
   countTxt.textContent = '';
   countG.appendChild(countTxt);
   countG.style.display = 'none';
-  g.appendChild(countG);
+  visual.appendChild(countG);
 
   const minusG = el('g', { class: 'node-minus', transform: 'translate(' + (-warnOff).toFixed(1) + ',' + warnOff.toFixed(1) + ')' });
   minusG.appendChild(el('circle', { r: 8, class: 'node-minus-bg' }));
@@ -1505,7 +1549,8 @@ function createOuterNode(item, pt, layout) {
   minusTxt.textContent = '−';
   minusG.appendChild(minusTxt);
   minusG.style.display = 'none';
-  g.appendChild(minusG);
+  visual.appendChild(minusG);
+  g.appendChild(visual);
 
   const pressCirc = 2 * Math.PI * (DESIGN_R + 3);
   const pressRing = el('circle', {
@@ -1531,7 +1576,7 @@ function createOuterNode(item, pt, layout) {
   switchG.style.display = 'none';
   g.appendChild(switchG);
 
-  return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
+  return { g, visual, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
            countG, countTxt, minusG, pressRing, pressCirc, fxLayer, switchG };
 }
 
@@ -1605,7 +1650,11 @@ function addNodeBolts(g, hw, hh, seedBase) {
   if (cg) { attachGlow(cg); }
   const holder = el('g', { id: 'center-bolts' });
   addNodeBolts(holder, DESIGN_R, DESIGN_R, 5);
-  c.insertBefore(holder, document.getElementById('center-icon'));
+  // Seit 10.09.2026 gehoert der sichtbare Inhalt in #center-visual (siehe
+  // Markup-Kommentar dort) - center-icon liegt jetzt DORT, nicht mehr
+  // direkt in #node-center, insertBefore() muss also auf demselben
+  // Elternelement wie das Referenzelement aufgerufen werden.
+  document.getElementById('center-visual').insertBefore(holder, document.getElementById('center-icon'));
 })();
 
 function createSpoke(pt, layout, layer) {
@@ -2609,15 +2658,42 @@ function pickAnimStyle(configured) {
   return configured === 3 ? Math.floor(Math.random() * 3) : configured;
 }
 function clearFx(fxLayer) {
-  if (fxLayer) { fxLayer.textContent = ''; fxLayer.classList.remove('fx-shake3d', 'fx-dizzy', 'fx-crumble'); }
+  if (fxLayer) { fxLayer.textContent = ''; fxLayer.classList.remove('fx-dizzy'); }
 }
-// Erfolg (Ebene wird tatsaechlich gewechselt): 0 Funkenschauer (Standard,
-// 10.09.2026 groesser/intensiver gemacht: "darf groesser und auch
-// intensiver sein"), 1 Portal-Iris (ueberarbeitet: war "nicht sichtbar"),
-// 2 Kreiswellen (ersetzt "Ping-Puls": Dietmar wollte "Kreisringe wie ein
-// Stein im Wasser"). ringRadius = Radius/Halbachse fuer die kreisbasierten
-// Varianten (Aussenknoten: DESIGN_R+3, Pille: aktuelle Halbhoehe+3).
-// Gibt die Anzeigedauer zurueck, jede Variante hat ihr eigenes Timing.
+// Kamera-Iris-Lamellen (10.09.2026, nach Recherche zur echten Funktionsweise
+// einer Kamera-Iris: mehrere ueberlappende Lamellen drehen sich GLEICHZEITIG
+// um einen Drehpunkt NAHE DES RANDES - nicht um die Objektiv-/Knotenmitte -
+// und schwenken dabei ueber die Mitte, um die Blende zu schliessen. Jede
+// Lamelle sitzt in einer eigenen <g rotate(i*360/n)> (statisches SVG-
+// Attribut = ihr fester "Steckplatz" am Rand) mit einer weiteren <g
+// translate(pivot,0)> darin (ebenfalls statisch, verschiebt den Drehpunkt
+// an den Lamellen-eigenen Rand-Punkt) - NUR das darin liegende <rect>
+// bekommt die CSS-Rotation (transform-origin 0,0 = genau der Drehpunkt),
+// weil ein CSS-transform auf einem Element mit eigenem SVG-transform-
+// Attribut dieses ersetzen statt ergaenzen wuerde (siehe Kommentar oben
+// bei .fx-layer). */
+function buildIrisBlades(fxLayer, ringRadius) {
+  const n = 6;
+  const pivot = ringRadius * 0.62;
+  const bladeLen = ringRadius * 1.2;
+  const bladeW = ringRadius * 0.58;
+  for (let i = 0; i < n; i++) {
+    const home = el('g', { transform: 'rotate(' + (i * 360 / n).toFixed(1) + ')' });
+    const pivotG = el('g', { transform: 'translate(' + pivot.toFixed(1) + ',0)' });
+    pivotG.appendChild(el('rect', {
+      class: 'fx-iris-blade closing',
+      x: (-bladeLen * 0.18).toFixed(1), y: (-bladeW / 2).toFixed(1),
+      width: bladeLen.toFixed(1), height: bladeW.toFixed(1), rx: 3,
+    }));
+    home.appendChild(pivotG);
+    fxLayer.appendChild(home);
+  }
+}
+// Erfolg (Ebene wird tatsaechlich gewechselt): 0 Funkenschauer (Standard),
+// 1 Portal-Iris (echte Lamellen, siehe buildIrisBlades()), 2 Kreiswellen
+// (wachsen jetzt aus der Mitte statt nur zu verblassen). ringRadius =
+// Radius/Halbachse (Aussenknoten: DESIGN_R+3, Pille: Halbhoehe+3). Gibt
+// die Anzeigedauer zurueck, jede Variante hat ihr eigenes Timing.
 function playOpenAnim(fxLayer, ringRadius) {
   if (!fxLayer) return 0;
   clearFx(fxLayer);
@@ -2635,42 +2711,39 @@ function playOpenAnim(fxLayer, ringRadius) {
     }
     duration = 620;
   } else if (style === 1) {
-    fxLayer.appendChild(el('circle', { r: ringRadius * 1.1, class: 'fx-iris' }));
-    duration = 680;
+    buildIrisBlades(fxLayer, ringRadius);
+    duration = 650;
   } else {
     const n = 3;
     for (let i = 0; i < n; i++) {
       const c = el('circle', { r: ringRadius, class: 'fx-ripple' });
-      c.style.animationDelay = (i * 170) + 'ms';
+      c.style.animationDelay = (i * 220) + 'ms';
       fxLayer.appendChild(c);
     }
-    duration = 850 + (n - 1) * 170;
+    duration = 1100 + (n - 1) * 220;
   }
   setTimeout(() => clearFx(fxLayer), duration);
   return duration;
 }
-// Blockiert (keine Ebene dahinter): 0 Kopfschuetteln, 1 Schwindel-
-// Sternchen (verlangsamt: "viel zu schnell"), 2 Haeufchen (ersetzt
-// "Seifenblase": Dietmar "wie waere es mit einem Morph zu einem
-// Haeufchen"). ringEl bekommt kurz die rote Randfarbe (.press-blocked),
-// buildOverlay() liefert eine sichtbare Kopie der Knoten-/Pillenflaeche
-// (Aussenknoten: Kreis: r=DESIGN_R, Pille: Rechteck-Klon von .node-face),
-// die Kopfschuetteln/Haeufchen tatsaechlich sichtbar macht (die leere
-// fx-layer-Gruppe allein zeigt nichts). Gibt die Anzeigedauer zurueck.
-function playBlockedAnim(fxLayer, ringEl, ringRadius, buildOverlay, resetFn) {
+// Blockiert (keine Ebene dahinter): 0 Kopfschuetteln, 1 Schwindel-Sternchen,
+// 2 Haeufchen. Wirken jetzt auf visualEl (der ECHTE sichtbare Knoten-/
+// Pillen-Inhalt: .node-visual bzw. #center-visual) statt auf einer Kopie
+// davor (Dietmar: "das ist Quark ... dreh/lass den Knoten SELBST"). Nur
+// die Sternchen (rein dekorative Umkreisung, nichts am Knoten selbst zu
+// veraendern) bleiben in der fx-layer-Ebene. ringEl bekommt kurz die rote
+// Randfarbe (.press-blocked). Gibt die Anzeigedauer zurueck.
+function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
   ringEl.classList.remove('pressing');
   ringEl.classList.add('press-blocked');
+  if (fxLayer) { clearFx(fxLayer); }
+  if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
+  const style = pickAnimStyle(BLOCKED_ANIM_STYLE);
   let duration = 900;
-  if (fxLayer) {
-    clearFx(fxLayer);
-    const style = pickAnimStyle(BLOCKED_ANIM_STYLE);
-    if (style === 0) {
-      const overlay = buildOverlay();
-      overlay.classList.add('fx-shake-overlay');
-      fxLayer.appendChild(overlay);
-      fxLayer.classList.add('fx-shake3d');
-      duration = 750;
-    } else if (style === 1) {
+  if (style === 0) {
+    if (visualEl) { visualEl.classList.add('fx-shake3d'); }
+    duration = 950;
+  } else if (style === 1) {
+    if (fxLayer) {
       const n = 3;
       for (let i = 0; i < n; i++) {
         const ang = (i / n) * 2 * Math.PI;
@@ -2682,18 +2755,33 @@ function playBlockedAnim(fxLayer, ringEl, ringRadius, buildOverlay, resetFn) {
         fxLayer.appendChild(s);
       }
       fxLayer.classList.add('fx-dizzy');
-      duration = 1550;
-    } else {
-      const overlay = buildOverlay();
-      overlay.classList.add('fx-crumble-overlay');
-      fxLayer.appendChild(overlay);
-      fxLayer.classList.add('fx-crumble');
-      duration = 1150;
     }
+    duration = 2450;
+  } else {
+    if (visualEl) { visualEl.classList.add('fx-crumble'); }
+    if (fxLayer) {
+      // Ein paar kleine "Kruemel" verstaerken den Haeufchen-Eindruck -
+      // reine Zusatz-Deko in der fx-layer, der eigentliche Zerfall passiert
+      // an visualEl selbst (siehe .fx-crumble in der CSS).
+      const n = 6;
+      for (let i = 0; i < n; i++) {
+        const c = el('rect', {
+          class: 'fx-crumb falling', width: (4 + Math.random() * 4).toFixed(1), height: (4 + Math.random() * 4).toFixed(1),
+          x: (Math.random() * ringRadius * 1.1 - ringRadius * 0.55).toFixed(1), y: (ringRadius * 0.25).toFixed(1),
+        });
+        c.style.setProperty('--dx', (Math.random() * 44 - 22).toFixed(1) + 'px');
+        c.style.setProperty('--dy', (ringRadius * 0.55 + Math.random() * 20).toFixed(1) + 'px');
+        c.style.setProperty('--rot', (Math.random() * 140 - 70).toFixed(0) + 'deg');
+        c.style.animationDelay = (i * 35) + 'ms';
+        fxLayer.appendChild(c);
+      }
+    }
+    duration = 1250;
   }
   setTimeout(() => {
     ringEl.classList.remove('press-blocked');
     clearFx(fxLayer);
+    if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
     resetFn();
   }, duration);
   return duration;
@@ -2704,6 +2792,7 @@ function attachPressHandlers(refs, item) {
   const resetRing = () => {
     refs.pressRing.classList.remove('pressing', 'press-ok', 'press-blocked');
     clearFx(refs.fxLayer);
+    refs.visual.classList.remove('fx-shake3d', 'fx-crumble');
     refs.pressRing.style.transition = 'none';
     refs.pressRing.setAttribute('stroke-dashoffset', refs.pressCirc.toFixed(1));
     void refs.pressRing.getBoundingClientRect();
@@ -2730,8 +2819,7 @@ function attachPressHandlers(refs, item) {
         const d = playOpenAnim(refs.fxLayer, DESIGN_R + 3);
         setTimeout(() => { resetRing(); enterLevel(item, refs); }, d);
       } else {
-        const buildOverlay = () => el('circle', { r: DESIGN_R });
-        playBlockedAnim(refs.fxLayer, refs.pressRing, DESIGN_R + 3, buildOverlay, resetRing);
+        playBlockedAnim(refs.fxLayer, refs.pressRing, DESIGN_R + 3, refs.visual, resetRing);
       }
     }, PRESS_MS);
   });
@@ -2768,11 +2856,13 @@ function attachCenterPressHandlers() {
   const g = document.getElementById('node-center');
   const ring = document.getElementById('center-press-ring');
   const fxLayer = document.getElementById('center-fx-layer');
+  const visual = document.getElementById('center-visual');
   if (!g || !ring) return;
   let timer = null, startX = 0, startY = 0, longFired = false, down = false;
   const resetRing = () => {
     ring.classList.remove('pressing', 'press-ok', 'press-blocked');
     clearFx(fxLayer);
+    if (visual) { visual.classList.remove('fx-shake3d', 'fx-crumble'); }
     ring.style.transition = 'none';
     ring.setAttribute('stroke-dashoffset', ring.dataset.perim || '0');
     void ring.getBoundingClientRect();
@@ -2798,20 +2888,7 @@ function attachCenterPressHandlers() {
         const d = playOpenAnim(fxLayer, ringRadius);
         setTimeout(() => { resetRing(); leaveLevel(); }, d);
       } else {
-        // Klon der aktuellen Pillenflaeche (.node-face) statt eines
-        // starren Kreises - die Pille kann als Chip breiter als hoch sein.
-        const buildOverlay = () => {
-          const face = document.querySelector('#node-center .node-face');
-          if (face) {
-            return el('rect', {
-              x: face.getAttribute('x'), y: face.getAttribute('y'),
-              width: face.getAttribute('width'), height: face.getAttribute('height'),
-              rx: face.getAttribute('rx'), ry: face.getAttribute('ry'),
-            });
-          }
-          return el('circle', { r: ringRadius });
-        };
-        playBlockedAnim(fxLayer, ring, ringRadius, buildOverlay, resetRing);
+        playBlockedAnim(fxLayer, ring, ringRadius, visual, resetRing);
       }
     }, PRESS_MS);
   });
