@@ -1376,8 +1376,10 @@ gleiche IPSView-Fähigkeit.
   als Hover-Tooltip, kein eigenes HTML-Element am Kachelrand, siehe
   Feinheit weiter unten). Ein tatsächlicher Ebenenwechsel spielt dabei
   eine kleine Erfolgs-Animation ab (Funkenschauer, Portal-Iris — echte
-  überlappende Lamellen um einen randnahen Drehpunkt, wie bei einer
-  Kamerablende — oder Kreiswellen, die aus der Mitte nach außen wachsen
+  überlappende Lamellen um einen randnahen Drehpunkt, im selben
+  dunkel-glänzenden Metall-Look wie die Haus-/Knoten-Münze selbst, mit
+  Glasreflex in der Mitte, wie bei einer echten Kamerablende — oder
+  Kreiswellen, die aus der Mitte nach außen wachsen
   wie ein Stein im Wasser; Auswahl inkl. "Zufällig" hinter dem
   Doppelpfeil). Geht es in die jeweilige Richtung nicht (ein Blatt ohne
   Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber), spielt

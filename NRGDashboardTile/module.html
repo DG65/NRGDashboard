@@ -322,19 +322,28 @@
     0% { opacity: 1; transform: translate(0, 0) scale(1); }
     100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.25); }
   }
-  /* Portal-Iris (10.09.2026 komplett neu, Dietmar: "hat mit einer Iris
-     nichts zu tun, recherchiere wie eine Kamera-Iris funktioniert") - eine
-     echte Kamera-Blende besteht aus mehreren ueberlappenden Lamellen, die
-     sich beim Schliessen gleichzeitig zur Mitte drehen (kein einzelner
-     schrumpfender Ring). Nachgebaut mit N Lamellen-Dreiecken: jede sitzt
-     in einer eigenen <g transform="rotate(i*360/N)"> (statisches SVG-
-     Attribut, gefahrlos - siehe JS fuer die Erzeugung), die eigentliche
-     Schliessbewegung ist eine CSS-Rotation auf dem <path> DARIN. */
-  .fx-iris-blade { fill: #2e7d32; stroke: #66bb6a; stroke-width: 1; opacity: 0; transform-origin: 0 0; }
-  .fx-iris-blade.closing { opacity: .95; animation: fxIrisBladeClose .6s cubic-bezier(.6,0,.85,.3) forwards; }
+  /* Portal-Iris (10.09.2026, zweimal ueberarbeitet - Dietmar zuletzt:
+     "das sieht nicht schoen aus, so soll das aussehen: dribbble.com/
+     shots/1557773-Lens-Movement") - dieselbe glaenzend-dunkle Metall-
+     Optik wie die Haus-/Knoten-Muenze selbst (url(#plasticFill), schon
+     im Defs-Block vorhanden - kein neuer Farbverlauf noetig, bleibt im
+     bestehenden Materialstil der Kachel statt eines knalligen Gruens)
+     statt flacher Farbflaechen, dazu ein Glasreflex in der Mitte
+     (.fx-iris-glass, url(#glossSpec)), der wie bei einer echten Linse
+     durch die Lamellen hindurchschimmert, bis sie sich schliessen. Die
+     Lamellen selbst: mehrere ueberlappende <rect>, die sich beim
+     Schliessen gleichzeitig um einen randnahen Drehpunkt zur Mitte
+     drehen - jede sitzt in einer eigenen <g transform="rotate(i*360/N)">
+     (statisches SVG-Attribut, gefahrlos - siehe JS fuer die Erzeugung),
+     die eigentliche Schliessbewegung ist eine CSS-Rotation auf dem
+     <rect> DARIN. */
+  .fx-iris-glass { fill: url(#glossSpec); opacity: 0; animation: fxIrisGlassShow .6s ease-out forwards; }
+  @keyframes fxIrisGlassShow { 0% { opacity: .95; } 65% { opacity: .8; } 100% { opacity: 0; } }
+  .fx-iris-blade { fill: url(#plasticFill); stroke: rgba(255,255,255,.3); stroke-width: 1; opacity: 0; transform-origin: 0 0; }
+  .fx-iris-blade.closing { opacity: .98; animation: fxIrisBladeClose .6s cubic-bezier(.6,0,.85,.3) forwards; }
   @keyframes fxIrisBladeClose {
-    0% { transform: rotate(0deg); opacity: .95; }
-    100% { transform: rotate(78deg); opacity: .95; }
+    0% { transform: rotate(0deg); opacity: .98; }
+    100% { transform: rotate(78deg); opacity: .98; }
   }
   /* Kreiswellen (10.09.2026 komplett neu, Dietmar: "das sind keine Wellen,
      du schmeisst einfach 3 Kreise weg") - eine echte Wasserwelle entsteht
@@ -2676,7 +2685,11 @@ function buildIrisBlades(fxLayer, ringRadius) {
   const n = 6;
   const pivot = ringRadius * 0.62;
   const bladeLen = ringRadius * 1.2;
-  const bladeW = ringRadius * 0.58;
+  const bladeW = ringRadius * 0.5;
+  // Glasreflex in der Mitte (schimmert durch die Lamellen hindurch, bis sie
+  // sich schliessen) - MUSS zuerst gezeichnet werden, damit er unter den
+  // Lamellen liegt.
+  fxLayer.appendChild(el('circle', { r: (ringRadius * 0.42).toFixed(1), class: 'fx-iris-glass' }));
   for (let i = 0; i < n; i++) {
     const home = el('g', { transform: 'rotate(' + (i * 360 / n).toFixed(1) + ')' });
     const pivotG = el('g', { transform: 'translate(' + pivot.toFixed(1) + ',0)' });
