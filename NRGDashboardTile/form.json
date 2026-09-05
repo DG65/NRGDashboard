@@ -47,7 +47,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Anzeige-Einstellungen, 28.08.2026): Ob inaktive Knotenpunkte ausgeblendet oder nur ausgegraut werden, ob Blitzbögen/Leuchtschein an die Leistung gekoppelt sind und wie stark diese Effekte wirken, stellt jeder Nutzer selbst im WebFront ein - Kachel über den Doppelpfeil aufziehen (öffnet die Standard-Objektansicht der Instanz mit den entsprechenden Schaltern/Reglern), statt hier in der Konsole zu suchen."
+          "caption": "✨ Feinheit (Anzeige-Einstellungen, 28.08.2026, um alle übrigen Animations-Steuerungen erweitert am 10.09.2026): Ob inaktive Knotenpunkte ausgeblendet oder nur ausgegraut werden, ob Blitzbögen/Leuchtschein an die Leistung gekoppelt sind und wie stark diese Effekte wirken, die Übergangszeit aktiv/inaktiv, das Fluss-Tempo (Leistung für Höchsttempo der laufenden Dreiecke) und die automatische Vorführung stellt jeder Nutzer selbst im WebFront ein - Kachel über den Doppelpfeil aufziehen (öffnet die Standard-Objektansicht der Instanz mit den entsprechenden Schaltern/Reglern), statt hier in der Konsole zu suchen. So lässt sich z. B. eine gerade laufende automatische Vorführung auch direkt im WebFront stoppen."
         },
         {
           "type": "Label",
@@ -127,9 +127,8 @@
       "caption": "Isolierter Demo-Modus: keine echten Geräte erkennen, nur die manuell eingetragenen Kern-/Verbraucher-Felder verwenden (für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich stimmigen Werten)"
     },
     {
-      "type": "CheckBox",
-      "name": "DemoAutoTour",
-      "caption": "Automatische Vorführung: bei Inaktivität öffnet die Kachel von selbst Detailseiten und schachtelt Sammelknoten auf/zu (pausiert bei jeder Berührung) - nur für Vorstellungs-Instanzen"
+      "type": "Label",
+      "caption": "Automatische Vorführung: jetzt hinter dem Doppelpfeil im WebFront einstellbar (siehe Feinheit weiter unten), keine Konsolen-Eigenschaft mehr."
     },
     {
       "type": "Button",
@@ -452,28 +451,8 @@
           "caption": "Schriftart (leer/„system“ = Systemschrift)"
         },
         {
-          "type": "NumberSpinner",
-          "name": "TransitionMs",
-          "caption": "Übergangszeit aktiv/inaktiv (0 = ohne Animation)",
-          "minimum": 0,
-          "maximum": 5000,
-          "suffix": "ms"
-        },
-        {
-          "type": "NumberSpinner",
-          "name": "FlowRefW",
-          "caption": "Fluss-Tempo: Leistung für Höchsttempo",
-          "minimum": 500,
-          "maximum": 100000,
-          "suffix": "W"
-        },
-        {
           "type": "Label",
-          "caption": "Das Tempo der laufenden Dreiecke folgt der Leistung. Bei diesem Wert (und darüber) laufen sie mit Höchsttempo — je kleiner der Wert, desto deutlicher unterscheiden sich typische Alltagsleistungen (z. B. 1 vs. 5 kW) sichtbar im Tempo. Vorgabe: 10000 W."
-        },
-        {
-          "type": "Label",
-          "caption": "Weitere Feinheiten (inaktive Knotenpunkte ausblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität) stellt jeder Nutzer selbst im WebFront ein — Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
+          "caption": "Alle Steuermöglichkeiten für die Animation (inaktive Knotenpunkte ausblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität, Übergangszeit aktiv/inaktiv, Fluss-Tempo, automatische Vorführung) stellt jeder Nutzer selbst im WebFront ein — Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
         }
       ]
     },

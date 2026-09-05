@@ -1508,13 +1508,17 @@ gleiche IPSView-Fähigkeit.
 - **Netzampel-Farbwäsche:** bei installierter StromGedacht-Instanz färbt
   ein sehr dezenter Farbverlauf im Hintergrund die aktuelle Netzampel-Stufe
   ein.
-- **Anzeige-Feinheiten hinter dem Doppelpfeil:** ob inaktive Knotenpunkte
-  aus- oder eingeblendet werden, ob Blitzbögen/Leuchtschein an die Leistung
-  gekoppelt sind und wie stark diese Effekte wirken, stellt jeder Nutzer
-  direkt im WebFront ein — die Kachel über den Doppelpfeil (Symbol zum
-  Vollbild-Umschalten) aufziehen öffnet die Standard-Objektansicht der
+- **Alle Animations-Steuerungen hinter dem Doppelpfeil:** ob inaktive
+  Knotenpunkte aus- oder eingeblendet werden, ob Blitzbögen/Leuchtschein an
+  die Leistung gekoppelt sind und wie stark diese Effekte wirken, die
+  Übergangszeit aktiv/inaktiv, das Fluss-Tempo (Leistung für Höchsttempo
+  der laufenden Dreiecke) und die automatische Vorführung stellt jeder
+  Nutzer direkt im WebFront ein — die Kachel über den Doppelpfeil (Symbol
+  zum Vollbild-Umschalten) aufziehen öffnet die Standard-Objektansicht der
   Instanz mit den entsprechenden Schaltern/Reglern, ganz ohne
-  Konsolenzugriff.
+  Konsolenzugriff. Die letzten drei sind seit 10.09.2026 dabei — vorher
+  waren sie nur über die Konsole erreichbar; damit lässt sich z. B. eine
+  gerade laufende automatische Vorführung auch direkt im WebFront stoppen.
 - **Wallbox-Steuerung direkt aus der Detailseite:** wird eine Wallbox
   (ChargerHub oder OCPPHub) von keiner anderen Instanz geregelt (EMS/
   Tibber/§14a/etc.), zeigt die Geräte-Detailseite Schaltflächen für

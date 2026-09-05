@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.8';
+    private const NEWS_VERSION = '0.9.9';
     private const NEWS_ITEMS = [
+        'Neu: alle Steuermöglichkeiten für die Animation sitzen jetzt gemeinsam hinter dem Doppelpfeil oben rechts (Kachel im WebFront aufziehen) - dazu sind "Übergangszeit aktiv/inaktiv", "Fluss-Tempo" und die "Automatische Vorführung" von der Konsole dorthin gewandert. Damit lässt sich z. B. eine gerade laufende automatische Vorführung direkt im WebFront stoppen, ohne Konsolenzugriff.',
         'Fix: der "Isolierte Demo-Modus" versuchte für die Strompreis-Sparkline gar nicht erst eine vorhandene echte Tibber-Instanz - läuft sie auf demselben Symcon wie die Demo-Kachel (Regelfall), werden jetzt wie bei jeder anderen Instanz zuerst die echten Preise verwendet; nur ohne jede echte Quelle (weder Tibber noch ausreichend BDEW-Historie) springt die Demo auf eine synthetische Näherungskurve.',
         'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',
         'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
@@ -150,8 +151,6 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeBoolean('TourSeen', false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
-        $this->RegisterPropertyInteger('TransitionMs', self::DEF_TRANSITION);
-        $this->RegisterPropertyInteger('FlowRefW', self::DEF_FLOWREF);
 
         // Anzeige-Feinheiten "hinter dem Doppelpfeil" (28.08.2026, Dietmar:
         // "ich möchte, dass Du solche Einstellungen hinter den Doppelpfeil
@@ -166,15 +165,25 @@ class NRGDashboardTile extends IPSModule
         // erscheinen dort automatisch als Schalter/Zahlenfeld, bedienbar
         // OHNE Konsolenzugriff (WebFront-Nutzer haben keinen).
         //
-        // HideInactive war bis hierher eine Property - Migration beim
-        // erstmaligen Anlegen der Variable uebernimmt den zuvor
-        // gespeicherten Property-Wert aus der rohen Konfiguration
-        // (legacyValue()), damit eine bereits angepasste Einstellung beim
-        // Umbau nicht stillschweigend zurueckfaellt.
+        // Erweitert 10.09.2026 (Dietmar: "alle Steuermöglichkeiten die wir
+        // derzeit für die Animation haben" hierher, einschl. eines Schalters
+        // fuer die "Rolling Funktion" = automatische Vorfuehrung) um
+        // TransitionMs/FlowRefW (vorher NumberSpinner in der Konsole) und
+        // DemoAutoTour (vorher CheckBox in der Konsole) - damit laesst sich
+        // z.B. eine gerade laufende automatische Vorfuehrung auch OHNE
+        // Konsolenzugriff direkt im WebFront stoppen.
+        //
+        // HideInactive/TransitionMs/FlowRefW/DemoAutoTour waren bis hierher
+        // Properties - Migration beim erstmaligen Anlegen der jeweiligen
+        // Variable uebernimmt den zuvor gespeicherten Property-Wert aus der
+        // rohen Konfiguration (legacyValue()), damit eine bereits
+        // angepasste Einstellung beim Umbau nicht stillschweigend
+        // zurueckfaellt.
         $doppelpfeil = [
             'HideInactive'    => ['Inaktive Knotenpunkte ausblenden statt nur ausgrauen', 200, false],
             'CoupleBoltPower' => ['Blitzbögen an Leistung koppeln', 201, true],
             'CoupleGlowPower' => ['Leuchtschein an Leistung koppeln', 202, true],
+            'DemoAutoTour'    => ['Automatische Vorführung (öffnet bei Inaktivität von selbst Detailseiten/Ebenen)', 205, false],
         ];
         foreach ($doppelpfeil as $ident => [$caption, $pos, $default]) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -189,6 +198,18 @@ class NRGDashboardTile extends IPSModule
         $this->EnableAction('EffectIntensity');
         if ($isNewIntensity) {
             $this->SetValue('EffectIntensity', (int) $this->legacyValue('EffectIntensity', 100));
+        }
+        $isNewFlowRef = @IPS_GetObjectIDByIdent('FlowRefW', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('FlowRefW', 'Fluss-Tempo: Leistung für Höchsttempo', '', 204);
+        $this->EnableAction('FlowRefW');
+        if ($isNewFlowRef) {
+            $this->SetValue('FlowRefW', (int) $this->legacyValue('FlowRefW', self::DEF_FLOWREF));
+        }
+        $isNewTransition = @IPS_GetObjectIDByIdent('TransitionMs', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('TransitionMs', 'Übergangszeit aktiv/inaktiv (0 = ohne Animation)', '', 206);
+        $this->EnableAction('TransitionMs');
+        if ($isNewTransition) {
+            $this->SetValue('TransitionMs', (int) $this->legacyValue('TransitionMs', self::DEF_TRANSITION));
         }
         // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
         // InverterHubTile - die Kachel muss auch OHNE jedes installierte
@@ -274,8 +295,10 @@ class NRGDashboardTile extends IPSModule
         // vollumfaenglich sieht was ihn erwarten kann"): die Kachel oeffnet
         // bei Inaktivitaet von selbst Detailseiten und schachtelt Sammel-
         // knoten auf/zu. Rein clientseitig (module.html), pausiert bei jeder
-        // Nutzerinteraktion. Nur fuer Vorstellungs-Instanzen gedacht.
-        $this->RegisterPropertyBoolean('DemoAutoTour', false);
+        // Nutzerinteraktion. Nur fuer Vorstellungs-Instanzen gedacht. Seit
+        // 10.09.2026 echte Variable statt Property (siehe $doppelpfeil
+        // weiter unten) - so laesst sich eine laufende Vorfuehrung auch
+        // direkt im WebFront stoppen, nicht nur ueber die Konsole.
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
@@ -327,15 +350,17 @@ class NRGDashboardTile extends IPSModule
     {
         $this->UpdateFormField('ColorBackground', 'value', self::DEF_BACKGROUND);
         $this->UpdateFormField('FontFamily', 'value', self::DEF_FONT);
-        $this->UpdateFormField('TransitionMs', 'value', self::DEF_TRANSITION);
-        $this->UpdateFormField('FlowRefW', 'value', self::DEF_FLOWREF);
-        // Seit 28.08.2026 echte Variablen statt Formularfeld (Doppelpfeil),
-        // deshalb SetValue() statt UpdateFormField() - ueber den
-        // Konsolen-Button weiterhin erreichbar.
+        // Seit 28.08.2026 (TransitionMs/FlowRefW seit 10.09.2026 ebenso)
+        // echte Variablen statt Formularfeld (Doppelpfeil), deshalb
+        // SetValue() statt UpdateFormField() - ueber den Konsolen-Button
+        // weiterhin erreichbar.
         $this->SetValue('HideInactive', false);
         $this->SetValue('CoupleBoltPower', true);
         $this->SetValue('CoupleGlowPower', true);
         $this->SetValue('EffectIntensity', 100);
+        $this->SetValue('FlowRefW', self::DEF_FLOWREF);
+        $this->SetValue('TransitionMs', self::DEF_TRANSITION);
+        $this->SetValue('DemoAutoTour', false);
         $this->Render();
     }
 
@@ -359,7 +384,7 @@ class NRGDashboardTile extends IPSModule
      */
     public function RequestAction($Ident, $Value)
     {
-        $boolIdents = ['HideInactive', 'CoupleBoltPower', 'CoupleGlowPower'];
+        $boolIdents = ['HideInactive', 'CoupleBoltPower', 'CoupleGlowPower', 'DemoAutoTour'];
         if (in_array($Ident, $boolIdents, true)) {
             $this->SetValue($Ident, (bool) $Value);
             $this->Render();
@@ -367,6 +392,16 @@ class NRGDashboardTile extends IPSModule
         }
         if ($Ident === 'EffectIntensity') {
             $this->SetValue($Ident, max(50, min(150, (int) $Value)));
+            $this->Render();
+            return;
+        }
+        if ($Ident === 'FlowRefW') {
+            $this->SetValue($Ident, max(500, min(100000, (int) $Value)));
+            $this->Render();
+            return;
+        }
+        if ($Ident === 'TransitionMs') {
+            $this->SetValue($Ident, max(0, min(5000, (int) $Value)));
             $this->Render();
         }
     }
@@ -1357,7 +1392,7 @@ class NRGDashboardTile extends IPSModule
             // installiert/aktiv oder der Vertrag (noch) fehlt.
             'emsDecision' => $this->ReadEmsDecision(),
             // Automatische Vorfuehrung (03.09.2026) - nur Vorstellungs-Instanzen.
-            'autoTour'    => $this->readBoolProperty('DemoAutoTour', false),
+            'autoTour'    => (bool) $this->GetValue('DemoAutoTour'),
         ];
     }
 
@@ -1479,13 +1514,16 @@ class NRGDashboardTile extends IPSModule
 
     private function FlowRefValue(): int
     {
-        $v = $this->readIntProperty('FlowRefW', self::DEF_FLOWREF);
+        // Seit 10.09.2026 echte Variable statt Property (siehe $doppelpfeil
+        // in Create()) - GetValue() statt readIntProperty(), gleiches
+        // Muster wie HideInactive/CoupleBoltPower/CoupleGlowPower.
+        $v = (int) $this->GetValue('FlowRefW');
         return ($v >= 500 && $v <= 100000) ? $v : self::DEF_FLOWREF;
     }
 
     private function TransitionValue(): int
     {
-        $v = $this->readIntProperty('TransitionMs', self::DEF_TRANSITION);
+        $v = (int) $this->GetValue('TransitionMs');
         return ($v >= 0 && $v <= 5000) ? $v : self::DEF_TRANSITION;
     }
 
