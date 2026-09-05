@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.9';
+    private const NEWS_VERSION = '0.9.10';
     private const NEWS_ITEMS = [
+        'Neu: ein langer Druck, der nicht weiterführt (Blatt-Knoten ohne Mitglieder, oder die Mittelpille auf Ebene 1 ohne Ebene darüber), zeigt jetzt statt eines kurzen roten Aufblitzens ein echtes Verbotszeichen - der Ring wird dicker und bekommt einen diagonalen Balken, hält eine Sekunde und zerfällt dann sichtbar zu Asche (Grau, ausblendend). Signalisiert deutlich: hier geht es nicht weiter, man bleibt auf derselben Ebene.',
         'Neu: alle Steuermöglichkeiten für die Animation sitzen jetzt gemeinsam hinter dem Doppelpfeil oben rechts (Kachel im WebFront aufziehen) - dazu sind "Übergangszeit aktiv/inaktiv", "Fluss-Tempo" und die "Automatische Vorführung" von der Konsole dorthin gewandert. Damit lässt sich z. B. eine gerade laufende automatische Vorführung direkt im WebFront stoppen, ohne Konsolenzugriff.',
         'Fix: der "Isolierte Demo-Modus" versuchte für die Strompreis-Sparkline gar nicht erst eine vorhandene echte Tibber-Instanz - läuft sie auf demselben Symcon wie die Demo-Kachel (Regelfall), werden jetzt wie bei jeder anderen Instanz zuerst die echten Preise verwendet; nur ohne jede echte Quelle (weder Tibber noch ausreichend BDEW-Historie) springt die Demo auf eine synthetische Näherungskurve.',
         'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',

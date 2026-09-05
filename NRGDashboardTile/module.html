@@ -296,11 +296,24 @@
   .node-press-ring { fill: none; stroke: #f4c430; stroke-width: 3; opacity: 0; transform: rotate(-90deg); pointer-events: none; }
   .node-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
   .node-press-ring.press-ok { stroke: #43a047; }
-  .node-press-ring.press-blocked { stroke: #e53935; }
+  .node-press-ring.press-blocked { stroke: #e53935; stroke-width: 6; }
   .center-press-ring { fill: none; stroke: #f4c430; stroke-width: 3; opacity: 0; pointer-events: none; }
   .center-press-ring.pressing { opacity: .9; transition: stroke-dashoffset .5s linear, opacity .1s; }
   .center-press-ring.press-ok { stroke: #43a047; }
-  .center-press-ring.press-blocked { stroke: #e53935; }
+  .center-press-ring.press-blocked { stroke: #e53935; stroke-width: 6; }
+  /* Verbotszeichen (10.09.2026, Dietmar: "soll dann aussehen wie ein
+     Verbotszeichen ... 1s stehen bleiben und dann zu Asche zerfallen") -
+     der volle Ring wird bei einem blockierten langen Druck (Blatt ohne
+     Mitglieder / Pille auf Ebene 1) dicker (siehe .press-blocked oben) UND
+     bekommt einen diagonalen Balken (.node-press-sign) dazu, haelt ~1s so
+     und faedet danach zu Grau/durchsichtig aus ("Asche") - Signal: hier
+     geht's nicht weiter, man ist weiterhin auf derselben Ebene. */
+  .node-press-sign, .center-press-sign { stroke: #e53935; stroke-width: 6; stroke-linecap: round; opacity: 0; pointer-events: none; }
+  .node-press-sign.showing, .center-press-sign.showing { opacity: 1; }
+  .node-press-ring.press-blocked.ash, .center-press-ring.press-blocked.ash {
+    stroke: #8a8a8a; opacity: 0; transition: opacity .5s ease-in, stroke .2s linear;
+  }
+  .node-press-sign.ash, .center-press-sign.ash { stroke: #8a8a8a; opacity: 0; transition: opacity .5s ease-in, stroke .2s linear; }
 
   /* Brotkrumen-Zeile (Ebenenpfad) oben links, nur auf Ebene 2+ sichtbar. */
   /* HTML-Overlays am Kachelrand (oben UND unten) geraten zuverlaessig in
@@ -496,6 +509,11 @@
          Ebene zurueck - auf Ebene 1 (nichts darueber) stattdessen auf Rot ohne
          Wirkung. Geometrie/Umfang werden in layoutCenterChip() gepflegt. -->
     <rect id="center-press-ring" class="center-press-ring" x="-59" y="-59" width="118" height="118" rx="59" ry="59"/>
+    <!-- Verbotszeichen-Balken der Pille (10.09.2026) - Koordinaten werden in
+         layoutCenterChip() an hh angepasst (die "runde" Halbachse der
+         Stadion-Form), nicht an hw (das wuerde bei einer breiten Chip-Pille
+         einen viel zu flachen Balken ergeben). -->
+    <line id="center-press-sign" class="center-press-sign" x1="-42" y1="-42" x2="42" y2="42"/>
     <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
     <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
     <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
@@ -822,6 +840,16 @@ function layoutCenterChip(hw, hh) {
     if (!cpr.classList.contains('pressing')) {
       cpr.setAttribute('stroke-dashoffset', perim.toFixed(1));
     }
+  }
+  // Verbotszeichen-Balken der Pille (10.09.2026) - Laenge an rh (die
+  // "runde" Halbachse der Stadion-Form) gebunden, NICHT an rw - sonst
+  // waere der Balken bei einer breiten Chip-Pille viel zu flach/lang statt
+  // wie ein echtes Verbotszeichen zu wirken.
+  const csign = document.getElementById('center-press-sign');
+  if (csign) {
+    const d = (hh + 3) * Math.SQRT1_2;
+    csign.setAttribute('x1', (-d).toFixed(1)); csign.setAttribute('y1', (-d).toFixed(1));
+    csign.setAttribute('x2', d.toFixed(1)); csign.setAttribute('y2', d.toFixed(1));
   }
   // Schatten wie im Original leicht groesser (Faktor 1.13) und nach unten
   // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
@@ -1436,6 +1464,13 @@ function createOuterNode(item, pt, layout) {
     'stroke-dasharray': pressCirc.toFixed(1), 'stroke-dashoffset': pressCirc.toFixed(1)
   });
   g.appendChild(pressRing);
+  // Verbotszeichen-Balken (10.09.2026) - diagonal durch den Ring, nur bei
+  // blockiertem langen Druck sichtbar (siehe runBlockedSignAnimation()).
+  const signD = (DESIGN_R + 3) * Math.SQRT1_2;
+  const pressSign = el('line', {
+    class: 'node-press-sign', x1: (-signD).toFixed(1), y1: (-signD).toFixed(1), x2: signD.toFixed(1), y2: signD.toFixed(1)
+  });
+  g.appendChild(pressSign);
 
   // Schaltgruppen (03.09.2026) - kleiner Kreis unten am Knoten (Power-Icon),
   // eigenes Klick-Ziel (stopPropagation, damit der Kurz-/Lang-Klick des
@@ -1450,7 +1485,7 @@ function createOuterNode(item, pt, layout) {
   g.appendChild(switchG);
 
   return { g, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
-           countG, countTxt, minusG, pressRing, pressCirc, switchG };
+           countG, countTxt, minusG, pressRing, pressCirc, pressSign, switchG };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -2122,7 +2157,7 @@ const TOUR_STEPS = [
   },
   {
     title: 'Details zu jedem Gerät',
-    text: 'Ein kurzer Klick/Druck auf einen Knoten oder die Mittelpille öffnet immer dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Halten Sie stattdessen länger gedrückt, bis der gelbe Ring komplett voll ist: an einem Sammelknoten (Zähler-Badge) wechselt er dann auf Grün und öffnet eine Ebene tiefer, an der Mittelpille auf Grün und geht eine Ebene zurück - geht es in diese Richtung nicht weiter, wird der Ring stattdessen kurz Rot.'
+    text: 'Ein kurzer Klick/Druck auf einen Knoten oder die Mittelpille öffnet immer dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Halten Sie stattdessen länger gedrückt, bis der gelbe Ring komplett voll ist: an einem Sammelknoten (Zähler-Badge) wechselt er dann auf Grün und öffnet eine Ebene tiefer, an der Mittelpille auf Grün und geht eine Ebene zurück - geht es in diese Richtung nicht weiter, erscheint stattdessen ein Verbotszeichen (dickerer Ring mit diagonalem Balken), das nach einer Sekunde zu Asche zerfällt.'
   },
   {
     title: 'Vollständige Messwerte-Tabelle',
@@ -2513,47 +2548,76 @@ function attachSwitchHandler(refs, item) {
 // gleichermassen). Bleibt der Finger/Klick liegen, bis der Ring komplett
 // gelb ist, entscheidet sich dort live, waehrend weiter gehalten wird:
 // Sammelknoten -> kurz Gruen, dann naechste Ebene; Blatt (kann nicht
-// tiefer) -> kurz Rot, dann keine Wirkung. PRESS_FLASH_MS ist die kurze
-// Farb-Anzeigedauer nach Erreichen des vollen Rings, bevor navigiert wird
-// bzw. der Ring zurueckgesetzt wird.
+// tiefer) -> Verbotszeichen (runBlockedSignAnimation(), 10.09.2026), dann
+// keine Wirkung. PRESS_FLASH_MS ist die kurze Gruen-Anzeigedauer nach
+// Erreichen des vollen Rings, bevor navigiert wird.
 const PRESS_MS = 500, PRESS_MOVE_PX = 8, PRESS_FLASH_MS = 220;
+// Verbotszeichen (10.09.2026, Dietmar: "wenn keine Ebene mehr zur
+// Verfuegung steht ... aussehen wie ein Verbotszeichen. Damit es etwas
+// zur Geltung kommt, soll es etwa 1s stehen bleiben und dann zu Asche
+// zerfallen") - gemeinsame Animation fuer den blockierten Fall (Blatt ohne
+// Mitglieder / Pille auf Ebene 1), von Aussenknoten UND Mittelpille
+// genutzt. Ablauf: Ring wird dicker + rot (.press-blocked, CSS), der
+// diagonale Balken (signEl) blendet ein -> haelt BLOCKED_HOLD_MS voll
+// sichtbar -> faedet ueber BLOCKED_ASH_MS zu Grau/durchsichtig ("Asche")
+// -> resetFn() raeumt endgueltig auf (auch fuer den naechsten Druck).
+const BLOCKED_HOLD_MS = 1000, BLOCKED_ASH_MS = 500;
+function runBlockedSignAnimation(ringEl, signEl, resetFn) {
+  ringEl.classList.remove('pressing');
+  ringEl.classList.add('press-blocked');
+  if (signEl) { signEl.classList.add('showing'); }
+  setTimeout(() => {
+    ringEl.classList.add('ash');
+    if (signEl) { signEl.classList.remove('showing'); signEl.classList.add('ash'); }
+    setTimeout(resetFn, BLOCKED_ASH_MS);
+  }, BLOCKED_HOLD_MS);
+}
 function attachPressHandlers(refs, item) {
   const g = refs.g;
   let timer = null, startX = 0, startY = 0, longFired = false, down = false;
   const resetRing = () => {
-    refs.pressRing.classList.remove('pressing', 'press-ok', 'press-blocked');
+    refs.pressRing.classList.remove('pressing', 'press-ok', 'press-blocked', 'ash');
+    refs.pressSign.classList.remove('showing', 'ash');
     refs.pressRing.style.transition = 'none';
     refs.pressRing.setAttribute('stroke-dashoffset', refs.pressCirc.toFixed(1));
     void refs.pressRing.getBoundingClientRect();
     refs.pressRing.style.transition = '';
+    down = false;
   };
-  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); down = false; };
+  // Sobald der lange Druck ausgeloest hat (longFired), laeuft die
+  // Farb-/Verbotszeichen-Animation ueber ihre EIGENEN Timeouts komplett
+  // selbststaendig weiter - ein Loslassen/Verlassen des Knotens waehrend
+  // der Anzeige (z.B. schon nach der Halte-Sekunde) darf sie NICHT
+  // vorzeitig abbrechen, sonst waere "haelt 1s, faedet dann aus" bei jedem
+  // realistischen kurzen Tippen wirkungslos. clear() (fuer den Abbruch VOR
+  // Erreichen der Schwelle) bleibt deshalb von dem Fall getrennt.
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); };
   g.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
     down = true; longFired = false; startX = e.clientX; startY = e.clientY;
     refs.pressRing.classList.add('pressing');
     refs.pressRing.setAttribute('stroke-dashoffset', '0');
     timer = setTimeout(() => {
-      timer = null; longFired = true;
+      timer = null; longFired = true; down = false;
       const canGoDeeper = !!item.hasMembers;
-      refs.pressRing.classList.remove('pressing');
-      refs.pressRing.classList.add(canGoDeeper ? 'press-ok' : 'press-blocked');
-      setTimeout(() => {
-        resetRing(); down = false;
-        if (canGoDeeper) { enterLevel(item, refs); }
-      }, PRESS_FLASH_MS);
+      if (canGoDeeper) {
+        refs.pressRing.classList.remove('pressing');
+        refs.pressRing.classList.add('press-ok');
+        setTimeout(() => { resetRing(); enterLevel(item, refs); }, PRESS_FLASH_MS);
+      } else {
+        runBlockedSignAnimation(refs.pressRing, refs.pressSign, resetRing);
+      }
     }, PRESS_MS);
   });
   g.addEventListener('pointerup', e => {
     if (!down) return;
     const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > PRESS_MOVE_PX;
-    const wasLong = longFired;
     clear();
-    if (wasLong || moved) return;
+    if (moved) return;
     if (item.detailKey) { openDeviceDetail(item.detailKey, g); }
   });
-  g.addEventListener('pointerleave', clear);
-  g.addEventListener('pointercancel', clear);
+  g.addEventListener('pointerleave', () => { if (down) { clear(); } });
+  g.addEventListener('pointercancel', () => { if (down) { clear(); } });
 }
 
 // Pillen-Druck (09.09.2026, dieselbe Korrektur wie bei den Aussenknoten,
@@ -2564,8 +2628,9 @@ function attachPressHandlers(refs, item) {
 // sonst der Schluessel des gerade aufgeschachtelten Knotens selbst - das
 // ist exakt derselbe Schluessel, mit dem auch dessen Mitgliederliste
 // geladen wurde). Langer Druck bis der Ring komplett gelb ist wechselt
-// auf Gruen und geht zurueck; auf Ebene 1 (nichts darueber) auf Rot ohne
-// Wirkung - einmalig gebunden, das Element selbst ist statisches Markup.
+// auf Gruen und geht zurueck; auf Ebene 1 (nichts darueber) Verbotszeichen
+// (runBlockedSignAnimation()) ohne Wirkung - einmalig gebunden, das
+// Element selbst ist statisches Markup.
 function centerCurrentDetailKey() {
   if (LEVEL_STACK.length > 0) {
     return LEVEL_STACK[LEVEL_STACK.length - 1].key || null;
@@ -2576,43 +2641,49 @@ function centerCurrentDetailKey() {
 function attachCenterPressHandlers() {
   const g = document.getElementById('node-center');
   const ring = document.getElementById('center-press-ring');
+  const sign = document.getElementById('center-press-sign');
   if (!g || !ring) return;
   let timer = null, startX = 0, startY = 0, longFired = false, down = false;
   const resetRing = () => {
-    ring.classList.remove('pressing', 'press-ok', 'press-blocked');
+    ring.classList.remove('pressing', 'press-ok', 'press-blocked', 'ash');
+    if (sign) { sign.classList.remove('showing', 'ash'); }
     ring.style.transition = 'none';
     ring.setAttribute('stroke-dashoffset', ring.dataset.perim || '0');
     void ring.getBoundingClientRect();
     ring.style.transition = '';
+    down = false;
   };
-  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); down = false; };
+  // Wie bei den Aussenknoten (attachPressHandlers()): nach longFired laeuft
+  // die Farb-/Verbotszeichen-Animation eigenstaendig weiter, ein Loslassen
+  // waehrend der Halte-/Asche-Phase darf sie nicht abschneiden.
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } resetRing(); };
   g.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
     down = true; longFired = false; startX = e.clientX; startY = e.clientY;
     ring.classList.add('pressing');
     ring.setAttribute('stroke-dashoffset', '0');
     timer = setTimeout(() => {
-      timer = null; longFired = true;
+      timer = null; longFired = true; down = false;
       const canGoUp = LEVEL_STACK.length > 0;
-      ring.classList.remove('pressing');
-      ring.classList.add(canGoUp ? 'press-ok' : 'press-blocked');
-      setTimeout(() => {
-        resetRing(); down = false;
-        if (canGoUp) { leaveLevel(); }
-      }, PRESS_FLASH_MS);
+      if (canGoUp) {
+        ring.classList.remove('pressing');
+        ring.classList.add('press-ok');
+        setTimeout(() => { resetRing(); leaveLevel(); }, PRESS_FLASH_MS);
+      } else {
+        runBlockedSignAnimation(ring, sign, resetRing);
+      }
     }, PRESS_MS);
   });
   g.addEventListener('pointerup', e => {
     if (!down) return;
     const moved = Math.hypot(e.clientX - startX, e.clientY - startY) > PRESS_MOVE_PX;
-    const wasLong = longFired;
     clear();
-    if (wasLong || moved) return;
+    if (moved) return;
     const key = centerCurrentDetailKey();
     if (key) { openDeviceDetail(key, g); }
   });
-  g.addEventListener('pointerleave', clear);
-  g.addEventListener('pointercancel', clear);
+  g.addEventListener('pointerleave', () => { if (down) { clear(); } });
+  g.addEventListener('pointercancel', () => { if (down) { clear(); } });
 }
 attachCenterPressHandlers();
 
