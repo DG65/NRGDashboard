@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.11';
+    private const NEWS_VERSION = '0.9.12';
     private const NEWS_ITEMS = [
+        'Feinschliff an den Ebenenwechsel-Animationen nach erstem Test: Funkenschauer ist jetzt größer und intensiver (mehr, größere, weiter fliegende Funken); die vorherige Irisblende war kaum sichtbar - "Portal-Iris" zeigt jetzt einen kräftigen, segmentierten Blenden-Ring; "Ping-Puls" wich "Kreiswellen" (mehrere zeitversetzte Ringe wie ein Stein im Wasser). Beim Blockiert-Fall: "Kopfschütteln" dreht jetzt tatsächlich sichtbar die Knoten-/Pillenfläche um die vertikale Mittelachse hin und her (vorher unsichtbar); Schwindel-Sternchen laufen spürbar langsamer; "Seifenblase" wich "Häufchen" (die Fläche staucht sich sichtbar nach unten zusammen und zerfließt).',
         'Neu: das Verbotszeichen aus 0.9.10 ist wieder weg ("gefällt mir überhaupt nicht") - stattdessen gibt es jetzt für jede Ebenenwechsel-Richtung 3 auswählbare Animationen plus "Zufällig" (hinter dem Doppelpfeil): wechselt die Ebene tatsächlich, spielt wahlweise ein Funkenschauer (Standard), eine Irisblende/Strudel oder ein Ping-Puls; geht es nicht weiter, statt eines Verbotszeichens jetzt ein Kopfschütteln, Schwindel-Sternchen oder eine zerplatzende Seifenblase.',
         'Neu: ein langer Druck, der nicht weiterführt (Blatt-Knoten ohne Mitglieder, oder die Mittelpille auf Ebene 1 ohne Ebene darüber), zeigt jetzt statt eines kurzen roten Aufblitzens ein echtes Verbotszeichen - der Ring wird dicker und bekommt einen diagonalen Balken, hält eine Sekunde und zerfällt dann sichtbar zu Asche (Grau, ausblendend). Signalisiert deutlich: hier geht es nicht weiter, man bleibt auf derselben Ebene.',
         'Neu: alle Steuermöglichkeiten für die Animation sitzen jetzt gemeinsam hinter dem Doppelpfeil oben rechts (Kachel im WebFront aufziehen) - dazu sind "Übergangszeit aktiv/inaktiv", "Fluss-Tempo" und die "Automatische Vorführung" von der Konsole dorthin gewandert. Damit lässt sich z. B. eine gerade laufende automatische Vorführung direkt im WebFront stoppen, ohne Konsolenzugriff.',
@@ -221,7 +222,7 @@ class NRGDashboardTile extends IPSModule
         // mit Assoziationen) statt Bool/freier Zahl, damit WebFront eine
         // Auswahlliste statt eines Zahlenfelds zeigt.
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
-            0 => 'Funkenschauer', 1 => 'Irisblende/Strudel', 2 => 'Ping-Puls', 3 => 'Zufällig',
+            0 => 'Funkenschauer', 1 => 'Portal-Iris', 2 => 'Kreiswellen', 3 => 'Zufällig',
         ]);
         $isNewOpenAnim = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID) === false;
         $this->RegisterVariableInteger('OpenAnimStyle', 'Animation bei Ebenenwechsel', 'NRGDASH.OpenAnimStyle', 207);
@@ -230,7 +231,7 @@ class NRGDashboardTile extends IPSModule
             $this->SetValue('OpenAnimStyle', 0);
         }
         $this->ensureEnumProfile('NRGDASH.BlockedAnimStyle', [
-            0 => 'Kopfschütteln', 1 => 'Schwindel-Sternchen', 2 => 'Seifenblase', 3 => 'Zufällig',
+            0 => 'Kopfschütteln', 1 => 'Schwindel-Sternchen', 2 => 'Häufchen', 3 => 'Zufällig',
         ]);
         $isNewBlockedAnim = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID) === false;
         $this->RegisterVariableInteger('BlockedAnimStyle', 'Animation, wenn keine Ebene mehr möglich ist', 'NRGDASH.BlockedAnimStyle', 208);
