@@ -759,8 +759,8 @@ function boreholeUnit(svg, x, y, w, h, running) {
     fill: 'none', stroke: retCol, 'stroke-width': 2.2
   }));
   g.appendChild(el('path', { d: 'M' + up + ',' + pipeBot + ' L' + up + ',' + pipeTop, fill: 'none', stroke: retCol, 'stroke-width': 2.2 }));
-  g.appendChild(arrowHead(down, pipeTop + (pipeBot - pipeTop) * 0.45, 'd', flowCol));
-  g.appendChild(arrowHead(up, pipeTop + (pipeBot - pipeTop) * 0.45, 'u', retCol));
+  g.appendChild(arrowHead(down, pipeTop + (pipeBot - pipeTop) * 0.6, 'd', flowCol));
+  g.appendChild(arrowHead(up, pipeTop + (pipeBot - pipeTop) * 0.6, 'u', retCol));
   var lbl = el('text', { x: cx, y: y + h + 12, class: 'tag' });
   lbl.style.fontSize = '7.5px'; lbl.textContent = 'Tiefenbohrung'; g.appendChild(lbl);
   svg.appendChild(g);
@@ -774,22 +774,38 @@ function boreholeUnit(svg, x, y, w, h, running) {
 function collectorUnit(svg, x, y, w, h, running) {
   var g = el('g', {});
   var C = PAL.draw;
-  var cx = x + w / 2, s = 26;
-  exchangeBox(g, cx, y + 2, s, C);
+  // Box sitzt rechts (Dietmar-Referenzbild: der Kollektor liegt SEITLICH
+  // neben dem Haus auf gleicher, flacher Tiefe - nicht unterhalb wie bei
+  // der Tiefenbohrung), Rohrschleifen liegen LINKS davon auf derselben
+  // Hoehe, angeschlossen ueber zwei waagrechte Leitungen mit Pfeilen.
+  var s = 24;
+  var boxCx = x + w - s / 2 - 4;
+  var midY = y + h * 0.42;
+  exchangeBox(g, boxCx, midY - s / 2, s, C);
   var flowCol = '#e0503c', retCol = '#4a90d9';
-  var pipeTop = y + 2 + s, rowY = pipeTop + 12;
-  var loopW = w * 0.36, loopGap = 9;
-  // Zwei liegende U-Schlaufen nebeneinander, Vor-/Ruecklauf farblich
-  // getrennt wie bei der Tiefenbohrung.
-  [x + w * 0.12, x + w * 0.12 + loopW + 6].forEach(function (lx, i) {
-    var ry1 = rowY, ry2 = rowY + loopGap * 3;
-    g.appendChild(el('path', { d: 'M' + lx + ',' + ry1 + ' L' + (lx + loopW) + ',' + ry1, fill: 'none', stroke: flowCol, 'stroke-width': 2 }));
-    g.appendChild(el('path', { d: 'M' + (lx + loopW) + ',' + ry1 + ' Q' + (lx + loopW + 8) + ',' + ((ry1 + ry2) / 2) + ' ' + (lx + loopW) + ',' + ry2, fill: 'none', stroke: retCol, 'stroke-width': 2 }));
-    g.appendChild(el('path', { d: 'M' + (lx + loopW) + ',' + ry2 + ' L' + lx + ',' + ry2, fill: 'none', stroke: retCol, 'stroke-width': 2 }));
-    if (i === 0) { g.appendChild(arrowHead(lx + loopW * 0.5, ry1, 'r', flowCol)); }
+  var ry1 = midY - 6, ry2 = midY + 6;
+  var loopRight = boxCx - s / 2 - 6, loopLeft = x + 4;
+  // Drei ineinander liegende, nach links offene Rohrschleifen (Dietmar-
+  // Referenzbild: verschachtelte Bogenpaare statt einer einzelnen
+  // Tiefenbohrung - mehr Flaeche statt Tiefe). Jede Schleife ein
+  // durchgehendes U aus Vor- und Ruecklaufschenkel, an der Box endend.
+  var depths = [loopLeft, loopLeft + (loopRight - loopLeft) * 0.35, loopLeft + (loopRight - loopLeft) * 0.62];
+  depths.forEach(function (lx, i) {
+    var r1 = ry1 - i * 3, r2 = ry2 + i * 3;
+    g.appendChild(el('path', {
+      d: 'M' + loopRight + ',' + r1 + ' L' + (lx + 5) + ',' + r1 +
+         ' Q' + lx + ',' + r1 + ' ' + lx + ',' + ((r1 + r2) / 2) +
+         ' Q' + lx + ',' + r2 + ' ' + (lx + 5) + ',' + r2 + ' L' + loopRight + ',' + r2,
+      fill: 'none', stroke: i % 2 === 0 ? flowCol : retCol, 'stroke-width': 1.8, opacity: 1 - i * 0.18
+    }));
   });
-  g.appendChild(el('path', { d: 'M' + cx + ',' + pipeTop + ' L' + cx + ',' + rowY, fill: 'none', stroke: flowCol, 'stroke-width': 2 }));
-  var lbl = el('text', { x: cx, y: y + h + 12, class: 'tag' });
+  // Waagrechte Anschlussleitungen mit Pfeilen direkt an der Box (Dietmar-
+  // Referenzbild: "→ ←" auf Hoehe der Box).
+  g.appendChild(el('path', { d: 'M' + loopRight + ',' + ry1 + ' L' + (boxCx - s / 2) + ',' + ry1, fill: 'none', stroke: flowCol, 'stroke-width': 2 }));
+  g.appendChild(el('path', { d: 'M' + (boxCx - s / 2) + ',' + ry2 + ' L' + loopRight + ',' + ry2, fill: 'none', stroke: retCol, 'stroke-width': 2 }));
+  g.appendChild(arrowHead(boxCx - s / 2 - 6, ry1, 'r', flowCol));
+  g.appendChild(arrowHead(loopRight + 6, ry2, 'l', retCol));
+  var lbl = el('text', { x: x + w / 2, y: y + h + 12, class: 'tag' });
   lbl.style.fontSize = '7.5px'; lbl.textContent = 'Erdkollektor'; g.appendChild(lbl);
   svg.appendChild(g);
   return g;
@@ -807,11 +823,11 @@ function wellUnit(svg, x, y, w, h, running) {
   exchangeBox(g, cx, y + 2, s, C);
   var flowCol = '#e0503c', retCol = '#4a90d9';
   var pipeTop = y + 2 + s, pipeBot = y + h - 10;
-  var leftX = x + w * 0.30, rightX = x + w * 0.70;
+  var leftX = x + w * 0.14, rightX = x + w * 0.86;
   g.appendChild(el('path', { d: 'M' + leftX + ',' + pipeBot + ' L' + leftX + ',' + pipeTop + ' L' + (cx - 3) + ',' + pipeTop, fill: 'none', stroke: retCol, 'stroke-width': 2.2 }));
   g.appendChild(el('path', { d: 'M' + (cx + 3) + ',' + pipeTop + ' L' + rightX + ',' + pipeTop + ' L' + rightX + ',' + pipeBot, fill: 'none', stroke: flowCol, 'stroke-width': 2.2 }));
-  g.appendChild(arrowHead(leftX, pipeTop + (pipeBot - pipeTop) * 0.55, 'd', retCol));
-  g.appendChild(arrowHead(rightX, pipeTop + (pipeBot - pipeTop) * 0.55, 'u', flowCol));
+  g.appendChild(arrowHead(leftX, pipeBot - 12, 'd', retCol));
+  g.appendChild(arrowHead(rightX, pipeBot - 12, 'u', flowCol));
   var lt = el('text', { x: leftX, y: y + h + 12, class: 'tag' });
   lt.style.fontSize = '7px'; lt.textContent = 'Sickerbrunnen'; g.appendChild(lt);
   var rt = el('text', { x: rightX, y: y + h + 12, class: 'tag' });
