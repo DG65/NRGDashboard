@@ -96,7 +96,7 @@ class NRGDashboardHeatSchema extends IPSModule
     // nutzersichtbaren Aenderung erhoehen.
     private const NEWS_VERSION = '0.5.0';
     private const NEWS_ITEMS = [
-        '✨ Neu: Bauart "Sole/Wasser (Erdsonde)" und "Wasser/Wasser (Brunnen)" hinter dem Doppelpfeil - das Schema zeichnet dafür die Erdsonden bzw. Förder-/Schluckbrunnen statt eines Außengeräts, ohne Lüfter/Abtaubetrieb (die es bei diesen Quellen nicht gibt). Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
+        '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
         'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
         'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
@@ -287,8 +287,16 @@ class NRGDashboardHeatSchema extends IPSModule
         // bleiben unveraendert, weil mainInletTemp/mainOutletTemp bereits
         // quellenneutral die Temperatur vor/nach dem Verdampfer
         // beschreiben (nicht "Luft"-spezifisch).
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 2, 'Sole/Wasser (Erdsonde)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 2, 'Sole/Wasser (Tiefenbohrung)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 3, 'Wasser/Wasser (Brunnen)', '', -1);
+        // Erdkollektor (Dietmar, 10.09.2026, per Referenzbild: "es ist
+        // doch so, dass ... bei den 3 moeglichen anderen
+        // Waermepumpentypen ... eine recht einfache Verdichterbox
+        // steht" - das Referenzbild zeigt Tiefenbohrung, Erdkollektoren
+        // und Grundwasser als die drei Nicht-Luft-Varianten) - horizontal
+        // im Untergrund flach verlegte Rohrschleifen statt einer
+        // Tiefenbohrung, braucht mehr Grundstuecksflaeche statt Tiefe.
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 4, 'Sole/Wasser (Erdkollektor)', '', -1);
         $bauartIsNew = @IPS_GetObjectIDByIdent('Bauart', $this->InstanceID) === false;
         $this->RegisterVariableInteger('Bauart', 'Bauart', 'NRGDASHHEAT.Bauart', 60);
         $this->EnableAction('Bauart');
@@ -574,7 +582,7 @@ class NRGDashboardHeatSchema extends IPSModule
         // wie eine Aussenluft-Einheit ein - "Abtaubetrieb" ist dort kein
         // realistischer Betriebszustand und faellt aus der Simulation weg
         // (analog zur bestehenden Monoblock-Ausnahme fuer Warmwasser).
-        $groundOrWater = in_array($bauart, [2, 3], true);
+        $groundOrWater = in_array($bauart, [2, 3, 4], true);
         if (IPS_VariableProfileExists($profile)) {
             IPS_DeleteVariableProfile($profile);
         }
@@ -1041,7 +1049,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'flowStyle'   => (int) $this->GetValue('FlowStyle'),
             'flowMotion'  => (int) $this->GetValue('FlowMotion'),
             'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
-            'bauart'      => [0 => 'split', 1 => 'monoblock', 2 => 'sole', 3 => 'wasser'][(int) $this->GetValue('Bauart')] ?? 'split',
+            'bauart'      => [0 => 'split', 1 => 'monoblock', 2 => 'sole', 3 => 'wasser', 4 => 'kollektor'][(int) $this->GetValue('Bauart')] ?? 'split',
             'hasBuffer'   => (bool) $this->GetValue('HasBuffer'),
             'bufferLiters' => (int) $this->GetValue('BufferLiters'),
             'hasDhwTank'  => (bool) $this->GetValue('HasDhwTank'),
@@ -1067,13 +1075,15 @@ class NRGDashboardHeatSchema extends IPSModule
             'pumpFlow' => 15.0, 'pumpSpeed' => 1450.0, 'pumpDuty' => null,
             'threeWayValve' => 0, 'twoWayValve' => true,
             'mainInletTemp' => 36.0, 'mainOutletTemp' => 42.0,
-            // Waermequelle Sole/Wasser bzw. Wasser/Wasser (Dietmar,
-            // 10.09.2026) - realistische Beispielwerte fuer die
-            // Demo/Simulation: Sole ca. 0..-3 °C Spreizung im
-            // Heizbetrieb, Brunnenwasser ganzjaehrig ca. 8..12 °C mit ca.
-            // 4 K Auskuehlung ueber den Waermetauscher.
-            'sourceInTemp'  => $bauart === 3 ? 10.0 : ($bauart === 2 ? 2.0 : null),
-            'sourceOutTemp' => $bauart === 3 ? 6.0 : ($bauart === 2 ? -1.5 : null),
+            // Waermequelle Sole/Wasser (Tiefenbohrung/Erdkollektor) bzw.
+            // Wasser/Wasser (Dietmar, 10.09.2026) - realistische
+            // Beispielwerte fuer die Demo/Simulation: Tiefenbohrung ca.
+            // 0..-3 °C Spreizung im Heizbetrieb, ein flacher Erdkollektor
+            // reagiert staerker auf die Jahreszeit und liegt etwas
+            // kaelter, Brunnenwasser ganzjaehrig ca. 8..12 °C mit ca. 4 K
+            // Auskuehlung ueber den Waermetauscher.
+            'sourceInTemp'  => $bauart === 3 ? 10.0 : ($bauart === 2 ? 2.0 : ($bauart === 4 ? 0.0 : null)),
+            'sourceOutTemp' => $bauart === 3 ? 6.0 : ($bauart === 2 ? -1.5 : ($bauart === 4 ? -3.0 : null)),
             'z1WaterTemp' => 38.5, 'z2WaterTemp' => 33.0,
             'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
             'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,

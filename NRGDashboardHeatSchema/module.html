@@ -710,108 +710,112 @@ function outdoorUnit(svg, x, y, w, h, running, fanSpeed, contentW, fan2Speed) {
   return g;
 }
 
-// Erdsonde (Sole/Wasser-Waermepumpe, Dietmar 10.09.2026: Forum-Rueckfrage
-// "somm" zu seiner eigenen Tiefenbohrung-Anlage). Ersetzt das Aussengeraet
-// 1:1 in derselben Bounding-Box (x/y/w/h). Recherchiert statt vom
-// Forum-Foto uebernommen (Dietmar: "das was da Somm gebastelt hat ... ist
-// nun mal keine Referenz" - siehe bwp.de-Hydraulik-Leitfaden,
-// viessmann.de, baunetzwissen.de): ein geschlossener Solekreis mit einer
-// oder mehreren U-foermigen Erdsonden im Untergrund, eine
-// Sole-Umwaelzpumpe haelt die Sole in Bewegung. Der Waermetauscher
-// (Verdampfer) bleibt Teil der WP selbst und wird hier nicht gezeichnet -
-// genau wie beim Aussengeraet zeigt diese Box nur die Waermequelle davor.
-// Gemeinsamer Helfer fuer beide Waermequellen-Boxen unten: ein
-// Erdreich-Untergrund (braunton, Kies-Sprenkel) ueber die GANZE Box, wie
-// im von Dietmar am 10.09.2026 als Referenz gezeigten Schema (kein
-// separater "Luft"-Bereich obendrueber wie beim Aussengeraet, da hier
-// alles unterirdisch liegt).
-function groundBed(g, x, y, w, h, C) {
-  g.appendChild(el('rect', { x: x, y: y, width: w, height: h, fill: '#b99569', opacity: 0.32, stroke: C, 'stroke-width': 1.2 }));
-  var speckle = '';
-  for (var sx = x + 6; sx < x + w - 4; sx += 8) {
-    for (var sy = y + 6; sy < y + h - 4; sy += 10) {
-      if ((sx * 7 + sy * 13) % 23 < 7) { speckle += 'M' + sx + ',' + sy + ' l1.4,1.4 '; }
-    }
-  }
-  g.appendChild(el('path', { d: speckle, stroke: C, 'stroke-width': 1.3, opacity: 0.4, 'stroke-linecap': 'round' }));
+// Waermequellen-Boxen fuer Sole/Wasser (Tiefenbohrung/Erdkollektor) und
+// Wasser/Wasser (Brunnen) - Dietmar, 10.09.2026, Forum-Rueckfrage "somm"
+// zu seiner eigenen Tiefenbohrung-Anlage, dann per Referenzbild ("es ist
+// doch so, dass ... bei den 3 moeglichen anderen Waermepumpentypen ...
+// eine recht einfache Verdichterbox steht, die die Waerme aus dem Wasser
+// herausholt") grundlegend vereinfacht: anders als beim Aussengeraet gibt
+// es hier KEIN grosses sichtbares Geraet - nur eine kleine, schlichte
+// Tauscher-/Verdichterbox an der Hauswand, das eigentliche "Bild" ist die
+// Rohrfuehrung im Untergrund darunter (Tiefenbohrung, Flaechenkollektor
+// oder zwei Brunnen). Ersetzt das Aussengeraet 1:1 in derselben
+// Bounding-Box (x/y/w/h), damit WT/Innengeraet/Puffer/Heizkreise
+// unveraendert Platz haben. Recherchiert statt vom Forum-Foto uebernommen
+// (Dietmar: "das was da Somm gebastelt hat ... ist nun mal keine
+// Referenz" - siehe bwp.de-Hydraulik-Leitfaden, viessmann.de,
+// baunetzwissen.de, energie-lexikon.info, kesselheld.de).
+
+// Kleine Tauscher-/Verdichterbox mit rundem Tausch-Symbol (zwei
+// gegenlaeufige Pfeile) - genau das kleine Geraetesymbol aus Dietmars
+// Referenzbild, nicht die grosse Aussengeraet-Zeichnung.
+function exchangeBox(g, cx, topY, s, C) {
+  g.appendChild(el('rect', { x: cx - s / 2, y: topY, width: s, height: s, rx: 4, fill: PAL.surface, stroke: C, 'stroke-width': 1.4 }));
+  var cy = topY + s / 2, r = s * 0.27;
+  var topArc = 'M' + (cx - r) + ',' + cy + ' A' + r + ',' + r + ' 0 0 1 ' + (cx + r) + ',' + cy;
+  var botArc = 'M' + (cx + r) + ',' + cy + ' A' + r + ',' + r + ' 0 0 1 ' + (cx - r) + ',' + cy;
+  g.appendChild(el('path', { d: topArc, fill: 'none', stroke: '#4a90d9', 'stroke-width': 2 }));
+  g.appendChild(arrowHead(cx + r, cy, 'd', '#4a90d9'));
+  g.appendChild(el('path', { d: botArc, fill: 'none', stroke: '#e0503c', 'stroke-width': 2 }));
+  g.appendChild(arrowHead(cx - r, cy, 'u', '#e0503c'));
 }
 
-// Wellenlinien = bewegtes Wasser/Sole im Schacht (Dietmar-Referenzbild,
-// 10.09.2026), fuellt die untere ~65% eines Schachts.
-function shaftWater(g, sx, sw, topY, botY, col, active) {
-  var startY = topY + (botY - topY) * 0.35;
-  var wl = sx + 2.5, wr = sx + sw - 2.5, wm = (wl + wr) / 2;
-  var d = '';
-  for (var wy = startY; wy < botY - 3; wy += 7) {
-    d += 'M' + wl + ',' + wy + ' Q' + ((wl + wm) / 2) + ',' + (wy - 2.6) + ' ' + wm + ',' + wy +
-         ' Q' + ((wm + wr) / 2) + ',' + (wy + 2.6) + ' ' + wr + ',' + wy + ' ';
-  }
-  g.appendChild(el('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 1.3, opacity: active ? 0.9 : 0.4 }));
-}
-
-// Erdsonde (Sole/Wasser-Waermepumpe, Dietmar 10.09.2026: Forum-Rueckfrage
-// "somm" zu seiner eigenen Tiefenbohrung-Anlage, spaeter per Referenzbild
-// praezisiert: "Schau Dir mal diese Darstellung an, die trifft es
-// wesentlich besser" - zwei schlanke senkrechte Sondenrohre im Erdreich
-// mit bewegtem Wasser/Sole statt der vorherigen U-Rohr-Kurven). Ersetzt
-// das Aussengeraet 1:1 in derselben Bounding-Box (x/y/w/h). Recherchiert
-// statt vom Forum-Foto uebernommen (Dietmar: "das was da Somm gebastelt
-// hat ... ist nun mal keine Referenz" - siehe bwp.de-Hydraulik-Leitfaden,
-// viessmann.de, baunetzwissen.de): ein geschlossener Solekreis mit einer
-// oder mehreren Erdsonden im Untergrund, eine Sole-Umwaelzpumpe haelt die
-// Sole in Bewegung. Der Waermetauscher (Verdampfer) bleibt Teil der WP
-// selbst und wird hier nicht gezeichnet.
-function soleUnit(svg, x, y, w, h, running) {
+// Tiefenbohrung (Sole/Wasser, klassische Erdsonde): eine schlichte
+// Tauscherbox oben, darunter ein einzelnes U-Rohr senkrecht in die Tiefe -
+// exakt die Bildsprache aus Dietmars Referenzbild ("Tiefenbohrung" mit
+// Pfeil runter/rauf).
+function boreholeUnit(svg, x, y, w, h, running) {
   var g = el('g', {});
   var C = PAL.draw;
-  groundBed(g, x, y, w, h, C);
-  var shaftW = w * 0.20;
-  var leftX = x + w * 0.20, rightX = x + w - shaftW - w * 0.20;
-  var topY = y + 6, botY = y + h - 8;
+  var cx = x + w / 2, s = 26;
+  exchangeBox(g, cx, y + 2, s, C);
   var flowCol = '#e0503c', retCol = '#4a90d9';
-  [[leftX, flowCol], [rightX, retCol]].forEach(function (pair) {
-    var sx = pair[0];
-    g.appendChild(el('rect', { x: sx, y: topY, width: shaftW, height: botY - topY, rx: 2, fill: PAL.surface, stroke: C, 'stroke-width': 1.3 }));
-    shaftWater(g, sx, shaftW, topY, botY, pair[1], running);
-  });
-  // Sole-Umwaelzpumpe zwischen den beiden Sondenrohren (reale Position:
-  // im Technikraum oberhalb - hier schematisch zwischen den Sonden
-  // platziert, analog zum Referenzbild).
-  g.appendChild(pumpIcon((leftX + shaftW + rightX) / 2, botY - 16, running, 0, 7));
+  var down = cx - 7, up = cx + 7;
+  var pipeTop = y + 2 + s, pipeBot = y + h - 10;
+  g.appendChild(el('path', { d: 'M' + down + ',' + pipeTop + ' L' + down + ',' + pipeBot, fill: 'none', stroke: flowCol, 'stroke-width': 2.2 }));
+  g.appendChild(el('path', {
+    d: 'M' + down + ',' + pipeBot + ' Q' + down + ',' + (pipeBot + 8) + ' ' + ((down + up) / 2) + ',' + (pipeBot + 8) +
+       ' Q' + up + ',' + (pipeBot + 8) + ' ' + up + ',' + pipeBot,
+    fill: 'none', stroke: retCol, 'stroke-width': 2.2
+  }));
+  g.appendChild(el('path', { d: 'M' + up + ',' + pipeBot + ' L' + up + ',' + pipeTop, fill: 'none', stroke: retCol, 'stroke-width': 2.2 }));
+  g.appendChild(arrowHead(down, pipeTop + (pipeBot - pipeTop) * 0.45, 'd', flowCol));
+  g.appendChild(arrowHead(up, pipeTop + (pipeBot - pipeTop) * 0.45, 'u', retCol));
+  var lbl = el('text', { x: cx, y: y + h + 12, class: 'tag' });
+  lbl.style.fontSize = '7.5px'; lbl.textContent = 'Tiefenbohrung'; g.appendChild(lbl);
   svg.appendChild(g);
   return g;
 }
 
-// Brunnenanlage (Wasser/Wasser-Waermepumpe, Dietmar 10.09.2026, per
-// Referenzbild praezisiert: zwei erdverlegte Brunnenschaechte mit
-// bewegtem Wasser statt der vorherigen schmalen Kaesten mit Fuellstands-
-// Rechteck). Ersetzt das Aussengeraet 1:1 in derselben Bounding-Box.
-// Recherchiert (nicht vom Forum-Foto uebernommen, siehe soleUnit()):
-// baunetzwissen.de, energie-lexikon.info, kesselheld.de - ein
-// Foerderbrunnen mit Tauchpumpe/Brunnenpumpe foerdert Grundwasser zum
-// Waermetauscher der WP, danach fliesst es in einen separaten
-// Schluckbrunnen zurueck (real ca. 15 m Abstand gegen thermischen
-// Kurzschluss - hier nur schematisch nebeneinander).
+// Erdkollektor (Sole/Wasser, Flaechenkollektor): dieselbe Tauscherbox,
+// darunter flach im Erdreich verlegte, ineinander liegende Rohrschleifen
+// (mehr Flaeche statt Tiefe - Dietmars Referenzbild zeigt das als
+// nebeneinanderliegende Bogenpaare statt einer einzelnen Tiefbohrung).
+function collectorUnit(svg, x, y, w, h, running) {
+  var g = el('g', {});
+  var C = PAL.draw;
+  var cx = x + w / 2, s = 26;
+  exchangeBox(g, cx, y + 2, s, C);
+  var flowCol = '#e0503c', retCol = '#4a90d9';
+  var pipeTop = y + 2 + s, rowY = pipeTop + 12;
+  var loopW = w * 0.36, loopGap = 9;
+  // Zwei liegende U-Schlaufen nebeneinander, Vor-/Ruecklauf farblich
+  // getrennt wie bei der Tiefenbohrung.
+  [x + w * 0.12, x + w * 0.12 + loopW + 6].forEach(function (lx, i) {
+    var ry1 = rowY, ry2 = rowY + loopGap * 3;
+    g.appendChild(el('path', { d: 'M' + lx + ',' + ry1 + ' L' + (lx + loopW) + ',' + ry1, fill: 'none', stroke: flowCol, 'stroke-width': 2 }));
+    g.appendChild(el('path', { d: 'M' + (lx + loopW) + ',' + ry1 + ' Q' + (lx + loopW + 8) + ',' + ((ry1 + ry2) / 2) + ' ' + (lx + loopW) + ',' + ry2, fill: 'none', stroke: retCol, 'stroke-width': 2 }));
+    g.appendChild(el('path', { d: 'M' + (lx + loopW) + ',' + ry2 + ' L' + lx + ',' + ry2, fill: 'none', stroke: retCol, 'stroke-width': 2 }));
+    if (i === 0) { g.appendChild(arrowHead(lx + loopW * 0.5, ry1, 'r', flowCol)); }
+  });
+  g.appendChild(el('path', { d: 'M' + cx + ',' + pipeTop + ' L' + cx + ',' + rowY, fill: 'none', stroke: flowCol, 'stroke-width': 2 }));
+  var lbl = el('text', { x: cx, y: y + h + 12, class: 'tag' });
+  lbl.style.fontSize = '7.5px'; lbl.textContent = 'Erdkollektor'; g.appendChild(lbl);
+  svg.appendChild(g);
+  return g;
+}
+
+// Grundwasser (Wasser/Wasser): dieselbe Tauscherbox, darunter zwei
+// getrennte Brunnen - Saugbrunnen (Foerderung, Pfeil rauf) und
+// Sickerbrunnen (Ruecklauf, Pfeil runter), real ca. 15 m auseinander
+// gegen thermischen Kurzschluss, hier nur schematisch nebeneinander
+// (Dietmar-Referenzbild: exakt dieses Beschriftungspaar).
 function wellUnit(svg, x, y, w, h, running) {
   var g = el('g', {});
   var C = PAL.draw;
-  groundBed(g, x, y, w, h, C);
-  var shaftW = w * 0.20;
-  var leftX = x + w * 0.20, rightX = x + w - shaftW - w * 0.20;
-  var topY = y + 6, botY = y + h - 8;
+  var cx = x + w / 2, s = 26;
+  exchangeBox(g, cx, y + 2, s, C);
   var flowCol = '#e0503c', retCol = '#4a90d9';
-  g.appendChild(el('rect', { x: leftX, y: topY, width: shaftW, height: botY - topY, rx: 2, fill: PAL.surface, stroke: C, 'stroke-width': 1.3 }));
-  g.appendChild(el('rect', { x: rightX, y: topY, width: shaftW, height: botY - topY, rx: 2, fill: PAL.surface, stroke: C, 'stroke-width': 1.3 }));
-  shaftWater(g, leftX, shaftW, topY, botY, flowCol, running);
-  shaftWater(g, rightX, shaftW, topY, botY, retCol, running);
-  // Tauchpumpe im Foerderbrunnen (links) - anders als beim Solekreis kein
-  // frei stehendes Bauteil, sondern real IM Wasser des Foerderbrunnens
-  // (Dietmar-Referenzbild).
-  g.appendChild(pumpIcon(leftX + shaftW / 2, botY - 16, running, 0, 7));
-  var lt = el('text', { x: leftX + shaftW / 2, y: y + h + 12, class: 'tag' });
-  lt.style.fontSize = '7px'; lt.textContent = 'Förderbr.'; g.appendChild(lt);
-  var rt = el('text', { x: rightX + shaftW / 2, y: y + h + 12, class: 'tag' });
-  rt.style.fontSize = '7px'; rt.textContent = 'Schluckbr.'; g.appendChild(rt);
+  var pipeTop = y + 2 + s, pipeBot = y + h - 10;
+  var leftX = x + w * 0.30, rightX = x + w * 0.70;
+  g.appendChild(el('path', { d: 'M' + leftX + ',' + pipeBot + ' L' + leftX + ',' + pipeTop + ' L' + (cx - 3) + ',' + pipeTop, fill: 'none', stroke: retCol, 'stroke-width': 2.2 }));
+  g.appendChild(el('path', { d: 'M' + (cx + 3) + ',' + pipeTop + ' L' + rightX + ',' + pipeTop + ' L' + rightX + ',' + pipeBot, fill: 'none', stroke: flowCol, 'stroke-width': 2.2 }));
+  g.appendChild(arrowHead(leftX, pipeTop + (pipeBot - pipeTop) * 0.55, 'd', retCol));
+  g.appendChild(arrowHead(rightX, pipeTop + (pipeBot - pipeTop) * 0.55, 'u', flowCol));
+  var lt = el('text', { x: leftX, y: y + h + 12, class: 'tag' });
+  lt.style.fontSize = '7px'; lt.textContent = 'Sickerbrunnen'; g.appendChild(lt);
+  var rt = el('text', { x: rightX, y: y + h + 12, class: 'tag' });
+  rt.style.fontSize = '7px'; rt.textContent = 'Saugbrunnen'; g.appendChild(rt);
   svg.appendChild(g);
   return g;
 }
@@ -1078,9 +1082,9 @@ function buildSchema(unit) {
   // urspruengliche Fassung fragte faelschlich "unit.bauart" ab (immer
   // undefined) - dadurch griff die Sole/Brunnen-Weiche nie, unabhaengig
   // von der tatsaechlichen Bauart-Einstellung.
-  var groundSource = bauart === 'sole' || bauart === 'wasser';
+  var groundSource = bauart === 'sole' || bauart === 'wasser' || bauart === 'kollektor';
   var at = el('text', { x: outdoorX + outdoorW / 2, y: 82, class: 'box-title' });
-  at.textContent = bauart === 'sole' ? 'ERDSONDE' : (bauart === 'wasser' ? 'BRUNNENANLAGE' : 'AUSSENGERÄT');
+  at.textContent = bauart === 'sole' ? 'TIEFENBOHRUNG' : (bauart === 'kollektor' ? 'ERDKOLLEKTOR' : (bauart === 'wasser' ? 'GRUNDWASSER' : 'AUSSENGERÄT'));
   svg.appendChild(at);
   // Gehaeuse bei zwei Luefter nahezu doppelt so hoch (Dietmar, 24.08.2026:
   // "die Hoehe des Aussengeraetes verdoppelt sich nahezu, d.h. der
@@ -1091,7 +1095,9 @@ function buildSchema(unit) {
   var hasFan2 = !groundSource && unit.fan2Speed !== null && unit.fan2Speed !== undefined;
   var outdoorH = hasFan2 ? 210 : 110;
   if (bauart === 'sole') {
-    soleUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
+    boreholeUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
+  } else if (bauart === 'kollektor') {
+    collectorUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
   } else if (bauart === 'wasser') {
     wellUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
   } else {

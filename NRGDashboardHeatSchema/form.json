@@ -35,7 +35,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Auch ohne Außenluft, 10.09.2026): die Bauart hinter dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser (Erdsonde)“ und „Wasser/Wasser (Brunnen)“ - das Schema zeichnet dann statt eines Außengeräts die passende Wärmequelle (Erdsonden mit Sole-Umwälzpumpe bzw. Förder-/Schluckbrunnen mit Brunnenpumpe), ohne Lüfter/Abtaubetrieb, die es dort nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen; Wärmetauscher, Innengerät, Puffer/WW-Tank und Heizkreise bleiben unverändert."
+          "caption": "✨ Feinheit (Auch ohne Außenluft, 10.09.2026): die Bauart hinter dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser (Tiefenbohrung)“, „Sole/Wasser (Erdkollektor)“ und „Wasser/Wasser (Brunnen)“ - das Schema zeichnet dann statt eines Außengeräts eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (senkrechte Bohrung, flacher Flächenkollektor oder Saug-/Sickerbrunnen-Paar), ohne Lüfter/Abtaubetrieb, die es dort nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen; Wärmetauscher, Innengerät, Puffer/WW-Tank und Heizkreise bleiben unverändert."
         },
         {
           "type": "Button",
