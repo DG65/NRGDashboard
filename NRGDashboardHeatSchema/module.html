@@ -1052,9 +1052,15 @@ function buildSchema(unit) {
   // exakt wie bisher darunter/daneben Platz haben - kein zusaetzlicher
   // Platzbedarf, keine Verdraengung des restlichen Schemas (Dietmar:
   // "sehen wir nichts mehr von der eigentlichen WP und den Heizkreisen").
-  var groundSource = unit.bauart === 'sole' || unit.bauart === 'wasser';
+  // WICHTIG: "bauart" ist ein Kachel-weites Konfigurationsfeld (siehe
+  // buildBasePayload() in module.php - liegt im TOP-LEVEL-Payload/cfg,
+  // NICHT am einzelnen unit-Objekt der erkannten Waermepumpe). Die
+  // urspruengliche Fassung fragte faelschlich "unit.bauart" ab (immer
+  // undefined) - dadurch griff die Sole/Brunnen-Weiche nie, unabhaengig
+  // von der tatsaechlichen Bauart-Einstellung.
+  var groundSource = bauart === 'sole' || bauart === 'wasser';
   var at = el('text', { x: outdoorX + outdoorW / 2, y: 82, class: 'box-title' });
-  at.textContent = unit.bauart === 'sole' ? 'ERDSONDE' : (unit.bauart === 'wasser' ? 'BRUNNENANLAGE' : 'AUSSENGERÄT');
+  at.textContent = bauart === 'sole' ? 'ERDSONDE' : (bauart === 'wasser' ? 'BRUNNENANLAGE' : 'AUSSENGERÄT');
   svg.appendChild(at);
   // Gehaeuse bei zwei Luefter nahezu doppelt so hoch (Dietmar, 24.08.2026:
   // "die Hoehe des Aussengeraetes verdoppelt sich nahezu, d.h. der
@@ -1064,9 +1070,9 @@ function buildSchema(unit) {
   // Erdsonde/Brunnen haben keine Luefter -> immer die einfache Hoehe.
   var hasFan2 = !groundSource && unit.fan2Speed !== null && unit.fan2Speed !== undefined;
   var outdoorH = hasFan2 ? 210 : 110;
-  if (unit.bauart === 'sole') {
+  if (bauart === 'sole') {
     soleUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
-  } else if (unit.bauart === 'wasser') {
+  } else if (bauart === 'wasser') {
     wellUnit(svg, outdoorX, 90, outdoorW, outdoorH, running);
   } else {
     outdoorUnit(svg, outdoorX, 90, outdoorW, outdoorH, running, unit.fanSpeed, outdoorBaseW, unit.fan2Speed);
