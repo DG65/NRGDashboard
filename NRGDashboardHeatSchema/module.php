@@ -23,8 +23,10 @@ declare(strict_types=1);
  * (Rohwert), threeWayValveStateID (0=Room/1=DHW), twoWayValveStateID
  * (bool), mainInletTempID/mainOutletTempID/z1WaterTempID/z2WaterTempID/
  * dhwTempID/bufferTempID/dischargeTempID (°C), compressorFreqID (Hz),
- * defrostingStateID (bool). Fehlt ein Feld (=0), wird es im Schema
- * ausgeblendet statt einer Nullanzeige.
+ * defrostingStateID (bool), sourceInTempID/sourceOutTempID (°C, Foerder-/
+ * Rueckpumpwasser bei Sole/Wasser bzw. Wasser/Wasser - contractVersion
+ * 1.5, additiv). Fehlt ein Feld (=0), wird es im Schema ausgeblendet statt
+ * einer Nullanzeige.
  */
 class NRGDashboardHeatSchema extends IPSModule
 {
@@ -50,6 +52,13 @@ class NRGDashboardHeatSchema extends IPSModule
         'twoWayValveStateID'      => 'ManualTwoWayValveStateID',
         'mainInletTempID'         => 'ManualMainInletTempID',
         'mainOutletTempID'        => 'ManualMainOutletTempID',
+        // Waermequelle bei Sole/Wasser oder Wasser/Wasser (Dietmar,
+        // 10.09.2026: eigene Datenpunkte fuer Foerder-/Rueckpumpwasser,
+        // NICHT ueber mainInletTemp/mainOutletTemp mitbenutzen - jene
+        // sind bereits der Hauptkreis-Vor-/Ruecklauf Richtung Heizkreise,
+        // siehe INNEN_PUF_CX in module.html).
+        'sourceInTempID'          => 'ManualSourceInTempID',
+        'sourceOutTempID'         => 'ManualSourceOutTempID',
         'z1WaterTempID'           => 'ManualZ1WaterTempID',
         'z2WaterTempID'           => 'ManualZ2WaterTempID',
         'dhwTempID'               => 'ManualDhwTempID',
@@ -85,8 +94,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.4.3';
+    private const NEWS_VERSION = '0.5.0';
     private const NEWS_ITEMS = [
+        '✨ Neu: Bauart "Sole/Wasser (Erdsonde)" und "Wasser/Wasser (Brunnen)" hinter dem Doppelpfeil - das Schema zeichnet dafür die Erdsonden bzw. Förder-/Schluckbrunnen statt eines Außengeräts, ohne Lüfter/Abtaubetrieb (die es bei diesen Quellen nicht gibt). Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
         'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
         'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
@@ -267,6 +277,18 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 0, 'Split (mit Innengerät)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 1, 'Monoblock (nur Außengerät)', '', -1);
+        // Erdsonde und Brunnen (Dietmar, 10.09.2026, Forum-Rueckfrage
+        // "somm": "wie schaut es aus wenn man zb wie ich eine
+        // Tiefenbohrung hat und keinen Pufferspeicher" - der Puffer war
+        // schon vorher optional (HasBuffer), die Waermequelle aber bis
+        // hierher immer eine Aussen-Luft-Einheit. Beide neuen Bauarten
+        // ersetzen im Schema nur das Aussengeraet durch die jeweilige
+        // Waermequelle; WT, Innengeraet, Puffer/WW-Tank und Heizkreise
+        // bleiben unveraendert, weil mainInletTemp/mainOutletTemp bereits
+        // quellenneutral die Temperatur vor/nach dem Verdampfer
+        // beschreiben (nicht "Luft"-spezifisch).
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 2, 'Sole/Wasser (Erdsonde)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 3, 'Wasser/Wasser (Brunnen)', '', -1);
         $bauartIsNew = @IPS_GetObjectIDByIdent('Bauart', $this->InstanceID) === false;
         $this->RegisterVariableInteger('Bauart', 'Bauart', 'NRGDASHHEAT.Bauart', 60);
         $this->EnableAction('Bauart');
@@ -546,7 +568,13 @@ class NRGDashboardHeatSchema extends IPSModule
     private function ApplySimulationProfile(): void
     {
         $profile = 'NRGDASHHEAT.SimulationMode.' . $this->InstanceID;
-        $monoblock = ((int) $this->GetValue('Bauart')) === 1;
+        $bauart = (int) $this->GetValue('Bauart');
+        $monoblock = $bauart === 1;
+        // Erdsonde/Brunnen (Bauart 2/3) frieren an der Waermequelle nicht
+        // wie eine Aussenluft-Einheit ein - "Abtaubetrieb" ist dort kein
+        // realistischer Betriebszustand und faellt aus der Simulation weg
+        // (analog zur bestehenden Monoblock-Ausnahme fuer Warmwasser).
+        $groundOrWater = in_array($bauart, [2, 3], true);
         if (IPS_VariableProfileExists($profile)) {
             IPS_DeleteVariableProfile($profile);
         }
@@ -558,7 +586,9 @@ class NRGDashboardHeatSchema extends IPSModule
             IPS_SetVariableProfileAssociation($profile, 3, 'Warmwasserbetrieb', '', -1);
         }
         IPS_SetVariableProfileAssociation($profile, 4, 'Standby', '', -1);
-        IPS_SetVariableProfileAssociation($profile, 5, 'Abtaubetrieb', '', -1);
+        if (!$groundOrWater) {
+            IPS_SetVariableProfileAssociation($profile, 5, 'Abtaubetrieb', '', -1);
+        }
         $simIsNew = @IPS_GetObjectIDByIdent('SimulationMode', $this->InstanceID) === false;
         $this->RegisterVariableInteger('SimulationMode', 'Simulation', $profile, 70);
         $this->EnableAction('SimulationMode');
@@ -830,7 +860,8 @@ class NRGDashboardHeatSchema extends IPSModule
         // die Sensordaten der Waermepumpe selbst werden simuliert.
         $simMode = (int) $this->GetValue('SimulationMode');
         if ($simMode !== 0) {
-            return $this->buildBasePayload([$this->buildSimulatedUnit($simMode)]);
+            $bauart = (int) $this->GetValue('Bauart');
+            return $this->buildBasePayload([$this->buildSimulatedUnit($simMode, $bauart)]);
         }
 
         $heatpumps = $this->DiscoverHeatpumps();
@@ -887,6 +918,8 @@ class NRGDashboardHeatSchema extends IPSModule
                 'twoWayValve'     => $this->boolVal((int) ($e['twoWayValveStateID'] ?? 0)),
                 'mainInletTemp'   => $this->numTemp((int) ($e['mainInletTempID'] ?? 0)),
                 'mainOutletTemp'  => $this->numTemp((int) ($e['mainOutletTempID'] ?? 0)),
+                'sourceInTemp'    => $this->numTemp((int) ($e['sourceInTempID'] ?? 0)),
+                'sourceOutTemp'   => $this->numTemp((int) ($e['sourceOutTempID'] ?? 0)),
                 'z1WaterTemp'     => $this->numTemp((int) ($e['z1WaterTempID'] ?? 0)),
                 'z2WaterTemp'     => $this->numTemp((int) ($e['z2WaterTempID'] ?? 0)),
                 'dhwTemp'         => $this->numTemp((int) ($e['dhwTempID'] ?? 0)),
@@ -1008,7 +1041,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'flowStyle'   => (int) $this->GetValue('FlowStyle'),
             'flowMotion'  => (int) $this->GetValue('FlowMotion'),
             'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
-            'bauart'      => ((int) $this->GetValue('Bauart') === 1) ? 'monoblock' : 'split',
+            'bauart'      => [0 => 'split', 1 => 'monoblock', 2 => 'sole', 3 => 'wasser'][(int) $this->GetValue('Bauart')] ?? 'split',
             'hasBuffer'   => (bool) $this->GetValue('HasBuffer'),
             'bufferLiters' => (int) $this->GetValue('BufferLiters'),
             'hasDhwTank'  => (bool) $this->GetValue('HasDhwTank'),
@@ -1026,7 +1059,7 @@ class NRGDashboardHeatSchema extends IPSModule
      * Pruefstand .tools/test-scenarios.html, hier aber als PHP-Gegenstueck
      * fuer die echte Kachel.
      */
-    private function buildSimulatedUnit(int $mode): array
+    private function buildSimulatedUnit(int $mode, int $bauart = 0): array
     {
         $u = [
             'id' => $this->InstanceID, 'label' => 'Wärmepumpe (Simulation)',
@@ -1034,6 +1067,13 @@ class NRGDashboardHeatSchema extends IPSModule
             'pumpFlow' => 15.0, 'pumpSpeed' => 1450.0, 'pumpDuty' => null,
             'threeWayValve' => 0, 'twoWayValve' => true,
             'mainInletTemp' => 36.0, 'mainOutletTemp' => 42.0,
+            // Waermequelle Sole/Wasser bzw. Wasser/Wasser (Dietmar,
+            // 10.09.2026) - realistische Beispielwerte fuer die
+            // Demo/Simulation: Sole ca. 0..-3 °C Spreizung im
+            // Heizbetrieb, Brunnenwasser ganzjaehrig ca. 8..12 °C mit ca.
+            // 4 K Auskuehlung ueber den Waermetauscher.
+            'sourceInTemp'  => $bauart === 3 ? 10.0 : ($bauart === 2 ? 2.0 : null),
+            'sourceOutTemp' => $bauart === 3 ? 6.0 : ($bauart === 2 ? -1.5 : null),
             'z1WaterTemp' => 38.5, 'z2WaterTemp' => 33.0,
             'dhwTemp' => 44.0, 'bufferTemp' => 40.0,
             'compressorFreq' => 34.0, 'dischargeTemp' => 82.0,

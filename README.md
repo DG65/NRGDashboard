@@ -1445,6 +1445,17 @@ gleiche IPSView-Fähigkeit.
   Simulation ist der Heizstab standardmäßig aus und erscheint nur noch
   im Abtaubetrieb — ein Zuheizer im Kühlbetrieb wäre fachlich falsch,
   in Heiz-/Warmwasserbetrieb bei einer gesunden Anlage die Ausnahme.
+- **Auch ohne Außenluft (`NRGDashboardHeatSchema`):** die Bauart hinter
+  dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser
+  (Erdsonde)“ und „Wasser/Wasser (Brunnen)“ — das Schema zeichnet dann
+  statt eines Außengeräts die passende Wärmequelle (U-förmige
+  Erdsonden mit Sole-Umwälzpumpe bzw. Förder-/Schluckbrunnen mit
+  Brunnenpumpe), ohne Lüfter- oder Abtaubetrieb-Anzeige, die es bei
+  diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte (Förder-/
+  Rückpumptemperatur) lassen sich manuell verknüpfen und erscheinen als
+  eigene Zeilen in der Messwert-Tabelle. Wärmetauscher, Innengerät,
+  Puffer/WW-Tank und Heizkreise bleiben dabei unverändert, weil die
+  Hauptkreis-Temperaturen bereits quellenneutral sind.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

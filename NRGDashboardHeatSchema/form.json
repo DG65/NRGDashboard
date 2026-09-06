@@ -34,6 +34,10 @@
           "caption": "✨ Feinheit (Heizstab nur wo er hingehört, 03.09.2026): in der Simulation ist der Heizstab standardmäßig aus und erscheint nur noch im Abtaubetrieb - ein Zuheizer im Kühlbetrieb wäre fachlich falsch, in Heiz-/Warmwasserbetrieb bei einer gesunden Anlage die Ausnahme."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Auch ohne Außenluft, 10.09.2026): die Bauart hinter dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser (Erdsonde)“ und „Wasser/Wasser (Brunnen)“ - das Schema zeichnet dann statt eines Außengeräts die passende Wärmequelle (Erdsonden mit Sole-Umwälzpumpe bzw. Förder-/Schluckbrunnen mit Brunnenpumpe), ohne Lüfter/Abtaubetrieb, die es dort nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen; Wärmetauscher, Innengerät, Puffer/WW-Tank und Heizkreise bleiben unverändert."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHHEAT_ResetTour($id);"
@@ -122,6 +126,20 @@
           "type": "SelectVariable",
           "name": "ManualDefrostingStateID",
           "caption": "Abtaubetrieb aktiv (bool)"
+        },
+        {
+          "type": "Label",
+          "caption": "Wärmequelle bei Sole/Wasser oder Wasser/Wasser (optional, nur wenn Bauart entsprechend eingestellt)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualSourceInTempID",
+          "caption": "Fördertemperatur (Sole-Vorlauf/Brunnenwasser zur Wärmepumpe, °C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ManualSourceOutTempID",
+          "caption": "Rückpumptemperatur (Sole-Rücklauf/Brunnenwasser zurück ins Erdreich, °C)"
         },
         {
           "type": "Label",
