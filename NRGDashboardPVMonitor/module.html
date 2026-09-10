@@ -2211,8 +2211,15 @@
       var leftPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayStart);
       var rightPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayEnd);
       var y = 14;
-      els.push({ type: 'text', style: { text: '◀', x: leftPx - 2, y: y, fill: col, fontSize: 13, fontWeight: 'bold', textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
-      els.push({ type: 'text', style: { text: '▶', x: rightPx + 2, y: y, fill: col, fontSize: 13, fontWeight: 'bold', textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      // Groesser, aber dezent statt fett (Dietmar, 10.09.2026: "koennte
+      // aber noch etwas groesser aber latenter sein") - Deckkraft statt
+      // Fettdruck reduziert die Lautstaerke, feste Arial-Schrift statt
+      // lastData.font, damit ein schmaler Ziffern-/Symbolfont die
+      // Pfeil-Glyphen nicht unsichtbar macht.
+      var arrowStyle = { y: y, fill: col, fontSize: 16, fontFamily: 'Arial, sans-serif', opacity: .55, textVerticalAlign: 'middle' };
+      var lblStyle = { y: y, fill: col, fontSize: 13, opacity: .8, textVerticalAlign: 'middle' };
+      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '◀', x: leftPx - 4, textAlign: 'right' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '▶', x: rightPx + 4, textAlign: 'left' }), silent: true });
       // Historie/Ausblick IMMER als gleiche 2 Elemente an fester Indexposition
       // anhaengen (auch leer, wenn keine Jetzt-Linie existiert) - ECharts
       // mergt "graphic" standardmaessig ueber den Array-Index ohne eigene
@@ -2220,8 +2227,8 @@
       // bliebe der vom letzten Render mit Jetzt-Linie stehen gebliebene
       // Text als Leiche auf der Zeichenflaeche stehen.
       var nowPx = showNowLine ? chart.convertToPixel({ xAxisIndex: 0 }, Date.now()) : 0;
-      els.push({ type: 'text', style: { text: showNowLine ? 'Historie' : '', x: nowPx - 8, y: y, fill: col, fontSize: 12, fontWeight: '700', textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
-      els.push({ type: 'text', style: { text: showNowLine ? 'Ausblick' : '', x: nowPx + 8, y: y, fill: col, fontSize: 12, fontWeight: '700', textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? 'Historie' : '', x: nowPx - 8, textAlign: 'right' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? 'Ausblick' : '', x: nowPx + 8, textAlign: 'left' }), silent: true });
       chart.setOption({ graphic: els });
     }
 
@@ -2260,10 +2267,12 @@
         // 90° (vertikal) - ohne "rotation: 0" erschien der Text hochkant
         // und dadurch in der schmalen Kopfzeile fast komplett abgeschnitten
         // (Dietmars Fund per Screenshot, 10.09.2026: nur "orie" von
-        // "Historie" zu erkennen). Groesser/fett fuer "gut erkennbar".
-        var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '12px', fontWeight: '700' };
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Historie', align: 'right', rotation: 0, x: -8, y: 14, style: lblStyle } });
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick', align: 'left', rotation: 0, x: 8, y: 14, style: lblStyle } });
+        // "Historie" zu erkennen). Nachgebessert (Dietmar, 10.09.2026:
+        // "koennte aber noch etwas groesser aber latenter sein") - groessere
+        // Schrift, aber ueber Deckkraft statt Fettdruck gedaempft.
+        var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '13px', fontWeight: '400', opacity: .8 };
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Historie', align: 'right', rotation: 0, x: -8, y: 15, style: lblStyle } });
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick', align: 'left', rotation: 0, x: 8, y: 15, style: lblStyle } });
       }
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
@@ -2272,10 +2281,7 @@
         // GENAU dieselben Raender, sonst laufen die Segmentgrenzen der
         // Ampel nicht mit der Zeitachse dieses Charts mit - siehe
         // renderAmpelChartHC).
-        chart: {
-          backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {},
-          events: { render: function () { drawPlanEdgeArrowsHC(this); } }
-        },
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {} },
         title: { text: null },
         xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, plotLines: plotLines, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [
@@ -2330,23 +2336,35 @@
       // Sonnenstand-Tattoos auch im Tagesplan (Dietmar, 28.08.2026).
       var planSun = planDaySun(dp);
       if (planSun) { drawSunTattoosHC(chart, planSun[0], planSun[1]); }
+      drawPlanEdgeArrowsHC(chart);
     }
 
-    // Gut erkennbare Pfeile am linken/rechten Diagrammrand des Tagesplans
-    // (Dietmar, 10.09.2026: "gut erkennbarer Pfeil, Pfeilrichtung nach
-    // Links ... Jetzt Linie ... gut erkennbarer Pfeil, Pfeilrichtung nach
-    // Rechts"). Ueber chart.events.render statt einmalig gezeichnet, weil
-    // sich plotLeft/plotWidth bei Resize aendern - die vorherigen Pfeile
-    // werden dabei jedes Mal entfernt und neu an die aktuelle Breite
-    // angepasst gezeichnet (Muster: drawSunTattoosHC macht es fuer die
-    // Sonnensymbole genauso).
+    // Gut erkennbare, aber dezente Pfeile am linken/rechten Diagrammrand des
+    // Tagesplans (Dietmar, 10.09.2026: "gut erkennbarer Pfeil ... Jetzt
+    // Linie ... gut erkennbarer Pfeil"; 10.09.2026 nachgebessert: "die
+    // Pfeile vermisse ich" - Ursache war chart.events.render, das bei
+    // diesem Highcharts-Setup nicht wie erwartet feuerte. Jetzt nach dem
+    // exakt gleichen, nachweislich funktionierenden Muster wie
+    // drawSunTattoosHC: einmal direkt nach dem Chart-Aufbau gezeichnet,
+    // dann ueber Highcharts.addEvent(...,'redraw',...) bei jedem Redraw
+    // (Resize, Zoom) neu positioniert). Schrift bewusst groesser als beim
+    // ersten Versuch, aber mit reduzierter Deckkraft statt Fettdruck -
+    // "koennte noch etwas groesser aber latenter sein" (Dietmar).
     function drawPlanEdgeArrowsHC(chart) {
-      if (chart._planEdgeArrows) { chart._planEdgeArrows.forEach(function (a) { a.destroy(); }); }
-      var col = isLightTheme() ? '#333' : '#ddd';
-      var y = chart.plotTop + 10;
-      var left = chart.renderer.text('◀', chart.plotLeft - 4, y).css({ color: col, fontSize: '13px', fontWeight: 'bold' }).attr({ align: 'right', zIndex: 6 }).add();
-      var right = chart.renderer.text('▶', chart.plotLeft + chart.plotWidth + 4, y).css({ color: col, fontSize: '13px', fontWeight: 'bold' }).attr({ align: 'left', zIndex: 6 }).add();
-      chart._planEdgeArrows = [left, right];
+      function draw() {
+        if (chart.__planEdgeArrows) { chart.__planEdgeArrows.forEach(function (a) { try { a.destroy(); } catch (e) {} }); }
+        var col = isLightTheme() ? '#333' : '#ddd';
+        var y = chart.plotTop + 11;
+        // Font-Family bewusst NICHT von lastData.font uebernehmen - ein
+        // schmaler Zeichensatz ohne die Pfeil-Glyphen wuerde sie unsichtbar
+        // machen, ohne dass ein Fehler auffaellt.
+        var fontStyle = { color: col, fontSize: '16px', fontFamily: 'Arial, sans-serif' };
+        var left = chart.renderer.text('◀', chart.plotLeft - 6, y).css(fontStyle).attr({ align: 'right', opacity: .55, zIndex: 6 }).add();
+        var right = chart.renderer.text('▶', chart.plotLeft + chart.plotWidth + 6, y).css(fontStyle).attr({ align: 'left', opacity: .55, zIndex: 6 }).add();
+        chart.__planEdgeArrows = [left, right];
+      }
+      draw();
+      Highcharts.addEvent(chart, 'redraw', draw);
     }
 
     // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):
