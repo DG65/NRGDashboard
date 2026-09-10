@@ -2216,10 +2216,14 @@
       // Fettdruck reduziert die Lautstaerke, feste Arial-Schrift statt
       // lastData.font, damit ein schmaler Ziffern-/Symbolfont die
       // Pfeil-Glyphen nicht unsichtbar macht.
-      var arrowStyle = { y: y, fill: col, fontSize: 16, fontFamily: 'Arial, sans-serif', opacity: .55, textVerticalAlign: 'middle' };
+      // Innerhalb der Plotflaeche statt im Randbereich (Dietmars Fund,
+      // 10.09.2026: "Die Pfeile sitzen ausserhalb des Diagramms" - beim
+      // Highcharts-Gegenstueck verschmolzen sie dort mit den y-Achsen-
+      // Zahlen, dasselbe Risiko besteht hier im grid.left/right-Rand).
+      var arrowStyle = { y: y, fill: col, fontSize: 18, fontFamily: 'Arial, sans-serif', opacity: .85, textVerticalAlign: 'middle' };
       var lblStyle = { y: y, fill: col, fontSize: 13, opacity: .8, textVerticalAlign: 'middle' };
-      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '◀', x: leftPx - 4, textAlign: 'right' }), silent: true });
-      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '▶', x: rightPx + 4, textAlign: 'left' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '◀', x: leftPx + 8, textAlign: 'left' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, arrowStyle, { text: '▶', x: rightPx - 8, textAlign: 'right' }), silent: true });
       // Historie/Ausblick IMMER als gleiche 2 Elemente an fester Indexposition
       // anhaengen (auch leer, wenn keine Jetzt-Linie existiert) - ECharts
       // mergt "graphic" standardmaessig ueber den Array-Index ohne eigene
@@ -2354,13 +2358,19 @@
       function draw() {
         if (chart.__planEdgeArrows) { chart.__planEdgeArrows.forEach(function (a) { try { a.destroy(); } catch (e) {} }); }
         var col = isLightTheme() ? '#333' : '#ddd';
-        var y = chart.plotTop + 11;
+        // Innerhalb der Plotflaeche, auf Hoehe der Historie/Ausblick-
+        // Beschriftung (Dietmars Fund, 10.09.2026: "Die Pfeile sitzen
+        // ausserhalb des Diagramms" - beim ersten Versuch links/rechts der
+        // Plotflaeche im Randbereich platziert, dort verschmolzen sie mit
+        // den y-Achsen-Zahlen "7"/"95"). Jetzt knapp INNERHALB der
+        // Plotflaeche an den beiden Zeitachsen-Enden.
+        var y = chart.plotTop + 22;
         // Font-Family bewusst NICHT von lastData.font uebernehmen - ein
         // schmaler Zeichensatz ohne die Pfeil-Glyphen wuerde sie unsichtbar
         // machen, ohne dass ein Fehler auffaellt.
-        var fontStyle = { color: col, fontSize: '16px', fontFamily: 'Arial, sans-serif' };
-        var left = chart.renderer.text('◀', chart.plotLeft - 6, y).css(fontStyle).attr({ align: 'right', opacity: .55, zIndex: 6 }).add();
-        var right = chart.renderer.text('▶', chart.plotLeft + chart.plotWidth + 6, y).css(fontStyle).attr({ align: 'left', opacity: .55, zIndex: 6 }).add();
+        var fontStyle = { color: col, fontSize: '18px', fontFamily: 'Arial, sans-serif' };
+        var left = chart.renderer.text('◀', chart.plotLeft + 8, y).css(fontStyle).attr({ align: 'left', opacity: .85, zIndex: 6 }).add();
+        var right = chart.renderer.text('▶', chart.plotLeft + chart.plotWidth - 8, y).css(fontStyle).attr({ align: 'right', opacity: .85, zIndex: 6 }).add();
         chart.__planEdgeArrows = [left, right];
       }
       draw();
