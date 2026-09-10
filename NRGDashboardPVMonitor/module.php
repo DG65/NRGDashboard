@@ -1145,16 +1145,19 @@ class NRGDashboardPVMonitor extends IPSModule
     }
 
     // Farben/Namen je EMS_OP_*-Konstante - 1:1 aus EMS::getPlanActions()
-    // uebernommen (Verbund-Abstimmung, 20.08.2026). Nur die 5 Werte, die im
-    // Tagesplan-Kontext tatsaechlich vorkommen (Standby/Backup/GridRewards
-    // sind Live-Betriebszustaende, keine geplanten) - unbekannte op-Werte
-    // fallen auf denselben Grauton wie "Automatik" zurueck, statt zu fehlen.
+    // uebernommen (Verbund-Abstimmung, 20.08.2026). Standby/Backup sind
+    // Live-Betriebszustaende, keine geplanten - bleiben aussen vor.
+    // GridRewards (7) kam mit EMS 0.29.2 dazu (10.09.2026): vergangene
+    // Tagesplan-Slots koennen das jetzt rueckwirkend aus dem Archiv zeigen.
+    // Unbekannte op-Werte fallen auf denselben Grauton wie "Automatik"
+    // zurueck, statt zu fehlen.
     private const PLAN_OP_COLORS = [
         0 => ['name' => 'Automatik',                 'color' => '#AAAAAA'],
         1 => ['name' => 'PV-Eigenverbrauch (laden)',  'color' => '#4CAF50'],
         2 => ['name' => 'Netz laden',                 'color' => '#2196F3'],
         3 => ['name' => 'Eigenverbrauch (entladen)',  'color' => '#FF9800'],
         5 => ['name' => 'Einspeisen',                 'color' => '#9C27B0'],
+        7 => ['name' => 'Grid Rewards (Tibber)',      'color' => '#E91E63'],
     ];
 
     /**
