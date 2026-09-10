@@ -2211,8 +2211,8 @@
       var leftPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayStart);
       var rightPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayEnd);
       var y = 14;
-      els.push({ type: 'text', style: { text: '◀', x: leftPx - 2, y: y, fill: col, fontSize: 11, textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
-      els.push({ type: 'text', style: { text: '▶', x: rightPx + 2, y: y, fill: col, fontSize: 11, textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: '◀', x: leftPx - 2, y: y, fill: col, fontSize: 13, fontWeight: 'bold', textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: '▶', x: rightPx + 2, y: y, fill: col, fontSize: 13, fontWeight: 'bold', textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
       // Historie/Ausblick IMMER als gleiche 2 Elemente an fester Indexposition
       // anhaengen (auch leer, wenn keine Jetzt-Linie existiert) - ECharts
       // mergt "graphic" standardmaessig ueber den Array-Index ohne eigene
@@ -2220,8 +2220,8 @@
       // bliebe der vom letzten Render mit Jetzt-Linie stehen gebliebene
       // Text als Leiche auf der Zeichenflaeche stehen.
       var nowPx = showNowLine ? chart.convertToPixel({ xAxisIndex: 0 }, Date.now()) : 0;
-      els.push({ type: 'text', style: { text: showNowLine ? 'Historie' : '', x: nowPx - 8, y: y, fill: col, fontSize: 11, textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
-      els.push({ type: 'text', style: { text: showNowLine ? 'Ausblick' : '', x: nowPx + 8, y: y, fill: col, fontSize: 11, textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: showNowLine ? 'Historie' : '', x: nowPx - 8, y: y, fill: col, fontSize: 12, fontWeight: '700', textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: showNowLine ? 'Ausblick' : '', x: nowPx + 8, y: y, fill: col, fontSize: 12, fontWeight: '700', textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
       chart.setOption({ graphic: els });
     }
 
@@ -2256,9 +2256,14 @@
       // von selbst mit der Jetzt-Linie mit, ohne eigene Pixel-Berechnung.
       if (showNowLine) {
         var nowVal = Date.now();
-        var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '11px' };
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Historie', align: 'right', x: -8, y: 12, style: lblStyle } });
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick', align: 'left', x: 8, y: 12, style: lblStyle } });
+        // Highcharts dreht plotLine-Labels an der xAxis standardmaessig um
+        // 90° (vertikal) - ohne "rotation: 0" erschien der Text hochkant
+        // und dadurch in der schmalen Kopfzeile fast komplett abgeschnitten
+        // (Dietmars Fund per Screenshot, 10.09.2026: nur "orie" von
+        // "Historie" zu erkennen). Groesser/fett fuer "gut erkennbar".
+        var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '12px', fontWeight: '700' };
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Historie', align: 'right', rotation: 0, x: -8, y: 14, style: lblStyle } });
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick', align: 'left', rotation: 0, x: 8, y: 14, style: lblStyle } });
       }
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
