@@ -2192,6 +2192,37 @@
           return s ? [s] : [];
         })())
       }, true);
+      drawPlanAxisAnnotationsEC(chart, dp, showNowLine);
+    }
+
+    // "Historie"/"Ausblick"-Beschriftung + Randpfeile am Tagesplan
+    // (Dietmar, 10.09.2026: "Wäre es möglich die beiden Bezeichnungen mit
+    // der Jetzt Linie mitlaufen zu lassen?" - links von Jetzt "Historie",
+    // rechts "Ausblick", dazu je ein Pfeil am linken/rechten Diagrammrand).
+    // ECharts kennt keine an eine markLine gekoppelte, horizontal versetzte
+    // Beschriftung (anders als Highcharts' plotLine-Label mit align/x) -
+    // deshalb per "graphic"-Grafikelementen an per convertToPixel
+    // berechneten Pixelpositionen, in einem SEPARATEN, mergenden setOption-
+    // Aufruf NACH der Hauptoption (die Achse muss dafuer bereits gesetzt
+    // sein - vorher liefert convertToPixel falsche Werte).
+    function drawPlanAxisAnnotationsEC(chart, dp, showNowLine) {
+      var col = isLightTheme() ? '#333' : '#ddd';
+      var els = [];
+      var leftPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayStart);
+      var rightPx = chart.convertToPixel({ xAxisIndex: 0 }, dp.dayEnd);
+      var y = 14;
+      els.push({ type: 'text', style: { text: '◀', x: leftPx - 2, y: y, fill: col, fontSize: 11, textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: '▶', x: rightPx + 2, y: y, fill: col, fontSize: 11, textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      // Historie/Ausblick IMMER als gleiche 2 Elemente an fester Indexposition
+      // anhaengen (auch leer, wenn keine Jetzt-Linie existiert) - ECharts
+      // mergt "graphic" standardmaessig ueber den Array-Index ohne eigene
+      // id; wuerden die Elemente bei !showNowLine einfach weggelassen,
+      // bliebe der vom letzten Render mit Jetzt-Linie stehen gebliebene
+      // Text als Leiche auf der Zeichenflaeche stehen.
+      var nowPx = showNowLine ? chart.convertToPixel({ xAxisIndex: 0 }, Date.now()) : 0;
+      els.push({ type: 'text', style: { text: showNowLine ? 'Historie' : '', x: nowPx - 8, y: y, fill: col, fontSize: 11, textAlign: 'right', textVerticalAlign: 'middle' }, silent: true });
+      els.push({ type: 'text', style: { text: showNowLine ? 'Ausblick' : '', x: nowPx + 8, y: y, fill: col, fontSize: 11, textAlign: 'left', textVerticalAlign: 'middle' }, silent: true });
+      chart.setOption({ graphic: els });
     }
 
     // Sonnenzeiten (sunStart/sunEnd) fuer den im Tagesplan angezeigten Tag
@@ -2217,6 +2248,18 @@
       // Rote "Jetzt"-Linie, nur am heutigen Tag (Muster: Strompreis-Reiter).
       var showNowLine = (tagesplanDay === 0) && dp.dayStart <= Date.now() && Date.now() < dp.dayEnd;
       var plotLines = showNowLine ? [{ value: Date.now(), color: '#ff5252', width: 2, zIndex: 5 }] : [];
+      // "Historie"/"Ausblick" links/rechts der Jetzt-Linie (Dietmar,
+      // 10.09.2026) - zwei zusaetzliche, unsichtbare (width:0) plotLines am
+      // selben Zeitwert, nur um deren Label mitzunehmen. Highcharts'
+      // plotLine-Label kennt "align"/x-Versatz relativ zum Linienwert und
+      // wird bei jedem Redraw automatisch neu positioniert - "laeuft" so
+      // von selbst mit der Jetzt-Linie mit, ohne eigene Pixel-Berechnung.
+      if (showNowLine) {
+        var nowVal = Date.now();
+        var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '11px' };
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Historie', align: 'right', x: -8, y: 12, style: lblStyle } });
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick', align: 'left', x: 8, y: 12, style: lblStyle } });
+      }
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
         // marginLeft/marginRight fest statt automatisch (Dietmars Fund,
@@ -2224,7 +2267,10 @@
         // GENAU dieselben Raender, sonst laufen die Segmentgrenzen der
         // Ampel nicht mit der Zeitachse dieses Charts mit - siehe
         // renderAmpelChartHC).
-        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        chart: {
+          backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {},
+          events: { render: function () { drawPlanEdgeArrowsHC(this); } }
+        },
         title: { text: null },
         xAxis: { type: 'datetime', min: dp.dayStart, max: dp.dayEnd, plotBands: plotBands, plotLines: plotLines, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
         yAxis: [
@@ -2279,6 +2325,23 @@
       // Sonnenstand-Tattoos auch im Tagesplan (Dietmar, 28.08.2026).
       var planSun = planDaySun(dp);
       if (planSun) { drawSunTattoosHC(chart, planSun[0], planSun[1]); }
+    }
+
+    // Gut erkennbare Pfeile am linken/rechten Diagrammrand des Tagesplans
+    // (Dietmar, 10.09.2026: "gut erkennbarer Pfeil, Pfeilrichtung nach
+    // Links ... Jetzt Linie ... gut erkennbarer Pfeil, Pfeilrichtung nach
+    // Rechts"). Ueber chart.events.render statt einmalig gezeichnet, weil
+    // sich plotLeft/plotWidth bei Resize aendern - die vorherigen Pfeile
+    // werden dabei jedes Mal entfernt und neu an die aktuelle Breite
+    // angepasst gezeichnet (Muster: drawSunTattoosHC macht es fuer die
+    // Sonnensymbole genauso).
+    function drawPlanEdgeArrowsHC(chart) {
+      if (chart._planEdgeArrows) { chart._planEdgeArrows.forEach(function (a) { a.destroy(); }); }
+      var col = isLightTheme() ? '#333' : '#ddd';
+      var y = chart.plotTop + 10;
+      var left = chart.renderer.text('◀', chart.plotLeft - 4, y).css({ color: col, fontSize: '13px', fontWeight: 'bold' }).attr({ align: 'right', zIndex: 6 }).add();
+      var right = chart.renderer.text('▶', chart.plotLeft + chart.plotWidth + 4, y).css({ color: col, fontSize: '13px', fontWeight: 'bold' }).attr({ align: 'left', zIndex: 6 }).add();
+      chart._planEdgeArrows = [left, right];
     }
 
     // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):

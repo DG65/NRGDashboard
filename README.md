@@ -1331,6 +1331,14 @@ gleiche IPSView-Fähigkeit.
   Diagramm steht der Name des gerade aktiven Reiters — 1:1 aus der
   Reiterleiste übernommen (keine zweite, separat zu pflegende
   Beschriftungsliste), bleibt auch beim Diagramm-Zoom sichtbar.
+- **Historie/Ausblick am Tagesplan (`NRGDashboardPVMonitor`):** die
+  Beschriftungen „Historie“ und „Ausblick“ laufen links/rechts direkt
+  mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und
+  rechten Diagrammrand — auf einen Blick erkennbar, welche Seite
+  bereits gemessene Werte und welche eine Prognose zeigt. In beiden
+  Rendering-Engines umgesetzt (ECharts über berechnete Pixelpositionen,
+  Highcharts nativ über plotLine-Labels, die bei jedem Redraw
+  automatisch mitwandern).
 - **EMS-Begründung (`NRGDashboardTile`):** sofern das EMS-Modul den
   Vertrag `EMS_GetCurrentDecision()` bereitstellt, zeigt die Kachel
   unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl.

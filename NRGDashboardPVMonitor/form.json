@@ -46,6 +46,10 @@
           "caption": "✨ Feinheit (Diagrammtitel, 03.09.2026): oben mittig über dem Diagramm steht jetzt der Name des gerade aktiven Reiters - direkt aus der Reiterleiste übernommen, keine zweite, separat zu pflegende Beschriftung."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Historie/Ausblick, 10.09.2026): im Tagesplan laufen die Beschriftungen „Historie“ und „Ausblick“ links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein gut erkennbarer Pfeil am linken und rechten Diagrammrand - auf einen Blick klar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

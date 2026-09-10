@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.7';
+    private const NEWS_VERSION = '0.10.8';
     private const NEWS_ITEMS = [
+        'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
         'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
         'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
