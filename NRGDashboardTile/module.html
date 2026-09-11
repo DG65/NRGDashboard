@@ -674,6 +674,23 @@
 const CX = 280, CY = 301;
 const DESIGN_R = 56;
 const SCALE_INACTIVE = 44 / 56;
+
+// Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
+// alten festen 20-W-Grenze inaktiv - "die heutige LED Beleuchtung hat nicht
+// mehr die grossen Leistungen wie frueher"). 5 W liegt ueber dem
+// Eigenverbrauch typischer Aktoren (Z-Wave-Schalter melden ausgeschaltet
+// ~1 W) und unter jeder echten LED-Leuchte.
+const ACTIVE_MIN_W = 5;
+
+// Ist ein Knoten aktiv? Mit Schalter entscheidet der Schalter (die
+// eigentliche Wahrheit - ein Aktor mit 1 W Eigenverbrauch ist trotzdem
+// "aus"), Gruppen ueber ihren Gruppenstatus (1 teilweise/2 an), sonst die
+// Leistung ab ACTIVE_MIN_W. Eingesteckte Wallbox zaehlt wie bisher.
+function isItemActive(item) {
+  if (item.switchable && item.switchOn != null) { return !!item.switchOn || !!item.plugged; }
+  if (item.switchState != null) { return item.switchState > 0 || !!item.plugged; }
+  return Math.abs(item.value ?? 0) > ACTIVE_MIN_W || !!item.plugged;
+}
 let HIDE_INACTIVE = false;
 
 // Nutzer-Anzeigeeinstellungen (28.08.2026) - browserlokal in localStorage,
@@ -2034,8 +2051,9 @@ function updateOuterNode(refs, item) {
   // eingesteckte aber gerade nicht ladende Wallbox - "fließend" (animierte
   // Pfeile/Blitze auf der Speiche) braucht dagegen tatsächlich Leistung,
   // sonst würde ein Fluss angezeigt, wo keiner stattfindet.
-  const active = magnitude > 20 || !!item.plugged;
-  const flowing = magnitude > 20;
+  const active = isItemActive(item);
+  // Fliessen braucht echte Leistung, unabhaengig vom Schalter.
+  const flowing = magnitude > ACTIVE_MIN_W;
   const hidden = HIDE_INACTIVE && !active;
   const color = active ? item.color(w) : C_GREY;
 
@@ -2647,7 +2665,10 @@ function renderLevelView() {
   setCenterIcon(top.icon);
   centerG.classList.add('can-go-up');
   const w = (typeof entry.value === 'number') ? entry.value : 0;
-  const active = Math.abs(w) > 20;
+  // Sammelzaehler-Pille ist aktiv, sobald eines ihrer Mitglieder aktiv ist
+  // (11.09.2026) - nicht nach der Wattzahl der Summe, sonst waere sie aus
+  // lauter Aktor-Eigenverbrauch (12 x 1 W) faelschlich "an".
+  const active = entry.members.some(m => isItemActive(memberToDevice(m)));
   applyNodeState(centerG, centerG.querySelector('.node-glow'), active ? C_GREEN : C_GREY, w, active, CX, CY, 1);
   setValueText(document.getElementById('lbl-center-val'), w, true);
   renderLevelBar();
@@ -3154,7 +3175,7 @@ function handleMessage(raw) {
   const gridImportW = (gridDevice && (gridDevice.value ?? 0) < 0) ? Math.abs(gridDevice.value) : 0;
   const gridShare = houseW > 0 ? Math.min(1, gridImportW / houseW) : 0;
   const centerColor = lerp(C_GREEN, C_RED, gridShare);
-  const centerActive = Math.abs(houseW) > 20;
+  const centerActive = Math.abs(houseW) > ACTIVE_MIN_W;
   const centerG = document.getElementById('node-center');
   applyNodeState(centerG, centerG.querySelector('.node-glow'),
     centerActive ? centerColor : C_GREY, houseW, centerActive, CX, CY, 1);
