@@ -81,8 +81,9 @@ class NRGDashboardForecast extends IPSModule
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.2';
+    private const NEWS_VERSION = '0.2.3';
     private const NEWS_ITEMS = [
+        'Fix: Quellmodule werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - eine zusätzliche, abgeschaltete Test- oder Demo-Instanz blockierte die Erkennung bisher komplett.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) verzerrte bisher den "Ist"-Vergleich zur Prognose - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
@@ -363,13 +364,33 @@ class NRGDashboardForecast extends IPSModule
         }
     }
 
-    /** Property zuerst, sonst Auto-Discovery bei genau einer gefundenen Instanz. */
+    /** Property zuerst, sonst Auto-Discovery (eine Instanz, bzw. die einzige aktive). */
     private function ResolveSource(string $guid, string $prop): int
     {
         $configured = $this->ReadPropertyInteger($prop);
         if ($configured > 0 && IPS_InstanceExists($configured)) { return $configured; }
-        $list = IPS_GetInstanceListByModuleID($guid);
-        return (count($list) === 1) ? (int) $list[0] : 0;
+        return $this->pickSingleActiveInstance(IPS_GetInstanceListByModuleID($guid));
+    }
+
+    /**
+     * Automatische Partner-Erkennung (Dietmar, 12.09.2026): bisher nur bei
+     * GENAU EINER Instanz - eine zusaetzliche, abgeschaltete Instanz (z. B.
+     * eine Demo-/Testinstanz) blockierte die Erkennung komplett. Jetzt: eine
+     * Instanz -> diese; mehrere -> die einzige AKTIVE (Status 102); mehrere
+     * aktive -> 0 (nicht raten, dann gilt die Instanz-Eigenschaft).
+     */
+    private function pickSingleActiveInstance($ids): int
+    {
+        if (!is_array($ids) || count($ids) === 0) {
+            return 0;
+        }
+        if (count($ids) === 1) {
+            return (int) $ids[0];
+        }
+        $active = array_values(array_filter($ids, function ($id) {
+            return @IPS_InstanceExists((int) $id) && (int) (IPS_GetInstance((int) $id)['InstanceStatus'] ?? 0) === 102;
+        }));
+        return count($active) === 1 ? (int) $active[0] : 0;
     }
 
     /** Liest die JSON-Prognosevariablen einer Quelle in [Tag => {p10,p50,p90,kwh}|null]. */

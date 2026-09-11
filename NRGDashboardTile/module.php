@@ -1864,7 +1864,7 @@ class NRGDashboardTile extends IPSModule
     private function SgwInstanceID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_STROMGEDACHT);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     private const SG_COLORS = [-1 => '#00bfa5', 1 => '#00c853', 2 => '#ffd600', 3 => '#ff6d00', 4 => '#d50000'];
@@ -3045,19 +3045,27 @@ class NRGDashboardTile extends IPSModule
         if ($own > 0 && @IPS_InstanceExists($own)) {
             return $own;
         }
-        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_TIBBERGRIDREWARD);
+        return $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_TIBBERGRIDREWARD));
+    }
+
+    /**
+     * Automatische Partner-Erkennung (Dietmar, 12.09.2026: "Warum wechselt
+     * der Netzzaehler nicht von kWh zu Preis?" - neben der echten Tibber-
+     * Instanz gab es eine inaktive "Demo-Backend"-Instanz; die Erkennung
+     * verlangte GENAU EINE Instanz und lieferte 0, der Preis fiel auf die
+     * BDEW-Naeherung mit einem Tagespunkt zurueck). Jetzt: eine Instanz ->
+     * diese; mehrere -> die einzige AKTIVE (Status 102); mehrere aktive -> 0
+     * (nicht raten, dann gilt die Instanz-Eigenschaft). Gilt fuer alle
+     * automatisch gesuchten Partnermodule dieser Kachel.
+     */
+    private function pickSingleActiveInstance($ids): int
+    {
         if (!is_array($ids) || count($ids) === 0) {
             return 0;
         }
         if (count($ids) === 1) {
             return (int) $ids[0];
         }
-        // Mehrere Instanzen (Dietmar, 12.09.2026: "Warum wechselt der
-        // Netzzaehler nicht von kWh zu Preis?" - neben der echten Instanz
-        // gab es eine inaktive "Demo-Backend"-Instanz, die Auto-Erkennung
-        // lieferte deshalb 0, der Preis fiel auf die BDEW-Naeherung mit nur
-        // einem Tagespunkt zurueck und priceNow blieb leer). Ist genau EINE
-        // davon aktiv, ist die Wahl eindeutig; sonst nicht raten.
         $active = array_values(array_filter($ids, function ($id) {
             return @IPS_InstanceExists((int) $id) && (int) (IPS_GetInstance((int) $id)['InstanceStatus'] ?? 0) === 102;
         }));
@@ -3346,7 +3354,7 @@ class NRGDashboardTile extends IPSModule
     private function singleInverterHubCoreID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_INVERTERHUB);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     /**
@@ -3386,7 +3394,7 @@ class NRGDashboardTile extends IPSModule
             return $explicit;
         }
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_PVPROGNOSE);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     /**

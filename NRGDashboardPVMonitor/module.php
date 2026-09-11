@@ -71,8 +71,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.8';
+    private const NEWS_VERSION = '0.10.9';
     private const NEWS_ITEMS = [
+        'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
         'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
         'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
         'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
@@ -444,7 +445,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return 0;
         }
         $ids = @IPS_GetInstanceListByModuleID(self::INVERTERHUB_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     private function BatPowerID(): int
@@ -618,7 +619,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return $cfg;
         }
         $ids = @IPS_GetInstanceListByModuleID(self::TIBBER_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     /**
@@ -1077,25 +1078,47 @@ class NRGDashboardPVMonitor extends IPSModule
             return $cfg;
         }
         $ids = @IPS_GetInstanceListByModuleID(self::PVF_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
+    }
+
+    /**
+     * Automatische Partner-Erkennung (Dietmar, 12.09.2026): bisher nur bei
+     * GENAU EINER Instanz des Partnermoduls - eine zusaetzliche, abgeschaltete
+     * Instanz (z. B. "Tibber Grid Rewards (Demo-Backend)") blockierte die
+     * Erkennung komplett. Jetzt: eine Instanz -> diese; mehrere -> die einzige
+     * AKTIVE (Status 102); mehrere aktive -> 0 (nicht raten, dann gilt die
+     * Instanz-Eigenschaft).
+     */
+    private function pickSingleActiveInstance($ids): int
+    {
+        if (!is_array($ids) || count($ids) === 0) {
+            return 0;
+        }
+        if (count($ids) === 1) {
+            return (int) $ids[0];
+        }
+        $active = array_values(array_filter($ids, function ($id) {
+            return @IPS_InstanceExists((int) $id) && (int) (IPS_GetInstance((int) $id)['InstanceStatus'] ?? 0) === 102;
+        }));
+        return count($active) === 1 ? (int) $active[0] : 0;
     }
 
     private function EmsInstanceID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     private function LfcInstanceID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(self::LFC_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     private function StromGedachtInstanceID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(self::STROMGEDACHT_GUID);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        return $this->pickSingleActiveInstance($ids);
     }
 
     // Farben/Namen je StromGedacht-Ampelzustand - 1:1 aus der StromGedacht-
