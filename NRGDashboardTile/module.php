@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.26';
+    private const NEWS_VERSION = '0.9.27';
     private const NEWS_ITEMS = [
+        'Fix: gab es mehr als eine Tibber-Grid-Rewards-Instanz (z. B. zusätzlich eine abgeschaltete Demo-Instanz), fand die Kachel Tibber nicht automatisch - der Netzknoten zeigte dann keinen aktuellen Strompreis und wechselte nie auf die Kostenanzeige. Jetzt genügt es, dass genau eine davon aktiv ist.',
         'Fix: ein Sammelzähler (z. B. "Heizung / Klima" aus Wärmepumpe + Klimaanlage) konnte als "doppelte Messung" unter einen einzelnen Zähler derselben Funktion gefaltet werden und verschwand - besonders nachts, wenn beide nahe 0 W lagen. Sammelzähler nehmen an der Doppelmessungs-Erkennung jetzt grundsätzlich nicht mehr teil; eine Summe ist nie dieselbe Messung wie ein einzelner Zähler.',
         'Fix: auf Tablets markierte der lange Druck (Auf-/Zuschachteln) den Leistungswert als Text bzw. öffnete Lupe oder Kontextmenü - Textauswahl und Kontextmenü sind in der Kachel jetzt unterbunden.',
         'Neu: Zuschachteln ist jetzt sichtbar das Gegenstück zum Aufschachteln - dieselbe Halte-Geste auf der Mittelpille, aber der Füllring wächst gegen den Uhrzeigersinn statt im Uhrzeigersinn. Auf Ebene 1 (kein Zurück möglich) bleibt er wie bisher.',
@@ -3045,7 +3046,22 @@ class NRGDashboardTile extends IPSModule
             return $own;
         }
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_TIBBERGRIDREWARD);
-        return (is_array($ids) && count($ids) === 1) ? (int) $ids[0] : 0;
+        if (!is_array($ids) || count($ids) === 0) {
+            return 0;
+        }
+        if (count($ids) === 1) {
+            return (int) $ids[0];
+        }
+        // Mehrere Instanzen (Dietmar, 12.09.2026: "Warum wechselt der
+        // Netzzaehler nicht von kWh zu Preis?" - neben der echten Instanz
+        // gab es eine inaktive "Demo-Backend"-Instanz, die Auto-Erkennung
+        // lieferte deshalb 0, der Preis fiel auf die BDEW-Naeherung mit nur
+        // einem Tagespunkt zurueck und priceNow blieb leer). Ist genau EINE
+        // davon aktiv, ist die Wahl eindeutig; sonst nicht raten.
+        $active = array_values(array_filter($ids, function ($id) {
+            return @IPS_InstanceExists((int) $id) && (int) (IPS_GetInstance((int) $id)['InstanceStatus'] ?? 0) === 102;
+        }));
+        return count($active) === 1 ? (int) $active[0] : 0;
     }
 
     /**
