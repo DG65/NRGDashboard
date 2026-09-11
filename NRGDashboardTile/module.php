@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.22';
+    private const NEWS_VERSION = '0.9.23';
     private const NEWS_ITEMS = [
+        'Fix: ein Netz-Sammelzähler (z. B. "Solarpark 1 + 2" über zwei Netzverknüpfungspunkte) wurde als Ersatzquelle unter einen seiner eigenen Netzanschlusspunkte gehängt statt selbst Netzknoten zu werden - die Netzknoten-Zusammenführung lief vor der Gruppenauflösung. Jetzt werden Sammelzähler zuerst aufgelöst und ihre Mitglieder ausgeblendet; erst danach werden die verbleibenden Netzzähler zu einem Netzknoten zusammengeführt.',
         'Fix: Wechselrichter (PV), die in einem PV-Sammelzähler stecken (z. B. 24 Wechselrichter in "Trafo 4.1"), standen weiterhin einzeln auf Ebene 1 neben ihrem Sammelzähler - Kernknoten (PV/Batterie/Netz/Haus) waren von der Ebene-1-Bereinigung pauschal ausgenommen. Jetzt werden sie ausgeblendet, sobald der Sammelzähler dieselbe Funktion trägt; ein Netz- oder PV-Knoten in einem Verbraucher-Sammelzähler bleibt wie bisher stehen.',
         'Fix: Knoten waren deutlich über ihren sichtbaren Kreis hinaus klickbar - der (auch unsichtbare) Leuchtschein um jeden Knoten nahm Klicks an und überdeckte Schalter und Knoten der Nachbarn (z. B. öffnete der Schalter von "Nebenraum" die Detailseite von "Schuppen"). Klickbar ist jetzt nur noch der sichtbare Kreis samt Badges.',
         'Neu: Knoten mit Schalter (z. B. Leuchten über MeterHub-Schaltgruppen) gelten als aktiv, wenn der Schalter an ist - nicht mehr erst ab 20 W. Ohne Schalter liegt die Schwelle jetzt bei 5 W statt 20 W, sodass auch sparsame LED-Beleuchtung aktiv erscheint, der Eigenverbrauch der Aktoren (~1 W) aber nicht. Eine aufgeschachtelte Sammelpille ist aktiv, sobald eines ihrer Mitglieder aktiv ist.',
@@ -886,15 +887,15 @@ class NRGDashboardTile extends IPSModule
         // Geraete (nicht nur den urspruenglichen Waermepumpen-Einzelfall) -
         // laeuft bei jedem Discover(), also alle 5 Minuten neu, nicht nur
         // beim ersten Scan.
-        $devices = $this->mergeRedundantSources($devices);
-
-        // Genau EIN Netzknoten (Dietmar, 11.09.2026, Entscheidung "a"): "es
-        // darf im Energiefluss nie mehr als einen Grid Zaehler geben und der
-        // muss auch die Sache mit dem Preis abbilden". Die Redundanz-
-        // Erkennung oben laesst verzoegerte Zaehler stehen, sobald der
-        // Cluster schon Primaer+Fallback hat - hier werden ALLE uebrigen
-        // grid-Wurzeln an den echtzeitfaehigsten gehaengt.
-        $devices = $this->collapseToSingleGrid($devices);
+        // REIHENFOLGE (Dietmar, 11.09.2026, Solarpark: "Obwohl ich nach 1.
+        // vorgegangen bin, rechnet er die 2 NAPs nicht zusammen!"): Gruppen
+        // ZUERST aufloesen und enthaltene Wurzeln ausblenden, DANACH erst
+        // Redundanz/Netzknoten zusammenlegen. Umgekehrt (bis 0.9.22) hat die
+        // Redundanz-Erkennung zwei getrennte Netzverknuepfungspunkte (3,19 vs
+        // 2,47 MW, 22 % < 25 % Toleranz) als "dieselbe Last" gefaltet und
+        // collapseToSingleGrid() den Netz-Sammelzaehler neben den NAPs
+        // behandelt - bevor die Kachel wusste, dass beide NAPs in genau
+        // diesem Sammelzaehler stecken.
 
         // Aufschachteln (03.09.2026): Mitglieder eines Sammelzaehlers auf EINE
         // Normalform bringen (MeterHubVirtual-Vertrag 1.3 'members' bzw.
@@ -907,6 +908,16 @@ class NRGDashboardTile extends IPSModule
         // positives Mitglied in einem anderen Sammelknoten stecken, gehoeren
         // eine Ebene tiefer - nicht zusaetzlich neben ihn (Doppelzaehlung).
         $devices = $this->hideRootsContainedInGroups($devices);
+
+        $devices = $this->mergeRedundantSources($devices);
+
+        // Genau EIN Netzknoten (Dietmar, 11.09.2026, Entscheidung "a"): "es
+        // darf im Energiefluss nie mehr als einen Grid Zaehler geben und der
+        // muss auch die Sache mit dem Preis abbilden". Die Redundanz-
+        // Erkennung oben laesst verzoegerte Zaehler stehen, sobald der
+        // Cluster schon Primaer+Fallback hat - hier werden ALLE uebrigen
+        // grid-Wurzeln an den echtzeitfaehigsten gehaengt.
+        $devices = $this->collapseToSingleGrid($devices);
 
         $diagnostics = $this->discoverDiagnostics();
 
