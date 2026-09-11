@@ -2966,6 +2966,14 @@ function attachCenterPressHandlers() {
   g.addEventListener('pointerdown', e => {
     if (e.button !== undefined && e.button !== 0) return;
     down = true; longFired = false; startX = e.clientX; startY = e.clientY;
+    // Zuschachteln = Aufschachteln rueckwaerts (Dietmar, 11.09.2026: "diese
+    // Animation gerade umgekehrt ablaufen zu lassen", "beide Richtungen gleich
+    // bedienen") - dieselbe Halte-Geste, aber der Ring waechst GEGEN den
+    // Uhrzeigersinn: an der senkrechten Achse gespiegelt. Auf Ebene 1 (kein
+    // "hoch" moeglich) bleibt er wie bisher im Uhrzeigersinn.
+    ring.style.transformBox = 'fill-box';
+    ring.style.transformOrigin = 'center';
+    ring.style.transform = LEVEL_STACK.length > 0 ? 'scaleX(-1)' : '';
     ring.classList.add('pressing');
     ring.setAttribute('stroke-dashoffset', '0');
     timer = setTimeout(() => {
