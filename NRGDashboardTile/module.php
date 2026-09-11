@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.25';
+    private const NEWS_VERSION = '0.9.26';
     private const NEWS_ITEMS = [
+        'Fix: ein Sammelzähler (z. B. "Heizung / Klima" aus Wärmepumpe + Klimaanlage) konnte als "doppelte Messung" unter einen einzelnen Zähler derselben Funktion gefaltet werden und verschwand - besonders nachts, wenn beide nahe 0 W lagen. Sammelzähler nehmen an der Doppelmessungs-Erkennung jetzt grundsätzlich nicht mehr teil; eine Summe ist nie dieselbe Messung wie ein einzelner Zähler.',
         'Fix: auf Tablets markierte der lange Druck (Auf-/Zuschachteln) den Leistungswert als Text bzw. öffnete Lupe oder Kontextmenü - Textauswahl und Kontextmenü sind in der Kachel jetzt unterbunden.',
         'Neu: Zuschachteln ist jetzt sichtbar das Gegenstück zum Aufschachteln - dieselbe Halte-Geste auf der Mittelpille, aber der Füllring wächst gegen den Uhrzeigersinn statt im Uhrzeigersinn. Auf Ebene 1 (kein Zurück möglich) bleibt er wie bisher.',
         'Fix: ein Netz-Sammelzähler (z. B. "Solarpark 1 + 2" über zwei Netzverknüpfungspunkte) wurde als Ersatzquelle unter einen seiner eigenen Netzanschlusspunkte gehängt statt selbst Netzknoten zu werden - die Netzknoten-Zusammenführung lief vor der Gruppenauflösung. Jetzt werden Sammelzähler zuerst aufgelöst und ihre Mitglieder ausgeblendet; erst danach werden die verbleibenden Netzzähler zu einem Netzknoten zusammengeführt.',
@@ -2108,13 +2109,18 @@ class NRGDashboardTile extends IPSModule
         for ($i = 0; $i < $n; $i++) {
             $fi = $devices[$i]['function'] ?? '';
             $pidI = (int) ($devices[$i]['powerID'] ?? 0);
-            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $pidI <= 0 || !$isRealtimeCandidate($devices[$i])) {
+            // Sammelzaehler (Summe aus A und B) sind nie "dieselbe Messung" wie
+            // ein einzelner Zaehler (Dietmar, 11.09.2026: "Heizung / Klima"
+            // #30896 wurde nachts als Fallback unter "Waermepumpe" gefaltet -
+            // 1 W vs 10 W liegt unter der 30-W-Absoluttoleranz). Seit 0.9.23
+            // laeuft attachMembers() vorher, hasMembers ist hier bekannt.
+            if (!empty($devices[$i]['hasMembers']) || !in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $pidI <= 0 || !$isRealtimeCandidate($devices[$i])) {
                 continue;
             }
             for ($j = $i + 1; $j < $n; $j++) {
                 $fj = $devices[$j]['function'] ?? '';
                 $pidJ = (int) ($devices[$j]['powerID'] ?? 0);
-                if ($fj !== $fi || $pidJ <= 0 || !$isRealtimeCandidate($devices[$j])) {
+                if ($fj !== $fi || $pidJ <= 0 || !empty($devices[$j]['hasMembers']) || !$isRealtimeCandidate($devices[$j])) {
                     continue;
                 }
                 if (!$this->isSameLoad($pidI, $pidJ)) {
@@ -2153,7 +2159,7 @@ class NRGDashboardTile extends IPSModule
             }
             $fi = $devices[$i]['function'] ?? '';
             $pidI = (int) ($devices[$i]['powerID'] ?? 0);
-            if (in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) && $pidI > 0 && $isRealtimeCandidate($devices[$i])) {
+            if (empty($devices[$i]['hasMembers']) && in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) && $pidI > 0 && $isRealtimeCandidate($devices[$i])) {
                 $clusters[] = [$i];
                 $clusterOf[$i] = count($clusters) - 1;
             }
@@ -2168,7 +2174,7 @@ class NRGDashboardTile extends IPSModule
                 continue;
             }
             $fi = $devices[$i]['function'] ?? '';
-            if (!in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $isRealtimeCandidate($devices[$i])) {
+            if (!empty($devices[$i]['hasMembers']) || !in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $isRealtimeCandidate($devices[$i])) {
                 continue;
             }
             foreach ($clusters as $ci => $members) {
