@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.20';
+    private const NEWS_VERSION = '0.9.21';
     private const NEWS_ITEMS = [
+        'Fix: Knoten waren deutlich über ihren sichtbaren Kreis hinaus klickbar - der (auch unsichtbare) Leuchtschein um jeden Knoten nahm Klicks an und überdeckte Schalter und Knoten der Nachbarn (z. B. öffnete der Schalter von "Nebenraum" die Detailseite von "Schuppen"). Klickbar ist jetzt nur noch der sichtbare Kreis samt Badges.',
         'Neu: Knoten mit Schalter (z. B. Leuchten über MeterHub-Schaltgruppen) gelten als aktiv, wenn der Schalter an ist - nicht mehr erst ab 20 W. Ohne Schalter liegt die Schwelle jetzt bei 5 W statt 20 W, sodass auch sparsame LED-Beleuchtung aktiv erscheint, der Eigenverbrauch der Aktoren (~1 W) aber nicht. Eine aufgeschachtelte Sammelpille ist aktiv, sobald eines ihrer Mitglieder aktiv ist.',
         'Fix: eine breite Mittelpille (ab 9 Knoten) schrumpfte im Inaktiv-Zustand gleichmäßig wie ein Kreisknoten - an den Halbkreisen dadurch um ein Vielfaches stärker als oben/unten. Der Abstand zu den Speichen und Knoten war seitlich sichtbar größer, und die Speichen zeigten nicht mehr auf die Kappenmittelpunkte. Die Pille behält jetzt ihre Größe und wird inaktiv nur abgedunkelt.',
         'Fix: beim Aufschachteln trägt die Mittelpille jetzt das Symbol des Sammelknotens (z. B. Glühbirne bei "Licht EG") statt immer des Hauses; zurück auf Ebene 1 erscheint wieder das Haus.',

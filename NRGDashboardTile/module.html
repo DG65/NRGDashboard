@@ -267,6 +267,14 @@
 
 
   .node-warn { pointer-events: none; }
+  /* Reine Dekoration faengt keine Klicks (Dietmar, 11.09.2026: "Moechte man
+     das Licht vom Nebenraum einschalten, kommt man auf die Detailseite des
+     Schuppens"). node-glow hat r = 1,9 x Knotenradius und eine Gradient-
+     Fuellung - auch bei Deckkraft 0 nimmt SVG darauf Klicks an, jeder
+     Knoten war dadurch rund 50 Einheiten ueber seinen sichtbaren Rand hinaus
+     klickbar und ueberdeckte Schalter/Knoten der Nachbarn. Klickbar bleiben
+     node-face/node-ring (der sichtbare Kreis) und die Badges. */
+  .node-glow, .coin-shadow, .node-forecast-ring, .node-ghost-ring, .node-aura { pointer-events: none; }
   .node-warn-tri { fill: #f5a623; stroke: rgba(0,0,0,0.35); stroke-width: 1; }
   .node-warn-mark { fill: #26221a; font-size: 11px; font-weight: 800; text-anchor: middle; stroke: none; }
   .node-warn-kritisch .node-warn-tri { fill: #e74c3c; }
