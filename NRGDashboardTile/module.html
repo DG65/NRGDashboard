@@ -917,6 +917,16 @@ function layoutCenterChip(hw, hh) {
   setRect('.node-ring', hw, hh);
   setRect('.node-bevel', hw, hh);
   setRect('.node-glow', hw, hh);
+  // Beide Aufrufer setzen den Aktiv-Zustand (applyNodeState) VOR dieser
+  // Funktion - dort wurde die Pille also noch mit der ALTEN Form geprueft.
+  // Ist die neue Form eine breite Pille, eine evtl. Inaktiv-Schrumpfung hier
+  // sofort aufheben (Begruendung siehe applyNodeState()).
+  if (hw > hh + 0.5) {
+    const cg = document.getElementById('node-center');
+    if (cg && cg.classList.contains('inactive') && !cg.classList.contains('hidden-node')) {
+      cg.style.transform = `translate(${CX}px, ${CY}px) scale(1)`;
+    }
+  }
   setRect('.node-autarky-ring', hw + 7, hh + 7);
   // Druck-Fuellring der Pille (09.09.2026) - Geometrie wie die anderen
   // Rechtecke, zusaetzlich der tatsaechliche Umfang der "Stadion"-Form
@@ -1987,7 +1997,25 @@ function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale, hi
   // opacity, --trans) - der Knoten schrumpft/verblasst dorthin, statt hart
   // aus dem DOM zu verschwinden (ensureNodes() baut bei gleichbleibender
   // Geraeteliste unveraendert alle Knoten, HIDE_INACTIVE wirkt rein optisch).
-  const scale = hidden ? 0 : baseScale * (active ? 1 : SCALE_INACTIVE);
+  // Eine breite Mittelpille (Chip, hw > hh) darf beim Inaktivwerden NICHT
+  // gleichmaessig schrumpfen (Dietmar, 11.09.2026: "der aeussere Rand der
+  // Pille hat nicht ueberall den gleichen Abstand zu den Knotenkreisen") -
+  // eine Skalierung um SCALE_INACTIVE verkuerzt die Pille an den Kappen um
+  // (1-s)*hw, oben/unten nur um (1-s)*hh: bei 3:1 dreimal so viel. Die
+  // Speichen sind aber gegen die unskalierte Geometrie gesetzt
+  // (computeLayout/pillPointPair) - sie zeigten dadurch nicht mehr auf die
+  // Kappenmittelpunkte, und die Luecke Pille-Speiche war seitlich viel
+  // groesser als oben. Bei einem Kreis (hw === hh) ist die Skalierung
+  // harmlos und bleibt als Inaktiv-Signal erhalten; die Pille wird inaktiv
+  // nur abgedunkelt (Deckkraft, siehe unten).
+  let shrink = active ? 1 : SCALE_INACTIVE;
+  if (g.id === 'node-center') {
+    const face = g.querySelector('.node-face');
+    const fw = face ? parseFloat(face.getAttribute('width')) : 0;
+    const fh = face ? parseFloat(face.getAttribute('height')) : 0;
+    if (fw > fh + 0.5) { shrink = 1; }
+  }
+  const scale = hidden ? 0 : baseScale * shrink;
   g.classList.toggle('inactive', !active);
   g.classList.toggle('hidden-node', !!hidden);
   g.style.transform = `translate(${cx}px, ${cy}px) scale(${scale})`;

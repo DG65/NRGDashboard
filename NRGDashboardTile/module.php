@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.18';
+    private const NEWS_VERSION = '0.9.19';
     private const NEWS_ITEMS = [
+        'Fix: eine breite Mittelpille (ab 9 Knoten) schrumpfte im Inaktiv-Zustand gleichmäßig wie ein Kreisknoten - an den Halbkreisen dadurch um ein Vielfaches stärker als oben/unten. Der Abstand zu den Speichen und Knoten war seitlich sichtbar größer, und die Speichen zeigten nicht mehr auf die Kappenmittelpunkte. Die Pille behält jetzt ihre Größe und wird inaktiv nur abgedunkelt.',
         'Fix: beim Aufschachteln trägt die Mittelpille jetzt das Symbol des Sammelknotens (z. B. Glühbirne bei "Licht EG") statt immer des Hauses; zurück auf Ebene 1 erscheint wieder das Haus.',
         'Neu: Mitglieder ohne eigenen Namen in MeterHub heißen jetzt wie die Instanz, unter der ihre Leistungsvariable liegt (z. B. der Name des Aktors), statt "Mitglied 1, 2, …".',
         'Fix: ein Sammelknoten ab Ebene 2 (z. B. "Licht EG" innerhalb von "Licht Gesamt") zeigte das "›"-Badge statt der Anzahl seiner Unterzähler - die Mitgliederzahl wird jetzt auf jeder Ebene mitgeliefert, das "›" bleibt nur für Sammelknoten mit tatsächlich unbekannter Anzahl.',
