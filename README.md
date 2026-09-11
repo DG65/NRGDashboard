@@ -1443,6 +1443,21 @@ gleiche IPSView-Fähigkeit.
   nur gestaucht, nie gestreckt: die feste Breitenvorgabe eines langen
   Namens wird beim Zurückwechseln auf „Haus“ wieder zurückgesetzt, statt
   den viel kürzeren Namen künstlich in die Breite zu ziehen.
+- **Ebene 1 ohne Doppelzählung (`NRGDashboardTile`):** steckt ein
+  Verbraucher als positives Mitglied in einem Sammelzähler (z. B. „Licht
+  EG“ und „Licht OG“ in „Licht Gesamt“), erscheint auf Ebene 1 nur noch
+  der Sammelknoten — die Mitglieder sind durch Aufschachteln erreichbar,
+  statt daneben ein zweites Mal in die sichtbaren Abflüsse gezählt zu
+  werden. Das gilt auch, wenn die Mitglieder in MeterHub ihre eigene
+  Dashboard-Zuordnung behalten haben: MeterHubVirtual meldet je Zähler
+  bewusst nur die eigene Ebene und weiß nichts von einer Verwendung als
+  Mitglied, die Zusammenführung ist deshalb Sache der Kachel. Abgezogene
+  Mitglieder (negativer Faktor, etwa Wallboxen in einem „Hausverbrauch
+  ohne Wallboxen“) bleiben eigene Knoten — sie sind nicht enthalten,
+  sondern herausgerechnet. Verkettungen über mehrere Ebenen werden
+  aufgelöst; ein Zyklus ohne sichtbare Spitze (Fehlkonfiguration) blendet
+  sicherheitshalber nichts aus. Jede Ausblendung wird im Debug-Fenster
+  der Instanz begründet (Kanal „Aufschachteln“).
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein

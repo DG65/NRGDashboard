@@ -110,6 +110,10 @@
           "caption": "✨ Feinheit (Schaltgruppen, 03.09.2026): liefert MeterHubVirtual „switchID“/„switchStateID“ (Vertrag 1.4), zeigt die Kachel einen kleinen Schalt-Knopf am Knoten - grau/gelb/grün für aus/teilweise/an. Ein einzelnes Mitglied lässt sich direkt schalten, eine Gruppe schaltet alle schaltbaren (nur positiven) Mitglieder auf einmal - über denselben transportneutralen RequestAction-Weg wie die Wallbox-Steuerung, respektiert also auch den Vorführmodus. Seit 09.09.2026 auch auf der Detailseite verfügbar (langer Klick) - vorher nur am Knoten selbst, der während der geöffneten Detailseite verdeckt ist."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ebene 1 ohne Doppelzählung, 11.09.2026): steckt ein Verbraucher als positives Mitglied in einem Sammelzähler (z. B. „Licht EG“ und „Licht OG“ in „Licht Gesamt“), erscheint auf Ebene 1 nur noch der Sammelknoten - die Mitglieder sind durch Aufschachteln erreichbar, statt daneben ein zweites Mal gezählt zu werden. Das gilt auch dann, wenn die Mitglieder in MeterHub noch ihre eigene Dashboard-Zuordnung haben; MeterHub meldet je Zähler nur die eigene Ebene, die Zusammenführung erledigt die Kachel. Abgezogene Mitglieder (negativer Faktor, etwa Wallboxen in einem „Hausverbrauch ohne Wallboxen“) bleiben bewusst eigene Knoten - sie sind nicht enthalten, sondern herausgerechnet. Welche Knoten warum ausgeblendet wurden, steht im Debug-Fenster der Instanz (Kanal „Aufschachteln“)."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

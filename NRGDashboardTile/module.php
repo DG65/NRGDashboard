@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.14';
+    private const NEWS_VERSION = '0.9.15';
     private const NEWS_ITEMS = [
+        'Fix: ein Sammelzähler und seine eigenen Mitglieder standen gemeinsam auf Ebene 1 (Beispiel: "Licht Gesamt" neben "Licht EG" und "Licht OG"), sobald die Mitglieder ihre eigene Dashboard-Zuordnung behalten hatten - die Beleuchtung zählte dadurch doppelt in die sichtbaren Abflüsse. Wurzeln, die als positives Mitglied in einem anderen Sammelknoten stecken, werden jetzt auf Ebene 1 ausgeblendet und sind nur noch durch Aufschachteln erreichbar. Abgezogene Mitglieder (negativer Faktor, z. B. Wallboxen in "Hausverbrauch ohne Wallboxen") bleiben eigene Knoten.',
         'Portal-Iris optisch überarbeitet (Dietmar: "so soll das aussehen" mit Verweis auf eine glänzende Kamera-Objektiv-Referenz) - die Lamellen tragen jetzt denselben dunkel-glänzenden Metall-Verlauf wie die Haus-/Knoten-Münze selbst statt flacher grüner Flächen, dazu ein Glasreflex in der Mitte, der wie bei einer echten Linse durch die sich schließenden Lamellen hindurchschimmert.',
         'Zweiter Feinschliff nach genauerem Test (Dietmar: "recherchiere wie eine Kamera-Iris wirklich funktioniert"): Portal-Iris besteht jetzt aus echten, überlappenden Lamellen, die sich wie bei einer echten Kamerablende um einen randnahen Drehpunkt zur Mitte drehen, statt eines einzelnen Rings. Kreiswellen wachsen jetzt tatsächlich aus der Mitte nach außen wie ein Stein im Wasser, statt nur zu verblassen. Kopfschütteln und Häufchen wirken jetzt direkt auf den echten Knoten bzw. die echte Mittelpille selbst (der Knoten dreht sich tatsächlich um die vertikale Achse bzw. staucht sich sichtbar nach unten zusammen) statt auf einer zusätzlichen Kopie davor. Schwindel-Sternchen nochmals verlangsamt.',
         'Feinschliff an den Ebenenwechsel-Animationen nach erstem Test: Funkenschauer ist jetzt größer und intensiver (mehr, größere, weiter fliegende Funken); die vorherige Irisblende war kaum sichtbar - "Portal-Iris" zeigt jetzt einen kräftigen, segmentierten Blenden-Ring; "Ping-Puls" wich "Kreiswellen" (mehrere zeitversetzte Ringe wie ein Stein im Wasser). Beim Blockiert-Fall: "Kopfschütteln" dreht jetzt tatsächlich sichtbar die Knoten-/Pillenfläche um die vertikale Mittelachse hin und her (vorher unsichtbar); Schwindel-Sternchen laufen spürbar langsamer; "Seifenblase" wich "Häufchen" (die Fläche staucht sich sichtbar nach unten zusammen und zerfließt).',
@@ -822,6 +823,11 @@ class NRGDashboardTile extends IPSModule
         // vermerken, ob es selbst wieder Mitglieder hat - die Kachel zeigt
         // dafuer ein Zaehler-Badge und erlaubt den Klick in die naechste Ebene.
         $devices = array_map(function (array $d) { return $this->attachMembers($d); }, $devices);
+
+        // Ebene-1-Bereinigung (Dietmar, 11.09.2026): Wurzeln, die als
+        // positives Mitglied in einem anderen Sammelknoten stecken, gehoeren
+        // eine Ebene tiefer - nicht zusaetzlich neben ihn (Doppelzaehlung).
+        $devices = $this->hideRootsContainedInGroups($devices);
 
         $diagnostics = $this->discoverDiagnostics();
 
@@ -3851,6 +3857,89 @@ class NRGDashboardTile extends IPSModule
         $d['hasMembers'] = count($d['members']) > 0;
         $d['memberCount'] = count($d['members']);
         return $d;
+    }
+
+    /**
+     * Ebene-1-Bereinigung (Dietmar, 11.09.2026, Entscheidung "B"): eine
+     * Wurzel, deren eigene powerID in einer ANDEREN Wurzel als Mitglied mit
+     * POSITIVEM Faktor steckt, ist in deren Summe bereits enthalten - sie
+     * gehoert eine Ebene tiefer (erreichbar ueber das Aufschachteln des
+     * Sammelknotens), nicht zusaetzlich neben ihn. Live-Fall: "Licht EG"/
+     * "Licht OG" behielten ihre alte Dashboard-Zuordnung, als "Licht Gesamt"
+     * darueber gesetzt wurde - alle drei standen auf Ebene 1, die Beleuchtung
+     * zaehlte doppelt in die sichtbaren Abfluesse. MeterHubVirtual meldet je
+     * Instanz nur die eigene Ebene und weiss nichts von einer Verwendung als
+     * Mitglied (Vertragskonvention 03.09.2026) - die Zusammenfuehrung ist
+     * deshalb Sache der Kachel ("Rekursion loest das Dashboard selbst").
+     *
+     * NUR positive Faktoren: negative Mitglieder werden ABGEZOGEN, nicht
+     * enthalten (Dietmars "Hausverbrauch ohne Wallboxen" fuehrt Herd, WB1,
+     * WB2 mit Faktor -100 - die muessen eigene Knoten bleiben). Kernknoten
+     * (pv/battery/grid/house) nie ausblenden. Ketten (A in B, B in C) werden
+     * iterativ aufgeloest; ein Zyklus ohne unbeanspruchte Spitze (Fehl-
+     * konfiguration) blendet nichts aus, statt alles verschwinden zu lassen.
+     */
+    private function hideRootsContainedInGroups(array $devices): array
+    {
+        $devices = array_values($devices);
+        $core = ['pv', 'battery', 'grid', 'house'];
+        // powerID -> Index der beanspruchenden Wurzel (nur positive Mitglieder)
+        $claimedBy = [];
+        foreach ($devices as $i => $d) {
+            foreach (($d['members'] ?? []) as $m) {
+                $pid = (int) ($m['powerID'] ?? 0);
+                $factor = (float) ($m['factor'] ?? 100);
+                if ($pid > 0 && $factor > 0 && !isset($claimedBy[$pid])) {
+                    $claimedBy[$pid] = $i;
+                }
+            }
+        }
+        if (count($claimedBy) === 0) {
+            return $devices;
+        }
+        $hidden = [];
+        $changed = true;
+        $guard = 0;
+        while ($changed && $guard++ <= self::MEMBER_MAX_DEPTH) {
+            $changed = false;
+            foreach ($devices as $i => $d) {
+                if (isset($hidden[$i]) || in_array((string) ($d['function'] ?? ''), $core, true)) {
+                    continue;
+                }
+                $pid = (int) ($d['powerID'] ?? 0);
+                if ($pid <= 0 || !isset($claimedBy[$pid])) {
+                    continue;
+                }
+                $parent = $claimedBy[$pid];
+                if ($parent === $i) {
+                    continue; // Selbstbezug - ignorieren
+                }
+                // Die beanspruchende Wurzel muss selbst unbeansprucht (= bleibt
+                // sichtbar) oder bereits als Kettenglied ausgeblendet sein -
+                // erst dann ist die Kette nach oben bis zu einem sichtbaren
+                // Sammelknoten geschlossen.
+                $parentPid = (int) ($devices[$parent]['powerID'] ?? 0);
+                $parentVisibleRoot = !isset($claimedBy[$parentPid])
+                    || in_array((string) ($devices[$parent]['function'] ?? ''), $core, true);
+                if ($parentVisibleRoot || isset($hidden[$parent])) {
+                    $hidden[$i] = $parent;
+                    $changed = true;
+                }
+            }
+        }
+        if (count($hidden) === 0) {
+            return $devices;
+        }
+        foreach ($hidden as $i => $parent) {
+            $this->SendDebug('Aufschachteln', sprintf(
+                'Ebene 1: "%s" ausgeblendet - positives Mitglied von "%s", dort eine Ebene tiefer erreichbar',
+                (string) ($devices[$i]['label'] ?? '?'),
+                (string) ($devices[$parent]['label'] ?? '?')
+            ), 0);
+        }
+        return array_values(array_filter($devices, function ($d, $i) use ($hidden) {
+            return !isset($hidden[$i]);
+        }, ARRAY_FILTER_USE_BOTH));
     }
 
     /** Manuelle 'Members'-Zeilen (Type/Name/VariableID/Factor/...) -> Vertragsform. */
