@@ -114,6 +114,10 @@
           "caption": "✨ Feinheit (Ebene 1 ohne Doppelzählung, 11.09.2026): steckt ein Verbraucher als positives Mitglied in einem Sammelzähler (z. B. „Licht EG“ und „Licht OG“ in „Licht Gesamt“), erscheint auf Ebene 1 nur noch der Sammelknoten - die Mitglieder sind durch Aufschachteln erreichbar, statt daneben ein zweites Mal gezählt zu werden. Das gilt auch dann, wenn die Mitglieder in MeterHub noch ihre eigene Dashboard-Zuordnung haben; MeterHub meldet je Zähler nur die eigene Ebene, die Zusammenführung erledigt die Kachel. Abgezogene Mitglieder (negativer Faktor, etwa Wallboxen in einem „Hausverbrauch ohne Wallboxen“) bleiben bewusst eigene Knoten - sie sind nicht enthalten, sondern herausgerechnet. Welche Knoten warum ausgeblendet wurden, steht im Debug-Fenster der Instanz (Kanal „Aufschachteln“)."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Ein Netzknoten, ein Preis, 11.09.2026): melden mehrere Quellen einen Netzzähler (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler wie Inexogy), zeigt der Energiefluss genau EINEN Netzknoten - den echtzeitfähigsten. Er trägt Strompreis, Mittelpillen-Bilanz, PV-Ersparnis und Hauslast-Schätzung aus ein und derselben Auswahl; die übrigen Netzzähler werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite als „Weiterer Netzzähler“ ausgewiesen (Abrechnung/verzögert markiert), treiben aber weder Fluss noch Bilanz noch Preis. Die Ausblende-Liste „Automatisch gefundene Geräte“ merkt sich Geräte seit dieser Version über ihre Leistungsvariable statt über den Namen - eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht mehr wieder auftauchen; bestehende Abwahlen werden automatisch übernommen. Begründungen im Debug-Fenster, Kanal „Netzzähler“."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASH_ResetTour($id);"

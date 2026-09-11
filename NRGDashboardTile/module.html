@@ -3087,7 +3087,10 @@ function handleMessage(raw) {
   // vorhanden ist - reines MeterHub/ChargerHub-Setup ohne Wechselrichter.
   const houseDevice = devices.find(x => x.function === 'house');
   const pvDevice = devices.find(x => x.function === 'pv');
-  const gridDevice = devices.find(x => x.function === 'grid');
+  // Primaerer Netzknoten (11.09.2026, Backend collapseToSingleGrid/
+  // primaryGridDevice) statt "erster grid-Eintrag" - bei zwei Netzzaehlern
+  // rechnete die Bilanz sonst mit dem verzoegerten Abrechnungszaehler (0 W).
+  const gridDevice = devices.find(x => x.isPrimaryGrid) || devices.find(x => x.function === 'grid');
   const batDevice = devices.find(x => x.function === 'battery');
   let houseW;
   if (houseDevice) {

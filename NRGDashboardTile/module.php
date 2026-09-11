@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.15';
+    private const NEWS_VERSION = '0.9.16';
     private const NEWS_ITEMS = [
+        'Fix: es gibt im Energiefluss jetzt genau EINEN Netzknoten. Standen mehrere Netzzähler nebeneinander (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler), hing der Strompreis am ersten gefundenen - bei Dietmar am verzögerten Abrechnungszähler mit 0 W, und die Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch. Jetzt überlebt der echtzeitfähigste Zähler als Netzknoten (mit Preis, Bilanz und Ersparnis), die übrigen werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite ausgewiesen. Außerdem verwenden Preis, Bilanz, PV-Ersparnis und Hauslast-Schätzung nun dieselbe Auswahl (vorher: drei Stellen den ersten, eine den letzten Netzzähler).',
+        'Fix: ausgeblendete Geräte tauchten nach einer Umbenennung an der Quelle wieder auf ("obwohl ich ihn mehrfach deaktiviert habe, wird er immer wieder aktiviert") - der Ausblende-Schlüssel enthielt das Label. Er basiert jetzt auf der Leistungsvariable; bestehende Ausblendungen werden automatisch übernommen, nichts muss neu abgewählt werden.',
         'Fix: ein Sammelzähler und seine eigenen Mitglieder standen gemeinsam auf Ebene 1 (Beispiel: "Licht Gesamt" neben "Licht EG" und "Licht OG"), sobald die Mitglieder ihre eigene Dashboard-Zuordnung behalten hatten - die Beleuchtung zählte dadurch doppelt in die sichtbaren Abflüsse. Wurzeln, die als positives Mitglied in einem anderen Sammelknoten stecken, werden jetzt auf Ebene 1 ausgeblendet und sind nur noch durch Aufschachteln erreichbar. Abgezogene Mitglieder (negativer Faktor, z. B. Wallboxen in "Hausverbrauch ohne Wallboxen") bleiben eigene Knoten.',
         'Portal-Iris optisch überarbeitet (Dietmar: "so soll das aussehen" mit Verweis auf eine glänzende Kamera-Objektiv-Referenz) - die Lamellen tragen jetzt denselben dunkel-glänzenden Metall-Verlauf wie die Haus-/Knoten-Münze selbst statt flacher grüner Flächen, dazu ein Glasreflex in der Mitte, der wie bei einer echten Linse durch die sich schließenden Lamellen hindurchschimmert.',
         'Zweiter Feinschliff nach genauerem Test (Dietmar: "recherchiere wie eine Kamera-Iris wirklich funktioniert"): Portal-Iris besteht jetzt aus echten, überlappenden Lamellen, die sich wie bei einer echten Kamerablende um einen randnahen Drehpunkt zur Mitte drehen, statt eines einzelnen Rings. Kreiswellen wachsen jetzt tatsächlich aus der Mitte nach außen wie ein Stein im Wasser, statt nur zu verblassen. Kopfschütteln und Häufchen wirken jetzt direkt auf den echten Knoten bzw. die echte Mittelpille selbst (der Knoten dreht sich tatsächlich um die vertikale Achse bzw. staucht sich sichtbar nach unten zusammen) statt auf einer zusätzlichen Kopie davor. Schwindel-Sternchen nochmals verlangsamt.',
@@ -571,9 +573,68 @@ class NRGDashboardTile extends IPSModule
         return $map[$function] ?? $function;
     }
 
+    /**
+     * Discovery-stabiler Geraeteschluessel. Seit 11.09.2026 (Dietmar,
+     * Entscheidung "c") OHNE Label: der alte Schluessel
+     * quelle|instanz|funktion|label wurde durch jede Umbenennung an der
+     * Quelle ungueltig - die gespeicherte Ausblendung verwaiste, das Geraet
+     * galt als neu und stand wieder sichtbar in der Kachel ("obwohl ich
+     * ... mehrfach deaktiviert habe, wird er immer wieder aktiviert").
+     * Jetzt quelle|instanz|funktion|p<powerID> - die powerID ist die
+     * eigentliche Identitaet des Geraets und ueberlebt jede Umbenennung;
+     * bei zwei gleichartigen Kanaelen derselben Instanz bleibt sie
+     * eindeutig, wo das Label es nicht zwingend war. Ohne powerID (reine
+     * Energie-/Manuell-Eintraege) faellt der Schluessel auf l<label>
+     * zurueck. Alte Schluessel werden lesend migriert, siehe overrideFor().
+     */
     private function deviceKey(array $d): string
     {
+        $pid = (int) ($d['powerID'] ?? 0);
+        $tail = $pid > 0 ? 'p' . $pid : 'l' . (string) ($d['label'] ?? '');
+        return ($d['source'] ?? '') . '|' . ($d['instanceID'] ?? 0) . '|' . ($d['function'] ?? '') . '|' . $tail;
+    }
+
+    /** Alter Schluessel (bis 0.9.15, mit Label) - nur noch fuer die Migration. */
+    private function legacyDeviceKey(array $d): string
+    {
         return ($d['source'] ?? '') . '|' . ($d['instanceID'] ?? 0) . '|' . ($d['function'] ?? '') . '|' . ($d['label'] ?? '');
+    }
+
+    /**
+     * Gespeicherte Nutzer-Einstellung (Enabled/Name) fuer ein Geraet -
+     * mit lesender Migration alter Schluessel, damit KEINE bestehende
+     * Ausblendung durch den Formatwechsel verloren geht:
+     *   1. neuer Schluessel (quelle|instanz|funktion|p<powerID>),
+     *   2. alter Schluessel (mit Label, wie bis 0.9.15 gespeichert),
+     *   3. Praefix quelle|instanz|funktion| trifft GENAU EINE gespeicherte
+     *      Zeile (Geraet wurde an der Quelle umbenannt) - bei mehreren
+     *      Treffern bewusst KEIN Raten, dann gilt die Vorgabe "sichtbar".
+     * Es wird nichts zurueckgeschrieben: die Formularliste gibt beim
+     * naechsten Oeffnen bereits die neuen Schluessel aus, das Speichern
+     * durch den Nutzer persistiert sie - kein Property-Schreiben ausserhalb
+     * des regulaeren Speicherns.
+     */
+    private function overrideFor(array $d, array $overrides): ?array
+    {
+        $key = $this->deviceKey($d);
+        if (isset($overrides[$key])) {
+            return $overrides[$key];
+        }
+        $legacy = $this->legacyDeviceKey($d);
+        if (isset($overrides[$legacy])) {
+            return $overrides[$legacy];
+        }
+        $prefix = ($d['source'] ?? '') . '|' . ($d['instanceID'] ?? 0) . '|' . ($d['function'] ?? '') . '|';
+        $hit = null;
+        foreach ($overrides as $k => $o) {
+            if (strpos($k, $prefix) === 0) {
+                if ($hit !== null) {
+                    return null; // mehrdeutig - nicht raten
+                }
+                $hit = $o;
+            }
+        }
+        return $hit;
     }
 
     /**
@@ -626,7 +687,10 @@ class NRGDashboardTile extends IPSModule
         $rows = [];
         foreach ($this->GetDevices() as $d) {
             $key = $this->deviceKey($d);
-            $o = $overrides[$key] ?? ['enabled' => true, 'name' => ''];
+            // overrideFor() migriert alte (label-basierte) Schluessel lesend;
+            // die Zeile traegt bereits den NEUEN Schluessel, das naechste
+            // Speichern durch den Nutzer schreibt ihn dauerhaft.
+            $o = $this->overrideFor($d, $overrides) ?? ['enabled' => true, 'name' => ''];
             $instanceID = (int) ($d['instanceID'] ?? 0);
             $rows[] = [
                 'Key'      => $key,
@@ -816,6 +880,14 @@ class NRGDashboardTile extends IPSModule
         // laeuft bei jedem Discover(), also alle 5 Minuten neu, nicht nur
         // beim ersten Scan.
         $devices = $this->mergeRedundantSources($devices);
+
+        // Genau EIN Netzknoten (Dietmar, 11.09.2026, Entscheidung "a"): "es
+        // darf im Energiefluss nie mehr als einen Grid Zaehler geben und der
+        // muss auch die Sache mit dem Preis abbilden". Die Redundanz-
+        // Erkennung oben laesst verzoegerte Zaehler stehen, sobald der
+        // Cluster schon Primaer+Fallback hat - hier werden ALLE uebrigen
+        // grid-Wurzeln an den echtzeitfaehigsten gehaengt.
+        $devices = $this->collapseToSingleGrid($devices);
 
         // Aufschachteln (03.09.2026): Mitglieder eines Sammelzaehlers auf EINE
         // Normalform bringen (MeterHubVirtual-Vertrag 1.3 'members' bzw.
@@ -1226,7 +1298,10 @@ class NRGDashboardTile extends IPSModule
         $overrides = $this->deviceOverrideMap();
         $devices = array_map(function (array $d) use ($overrides) {
             $key = $this->deviceKey($d);
-            $o = $overrides[$key] ?? null;
+            // Lesende Migration alter Schluessel (siehe overrideFor()) - eine
+            // vor 0.9.16 gespeicherte Ausblendung greift damit sofort, ohne
+            // dass das Formular erst neu gespeichert werden muss.
+            $o = $this->overrideFor($d, $overrides);
             $d['_visible'] = $o['enabled'] ?? true;
             // Stabiler Schluessel fuer die Klick-Detailansicht (Knoten ->
             // /hook/...?detail=<key>) - bewusst der discovery-stabile
@@ -1285,13 +1360,10 @@ class NRGDashboardTile extends IPSModule
         // liest nur bereits vorliegende/gecachte Werte, keine eigene
         // Netzabfrage, daher ohne zusaetzlichen Throttle bei jedem
         // buildPayload()-Aufruf vertretbar.
-        $gridIdx = null;
-        foreach ($devices as $i => $dd) {
-            if (($dd['function'] ?? '') === 'grid') {
-                $gridIdx = $i;
-                break;
-            }
-        }
+        // Eine Auswahlstelle fuer den Netzknoten (11.09.2026, siehe
+        // primaryGridDevice()) - vorher "erster grid-Eintrag", was bei zwei
+        // Netzzaehlern den Preis an den verzoegerten Abrechnungszaehler hing.
+        $gridIdx = $this->primaryGridDevice($devices);
         if ($gridIdx !== null) {
             $dayStart = strtotime('today');
             $dayEnd = strtotime('+1 day', $dayStart);
@@ -3942,6 +4014,116 @@ class NRGDashboardTile extends IPSModule
         }, ARRAY_FILTER_USE_BOTH));
     }
 
+    /**
+     * Genau ein Netzknoten auf Ebene 1 (Dietmar, 11.09.2026, Entscheidung
+     * "a"). Live-Fall: "Netzanschluss" (MeterHub, realtime, mit InverterHub-
+     * "Netz" als Fallback) UND "Inexogy Zaehler (Netzanschluss)" (MeterHub,
+     * delayed, billing) standen beide als grid-Wurzel - die Redundanz-
+     * Erkennung haengt einen verzoegerten Zaehler nur an einen Cluster mit
+     * weniger als zwei Mitgliedern, der war aber schon voll. Folge: der
+     * Preis (erster grid-Knoten) hing am verzoegerten Zaehler mit 0 W, die
+     * Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch.
+     *
+     * Regel: bleibt mehr als eine grid-Wurzel, ueberlebt die mit der besten
+     * sourceRichnessScore() (Echtzeit +6, verzoegert -4 - Dietmars Urteil
+     * vom 30.07.2026: Inexogy ist "fuer Steuerungen total ungeeignet").
+     * Die uebrigen werden NICHT verworfen, sondern an den Primaeren
+     * gehaengt: eine echtzeitfaehige als Fallback (der bestehende Platz,
+     * falls noch frei), alle anderen unter 'secondaryGrid' - so bleibt der
+     * Abrechnungszaehler fuer Energie/Kosten auf der Detailseite sichtbar,
+     * wo ein Abrechnungszaehler der RICHTIGE ist, treibt aber nie mehr
+     * Live-Fluss, Bilanz oder Preis. Der Primaere traegt 'isPrimaryGrid',
+     * damit alle Auswahlstellen (primaryGridDevice()) dieselbe Antwort geben.
+     */
+    private function collapseToSingleGrid(array $devices): array
+    {
+        $devices = array_values($devices);
+        $gridIdx = [];
+        foreach ($devices as $i => $d) {
+            if (($d['function'] ?? '') === 'grid') {
+                $gridIdx[] = $i;
+            }
+        }
+        if (count($gridIdx) === 0) {
+            return $devices;
+        }
+        if (count($gridIdx) === 1) {
+            $devices[$gridIdx[0]]['isPrimaryGrid'] = true;
+            return $devices;
+        }
+        $primary = $gridIdx[0];
+        $best = $this->sourceRichnessScore($devices[$primary]);
+        foreach ($gridIdx as $i) {
+            $s = $this->sourceRichnessScore($devices[$i]);
+            if ($s > $best) {
+                $best = $s;
+                $primary = $i;
+            }
+        }
+        $devices[$primary]['isPrimaryGrid'] = true;
+        $drop = [];
+        foreach ($gridIdx as $i) {
+            if ($i === $primary) {
+                continue;
+            }
+            $other = $devices[$i];
+            $latency = $other['latency'] ?? (($other['source'] ?? '') === 'inverterhub' ? 'realtime' : '');
+            $hasFallback = (int) ($devices[$primary]['fallbackPowerID'] ?? 0) > 0;
+            if (!$hasFallback && $latency === 'realtime' && (int) ($other['powerID'] ?? 0) > 0) {
+                $devices[$primary]['fallbackPowerID']       = (int) $other['powerID'];
+                $devices[$primary]['fallbackEnergyImportID'] = (int) ($other['energyImportID'] ?? 0);
+                $devices[$primary]['fallbackMeasured']       = (bool) ($other['measured'] ?? true);
+                $devices[$primary]['fallbackLabel']          = (string) ($other['label'] ?? ($other['source'] ?? 'Fallback'));
+                $role = 'Fallback';
+            } else {
+                $devices[$primary]['secondaryGrid'][] = [
+                    'label'          => (string) ($other['label'] ?? ''),
+                    'powerID'        => (int) ($other['powerID'] ?? 0),
+                    'energyImportID' => (int) ($other['energyImportID'] ?? 0),
+                    'energyExportID' => (int) ($other['energyExportID'] ?? 0),
+                    'latency'        => $latency,
+                    'authority'      => (string) ($other['authority'] ?? ''),
+                    'source'         => (string) ($other['source'] ?? ''),
+                    'instanceID'     => (int) ($other['instanceID'] ?? 0),
+                ];
+                $role = ($other['authority'] ?? '') === 'billing' ? 'Abrechnungs-Nebenquelle' : 'Nebenquelle';
+            }
+            $this->SendDebug('Netzzähler', sprintf(
+                'Ebene 1: "%s" (%s) als %s an "%s" gehängt - nur ein Netzknoten',
+                (string) ($other['label'] ?? '?'), $latency !== '' ? $latency : 'ohne latency', $role,
+                (string) ($devices[$primary]['label'] ?? '?')
+            ), 0);
+            $drop[$i] = true;
+        }
+        return array_values(array_filter($devices, function ($d, $i) use ($drop) {
+            return !isset($drop[$i]);
+        }, ARRAY_FILTER_USE_BOTH));
+    }
+
+    /**
+     * DIE eine Auswahlstelle fuer "den" Netzzaehler (Dietmar, 11.09.2026,
+     * Entscheidung "b"). Vorher waehlten vier Stellen unterschiedlich -
+     * Preis-Sparkline, PV-Ersparnis und Mittelpille den ERSTEN grid-Eintrag,
+     * die Hauslast-Schaetzung den LETZTEN - und lieferten damit zwei
+     * Antworten im selben Bild. Nach collapseToSingleGrid() gibt es nur
+     * noch einen; dieser Helfer sichert das gegen Rueckfall ab.
+     * Liefert den Index in $devices oder null.
+     */
+    private function primaryGridDevice(array $devices): ?int
+    {
+        foreach ($devices as $i => $d) {
+            if (!empty($d['isPrimaryGrid'])) {
+                return $i;
+            }
+        }
+        foreach ($devices as $i => $d) {
+            if (($d['function'] ?? '') === 'grid') {
+                return $i;
+            }
+        }
+        return null;
+    }
+
     /** Manuelle 'Members'-Zeilen (Type/Name/VariableID/Factor/...) -> Vertragsform. */
     private function normalizeManualMembers(array $rows): array
     {
@@ -4564,6 +4746,19 @@ class NRGDashboardTile extends IPSModule
             }
             $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
             $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+            // Weitere Netzzaehler, die collapseToSingleGrid() an diesen
+            // Knoten gehaengt hat (11.09.2026) - der Abrechnungszaehler bleibt
+            // so sichtbar, ohne den Live-Fluss zu treiben.
+            foreach ((array) ($d['secondaryGrid'] ?? []) as $sg) {
+                $tags = [];
+                if (($sg['authority'] ?? '') === 'billing') { $tags[] = 'Abrechnung'; }
+                if (($sg['latency'] ?? '') === 'delayed') { $tags[] = 'verzögert'; }
+                $out[] = [
+                    'label' => 'Weiterer Netzzähler',
+                    'value' => (string) ($sg['label'] ?? '?') . ($tags ? ' (' . implode(', ', $tags) . ')' : ''),
+                    'hint'  => 'Wird nicht für Live-Fluss, Bilanz oder Preis verwendet - im Energiefluss gibt es genau einen Netzknoten.',
+                ];
+            }
             // Bezugskosten mit dem je Zeitpunkt tatsaechlich gueltigen
             // Tibber-Preis gewichtet (nicht dem aktuellen) - Preise
             // schwanken stuendlich, ein Tagesdurchschnitt waere ungenau.
@@ -4664,10 +4859,11 @@ class NRGDashboardTile extends IPSModule
      *  werden. null, wenn kein Netz-Geraet aufgeloest werden kann. */
     private function GridDayEnergyKWh(int $dayStart, int $dayEnd): ?array
     {
-        foreach ($this->GetDevices() as $dev) {
-            if (($dev['function'] ?? '') !== 'grid') {
-                continue;
-            }
+        $all = $this->GetDevices();
+        $gi = $this->primaryGridDevice($all);
+        // Nur der primaere Netzknoten (11.09.2026) - nicht "der erste grid-
+        // Eintrag", siehe primaryGridDevice().
+        foreach ($gi === null ? [] : [$all[$gi]] as $dev) {
             $this->resolvePowerValue($dev);
             $powerID = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
             $series = $this->DaySeries($powerID, $dayStart, $dayEnd);
@@ -4695,8 +4891,12 @@ class NRGDashboardTile extends IPSModule
     private function EstimateHouseLoadW(): ?float
     {
         $devices = $this->GetDevices();
+        // Netz nur vom primaeren Netzknoten (11.09.2026): vorher gewann hier
+        // der LETZTE grid-Eintrag, waehrend Preis/Bilanz den ERSTEN nahmen -
+        // zwei Antworten im selben Bild, siehe primaryGridDevice().
+        $gi = $this->primaryGridDevice($devices);
         $pv = null; $grid = null; $bat = null; $house = null;
-        foreach ($devices as $dev) {
+        foreach ($devices as $i => $dev) {
             $val = $this->resolvePowerValue($dev);
             if ($val === null) {
                 continue;
@@ -4704,7 +4904,7 @@ class NRGDashboardTile extends IPSModule
             switch ($dev['function'] ?? '') {
                 case 'house':    $house = $val; break;
                 case 'pv':       $pv = $val; break;
-                case 'grid':     $grid = $val; break;
+                case 'grid':     if ($i === $gi) { $grid = $val; } break;
                 case 'battery':  $bat = $val; break;
             }
         }

@@ -1458,6 +1458,22 @@ gleiche IPSView-Fähigkeit.
   aufgelöst; ein Zyklus ohne sichtbare Spitze (Fehlkonfiguration) blendet
   sicherheitshalber nichts aus. Jede Ausblendung wird im Debug-Fenster
   der Instanz begründet (Kanal „Aufschachteln“).
+- **Ein Netzknoten, ein Preis (`NRGDashboardTile`):** melden mehrere
+  Quellen einen Netzzähler — etwa ein Echtzeit-Zähler und ein verzögert
+  archivierender Abrechnungszähler (Inexogy) —, zeigt der Energiefluss
+  genau **einen** Netzknoten: den echtzeitfähigsten. Er trägt Strompreis,
+  Mittelpillen-Bilanz, PV-Ersparnis und Hauslast-Schätzung aus ein und
+  derselben Auswahl (vorher wählten drei Stellen den ersten, eine den
+  letzten Netzzähler — bei zwei Zählern hing der Preis am verzögerten
+  Abrechnungszähler mit 0 W). Die übrigen Netzzähler werden nicht
+  verworfen, sondern als Fallback bzw. Nebenquelle an den Primären
+  gehängt und auf dessen Detailseite als „Weiterer Netzzähler“
+  ausgewiesen, wo ein Abrechnungszähler der richtige ist — Live-Fluss,
+  Bilanz oder Preis treiben sie nie. Die Liste „Automatisch gefundene
+  Geräte“ merkt sich Geräte über ihre Leistungsvariable statt über den
+  Namen: eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht
+  mehr wieder auftauchen; alte, namensbasierte Einstellungen werden
+  lesend übernommen, nichts muss neu abgewählt werden.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
