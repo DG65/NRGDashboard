@@ -31,6 +31,15 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body { width: 100%; background: transparent; user-select: none; overflow: hidden; }
+  /* Tablet (Dietmar, 11.09.2026: "auf einem Tablet wird dann der
+     Leistungswert markiert") - die Halte-Geste (Auf-/Zuschachteln) ist fuer
+     Touch-Browser zugleich "Text markieren". Safari/iPadOS beachtet bei
+     SVG-Text nur das -webkit-Praefix und zeigt ohne touch-callout zusaetzlich
+     Lupe/Kontextmenue. */
+  html, body, .flow-svg, .flow-svg * {
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
   html, body { height: 100vh; }
   html, body { height: 100dvh; }
   body { max-height: 100dvh; }
@@ -2942,6 +2951,15 @@ function centerCurrentDetailKey() {
   const centerG = document.getElementById('node-center');
   return (centerG && centerG.dataset.detailKey) ? centerG.dataset.detailKey : null;
 }
+// Langer Druck auf Touch-Geraeten: Android oeffnet sonst ein Kontextmenue,
+// manche Browser starten trotz CSS eine Textauswahl (11.09.2026, Tablet).
+(function suppressTouchSelection() {
+  const svg = document.getElementById('svg');
+  if (!svg) return;
+  svg.addEventListener('contextmenu', e => e.preventDefault());
+  svg.addEventListener('selectstart', e => e.preventDefault());
+})();
+
 function attachCenterPressHandlers() {
   const g = document.getElementById('node-center');
   const ring = document.getElementById('center-press-ring');

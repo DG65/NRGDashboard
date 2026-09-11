@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.24';
+    private const NEWS_VERSION = '0.9.25';
     private const NEWS_ITEMS = [
+        'Fix: auf Tablets markierte der lange Druck (Auf-/Zuschachteln) den Leistungswert als Text bzw. öffnete Lupe oder Kontextmenü - Textauswahl und Kontextmenü sind in der Kachel jetzt unterbunden.',
         'Neu: Zuschachteln ist jetzt sichtbar das Gegenstück zum Aufschachteln - dieselbe Halte-Geste auf der Mittelpille, aber der Füllring wächst gegen den Uhrzeigersinn statt im Uhrzeigersinn. Auf Ebene 1 (kein Zurück möglich) bleibt er wie bisher.',
         'Fix: ein Netz-Sammelzähler (z. B. "Solarpark 1 + 2" über zwei Netzverknüpfungspunkte) wurde als Ersatzquelle unter einen seiner eigenen Netzanschlusspunkte gehängt statt selbst Netzknoten zu werden - die Netzknoten-Zusammenführung lief vor der Gruppenauflösung. Jetzt werden Sammelzähler zuerst aufgelöst und ihre Mitglieder ausgeblendet; erst danach werden die verbleibenden Netzzähler zu einem Netzknoten zusammengeführt.',
         'Fix: Wechselrichter (PV), die in einem PV-Sammelzähler stecken (z. B. 24 Wechselrichter in "Trafo 4.1"), standen weiterhin einzeln auf Ebene 1 neben ihrem Sammelzähler - Kernknoten (PV/Batterie/Netz/Haus) waren von der Ebene-1-Bereinigung pauschal ausgenommen. Jetzt werden sie ausgeblendet, sobald der Sammelzähler dieselbe Funktion trägt; ein Netz- oder PV-Knoten in einem Verbraucher-Sammelzähler bleibt wie bisher stehen.',
