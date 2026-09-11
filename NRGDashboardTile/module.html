@@ -2457,7 +2457,26 @@ function restoreCenterForLevel1() {
     fitTextWidth(nm, 33);
   }
   if (centerG) { centerG.classList.remove('can-go-up'); }
+  setCenterIcon(null);
   renderLevelBar();
+}
+
+// Symbol der Mittelpille (Dietmar, 11.09.2026: "Warum hat Licht EG in der
+// Mitte ein Haussymbol, anstatt einem Lampensymbol?") - auf Ebene 2+ ist die
+// Pille der Sammelzaehler selbst und traegt dessen Symbol; null = Ebene 1,
+// das feste Haus aus dem Markup wird wiederhergestellt.
+function setCenterIcon(iconName) {
+  const g = document.getElementById('center-icon');
+  if (!g) { return; }
+  g.textContent = '';
+  if (iconName && ICONS[iconName]) {
+    ICONS[iconName](g, null);
+    return;
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  p.setAttribute('points', '0,-15 17,-1 17,15 -17,15 -17,-1');
+  p.setAttribute('data-hollow', '1');
+  g.appendChild(p);
 }
 
 // Ruecknavigation IN der Pille statt einer separaten HTML-Ebene am
@@ -2549,7 +2568,7 @@ function enterLevel(item, refs) {
     g.parentNode.appendChild(g); // nach oben
     fadeOthers(g, 0);
     animateNodeTransform(g, from, to, 550, () => {
-      LEVEL_STACK.push({ key: item.detailKey || item.key, label: item.label, fromItemKey: item.key });
+      LEVEL_STACK.push({ key: item.detailKey || item.key, label: item.label, fromItemKey: item.key, icon: item.icon });
       renderLevelView();
       LEVEL_BUSY = false;
     });
@@ -2597,6 +2616,7 @@ function renderLevelView() {
   const centerG = document.getElementById('node-center');
   const nm = document.getElementById('lbl-center-name');
   if (nm) { nm.textContent = top.label; }
+  setCenterIcon(top.icon);
   centerG.classList.add('can-go-up');
   const w = (typeof entry.value === 'number') ? entry.value : 0;
   const active = Math.abs(w) > 20;

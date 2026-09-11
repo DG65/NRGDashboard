@@ -56,8 +56,10 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.17';
+    private const NEWS_VERSION = '0.9.18';
     private const NEWS_ITEMS = [
+        'Fix: beim Aufschachteln trägt die Mittelpille jetzt das Symbol des Sammelknotens (z. B. Glühbirne bei "Licht EG") statt immer des Hauses; zurück auf Ebene 1 erscheint wieder das Haus.',
+        'Neu: Mitglieder ohne eigenen Namen in MeterHub heißen jetzt wie die Instanz, unter der ihre Leistungsvariable liegt (z. B. der Name des Aktors), statt "Mitglied 1, 2, …".',
         'Fix: ein Sammelknoten ab Ebene 2 (z. B. "Licht EG" innerhalb von "Licht Gesamt") zeigte das "›"-Badge statt der Anzahl seiner Unterzähler - die Mitgliederzahl wird jetzt auf jeder Ebene mitgeliefert, das "›" bleibt nur für Sammelknoten mit tatsächlich unbekannter Anzahl.',
         'Fix: es gibt im Energiefluss jetzt genau EINEN Netzknoten. Standen mehrere Netzzähler nebeneinander (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler), hing der Strompreis am ersten gefundenen - bei Dietmar am verzögerten Abrechnungszähler mit 0 W, und die Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch. Jetzt überlebt der echtzeitfähigste Zähler als Netzknoten (mit Preis, Bilanz und Ersparnis), die übrigen werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite ausgewiesen. Außerdem verwenden Preis, Bilanz, PV-Ersparnis und Hauslast-Schätzung nun dieselbe Auswahl (vorher: drei Stellen den ersten, eine den letzten Netzzähler).',
         'Fix: ausgeblendete Geräte tauchten nach einer Umbenennung an der Quelle wieder auf ("obwohl ich ihn mehrfach deaktiviert habe, wird er immer wieder aktiviert") - der Ausblende-Schlüssel enthielt das Label. Er basiert jetzt auf der Leistungsvariable; bestehende Ausblendungen werden automatisch übernommen, nichts muss neu abgewählt werden.',
@@ -4175,7 +4177,13 @@ class NRGDashboardTile extends IPSModule
             $hasKids = $kidCount > 0;
             $out[] = [
                 'key'            => $parentKey . '>' . $i,
-                'label'          => trim((string) ($m['name'] ?? $m['label'] ?? '')) ?: ('Mitglied ' . ($i + 1)),
+                // Rueckfall ohne eigenen Namen (Dietmar, 11.09.2026: "Mitglied
+                // 1-12" - MeterHub-Zeilen ohne Namen): der Name der Instanz,
+                // unter der die Leistungsvariable liegt (z. B. der Z-Wave-
+                // Aktor "Licht Küche/Esszimmer"), erst dann "Mitglied N".
+                'label'          => trim((string) ($m['name'] ?? $m['label'] ?? ''))
+                    ?: ($srcInst > 0 ? trim(IPS_GetName($srcInst)) : '')
+                    ?: ('Mitglied ' . ($i + 1)),
                 'function'       => (string) ($m['function'] ?? $parentFunction),
                 'factor'         => (float) ($m['factor'] ?? 100),
                 'powerID'        => $pid,
