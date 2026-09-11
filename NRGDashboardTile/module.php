@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.21';
+    private const NEWS_VERSION = '0.9.22';
     private const NEWS_ITEMS = [
+        'Fix: Wechselrichter (PV), die in einem PV-Sammelzähler stecken (z. B. 24 Wechselrichter in "Trafo 4.1"), standen weiterhin einzeln auf Ebene 1 neben ihrem Sammelzähler - Kernknoten (PV/Batterie/Netz/Haus) waren von der Ebene-1-Bereinigung pauschal ausgenommen. Jetzt werden sie ausgeblendet, sobald der Sammelzähler dieselbe Funktion trägt; ein Netz- oder PV-Knoten in einem Verbraucher-Sammelzähler bleibt wie bisher stehen.',
         'Fix: Knoten waren deutlich über ihren sichtbaren Kreis hinaus klickbar - der (auch unsichtbare) Leuchtschein um jeden Knoten nahm Klicks an und überdeckte Schalter und Knoten der Nachbarn (z. B. öffnete der Schalter von "Nebenraum" die Detailseite von "Schuppen"). Klickbar ist jetzt nur noch der sichtbare Kreis samt Badges.',
         'Neu: Knoten mit Schalter (z. B. Leuchten über MeterHub-Schaltgruppen) gelten als aktiv, wenn der Schalter an ist - nicht mehr erst ab 20 W. Ohne Schalter liegt die Schwelle jetzt bei 5 W statt 20 W, sodass auch sparsame LED-Beleuchtung aktiv erscheint, der Eigenverbrauch der Aktoren (~1 W) aber nicht. Eine aufgeschachtelte Sammelpille ist aktiv, sobald eines ihrer Mitglieder aktiv ist.',
         'Fix: eine breite Mittelpille (ab 9 Knoten) schrumpfte im Inaktiv-Zustand gleichmäßig wie ein Kreisknoten - an den Halbkreisen dadurch um ein Vielfaches stärker als oben/unten. Der Abstand zu den Speichen und Knoten war seitlich sichtbar größer, und die Speichen zeigten nicht mehr auf die Kappenmittelpunkte. Die Pille behält jetzt ihre Größe und wird inaktiv nur abgedunkelt.',
@@ -3981,7 +3982,7 @@ class NRGDashboardTile extends IPSModule
         while ($changed && $guard++ <= self::MEMBER_MAX_DEPTH) {
             $changed = false;
             foreach ($devices as $i => $d) {
-                if (isset($hidden[$i]) || in_array((string) ($d['function'] ?? ''), $core, true)) {
+                if (isset($hidden[$i])) {
                     continue;
                 }
                 $pid = (int) ($d['powerID'] ?? 0);
@@ -3991,6 +3992,18 @@ class NRGDashboardTile extends IPSModule
                 $parent = $claimedBy[$pid];
                 if ($parent === $i) {
                     continue; // Selbstbezug - ignorieren
+                }
+                // Kernknoten (pv/battery/grid/house) nur dann ausblenden, wenn
+                // der beanspruchende Sammelknoten DIESELBE Funktion traegt -
+                // dann bleibt die Rolle auf Ebene 1 vertreten (Solarpark,
+                // 11.09.2026: 24 Wechselrichter "PV-Erzeugung" standen neben
+                // ihrem eigenen PV-Sammelzaehler "Trafo 4.1", weil die
+                // urspruengliche Fassung Kernknoten pauschal ausnahm). Ein
+                // Netz- oder PV-Knoten in einem Verbraucher-Sammelzaehler
+                // bleibt dagegen weiterhin stehen.
+                $fnI = (string) ($d['function'] ?? '');
+                if (in_array($fnI, $core, true) && $fnI !== (string) ($devices[$parent]['function'] ?? '')) {
+                    continue;
                 }
                 // Die beanspruchende Wurzel muss selbst unbeansprucht (= bleibt
                 // sichtbar) oder bereits als Kettenglied ausgeblendet sein -
