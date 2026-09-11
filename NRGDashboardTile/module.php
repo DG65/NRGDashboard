@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.16';
+    private const NEWS_VERSION = '0.9.17';
     private const NEWS_ITEMS = [
+        'Fix: ein Sammelknoten ab Ebene 2 (z. B. "Licht EG" innerhalb von "Licht Gesamt") zeigte das "›"-Badge statt der Anzahl seiner Unterzähler - die Mitgliederzahl wird jetzt auf jeder Ebene mitgeliefert, das "›" bleibt nur für Sammelknoten mit tatsächlich unbekannter Anzahl.',
         'Fix: es gibt im Energiefluss jetzt genau EINEN Netzknoten. Standen mehrere Netzzähler nebeneinander (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler), hing der Strompreis am ersten gefundenen - bei Dietmar am verzögerten Abrechnungszähler mit 0 W, und die Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch. Jetzt überlebt der echtzeitfähigste Zähler als Netzknoten (mit Preis, Bilanz und Ersparnis), die übrigen werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite ausgewiesen. Außerdem verwenden Preis, Bilanz, PV-Ersparnis und Hauslast-Schätzung nun dieselbe Auswahl (vorher: drei Stellen den ersten, eine den letzten Netzzähler).',
         'Fix: ausgeblendete Geräte tauchten nach einer Umbenennung an der Quelle wieder auf ("obwohl ich ihn mehrfach deaktiviert habe, wird er immer wieder aktiviert") - der Ausblende-Schlüssel enthielt das Label. Er basiert jetzt auf der Leistungsvariable; bestehende Ausblendungen werden automatisch übernommen, nichts muss neu abgewählt werden.',
         'Fix: ein Sammelzähler und seine eigenen Mitglieder standen gemeinsam auf Ebene 1 (Beispiel: "Licht Gesamt" neben "Licht EG" und "Licht OG"), sobald die Mitglieder ihre eigene Dashboard-Zuordnung behalten hatten - die Beleuchtung zählte dadurch doppelt in die sichtbaren Abflüsse. Wurzeln, die als positives Mitglied in einem anderen Sammelknoten stecken, werden jetzt auf Ebene 1 ausgeblendet und sind nur noch durch Aufschachteln erreichbar. Abgezogene Mitglieder (negativer Faktor, z. B. Wallboxen in "Hausverbrauch ohne Wallboxen") bleiben eigene Knoten.',
@@ -4164,10 +4165,14 @@ class NRGDashboardTile extends IPSModule
             $pid = (int) ($m['powerID'] ?? 0);
             $srcInst = ($pid > 0 && IPS_VariableExists($pid)) ? (int) IPS_GetParent($pid) : 0;
             $nested = $m['members'] ?? null; // manuelle Verschachtelung
-            $hasKids = is_array($nested) && count($nested) > 0;
-            if (!$hasKids && $depth < self::MEMBER_MAX_DEPTH && $srcInst > 0 && $this->isMhubvInstance($srcInst)) {
-                $hasKids = count($this->mhubvMembersOf($srcInst)) > 0;
+            // Anzahl statt nur ja/nein (Dietmar, 11.09.2026: auf Ebene 2 zeigte
+            // "Licht EG" das "›"-Badge statt der Zahl seiner 8 Raeume - das
+            // "›" ist nur fuer Sammelknoten mit UNBEKANNTER Mitgliederzahl).
+            $kidCount = is_array($nested) ? count($nested) : 0;
+            if ($kidCount === 0 && $depth < self::MEMBER_MAX_DEPTH && $srcInst > 0 && $this->isMhubvInstance($srcInst)) {
+                $kidCount = count($this->mhubvMembersOf($srcInst));
             }
+            $hasKids = $kidCount > 0;
             $out[] = [
                 'key'            => $parentKey . '>' . $i,
                 'label'          => trim((string) ($m['name'] ?? $m['label'] ?? '')) ?: ('Mitglied ' . ($i + 1)),
@@ -4179,6 +4184,7 @@ class NRGDashboardTile extends IPSModule
                 'socID'          => (int) ($m['socID'] ?? 0),
                 'instanceID'     => $srcInst,
                 'hasMembers'     => $hasKids,
+                'memberCount'    => $kidCount,
                 // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026): switchID
                 // (Bool, per EnableAction() steuerbar wie chargeEnableID) je
                 // Mitglied - auch bei abgezogenen Zeilen (einzeln bleibt ein
