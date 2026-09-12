@@ -1475,6 +1475,13 @@ gleiche IPSView-Fähigkeit.
   Namen: eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht
   mehr wieder auftauchen; alte, namensbasierte Einstellungen werden
   lesend übernommen, nichts muss neu abgewählt werden.
+- **Keine aktuelle Messung statt falscher 0 W (`NRGDashboardTile`):**
+  liefert eine Quelle den Zeitpunkt ihrer letzten echten Messung
+  (`lastSeenAt`, z. B. ChargerHub und OCPPHub ab Vertrag 1.3) und liegt
+  der länger als 5 Minuten zurück, zeigt der Knoten „—“ mit dem Hinweis
+  „keine aktuelle Messung“ und einem gelben Warnzeichen, statt eine
+  eingefrorene 0 W als „läuft nicht“ darzustellen. Quellen ohne dieses
+  Feld verhalten sich wie bisher.
 - **Netzzähler verkehrt herum? (`NRGDashboardTile`):** MeterHub prüft ab
   0.27.0 die Richtung jedes Netzzählers gegen eine zweite Quelle
   (Wechselrichter oder weiterer Netzzähler) und meldet einen verkehrt

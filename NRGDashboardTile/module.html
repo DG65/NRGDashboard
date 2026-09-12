@@ -704,6 +704,7 @@ const ACTIVE_MIN_W = 5;
 // "aus"), Gruppen ueber ihren Gruppenstatus (1 teilweise/2 an), sonst die
 // Leistung ab ACTIVE_MIN_W. Eingesteckte Wallbox zaehlt wie bisher.
 function isItemActive(item) {
+  if (item.stale) { return false; } // keine aktuelle Messung = keine Aussage
   if (item.switchable && item.switchOn != null) { return !!item.switchOn || !!item.plugged; }
   if (item.switchState != null) { return item.switchState > 0 || !!item.plugged; }
   return Math.abs(item.value ?? 0) > ACTIVE_MIN_W || !!item.plugged;
@@ -1434,6 +1435,8 @@ function buildItems(devices) {
         sub: d.sub || '',
         measured: d.measured ?? true,
         plugged: !!d.plugged,
+        // Veraltete Messung (13.09.2026, lastSeenAt, siehe buildPayload())
+        stale: !!d.stale,
         color: style.color,
         dir: style.dir,
         battery: !!style.battery,
@@ -1486,6 +1489,14 @@ let COST_TICKER_ON = false;
 // Bezug: "-x,xx €/h" (priceNow), Einspeisung: "+x,xx €/h" (feedInTariff);
 // fehlt der jeweilige Satz, bleibt es bei der Leistungsanzeige.
 function renderValueDisplay(refs) {
+  if (refs.stale) {
+    // Keine aktuelle Messung: kein Zahlenwert, sonst saehe eine eingefrorene
+    // 0 W wie "laeuft nicht" aus (Untertitel sagt "keine aktuelle Messung").
+    refs.valText.firstChild.nodeValue = '—';
+    const unitEl = refs.valText.querySelector('.node-value-unit');
+    if (unitEl) { unitEl.textContent = ''; }
+    return;
+  }
   const exporting = (refs.signedW ?? 0) > 0;
   const rateCt = exporting ? refs.feedInTariff : refs.priceNow;
   if (refs.isGrid && COST_TICKER_ON && rateCt != null && refs.active) {
@@ -2099,6 +2110,7 @@ function updateOuterNode(refs, item) {
   refs.signedW = w; // Netz: + Einspeisung / - Bezug
   refs.magnitude = magnitude;
   refs.measured = item.measured;
+  refs.stale = !!item.stale;
   refs.active = active;
   renderValueDisplay(refs);
 
@@ -2171,9 +2183,9 @@ function updateOuterNode(refs, item) {
 
   // Diagnose-Warnsymbol (28.08.2026) - nur bei tatsaechlicher Warnstufe,
   // Farbe nach Schwere ('kritisch' rot, 'auffaellig' gelb).
-  if (item.warnLevel === 'kritisch' || item.warnLevel === 'auffaellig') {
+  if (item.warnLevel === 'kritisch' || item.warnLevel === 'auffaellig' || item.stale) {
     refs.warn.style.display = hidden ? 'none' : '';
-    refs.warn.setAttribute('class', 'node-warn node-warn-' + item.warnLevel);
+    refs.warn.setAttribute('class', 'node-warn node-warn-' + (item.warnLevel || 'auffaellig'));
   } else {
     refs.warn.style.display = 'none';
   }

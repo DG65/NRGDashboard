@@ -52,6 +52,9 @@ class NRGDashboardTile extends IPSModule
     // 12.09.2026: Obergrenze 100 kW reichte fuer den Solarpark (mehrere MW)
     // nicht - Hoechsttempo war dort schon bei jeder Leistung erreicht.
     private const MAX_FLOWREF    = 100000000;
+    // lastSeenAt aelter als das = veraltete Messung (13.09.2026, grosszuegig,
+    // OCPP-Wallboxen melden im Leerlauf teils nur alle paar Minuten).
+    private const STALE_AFTER_SEC = 300;
     private const DEF_MATCH_TOLERANCE = 300;
 
     // Formular-Konvention des Verbunds (SUITE.md "Einheitliche Formular-
@@ -1365,6 +1368,17 @@ class NRGDashboardTile extends IPSModule
                 $d['label'] = $o['name'];
             }
             $d['value'] = $this->resolvePowerValue($d);
+            // Veraltete Messung (13.09.2026, ChargerHub/OCPPHub Vertrag 1.3,
+            // generisch fuer jede Quelle mit lastSeenAt): liegt die letzte
+            // echte Messung laenger als STALE_AFTER_SEC zurueck, ist der
+            // Variablenwert (z. B. eingefrorene 0 W) keine Aussage mehr -
+            // Knoten zeigt "keine aktuelle Messung" statt einer Leistung.
+            $lastSeen = (int) ($d['lastSeenAt'] ?? 0);
+            if ($lastSeen > 0 && time() - $lastSeen > self::STALE_AFTER_SEC) {
+                $d['stale'] = true;
+                $d['value'] = 0.0;
+                $d['sub'] = 'keine aktuelle Messung';
+            }
             // Manueller Invert-Schalter (Netz/Batterie) - nur bei manuell
             // konfigurierten Geraeten gesetzt (discoverManualCore()).
             if (!empty($d['invert']) && $d['value'] !== null) {

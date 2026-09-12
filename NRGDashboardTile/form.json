@@ -119,6 +119,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet eine Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. ChargerHub/OCPPHub) und liegt der länger als 5 Minuten zurück, zeigt der Knoten „—“ mit „keine aktuelle Messung“ und gelbem Warnzeichen - statt eine eingefrorene 0 W als „läuft nicht“ darzustellen."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Ein Netzknoten, ein Preis, 11.09.2026): melden mehrere Quellen einen Netzzähler (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler wie Inexogy), zeigt der Energiefluss genau EINEN Netzknoten - den echtzeitfähigsten. Er trägt Strompreis, Mittelpillen-Bilanz, PV-Ersparnis und Hauslast-Schätzung aus ein und derselben Auswahl; die übrigen Netzzähler werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite als „Weiterer Netzzähler“ ausgewiesen (Abrechnung/verzögert markiert), treiben aber weder Fluss noch Bilanz noch Preis. Die Ausblende-Liste „Automatisch gefundene Geräte“ merkt sich Geräte seit dieser Version über ihre Leistungsvariable statt über den Namen - eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht mehr wieder auftauchen; bestehende Abwahlen werden automatisch übernommen. Begründungen im Debug-Fenster, Kanal „Netzzähler“."
         },
         {
