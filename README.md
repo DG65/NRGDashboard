@@ -1475,6 +1475,12 @@ gleiche IPSView-Fähigkeit.
   Namen: eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht
   mehr wieder auftauchen; alte, namensbasierte Einstellungen werden
   lesend übernommen, nichts muss neu abgewählt werden.
+- **Netzzähler verkehrt herum? (`NRGDashboardTile`):** MeterHub prüft ab
+  0.27.0 die Richtung jedes Netzzählers gegen eine zweite Quelle
+  (Wechselrichter oder weiterer Netzzähler) und meldet einen verkehrt
+  eingebauten Zähler. Der Energiefluss zeigt diese Meldung im
+  Gesundheits-Symbol an, ohne selbst zu bewerten — die Beurteilung bleibt
+  beim Zähler-Modul.
 - **Kosten oder Erlös (`NRGDashboardTile`):** der Netzknoten wechselt
   alle paar Sekunden zwischen Leistung und Geld pro Stunde — bei Bezug
   als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber

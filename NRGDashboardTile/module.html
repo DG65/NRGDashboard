@@ -2320,6 +2320,7 @@ function diagValueText(e) {
   }
   // Unbekannter kuenftiger Typ: zeige, was vorhanden ist, statt nichts.
   if (e.expected !== undefined) { return fmtNum(e.expected, e.unit); }
+  if (e.referenceLabel) { return 'Vergleich: ' + e.referenceLabel; }
   return '';
 }
 

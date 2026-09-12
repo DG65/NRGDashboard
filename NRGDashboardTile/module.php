@@ -2774,12 +2774,41 @@ class NRGDashboardTile extends IPSModule
                 }
             }
         }
-        if (count($results) > 0) {
+        if (count($results) === 0) {
+            foreach ($this->computeOwnDiagnostics() as $entry) {
+                $entry['source'] = 'nrgdashboard';
+                $results[] = $entry;
+            }
+        }
+        return array_merge($results, $this->meterHubDiagnostics());
+    }
+
+    /**
+     * MeterHub-Diagnose (MHUB_GetDiagnostics 1.0, 12.09.2026) - z. B.
+     * "Richtung Netzanschluss" (Zaehler verkehrt herum). Bewertung trifft
+     * MeterHub (level), hier nur durchreichen; Eintraege ohne Bewertung
+     * (level null = keine Vergleichsquelle) bleiben weg, sie sagen nichts aus.
+     * MeterHub zwischenspeichert 30 min, der Aufruf ist also guenstig.
+     */
+    private function meterHubDiagnostics(): array
+    {
+        $results = [];
+        if (!function_exists('MHUB_GetDiagnostics')) {
             return $results;
         }
-        foreach ($this->computeOwnDiagnostics() as $entry) {
-            $entry['source'] = 'nrgdashboard';
-            $results[] = $entry;
+        foreach (IPS_GetInstanceListByModuleID(NRGDASH_GUID_METERHUB) as $id) {
+            $data = @MHUB_GetDiagnostics($id);
+            if (!is_array($data) || !isset($data['entries']) || !is_array($data['entries'])) {
+                continue;
+            }
+            foreach ($data['entries'] as $entry) {
+                if (!is_array($entry) || !isset($entry['type']) || ($entry['level'] ?? null) === null) {
+                    continue;
+                }
+                $entry['source']     = 'meterhub';
+                $entry['instanceID'] = $data['instanceID'] ?? $id;
+                $results[] = $entry;
+            }
         }
         return $results;
     }
