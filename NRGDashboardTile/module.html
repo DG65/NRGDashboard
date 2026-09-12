@@ -1078,7 +1078,10 @@ function attachGlow(glowEl) {
   return glowEl;
 }
 function applyGlow(glowEl, color, magnitudeW) {
-  const t = Math.max(0, Math.min(1, magnitudeW / GLOW_MAX_W));
+  // Leuchtschein mit dem Fluss-Tempo mitskalieren (12.09.2026): bei MW-
+  // Anlagen war GLOW_MAX_W sonst schon bei jeder Leistung voll erreicht.
+  const glowMax = Math.max(GLOW_MAX_W, FLOW_REF_W * 4);
+  const t = Math.max(0, Math.min(1, magnitudeW / glowMax));
   if (glowEl._glowStops) {
     const c = rgb(color);
     glowEl._glowStops.forEach(s => s.setAttribute('stop-color', c));

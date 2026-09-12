@@ -351,7 +351,8 @@ Passt an den bestehenden `NRG.*`-Profilpräfix an.
   komplette "Darstellung"-Sektion aus `InverterHubTile/form.json` 1:1 —
   `ColorBackground` (SelectColor, −1 = Systemstandard), `FontFamily`
   (ValidationTextBox), `TransitionMs` (NumberSpinner 0–5000ms),
-  `FlowRefW` (NumberSpinner 500–100000W) plus der Button
+  `FlowRefW` (NumberSpinner 500–100000W, seit 12.09.2026 bis 100 MW für
+  Großanlagen; der Leuchtschein skaliert dann mit) plus der Button
   "Stil zurücksetzen" (`ResetStyle()`, nur `UpdateFormField` — Store-Review-
   Regel, kein `IPS_SetProperty`+`ApplyChanges` im Button). `buildPayload()`
   liefert `bg`/`font`/`transMs`/`flowRefW` jetzt genauso wie InverterHubTile,

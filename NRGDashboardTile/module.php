@@ -49,6 +49,9 @@ class NRGDashboardTile extends IPSModule
     private const DEF_FONT       = 'system';
     private const DEF_TRANSITION = 800;
     private const DEF_FLOWREF    = 10000;
+    // 12.09.2026: Obergrenze 100 kW reichte fuer den Solarpark (mehrere MW)
+    // nicht - Hoechsttempo war dort schon bei jeder Leistung erreicht.
+    private const MAX_FLOWREF    = 100000000;
     private const DEF_MATCH_TOLERANCE = 300;
 
     // Formular-Konvention des Verbunds (SUITE.md "Einheitliche Formular-
@@ -471,7 +474,7 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($Ident === 'FlowRefW') {
-            $this->SetValue($Ident, max(500, min(100000, (int) $Value)));
+            $this->SetValue($Ident, max(500, min(self::MAX_FLOWREF, (int) $Value)));
             $this->Render();
             return;
         }
@@ -1720,7 +1723,7 @@ class NRGDashboardTile extends IPSModule
         // in Create()) - GetValue() statt readIntProperty(), gleiches
         // Muster wie HideInactive/CoupleBoltPower/CoupleGlowPower.
         $v = (int) $this->GetValue('FlowRefW');
-        return ($v >= 500 && $v <= 100000) ? $v : self::DEF_FLOWREF;
+        return ($v >= 500 && $v <= self::MAX_FLOWREF) ? $v : self::DEF_FLOWREF;
     }
 
     private function TransitionValue(): int
