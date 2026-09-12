@@ -115,7 +115,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Kosten oder Erlös, 12.09.2026): der Netzknoten wechselt alle paar Sekunden zwischen Leistung und Geld pro Stunde - bei Bezug als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus („+1,06 €/h“, zur eingetragenen Einspeisevergütung). Ohne eingetragene Vergütung bleibt es bei Einspeisung bei der Leistungsanzeige - Einspeisung wird nie mehr mit dem Bezugspreis als scheinbare Kosten bewertet."
+          "caption": "✨ Feinheit (Kosten oder Erlös, 12.09.2026): der Netzknoten wechselt alle paar Sekunden zwischen Leistung und Geld pro Stunde - bei Bezug als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus („+1,06 €/h“, zur Einspeisevergütung - automatisch aus dem Szenariorechner, sonst aus dem Feld unten). Ohne eingetragene Vergütung bleibt es bei Einspeisung bei der Leistungsanzeige - Einspeisung wird nie mehr mit dem Bezugspreis als scheinbare Kosten bewertet."
         },
         {
           "type": "Label",
@@ -440,7 +440,7 @@
         {
           "type": "NumberSpinner",
           "name": "FeedInTariffCt",
-          "caption": "Einspeisevergütung für die Erlös-Anzeige am Netzknoten (0 = keine Erlös-Anzeige)",
+          "caption": "Einspeisevergütung für die Erlös-Anzeige am Netzknoten - nur nötig ohne Szenariorechner, dessen Einspeisevergütung automatisch Vorrang hat (0 = keine Erlös-Anzeige)",
           "minimum": 0,
           "digits": 2,
           "suffix": " ct/kWh"

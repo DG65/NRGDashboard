@@ -1478,12 +1478,13 @@ gleiche IPSView-Fähigkeit.
   alle paar Sekunden zwischen Leistung und Geld pro Stunde — bei Bezug
   als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber
   bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus
-  („+1,06 €/h“, zur im Formular eingetragenen Einspeisevergütung in
-  ct/kWh). Ohne eingetragene Vergütung bleibt es bei Einspeisung bei der
-  Leistungsanzeige — Einspeisung wird nie mit dem Bezugspreis als
-  scheinbare Kosten bewertet. Die Vergütung ist bewusst eine eigene Zahl
-  statt einer verknüpften Variable und hat keine Vorgabe: kein Tarif
-  wird stillschweigend angenommen.
+  („+1,06 €/h“, zur Einspeisevergütung in ct/kWh). Die Vergütung wird
+  nur an einer Stelle gepflegt: gibt es einen Szenariorechner, übernimmt
+  die Kachel automatisch dessen Einspeisevergütung; nur ohne Rechner
+  greift das eigene Formularfeld. Ohne Vergütung bleibt es bei
+  Einspeisung bei der Leistungsanzeige — Einspeisung wird nie mit dem
+  Bezugspreis als scheinbare Kosten bewertet, und kein Tarif wird
+  stillschweigend angenommen.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein

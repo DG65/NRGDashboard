@@ -18,6 +18,7 @@ define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
 define('NRGDASH_GUID_INVERTERHUBTILE', '{9A2E5C7F-3B1D-4A6E-8C9F-2D5B7E1A4C8F}');
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
+define('NRGDASH_GUID_SZR',            '{7F3A9C1E-4B5D-4A6F-8C2E-1D9B3A7E5F4C}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
 define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
@@ -1398,7 +1399,7 @@ class NRGDashboardTile extends IPSModule
         $gridIdx = $this->primaryGridDevice($devices);
         // Einspeiseverguetung fuer die Erloes-Anzeige (12.09.2026) - an den
         // primaeren Netzknoten, unabhaengig davon, ob Preis-Slots vorliegen.
-        $feedInCt = $this->readFloatProperty('FeedInTariffCt', 0.0);
+        $feedInCt = $this->FeedInTariffCt();
         if ($gridIdx !== null && $feedInCt > 0) {
             $devices[$gridIdx]['feedInTariff'] = $feedInCt;
         }
@@ -1672,6 +1673,26 @@ class NRGDashboardTile extends IPSModule
     {
         $v = @$this->ReadPropertyBoolean($name);
         return is_bool($v) ? $v : $default;
+    }
+
+    /**
+     * Einspeiseverguetung in ct/kWh (12.09.2026): primaer aus dem
+     * Szenariorechner (Wirtschaftlichkeitsrechner), damit die Verguetung nur
+     * an EINER Stelle gepflegt wird - genau eine Instanz, Wert > 0. Sonst
+     * (kein oder mehrere Rechner) das eigene Formularfeld als Ersatz.
+     * Der Szenariorechner hat dafuer (noch) keinen Vertrag, daher die
+     * Property direkt; Instanzstatus egal, die Konfiguration gilt trotzdem.
+     */
+    private function FeedInTariffCt(): float
+    {
+        $list = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_SZR);
+        if (is_array($list) && count($list) === 1) {
+            $v = @IPS_GetProperty($list[0], 'EinspeiseverguetungCtKwh');
+            if ((is_float($v) || is_int($v)) && $v > 0) {
+                return (float) $v;
+            }
+        }
+        return $this->readFloatProperty('FeedInTariffCt', 0.0);
     }
 
     private function readFloatProperty(string $name, float $default): float
