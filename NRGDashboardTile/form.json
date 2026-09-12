@@ -115,6 +115,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Kosten oder Erlös, 12.09.2026): der Netzknoten wechselt alle paar Sekunden zwischen Leistung und Geld pro Stunde - bei Bezug als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus („+1,06 €/h“, zur eingetragenen Einspeisevergütung). Ohne eingetragene Vergütung bleibt es bei Einspeisung bei der Leistungsanzeige - Einspeisung wird nie mehr mit dem Bezugspreis als scheinbare Kosten bewertet."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Ein Netzknoten, ein Preis, 11.09.2026): melden mehrere Quellen einen Netzzähler (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler wie Inexogy), zeigt der Energiefluss genau EINEN Netzknoten - den echtzeitfähigsten. Er trägt Strompreis, Mittelpillen-Bilanz, PV-Ersparnis und Hauslast-Schätzung aus ein und derselben Auswahl; die übrigen Netzzähler werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite als „Weiterer Netzzähler“ ausgewiesen (Abrechnung/verzögert markiert), treiben aber weder Fluss noch Bilanz noch Preis. Die Ausblende-Liste „Automatisch gefundene Geräte“ merkt sich Geräte seit dieser Version über ihre Leistungsvariable statt über den Namen - eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht mehr wieder auftauchen; bestehende Abwahlen werden automatisch übernommen. Begründungen im Debug-Fenster, Kanal „Netzzähler“."
         },
         {
@@ -432,6 +436,14 @@
           "name": "TibberInstance",
           "caption": "Tibber Grid Rewards-Instanz für Strompreis-Kennzahlen auf den Geräte-Detailseiten (optional, sonst automatisch bei genau einer Instanz)",
           "moduleID": "{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "FeedInTariffCt",
+          "caption": "Einspeisevergütung für die Erlös-Anzeige am Netzknoten (0 = keine Erlös-Anzeige)",
+          "minimum": 0,
+          "digits": 2,
+          "suffix": " ct/kWh"
         },
         {
           "type": "Label",

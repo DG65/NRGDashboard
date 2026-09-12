@@ -1441,6 +1441,7 @@ function buildItems(devices) {
         forecastRatio: (d.forecastRatio !== undefined && d.forecastRatio !== null) ? d.forecastRatio : null,
         priceTrend: Array.isArray(d.priceTrend) ? d.priceTrend : null,
         priceNow: (d.priceNow !== undefined && d.priceNow !== null) ? d.priceNow : null,
+        feedInTariff: (typeof d.feedInTariff === 'number' && d.feedInTariff > 0) ? d.feedInTariff : null,
         peakTodayW: (d.peakTodayW !== undefined && d.peakTodayW !== null) ? d.peakTodayW : null,
         // Aufschachteln (03.09.2026): Sammelknoten-Kennung + abgezogene
         // Mitglieder (negativer Faktor) - siehe attachMembers() im Backend.
@@ -1476,10 +1477,18 @@ function setValueText(textEl, watts, measured) {
 // unabhaengig vom Server-Push (der viel seltener/unregelmaessiger kommt)
 // zwischen beiden Darstellungen umschalten kann.
 let COST_TICKER_ON = false;
+// Kosten vs. Erloes (Dietmar, 12.09.2026: "Bezug als Kosten zum Tibber-
+// Preis und Einspeisung als Erloes zur Einspeiseverguetung") - vorher wurde
+// auch Einspeisung mit dem Bezugspreis als scheinbare Kosten angezeigt.
+// Bezug: "-x,xx €/h" (priceNow), Einspeisung: "+x,xx €/h" (feedInTariff);
+// fehlt der jeweilige Satz, bleibt es bei der Leistungsanzeige.
 function renderValueDisplay(refs) {
-  if (refs.isGrid && COST_TICKER_ON && refs.priceNow != null && refs.active) {
-    const eurPerHour = (refs.magnitude / 1000) * (refs.priceNow / 100);
-    refs.valText.firstChild.nodeValue = eurPerHour.toFixed(eurPerHour < 1 ? 3 : 2);
+  const exporting = (refs.signedW ?? 0) > 0;
+  const rateCt = exporting ? refs.feedInTariff : refs.priceNow;
+  if (refs.isGrid && COST_TICKER_ON && rateCt != null && refs.active) {
+    const eurPerHour = (refs.magnitude / 1000) * (rateCt / 100);
+    const num = eurPerHour.toFixed(eurPerHour < 1 ? 3 : 2).replace('.', ',');
+    refs.valText.firstChild.nodeValue = (exporting ? '+' : '−') + num;
     const unitEl = refs.valText.querySelector('.node-value-unit');
     if (unitEl) { unitEl.textContent = '€/h'; }
   } else {
@@ -2083,6 +2092,8 @@ function updateOuterNode(refs, item) {
   ICONS[item.icon](refs.iconG, item.soc ?? null);
   refs.isGrid = item.function === 'grid';
   refs.priceNow = item.priceNow != null ? item.priceNow : null;
+  refs.feedInTariff = item.feedInTariff != null ? item.feedInTariff : null;
+  refs.signedW = w; // Netz: + Einspeisung / - Bezug
   refs.magnitude = magnitude;
   refs.measured = item.measured;
   refs.active = active;

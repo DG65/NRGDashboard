@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.27';
+    private const NEWS_VERSION = '0.9.28';
     private const NEWS_ITEMS = [
+        'Neu: der Netzknoten unterscheidet in der Kostenanzeige jetzt Bezug und Einspeisung - Bezug erscheint als Kosten ("−x,xx €/h") zum aktuellen Strompreis, Einspeisung als Erlös ("+x,xx €/h") zur Einspeisevergütung. Die Vergütung wird im Formular unter "Einspeisevergütung" in ct/kWh eingetragen; ohne Eintrag zeigt der Knoten bei Einspeisung einfach die Leistung (bisher wurde Einspeisung fälschlich mit dem Bezugspreis als Kosten angezeigt).',
         'Fix: gab es mehr als eine Tibber-Grid-Rewards-Instanz (z. B. zusätzlich eine abgeschaltete Demo-Instanz), fand die Kachel Tibber nicht automatisch - der Netzknoten zeigte dann keinen aktuellen Strompreis und wechselte nie auf die Kostenanzeige. Jetzt genügt es, dass genau eine davon aktiv ist.',
         'Fix: ein Sammelzähler (z. B. "Heizung / Klima" aus Wärmepumpe + Klimaanlage) konnte als "doppelte Messung" unter einen einzelnen Zähler derselben Funktion gefaltet werden und verschwand - besonders nachts, wenn beide nahe 0 W lagen. Sammelzähler nehmen an der Doppelmessungs-Erkennung jetzt grundsätzlich nicht mehr teil; eine Summe ist nie dieselbe Messung wie ein einzelner Zähler.',
         'Fix: auf Tablets markierte der lange Druck (Auf-/Zuschachteln) den Leistungswert als Text bzw. öffnete Lupe oder Kontextmenü - Textauswahl und Kontextmenü sind in der Kachel jetzt unterbunden.',
@@ -295,6 +296,13 @@ class NRGDashboardTile extends IPSModule
         // Leer = automatisch bei genau einer installierten Instanz, analog
         // PvfInstance/IrradianceID.
         $this->RegisterPropertyInteger('TibberInstance', 0);
+        // Einspeiseverguetung in ct/kWh fuer die Erloes-Anzeige am Netzknoten
+        // (Dietmar, 12.09.2026: "Bezug als Kosten zum Tibber-Preis und
+        // Einspeisung als Erloes zur Einspeiseverguetung"). Zahl statt
+        // Variablen-ID (Kernprinzip 1: keine manuell verknuepften IDs; EMS
+        // bietet den Wert in keinem Vertrag an). 0 = keine Erloes-Anzeige -
+        // bewusst kein Tarif als Vorgabe (keine eigene Anlage als Norm).
+        $this->RegisterPropertyFloat('FeedInTariffCt', 0.0);
         // Ersatz-Strompreis fuer Kosten-Kennzahlen OHNE Tibber-Instanz
         // (Dietmar, 28.08.2026: "Quartalsweise den Haushalts-Durchschnitts-
         // preis bei BDEW anfragen und in eine DB eintragen ... das sollte
@@ -1386,6 +1394,12 @@ class NRGDashboardTile extends IPSModule
         // primaryGridDevice()) - vorher "erster grid-Eintrag", was bei zwei
         // Netzzaehlern den Preis an den verzoegerten Abrechnungszaehler hing.
         $gridIdx = $this->primaryGridDevice($devices);
+        // Einspeiseverguetung fuer die Erloes-Anzeige (12.09.2026) - an den
+        // primaeren Netzknoten, unabhaengig davon, ob Preis-Slots vorliegen.
+        $feedInCt = $this->readFloatProperty('FeedInTariffCt', 0.0);
+        if ($gridIdx !== null && $feedInCt > 0) {
+            $devices[$gridIdx]['feedInTariff'] = $feedInCt;
+        }
         if ($gridIdx !== null) {
             $dayStart = strtotime('today');
             $dayEnd = strtotime('+1 day', $dayStart);
@@ -1656,6 +1670,12 @@ class NRGDashboardTile extends IPSModule
     {
         $v = @$this->ReadPropertyBoolean($name);
         return is_bool($v) ? $v : $default;
+    }
+
+    private function readFloatProperty(string $name, float $default): float
+    {
+        $v = @$this->ReadPropertyFloat($name);
+        return (is_float($v) || is_int($v)) ? (float) $v : $default;
     }
 
     private function ColorOrEmpty(int $color): string
