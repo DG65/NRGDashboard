@@ -936,6 +936,22 @@ class NRGDashboardTile extends IPSModule
         // grid-Wurzeln an den echtzeitfaehigsten gehaengt.
         $devices = $this->collapseToSingleGrid($devices);
 
+        // Leerer Fund bei vorhandenem Cache (12.09.2026, Solarpark nach
+        // Modul-Update: "keine Geraete gefunden"): laeuft ApplyChanges() beim
+        // Bibliotheks-Reload, bevor die Partnermodule (MeterHub, InverterHub)
+        // wieder bereit sind, findet Discover() nichts - und die Kachel stand
+        // bis zum naechsten 5-Minuten-Tick leer. Dann den alten Stand
+        // behalten und nach 30 s erneut suchen - hoechstens 15 Minuten lang,
+        // danach gilt der leere Fund (Geraete wirklich entfernt).
+        $cached = json_decode($this->ReadAttributeString('DeviceCache'), true);
+        $cacheAge = time() - (int) @$this->ReadAttributeInteger('LastDiscoveryTs');
+        if ($devices === [] && is_array($cached) && $cached !== [] && $cacheAge < 15 * 60) {
+            $this->SendDebug('Discover', 'leerer Fund bei gefuelltem Cache - alter Stand bleibt, neuer Versuch in 30 s', 0);
+            $this->SetTimerInterval('NRGDASH_Refresh', 30 * 1000);
+            return $cached;
+        }
+        $this->SetTimerInterval('NRGDASH_Refresh', 5 * 60 * 1000);
+
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
