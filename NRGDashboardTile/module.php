@@ -56,8 +56,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.28';
+    private const NEWS_VERSION = '0.9.29';
     private const NEWS_ITEMS = [
+        'Fix: Netzzähler aus MeterHub wurden mit vertauschtem Vorzeichen gelesen - MeterHub zählt "+ = Bezug", der Energiefluss "+ = Einspeisung". Bezug und Einspeisung (samt Kosten/Erlös, Tagesbilanz und Vortageswert) erschienen dadurch vertauscht, sofern der Zähler nicht zufällig per "Leistung invertieren" gegen die MeterHub-Konvention gedreht war. Jetzt rechnet die Kachel MeterHub-Netzwerte um wie das PV-Monitoring; eine InverterHub-Ersatzquelle behält ihr eigenes Vorzeichen. Wer "Leistung invertieren" am MeterHub-Netzzähler nur als Ausgleich gesetzt hatte, muss es jetzt abschalten.',
         'Neu: der Netzknoten unterscheidet in der Kostenanzeige jetzt Bezug und Einspeisung - Bezug erscheint als Kosten ("−x,xx €/h") zum aktuellen Strompreis, Einspeisung als Erlös ("+x,xx €/h") zur Einspeisevergütung. Die Vergütung wird im Formular unter "Einspeisevergütung" in ct/kWh eingetragen; ohne Eintrag zeigt der Knoten bei Einspeisung einfach die Leistung (bisher wurde Einspeisung fälschlich mit dem Bezugspreis als Kosten angezeigt).',
         'Fix: gab es mehr als eine Tibber-Grid-Rewards-Instanz (z. B. zusätzlich eine abgeschaltete Demo-Instanz), fand die Kachel Tibber nicht automatisch - der Netzknoten zeigte dann keinen aktuellen Strompreis und wechselte nie auf die Kostenanzeige. Jetzt genügt es, dass genau eine davon aktiv ist.',
         'Fix: ein Sammelzähler (z. B. "Heizung / Klima" aus Wärmepumpe + Klimaanlage) konnte als "doppelte Messung" unter einen einzelnen Zähler derselben Funktion gefaltet werden und verschwand - besonders nachts, wenn beide nahe 0 W lagen. Sammelzähler nehmen an der Doppelmessungs-Erkennung jetzt grundsätzlich nicht mehr teil; eine Summe ist nie dieselbe Messung wie ein einzelner Zähler.',
@@ -1378,7 +1379,8 @@ class NRGDashboardTile extends IPSModule
             if (!empty($d['powerID'])) {
                 $yv = $this->GetYesterdayValue((int) $d['powerID']);
                 if ($yv !== null) {
-                    $d['yesterdayValue'] = $yv;
+                    // Vorzeichen der eigenen Variable (MeterHub-Netz: + = Bezug)
+                    $d['yesterdayValue'] = $yv * (int) ($d['powerSign'] ?? 1);
                 }
             }
             return $d;
@@ -1741,10 +1743,23 @@ class NRGDashboardTile extends IPSModule
             if ($fbValue !== null) {
                 $device['measured'] = $device['fallbackMeasured'] ?? true;
                 $device['usingFallback'] = true;
-                return $fbValue;
+                return $fbValue * $this->activePowerSign($device);
             }
         }
-        return $value;
+        return $value === null ? null : $value * $this->activePowerSign($device);
+    }
+
+    /**
+     * Vorzeichen der GERADE gelesenen Quelle (siehe normalizeEntry(),
+     * 'powerSign'): primaer oder - bei usingFallback - die Ersatzquelle mit
+     * ihrem eigenen Vorzeichen. Fuer jede Stelle, die Werte oder Archiv-
+     * Zeitreihen der Leistungsvariable vorzeichenabhaengig auswertet.
+     */
+    private function activePowerSign(array $device): int
+    {
+        return !empty($device['usingFallback'])
+            ? (int) ($device['fallbackPowerSign'] ?? 1)
+            : (int) ($device['powerSign'] ?? 1);
     }
 
     // Throttle fuer die Gestern-Vergleichsabfrage - buildPayload() laeuft
@@ -2226,6 +2241,7 @@ class NRGDashboardTile extends IPSModule
             $devices[$primaryIdx]['fallbackEnergyImportID'] = (int) ($fallback['energyImportID'] ?? 0);
             $devices[$primaryIdx]['fallbackMeasured']       = (bool) ($fallback['measured'] ?? true);
             $devices[$primaryIdx]['fallbackLabel']          = (string) ($fallback['label'] ?? ($fallback['source'] ?? 'Fallback'));
+            $devices[$primaryIdx]['fallbackPowerSign']      = (int) ($fallback['powerSign'] ?? 1);
             foreach ($members as $k => $idx) {
                 if ($k > 0) {
                     $dropIndexes[] = $idx;
@@ -3919,6 +3935,16 @@ class NRGDashboardTile extends IPSModule
         // aufgerufen wurde (1:1-Faelle wie ChargerHub/MeterHub).
         $entry['instanceID'] = $entry['instanceID'] ?? $instanceID;
         $entry['category']   = $this->functionCategory((string) $entry['function']);
+        // Netz-Vorzeichen (Dietmar, 12.09.2026, Fund der MeterHub-Sitzung):
+        // die Kachel liest Netzleistung als "+ = Einspeisung", MeterHub zaehlt
+        // modulweit "+ = Bezug" (MeterHub/CLAUDE.md, Kopplungs-Invariante 2 -
+        // das PV-Monitoring rechnet via GridPowerSign() laengst um, die Kachel
+        // bisher nicht). Beim PAC2200 fiel das nicht auf, weil dessen
+        // "PowerInvert" ihn gegen die MeterHub-Konvention drehte; jeder andere
+        // Nutzer sah Bezug/Einspeisung vertauscht. Gilt fuer den eigenen
+        // powerID dieses Eintrags; eine Ersatzquelle traegt ihr eigenes
+        // Vorzeichen (fallbackPowerSign, siehe mergeRedundantSources()).
+        $entry['powerSign'] = ($source === 'meterhub' && ($entry['function'] ?? '') === 'grid') ? -1 : 1;
         return $entry;
     }
 
@@ -4156,6 +4182,7 @@ class NRGDashboardTile extends IPSModule
                 $devices[$primary]['fallbackEnergyImportID'] = (int) ($other['energyImportID'] ?? 0);
                 $devices[$primary]['fallbackMeasured']       = (bool) ($other['measured'] ?? true);
                 $devices[$primary]['fallbackLabel']          = (string) ($other['label'] ?? ($other['source'] ?? 'Fallback'));
+                $devices[$primary]['fallbackPowerSign']      = (int) ($other['powerSign'] ?? 1);
                 $role = 'Fallback';
             } else {
                 $devices[$primary]['secondaryGrid'][] = [
@@ -4335,6 +4362,14 @@ class NRGDashboardTile extends IPSModule
         if (!is_array($list)) { return []; }
         foreach ($list as &$m) {
             $m['value'] = ($m['powerID'] > 0) ? $this->resolveVariableValue((int) $m['powerID']) : null;
+            // Netz-Mitglieder (z. B. NAPs unter "Solarpark 1 + 2") stammen aus
+            // MeterHub-Sammelzaehlern und zaehlen "+ = Bezug" - in Kachel-
+            // Konvention drehen wie die Wurzel (siehe normalizeEntry()). Regel
+            // bewusst an der Funktion, nicht am Elternteil: ab Ebene 3 ist das
+            // Elternteil selbst ein synthetisches Mitglied (source 'member').
+            if ($m['value'] !== null && ($m['function'] ?? '') === 'grid') {
+                $m['value'] = -$m['value'];
+            }
             $m['soc'] = (!empty($m['socID']) && IPS_VariableExists((int) $m['socID'])) ? $this->resolveVariableValue((int) $m['socID']) : null;
             $m['switchable'] = (!empty($m['switchID']) && IPS_VariableExists((int) $m['switchID']));
             $m['switchOn'] = $m['switchable'] ? (bool) GetValueBoolean((int) $m['switchID']) : null;
@@ -4401,6 +4436,10 @@ class NRGDashboardTile extends IPSModule
             'factor'         => (float) ($m['factor'] ?? 100),
             'detailKey'      => (string) ($m['key'] ?? ''),
             'hasMembers'     => (bool) ($m['hasMembers'] ?? false),
+            // Netz-Mitglied = MeterHub-Konvention "+ = Bezug" (siehe
+            // MembersForKey()) - damit auch die Detailseite eines Mitglieds
+            // Bezug/Einspeisung richtig herum zeigt.
+            'powerSign'      => ((string) ($m['function'] ?? '') === 'grid') ? -1 : 1,
         ];
         if (!empty($m['socID'])) { $d['socID'] = (int) $m['socID']; }
         if (!empty($m['switchID'])) { $d['switchID'] = (int) $m['switchID']; }
@@ -4505,6 +4544,11 @@ class NRGDashboardTile extends IPSModule
         $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
         $archivingJustEnabled = $this->EnsureArchiving($powerID);
         $powerSeries = $this->DaySeries($powerID, $dayStart, $dayEnd);
+        // Archivreihe in Kachel-Konvention (+ = Einspeisung) - Netzbezug/
+        // Einspeisung/Kosten der Detailseite haengen am Vorzeichen.
+        if ($this->activePowerSign($d) === -1) {
+            $powerSeries = array_map(function ($p) { return [$p[0], -$p[1]]; }, $powerSeries);
+        }
         $energy = $this->DailyEnergyBars($d, $dayStart);
         $isToday = date('Y-m-d', $dayStart) === date('Y-m-d');
         return [
@@ -4962,6 +5006,9 @@ class NRGDashboardTile extends IPSModule
             $series = $this->DaySeries($powerID, $dayStart, $dayEnd);
             if (count($series) < 2) {
                 return null;
+            }
+            if ($this->activePowerSign($dev) === -1) {
+                $series = array_map(function ($p) { return [$p[0], -$p[1]]; }, $series);
             }
             $intervalHours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
             $importKWh = 0.0;
