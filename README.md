@@ -1487,6 +1487,13 @@ gleiche IPSView-Fähigkeit.
   Namen: eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht
   mehr wieder auftauchen; alte, namensbasierte Einstellungen werden
   lesend übernommen, nichts muss neu abgewählt werden.
+- **Eine Wallbox, eine Quelle (`NRGDashboardTile`):** ist dieselbe
+  Wallbox sowohl über ChargerHub als auch über OCPPHub eingebunden,
+  markiert der Nutzer die überzählige Anbindung einmal im Quellmodul als
+  Dublette (Vertragsfeld `duplicateOf`, ab CHUB/OHUB 1.4). Die Kachel lässt
+  solche Einträge dann automatisch weg — kein doppelter Knoten, keine
+  doppelte Ladeleistung, keine doppelten Sitzungen, ohne dass sie raten
+  muss, welche Anbindungen zusammengehören.
 - **Kosten je Ladesitzung (`NRGDashboardTile`):** die Detailseite jeder
   Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren
   tatsächlichen Kosten. Gerechnet wird je Viertelstunde: der Anteil, der in

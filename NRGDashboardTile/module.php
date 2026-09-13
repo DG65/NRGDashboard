@@ -803,6 +803,7 @@ class NRGDashboardTile extends IPSModule
     {
         $devices = [];
         $this->partnerNotReady = false;
+        $this->duplicatesSkipped = 0;
 
         // Isolierter Demo-Modus (03.09.2026, Dietmar: "die Summe aller
         // Ströme sind natürlich nicht logisch") - eine reine Vorstellungs-
@@ -3595,7 +3596,10 @@ class NRGDashboardTile extends IPSModule
         $instanceCount = count(IPS_GetInstanceListByModuleID($moduleGUID));
         // Partner laedt gerade neu (ready:false) - kein Hinweis, das ist kein
         // Konfigurations- oder Vertragsproblem.
-        if ($instanceCount > 0 && $foundCount === 0 && !$this->partnerNotReady) {
+        // Nur Dubletten gefunden (duplicateOf) ist ebenfalls gewollt, kein Hinweis.
+        $dups = $this->duplicatesSkipped;
+        $this->duplicatesSkipped = 0;
+        if ($instanceCount > 0 && $foundCount === 0 && !$this->partnerNotReady && $dups === 0) {
             $this->LogMessage(
                 sprintf(
                     'ℹ️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
@@ -3925,6 +3929,8 @@ class NRGDashboardTile extends IPSModule
     // (MeterHub ab 0.27.10: Instanz laedt gerade neu) - dann gilt der Fund
     // als unvollstaendig, siehe Leer-Discover-Schutz in Discover().
     private bool $partnerNotReady = false;
+    // Als Dublette markierte Eintraege (duplicateOf) im laufenden Discover()
+    private int $duplicatesSkipped = 0;
 
     private function discoverListContract(string $moduleGUID, string $function, string $source): array
     {
@@ -3967,6 +3973,14 @@ class NRGDashboardTile extends IPSModule
             }
             foreach ($entries as $entry) {
                 if (!is_array($entry) || !isset($entry['function'])) {
+                    continue;
+                }
+                // Dublette (CHUB/OHUB contractVersion 1.4, 13.09.2026): der
+                // Nutzer hat am Quellmodul markiert, dass dieser Ladepunkt
+                // dasselbe Geraet ist wie ein anderer, gezaehlter Eintrag -
+                // weder Knoten noch Mitglied noch Sitzung, kein Raten.
+                if (!empty($entry['duplicateOf'])) {
+                    $this->duplicatesSkipped++;
                     continue;
                 }
                 $results[] = $this->normalizeEntry($entry, $source, $id);
