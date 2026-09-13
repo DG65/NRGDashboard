@@ -4964,13 +4964,33 @@ class NRGDashboardTile extends IPSModule
         return [$powerID];
     }
 
+    /**
+     * DaySeries() ueber mehrere Tage, TAGEWEISE abgefragt: AC_GetAggregatedValues
+     * bricht bei haeufig schreibenden Variablen ueber 7 Tage mit "Zu viele
+     * Werte (>50000)" ab und liefert false - Live-Fund 13.09.2026: die
+     * Batterie-Leistung fiel dadurch still aus den Ladesitzungen, naechtliches
+     * Batterieladen wurde voll als Netzstrom gerechnet. DST-Regel: Tages-
+     * grenzen ueber strtotime('+1 day').
+     */
+    private function RangeSeries(int $vid, int $from, int $to): array
+    {
+        $out = [];
+        for ($d = $from; $d < $to; $d = $next) {
+            $next = min($to, strtotime('+1 day', strtotime('today', $d)));
+            foreach ($this->DaySeries($vid, $d, $next) as $p) {
+                $out[] = $p;
+            }
+        }
+        return $out;
+    }
+
     private function ChargingSessions(array $wbPowerIDs, int $dayStart): array
     {
         $from = strtotime('-6 day', $dayStart);
         $to = min(time(), strtotime('+1 day', $dayStart));
         $sum = [];
         foreach ($wbPowerIDs as $pid) {
-            foreach ($this->DaySeries((int) $pid, $from, $to) as [$ms, $w]) {
+            foreach ($this->RangeSeries((int) $pid, $from, $to) as [$ms, $w]) {
                 $sum[(int) $ms] = ($sum[(int) $ms] ?? 0.0) + max(0.0, (float) $w);
             }
         }
@@ -5001,7 +5021,7 @@ class NRGDashboardTile extends IPSModule
                 $pid = $fb;
                 $sign = (int) ($dev['fallbackPowerSign'] ?? 1);
             }
-            foreach ($this->DaySeries($pid, $from, $to) as [$ms, $w]) {
+            foreach ($this->RangeSeries($pid, $from, $to) as [$ms, $w]) {
                 $ts = intdiv((int) $ms, 1000);
                 $w = (float) $w * $sign;
                 if ($fn === 'grid') {
