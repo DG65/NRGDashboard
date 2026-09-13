@@ -369,16 +369,22 @@ function renderSessions(p) {
   s.list.forEach(x => {
     h += '<tr><th>' + esc(dt(x.start) + '–' + hm(x.end)) + (x.ongoing ? ' <span style="opacity:.7">(läuft)</span>' : '') + '</th>' +
       '<td>' + kwh(x.kwh) + '</td><td>' + kwh(x.gridKwh) + '</td>' +
-      '<td>' + eur(x.costEur) + (x.priceGap ? ' <span title="Für einen Teil der Sitzung lag kein Preis vor">*</span>' : '') + '</td>' +
+      '<td>' + eur(x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0)) + (x.priceGap ? ' <span title="Für einen Teil der Sitzung lag kein Preis vor">*</span>' : '') + '</td>' +
       '<td>' + (x.avgCt === null ? '–' : x.avgCt.toFixed(1).replace('.', ',') + ' ct/kWh') + '</td>' +
-      '<td>' + kwh(x.ownKwh) + (x.batteryUsed ? ' <span title="Enthält Strom aus der Batterie">🔋</span>' : '') + '</td>' +
+      '<td>' + kwh(x.ownKwh) + (x.batteryKwh > 0.005
+        ? ' <span title="davon aus der Batterie">(🔋 ' + kwh(x.batteryKwh) + (x.batteryCostEur !== null ? ', ' + eur(x.batteryCostEur) : '') + ')</span>'
+        : '') + '</td>' +
       (lost ? '<td>' + eur(x.lostEur) + '</td>' : '') + '</tr>';
   });
   document.getElementById('sessT').innerHTML = h + '</table>';
   const notes = [];
-  notes.push('Kosten = Netzanteil je Viertelstunde × dort gültiger Bezugspreis (' + esc(s.priceSourceText) + '). Der Netzanteil wird anteilig auf alle Verbraucher des Hauses verteilt, Eigenstrom aus PV/Batterie zählt mit 0 €.');
-  if (lost) notes.push('„Entgangene Vergütung“: was der Eigenstrom bei Einspeisung gebracht hätte.');
-  if (s.list.some(x => x.batteryUsed)) notes.push('🔋 Eigenstrom enthält Batteriestrom. Wurde die Batterie vorher aus dem Netz geladen, ist dieser Anteil in Wahrheit nicht gratis – das wird hier noch nicht bewertet.');
+  const batPriced = s.list.some(x => x.batteryCostEur !== null);
+  notes.push('Kosten = Netzanteil je Viertelstunde × dort gültiger Bezugspreis (' + esc(s.priceSourceText) + ')' +
+    (batPriced ? ' plus Batterieanteil × Einstandspreis des gespeicherten Stroms (aus dem EMS)' : '') +
+    '. Netz- und Batterieanteil werden anteilig auf alle Verbraucher des Hauses verteilt, Solarstrom zählt mit 0 €.');
+  if (lost) notes.push('„Entgangene Vergütung“: was der direkt genutzte Solarstrom bei Einspeisung gebracht hätte.');
+  if (batPriced && s.batterySettled === false) notes.push('Der Einstandspreis der Batterie ist noch nicht eingeschwungen (der Anfangsbestand zählt als Solarstrom, bis die Batterie einmal durchgeladen ist) – der Batterieanteil ist bis dahin eher zu günstig bewertet.');
+  if (s.list.some(x => x.batteryUnpriced)) notes.push('🔋 Für einen Teil des Batteriestroms liegt kein Einstandspreis vor (z. B. vor der Einführung im EMS) – dieser Anteil zählt mit 0 €, obwohl er nach einer Netzladung nicht gratis ist.');
   if (s.list.some(x => x.gridMissing)) notes.push('Für einen Teil einer Sitzung fehlten Netzdaten – dieser Anteil ist vorsichtshalber komplett als Netzbezug gerechnet.');
   document.getElementById('sessNote').textContent = notes.join(' ');
 }

@@ -1496,9 +1496,12 @@ gleiche IPSView-Fähigkeit.
   Tarif samt Festpreis-Historie), ohne EMS mit Tibber auch für vergangene Tage, bei festem Tarif mit dem im
   Formular eingetragenen Preis, sonst mit dem BDEW-Haushaltsdurchschnitt
   als gekennzeichnete Näherung. Nie mit dem Börsenpreis. Eigenstrom aus
-  PV/Batterie steht getrennt daneben: 0 €, dazu die entgangene
-  Einspeisevergütung. Batteriestrom wird gekennzeichnet, weil er nach einer
-  Netzladung nicht wirklich gratis ist. Die Sitzungen werden aus dem
+  PV/Batterie steht getrennt daneben: Solarstrom mit 0 €, dazu die
+  entgangene Einspeisevergütung. Batteriestrom kostet seinen tatsächlichen
+  Einstandspreis — mit EMS (`EMS_GetBatteryCostHistory`) aus dem, was
+  vorher eingespeichert wurde (Netzladung zum Bezugspreis, Solarstrom 0 ct,
+  Wandlungsverluste enthalten). Ohne diesen Preis zählt er mit 0 € und wird
+  gekennzeichnet, weil er nach einer Netzladung nicht wirklich gratis ist. Die Sitzungen werden aus dem
   Leistungsverlauf erkannt (Pausen bis 30 Minuten gehören dazu) — das
   klappt auch für eine Wallbox, die nur über einen Zähler eingebunden ist.
 - **Keine aktuelle Messung statt falscher 0 W (`NRGDashboardTile`):**

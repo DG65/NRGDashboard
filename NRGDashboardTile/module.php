@@ -4990,9 +4990,52 @@ class NRGDashboardTile extends IPSModule
             }
         }
         [$priceAt, $sourceText] = $this->SessionPriceResolver($from, $to);
+        // Einstandspreis des Batteriestroms (EMS 0.38.0, Vertrag 'batterycost'
+        // 1.0): je Viertelstunde aus der History, null = unbekannt (dann
+        // bleibt der Batterieanteil wie bisher 0 EUR und gekennzeichnet).
+        $batCostAt = null;
+        $batterySettled = null;
+        if (function_exists('EMS_GetBatteryCostHistory')) {
+            $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+            if ($ems > 0) {
+                try {
+                    $bh = @EMS_GetBatteryCostHistory($ems, $from, $to);
+                    $bc = function_exists('EMS_GetBatteryCost') ? @EMS_GetBatteryCost($ems) : null;
+                } catch (\Throwable $e) {
+                    $bh = null;
+                    $bc = null;
+                }
+                if (is_string($bh)) {
+                    $bh = json_decode($bh, true);
+                }
+                if (is_string($bc)) {
+                    $bc = json_decode($bc, true);
+                }
+                if (is_array($bc) && isset($bc['eingeschwungen'])) {
+                    $batterySettled = (bool) $bc['eingeschwungen'];
+                }
+                $bSlots = [];
+                foreach ((is_array($bh) ? ($bh['slots'] ?? []) : []) as $s) {
+                    if (is_array($s) && isset($s['start'], $s['end']) && ($s['einstandCt'] ?? null) !== null) {
+                        $bSlots[] = [(int) $s['start'], (int) $s['end'], (float) $s['einstandCt']];
+                    }
+                }
+                if (count($bSlots) > 0) {
+                    $batCostAt = function (int $ts) use ($bSlots): ?float {
+                        foreach ($bSlots as [$a, $b, $c]) {
+                            if ($ts >= $a && $ts < $b) {
+                                return $c;
+                            }
+                        }
+                        return null;
+                    };
+                }
+            }
+        }
         return [
-            'list' => self::computeSessions($wb, $grid, $pv, $bat, $priceAt, $this->FeedInTariffCt(), time()),
+            'list' => self::computeSessions($wb, $grid, $pv, $bat, $priceAt, $this->FeedInTariffCt(), time(), $batCostAt),
             'priceSourceText' => $sourceText,
+            'batterySettled' => $batterySettled,
         ];
     }
 
@@ -5110,8 +5153,11 @@ class NRGDashboardTile extends IPSModule
      * [ts => W] (Netz/PV/Batterie, Kachel-Konvention: Netz + = Einspeisung,
      * Batterie + = Entladen). Neueste Sitzung zuerst, hoechstens 10.
      */
-    private static function computeSessions(array $wb, array $grid, array $pv, array $bat, callable $priceAt, float $feedInCt, int $now): array
+    private static function computeSessions(array $wb, array $grid, array $pv, array $bat, callable $priceAt, float $feedInCt, int $now, ?callable $batCostAt = null): array
     {
+        // $batCostAt (13.09.2026, EMS 0.38.0 batterycost): Einstandspreis
+        // (ct/kWh) des gespeicherten Stroms zum Zeitpunkt oder null - der
+        // Batterieanteil wird dann damit bewertet statt mit 0 EUR.
         usort($wb, function ($a, $b) { return $a[0] <=> $b[0]; });
         $step = 300;
         $sessions = [];
@@ -5128,9 +5174,11 @@ class NRGDashboardTile extends IPSModule
             }
             if ($cur === null) {
                 $cur = ['start' => $ts, 'lastTs' => $ts, 'kwh' => 0.0, 'gridKwh' => 0.0, 'ownKwh' => 0.0,
-                    'costCt' => 0.0, 'pricedKwh' => 0.0, 'batteryUsed' => false, 'gridMissing' => false, 'priceGap' => false];
+                    'costCt' => 0.0, 'pricedKwh' => 0.0, 'batteryUsed' => false, 'gridMissing' => false, 'priceGap' => false,
+                    'batKwh' => 0.0, 'pvKwh' => 0.0, 'batCostCt' => 0.0, 'batUnpriced' => false];
             }
             $kwh = $w * $step / 3600000;
+            $bfrac = 0.0;
             if (!array_key_exists($ts, $grid)) {
                 $frac = 1.0;
                 $cur['gridMissing'] = true;
@@ -5139,14 +5187,27 @@ class NRGDashboardTile extends IPSModule
                 $import = max(0.0, -$g);
                 $load = (float) ($pv[$ts] ?? 0.0) - $g + (float) ($bat[$ts] ?? 0.0);
                 $frac = $load > 0 ? min(1.0, $import / $load) : ($import > 0 ? 1.0 : 0.0);
+                // Batterieanteil ebenso anteilig: Entladeleistung / Verbrauch
+                $bfrac = $load > 0 ? min(1.0 - $frac, max(0.0, (float) ($bat[$ts] ?? 0.0)) / $load) : 0.0;
             }
             if ((float) ($bat[$ts] ?? 0.0) > 100) {
                 $cur['batteryUsed'] = true;
             }
             $gk = $kwh * $frac;
+            $bk = $kwh * $bfrac;
             $cur['kwh'] += $kwh;
             $cur['gridKwh'] += $gk;
             $cur['ownKwh'] += $kwh - $gk;
+            $cur['batKwh'] += $bk;
+            $cur['pvKwh'] += $kwh - $gk - $bk;
+            if ($bk > 0) {
+                $e = $batCostAt !== null ? $batCostAt($ts) : null;
+                if ($e === null) {
+                    $cur['batUnpriced'] = true;
+                } else {
+                    $cur['batCostCt'] += $bk * (float) $e;
+                }
+            }
             if ($gk > 0) {
                 $p = $priceAt($ts);
                 if ($p === null) {
@@ -5177,7 +5238,12 @@ class NRGDashboardTile extends IPSModule
                 'ownKwh'      => round($s['ownKwh'], 2),
                 'costEur'     => ($s['pricedKwh'] > 0 || $noGrid) ? round($s['costCt'] / 100, 2) : null,
                 'avgCt'       => $s['pricedKwh'] > 0.005 ? round($s['costCt'] / $s['pricedKwh'], 1) : null,
-                'lostEur'     => $feedInCt > 0 ? round($s['ownKwh'] * $feedInCt / 100, 2) : null,
+                // Entgangene Verguetung nur fuer den direkten PV-Anteil - ein
+                // bewerteter Batterieanteil steckt schon im Einstandspreis.
+                'lostEur'     => $feedInCt > 0 ? round(($s['pvKwh'] + ($s['batUnpriced'] ? $s['batKwh'] : 0.0)) * $feedInCt / 100, 2) : null,
+                'batteryKwh'  => round($s['batKwh'], 2),
+                'batteryCostEur' => ($s['batKwh'] > 0.005 && !$s['batUnpriced']) ? round($s['batCostCt'] / 100, 2) : null,
+                'batteryUnpriced' => $s['batKwh'] > 0.005 && $s['batUnpriced'],
                 'batteryUsed' => $s['batteryUsed'],
                 'gridMissing' => $s['gridMissing'],
                 'priceGap'    => $s['priceGap'],

@@ -119,7 +119,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Kosten je Ladesitzung, 13.09.2026): die Detailseite jeder Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren tatsächlichen Kosten - je Viertelstunde mit dem dort gültigen Bezugspreis gerechnet (aus dem EMS, sonst Tibber inkl. vergangener Tage, fester Preis aus dem Feld unten oder BDEW-Näherung), nur für den Anteil, der wirklich aus dem Netz kam. Eigenstrom aus PV/Batterie steht getrennt daneben (0 €, dazu die entgangene Einspeisevergütung); Batteriestrom wird gekennzeichnet. Funktioniert auch für eine Wallbox, die nur über einen Zähler eingebunden ist."
+          "caption": "✨ Feinheit (Kosten je Ladesitzung, 13.09.2026): die Detailseite jeder Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren tatsächlichen Kosten - je Viertelstunde mit dem dort gültigen Bezugspreis gerechnet (aus dem EMS, sonst Tibber inkl. vergangener Tage, fester Preis aus dem Feld unten oder BDEW-Näherung), nur für den Anteil, der wirklich aus dem Netz kam. Eigenstrom steht getrennt daneben: Solarstrom mit 0 € plus entgangener Einspeisevergütung, Batteriestrom mit seinem Einstandspreis aus dem EMS (ohne EMS mit 0 € und gekennzeichnet). Funktioniert auch für eine Wallbox, die nur über einen Zähler eingebunden ist."
         },
         {
           "type": "Label",
