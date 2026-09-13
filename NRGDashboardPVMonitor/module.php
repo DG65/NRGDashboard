@@ -1654,12 +1654,15 @@ class NRGDashboardPVMonitor extends IPSModule
         // haeufig schreibenden Variablen (Batterie!) mit "Zu viele Werte
         // (>50000)" ab, sobald die 5-Minuten-Stufe ueber mehr als ~1 Woche
         // am Stueck angefragt wird - die Energiebilanz zeigte dann still
-        // 0 kWh Batterie. Deshalb: bis 32 Tage TAGEWEISE in 5-Minuten-
+        // 0 kWh Batterie. Deshalb: bis 2 Tage TAGEWEISE in 5-Minuten-
         // Aufloesung (genau), laengere Zeitraeume MONATSWEISE ueber die
-        // Stundenstufe (schnell; Laden und Entladen innerhalb derselben
-        // Stunde heben sich dabei auf - fuer Monats-/Jahresbilanzen
-        // vertretbar). false wird nie still als "keine Daten" gewertet.
-        $long = strtotime('+32 day', $start) < $end;
+        // Stundenstufe. Live gemessen 13.09.2026: 30 Tage tageweise in
+        // 5-Minuten-Stufe kosten ~5 s JE Variable (die Bilanz braucht vier),
+        // die Stundenstufe ueber ein Jahr ~0 s. Laden und Entladen innerhalb
+        // derselben Stunde heben sich dabei auf - fuer Wochen-/Monats-/
+        // Jahresbilanzen vertretbar. false wird nie still als "keine Daten"
+        // gewertet.
+        $long = strtotime('+2 day', $start) < $end;
         $level = $long ? self::AGG_HOUR : self::AGG_5MIN;
         $hours = $long ? 1.0 : 5.0 / 60.0;
         $kwh = 0.0;
