@@ -4988,9 +4988,19 @@ class NRGDashboardTile extends IPSModule
             if (!in_array($fn, ['grid', 'pv', 'battery'], true) || ($fn === 'grid' && $i !== $gi)) {
                 continue;
             }
-            $this->resolvePowerValue($dev);
-            $pid = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
-            $sign = $this->activePowerSign($dev);
+            // Fuer den RUECKBLICK zaehlt, welche Quelle ARCHIVIERT ist, nicht
+            // welche gerade live frisch ist (resolvePowerValue() weicht bei
+            // einem gerade veralteten Wert auf die Ersatzquelle aus - fehlt
+            // die, blieb die Reihe leer: Live-Fund 13.09.2026, Batterie fehlte,
+            // naechtliches Batterieladen wurde voll als Netzstrom gerechnet).
+            $pid = (int) ($dev['powerID'] ?? 0);
+            $sign = (int) ($dev['powerSign'] ?? 1);
+            $arch = $this->ArchiveID();
+            $fb = (int) ($dev['fallbackPowerID'] ?? 0);
+            if (($pid <= 0 || $arch <= 0 || !IPS_VariableExists($pid) || !AC_GetLoggingStatus($arch, $pid)) && $fb > 0) {
+                $pid = $fb;
+                $sign = (int) ($dev['fallbackPowerSign'] ?? 1);
+            }
             foreach ($this->DaySeries($pid, $from, $to) as [$ms, $w]) {
                 $ts = intdiv((int) $ms, 1000);
                 $w = (float) $w * $sign;
