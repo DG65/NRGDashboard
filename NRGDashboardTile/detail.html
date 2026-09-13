@@ -142,6 +142,12 @@
 
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
+<div id="sessWrap" style="display:none">
+  <h2>Ladesitzungen (letzte 7 Tage)</h2>
+  <div id="sessT" style="overflow-x:auto"></div>
+  <div id="sessNote" class="note"></div>
+</div>
+
 <div id="subMeterWrap" style="display:none">
   <h2>Kaskadierte Zähler</h2>
   <div id="subMeterT"></div>
@@ -339,6 +345,44 @@ function renderHighlights(p) {
   ).join('');
 }
 
+// Kosten je Ladesitzung (13.09.2026) - Werte fertig vom Backend
+// (ChargingSessions()), hier nur Tabelle + ehrliche Hinweise.
+function renderSessions(p) {
+  const wrap = document.getElementById('sessWrap');
+  const s = p.sessions;
+  if (!s || !s.list || !s.list.length) {
+    wrap.style.display = (s && s.list) ? '' : 'none';
+    if (s && s.list) {
+      document.getElementById('sessT').innerHTML = '<div class="note">Keine Ladesitzung in den letzten 7 Tagen gefunden.</div>';
+      document.getElementById('sessNote').textContent = '';
+    }
+    return;
+  }
+  wrap.style.display = '';
+  const kwh = v => v.toFixed(2).replace('.', ',') + ' kWh';
+  const eur = v => v === null ? '–' : v.toFixed(2).replace('.', ',') + ' €';
+  const two = n => ('0' + n).slice(-2);
+  const dt = ts => { const d = new Date(ts * 1000); return two(d.getDate()) + '.' + two(d.getMonth() + 1) + '. ' + two(d.getHours()) + ':' + two(d.getMinutes()); };
+  const hm = ts => { const d = new Date(ts * 1000); return two(d.getHours()) + ':' + two(d.getMinutes()); };
+  const lost = s.list.some(x => x.lostEur !== null);
+  let h = '<table><tr><th>Sitzung</th><th>Energie</th><th>aus dem Netz</th><th>Kosten</th><th>Ø Netzpreis</th><th>Eigenstrom</th>' + (lost ? '<th>entgangene Vergütung</th>' : '') + '</tr>';
+  s.list.forEach(x => {
+    h += '<tr><th>' + esc(dt(x.start) + '–' + hm(x.end)) + (x.ongoing ? ' <span style="opacity:.7">(läuft)</span>' : '') + '</th>' +
+      '<td>' + kwh(x.kwh) + '</td><td>' + kwh(x.gridKwh) + '</td>' +
+      '<td>' + eur(x.costEur) + (x.priceGap ? ' <span title="Für einen Teil der Sitzung lag kein Preis vor">*</span>' : '') + '</td>' +
+      '<td>' + (x.avgCt === null ? '–' : x.avgCt.toFixed(1).replace('.', ',') + ' ct/kWh') + '</td>' +
+      '<td>' + kwh(x.ownKwh) + (x.batteryUsed ? ' <span title="Enthält Strom aus der Batterie">🔋</span>' : '') + '</td>' +
+      (lost ? '<td>' + eur(x.lostEur) + '</td>' : '') + '</tr>';
+  });
+  document.getElementById('sessT').innerHTML = h + '</table>';
+  const notes = [];
+  notes.push('Kosten = Netzanteil je Viertelstunde × dort gültiger Bezugspreis (' + esc(s.priceSourceText) + '). Der Netzanteil wird anteilig auf alle Verbraucher des Hauses verteilt, Eigenstrom aus PV/Batterie zählt mit 0 €.');
+  if (lost) notes.push('„Entgangene Vergütung“: was der Eigenstrom bei Einspeisung gebracht hätte.');
+  if (s.list.some(x => x.batteryUsed)) notes.push('🔋 Eigenstrom enthält Batteriestrom. Wurde die Batterie vorher aus dem Netz geladen, ist dieser Anteil in Wahrheit nicht gratis – das wird hier noch nicht bewertet.');
+  if (s.list.some(x => x.gridMissing)) notes.push('Für einen Teil einer Sitzung fehlten Netzdaten – dieser Anteil ist vorsichtshalber komplett als Netzbezug gerechnet.');
+  document.getElementById('sessNote').textContent = notes.join(' ');
+}
+
 function renderSubMeters(p) {
   const wrap = document.getElementById('subMeterWrap');
   const sub = p.subMeters || [];
@@ -366,6 +410,7 @@ function handleDetail(p) {
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
+  renderSessions(p);
   renderControl(p);
   renderSwitchControl(p);
   renderSubMeters(p);

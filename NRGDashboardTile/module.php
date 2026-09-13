@@ -310,6 +310,10 @@ class NRGDashboardTile extends IPSModule
         // bietet den Wert in keinem Vertrag an). 0 = keine Erloes-Anzeige -
         // bewusst kein Tarif als Vorgabe (keine eigene Anlage als Norm).
         $this->RegisterPropertyFloat('FeedInTariffCt', 0.0);
+        // Fester Bezugspreis (brutto, ct/kWh) fuer die Ladesitzungs-Kosten
+        // (13.09.2026) - 0 = automatisch (Tibber inkl. Archiv, sonst BDEW-
+        // Naeherung). Ersatz, bis EMS einen Bezugstarif-Vertrag liefert.
+        $this->RegisterPropertyFloat('PurchasePriceCt', 0.0);
         // Ersatz-Strompreis fuer Kosten-Kennzahlen OHNE Tibber-Instanz
         // (Dietmar, 28.08.2026: "Quartalsweise den Haushalts-Durchschnitts-
         // preis bei BDEW anfragen und in eine DB eintragen ... das sollte
@@ -4681,6 +4685,10 @@ class NRGDashboardTile extends IPSModule
             // Hausbesitzer interessieren könnte ... auch mit Blick auf
             // Krisen-/Katastrophenfälle") - siehe BuildHighlights().
             'highlights' => $this->BuildHighlights($d, $powerSeries, $energy, $isToday, $dayStart, $dayEnd),
+            // Kosten je Ladesitzung (13.09.2026, EMS/Dietmar) - nur Wallboxen,
+            // siehe ChargingSessions().
+            'sessions'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
+                ? $this->ChargingSessions($powerID, $dayStart) : null,
             // Kaskadierte Unterzaehler (Dietmar, 28.08.2026: "wenn es
             // hinter den Knotenpunkten weitere Unterzaehler geben wuerde ...
             // man koennte diese Erweiterung auch im Overlay fortfuehren").
@@ -4897,6 +4905,214 @@ class NRGDashboardTile extends IPSModule
                 'value' => GetValueFormatted($vid),
                 'powerW' => (float) GetValue($vid),
             ];
+        }
+        return $out;
+    }
+
+    /**
+     * Kosten je Ladesitzung (13.09.2026, Auftrag EMS/Dietmar: "die
+     * TATSAECHLICHEN Kosten, auch bei dynamischem Stromtarif"). Letzte 7
+     * Tage bis zum gewaehlten Tag, je 5-Minuten-Punkt:
+     * - Sitzung = zusammenhaengend > 100 W, Pausen bis 30 min gehoeren dazu
+     *   (generisch aus der Wallbox-Leistung - klappt auch fuer eine Wallbox,
+     *   die nur ueber einen Zaehler kommt).
+     * - Netzanteil ANTEILIG: Netzbezug / gesamter Hausverbrauch desselben
+     *   Punkts (Verbrauch = PV - Netz + Batterie, Kachel-Konvention) - die
+     *   Wallbox wird weder beim Netz- noch beim Eigenstrom bevorzugt.
+     * - Kosten = Netzanteil x Bezugspreis des Zeitpunkts (SessionPriceResolver,
+     *   NIE der Boersenpreis). Eigenstrom zaehlt 0 EUR, separat die
+     *   entgangene Einspeiseverguetung.
+     * Batteriestrom ist als Eigenstrom mit 0 EUR bewertet und wird nur
+     * gekennzeichnet (bei vorheriger Netzladung eigentlich nicht gratis -
+     * Bewertung mit Einstandspreis spaeter ueber EMS).
+     */
+    private function ChargingSessions(int $wbPowerID, int $dayStart): array
+    {
+        $from = strtotime('-6 day', $dayStart);
+        $to = min(time(), strtotime('+1 day', $dayStart));
+        $wb = $this->DaySeries($wbPowerID, $from, $to);
+        $grid = [];
+        $pv = [];
+        $bat = [];
+        $all = $this->GetDevices();
+        $gi = $this->primaryGridDevice($all);
+        foreach ($all as $i => $dev) {
+            $fn = (string) ($dev['function'] ?? '');
+            if (!in_array($fn, ['grid', 'pv', 'battery'], true) || ($fn === 'grid' && $i !== $gi)) {
+                continue;
+            }
+            $this->resolvePowerValue($dev);
+            $pid = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
+            $sign = $this->activePowerSign($dev);
+            foreach ($this->DaySeries($pid, $from, $to) as [$ms, $w]) {
+                $ts = intdiv((int) $ms, 1000);
+                $w = (float) $w * $sign;
+                if ($fn === 'grid') {
+                    $grid[$ts] = $w;
+                } elseif ($fn === 'pv') {
+                    $pv[$ts] = ($pv[$ts] ?? 0.0) + $w;
+                } else {
+                    $bat[$ts] = ($bat[$ts] ?? 0.0) + $w;
+                }
+            }
+        }
+        [$priceAt, $sourceText] = $this->SessionPriceResolver($from, $to);
+        return [
+            'list' => self::computeSessions($wb, $grid, $pv, $bat, $priceAt, $this->FeedInTariffCt(), time()),
+            'priceSourceText' => $sourceText,
+        ];
+    }
+
+    /**
+     * Bezugspreis (brutto, ct/kWh) je Zeitpunkt fuer die Ladesitzungen:
+     * fester Preis aus dem Formular, sonst Tibber (aktuelle Kurve, fuer
+     * vergangene Tage das Archiv von "CurrentPrice" in EUR/kWh, ein Wert gilt
+     * hoechstens 12 h), sonst BDEW-Naeherung. Ersatzweg, bis EMS einen
+     * Bezugstarif-Vertrag liefert. Rueckgabe [callable(int): ?[ct, quelle], Text].
+     */
+    private function SessionPriceResolver(int $from, int $to): array
+    {
+        $fixed = $this->readFloatProperty('PurchasePriceCt', 0.0);
+        if ($fixed > 0) {
+            return [
+                function (int $ts) use ($fixed) { return [$fixed, 'fest']; },
+                'fester Bezugspreis ' . number_format($fixed, 2, ',', '.') . ' ct/kWh',
+            ];
+        }
+        $curve = [];
+        $bdew = [];
+        foreach ($this->RealPriceSlotsForRange($from, $to) as $s) {
+            if (!empty($s['approx'])) {
+                $bdew[] = $s;
+            } else {
+                $curve[] = $s;
+            }
+        }
+        $arch = [];
+        $tid = $this->TibberInstanceID();
+        $aid = $this->ArchiveID();
+        if ($tid > 0 && $aid > 0) {
+            $vid = @IPS_GetObjectIDByIdent('CurrentPrice', $tid);
+            if ($vid && IPS_VariableExists($vid) && @AC_GetLoggingStatus($aid, $vid)) {
+                $rows = @AC_GetLoggedValues($aid, $vid, $from - 43200, $to, 0);
+                foreach ((is_array($rows) ? $rows : []) as $r) {
+                    $arch[] = [(int) $r['TimeStamp'], (float) $r['Value'] * 100];
+                }
+                usort($arch, function ($a, $b) { return $a[0] <=> $b[0]; });
+            }
+        }
+        $priceAt = function (int $ts) use ($curve, $arch, $bdew): ?array {
+            foreach ($curve as $s) {
+                if ($ts >= (int) $s['start'] && $ts < (int) $s['end']) {
+                    return [(float) $s['price'], 'tibber'];
+                }
+            }
+            $val = null;
+            foreach ($arch as [$t, $v]) {
+                if ($t > $ts) {
+                    break;
+                }
+                $val = ($ts - $t <= 43200) ? $v : null;
+            }
+            if ($val !== null) {
+                return [$val, 'tibber'];
+            }
+            foreach ($bdew as $s) {
+                if ($ts >= (int) $s['start'] && $ts < (int) $s['end']) {
+                    return [(float) $s['price'], 'bdew'];
+                }
+            }
+            return null;
+        };
+        if (count($curve) > 0 || count($arch) > 0) {
+            $text = 'Tibber, je Viertelstunde' . (count($bdew) > 0 ? '; Lücken mit dem BDEW-Haushaltsdurchschnitt genähert' : '');
+        } else {
+            $text = count($bdew) > 0 ? 'BDEW-Haushaltsdurchschnitt als Näherung' : 'kein Bezugspreis verfügbar';
+        }
+        return [$priceAt, $text];
+    }
+
+    /**
+     * Reiner Rechenkern der Ladesitzungen (ohne IPS-Zugriffe, deshalb
+     * statisch und separat pruefbar). Reihen als [ms, W] (Wallbox) bzw.
+     * [ts => W] (Netz/PV/Batterie, Kachel-Konvention: Netz + = Einspeisung,
+     * Batterie + = Entladen). Neueste Sitzung zuerst, hoechstens 10.
+     */
+    private static function computeSessions(array $wb, array $grid, array $pv, array $bat, callable $priceAt, float $feedInCt, int $now): array
+    {
+        usort($wb, function ($a, $b) { return $a[0] <=> $b[0]; });
+        $step = 300;
+        $sessions = [];
+        $cur = null;
+        foreach ($wb as [$ms, $w]) {
+            $ts = intdiv((int) $ms, 1000);
+            $w = (float) $w;
+            if ($w <= 100) {
+                continue;
+            }
+            if ($cur !== null && $ts - $cur['lastTs'] > 1800) {
+                $sessions[] = $cur;
+                $cur = null;
+            }
+            if ($cur === null) {
+                $cur = ['start' => $ts, 'lastTs' => $ts, 'kwh' => 0.0, 'gridKwh' => 0.0, 'ownKwh' => 0.0,
+                    'costCt' => 0.0, 'pricedKwh' => 0.0, 'batteryUsed' => false, 'gridMissing' => false, 'priceGap' => false];
+            }
+            $kwh = $w * $step / 3600000;
+            if (!array_key_exists($ts, $grid)) {
+                $frac = 1.0;
+                $cur['gridMissing'] = true;
+            } else {
+                $g = (float) $grid[$ts];
+                $import = max(0.0, -$g);
+                $load = (float) ($pv[$ts] ?? 0.0) - $g + (float) ($bat[$ts] ?? 0.0);
+                $frac = $load > 0 ? min(1.0, $import / $load) : ($import > 0 ? 1.0 : 0.0);
+            }
+            if ((float) ($bat[$ts] ?? 0.0) > 100) {
+                $cur['batteryUsed'] = true;
+            }
+            $gk = $kwh * $frac;
+            $cur['kwh'] += $kwh;
+            $cur['gridKwh'] += $gk;
+            $cur['ownKwh'] += $kwh - $gk;
+            if ($gk > 0) {
+                $p = $priceAt($ts);
+                if ($p === null) {
+                    $cur['priceGap'] = true;
+                } else {
+                    $cur['costCt'] += $gk * (float) $p[0];
+                    $cur['pricedKwh'] += $gk;
+                }
+            }
+            $cur['lastTs'] = $ts;
+        }
+        if ($cur !== null) {
+            $sessions[] = $cur;
+        }
+        $out = [];
+        foreach (array_reverse($sessions) as $s) {
+            if ($s['kwh'] < 0.2) {
+                continue;
+            }
+            $end = $s['lastTs'] + $step;
+            $noGrid = $s['gridKwh'] < 0.005;
+            $out[] = [
+                'start'       => $s['start'],
+                'end'         => $end,
+                'ongoing'     => ($now - $end) < 600,
+                'kwh'         => round($s['kwh'], 2),
+                'gridKwh'     => round($s['gridKwh'], 2),
+                'ownKwh'      => round($s['ownKwh'], 2),
+                'costEur'     => ($s['pricedKwh'] > 0 || $noGrid) ? round($s['costCt'] / 100, 2) : null,
+                'avgCt'       => $s['pricedKwh'] > 0.005 ? round($s['costCt'] / $s['pricedKwh'], 1) : null,
+                'lostEur'     => $feedInCt > 0 ? round($s['ownKwh'] * $feedInCt / 100, 2) : null,
+                'batteryUsed' => $s['batteryUsed'],
+                'gridMissing' => $s['gridMissing'],
+                'priceGap'    => $s['priceGap'],
+            ];
+            if (count($out) >= 10) {
+                break;
+            }
         }
         return $out;
     }

@@ -1487,6 +1487,19 @@ gleiche IPSView-Fähigkeit.
   Namen: eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht
   mehr wieder auftauchen; alte, namensbasierte Einstellungen werden
   lesend übernommen, nichts muss neu abgewählt werden.
+- **Kosten je Ladesitzung (`NRGDashboardTile`):** die Detailseite jeder
+  Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren
+  tatsächlichen Kosten. Gerechnet wird je Viertelstunde: der Anteil, der in
+  diesem Moment wirklich aus dem Netz kam (Netzbezug anteilig auf alle
+  Verbraucher des Hauses verteilt), mal dem dort gültigen Bezugspreis —
+  mit Tibber auch für vergangene Tage, bei festem Tarif mit dem im
+  Formular eingetragenen Preis, sonst mit dem BDEW-Haushaltsdurchschnitt
+  als gekennzeichnete Näherung. Nie mit dem Börsenpreis. Eigenstrom aus
+  PV/Batterie steht getrennt daneben: 0 €, dazu die entgangene
+  Einspeisevergütung. Batteriestrom wird gekennzeichnet, weil er nach einer
+  Netzladung nicht wirklich gratis ist. Die Sitzungen werden aus dem
+  Leistungsverlauf erkannt (Pausen bis 30 Minuten gehören dazu) — das
+  klappt auch für eine Wallbox, die nur über einen Zähler eingebunden ist.
 - **Keine aktuelle Messung statt falscher 0 W (`NRGDashboardTile`):**
   liefert eine Quelle den Zeitpunkt ihrer letzten echten Messung
   (`lastSeenAt`, z. B. ChargerHub und OCPPHub ab Vertrag 1.3) und liegt

@@ -119,6 +119,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Kosten je Ladesitzung, 13.09.2026): die Detailseite jeder Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren tatsächlichen Kosten - je Viertelstunde mit dem dort gültigen Bezugspreis gerechnet (Tibber inkl. vergangener Tage, fester Preis aus dem Feld unten oder BDEW-Näherung), nur für den Anteil, der wirklich aus dem Netz kam. Eigenstrom aus PV/Batterie steht getrennt daneben (0 €, dazu die entgangene Einspeisevergütung); Batteriestrom wird gekennzeichnet. Funktioniert auch für eine Wallbox, die nur über einen Zähler eingebunden ist."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet eine Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. ChargerHub/OCPPHub) und liegt der länger als 5 Minuten zurück, zeigt der Knoten „—“ mit „keine aktuelle Messung“ und gelbem Warnzeichen - statt eine eingefrorene 0 W als „läuft nicht“ darzustellen."
         },
         {
@@ -445,6 +449,14 @@
           "type": "NumberSpinner",
           "name": "FeedInTariffCt",
           "caption": "Einspeisevergütung für die Erlös-Anzeige am Netzknoten - nur nötig ohne EMS, dessen Einspeisevergütung automatisch Vorrang hat (0 = keine Erlös-Anzeige)",
+          "minimum": 0,
+          "digits": 2,
+          "suffix": " ct/kWh"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "PurchasePriceCt",
+          "caption": "Fester Bezugspreis für die Kosten je Ladesitzung (brutto) - nur bei festem Stromtarif nötig; 0 = automatisch (Tibber, sonst BDEW-Haushaltsdurchschnitt als Näherung)",
           "minimum": 0,
           "digits": 2,
           "suffix": " ct/kWh"
