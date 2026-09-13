@@ -554,11 +554,11 @@ class NRGDashboardTile extends IPSModule
      */
     private function getDiscoverySummaryLine(): string
     {
-        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
             return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
         }
-        $devices = json_decode($this->ReadAttributeString('DeviceCache'), true) ?: [];
+        $devices = json_decode((string) $this->ReadAttributeString('DeviceCache'), true) ?: [];
         $count = count($devices);
         $icon = $count > 0 ? '✅' : '⚠️';
         return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
@@ -945,7 +945,7 @@ class NRGDashboardTile extends IPSModule
         // bis zum naechsten 5-Minuten-Tick leer. Dann den alten Stand
         // behalten und nach 30 s erneut suchen - hoechstens 15 Minuten lang,
         // danach gilt der leere Fund (Geraete wirklich entfernt).
-        $cached = json_decode($this->ReadAttributeString('DeviceCache'), true);
+        $cached = json_decode((string) $this->ReadAttributeString('DeviceCache'), true);
         $cacheAge = time() - (int) @$this->ReadAttributeInteger('LastDiscoveryTs');
         if ($devices === [] && is_array($cached) && $cached !== [] && $cacheAge < 15 * 60) {
             $this->SendDebug('Discover', 'leerer Fund bei gefuelltem Cache - alter Stand bleibt, neuer Versuch in 30 s', 0);
@@ -1561,7 +1561,7 @@ class NRGDashboardTile extends IPSModule
             // Zeitpunkt des letzten erfolgreichen Discover()-Laufs (Struktur:
             // neue/entfernte Geraete) - NICHT der Wert-Aktualisierung, die
             // laeuft ereignisgesteuert und viel haeufiger (MessageSink()).
-            'updatedAt'   => $this->ReadAttributeInteger('LastDiscoveryTs'),
+            'updatedAt'   => (int) $this->ReadAttributeInteger('LastDiscoveryTs'),
             // Zeitpunkt DIESES Payload-Aufbaus - Dietmar (27.07.2026): weicht
             // die Statuszeile von InverterHubTiles statischem "Verbunden" ab
             // und zeigt einen Zeitstempel, muss der auch sekundengenau die
@@ -1593,7 +1593,7 @@ class NRGDashboardTile extends IPSModule
             // keine StromGedacht-Instanz vorhanden/aktiviert ist.
             'gridAmpel'   => $this->GridAmpel(),
             // Einfuehrungs-Tour bei erster Benutzung (28.08.2026).
-            'showTour'    => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour'    => !(bool) $this->ReadAttributeBoolean('TourSeen'),
             // Aktuelle EMS-Schaltentscheidung inkl. Begruendung (03.09.2026,
             // Dietmar: "was und warum das EMS schaltet") - Vertrag
             // EMS_GetCurrentDecision(), rein lesend. null, wenn kein EMS
@@ -1845,7 +1845,7 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         $now = time();
-        $cache = json_decode($this->ReadAttributeString('YesterdayCache'), true);
+        $cache = json_decode((string) $this->ReadAttributeString('YesterdayCache'), true);
         if (!is_array($cache)) {
             $cache = [];
         }
@@ -1897,7 +1897,7 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         $now = time();
-        $cache = json_decode($this->ReadAttributeString('PvForecastCache'), true);
+        $cache = json_decode((string) $this->ReadAttributeString('PvForecastCache'), true);
         if (!is_array($cache)) {
             $cache = [];
         }
@@ -1939,7 +1939,7 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         $now = time();
-        $cache = json_decode($this->ReadAttributeString('PeakTodayCache'), true);
+        $cache = json_decode((string) $this->ReadAttributeString('PeakTodayCache'), true);
         if (!is_array($cache)) {
             $cache = [];
         }
@@ -1999,7 +1999,7 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         $now = time();
-        $cache = json_decode($this->ReadAttributeString('AutarkyCache'), true);
+        $cache = json_decode((string) $this->ReadAttributeString('AutarkyCache'), true);
         if (!is_array($cache)) {
             $cache = [];
         }
@@ -2743,14 +2743,14 @@ class NRGDashboardTile extends IPSModule
         // davor, statt das nur nach dem Decode abzufangen (real aufgetreten,
         // 30.07.2026, ausgeloest durch einen Modul-Reload waehrend eines
         // MeterHub-Wertupdates).
-        $json = $this->ReadAttributeString('DeviceCache');
+        $json = (string) $this->ReadAttributeString('DeviceCache');
         $data = is_string($json) ? json_decode($json, true) : null;
         return is_array($data) ? $data : [];
     }
 
     public function GetDiagnostics(): array
     {
-        $json = $this->ReadAttributeString('DiagnosticsCache');
+        $json = (string) $this->ReadAttributeString('DiagnosticsCache');
         $data = is_string($json) ? json_decode($json, true) : null;
         return is_array($data) ? $data : [];
     }
@@ -3077,14 +3077,14 @@ class NRGDashboardTile extends IPSModule
      */
     public function CheckBdewPrice(): void
     {
-        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        $history = json_decode((string) $this->ReadAttributeString('BdewPriceHistory'), true);
         $history = is_array($history) ? $history : [];
         $latest = end($history);
         $latestAge = $latest ? (time() - (int) $latest['fetchedAt']) : PHP_INT_MAX;
         if ($latestAge < self::BDEW_REFRESH_SECONDS) {
             return;
         }
-        $lastTry = $this->ReadAttributeInteger('BdewLastTry');
+        $lastTry = (int) $this->ReadAttributeInteger('BdewLastTry');
         if (time() - $lastTry < self::BDEW_RETRY_SECONDS) {
             return;
         }
@@ -3157,7 +3157,7 @@ class NRGDashboardTile extends IPSModule
      *  jeden Eintrag (noch nie erfolgreich abgerufen). */
     private function CurrentBdewPrice(): ?array
     {
-        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        $history = json_decode((string) $this->ReadAttributeString('BdewPriceHistory'), true);
         $latest = is_array($history) ? end($history) : false;
         if (!$latest) {
             return null;
@@ -3384,7 +3384,7 @@ class NRGDashboardTile extends IPSModule
      */
     private function BdewHistorySlots(int $from, int $to): array
     {
-        $history = json_decode($this->ReadAttributeString('BdewPriceHistory'), true);
+        $history = json_decode((string) $this->ReadAttributeString('BdewPriceHistory'), true);
         if (!is_array($history) || count($history) === 0) {
             return [];
         }

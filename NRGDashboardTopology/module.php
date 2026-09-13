@@ -276,11 +276,11 @@ class NRGDashboardTopology extends IPSModule
 
     private function getDiscoverySummaryLine(): string
     {
-        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
             return 'ℹ️ Noch nicht gesucht — Kachel öffnen oder Formular übernehmen.';
         }
-        $names = json_decode($this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
+        $names = json_decode((string) $this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
         $count = count($names);
         $icon = $count > 0 ? '✅' : '⚠️';
         return sprintf('%s %d Partner gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
@@ -301,7 +301,7 @@ class NRGDashboardTopology extends IPSModule
                 $el['caption'] = $this->getDiscoverySummaryLine();
             }
             if (($el['name'] ?? '') === 'DiscoveryDetails') {
-                $names = json_decode($this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
+                $names = json_decode((string) $this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
                 $el['caption'] = empty($names) ? 'Noch keine Details - erst suchen.' : implode(', ', $names);
             }
         }
@@ -478,7 +478,7 @@ class NRGDashboardTopology extends IPSModule
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             'hookPath'  => '/hook/nrgdashtopology' . $this->InstanceID,
             // Einfuehrungs-Tour bei erster Benutzung (29.08.2026).
-            'showTour'  => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour'  => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 }

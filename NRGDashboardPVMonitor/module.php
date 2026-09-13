@@ -873,7 +873,7 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function YearCompareConfig(): array
     {
-        $raw = $this->ReadAttributeString('YearCompareConfig');
+        $raw = (string) $this->ReadAttributeString('YearCompareConfig');
         $cfg = is_string($raw) ? json_decode($raw, true) : null;
         if (!is_array($cfg)) {
             $cfg = [];
@@ -894,7 +894,7 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function ManualHistory(): array
     {
-        $raw = $this->ReadAttributeString('ManualHistory');
+        $raw = (string) $this->ReadAttributeString('ManualHistory');
         $data = is_string($raw) ? json_decode($raw, true) : null;
         if (!is_array($data)) {
             return [];
@@ -1332,7 +1332,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // mit einem Fatal Error statt eines harmlosen null - lieber hier
         // defensiv wie an jeder anderen Stelle dieser Datei (is_string()-
         // Muster) als der Ursache einzeln hinterherjagen.
-        $raw = $this->ReadAttributeString('PvfSunCache');
+        $raw = (string) $this->ReadAttributeString('PvfSunCache');
         $cache = is_string($raw) ? json_decode($raw, true) : null;
         if (is_array($cache) && (time() - (int) ($cache['ts'] ?? 0)) < 900 && is_array($cache['pts'] ?? null)) {
             return $cache['pts'];
@@ -2630,8 +2630,8 @@ class NRGDashboardPVMonitor extends IPSModule
             'uid'      => (string) $this->InstanceID,
             // Manuelle Theme-Angabe statt Erkennung (siehe Kommentar bei
             // RegisterPropertyBoolean('LightTheme',...) in Create()).
-            'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
-            'autoCycleTabs' => $this->ReadPropertyBoolean('AutoCycleTabs'),
+            'lightTheme' => (bool) $this->ReadPropertyBoolean('LightTheme'),
+            'autoCycleTabs' => (bool) $this->ReadPropertyBoolean('AutoCycleTabs'),
             'hasPv'    => $pvID > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
@@ -2689,7 +2689,7 @@ class NRGDashboardPVMonitor extends IPSModule
             // Bestaetigung per WebHook, siehe ProcessHookData()/dismissTour()
             // in module.html.
             'hookPath' => '/hook/nrgdashpvmonitor' . $this->InstanceID,
-            'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour' => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 

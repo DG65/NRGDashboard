@@ -453,11 +453,11 @@ class NRGDashboardMap extends IPSModule
 
     private function getDiscoverySummaryLine(): string
     {
-        $ts = $this->ReadAttributeInteger('LastDiscoveryTs');
+        $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
             return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
         }
-        $byCat = json_decode($this->ReadAttributeString('CategoryCache'), true) ?: [];
+        $byCat = json_decode((string) $this->ReadAttributeString('CategoryCache'), true) ?: [];
         $count = array_sum($byCat);
         $icon = $count > 0 ? '✅' : '⚠️';
         return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
@@ -482,7 +482,7 @@ class NRGDashboardMap extends IPSModule
                 $el['caption'] = $this->getDiscoverySummaryLine();
             }
             if (($el['name'] ?? '') === 'DiscoveryDetails') {
-                $el['caption'] = $this->formatCategoryBreakdown(json_decode($this->ReadAttributeString('CategoryCache'), true) ?: []);
+                $el['caption'] = $this->formatCategoryBreakdown(json_decode((string) $this->ReadAttributeString('CategoryCache'), true) ?: []);
             }
         }
         unset($el);
@@ -498,7 +498,7 @@ class NRGDashboardMap extends IPSModule
         $bgCss = $bg !== '' ? $bg : '#1a1a1a';
         $fontCss = $font !== '' ? $font : 'system-ui';
         $hookPathJs = json_encode('/hook/nrgdashmap' . $this->InstanceID);
-        $showTour = (!$this->ReadAttributeBoolean('TourSeen')) ? 'true' : 'false';
+        $showTour = (!(bool) $this->ReadAttributeBoolean('TourSeen')) ? 'true' : 'false';
 
         return <<<HTML
 <!DOCTYPE html>

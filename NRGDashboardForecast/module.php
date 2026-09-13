@@ -287,7 +287,7 @@ class NRGDashboardForecast extends IPSModule
             }
         }
         foreach (['ActualPV', 'ActualLoad'] as $prop) {
-            $vid = $this->ReadPropertyInteger($prop);
+            $vid = (int) $this->ReadPropertyInteger($prop);
             if ($vid > 0 && IPS_VariableExists($vid)) {
                 $this->RegisterReference($vid);
                 $this->RegisterMessage($vid, VM_UPDATE);
@@ -367,7 +367,7 @@ class NRGDashboardForecast extends IPSModule
     /** Property zuerst, sonst Auto-Discovery (eine Instanz, bzw. die einzige aktive). */
     private function ResolveSource(string $guid, string $prop): int
     {
-        $configured = $this->ReadPropertyInteger($prop);
+        $configured = (int) $this->ReadPropertyInteger($prop);
         if ($configured > 0 && IPS_InstanceExists($configured)) { return $configured; }
         return $this->pickSingleActiveInstance(IPS_GetInstanceListByModuleID($guid));
     }
@@ -524,7 +524,7 @@ class NRGDashboardForecast extends IPSModule
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
             'hookPath'   => '/hook/nrgdashforecast' . $this->InstanceID,
-            'showTour'   => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour'   => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
 
         return json_encode(array_merge($style, $this->trimToOwnSettings($this->buildFullDaysData())));
@@ -623,8 +623,8 @@ class NRGDashboardForecast extends IPSModule
         // Werte zu uebernehmen - genau dafuer existieren PowerUnit/
         // MeasuredCacheSec bei uns. Ohne eigene Variable bleibt, was der
         // Vertrag mitliefert (graceful fallback, keine Pflichtkonfiguration).
-        $pvVar = $this->ReadPropertyInteger('ActualPV');
-        $loVar = $this->ReadPropertyInteger('ActualLoad');
+        $pvVar = (int) $this->ReadPropertyInteger('ActualPV');
+        $loVar = (int) $this->ReadPropertyInteger('ActualLoad');
         $today = strtotime('today');
         foreach ($out as &$d) {
             $isYesterday = ($d['label'] ?? '') === 'gestern';
@@ -702,7 +702,7 @@ class NRGDashboardForecast extends IPSModule
     /** Momentane Leistung (W) einer Ist-Wert-Variablen; null wenn unkonfiguriert. */
     private function readActual(string $prop)
     {
-        $vid = $this->ReadPropertyInteger($prop);
+        $vid = (int) $this->ReadPropertyInteger($prop);
         if ($vid <= 0 || !IPS_VariableExists($vid)) { return null; }
         return (float) GetValue($vid) * $this->varPowerFactor($vid);
     }
@@ -769,7 +769,7 @@ class NRGDashboardForecast extends IPSModule
         // Abgeschlossene Tage aendern sich nicht mehr -> laenger cachen.
         $ttl     = ($start < $today) ? 21600 : max(15, (int) $this->GetValue('MeasuredCacheSec'));
 
-        $cache = json_decode($this->ReadAttributeString('MeasuredCache'), true);
+        $cache = json_decode((string) $this->ReadAttributeString('MeasuredCache'), true);
         if (!is_array($cache)) { $cache = []; }
 
         $e = $cache[$cKey] ?? null;

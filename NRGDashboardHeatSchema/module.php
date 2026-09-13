@@ -725,7 +725,7 @@ class NRGDashboardHeatSchema extends IPSModule
      */
     private function buildManualHeatpumpEntry(): ?array
     {
-        if (!$this->ReadPropertyBoolean('ManualEnabled')) {
+        if (!(bool) $this->ReadPropertyBoolean('ManualEnabled')) {
             return null;
         }
         $e = [
@@ -737,11 +737,11 @@ class NRGDashboardHeatSchema extends IPSModule
             // Bestaetigung (siehe resolveFan2Speed()), das waere hier nur
             // unnoetige Verzoegerung fuer eine ohnehin willentliche Angabe.
             '_manual'     => true,
-            'Caption'     => $this->ReadPropertyString('ManualCaption') ?: 'Wärmepumpe (manuell)',
-            'Measured'    => $this->ReadPropertyInteger('ManualPowerID') > 0,
+            'Caption'     => (string) $this->ReadPropertyString('ManualCaption') ?: 'Wärmepumpe (manuell)',
+            'Measured'    => (int) $this->ReadPropertyInteger('ManualPowerID') > 0,
         ];
         foreach (self::MANUAL_FIELDS as $contractKey => $propertyName) {
-            $e[$contractKey] = $this->ReadPropertyInteger($propertyName);
+            $e[$contractKey] = (int) $this->ReadPropertyInteger($propertyName);
         }
         return $e;
     }
@@ -878,7 +878,7 @@ class NRGDashboardHeatSchema extends IPSModule
                 'ok'       => false,
                 'error'    => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren, oder im Formular unter "Manuelle Datenanbindung" eigene Variablen verknüpfen.',
                 'hookPath' => '/hook/nrgdashheatschema' . $this->InstanceID,
-                'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
+                'showTour' => !(bool) $this->ReadAttributeBoolean('TourSeen'),
             ];
         }
         $meterhubPower = $this->ResolveMeterHubPower();
@@ -1057,7 +1057,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'renderedAt'  => time(),
             'units'       => $units,
             'hookPath'    => '/hook/nrgdashheatschema' . $this->InstanceID,
-            'showTour'    => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour'    => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 

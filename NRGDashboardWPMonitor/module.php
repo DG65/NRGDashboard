@@ -274,7 +274,7 @@ class NRGDashboardWPMonitor extends IPSModule
     private function readIntProperty(string $name, int $default): int
     {
         try {
-            $v = $this->ReadPropertyInteger($name);
+            $v = (int) $this->ReadPropertyInteger($name);
             return $v !== 0 ? $v : $default;
         } catch (Exception $e) {
             return $default;
@@ -284,7 +284,7 @@ class NRGDashboardWPMonitor extends IPSModule
     private function readStringProperty(string $name, string $default): string
     {
         try {
-            $v = $this->ReadPropertyString($name);
+            $v = (string) $this->ReadPropertyString($name);
             return $v !== '' ? $v : $default;
         } catch (Exception $e) {
             return $default;
@@ -691,7 +691,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // Wie NRGDashboardPVMonitor: Symcon bietet einer Kachel keinen
             // Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - der Nutzer
             // setzt es einmalig selbst (Formular "Darstellung").
-            'lightTheme' => $this->ReadPropertyBoolean('LightTheme'),
+            'lightTheme' => (bool) $this->ReadPropertyBoolean('LightTheme'),
             'hasElectric' => $powerID > 0 || $dailyEnergyTotalID > 0,
             'hasThermal'  => $heatOutID > 0,
             'hasFlowTemps' => $mainOutletID > 0 && $mainInletID > 0,
@@ -719,7 +719,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // in module.html - die Kachel selbst hat als sandboxed HTML-SDK-
             // Tile keinen anderen Rueckkanal in die Instanz.
             'hookPath' => '/hook/nrgdashwpmonitor' . $this->InstanceID,
-            'showTour' => !$this->ReadAttributeBoolean('TourSeen'),
+            'showTour' => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
     }
 }
