@@ -677,7 +677,7 @@ class NRGDashboardPVMonitor extends IPSModule
      * Verbund-Regel: Spot ist NIE ein Bezugspreis - wird deshalb nur als
      * eigene Kurve und fuer die Markierung negativer Viertelstunden (§ 51
      * EEG) gezeigt, nie in Kosten gerechnet. Slot: [startMs, endMs, ct,
-     * aufloesung]. Vergangene Tage liefert der Vertrag nicht.
+     * aufloesung]. Vergangene Tage: SpotDaySlots() ueber SPOT_GetPriceHistory.
      */
     private function SpotCurve(): array
     {
@@ -716,6 +716,32 @@ class NRGDashboardPVMonitor extends IPSModule
     private function SpotDaySlots(int $dayStart): array
     {
         $dayEnd = strtotime('+1 day', $dayStart);
+        // Vergangene Tage: SPOT_GetPriceHistory (Vertrag 1.1, Börsenpreis
+        // 0.2.0) aus dem Archiv - erst ab dessen Installation befuellt,
+        // Luecken bleiben leer. Aeltere Installationen haben die Funktion nicht.
+        if ($dayStart < strtotime('today')) {
+            $id = $this->SpotInstanceID();
+            if ($id <= 0 || !function_exists('SPOT_GetPriceHistory')) {
+                return [];
+            }
+            try {
+                $hist = @SPOT_GetPriceHistory($id, $dayStart, $dayEnd);
+            } catch (\Throwable $e) {
+                return [];
+            }
+            if (is_string($hist)) {
+                $hist = json_decode($hist, true);
+            }
+            $out = [];
+            foreach ((array) $hist as $slot) {
+                if (!is_array($slot) || !isset($slot['start'], $slot['end'], $slot['price'])) {
+                    continue;
+                }
+                $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000,
+                    round((float) $slot['price'], 2), (int) ($slot['aufloesung'] ?? 900)];
+            }
+            return $out;
+        }
         $out = [];
         foreach ($this->SpotCurve()['slots'] as $slot) {
             $s = intdiv($slot[0], 1000);

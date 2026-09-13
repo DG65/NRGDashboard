@@ -51,7 +51,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Börsenpreis, 13.09.2026): ist das Modul „NRG-Stack Börsenpreis“ installiert, zeigt der Reiter „Strompreis“ für heute und morgen zusätzlich den Day-Ahead-Börsenpreis - auch ganz ohne Tibber. Negative Viertelstunden (dort gibt es nach § 51 EEG für neuere Anlagen keine Einspeisevergütung) sind rot hinterlegt, Stundenwerte werden im Tooltip als solche gekennzeichnet. Der Börsenpreis ist netto ohne Steuern und Netzentgelt und wird deshalb nie für die Kosten verwendet."
+          "caption": "✨ Feinheit (Börsenpreis, 13.09.2026): ist das Modul „NRG-Stack Börsenpreis“ installiert, zeigt der Reiter „Strompreis“ zusätzlich den Day-Ahead-Börsenpreis - auch ganz ohne Tibber; heute/morgen direkt von der Quelle, vergangene Tage aus dem Archiv des Börsenpreis-Moduls (ab 0.2.0). Negative Viertelstunden (dort gibt es nach § 51 EEG für neuere Anlagen keine Einspeisevergütung) sind rot hinterlegt, Stundenwerte werden im Tooltip als solche gekennzeichnet. Der Börsenpreis ist netto ohne Steuern und Netzentgelt und wird deshalb nie für die Kosten verwendet."
         },
         {
           "type": "Button",

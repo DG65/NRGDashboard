@@ -3732,7 +3732,7 @@
           && (!priceDayCheck.spot || !priceDayCheck.spot.length)) {
         destroyChart();
         el.innerHTML = '<div class="empty">' + (lastData.hasSpot && !lastData.hasTibber
-          ? 'Für diesen Tag liegen keine Börsenpreise vor (verfügbar sind heute und ab ca. 12:45 Uhr morgen)'
+          ? 'Für diesen Tag liegen keine Börsenpreise vor (Rückblick erst ab Installation von „NRG-Stack Börsenpreis“ 0.2.0, morgen ab ca. 12:45 Uhr)'
           : 'Keine Preiskurve verfügbar - Tibber Grid Rewards oder NRG-Stack Börsenpreis installieren') + '</div>';
         return;
       }
