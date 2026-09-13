@@ -4972,6 +4972,45 @@ class NRGDashboardTile extends IPSModule
      */
     private function SessionPriceResolver(int $from, int $to): array
     {
+        // Bevorzugt aus dem EMS (EMS_GetPurchasePriceHistory, Vertrag
+        // 'purchaseprice' 1.0, EMS 0.37.0): Bezugspreis aus einer Hand -
+        // Tibber inkl. Archiv, Festpreis mit Aenderungshistorie, eigene
+        // Preisvariable. priceCt null = unbekannt (-> Kosten unvollstaendig).
+        // Nur ohne EMS bzw. bei tarifart 'keiner' greift unser Ersatzweg.
+        if (function_exists('EMS_GetPurchasePriceHistory')) {
+            $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+            if ($ems > 0) {
+                try {
+                    $h = @EMS_GetPurchasePriceHistory($ems, $from, $to);
+                } catch (\Throwable $e) {
+                    $h = null;
+                }
+                if (is_string($h)) {
+                    $h = json_decode($h, true);
+                }
+                if (is_array($h) && ($h['tarifart'] ?? 'keiner') !== 'keiner' && !empty($h['slots'])) {
+                    $emsSlots = [];
+                    foreach ($h['slots'] as $s) {
+                        if (is_array($s) && isset($s['start'], $s['end'])) {
+                            $emsSlots[] = [(int) $s['start'], (int) $s['end'],
+                                ($s['priceCt'] ?? null) === null ? null : (float) $s['priceCt']];
+                        }
+                    }
+                    $names = ['tibber' => 'Tibber', 'fest' => 'fester Tarif', 'variable' => 'Preisvariable'];
+                    return [
+                        function (int $ts) use ($emsSlots): ?array {
+                            foreach ($emsSlots as [$a, $b, $p]) {
+                                if ($ts >= $a && $ts < $b) {
+                                    return $p === null ? null : [$p, 'ems'];
+                                }
+                            }
+                            return null;
+                        },
+                        'Bezugspreis aus dem EMS (' . ($names[$h['tarifart']] ?? (string) $h['tarifart']) . '), je Viertelstunde',
+                    ];
+                }
+            }
+        }
         $fixed = $this->readFloatProperty('PurchasePriceCt', 0.0);
         if ($fixed > 0) {
             return [

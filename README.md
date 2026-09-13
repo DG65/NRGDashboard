@@ -1492,7 +1492,8 @@ gleiche IPSView-Fähigkeit.
   tatsächlichen Kosten. Gerechnet wird je Viertelstunde: der Anteil, der in
   diesem Moment wirklich aus dem Netz kam (Netzbezug anteilig auf alle
   Verbraucher des Hauses verteilt), mal dem dort gültigen Bezugspreis —
-  mit Tibber auch für vergangene Tage, bei festem Tarif mit dem im
+  bevorzugt aus dem EMS (`EMS_GetPurchasePriceHistory`, dort gepflegter
+  Tarif samt Festpreis-Historie), ohne EMS mit Tibber auch für vergangene Tage, bei festem Tarif mit dem im
   Formular eingetragenen Preis, sonst mit dem BDEW-Haushaltsdurchschnitt
   als gekennzeichnete Näherung. Nie mit dem Börsenpreis. Eigenstrom aus
   PV/Batterie steht getrennt daneben: 0 €, dazu die entgangene
