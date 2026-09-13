@@ -1332,6 +1332,16 @@ gleiche IPSView-Fähigkeit.
   Diagramm steht der Name des gerade aktiven Reiters — 1:1 aus der
   Reiterleiste übernommen (keine zweite, separat zu pflegende
   Beschriftungsliste), bleibt auch beim Diagramm-Zoom sichtbar.
+- **Börsenpreis im Strompreis-Reiter (`NRGDashboardPVMonitor`):** ist
+  das Modul „NRG-Stack Börsenpreis“ installiert, zeigt der Reiter
+  „Strompreis“ für heute und morgen zusätzlich den Day-Ahead-Börsenpreis
+  als eigene Kurve — auch ganz ohne Tibber. Negative Viertelstunden sind
+  rot hinterlegt: Dort gibt es nach § 51 EEG für neuere Anlagen keine
+  Einspeisevergütung, und das EMS speist dann bewusst nicht ein.
+  Stundenwerte werden im Tooltip als solche gekennzeichnet, statt eine
+  Viertelstunden-Genauigkeit vorzutäuschen. Der Börsenpreis ist netto
+  (ohne Steuern, Umlagen und Netzentgelt) und fließt deshalb nie in die
+  Kostenberechnung ein. Quellenangabe unter dem Diagramm.
 - **Historie/Ausblick am Tagesplan (`NRGDashboardPVMonitor`):** die
   Beschriftungen „Historie“ und „Ausblick“ laufen links/rechts direkt
   mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und

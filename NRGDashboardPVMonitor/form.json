@@ -50,6 +50,10 @@
           "caption": "✨ Feinheit (Historie/Ausblick, 10.09.2026): im Tagesplan laufen die Beschriftungen „Historie“ und „Ausblick“ links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein gut erkennbarer Pfeil am linken und rechten Diagrammrand - auf einen Blick klar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (Börsenpreis, 13.09.2026): ist das Modul „NRG-Stack Börsenpreis“ installiert, zeigt der Reiter „Strompreis“ für heute und morgen zusätzlich den Day-Ahead-Börsenpreis - auch ganz ohne Tibber. Negative Viertelstunden (dort gibt es nach § 51 EEG für neuere Anlagen keine Einspeisevergütung) sind rot hinterlegt, Stundenwerte werden im Tooltip als solche gekennzeichnet. Der Börsenpreis ist netto ohne Steuern und Netzentgelt und wird deshalb nie für die Kosten verwendet."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHPVMON_ResetTour($id);"

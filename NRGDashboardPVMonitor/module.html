@@ -498,6 +498,7 @@
         </div>
         <div id="ampelStrip" class="ampelStrip" style="display:none"></div>
         <div id="legendRow"></div>
+        <div id="spotCredit" style="display:none; font-size:10px; opacity:.6; text-align:center; margin-top:2px"></div>
         <div id="planKeyRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
@@ -1279,6 +1280,57 @@
       return null;
     }
 
+    // Börsenpreis (SPOT_GetPriceCurve, 13.09.2026) - eigene Kurve, NIE in
+    // Kosten gerechnet (Verbund-Regel: Spot ist kein Bezugspreis, netto
+    // ohne Steuern/Umlagen/Netzentgelt). Slot: [startMs, endMs, ct, aufloesung].
+    var SPOT_COLOR = '#26c6da';
+    function spotSeriesName() {
+      return (lastData && lastData.hasTibber) ? 'Börsenpreis (netto)' : 'Börsenpreis (netto, ohne Steuern und Netzentgelt)';
+    }
+    function spotStepPoints(d) {
+      return ((d && d.spot) || []).map(function (slot) {
+        var center = slot[0] + (slot[1] - slot[0]) / 2;
+        return { value: [center, slot[2]], slotStart: slot[0], slotEnd: slot[1], isSpot: true };
+      });
+    }
+    function spotStepPointsHC(d) {
+      return spotStepPoints(d).map(function (p) {
+        return { x: p.value[0], y: p.value[1], slotStart: p.slotStart, slotEnd: p.slotEnd, isSpot: true };
+      });
+    }
+    function spotSlotAt(d, ms) {
+      if (!d || !d.spot) { return null; }
+      for (var i = 0; i < d.spot.length; i++) {
+        if (ms >= d.spot[i][0] && ms < d.spot[i][1]) { return d.spot[i]; }
+      }
+      return null;
+    }
+    // Zusammenhaengende negative Viertelstunden als [start, end] - § 51 EEG:
+    // dort gibt es fuer neuere Anlagen keine Einspeiseverguetung.
+    function spotNegativeRanges(d) {
+      var out = [];
+      ((d && d.spot) || []).forEach(function (s) {
+        if (s[2] >= 0) { return; }
+        var last = out[out.length - 1];
+        if (last && last[1] === s[0]) { last[1] = s[1]; } else { out.push([s[0], s[1]]); }
+      });
+      return out;
+    }
+    function spotTooltipLine(d, ms, dotHtml) {
+      var s = spotSlotAt(d, ms);
+      if (!s) { return ''; }
+      var neg = s[2] < 0 ? ' <span style="color:#ef5350">(negativ)</span>' : '';
+      var hourly = s[3] === 3600 ? ' <span style="opacity:.7">(Stundenwert)</span>' : '';
+      return '<div>' + dotHtml + 'Börsenpreis: <b>' + Number(s[2]).toFixed(2) + ' ct/kWh</b>' + neg + hourly + '</div>';
+    }
+    var SPOT_NEG_COLOR = 'rgba(239,83,80,.14)';
+    function spotCreditText() {
+      var q = lastData && lastData.spotQuelle;
+      if (q === 'energy-charts') { return 'Börsenpreis: Energy-Charts.info (Fraunhofer ISE), Daten Bundesnetzagentur | SMARD.de'; }
+      if (q === 'awattar') { return 'Börsenpreis: aWATTar'; }
+      return '';
+    }
+
     // Sonnenstand-"Tattoos" (Dietmar, 28.08.2026): kleine Sonnen oberhalb
     // der Zeitachse zwischen Sonnenauf- und -untergang, Hoehe/Groesse/
     // Deckkraft folgen der (sinus-genaeherten) Sonnenhoehe zur jeweiligen
@@ -1383,7 +1435,8 @@
       // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
       // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }]
+        ? ((d && d.price && d.price.length) ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }] : [])
+          .concat((d && d.spot && d.spot.length) ? [{ name: spotSeriesName(), data: spotStepPoints(d), color: SPOT_COLOR, axis: 1, dashed: false, step: 'middle' }] : [])
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
             ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
@@ -1428,6 +1481,16 @@
       // ausserhalb des sichtbaren Bereichs (live gefunden, 07.08.2026: bei
       // einem Tag weit unter dem Monats-Rekord blieb von der Linie nichts
       // zu sehen).
+      // Negative Börsenpreis-Viertelstunden als rotes Band (13.09.2026) -
+      // an die Börsenpreis-Serie gehaengt, damit es mit ihr ein-/ausblendet.
+      if (tab === 'price') {
+        var spotSeriesE = series.filter(function (s) { return s.name === spotSeriesName(); })[0];
+        var negE = spotNegativeRanges(d);
+        if (spotSeriesE && negE.length) {
+          spotSeriesE.markArea = { silent: true, itemStyle: { color: SPOT_NEG_COLOR },
+            data: negE.map(function (r) { return [{ xAxis: r[0] }, { xAxis: r[1] }]; }) };
+        }
+      }
       var priceLeftAxisMax = null;
       if (tab === 'price' && priceUnitKw && d && d.gridMonthPeak) {
         var gridSeriesE = series.filter(function (s) { return s.type === 'bar' && s.yAxisIndex === 0; })[0];
@@ -1529,16 +1592,21 @@
               // Tagen mit laengeren/unregelmaessigen Preis-Slots aber nicht -
               // Dietmars Fund, 29.07.2026: "sollte zu jedem Zeitpunkt so
               // sein, nicht nur bei Heute").
-              var priceP = params.filter(function (p) { return p.data && p.data.slotStart !== undefined; })[0];
+              var priceP = params.filter(function (p) { return p.data && p.data.slotStart !== undefined && !p.data.isSpot; })[0];
+              var spotP = params.filter(function (p) { return p.data && p.data.isSpot; })[0];
               var gridP = params.filter(function (p) { return !(p.data && p.data.slotStart !== undefined); })[0];
-              var refX = gridP ? gridP.value[0] : (priceP ? priceP.value[0] : null);
+              var refX = gridP ? gridP.value[0] : (priceP ? priceP.value[0] : (spotP ? spotP.value[0] : null));
+              if (!priceP && !gridP && spotP) { priceP = spotP; }
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
               var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
                 : (priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '');
               var lines = [];
-              var priceVal = slot ? slot[2] : (priceP ? priceP.value[1] : null);
+              var priceVal = slot ? slot[2] : ((priceP && !priceP.data.isSpot) ? priceP.value[1] : null);
               if (priceVal !== null && priceVal !== undefined) {
                 lines.push('<div><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb300;margin-right:4px"></span>Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+              }
+              if (refX !== null && isVisible(spotSeriesName())) {
+                lines.push(spotTooltipLine(d, refX, '<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + SPOT_COLOR + ';margin-right:4px"></span>'));
               }
               var gridV = null;
               if (gridP) {
@@ -1608,7 +1676,8 @@
       // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
       // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }]
+        ? ((d && d.price && d.price.length) ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }] : [])
+          .concat((d && d.spot && d.spot.length) ? [{ name: spotSeriesName(), data: spotStepPointsHC(d), color: SPOT_COLOR, axis: 1, dashed: false, step: 'center' }] : [])
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
             ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
@@ -1652,6 +1721,11 @@
           wmPlotBands.push({ from: wmMsHC, to: wmShadeEndHC, color: 'rgba(148,163,184,.16)' });
           wmPlotLines.push({ value: wmMsHC, color: '#94a3b8', width: 1.5, dashStyle: 'Dash', zIndex: 5 });
         }
+      }
+      // Negative Börsenpreis-Viertelstunden als rotes Band - Pendant zu
+      // ECharts' markArea oben, nur wenn die Börsenpreis-Serie sichtbar ist.
+      if (tab === 'price' && series.some(function (s) { return s.name === spotSeriesName(); })) {
+        spotNegativeRanges(d).forEach(function (r) { wmPlotBands.push({ from: r[0], to: r[1], color: SPOT_NEG_COLOR }); });
       }
       chart = Highcharts.chart(el, {
         // Highcharts formatiert Achsen/Tooltip-Zeiten standardmaessig in
@@ -1758,16 +1832,22 @@
               // Dietmars Fund, 29.07.2026: "sollte zu jedem Zeitpunkt so
               // sein, nicht nur bei Heute").
               var pts = this.points || [this.point];
-              var priceQ = pts.filter(function (p) { return p.slotStart !== undefined; })[0];
-              var gridQ = pts.filter(function (p) { return p.slotStart === undefined; })[0];
-              var refX = gridQ ? gridQ.x : (priceQ ? priceQ.x : null);
+              var isSpotPt = function (p) { return !!(p.isSpot || (p.point && p.point.isSpot)); };
+              var priceQ = pts.filter(function (p) { return p.slotStart !== undefined && !isSpotPt(p); })[0];
+              var spotQ = pts.filter(isSpotPt)[0];
+              var gridQ = pts.filter(function (p) { return p.slotStart === undefined && !isSpotPt(p); })[0];
+              var refX = gridQ ? gridQ.x : (priceQ ? priceQ.x : (spotQ ? spotQ.x : null));
+              if (!priceQ && !gridQ && spotQ) { priceQ = spotQ; }
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
               var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
                 : (priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '');
               var lines = [];
-              var priceVal = slot ? slot[2] : (priceQ ? priceQ.y : null);
+              var priceVal = slot ? slot[2] : ((priceQ && !isSpotPt(priceQ)) ? priceQ.y : null);
               if (priceVal !== null && priceVal !== undefined) {
                 lines.push('<div><span style="color:#ffb300">●</span> Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+              }
+              if (refX !== null && isVisible(spotSeriesName())) {
+                lines.push(spotTooltipLine(d, refX, '<span style="color:' + SPOT_COLOR + '">●</span> '));
               }
               if (gridQ && gridQ.y !== null && gridQ.y !== undefined) {
                 var gridLabelHc = priceUnitKw ? 'Ø Leistung' : 'Netzbezug';
@@ -3590,7 +3670,7 @@
         solar: !!lastData.hasPv,
         mpp: !!(lastData.mpptKeys && lastData.mpptKeys.length),
         battery: !!(lastData.hasBat || lastData.hasSoc),
-        price: !!lastData.hasTibber,
+        price: !!(lastData.hasTibber || lastData.hasSpot),
         flow: !!lastData.hasEnergyFlow,
         balance: !!lastData.hasEnergyFlow,
         yearcompare: !!lastData.hasPv,
@@ -3600,7 +3680,7 @@
         solar: !!(today && today.pv && today.pv.length),
         mpp: !!(today && today.mppt && Object.keys(today.mppt).some(function (k) { return (today.mppt[k] || []).length; })),
         battery: !!(today && ((today.bat && today.bat.length) || (today.soc && today.soc.length))),
-        price: !!(today && today.price && today.price.length),
+        price: !!(today && ((today.price && today.price.length) || (today.spot && today.spot.length))),
         flow: !!(today && today.flow && today.flow.hasData),
         balance: !!(today && today.flow && today.flow.hasData),
         yearcompare: !!(lastData.energy && lastData.energy.pv && Object.keys(lastData.energy.pv).length),
@@ -3644,9 +3724,16 @@
       });
 
       var priceDayCheck = (curTab === 'price') ? dayAt(idx) : null;
-      if (curTab === 'price' && priceDayCheck && (!priceDayCheck.price || !priceDayCheck.price.length)) {
+      var spotCreditEl = document.getElementById('spotCredit');
+      var spotCredit = (curTab === 'price' && priceDayCheck && priceDayCheck.spot && priceDayCheck.spot.length) ? spotCreditText() : '';
+      spotCreditEl.textContent = spotCredit;
+      spotCreditEl.style.display = spotCredit ? '' : 'none';
+      if (curTab === 'price' && priceDayCheck && (!priceDayCheck.price || !priceDayCheck.price.length)
+          && (!priceDayCheck.spot || !priceDayCheck.spot.length)) {
         destroyChart();
-        el.innerHTML = '<div class="empty">Keine Preiskurve verfügbar - Tibber Grid Rewards-Instanz wählen oder installieren</div>';
+        el.innerHTML = '<div class="empty">' + (lastData.hasSpot && !lastData.hasTibber
+          ? 'Für diesen Tag liegen keine Börsenpreise vor (verfügbar sind heute und ab ca. 12:45 Uhr morgen)'
+          : 'Keine Preiskurve verfügbar - Tibber Grid Rewards oder NRG-Stack Börsenpreis installieren') + '</div>';
         return;
       }
 

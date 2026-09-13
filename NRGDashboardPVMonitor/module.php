@@ -23,6 +23,8 @@ class NRGDashboardPVMonitor extends IPSModule
     private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const IHUBMON_GUID     = '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}';
     private const TIBBER_GUID      = '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}';
+    // NRG-Stack Börsenpreis (SPOT_GetPriceCurve 1.0, basis='spot', 13.09.2026)
+    private const SPOT_GUID        = '{11BBF147-16A1-4332-82A3-29BB31154D03}';
     private const METERHUB_GUID    = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
     private const LOCATION_GUID    = '{45E97A63-F870-408A-B259-2933F7EABF74}';
     private const EMS_GUID         = '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}';
@@ -655,6 +657,71 @@ class NRGDashboardPVMonitor extends IPSModule
                 continue;
             }
             $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000, round((float) $slot['price'], 2)];
+        }
+        return $out;
+    }
+
+    private ?array $spotCache = null;
+
+    private function SpotInstanceID(): int
+    {
+        if (!function_exists('SPOT_GetPriceCurve')) {
+            return 0;
+        }
+        return $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(self::SPOT_GUID));
+    }
+
+    /**
+     * Börsenpreis-Kurve (SPOT_GetPriceCurve 1.0, 13.09.2026) - Day-Ahead
+     * heute/morgen, ct/kWh NETTO (ohne Steuern, Umlagen, Netzentgelt).
+     * Verbund-Regel: Spot ist NIE ein Bezugspreis - wird deshalb nur als
+     * eigene Kurve und fuer die Markierung negativer Viertelstunden (§ 51
+     * EEG) gezeigt, nie in Kosten gerechnet. Slot: [startMs, endMs, ct,
+     * aufloesung]. Vergangene Tage liefert der Vertrag nicht.
+     */
+    private function SpotCurve(): array
+    {
+        if ($this->spotCache !== null) {
+            return $this->spotCache;
+        }
+        $this->spotCache = ['slots' => [], 'quelle' => ''];
+        $id = $this->SpotInstanceID();
+        if ($id <= 0) {
+            return $this->spotCache;
+        }
+        try {
+            $curve = @SPOT_GetPriceCurve($id);
+        } catch (\Throwable $e) {
+            return $this->spotCache;
+        }
+        if (is_string($curve)) {
+            $curve = json_decode($curve, true);
+        }
+        if (!is_array($curve)) {
+            return $this->spotCache;
+        }
+        foreach ($curve as $slot) {
+            if (!is_array($slot) || !isset($slot['start'], $slot['end'], $slot['price'])) {
+                continue;
+            }
+            $this->spotCache['slots'][] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000,
+                round((float) $slot['price'], 2), (int) ($slot['aufloesung'] ?? 900)];
+            if ($this->spotCache['quelle'] === '' && !empty($slot['quelle'])) {
+                $this->spotCache['quelle'] = (string) $slot['quelle'];
+            }
+        }
+        return $this->spotCache;
+    }
+
+    private function SpotDaySlots(int $dayStart): array
+    {
+        $dayEnd = strtotime('+1 day', $dayStart);
+        $out = [];
+        foreach ($this->SpotCurve()['slots'] as $slot) {
+            $s = intdiv($slot[0], 1000);
+            if ($s >= $dayStart && $s < $dayEnd) {
+                $out[] = $slot;
+            }
         }
         return $out;
     }
@@ -2453,6 +2520,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         $price = $this->PriceDaySlots($start);
+        $spot = $this->SpotDaySlots($start);
         // Sankey-Energiebilanz nur fuer den Zeitraum, der wirklich schon
         // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
         // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
@@ -2473,7 +2541,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
         $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $gridID, $start, $gridSign) : null;
 
-        $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0
+        $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0 || count($spot) > 0
             || ($flow !== null && ($flow['hasData'] ?? false));
         foreach ($mpptSeries as $s) {
             $hasData = $hasData || count($s) > 0;
@@ -2508,6 +2576,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'soc'      => $soc,
             'mppt'     => $mpptSeries,
             'price'    => $price,
+            'spot'     => $spot,
             'flow'     => $flow,
             'gridDraw' => $gridDraw,
             // Bezugsenergie Tag/Monat/Jahr bezogen auf DIESEN Tag (fuer die
@@ -2643,6 +2712,8 @@ class NRGDashboardPVMonitor extends IPSModule
             // ausgeblendet, Reiter mit Quelle aber ohne aktuelle Daten rot
             // eingefaerbt (siehe updateTabStates() in module.html).
             'hasTibber' => $this->TibberInstanceID() > 0,
+            'hasSpot'   => $this->SpotInstanceID() > 0,
+            'spotQuelle' => $this->SpotCurve()['quelle'],
             'hasEms'   => $this->EmsInstanceID() > 0,
             // Netzbezug/-einspeisung stammt bei verzoegert archivierenden
             // Zaehlern (Inexogy/MeterHub, MHUB_GetFunctions()-Feld
