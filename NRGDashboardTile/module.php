@@ -798,6 +798,7 @@ class NRGDashboardTile extends IPSModule
     public function Discover(): array
     {
         $devices = [];
+        $this->partnerNotReady = false;
 
         // Isolierter Demo-Modus (03.09.2026, Dietmar: "die Summe aller
         // Ströme sind natürlich nicht logisch") - eine reine Vorstellungs-
@@ -947,7 +948,11 @@ class NRGDashboardTile extends IPSModule
         // danach gilt der leere Fund (Geraete wirklich entfernt).
         $cached = json_decode((string) $this->ReadAttributeString('DeviceCache'), true);
         $cacheAge = time() - (int) @$this->ReadAttributeInteger('LastDiscoveryTs');
-        if ($devices === [] && is_array($cached) && $cached !== [] && $cacheAge < 15 * 60) {
+        // Auch bei einem Teilfund, waehrend ein Partner "ready: false" meldet
+        // (sonst fielen z. B. alle MeterHub-Zaehler kurz aus dem Cache).
+        $incomplete = $devices === [] || $this->partnerNotReady;
+        $this->partnerNotReady = false;
+        if ($incomplete && is_array($cached) && $cached !== [] && $cacheAge < 15 * 60) {
             $this->SendDebug('Discover', 'leerer Fund bei gefuelltem Cache - alter Stand bleibt, neuer Versuch in 30 s', 0);
             $this->SetTimerInterval('NRGDASH_Refresh', 30 * 1000);
             return $cached;
@@ -3584,7 +3589,9 @@ class NRGDashboardTile extends IPSModule
     private function checkSourceCoverage(string $label, string $moduleGUID, int $foundCount): void
     {
         $instanceCount = count(IPS_GetInstanceListByModuleID($moduleGUID));
-        if ($instanceCount > 0 && $foundCount === 0) {
+        // Partner laedt gerade neu (ready:false) - kein Hinweis, das ist kein
+        // Konfigurations- oder Vertragsproblem.
+        if ($instanceCount > 0 && $foundCount === 0 && !$this->partnerNotReady) {
             $this->LogMessage(
                 sprintf(
                     'ℹ️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
@@ -3910,6 +3917,11 @@ class NRGDashboardTile extends IPSModule
      * ergänzen. Ohne installiertes Partnermodul bleibt die Liste leer -
      * Verbund-Grundregel, kein Modul setzt ein anderes voraus.
      */
+    // Ein Partner meldete waehrend dieses Discover()-Laufs "ready: false"
+    // (MeterHub ab 0.27.10: Instanz laedt gerade neu) - dann gilt der Fund
+    // als unvollstaendig, siehe Leer-Discover-Schutz in Discover().
+    private bool $partnerNotReady = false;
+
     private function discoverListContract(string $moduleGUID, string $function, string $source): array
     {
         $results = [];
@@ -3918,6 +3930,13 @@ class NRGDashboardTile extends IPSModule
         }
         foreach (IPS_GetInstanceListByModuleID($moduleGUID) as $id) {
             $entries = call_user_func($function, $id);
+            if (is_string($entries)) {
+                $entries = json_decode($entries, true);
+            }
+            if (is_array($entries) && ($entries['ready'] ?? true) === false) {
+                $this->partnerNotReady = true;
+                continue;
+            }
             // Real gefundener Bug (27.07.2026): MHUB_GetFunctions() ist als
             // `: string` deklariert und liefert ein JSON-kodiertes Array,
             // waehrend z.B. CHUB_GetFunctions() `: array` direkt zurueckgibt.
