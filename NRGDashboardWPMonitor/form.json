@@ -34,6 +34,10 @@
           "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet die Wärmepumpen-Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. WPHub ab Vertrag 1.13) und liegt der länger als 15 Minuten zurück, erscheint über den Kennzahlen ein gelber Hinweis „Keine aktuelle Messung seit …“ - statt veraltete Werte kommentarlos als aktuell zu zeigen."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHWPMON_ResetTour($id);"

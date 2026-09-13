@@ -1516,6 +1516,14 @@ gleiche IPSView-Fähigkeit.
   gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der
   Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der
   Heizkreis-Temperatur.
+- **Keine aktuelle Messung bei der Wärmepumpe (`NRGDashboardWPMonitor`,
+  `NRGDashboardHeatSchema`):** meldet die Wärmepumpen-Quelle den
+  Zeitpunkt ihrer letzten echten Messung (`lastSeenAt`, z. B. WPHub ab
+  Vertrag 1.13) und liegt der länger als 15 Minuten zurück, zeigen beide
+  Kacheln einen gelben Hinweis „Keine aktuelle Messung seit …“; das
+  Heizkreis-Schema wird zusätzlich abgeblendet. Die Schwelle ist bewusst
+  großzügiger als im Energiefluss (5 Minuten), weil Wärmepumpen-Clouds
+  teils nur alle paar Minuten abgefragt werden.
 - **Heizstab nur wo er hingehört (`NRGDashboardHeatSchema`):** in der
   Simulation ist der Heizstab standardmäßig aus und erscheint nur noch
   im Abtaubetrieb — ein Zuheizer im Kühlbetrieb wäre fachlich falsch,

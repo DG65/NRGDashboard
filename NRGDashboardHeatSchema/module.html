@@ -2580,7 +2580,17 @@ function handleMessage(raw) {
       title.textContent = unit.label;
       row.appendChild(title);
     }
-    row.appendChild(unit.hasPipeSchema ? buildSchema(unit) : buildBasicCard(unit));
+    // Keine aktuelle Messung (lastSeenAt, 13.09.2026): Hinweis ueber dem
+    // Schema, das Schema selbst abgeblendet - die Werte darin sind veraltet.
+    if (unit.staleText) {
+      var stale = document.createElement('div');
+      stale.style.cssText = 'margin:4px auto; padding:4px 10px; max-width:90%; border-radius:6px; background:rgba(255,193,7,.16); color:#ffc107; font-size:12px; text-align:center';
+      stale.textContent = '⚠ ' + unit.staleText;
+      row.appendChild(stale);
+    }
+    var unitView = unit.hasPipeSchema ? buildSchema(unit) : buildBasicCard(unit);
+    if (unit.staleText) { unitView.style.opacity = '0.5'; }
+    row.appendChild(unitView);
     unitsEl.appendChild(row);
     // viewBox auf den TATSAECHLICH gezeichneten Inhalt zuschneiden statt
     // auf die pauschale Layout-Leinwand (0..W, 0..H) zu vertrauen

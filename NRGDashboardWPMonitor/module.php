@@ -590,6 +590,25 @@ class NRGDashboardWPMonitor extends IPSModule
      * dafuer je RequestAction()/UpdateVisualizationValue() bemuehen muss
      * (1:1 Muster NRGDashboardPVMonitor::buildPayload()).
      */
+    // lastSeenAt aelter als das = keine aktuelle Messung (13.09.2026).
+    // Grosszuegiger als im Energiefluss (300 s): Waermepumpen-Clouds werden
+    // teils nur alle paar Minuten abgefragt (WPHub-Vorgabe 60 s, erhoehbar).
+    private const STALE_AFTER_SEC = 900;
+
+    /**
+     * Hinweistext, wenn die Quelle (heatpump-Vertrag, Feld lastSeenAt -
+     * generisch wie ChargerHub/OCPPHub) laenger keine echte Messung mehr
+     * hatte; leer, wenn aktuell oder die Quelle das Feld nicht liefert.
+     */
+    private function staleText(array $unit): string
+    {
+        $lastSeen = (int) ($unit['lastSeenAt'] ?? 0);
+        if ($lastSeen <= 0 || time() - $lastSeen <= self::STALE_AFTER_SEC) {
+            return '';
+        }
+        return 'Keine aktuelle Messung seit ' . date('d.m.Y H:i', $lastSeen) . ' - die angezeigten Werte sind veraltet.';
+    }
+
     private function buildPayload(): array
     {
         $unit = $this->SelectedHeatpump();
@@ -677,6 +696,7 @@ class NRGDashboardWPMonitor extends IPSModule
             ];
         }
 
+        $staleText = $this->staleText($unit);
         $copMeasured = $this->num($copMeasuredID);
         $copEstimate = $this->num($copEstimateID);
         $starts = $this->num($startsID);
@@ -688,6 +708,8 @@ class NRGDashboardWPMonitor extends IPSModule
             // (localStorage im Frontend) - Muster NRGDashboardPVMonitor.
             'uid'        => (string) $this->InstanceID,
             'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
+            // Veraltete Messung (lastSeenAt, heatpump-Vertrag 1.13) - leer = aktuell
+            'staleText'  => $staleText,
             // Wie NRGDashboardPVMonitor: Symcon bietet einer Kachel keinen
             // Weg, das aktuelle Hell/Dunkel-Theme zu erkennen - der Nutzer
             // setzt es einmalig selbst (Formular "Darstellung").

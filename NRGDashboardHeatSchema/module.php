@@ -857,6 +857,19 @@ class NRGDashboardHeatSchema extends IPSModule
         return ($internal === true) || ($external === true);
     }
 
+    // lastSeenAt aelter als das = keine aktuelle Messung (13.09.2026),
+    // gleiche Schwelle wie NRGDashboardWPMonitor.
+    private const STALE_AFTER_SEC = 900;
+
+    private function staleText(array $unit): string
+    {
+        $lastSeen = (int) ($unit['lastSeenAt'] ?? 0);
+        if ($lastSeen <= 0 || time() - $lastSeen <= self::STALE_AFTER_SEC) {
+            return '';
+        }
+        return 'Keine aktuelle Messung seit ' . date('d.m.Y H:i', $lastSeen) . ' - die angezeigten Werte sind veraltet.';
+    }
+
     private function buildPayload(): array
     {
         // Simulation (Dietmar, 17.08.2026: "die Buttons fuer die
@@ -917,6 +930,8 @@ class NRGDashboardHeatSchema extends IPSModule
             $units[] = [
                 'id'              => (int) $e['_instanceID'],
                 'label'           => (string) ($e['Caption'] ?? $e['caption'] ?? IPS_GetName((int) $e['_instanceID'])),
+                // Veraltete Messung (lastSeenAt, heatpump-Vertrag 1.13) - leer = aktuell
+                'staleText'       => $this->staleText($e),
                 'hasPipeSchema'   => $hasPipeSchema,
                 'power'           => $this->num($powerID),
                 'pumpFlow'        => $this->num((int) ($e['pumpFlowID'] ?? 0)),

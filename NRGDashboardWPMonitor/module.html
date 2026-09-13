@@ -115,6 +115,7 @@
     <button id="next" class="nav" title="Vor">&#9654;</button>
     <span id="quick"></span>
   </div>
+  <div id="staleHint" style="display:none; margin:6px auto 0; padding:4px 10px; max-width:90%; border-radius:6px; background:rgba(255,193,7,.16); color:#ffc107; font-size:12px; text-align:center"></div>
   <div id="kpiRow"></div>
   <div id="chart"></div>
   <div id="legendRow"></div>
@@ -636,6 +637,12 @@
   function render() {
     syncNav();
     renderKpi(lastData ? lastData.kpi : null);
+    // Keine aktuelle Messung (lastSeenAt, 13.09.2026) - Text kommt fertig
+    // vom Backend, leer = aktuell.
+    var staleEl = document.getElementById('staleHint');
+    var staleTxt = (lastData && lastData.staleText) || '';
+    staleEl.textContent = staleTxt ? '⚠ ' + staleTxt : '';
+    staleEl.style.display = staleTxt ? '' : 'none';
     var el = document.getElementById('chart');
     var emptyEl = document.getElementById('empty');
 

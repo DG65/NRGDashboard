@@ -38,6 +38,10 @@
           "caption": "✨ Feinheit (Auch ohne Außenluft, 10.09.2026): die Bauart hinter dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser (Tiefenbohrung)“, „Sole/Wasser (Erdkollektor)“ und „Wasser/Wasser (Brunnen)“ - das Schema zeichnet dann statt eines Außengeräts eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (senkrechte Bohrung, flacher Flächenkollektor oder Saug-/Sickerbrunnen-Paar), ohne Lüfter/Abtaubetrieb, die es dort nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen; Wärmetauscher, Innengerät, Puffer/WW-Tank und Heizkreise bleiben unverändert."
         },
         {
+          "type": "Label",
+          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet die Wärmepumpen-Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. WPHub ab Vertrag 1.13) und liegt der länger als 15 Minuten zurück, steht über dem Schema ein gelber Hinweis „Keine aktuelle Messung seit …“ und das Schema wird abgeblendet - die Werte darin sind dann veraltet."
+        },
+        {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
           "onClick": "NRGDASHHEAT_ResetTour($id);"
