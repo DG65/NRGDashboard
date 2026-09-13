@@ -4688,7 +4688,7 @@ class NRGDashboardTile extends IPSModule
             // Kosten je Ladesitzung (13.09.2026, EMS/Dietmar) - nur Wallboxen,
             // siehe ChargingSessions().
             'sessions'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
-                ? $this->ChargingSessions($powerID, $dayStart) : null,
+                ? $this->ChargingSessions($this->SessionPowerIDs($key, $d, $powerID), $dayStart) : null,
             // Kaskadierte Unterzaehler (Dietmar, 28.08.2026: "wenn es
             // hinter den Knotenpunkten weitere Unterzaehler geben wuerde ...
             // man koennte diese Erweiterung auch im Overlay fortfuehren").
@@ -4926,11 +4926,44 @@ class NRGDashboardTile extends IPSModule
      * gekennzeichnet (bei vorheriger Netzladung eigentlich nicht gratis -
      * Bewertung mit Einstandspreis spaeter ueber EMS).
      */
-    private function ChargingSessions(int $wbPowerID, int $dayStart): array
+    /**
+     * Leistungsquellen fuer die Ladesitzungen: bei einem Sammelknoten
+     * (Aufschachteln, z. B. MeterHubVirtual "Ladestation" aus WB 1 + WB 2)
+     * die Summe der positiven Mitglieder statt der Summenleistung des
+     * Knotens selbst - Live-Fund 13.09.2026: die Summenleistung des
+     * virtuellen Zaehlers stand dauerhaft auf 0, obwohl WB 2 geladen hat.
+     */
+    private function SessionPowerIDs(string $key, array $d, int $powerID): array
+    {
+        if (!empty($d['hasMembers'])) {
+            $ids = [];
+            foreach ($this->MembersForKey($key) as $m) {
+                $pid = (int) ($m['powerID'] ?? 0);
+                if ($pid > 0 && (float) ($m['factor'] ?? 100) > 0) {
+                    $ids[$pid] = true;
+                }
+            }
+            if (count($ids) > 0) {
+                return array_keys($ids);
+            }
+        }
+        return [$powerID];
+    }
+
+    private function ChargingSessions(array $wbPowerIDs, int $dayStart): array
     {
         $from = strtotime('-6 day', $dayStart);
         $to = min(time(), strtotime('+1 day', $dayStart));
-        $wb = $this->DaySeries($wbPowerID, $from, $to);
+        $sum = [];
+        foreach ($wbPowerIDs as $pid) {
+            foreach ($this->DaySeries((int) $pid, $from, $to) as [$ms, $w]) {
+                $sum[(int) $ms] = ($sum[(int) $ms] ?? 0.0) + max(0.0, (float) $w);
+            }
+        }
+        $wb = [];
+        foreach ($sum as $ms => $w) {
+            $wb[] = [$ms, $w];
+        }
         $grid = [];
         $pv = [];
         $bat = [];
