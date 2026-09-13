@@ -32,6 +32,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private const STROMGEDACHT_GUID = '{D5A8C3A1-2222-4A55-8888-123456789003}';
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
+    private const AGG_HOUR         = 0;
     private const WINDOW_DAYS      = 8;
     private const SPAN_YEARS       = 5;
     private const SUN_MARGIN_SEC   = 3600;
@@ -1649,23 +1650,42 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
             return 0.0;
         }
-        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_5MIN, $start, $end, 0);
-        if (!is_array($data)) {
-            return 0.0;
-        }
+        // Store-Checkliste 9g (13.09.2026): AC_GetAggregatedValues bricht bei
+        // haeufig schreibenden Variablen (Batterie!) mit "Zu viele Werte
+        // (>50000)" ab, sobald die 5-Minuten-Stufe ueber mehr als ~1 Woche
+        // am Stueck angefragt wird - die Energiebilanz zeigte dann still
+        // 0 kWh Batterie. Deshalb: bis 32 Tage TAGEWEISE in 5-Minuten-
+        // Aufloesung (genau), laengere Zeitraeume MONATSWEISE ueber die
+        // Stundenstufe (schnell; Laden und Entladen innerhalb derselben
+        // Stunde heben sich dabei auf - fuer Monats-/Jahresbilanzen
+        // vertretbar). false wird nie still als "keine Daten" gewertet.
+        $long = strtotime('+32 day', $start) < $end;
+        $level = $long ? self::AGG_HOUR : self::AGG_5MIN;
+        $hours = $long ? 1.0 : 5.0 / 60.0;
         $kwh = 0.0;
-        foreach ($data as $row) {
-            $avg = (float) $row['Avg'];
-            if ($this->RowHasImplausiblePower($row)) {
-                $this->SendDebug(
-                    __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
-                    0
-                );
+        for ($from = $start; $from < $end; $from = $to) {
+            $to = min($end, $long ? strtotime('+1 month', strtotime(date('Y-m-01', $from))) : strtotime('+1 day', strtotime('today', $from)));
+            $data = @AC_GetAggregatedValues($aid, $vid, $level, $from, $to, 0);
+            if (!is_array($data)) {
+                $err = error_get_last();
+                $this->SendDebug(__FUNCTION__, sprintf('Archivabfrage fehlgeschlagen: Variable #%d, %s–%s: %s',
+                    $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? 'unbekannt')), 0);
+                $this->LogMessage(sprintf('Energiebilanz unvollständig: Archivabfrage für Variable #%d (%s–%s) fehlgeschlagen', $vid, date('d.m.Y', $from), date('d.m.Y', $to)), KL_WARNING);
                 continue;
             }
-            $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
-            $kwh += $part * (5.0 / 60.0) / 1000.0;
+            foreach ($data as $row) {
+                $avg = (float) $row['Avg'];
+                if ($this->RowHasImplausiblePower($row)) {
+                    $this->SendDebug(
+                        __FUNCTION__,
+                        sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                        0
+                    );
+                    continue;
+                }
+                $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
+                $kwh += $part * $hours / 1000.0;
+            }
         }
         return $kwh;
     }

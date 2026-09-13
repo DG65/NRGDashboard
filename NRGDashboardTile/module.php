@@ -5704,6 +5704,10 @@ class NRGDashboardTile extends IPSModule
         }
         $agg = @AC_GetAggregatedValues($arch, $vid, 5, $from, $to, 0);
         if (!is_array($agg)) {
+            // Store-Checkliste 9g: false nie still als "keine Daten" werten
+            $err = error_get_last();
+            $this->SendDebug(__FUNCTION__, sprintf('Archivabfrage fehlgeschlagen: Variable #%d, %s–%s: %s',
+                $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? 'unbekannt')), 0);
             return [];
         }
         $out = [];
