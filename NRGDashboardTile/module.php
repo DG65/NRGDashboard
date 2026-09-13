@@ -18,7 +18,6 @@ define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
 define('NRGDASH_GUID_INVERTERHUBTILE', '{9A2E5C7F-3B1D-4A6E-8C9F-2D5B7E1A4C8F}');
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
-define('NRGDASH_GUID_SZR',            '{7F3A9C1E-4B5D-4A6F-8C2E-1D9B3A7E5F4C}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
 define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
@@ -92,7 +91,7 @@ class NRGDashboardTile extends IPSModule
         'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',
         'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
         'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
-        'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Aussenknoten an die tatsächliche Pillengeometrie angepasst.',
+        'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Außenknoten an die tatsächliche Pillengeometrie angepasst.',
         'Fix: das Rück-Badge beim Aufschachteln saß mittig in der Pille - sitzt jetzt wie die anderen Badges (Warn-Dreieck, Zähler-Badge, Minus-Badge) direkt auf dem Pillenrand, oben links, dem einzigen dort noch freien Eckplatz.',
         'Neu: die Detailseite eines Schaltgruppen-Mitglieds (MeterHubVirtual-Vertrag 1.4) zeigt jetzt einen echten Schalt-Knopf bzw. bei einer Gruppe ohne eigenes Ganzes den Zustand (aus/teilweise/an) - bisher gab es das nur am Knoten selbst, der während der geöffneten Detailseite genau verdeckt ist.',
         'Fix: das Rück-Badge beim Aufschachteln ist jetzt ein kleiner Kreis mit "‹" statt eines Text-Chips - dieselbe Optik wie das bereits vorhandene "›"-Badge an Sammelknoten ohne bekannte Mitgliederzahl. Der Name der übergeordneten Ebene steht als Hover-Tooltip.',
@@ -1718,11 +1717,22 @@ class NRGDashboardTile extends IPSModule
      */
     private function FeedInTariffCt(): float
     {
-        $list = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_SZR);
-        if (is_array($list) && count($list) === 1) {
-            $v = @IPS_GetProperty($list[0], 'EinspeiseverguetungCtKwh');
-            if ((is_float($v) || is_int($v)) && $v > 0) {
-                return (float) $v;
+        // Seit 13.09.2026 aus EMS_GetPlantInfo() (Vertrag 'plantinfo' 1.0):
+        // EMS loest die Verguetung verbundweit an einer Stelle auf
+        // (eingetragen > Variable > aus Inbetriebnahme + kWp berechnet).
+        // Ein reiner Platzhalter zaehlt nicht - dann lieber keine Erloes-
+        // Anzeige bzw. das eigene Feld. Ohne EMS: eigenes Formularfeld.
+        if (function_exists('EMS_GetPlantInfo')) {
+            $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+            if ($ems > 0) {
+                $info = @EMS_GetPlantInfo($ems);
+                if (is_string($info)) {
+                    $info = json_decode($info, true);
+                }
+                $ct = is_array($info) ? (float) ($info['verguetungCt'] ?? 0) : 0.0;
+                if ($ct > 0 && ($info['verguetungQuelle'] ?? '') !== 'platzhalter') {
+                    return $ct;
+                }
             }
         }
         return $this->readFloatProperty('FeedInTariffCt', 0.0);
@@ -5285,7 +5295,7 @@ class NRGDashboardTile extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;

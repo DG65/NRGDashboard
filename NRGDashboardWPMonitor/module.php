@@ -407,7 +407,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -465,7 +465,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -499,7 +499,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;

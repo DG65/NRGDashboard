@@ -1493,9 +1493,10 @@ gleiche IPSView-Fähigkeit.
   als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber
   bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus
   („+1,06 €/h“, zur Einspeisevergütung in ct/kWh). Die Vergütung wird
-  nur an einer Stelle gepflegt: gibt es einen Szenariorechner, übernimmt
-  die Kachel automatisch dessen Einspeisevergütung; nur ohne Rechner
-  greift das eigene Formularfeld. Ohne Vergütung bleibt es bei
+  nur an einer Stelle gepflegt: gibt es ein EMS, übernimmt die Kachel
+  automatisch dessen Einspeisevergütung (`EMS_GetPlantInfo()`, dort
+  eingetragen oder aus Inbetriebnahmedatum und Anlagengröße nach EEG
+  berechnet); nur ohne EMS greift das eigene Formularfeld. Ohne Vergütung bleibt es bei
   Einspeisung bei der Leistungsanzeige — Einspeisung wird nie mit dem
   Bezugspreis als scheinbare Kosten bewertet, und kein Tarif wird
   stillschweigend angenommen.

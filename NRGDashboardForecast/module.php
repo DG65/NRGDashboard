@@ -86,8 +86,8 @@ class NRGDashboardForecast extends IPSModule
         'Fix: Quellmodule werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - eine zusätzliche, abgeschaltete Test- oder Demo-Instanz blockierte die Erkennung bisher komplett.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) verzerrte bisher den "Ist"-Vergleich zur Prognose - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
-        '1:1-Uebernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhoehe.',
-        'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel ueber den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',
+        '1:1-Übernahme der Darstellung von Prognoses Energiebilanz-Kachel: Scroll ab mehr als 3 Tagen mit feststehender Y-Achse, Legende zum Ausblenden einzelner Kurven, automatische Diagrammhöhe.',
+        'Alle Darstellungseinstellungen (Farben, Schriftart, Engine, Tage, Ist-Anzeige, Gitter, Legende, Y-Achse fest ...) direkt im WebFront - Kachel über den Doppelpfeil aufziehen, statt in der Konsole zu suchen.',
         'Eigene Ist-Leistungsvariablen (Konsole: "Ist-Werte") mit eigener Einheiten-Erkennung und Archiv-Cache-Intervall - unabhaengig von Prognoses eigener Konfiguration.',
         'Datenquelle jetzt zwei getrennte Felder (PV-Prognose-/Last-Prognose-Instanz) statt einer zusammengefassten Energiebilanz-Instanz, 1:1 wie in Prognoses eigenem Formular - bei genau je einer installierten Instanz weiterhin automatisch erkannt.',
     ];
@@ -208,7 +208,7 @@ class NRGDashboardForecast extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHFC.PowerUnit')) { IPS_CreateVariableProfile('NRGDASHFC.PowerUnit', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 0, 'W (Watt)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 1, 'kW (Kilowatt)', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 2, 'Automatisch erkennen (Profil/Groessenordnung)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 2, 'Automatisch erkennen (Profil/Größenordnung)', '', -1);
 
         if (!IPS_VariableProfileExists('NRGDASHFC.CacheSec')) { IPS_CreateVariableProfile('NRGDASHFC.CacheSec', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileValues('NRGDASHFC.CacheSec', 15, 900, 5);
@@ -804,7 +804,7 @@ class NRGDashboardForecast extends IPSModule
             $out = array_fill(0, $slots, null);
             foreach ($rows as $r) {
                 if ($this->RowHasImplausiblePower($r)) {
-                    $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('Y-m-d H:i', (int) $r['TimeStamp']), (float) ($r['Max'] ?? 0)), 0);
+                    $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $r['TimeStamp']), (float) ($r['Max'] ?? 0)), 0);
                     continue;
                 }
                 $h = (int) date('G', $r['TimeStamp']);
@@ -854,7 +854,7 @@ class NRGDashboardForecast extends IPSModule
         $rows = array_filter($rows, function ($r) use ($vid) {
             $ok = abs((float) $r['Value']) <= self::IMPLAUSIBLE_POWER_W;
             if (!$ok) {
-                $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f', $vid, date('Y-m-d H:i', (int) $r['TimeStamp']), (float) $r['Value']), 0);
+                $this->SendDebug(__FUNCTION__, sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, %.0f', $vid, date('d.m.Y H:i', (int) $r['TimeStamp']), (float) $r['Value']), 0);
             }
             return $ok;
         });

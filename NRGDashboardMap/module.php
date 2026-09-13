@@ -35,9 +35,9 @@ class NRGDashboardMap extends IPSModule
     private const NEWS_VERSION = '0.7.1';
     private const NEWS_ITEMS = [
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-        'Neu: Geraete werden jetzt nach Kategorie geclustert dargestellt (wie die Verbund-Gesundheit-Kachel) - deutlich uebersichtlicher bei mehreren Netzzaehlern/Wallboxen/Fahrzeugen.',
+        'Neu: Geräte werden jetzt nach Kategorie geclustert dargestellt (wie die Verbund-Gesundheit-Kachel) - deutlich übersichtlicher bei mehreren Netzzählern/Wallboxen/Fahrzeugen.',
         'Neu: alle MeterHub-Funktionen erscheinen jetzt als eigener Knoten (vorher nur Netz/Hausverbrauch, andere Verbraucher fielen still raus).',
-        'Neu: ruhigere 3D-Navigation mit Traegheit statt direktem 1:1-Mitziehen.',
+        'Neu: ruhigere 3D-Navigation mit Trägheit statt direktem 1:1-Mitziehen.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
@@ -642,13 +642,13 @@ var SHOW_TOUR = {$showTour};
 var TOUR_SHOWN_LOCAL = false;
 var TOUR_STEP = 0;
 var TOUR_STEPS = [
-  { title: 'Keine Tabelle - ein 3D-Raum', text: 'Statt Listen und Balken zeigt diese Karte Ihre Anlage als frei drehbaren 3D-Raum, in dem sich Geraete bei vielen Instanzen automatisch zu Clustern zusammenfassen, statt die Uebersicht zu ueberladen. Alles wird automatisch ueber die installierten Partnermodule gefunden - keine manuelle Verknuepfung noetig.' },
-  { title: 'Wechselrichter als Mittelpunkt', text: 'Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Straenge und Batterie haengen direkt an ihm.' },
-  { title: 'Sammelknoten bei mehreren Instanzen', text: 'Gibt es mehrere Geraete einer Kategorie (z. B. zwei Netzzaehler oder zwei Wallboxen), erscheint EIN Cluster-Knoten auf dem Hauptring - die einzelnen Instanzen faechern sich lokal weiter aussen auf. Das haelt die Karte uebersichtlich, egal wie viele Zaehler dazukommen.' },
-  { title: 'Jede MeterHub-Zuordnung sichtbar', text: 'Nicht nur Netz und Hausverbrauch: auch Waermepumpe, Herd, Carport-Verbraucher & Co. aus MeterHub erscheinen als eigener Knoten in der Kategorie „Verbraucher".' },
-  { title: 'Drehen und Zoomen', text: 'Mit gedrueckter Maustaste ziehen, um die Karte zu drehen - die Drehung klingt nach dem Loslassen sanft aus, statt abrupt zu stoppen. Mit dem Mausrad zoomen.' },
-  { title: 'Details per Hover', text: 'Fahren Sie mit der Maus ueber einen Knoten, um Bezeichnung, Kategorie und - bei Sammelknoten - die Anzahl der zusammengefassten Instanzen zu sehen.' },
-  { title: 'Farbige Sektoren am Boden', text: 'Jede Kategorie bekommt eine dezente, transparente Bodenflaeche in ihrer Farbe - so bleibt die Gruppierung auch beim Drehen sofort erkennbar, ganz ohne Verbindungslinien lesen zu muessen.' }
+  { title: 'Keine Tabelle - ein 3D-Raum', text: 'Statt Listen und Balken zeigt diese Karte Ihre Anlage als frei drehbaren 3D-Raum, in dem sich Geräte bei vielen Instanzen automatisch zu Clustern zusammenfassen, statt die Übersicht zu überladen. Alles wird automatisch über die installierten Partnermodule gefunden - keine manuelle Verknüpfung nötig.' },
+  { title: 'Wechselrichter als Mittelpunkt', text: 'Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Stränge und Batterie hängen direkt an ihm.' },
+  { title: 'Sammelknoten bei mehreren Instanzen', text: 'Gibt es mehrere Geräte einer Kategorie (z. B. zwei Netzzähler oder zwei Wallboxen), erscheint EIN Cluster-Knoten auf dem Hauptring - die einzelnen Instanzen fächern sich lokal weiter außen auf. Das hält die Karte uebersichtlich, egal wie viele Zähler dazukommen.' },
+  { title: 'Jede MeterHub-Zuordnung sichtbar', text: 'Nicht nur Netz und Hausverbrauch: auch Wärmepumpe, Herd, Carport-Verbraucher & Co. aus MeterHub erscheinen als eigener Knoten in der Kategorie „Verbraucher".' },
+  { title: 'Drehen und Zoomen', text: 'Mit gedrückter Maustaste ziehen, um die Karte zu drehen - die Drehung klingt nach dem Loslassen sanft aus, statt abrupt zu stoppen. Mit dem Mausrad zoomen.' },
+  { title: 'Details per Hover', text: 'Fahren Sie mit der Maus über einen Knoten, um Bezeichnung, Kategorie und - bei Sammelknoten - die Anzahl der zusammengefassten Instanzen zu sehen.' },
+  { title: 'Farbige Sektoren am Boden', text: 'Jede Kategorie bekommt eine dezente, transparente Bodenfläche in ihrer Farbe - so bleibt die Gruppierung auch beim Drehen sofort erkennbar, ganz ohne Verbindungslinien lesen zu muessen.' }
 ];
 
 var R_TYPE = 42;    // Hauptring: Einzelinstanz oder Cluster-Hub
