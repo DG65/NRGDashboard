@@ -864,7 +864,10 @@ class NRGDashboardHeatSchema extends IPSModule
     private function staleText(array $unit): string
     {
         $lastSeen = (int) ($unit['lastSeenAt'] ?? 0);
-        if ($lastSeen <= 0 || time() - $lastSeen <= self::STALE_AFTER_SEC) {
+        // Liefert die Quelle ihr Abfrageintervall (pollInterval, z. B. WPHub
+        // ab Vertrag 1.14), gilt das Dreifache davon - nie weniger als 900 s.
+        $limit = max(self::STALE_AFTER_SEC, 3 * (int) ($unit['pollInterval'] ?? 0));
+        if ($lastSeen <= 0 || time() - $lastSeen <= $limit) {
             return '';
         }
         return 'Keine aktuelle Messung seit ' . date('d.m.Y H:i', $lastSeen) . ' - die angezeigten Werte sind veraltet.';
