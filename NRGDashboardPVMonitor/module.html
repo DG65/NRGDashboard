@@ -1328,6 +1328,9 @@
       var q = lastData && lastData.spotQuelle;
       if (q === 'energy-charts') { return 'Börsenpreis: Energy-Charts.info (Fraunhofer ISE), Daten Bundesnetzagentur | SMARD.de'; }
       if (q === 'awattar') { return 'Börsenpreis: aWATTar'; }
+      // NRGSpotPrice 0.3.0 (14.09.2026, per send_message): neue Quelle
+      // 'entsoe' (EPEX Spot ueber ENTSO-E Transparency Platform).
+      if (q === 'entsoe') { return 'Börsenpreis: EPEX Spot, veröffentlicht auf der ENTSO-E Transparency Platform'; }
       return '';
     }
 
