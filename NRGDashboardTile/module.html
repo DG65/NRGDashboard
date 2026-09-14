@@ -262,14 +262,14 @@
      - kleines Badge unten in der Kachel, nur sichtbar wenn eine EMS-Instanz
      EMS_GetCurrentDecision() liefert. left:200px passt (Dietmars Ansage
      "links passt es nun"). right:0px ueberdeckte das Diagnose-Badge (selbe
-     Zeile, hoeherer z-index) - auf Dietmars Bestaetigung jetzt right:100px,
-     damit das Diagnose-Badge wieder sichtbar bleibt. Hoehe/Abstand-vom-Rand
-     und Optik wie status-overlay/diag-badge angeglichen (bottom:4px/
-     height:26px statt bottom:8px mit auto-Hoehe, gleicher Grauverlauf+
-     Rahmen statt eigenem, blassem Halbtransparent-Look mit
-     backdrop-filter). */
+     Zeile, hoeherer z-index) - auf Dietmars Bestaetigung right:100px,
+     damit das Diagnose-Badge wieder sichtbar bleibt, danach nochmal 10px
+     breiter (right:100px->90px). Hoehe/Abstand-vom-Rand und Optik wie
+     status-overlay/diag-badge angeglichen (bottom:4px/height:26px statt
+     bottom:8px mit auto-Hoehe, gleicher Grauverlauf+Rahmen statt eigenem,
+     blassem Halbtransparent-Look mit backdrop-filter). */
   #emsDecision {
-    position: absolute; left: 200px; right: 100px; bottom: 4px; height: 26px; z-index: 5;
+    position: absolute; left: 200px; right: 90px; bottom: 4px; height: 26px; z-index: 5;
     display: none; align-items: center; gap: 6px;
     font-size: 12px; line-height: 1.3; padding: 0 10px; border-radius: 13px;
     background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
