@@ -264,16 +264,19 @@
      "die Zeile geht ueber die gesamte Breite und ueberdeckt die Punkte links
      und rechts") - links/rechts 8px spannte das Badge ueber die komplette
      Kachelbreite und legte sich damit über jeden Aussenknoten, der zufaellig
-     nahe am unteren Rand liegt (bei vielen Geraeten reicht der Knotenring
-     bis dorthin). Jetzt wie status-overlay/diag-badge eine kompakte, am
-     Inhalt orientierte Pille statt eines durchgehenden Balkens - zentriert,
-     mit Breitenobergrenze, damit auch ein langer Begruendungstext nicht
-     wieder ueber die volle Breite waechst. */
+     nahe am unteren Rand liegt. Ein fester zentrierter Breitenrabatt (erster
+     Versuch) loeste das nur teilweise - bei einer schmal gezogenen Kachel
+     wachsen status-overlay/diag-badge in den Ecken relativ zur Breite staerker,
+     ein fixer Puffer reichte dann nicht mehr aus und das Badge ueberdeckte
+     genau diese beiden Ecken-Badges wieder. Jetzt spannt sich #emsDecision
+     weiterhin zwischen den beiden Ecken auf (kein fester Zentrum-Look mehr),
+     aber left/right werden per JS (positionEmsBadge(), siehe unten) aus den
+     TATSAECHLICH gerenderten Breiten von status-overlay/diag-badge berechnet
+     - passt sich dadurch bei jeder Kachelbreite automatisch an, statt einen
+     Erfahrungswert zu raten. */
   #emsDecision {
-    position: absolute; left: 50%; bottom: 8px; z-index: 5;
-    transform: translateX(-50%);
-    max-width: calc(100% - 90px);
-    display: none; align-items: baseline; gap: 6px;
+    position: absolute; left: 66px; right: 40px; bottom: 8px; z-index: 5;
+    display: none; align-items: baseline; gap: 6px; justify-content: center;
     font-size: 11px; line-height: 1.3; padding: 5px 9px; border-radius: 8px;
     background: rgba(127,135,145,.14); backdrop-filter: blur(2px);
     pointer-events: none; overflow: hidden;
@@ -3210,6 +3213,32 @@ window.addEventListener('resize', function () {
   if (lastRawPayload !== null) { handleMessage(lastRawPayload); }
 });
 
+// EMS-Begruendungs-Badge zwischen den beiden Ecken-Badges einpassen
+// (14.09.2026, zweiter Fund nach dem ersten Fix: bei schmal gezogener
+// Kachel wachsen status-overlay/diag-badge relativ zur Breite staerker als
+// ein fester Puffer-Wert es vorhersehen konnte, das Badge ueberdeckte sie
+// dann wieder). Liest die TATSAECHLICH gerenderte Breite beider Ecken-
+// Badges aus, statt einen Erfahrungswert zu raten - passt sich dadurch bei
+// jeder Kachelbreite automatisch an. Laeuft nach jedem handleMessage()
+// (auch beim Resize-Handler oben, der ohnehin die komplette Kachel neu
+// aufbaut) neu, da sich Kachelbreite und Ecken-Badge-Inhalte jederzeit
+// aendern koennen.
+function positionEmsBadge() {
+  const badge = document.getElementById('emsDecision');
+  if (!badge.classList.contains('show')) { return; }
+  const GAP = 6;
+  const wrapRect = document.body.getBoundingClientRect();
+
+  const statusEl = document.getElementById('status');
+  const statusRight = statusEl ? statusEl.getBoundingClientRect().right : wrapRect.left + 4;
+  badge.style.left = Math.max(4, statusRight - wrapRect.left + GAP) + 'px';
+
+  const diagEl = document.getElementById('diagBadge');
+  const diagVisible = diagEl && diagEl.classList.contains('show');
+  const diagLeft = diagVisible ? diagEl.getBoundingClientRect().left : wrapRect.right - 4;
+  badge.style.right = Math.max(4, wrapRect.right - diagLeft + GAP) + 'px';
+}
+
 function handleMessage(raw) {
   lastRawPayload = raw;
   updateViewBox();
@@ -3249,6 +3278,7 @@ function handleMessage(raw) {
         + (d.emsDecision.reason ? ' – ' + d.emsDecision.reason : '')
         + (d.emsDecision.source ? ' (Quelle: ' + d.emsDecision.source + ')' : '');
       emsBadge.classList.add('show');
+      positionEmsBadge();
     } else {
       emsBadge.classList.remove('show');
     }
