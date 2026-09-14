@@ -1331,6 +1331,11 @@
       // NRGSpotPrice 0.3.0 (14.09.2026, per send_message): neue Quelle
       // 'entsoe' (EPEX Spot ueber ENTSO-E Transparency Platform).
       if (q === 'entsoe') { return 'Börsenpreis: EPEX Spot, veröffentlicht auf der ENTSO-E Transparency Platform'; }
+      // NRGSpotPrice 0.4.0 (14.09.2026, per send_message): neue Quelle
+      // 'tibber' (Tibber-Preisuebersicht per PLZ, ohne Tibber-Konto - price
+      // bleibt der reine Boersenpreis, Tibbers Endpreis steht nur in deren
+      // eigener Energie-Manager-Variable, nie in diesem Vertrag).
+      if (q === 'tibber') { return 'Börsenpreis: Tibber-Preisübersicht'; }
       return '';
     }
 
