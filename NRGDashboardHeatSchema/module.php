@@ -94,8 +94,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.5.1';
+    private const NEWS_VERSION = '0.5.2';
     private const NEWS_ITEMS = [
+        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
         'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
@@ -107,6 +108,31 @@ class NRGDashboardHeatSchema extends IPSModule
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+    private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
+    private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
+
+    /**
+     * "Ueber dieses Modul" (SUITE.md "Einheitliche Formular-Optik" Punkt 5) -
+     * ganz unten, NACH dem Forum-Hinweis, bewusst NICHT dismissible (kein
+     * Attribut/Ack-Methode) - eine Lizenz ist kein einmaliger Hinweis.
+     * Wortlaut verbundweit identisch ("Variante A"), nur LICENSE_URL zeigt
+     * auf das eigene Repo. Eingeklappt by default.
+     */
+    private function LicenseHint(): array
+    {
+        return [
+            'type' => 'ExpansionPanel', 'expanded' => false,
+            'caption' => '🧡  Über dieses Modul',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
+                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
+                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
+                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+            ],
+        ];
+    }
 
     public function Create()
     {
@@ -462,15 +488,16 @@ class NRGDashboardHeatSchema extends IPSModule
 
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
-                'type' => 'RowLayout',
-                'name' => 'ReviewHint',
+                'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
+                'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRG-Stack Dashboard ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
                     ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
-                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
+                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
                 ],
             ];
         }
+        $form['elements'][] = $this->LicenseHint();
 
         return json_encode($form);
     }

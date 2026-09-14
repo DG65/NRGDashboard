@@ -69,13 +69,16 @@ class NRGDashboardPVMonitor extends IPSModule
     private const DEF_ENGINE     = 'echarts';
 
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
+    private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
+    private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
     // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.10';
+    private const NEWS_VERSION = '0.10.11';
     private const NEWS_ITEMS = [
+        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
         'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
@@ -91,6 +94,29 @@ class NRGDashboardPVMonitor extends IPSModule
         'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
         'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
     ];
+
+    /**
+     * "Ueber dieses Modul" (SUITE.md "Einheitliche Formular-Optik" Punkt 5) -
+     * ganz unten, NACH dem Forum-Hinweis, bewusst NICHT dismissible (kein
+     * Attribut/Ack-Methode) - eine Lizenz ist kein einmaliger Hinweis.
+     * Wortlaut verbundweit identisch ("Variante A"), nur LICENSE_URL zeigt
+     * auf das eigene Repo. Eingeklappt by default.
+     */
+    private function LicenseHint(): array
+    {
+        return [
+            'type' => 'ExpansionPanel', 'expanded' => false,
+            'caption' => '🧡  Über dieses Modul',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
+                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
+                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
+                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+            ],
+        ];
+    }
 
     public function Create()
     {
@@ -288,15 +314,16 @@ class NRGDashboardPVMonitor extends IPSModule
 
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
-                'type' => 'RowLayout',
-                'name' => 'ReviewHint',
+                'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
+                'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRG Dashboard Monitoring ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
                     ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
-                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_DismissReviewHint($id);'],
+                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_DismissReviewHint($id);'],
                 ],
             ];
         }
+        $form['elements'][] = $this->LicenseHint();
 
         return json_encode($form);
     }

@@ -4247,8 +4247,16 @@
         text: 'Hinter PV-Erzeugung und Netzbezug stehen laufend aktualisierte Tages-, Monats- und Jahres-kWh, die sich immer auf den GERADE ANGEZEIGTEN Tag beziehen – beim Zurückblättern rechnen sie live mit. Der Netzbezug bevorzugt dabei echte Zählerstände des abrechnungsverbindlichen Zählers, wo vorhanden.'
       },
       {
+        title: 'Der Börsenpreis ist nicht Ihr Strompreis',
+        text: 'Die Kurve im Strompreis-Reiter zeigt den Day-Ahead-Börsenpreis je Viertelstunde (ab ca. 13 Uhr auch schon für morgen, entstanden um 12 Uhr in der Strombörsen-Auktion) – den reinen Großhandelspreis, netto, ohne Netzentgelt, Steuern und Umlagen. Ihr tatsächlicher Bezugspreis liegt deutlich höher; mit Tibber erscheint er zusätzlich als eigene Kurve, sonst steht er nur auf der Stromrechnung. Liefert die gewählte Quelle nur Stundenwerte, verteilt sich ein Preis gleichmäßig auf vier Viertelstunden – eine einzelne negative Viertelstunde kann darin untergehen.'
+      },
+      {
+        title: 'Rote Flächen: negative Börsenpreise',
+        text: 'Rot hinterlegte Viertelstunden hatten einen negativen Börsenpreis – es gab mehr Strom im Netz als Bedarf, meist mittags bei viel Sonne und Wind. Für PV-Anlagen mit Inbetriebnahme ab 25.02.2025 entfällt in diesen Viertelstunden die Einspeisevergütung (§ 51 EEG, „Solarspitzengesetz“); das EMS lenkt den Strom dann bevorzugt in Batterie, Wärmepumpe oder Auto statt ins Netz. Ältere Anlagen sind je nach Größe/Baujahr anders oder gar nicht betroffen – das hier ist keine Rechtsberatung, nur ein Hinweis, worauf die rote Fläche zurückgeht.'
+      },
+      {
         title: 'Ehrliche Lücken statt erfundener Nullen',
-        text: 'Manche Abrechnungszähler (z. B. Inexogy) archivieren erst mit 15–45 Minuten Verzögerung. Statt diese Lücke stillschweigend als Nullverbrauch anzuzeigen, markiert der Strompreis-Reiter den betroffenen Zeitbereich schraffiert als „Zeitbereich ohne Bezugsdaten!“ – lieber ehrlich unvollständig als falsch vollständig.'
+        text: 'Manche Abrechnungszähler (z. B. Inexogy) archivieren erst mit 15–45 Minuten Verzögerung. Statt diese Lücke stillschweigend als Nullverbrauch anzuzeigen, markiert der Strompreis-Reiter den betroffenen Zeitbereich schraffiert als „Zeitbereich ohne Bezugsdaten!“ – lieber ehrlich unvollständig als falsch vollständig. Vergangene Tage stammen dabei aus dem Archiv des Preis-Moduls und reichen nur bis zu dessen Installation zurück; welche Quelle (Energy-Charts, EPEX Spot/ENTSO-E, Tibber-Preisübersicht oder aWATTar) das ist, steht unter dem Diagramm.'
       },
       {
         title: 'Auch außerhalb des Dashboards nutzbar',

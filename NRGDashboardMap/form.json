@@ -11,7 +11,7 @@
         },
         {
           "type": "Label",
-          "caption": "Kategorien mit mehreren Instanzen (z. B. zwei Netzzähler oder zwei Wallboxen) erscheinen als Sammelknoten mit den einzelnen Instanzen lokal aufgefächert - das hält die Karte übersichtlich, egal wie viele Zähler dazukommen."
+          "caption": "Kategorien mit mehreren Instanzen (z. B. zwei Netzzähler oder zwei Wallboxen) erscheinen als Sammelknoten mit den einzelnen Instanzen lokal aufgefächert - das hält die Karte übersichtlich, egal wie viele Zähler dazukommen. Alle MeterHub-Zähler/-Funktionen erscheinen dabei automatisch als eigener Knoten, auch bei mehreren Zählern derselben Kategorie."
         },
         {
           "type": "Label",

@@ -75,14 +75,17 @@ class NRGDashboardForecast extends IPSModule
     }
 
     private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
+    private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
+    private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
     // Verbund-Formularkonvention (EMS/SUITE.md "Einheitliche Formular-Optik",
     // Muster NRGDashboardPVMonitor/HeatSchema) - "Was ist Neu" (versionsscharf
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.4';
+    private const NEWS_VERSION = '0.2.5';
     private const NEWS_ITEMS = [
+        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Quellmodule werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - eine zusätzliche, abgeschaltete Test- oder Demo-Instanz blockierte die Erkennung bisher komplett.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
@@ -92,6 +95,29 @@ class NRGDashboardForecast extends IPSModule
         'Eigene Ist-Leistungsvariablen (Konsole: "Ist-Werte") mit eigener Einheiten-Erkennung und Archiv-Cache-Intervall - unabhaengig von Prognoses eigener Konfiguration.',
         'Datenquelle jetzt zwei getrennte Felder (PV-Prognose-/Last-Prognose-Instanz) statt einer zusammengefassten Energiebilanz-Instanz, 1:1 wie in Prognoses eigenem Formular - bei genau je einer installierten Instanz weiterhin automatisch erkannt.',
     ];
+
+    /**
+     * "Ueber dieses Modul" (SUITE.md "Einheitliche Formular-Optik" Punkt 5) -
+     * ganz unten, NACH dem Forum-Hinweis, bewusst NICHT dismissible (kein
+     * Attribut/Ack-Methode) - eine Lizenz ist kein einmaliger Hinweis.
+     * Wortlaut verbundweit identisch ("Variante A"), nur LICENSE_URL zeigt
+     * auf das eigene Repo. Eingeklappt by default.
+     */
+    private function LicenseHint(): array
+    {
+        return [
+            'type' => 'ExpansionPanel', 'expanded' => false,
+            'caption' => '🧡  Über dieses Modul',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
+                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
+                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
+                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+            ],
+        ];
+    }
 
     public function Create()
     {
@@ -927,15 +953,16 @@ class NRGDashboardForecast extends IPSModule
 
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
-                'type' => 'RowLayout',
-                'name' => 'ReviewHint',
+                'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
+                'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRG-Stack Energieprognose ist Beta — Rückmeldungen sind willkommen:'],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
                     ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
-                    ['type' => 'Button', 'caption' => 'Nicht mehr anzeigen', 'onClick' => 'NRGDASHFC_DismissReviewHint($id);'],
+                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHFC_DismissReviewHint($id);'],
                 ],
             ];
         }
+        $form['elements'][] = $this->LicenseHint();
 
         return json_encode($form);
     }
