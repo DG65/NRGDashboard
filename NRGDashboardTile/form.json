@@ -132,7 +132,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASH_ResetTour($id);"
+          "onClick": "echo NRGDASH_ResetTour($id);"
         }
       ]
     },

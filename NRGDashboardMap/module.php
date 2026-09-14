@@ -152,10 +152,14 @@ class NRGDashboardMap extends IPSModule
      *  ein Nutzer sich die Feinheiten der 3D-Karte nochmal zeigen lassen
      *  will. Regeneriert die Karte sofort, damit die Tour ohne Warten auf
      *  den naechsten Discovery-Zyklus wieder erscheint. */
-    public function ResetTour(): void
+    public function ResetTour(): string
     {
         $this->WriteAttributeBoolean('TourSeen', false);
         $this->Discover();
+        // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
+        // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
+        // beim naechsten Oeffnen der WebFront-Kachel.
+        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
     }
 
     /**

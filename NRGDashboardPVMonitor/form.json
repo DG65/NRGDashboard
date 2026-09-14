@@ -56,7 +56,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASHPVMON_ResetTour($id);"
+          "onClick": "echo NRGDASHPVMON_ResetTour($id);"
         }
       ]
     },

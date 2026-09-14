@@ -48,7 +48,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASHFC_ResetTour($id);"
+          "onClick": "echo NRGDASHFC_ResetTour($id);"
         }
       ]
     },

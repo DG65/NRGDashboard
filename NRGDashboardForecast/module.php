@@ -972,9 +972,13 @@ class NRGDashboardForecast extends IPSModule
     }
 
     /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
-    public function ResetTour(): void
+    public function ResetTour(): string
     {
         $this->WriteAttributeBoolean('TourSeen', false);
+        // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
+        // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
+        // beim naechsten Oeffnen der WebFront-Kachel.
+        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
     }
 
     /** Alle Doppelpfeil-Einstellungen auf den Modul-Default zuruecksetzen (Konsolen-Button). */

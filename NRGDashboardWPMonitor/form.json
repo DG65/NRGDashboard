@@ -40,7 +40,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASHWPMON_ResetTour($id);"
+          "onClick": "echo NRGDASHWPMON_ResetTour($id);"
         }
       ]
     },

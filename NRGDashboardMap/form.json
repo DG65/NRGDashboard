@@ -24,7 +24,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASHMAP_ResetTour($id);"
+          "onClick": "echo NRGDASHMAP_ResetTour($id);"
         }
       ]
     },

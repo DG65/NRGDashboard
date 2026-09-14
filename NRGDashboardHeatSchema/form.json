@@ -44,7 +44,7 @@
         {
           "type": "Button",
           "caption": "Einführungs-Tour erneut anzeigen",
-          "onClick": "NRGDASHHEAT_ResetTour($id);"
+          "onClick": "echo NRGDASHHEAT_ResetTour($id);"
         }
       ]
     },
