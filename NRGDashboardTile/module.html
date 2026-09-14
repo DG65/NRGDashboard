@@ -259,23 +259,24 @@
   #ampelWash.show { opacity: 1; }
 
   /* EMS-Begruendung (03.09.2026, Dietmar: "was und warum das EMS schaltet")
-     - kleines, dezentes Badge unten in der Kachel, nur sichtbar wenn eine
-     EMS-Instanz EMS_GetCurrentDecision() liefert. Nach mehreren Anlaeufen
-     (14.09.2026, dynamische Positionierung/Breitendeckel per JS wieder
-     verworfen zugunsten der urspruenglichen einfachen Fassung mit festem
-     left/right) zuletzt Dietmars konkrete Vorgabe: links 200px, insgesamt
-     400px schmaler als die Kachel (links+rechts zusammen 400px) - also
-     rechts ebenfalls 200px. Keine JS-Positionierung, reines CSS. */
+     - kleines Badge unten in der Kachel, nur sichtbar wenn eine EMS-Instanz
+     EMS_GetCurrentDecision() liefert. left:200px passt (Dietmars letzte
+     Ansage "links passt es nun") - hier zusaetzlich rechts um 200px
+     verbreitert (right 200px->0px), Hoehe/Abstand-vom-Rand und Optik jetzt
+     wie status-overlay/diag-badge angeglichen (bottom:4px/height:26px
+     statt bottom:8px mit auto-Hoehe, gleicher Grauverlauf+Rahmen statt
+     eigenem, blassem Halbtransparent-Look mit backdrop-filter). */
   #emsDecision {
-    position: absolute; left: 200px; right: 200px; bottom: 8px; z-index: 5;
-    display: none; align-items: baseline; gap: 6px;
-    font-size: 11px; line-height: 1.3; padding: 5px 9px; border-radius: 8px;
-    background: rgba(127,135,145,.14); backdrop-filter: blur(2px);
+    position: absolute; left: 200px; right: 0px; bottom: 4px; height: 26px; z-index: 5;
+    display: none; align-items: center; gap: 6px;
+    font-size: 12px; line-height: 1.3; padding: 0 10px; border-radius: 13px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
+    border: 1px solid rgba(255,255,255,0.10);
     pointer-events: none; overflow: hidden;
   }
   #emsDecision.show { display: flex; }
-  #emsDecision .mode { font-weight: 700; white-space: nowrap; }
-  #emsDecision .reason { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #emsDecision .mode { font-weight: 700; white-space: nowrap; color: var(--textmuted); }
+  #emsDecision .reason { opacity: .75; color: var(--textmuted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
 
