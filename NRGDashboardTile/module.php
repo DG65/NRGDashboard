@@ -5549,7 +5549,12 @@ class NRGDashboardTile extends IPSModule
         // der LETZTE grid-Eintrag, waehrend Preis/Bilanz den ERSTEN nahmen -
         // zwei Antworten im selben Bild, siehe primaryGridDevice().
         $gi = $this->primaryGridDevice($devices);
-        $pv = null; $grid = null; $bat = null; $house = null;
+        // SUMME aller pv-/battery-Knoten statt nur des ERSTEN gefundenen
+        // (Fund 14.09.2026, Solarpark: 24 einzelne unverschachtelte WR ohne
+        // 'house'-Knoten - der letzte gefundene pv-Wert war nur ein
+        // einzelner WR (~7 kW), die Bilanz zog davon die GESAMTE
+        // Park-Einspeisung ab und ergab mehrere Megawatt Schein-Bezug).
+        $pvSum = 0.0; $hasPv = false; $grid = null; $batSum = 0.0; $house = null;
         foreach ($devices as $i => $dev) {
             $val = $this->resolvePowerValue($dev);
             if ($val === null) {
@@ -5557,16 +5562,16 @@ class NRGDashboardTile extends IPSModule
             }
             switch ($dev['function'] ?? '') {
                 case 'house':    $house = $val; break;
-                case 'pv':       $pv = $val; break;
+                case 'pv':       $pvSum += $val; $hasPv = true; break;
                 case 'grid':     if ($i === $gi) { $grid = $val; } break;
-                case 'battery':  $bat = $val; break;
+                case 'battery':  $batSum += $val; break;
             }
         }
         if ($house !== null) {
             return $house;
         }
-        if ($pv !== null && $grid !== null) {
-            return $pv - $grid + ($bat ?? 0);
+        if ($hasPv && $grid !== null) {
+            return $pvSum - $grid + $batSum;
         }
         return null;
     }

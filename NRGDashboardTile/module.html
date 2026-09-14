@@ -3216,17 +3216,24 @@ function handleMessage(raw) {
   // Verbraucher-Summe, wenn keine InverterHub-Instanz (also kein pv/grid)
   // vorhanden ist - reines MeterHub/ChargerHub-Setup ohne Wechselrichter.
   const houseDevice = devices.find(x => x.function === 'house');
-  const pvDevice = devices.find(x => x.function === 'pv');
+  // SUMME aller pv-/battery-Knoten, nicht nur der erste gefundene (Fund
+  // 14.09.2026, Solarpark: 24 einzelne unverschachtelte WR-Knoten, keiner
+  // davon 'house' - find() griff sich nur EINEN WR heraus, die Bilanz zog
+  // dann dessen ~7 kW minus der GESAMTEN Park-Einspeisung ab und zeigte
+  // "Haus" mit mehreren Megawatt Bezug. Betrifft jede Anlage mit mehr als
+  // einem nicht gruppierten pv-/battery-Knoten, nicht nur Solarparks.
+  const pvSumW = devices.filter(x => x.function === 'pv').reduce((s, x) => s + (x.value || 0), 0);
+  const hasPv = devices.some(x => x.function === 'pv');
   // Primaerer Netzknoten (11.09.2026, Backend collapseToSingleGrid/
   // primaryGridDevice) statt "erster grid-Eintrag" - bei zwei Netzzaehlern
   // rechnete die Bilanz sonst mit dem verzoegerten Abrechnungszaehler (0 W).
   const gridDevice = devices.find(x => x.isPrimaryGrid) || devices.find(x => x.function === 'grid');
-  const batDevice = devices.find(x => x.function === 'battery');
+  const batSumW = devices.filter(x => x.function === 'battery').reduce((s, x) => s + (x.value || 0), 0);
   let houseW;
   if (houseDevice) {
     houseW = houseDevice.value ?? 0;
-  } else if (pvDevice && gridDevice) {
-    houseW = (pvDevice.value ?? 0) - (gridDevice.value ?? 0) + (batDevice ? (batDevice.value ?? 0) : 0);
+  } else if (hasPv && gridDevice) {
+    houseW = pvSumW - (gridDevice.value ?? 0) + batSumW;
   } else {
     houseW = devices.filter(x => x.category === 'verbraucher').reduce((s, x) => s + (x.value || 0), 0);
   }
