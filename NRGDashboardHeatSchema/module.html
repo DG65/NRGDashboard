@@ -2431,8 +2431,16 @@ const TOUR_STEPS = [
     text: 'Liefert Ihre Datenquelle keine Pumpen-/Ventildaten (z. B. reine WPHub-Cloud-Anbindung ohne HeishaMon), erscheinen nur die Basiswerte statt eines falsch wirkenden, unvollständigen Schemas. Auch einzelne fehlende Sensoren (z. B. kein zweiter Heizkreis) blenden sich automatisch aus, statt eine Null vorzutäuschen.'
   },
   {
+    title: 'Verdichterfrequenz: läuft er gerade, und wie stark?',
+    text: '0 Hz heißt: der Verdichter steht (Standby oder zwischen zwei Takten). Ein Wert größer 0 zeigt, wie schnell er gerade dreht - höhere Frequenz bedeutet mehr Heiz-/Kühlleistung, aber auch höhere elektrische Aufnahme. Die genaue Skala hängt vom jeweiligen Verdichtermodell ab, ist also zwischen Anlagen nicht 1:1 vergleichbar.'
+  },
+  {
+    title: 'ΔT zwischen Vor- und Rücklauf zeigt, wie stark die Anlage gerade heizt',
+    text: 'Die Differenz zwischen Vorlauf- und Rücklauftemperatur (ΔT) wächst, je mehr Wärme die Anlage gerade abgibt. Ein Fußbodenheizkreis läuft typisch mit kleiner Spreizung (wenige Kelvin), Heizkörper oder die Warmwasserbereitung deutlich mehr. Ein dauerhaft sehr kleines ΔT bei laufendem Verdichter kann auf zu hohen Durchfluss oder Luft im System hindeuten - ein Fachbetrieb kann das im Zweifel einordnen, die Kachel bewertet nicht automatisch.'
+  },
+  {
     title: 'Arbeitszahl auf einen Blick',
-    text: 'Sofern Ihre Wärmepumpe es liefert, zeigt das Schema den aktuellen COP (Schätzung des Herstellers oder echte Messung über einen externen Zähler) sowie die Tages-Arbeitszahl - bewusst ohne Nachkommastelle, um keine Genauigkeit vorzutäuschen, die die Quelle gar nicht hergibt.'
+    text: 'Sofern Ihre Wärmepumpe es liefert, zeigt das Schema den aktuellen COP (Schätzung des Herstellers oder echte Messung über einen externen Zähler) sowie die Tages-Arbeitszahl - bewusst ohne Nachkommastelle, um keine Genauigkeit vorzutäuschen, die die Quelle gar nicht hergibt. COP ist dabei eine Momentaufnahme (aktueller Wirkungsgrad genau jetzt), die Arbeitszahl mittelt über den ganzen Tag - bei stark wechselnder Außentemperatur oder häufigem Takten können beide Werte deutlich auseinanderliegen, das ist normal.'
   },
   {
     title: 'Zwei Heizkreise, unabhängig einstellbar',
@@ -2448,7 +2456,7 @@ const TOUR_STEPS = [
   },
   {
     title: 'Testen ohne laufende Anlage',
-    text: 'Über die Simulation (Doppelpfeil-Ansicht) lassen sich Heiz-, Kühl-, Warmwasser-, Standby- und Abtaubetrieb mit festen Beispielwerten durchspielen - praktisch, um die Darstellung zu prüfen, ohne auf den passenden echten Betriebszustand warten zu müssen.'
+    text: 'Über die Simulation (Doppelpfeil-Ansicht) lassen sich Heiz-, Kühl-, Warmwasser-, Standby- und Abtaubetrieb mit festen Beispielwerten durchspielen - praktisch, um die Darstellung zu prüfen, ohne auf den passenden echten Betriebszustand warten zu müssen. (Abtaubetrieb: die Anlage kehrt kurz den Kältekreislauf um, um Reif vom Außengerät zu schmelzen - normal bei Frost, keine Störung.)'
   }
 ];
 

@@ -94,8 +94,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.5.2';
+    private const NEWS_VERSION = '0.5.3';
     private const NEWS_ITEMS = [
+        'Einführungs-Tour um vier fachlich von HeishaMon geprüfte Erklärungen ergänzt: Verdichterfrequenz, ΔT zwischen Vor-/Rücklauf, Unterschied COP vs. Arbeitszahl, was Abtaubetrieb technisch bedeutet.',
         '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
