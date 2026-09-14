@@ -331,7 +331,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'items' => [
                 ['type' => 'Label', 'caption' => 'Detaillierte Verlaufsansicht für PV, Batterie, Netz, Wallbox und weitere Reiter - inklusive Börsenpreis-Überlagerung und Jahresvergleich.'],
                 ['type' => 'Label', 'caption' => 'Der Nutzen: tief in die eigenen Erzeugungs-/Verbrauchsdaten einsteigen, ohne eigene Diagramme zu bauen - Reiter ohne passende Datenquelle blenden sich automatisch aus.'],
-                ['type' => 'Label', 'caption' => 'Die Geräte kommen automatisch von InverterHub/MeterHub, der Börsenpreis optional von NRGSpotPrice oder Tibber. NRGDashboardTile zeigt ergänzend den kompletten Energiefluss als eine einzige Kachel.'],
+                ['type' => 'Label', 'caption' => 'Die Geräte kommen automatisch von InverterHub/MeterHub, der Börsenpreis optional vom Modul „Börsenpreis" oder Tibber. NRGDashboardTile zeigt ergänzend den kompletten Energiefluss als eine einzige Kachel.'],
                 ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckPurposeIntro($id);'],
             ],
         ];
