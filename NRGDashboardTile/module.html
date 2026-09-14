@@ -1415,6 +1415,8 @@ function resolveStyle(fn) {
 // direkt von dieser Reihenfolge ab; wurde sie ignoriert, landete Netz an
 // einer völlig anderen Position als bei InverterHub (genau der gemeldete
 // Unterschied "Netz unten-rechts statt links").
+// Ausnahme fuer reine Erzeugungsparks ohne 'house'-Geraet: siehe hasHouse-
+// Weiche in buildItems().
 const LEAD_ORDER = ['pv', 'battery'];
 const TAIL_ORDER = ['grid'];
 
@@ -1425,6 +1427,17 @@ const TAIL_ORDER = ['grid'];
 const LABEL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 function buildItems(devices) {
+  // Reine Erzeugungsparks ohne eigenen Hausverbrauch (14.09.2026, Solarpark
+  // Hofweier: Dietmar "Netzeinspeisung oben in der Mitte waere natuerlicher"):
+  // ohne 'house'-Geraet ist Netz nicht "der Rest, der uebrig bleibt" wie bei
+  // einer Heiminstallation, sondern der eigentliche Zweck der Anlage - dann
+  // wandert Netz an die erste (= oben mittige) statt letzte Position. Bei
+  // vorhandenem 'house'-Geraet bleibt es exakt bei der InverterHub-Konvention
+  // (27.07.2026) - siehe Kommentar unten.
+  const hasHouse = devices.some(d => d.function === 'house');
+  const leadOrder = hasHouse ? LEAD_ORDER : ['grid', ...LEAD_ORDER];
+  const tailOrder = hasHouse ? TAIL_ORDER : [];
+
   const items = devices
     .filter(d => d.function !== 'house')
     .map(d => {
@@ -1472,9 +1485,9 @@ function buildItems(devices) {
   // Innerhalb jeder Funktionsgruppe nach Label sortieren, statt die
   // Discovery-Reihenfolge des Backends direkt zu uebernehmen.
   const byLabel = (a, b) => LABEL_COLLATOR.compare(a.label, b.label);
-  const lead = LEAD_ORDER.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
-  const tail = TAIL_ORDER.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
-  const middleItems = items.filter(i => !LEAD_ORDER.includes(i.function) && !TAIL_ORDER.includes(i.function));
+  const lead = leadOrder.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
+  const tail = tailOrder.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
+  const middleItems = items.filter(i => !leadOrder.includes(i.function) && !tailOrder.includes(i.function));
   const middleFunctions = [...new Set(middleItems.map(i => i.function))];
   const middle = middleFunctions
     .map(fn => middleItems.filter(i => i.function === fn).sort(byLabel))
