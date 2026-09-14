@@ -1152,6 +1152,13 @@ const ICONS = {
   house(g) {
     g.appendChild(el('polygon', { points: '0,-15 17,-1 17,15 -17,15 -17,-1', 'data-hollow': '1' }));
   },
+  // Rechnerischer Saldo statt Hausverbrauch (14.09.2026, Solarpark: ohne
+  // 'house'-Geraet ist die Mittelpille kein reales Haus, sondern nur
+  // pv-grid+bat als Differenz) - Delta-Dreieck als international
+  // gelaeufiges Symbol fuer eine berechnete Differenz.
+  delta(g) {
+    g.appendChild(el('polygon', { points: '0,-15 15,13 -15,13', 'data-hollow': '1', 'stroke-linejoin': 'round' }));
+  },
   battery(g, socPct) {
     g.appendChild(el('rect', { x: -20, y: -11, width: 37, height: 22, rx: 3, 'data-hollow': '1' }));
     g.appendChild(el('rect', { x: 17, y: -5.5, width: 5, height: 11, rx: 1.3, stroke: 'none' }));
@@ -2139,6 +2146,11 @@ function updateOuterNode(refs, item) {
   refs.stale = !!item.stale;
   refs.active = active;
   renderValueDisplay(refs);
+  // Sehr grosse Werte (14.09.2026, Solarpark: mehrstellige MW-Summen bei
+  // Sammelzaehlern) liefen bei fester Schriftgroesse ueber den Kreisrand
+  // hinaus - dieselbe Breitenanpassung wie bei Name/Untertitel (siehe
+  // fitTextWidth() oben), nur fuer die Wertzeile.
+  fitTextWidth(refs.valText, 9);
 
   // SOC-Fuellstand (30.08.2026, Dietmar: "wenn Du den Kreis beim Speicher
   // von unten auffuellst, waere es nur konsequent, das bei Auto-/Wallbox-
@@ -2559,8 +2571,14 @@ let LEVEL_BUSY = false;    // waehrend einer Morph-Animation keine zweite starte
 function restoreCenterForLevel1() {
   const centerG = document.getElementById('node-center');
   const nm = document.getElementById('lbl-center-name');
+  // Kein echtes 'house'-Geraet (14.09.2026, Solarpark Hofweier: Dietmar
+  // "Haus hat in der Pille nichts verloren, es geht um die rechnerische
+  // Differenz") - dann heisst die Mittelpille "Saldo" statt "Haus" und
+  // traegt das Delta-Symbol statt des Haussymbols, siehe houseW-Berechnung
+  // in handleMessage() (pv-grid+bat-Naeherung ohne echtes Geraet dahinter).
+  const hasHouse = LEVEL1_DEVICES.some(x => x.function === 'house');
   if (nm) {
-    nm.textContent = 'Haus';
+    nm.textContent = hasHouse ? 'Haus' : 'Saldo';
     // Fund 10.09.2026 (Dietmar: "'Haus' brauchst Du nicht so zu ziehen") -
     // fitTextWidth() setzt bei einem LANGEN Namen (z.B. "Küche & Haushalt")
     // ein festes textLength-Attribut, das den Text auf genau diese Breite
@@ -2568,12 +2586,12 @@ function restoreCenterForLevel1() {
     // Zurueckwechseln auf Ebene 1 stehen und streckte das viel kuerzere
     // "Haus" auf die alte, groessere Breite. fitTextWidth() selbst entfernt
     // beide Attribute immer zuerst und setzt sie nur bei tatsaechlicher
-    // Ueberbreite neu - fuer "Haus" (und jeden anderen kurzen Namen) bleibt
-    // es beim reinen Loeschen.
+    // Ueberbreite neu - fuer "Haus"/"Saldo" (und jeden anderen kurzen
+    // Namen) bleibt es beim reinen Loeschen.
     fitTextWidth(nm, 33);
   }
   if (centerG) { centerG.classList.remove('can-go-up'); }
-  setCenterIcon(null);
+  setCenterIcon(hasHouse ? null : 'delta');
   renderLevelBar();
 }
 
@@ -2753,6 +2771,9 @@ function renderLevelView() {
   // (fitTextWidth() bei jedem updateOuterNode()), fuer den NAMEN DER
   // MITTELPILLE selbst (hier gesetzt) fehlte der Aufruf bislang komplett.
   if (nm) { fitTextWidth(nm, 33, chipLayout.hw, chipLayout.hh); }
+  // Sehr grosse Sammelzaehler-Werte (14.09.2026, Solarpark) ebenso an die
+  // Pillenbreite anpassen, nicht nur den Namen.
+  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
   const autRing = document.querySelector('#node-center .node-autarky-ring');
   if (autRing) { autRing.style.display = 'none'; }
   if (items.length === 0) {
@@ -3320,6 +3341,9 @@ function handleMessage(raw) {
   const chipLayout = computeLayout(items.length);
   LAST_CHIP = chipLayout;
   layoutCenterChip(chipLayout.hw, chipLayout.hh);
+  // Sehr grosse Werte (14.09.2026, Solarpark: mehrstellige MW-Summen) ebenso
+  // an die tatsaechliche Pillenbreite anpassen, nicht nur an DESIGN_R.
+  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
 
   // Autarkiegrad-Ringsegment - Bogenlaenge = tatsaechlicher Umfang der
   // Pille (identische Formel wie pillPointPair()s perim2, siehe dort),
