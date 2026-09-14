@@ -79,8 +79,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.2';
+    private const NEWS_VERSION = '0.2.3';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Heim-Wärmepumpe) verzerrte bisher Tagesansicht und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
         'Architektur an NRGDashboardPVMonitor angeglichen: Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht laufen jetzt rein clientseitig (kein Nachladen bei jedem Ansichtswechsel mehr), plus wahlweise Highcharts oder ECharts als Zeichen-Engine (Formular "Darstellung").',
@@ -104,6 +105,9 @@ class NRGDashboardWPMonitor extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026) - einmalig dismissible, nicht versioniert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
         // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
         // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
@@ -209,6 +213,10 @@ class NRGDashboardWPMonitor extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
@@ -238,6 +246,39 @@ class NRGDashboardWPMonitor extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Zeigt Verlauf und Kennzahlen einer Wärmepumpe - elektrische/thermische Leistung, Vorlauf/Rücklauf, Außentemperatur - als Tages- bis Jahresansicht, wahlweise mit Highcharts oder ECharts.'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: Effizienz und Betriebsverhalten der Wärmepumpe über die Zeit verstehen, ohne selbst Diagramme aus den Rohdaten bauen zu müssen.'],
+                ['type' => 'Label', 'caption' => 'Die Daten liefert HeishaMon oder WPHub über den gemeinsamen "heatpump"-Vertrag - fehlt eines davon, entfallen nur einzelne Kennzahlen, nicht die ganze Kachel. NRGDashboardHeatSchema zeigt ergänzend den Aufbau der Anlage als Prinzipschema.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     private function newsBanner(): ?array

@@ -27,8 +27,9 @@ class NRGDashboardTopology extends IPSModule
     // (versionsscharf dismissible) + Forum-Hinweis (einmalig dismissible) +
     // Versionszeile im Doku-Panel. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung an diesem Modul erhoehen.
-    private const NEWS_VERSION = '0.6.1';
+    private const NEWS_VERSION = '0.6.2';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: Verbund-Gesundheit als Stern-Topologie um die EMS-Instanz - Partnermodule farbig nach Verbindungsstatus.',
     ];
@@ -45,6 +46,9 @@ class NRGDashboardTopology extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026) - einmalig dismissible, nicht versioniert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('PartnerNamesCache', '[]');
 
@@ -346,6 +350,10 @@ class NRGDashboardTopology extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
@@ -375,6 +383,39 @@ class NRGDashboardTopology extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Zeigt den Gesundheitszustand aller installierten NRG-Stack-Module auf einen Blick, radial um das EMS gruppiert - je Instanz oder Modul-Cluster eine Statusfarbe.'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: sofort erkennen, ob irgendein Partnermodul nicht antwortet oder fehlt, statt jede Instanz einzeln durchzuklicken.'],
+                ['type' => 'Label', 'caption' => 'Der Status kommt vom EMS (bei genau einer installierten Instanz automatisch erkannt). NRGDashboardTile/Map zeigen ergänzend den eigentlichen Energiefluss statt nur den Gesundheitszustand.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     /**

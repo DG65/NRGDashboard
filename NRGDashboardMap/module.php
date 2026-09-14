@@ -32,8 +32,9 @@ class NRGDashboardMap extends IPSModule
     // 30.07.2026) + Doku-Panel mit dauerhafter Versionszeile + Forum-Hinweis
     // (einmalig dismissible). NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.7.1';
+    private const NEWS_VERSION = '0.7.2';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Karte tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Neu: Geräte werden jetzt nach Kategorie geclustert dargestellt (wie die Verbund-Gesundheit-Kachel) - deutlich übersichtlicher bei mehreren Netzzählern/Wallboxen/Fahrzeugen.',
         'Neu: alle MeterHub-Funktionen erscheinen jetzt als eigener Knoten (vorher nur Netz/Hausverbrauch, andere Verbraucher fielen still raus).',
@@ -64,6 +65,9 @@ class NRGDashboardMap extends IPSModule
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026) - einmalig dismissible, nicht versioniert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('CategoryCache', '{}');
 
@@ -226,6 +230,10 @@ class NRGDashboardMap extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
@@ -255,6 +263,39 @@ class NRGDashboardMap extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Stellt denselben Gerätebestand wie die NRGDashboard-Hauptkachel als räumliche 3D-Karte dar, nach Kategorie gruppiert (PV, Batterie, Netz, Verbraucher, Wallbox, Fahrzeug).'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: gerade bei vielen gleichartigen Geräten (mehrere Netzzähler, Wallboxen, Fahrzeuge) bleibt die Karte übersichtlich, wo die flache Energiefluss-Kachel schnell unübersichtlich würde.'],
+                ['type' => 'Label', 'caption' => 'Ergänzend zeigt NRGDashboardTile denselben Energiefluss als klassische Kachel, NRGDashboardTopology die Gesundheit des gesamten NRG-Stack-Verbunds.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMAP_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     private function newsBanner(): ?array

@@ -62,8 +62,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.29';
+    private const NEWS_VERSION = '0.9.30';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was NRGDashboard tut und welchen Nutzen es stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Netzzähler aus MeterHub wurden mit vertauschtem Vorzeichen gelesen - MeterHub zählt "+ = Bezug", der Energiefluss "+ = Einspeisung". Bezug und Einspeisung (samt Kosten/Erlös, Tagesbilanz und Vortageswert) erschienen dadurch vertauscht, sofern der Zähler nicht zufällig per "Leistung invertieren" gegen die MeterHub-Konvention gedreht war. Jetzt rechnet die Kachel MeterHub-Netzwerte um wie das PV-Monitoring; eine InverterHub-Ersatzquelle behält ihr eigenes Vorzeichen. Wer "Leistung invertieren" am MeterHub-Netzzähler nur als Ausgleich gesetzt hatte, muss es jetzt abschalten.',
         'Neu: der Netzknoten unterscheidet in der Kostenanzeige jetzt Bezug und Einspeisung - Bezug erscheint als Kosten ("−x,xx €/h") zum aktuellen Strompreis, Einspeisung als Erlös ("+x,xx €/h") zur Einspeisevergütung. Die Vergütung wird im Formular unter "Einspeisevergütung" in ct/kWh eingetragen; ohne Eintrag zeigt der Knoten bei Einspeisung einfach die Leistung (bisher wurde Einspeisung fälschlich mit dem Bezugspreis als Kosten angezeigt).',
         'Fix: gab es mehr als eine Tibber-Grid-Rewards-Instanz (z. B. zusätzlich eine abgeschaltete Demo-Instanz), fand die Kachel Tibber nicht automatisch - der Netzknoten zeigte dann keinen aktuellen Strompreis und wechselte nie auf die Kostenanzeige. Jetzt genügt es, dass genau eine davon aktiv ist.',
@@ -153,6 +154,12 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
         $this->RegisterAttributeInteger('LastDiscoveryTs', 0);
         $this->RegisterAttributeString('SeenNews', '');
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026, EMS/Dietmar: Praxistest-Auslöser war Sepps Rückmeldung
+        // "er wusste am Anfang nicht was er damit machen kann") - einmalig
+        // dismissible, NICHT versioniert wie das News-Panel, da sich der Zweck
+        // eines Moduls nicht mit jedem Release ändert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         // Gestern-Vergleich als Geisterring (28.08.2026, Dietmar: "alles
         // direkt umsetzen") - je powerID der zuletzt ermittelte Wert von
         // "gestern zur gleichen Uhrzeit" + Abrufzeitpunkt, damit
@@ -517,6 +524,10 @@ class NRGDashboardTile extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
@@ -754,6 +765,39 @@ class NRGDashboardTile extends IPSModule
             unset($el);
         };
         $walk($form['elements']);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'NRGDashboard zeigt den kompletten Energiefluss deiner Anlage - PV, Batterie, Netz, Hausverbrauch, Wallboxen und weitere Verbraucher - live als eine einzige, animierte Kachel.'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: auf einen Blick sehen, woher der Strom gerade kommt und wohin er fließt, ohne selbst eine einzige Variable verknüpfen zu müssen - alle Geräte werden automatisch über die Verträge der Partnermodule gefunden.'],
+                ['type' => 'Label', 'caption' => 'Ergänzend zeigt NRGDashboardMap dieselben Geräte räumlich als 3D-Karte, NRGDashboardTopology die Gesundheit des gesamten NRG-Stack-Verbunds.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASH_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     /**

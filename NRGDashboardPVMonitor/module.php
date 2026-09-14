@@ -74,8 +74,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.9';
+    private const NEWS_VERSION = '0.10.10';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
         'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
         'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
@@ -129,6 +130,9 @@ class NRGDashboardPVMonitor extends IPSModule
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026) - einmalig dismissible, nicht versioniert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         // Jahresvergleich-Konfiguration (Dietmar, 31.07.2026): spezifischer
         // erwarteter Jahresertrag + Anlagenleistung (auto aus Prognose ODER
         // manuell) + 12 Monatsanteile in % - siehe YearCompareConfig().
@@ -277,6 +281,10 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
@@ -306,6 +314,39 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Detaillierte Verlaufsansicht für PV, Batterie, Netz, Wallbox und weitere Reiter - inklusive Börsenpreis-Überlagerung und Jahresvergleich.'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: tief in die eigenen Erzeugungs-/Verbrauchsdaten einsteigen, ohne eigene Diagramme zu bauen - Reiter ohne passende Datenquelle blenden sich automatisch aus.'],
+                ['type' => 'Label', 'caption' => 'Die Geräte kommen automatisch von InverterHub/MeterHub, der Börsenpreis optional von NRGSpotPrice oder Tibber. NRGDashboardTile zeigt ergänzend den kompletten Energiefluss als eine einzige Kachel.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     private function newsBanner(): ?array

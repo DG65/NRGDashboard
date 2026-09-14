@@ -81,8 +81,9 @@ class NRGDashboardForecast extends IPSModule
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.3';
+    private const NEWS_VERSION = '0.2.4';
     private const NEWS_ITEMS = [
+        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Quellmodule werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - eine zusätzliche, abgeschaltete Test- oder Demo-Instanz blockierte die Erkennung bisher komplett.',
         'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
         'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) verzerrte bisher den "Ist"-Vergleich zur Prognose - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
@@ -114,6 +115,9 @@ class NRGDashboardForecast extends IPSModule
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
+        // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
+        // 14.09.2026) - einmalig dismissible, nicht versioniert.
+        $this->RegisterAttributeBoolean('PurposeIntroGone', false);
         // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
         // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
         // Haken ausgeblendet werden kann") - je Instanz einmalig, WebFront-
@@ -916,6 +920,10 @@ class NRGDashboardForecast extends IPSModule
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
         }
+        $purposeIntro = $this->PurposeIntro();
+        if ($purposeIntro !== null) {
+            array_unshift($form['elements'], $purposeIntro);
+        }
 
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
@@ -945,6 +953,39 @@ class NRGDashboardForecast extends IPSModule
             }
         }
         unset($el);
+    }
+
+    /**
+     * "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0) -
+     * ganz oben, VOR dem News-Panel, einmalig dismissible.
+     */
+    private function PurposeIntro(): ?array
+    {
+        if ($this->ReadAttributeBoolean('PurposeIntroGone')) {
+            return null;
+        }
+        return [
+            'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
+            'caption' => '👋  Wozu dieses Modul?',
+            'items' => [
+                ['type' => 'Label', 'caption' => 'Zeigt die PV-Erzeugungs- und Lastprognose im Vergleich zu den tatsächlich gemessenen Werten - als Diagramm über mehrere Tage.'],
+                ['type' => 'Label', 'caption' => 'Der Nutzen: auf einen Blick sehen, wie gut die Prognose zutrifft und was in den nächsten Stunden/Tagen an Erzeugung bzw. Verbrauch zu erwarten ist - ohne die Prognose-Rohdaten selbst auswerten zu müssen.'],
+                ['type' => 'Label', 'caption' => 'Die Prognosewerte liefert das Modul NRGPrognose (PV-/Lastprognose-Instanz) - bei genau einer installierten Instanz automatisch erkannt.'],
+                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHFC_AckPurposeIntro($id);'],
+            ],
+        ];
+    }
+
+    public function AckPurposeIntroApply(): void
+    {
+        $this->WriteAttributeBoolean('PurposeIntroGone', true);
+        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
+    }
+
+    public function AckPurposeIntro(): void
+    {
+        $this->AckPurposeIntroApply();
+        $this->propagateDismiss('AckPurposeIntroApply');
     }
 
     private function newsBanner(): ?array
