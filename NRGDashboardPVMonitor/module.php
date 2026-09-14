@@ -321,15 +321,56 @@ class NRGDashboardPVMonitor extends IPSModule
         return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
     }
 
-    public function AckNews(): void
+    // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
+    // Geschwister-Instanzen") - fuer die Geschwistersuche unten, NICHT
+    // fuer die Discovery anderer Verbund-Module (dafuer stehen eigene
+    // GUID-Konstanten je Partnermodul).
+    private const SELF_MODULE_GUID = '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}';
+
+    /**
+     * Ruft dieselbe (parameterlose) Methode auf jeder anderen Instanz
+     * DESSELBEN Kachel-Moduls auf - "Was ist Neu"/Review-Hinweis gelten
+     * pro Modul, nicht pro Instanz, ein Nutzer mit mehreren Instanzen
+     * (z. B. Wohnhaus + Demo) soll sie nur einmal bestaetigen muessen.
+     * $propagate=false auf der Geschwister-Seite verhindert, dass diese
+     * ihrerseits wieder alle anderen (inkl. uns) anstoesst - keine
+     * Rekursion, ein Durchlauf pro Klick.
+     */
+    private function propagateDismiss(string $method): void
+    {
+        foreach (@IPS_GetInstanceListByModuleID(self::SELF_MODULE_GUID) as $sib) {
+            $sib = (int) $sib;
+            if ($sib === $this->InstanceID || !@IPS_InstanceExists($sib)) {
+                continue;
+            }
+            $fn = 'NRGDASHPVMON_' . $method;
+            if (function_exists($fn)) {
+                @call_user_func($fn, $sib, false);
+            }
+        }
+    }
+
+    public function AckNews(bool $propagate = true): void
     {
         $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
         $this->UpdateFormField('NewsPanel', 'visible', false);
+        // Verbund-Muster "geteiltes Ausblenden ueber Geschwister-Instanzen"
+        // (SUITE.md, 14.09.2026, EMS/Dietmar): mehrere Instanzen desselben
+        // Kachel-Moduls sollen "Was ist Neu"/den Store-Review-Hinweis nur
+        // einmal zeigen, nicht je Instanz einzeln. $propagate=false
+        // verhindert Endlosschleifen, wenn eine Geschwister-Instanz selbst
+        // gerade propagiert (siehe propagateDismiss()).
+        if ($propagate) {
+            $this->propagateDismiss('AckNews');
+        }
     }
 
-    public function DismissReviewHint(): void
+    public function DismissReviewHint(bool $propagate = true): void
     {
         $this->WriteAttributeString('ReviewHintDismissed', '1');
+        if ($propagate) {
+            $this->propagateDismiss('DismissReviewHint');
+        }
     }
 
     /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
