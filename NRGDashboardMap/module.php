@@ -924,6 +924,14 @@ function renderMap() {
     if (!byCat[n.category]) { byCat[n.category] = { category: n.category, members: [] }; groups.push(byCat[n.category]); }
     byCat[n.category].members.push(n);
   });
+  // Natuerliche Sortierung nach Label (14.09.2026, Solarpark-Fund am
+  // Energiefluss-Muster von NRGDashboardTile uebernommen): viele
+  // gleichartige Instanzen landeten sonst in Discovery-Reihenfolge
+  // durcheinander im Cluster.
+  var labelCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  groups.forEach(function (grp) {
+    grp.members.sort(function (a, b) { return labelCollator.compare(a.label, b.label); });
+  });
 
   var g = groups.length;
   groups.forEach(function (grp, i) {

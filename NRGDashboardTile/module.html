@@ -1418,6 +1418,12 @@ function resolveStyle(fn) {
 const LEAD_ORDER = ['pv', 'battery'];
 const TAIL_ORDER = ['grid'];
 
+// Natuerliche Sortierung nach Label (14.09.2026, Solarpark-Fund: 24
+// gleichartige WR-Knoten standen in Discovery-/Instanz-ID-Reihenfolge
+// durcheinander) - numeric:true sorgt dafuer, dass z.B. "WR 4.1.2.3" vor
+// "WR 4.1.10.1" einsortiert wird statt lexikografisch danach.
+const LABEL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 function buildItems(devices) {
   const items = devices
     .filter(d => d.function !== 'house')
@@ -1463,9 +1469,16 @@ function buildItems(devices) {
       };
     });
 
-  const lead = LEAD_ORDER.map(fn => items.filter(i => i.function === fn)).flat();
-  const tail = TAIL_ORDER.map(fn => items.filter(i => i.function === fn)).flat();
-  const middle = items.filter(i => !LEAD_ORDER.includes(i.function) && !TAIL_ORDER.includes(i.function));
+  // Innerhalb jeder Funktionsgruppe nach Label sortieren, statt die
+  // Discovery-Reihenfolge des Backends direkt zu uebernehmen.
+  const byLabel = (a, b) => LABEL_COLLATOR.compare(a.label, b.label);
+  const lead = LEAD_ORDER.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
+  const tail = TAIL_ORDER.map(fn => items.filter(i => i.function === fn).sort(byLabel)).flat();
+  const middleItems = items.filter(i => !LEAD_ORDER.includes(i.function) && !TAIL_ORDER.includes(i.function));
+  const middleFunctions = [...new Set(middleItems.map(i => i.function))];
+  const middle = middleFunctions
+    .map(fn => middleItems.filter(i => i.function === fn).sort(byLabel))
+    .flat();
   return [...lead, ...middle, ...tail];
 }
 
