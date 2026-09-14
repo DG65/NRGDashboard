@@ -260,46 +260,22 @@
 
   /* EMS-Begruendung (03.09.2026, Dietmar: "was und warum das EMS schaltet")
      - kleines, dezentes Badge unten in der Kachel, nur sichtbar wenn eine
-     EMS-Instanz EMS_GetCurrentDecision() liefert. Fund 14.09.2026 (Dietmar:
-     "die Zeile geht ueber die gesamte Breite und ueberdeckt die Punkte links
-     und rechts") - links/rechts 8px spannte das Badge ueber die komplette
-     Kachelbreite und legte sich damit über jeden Aussenknoten, der zufaellig
-     nahe am unteren Rand liegt. Ein fester zentrierter Breitenrabatt (erster
-     Versuch) loeste das nur teilweise - bei einer schmal gezogenen Kachel
-     wachsen status-overlay/diag-badge in den Ecken relativ zur Breite staerker,
-     ein fixer Puffer reichte dann nicht mehr aus und das Badge ueberdeckte
-     genau diese beiden Ecken-Badges wieder. Jetzt spannt sich #emsDecision
-     weiterhin zwischen den beiden Ecken auf (kein fester Zentrum-Look mehr),
-     aber left/right werden per JS (positionEmsBadge(), siehe unten) aus den
-     TATSAECHLICH gerenderten Breiten von status-overlay/diag-badge berechnet
-     - passt sich dadurch bei jeder Kachelbreite automatisch an, statt einen
-     Erfahrungswert zu raten. */
+     EMS-Instanz EMS_GetCurrentDecision() liefert. Nach mehreren Anlaeufen
+     (14.09.2026, dynamische Positionierung/Breitendeckel) hat Dietmar
+     entschieden: die urspruengliche einfache Fassung war besser, es
+     brauchte nur zwei kleine Korrekturen - 10px weiter nach rechts (mehr
+     Abstand zum status-overlay links) und 20px schmaler (mehr Abstand zum
+     diag-badge rechts). Keine JS-Positionierung mehr noetig. */
   #emsDecision {
-    /* bottom:4px + height:26px 1:1 wie status-overlay/diag-badge (14.09.2026,
-       zweiter Nachtrag: Dietmar "Text steht nicht auf der gleichen Hoehe wie
-       die beiden anderen Badges") - vorher bottom:8px mit auto-Hoehe liess das
-       Badge sichtbar hoeher/dicker wirken als seine beiden Nachbarn.
-       Dritter Nachtrag (Dietmar: "das alles ist immer noch zu breit"): links
-       UND rechts gleichzeitig zu setzen zwingt eine absolut positionierte Box
-       per CSS-Spezifikation auf exakt die Breite der Luecke dazwischen, egal
-       wie kurz der Inhalt ist - deshalb wirkte das Badge wie ein
-       durchgehender Balken. Jetzt setzt positionEmsBadge() nur noch `left`
-       plus `max-width` als Deckel (siehe dort) - ohne gesetztes `right`
-       schrumpft die Box auf ihre tatsaechliche Inhaltsbreite. */
-    position: absolute; left: 66px; bottom: 4px; height: 26px; z-index: 5;
-    display: none; align-items: center; gap: 6px;
-    font-size: 11px; line-height: 1.3; padding: 0 10px; border-radius: 13px;
+    position: absolute; left: 18px; right: 28px; bottom: 8px; z-index: 5;
+    display: none; align-items: baseline; gap: 6px;
+    font-size: 11px; line-height: 1.3; padding: 5px 9px; border-radius: 8px;
     background: rgba(127,135,145,.14); backdrop-filter: blur(2px);
     pointer-events: none; overflow: hidden;
   }
-  #emsDecision.show { display: inline-flex; }
-  #emsDecision .mode { font-weight: 700; white-space: nowrap; flex: 0 0 auto; }
-  /* min-width:0 ist hier das eigentlich Wichtige (Dietmar: "Badge ist noch
-     etwas zu breit") - ohne das weigert sich ein Flex-Kind, unter seine
-     Inhaltsbreite zu schrumpfen (Flexbox-Default min-width:auto), das Badge
-     wuchs dadurch trotz gesetztem left/right ueber den berechneten Platz
-     hinaus statt den Begruendungstext per Ellipsis zu kuerzen. */
-  #emsDecision .reason { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 1 auto; min-width: 0; }
+  #emsDecision.show { display: flex; }
+  #emsDecision .mode { font-weight: 700; white-space: nowrap; }
+  #emsDecision .reason { opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .node-price-spark { fill: none; stroke: var(--nc, var(--grey)); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.8; }
 
@@ -3229,45 +3205,6 @@ window.addEventListener('resize', function () {
   if (lastRawPayload !== null) { handleMessage(lastRawPayload); }
 });
 
-// EMS-Begruendungs-Badge zwischen den beiden Ecken-Badges einpassen
-// (14.09.2026, zweiter Fund nach dem ersten Fix: bei schmal gezogener
-// Kachel wachsen status-overlay/diag-badge relativ zur Breite staerker als
-// ein fester Puffer-Wert es vorhersehen konnte, das Badge ueberdeckte sie
-// dann wieder). Liest die TATSAECHLICH gerenderte Breite beider Ecken-
-// Badges aus, statt einen Erfahrungswert zu raten - passt sich dadurch bei
-// jeder Kachelbreite automatisch an. Laeuft nach jedem handleMessage()
-// (auch beim Resize-Handler oben, der ohnehin die komplette Kachel neu
-// aufbaut) neu, da sich Kachelbreite und Ecken-Badge-Inhalte jederzeit
-// aendern koennen.
-function positionEmsBadge() {
-  const badge = document.getElementById('emsDecision');
-  if (!badge.classList.contains('show')) { return; }
-  const GAP = 6;
-  const wrapRect = document.body.getBoundingClientRect();
-
-  const statusEl = document.getElementById('status');
-  const statusRight = statusEl ? statusEl.getBoundingClientRect().right : wrapRect.left + 4;
-  const left = Math.max(4, statusRight - wrapRect.left + GAP);
-  badge.style.left = left + 'px';
-
-  const diagEl = document.getElementById('diagBadge');
-  const diagVisible = diagEl && diagEl.classList.contains('show');
-  const diagLeft = diagVisible ? diagEl.getBoundingClientRect().left : wrapRect.right - 4;
-  const availableRight = Math.max(4, wrapRect.right - diagLeft + GAP);
-  // Obergrenze aus zwei Werten (Dietmar, dritter Nachtrag: "das alles ist
-  // immer noch zu breit") - reines Freiraum-Ausfuellen reichte nicht: die
-  // EMS-Begruendung ist oft ein langer Satz, Ellipsis kappt ihn dann exakt
-  // an der verfuegbaren Breite - das Badge WIRKTE dadurch weiterhin ueber
-  // die ganze Luecke gespannt, obwohl es technisch schon schrumpfen konnte.
-  // Ein fixer Deckel (BADGE_MAX_W) haelt es tatsaechlich klein/dezent wie
-  // urspruenglich beabsichtigt ("kleines, dezentes Badge") - der Rest des
-  // Begruendungstexts bleibt als title-Tooltip erreichbar (siehe
-  // handleMessage()). Bei sehr schmaler Kachel gewinnt der verfuegbare
-  // Freiraum, falls der sogar unter dem Deckel liegt.
-  const BADGE_MAX_W = 190;
-  badge.style.maxWidth = Math.max(20, Math.min(BADGE_MAX_W, wrapRect.width - left - availableRight)) + 'px';
-}
-
 function handleMessage(raw) {
   lastRawPayload = raw;
   updateViewBox();
@@ -3307,7 +3244,6 @@ function handleMessage(raw) {
         + (d.emsDecision.reason ? ' – ' + d.emsDecision.reason : '')
         + (d.emsDecision.source ? ' (Quelle: ' + d.emsDecision.source + ')' : '');
       emsBadge.classList.add('show');
-      positionEmsBadge();
     } else {
       emsBadge.classList.remove('show');
     }
