@@ -975,41 +975,72 @@ class NRGDashboardForecast extends IPSModule
      * ihrerseits wieder alle anderen (inkl. uns) anstoesst - keine
      * Rekursion, ein Durchlauf pro Klick.
      */
-    private function propagateDismiss(string $method): void
+    /**
+     * Ruft eine reine "Uebernehmen"-Methode (kein $propagate-Flag mehr,
+     * MeterHub/EMS-Verfeinerung 14.09.2026: getrennte Funktionen statt
+     * Prozessmerker schliessen Ping-Pong STRUKTURELL aus, nicht nur durch
+     * Konvention) auf jeder anderen Instanz DESSELBEN Kachel-Moduls auf.
+     * try/catch(\Throwable) statt @ (EMS/MeterHub-Fund): @ haelt keinen
+     * Fatal Error auf - eine defekte Geschwister-Instanz durfte sonst
+     * nicht die ganze Kette (und die eigene Aktion) mitreissen.
+     */
+    private function propagateDismiss(string $applyMethod): void
     {
         foreach (@IPS_GetInstanceListByModuleID(self::SELF_MODULE_GUID) as $sib) {
             $sib = (int) $sib;
             if ($sib === $this->InstanceID || !@IPS_InstanceExists($sib)) {
                 continue;
             }
-            $fn = 'NRGDASHFC_' . $method;
-            if (function_exists($fn)) {
-                @call_user_func($fn, $sib, false);
+            $fn = 'NRGDASHFC_' . $applyMethod;
+            if (!function_exists($fn)) {
+                continue;
+            }
+            try {
+                call_user_func($fn, $sib);
+            } catch (\Throwable $e) {
+                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
 
-    public function AckNews(bool $propagate = true): void
+    /**
+     * "Uebernehmen": setzt NUR den lokalen Zustand, propagiert NIE selbst -
+     * das ist genau das, was propagateDismiss() auf jeder Geschwister-
+     * Instanz aufruft. Oeffentlich, weil IPS Cross-Instanz-Aufrufe nur ueber
+     * die generierte Praefix-Funktion einer PUBLIC Methode erlaubt.
+     */
+    public function AckNewsApply(): void
     {
         $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
         $this->UpdateFormField('NewsPanel', 'visible', false);
-        // Verbund-Muster "geteiltes Ausblenden ueber Geschwister-Instanzen"
-        // (SUITE.md, 14.09.2026, EMS/Dietmar): mehrere Instanzen desselben
-        // Kachel-Moduls sollen "Was ist Neu"/den Store-Review-Hinweis nur
-        // einmal zeigen, nicht je Instanz einzeln. $propagate=false
-        // verhindert Endlosschleifen, wenn eine Geschwister-Instanz selbst
-        // gerade propagiert (siehe propagateDismiss()).
-        if ($propagate) {
-            $this->propagateDismiss('AckNews');
-        }
     }
 
-    public function DismissReviewHint(bool $propagate = true): void
+    /**
+     * "Was ist Neu" bestaetigen (Button) - Verbund-Muster "geteiltes
+     * Ausblenden ueber Geschwister-Instanzen" (SUITE.md, 14.09.2026,
+     * EMS/Dietmar): mehrere Instanzen desselben Kachel-Moduls sollen den
+     * Hinweis nur einmal zeigen, nicht je Instanz einzeln. Ruft AckNewsApply()
+     * lokal auf und propagiert an alle Geschwister - die rufen dort ebenfalls
+     * nur AckNewsApply() auf, nie AckNews() selbst, Ping-Pong ist damit
+     * strukturell ausgeschlossen (nicht nur per Laufzeit-Flag).
+     */
+    public function AckNews(): void
+    {
+        $this->AckNewsApply();
+        $this->propagateDismiss('AckNewsApply');
+    }
+
+    /** "Uebernehmen": siehe AckNewsApply() - nur lokaler Zustand, keine Propagation. */
+    public function DismissReviewHintApply(): void
     {
         $this->WriteAttributeString('ReviewHintDismissed', '1');
-        if ($propagate) {
-            $this->propagateDismiss('DismissReviewHint');
-        }
+    }
+
+    /** Store-Review-Hinweis wegklicken (Button) - siehe AckNews(). */
+    public function DismissReviewHint(): void
+    {
+        $this->DismissReviewHintApply();
+        $this->propagateDismiss('DismissReviewHintApply');
     }
 
     /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
