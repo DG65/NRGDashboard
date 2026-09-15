@@ -1000,6 +1000,7 @@ class NRGDashboardForecast extends IPSModule
                 ['type' => 'Label', 'caption' => 'Zeigt die PV-Erzeugungs- und Lastprognose im Vergleich zu den tatsächlich gemessenen Werten - als Diagramm über mehrere Tage.'],
                 ['type' => 'Label', 'caption' => 'Der Nutzen: auf einen Blick sehen, wie gut die Prognose zutrifft und was in den nächsten Stunden/Tagen an Erzeugung bzw. Verbrauch zu erwarten ist - ohne die Prognose-Rohdaten selbst auswerten zu müssen.'],
                 ['type' => 'Label', 'caption' => 'Die Prognosewerte liefert das Modul NRGPrognose (PV-/Lastprognose-Instanz) - bei genau einer installierten Instanz automatisch erkannt.'],
+                ['type' => 'Label', 'caption' => 'Basiert auf dem Prognose-Modul als Datenquelle - bitte nicht deinstallieren, wenn diese Kachel genutzt wird.'],
                 ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHFC_AckPurposeIntro($id);'],
             ],
         ];

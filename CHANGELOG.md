@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.12-beta.1 (2026-09-15)
+
+- NRGDashboardForecast: Hinweis im "Wozu dieses Modul?"-Panel ergänzt, dass die Kachel auf dem Prognose-Modul als Datenquelle basiert und dieses nicht deinstalliert werden sollte, solange die Kachel genutzt wird (spiegelbildlich zu Prognoses eigenem Hinweis auf NRGDashboard, abgestimmt nach einer Nutzerrückfrage im Forum, ob eines der beiden Module gelöscht werden könne).
+
 ## 0.9.11-beta.1 (2026-09-15)
 
 - Feedback-Panel jetzt 1:1 wie bei MeterHub aufgebaut: eigener "Zum Forums-Thread"-Knopf (Button mit `echo`+`link`) statt eines reinen Link-Text-Labels.
