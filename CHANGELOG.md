@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.10-beta.1 (2026-09-15)
+
+- Forum-Thread ist live: der bisherige GitHub-Verweis im Feedback-Panel aller 7 Module zeigt jetzt auf den echten [Symcon-Forum-Thread](https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394).
+
 ## 0.9.9-beta.1 (2026-09-14)
 
 - **Store-Checkliste Punkt 13:** `ResetTour()` gibt in allen 7 Modulen jetzt eine sichtbare Rückmeldung.

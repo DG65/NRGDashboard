@@ -62,8 +62,9 @@ class NRGDashboardTile extends IPSModule
     // gehoert (Ergebnis darf "nichts Relevantes" sein, aber die Pruefung ist
     // Pflicht). Kein Forum-Thread vorhanden (Modul noch nicht veroeffentlicht)
     // - Hinweis zeigt vorerst auf GitHub, Muster: ChargerHub vor Forum-Post.
-    private const NEWS_VERSION = '0.9.31';
+    private const NEWS_VERSION = '0.9.32';
     private const NEWS_ITEMS = [
+        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
         '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was NRGDashboard tut und welchen Nutzen es stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Netzzähler aus MeterHub wurden mit vertauschtem Vorzeichen gelesen - MeterHub zählt "+ = Bezug", der Energiefluss "+ = Einspeisung". Bezug und Einspeisung (samt Kosten/Erlös, Tagesbilanz und Vortageswert) erschienen dadurch vertauscht, sofern der Zähler nicht zufällig per "Leistung invertieren" gegen die MeterHub-Konvention gedreht war. Jetzt rechnet die Kachel MeterHub-Netzwerte um wie das PV-Monitoring; eine InverterHub-Ersatzquelle behält ihr eigenes Vorzeichen. Wer "Leistung invertieren" am MeterHub-Netzzähler nur als Ausgleich gesetzt hatte, muss es jetzt abschalten.',
@@ -141,7 +142,7 @@ class NRGDashboardTile extends IPSModule
         'Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, kachelfüllende Seite (Leistungsverlauf, Energiebilanz, alle Vertragsfelder inkl. Phasenwerte) - komplett automatisch aus den vorhandenen Verträgen, ohne zusätzliche Einrichtung.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
-    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+    private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
@@ -560,8 +561,8 @@ class NRGDashboardTile extends IPSModule
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
                 'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
-                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind im Forum-Thread willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::FORUM_URL],
                     ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASH_DismissReviewHint($id);'],
                 ],
             ];

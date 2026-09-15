@@ -94,8 +94,9 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.5.3';
+    private const NEWS_VERSION = '0.5.4';
     private const NEWS_ITEMS = [
+        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
         'Einführungs-Tour um vier fachlich von HeishaMon geprüfte Erklärungen ergänzt: Verdichterfrequenz, ΔT zwischen Vor-/Rücklauf, Unterschied COP vs. Arbeitszahl, was Abtaubetrieb technisch bedeutet.',
         '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
@@ -108,7 +109,7 @@ class NRGDashboardHeatSchema extends IPSModule
         'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
-    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard';
+    private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
@@ -492,8 +493,8 @@ class NRGDashboardHeatSchema extends IPSModule
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
                 'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
-                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind im Forum-Thread willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::FORUM_URL],
                     ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
                 ],
             ];

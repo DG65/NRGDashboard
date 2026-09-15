@@ -74,7 +74,7 @@ class NRGDashboardForecast extends IPSModule
         return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
     }
 
-    private const GITHUB_URL = 'https://github.com/DG65/NRGDashboard/issues';
+    private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
@@ -83,8 +83,9 @@ class NRGDashboardForecast extends IPSModule
     // dismissible, Version IN der Caption) + Doku-Panel mit dauerhafter
     // Versionszeile + GitHub-Hinweis. NEWS_VERSION bei jeder nutzersichtbaren
     // Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.5';
+    private const NEWS_VERSION = '0.2.6';
     private const NEWS_ITEMS = [
+        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
         '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
         '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
         'Fix: Quellmodule werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - eine zusätzliche, abgeschaltete Test- oder Demo-Instanz blockierte die Erkennung bisher komplett.',
@@ -956,8 +957,8 @@ class NRGDashboardForecast extends IPSModule
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
                 'caption' => '💬  Feedback im Symcon-Forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen sind willkommen. Noch kein Forum-Thread vorhanden (Modul noch nicht veröffentlicht), bitte vorerst über GitHub:'],
-                    ['type' => 'Label', 'link' => true, 'caption' => self::GITHUB_URL],
+                    ['type' => 'Label', 'caption' => '🧪 NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind im Forum-Thread willkommen:'],
+                    ['type' => 'Label', 'link' => true, 'caption' => self::FORUM_URL],
                     ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHFC_DismissReviewHint($id);'],
                 ],
             ];
