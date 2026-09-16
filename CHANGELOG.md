@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.17-beta.1 (2026-09-16)
+
+- PVMonitor: Der Strompreis-Reiter blieb bisher komplett unsichtbar, solange weder Tibber Grid Rewards noch NRG-Stack Börsenpreis installiert war - Nutzer wussten dadurch gar nicht, dass es das Feature gibt (Fund somm: "da fehlt mir wohl ein ganzes Modul"). Reiter ist jetzt immer sichtbar und zeigt ohne Preisquelle den bestehenden Hinweistext statt des Diagramms.
+
 ## 0.9.16-beta.1 (2026-09-16)
 
 - Tile: `collapseToSingleGrid()` berücksichtigt jetzt die "Anzeigen"-Einstellung bei mehreren Netzknoten-Kandidaten. Vorher konnte ein vom Nutzer ausgeblendetes, aber "echtzeitfähig" bewertetes InverterHub-Netzfeld den Primärknoten-Platz vor einer sichtbaren manuellen EVU-Zähler-Variable gewinnen - der gewählte Primärknoten fiel dann selbst der Sichtbarkeitsfilterung zum Opfer, die Kachel zeigte am Ende gar keine Netz-Bubble mehr (Fund sirkentucky, zwei InverterHub-Instanzen + manueller EVU-Zähler).

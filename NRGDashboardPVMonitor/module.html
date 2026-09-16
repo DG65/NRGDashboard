@@ -3679,7 +3679,17 @@
         solar: !!lastData.hasPv,
         mpp: !!(lastData.mpptKeys && lastData.mpptKeys.length),
         battery: !!(lastData.hasBat || lastData.hasSoc),
-        price: !!(lastData.hasTibber || lastData.hasSpot),
+        // Bewusste Ausnahme vom "Reiter ohne Datenquelle bleibt ausgeblendet"-
+        // Prinzip (Dietmar, 16.09.2026, nach somms "da fehlt mir wohl ein
+        // ganzes Modul"): ohne Tibber/Boersenpreis blieb der Reiter komplett
+        // unsichtbar, Nutzer wussten dadurch nicht einmal, dass es das
+        // Feature gibt bzw. wie leicht es nachzuruesten waere. Reiter bleibt
+        // also immer sichtbar; render() zeigt bei fehlender Quelle den
+        // bestehenden Hinweistext ("Keine Preiskurve verfuegbar - Tibber
+        // Grid Rewards oder NRG-Stack Boersenpreis installieren") statt des
+        // Diagramms - "data.price" unten faerbt den Reiter in diesem Fall
+        // ohnehin schon rot (tabWarn), das leitet zum Klicken an.
+        price: true,
         flow: !!lastData.hasEnergyFlow,
         balance: !!lastData.hasEnergyFlow,
         yearcompare: !!lastData.hasPv,
