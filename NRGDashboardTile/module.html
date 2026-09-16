@@ -1553,7 +1553,20 @@ function renderValueDisplay(refs) {
 }
 setInterval(() => {
   COST_TICKER_ON = !COST_TICKER_ON;
-  Object.values(nodeRefs).forEach(r => { if (r.isGrid) { renderValueDisplay(r); } });
+  Object.values(nodeRefs).forEach(r => {
+    if (!r.isGrid) { return; }
+    renderValueDisplay(r);
+    // renderValueDisplay() aendert nur den Textinhalt - ohne erneutes
+    // fitTextWidth() blieb die Breitenbeschraenkung vom letzten regulaeren
+    // updateOuterNode()-Durchlauf stehen: der laengere "€/h"-Text lief dann
+    // ungebremst breit, der kuerzere "W"-Text danach noch zusammengestaucht
+    // (Dietmars Fund, 16.09.2026 - "verzieht die Schrift ... in die Breite
+    // und wird dann wieder schmaeler"). fitTextWidth() selbst entfernt das
+    // Attribut zuerst und setzt es nur neu, wenn der aktuelle Text
+    // tatsaechlich zu breit ist - fuer den kurzen "W"-Text also implizit
+    // wieder komplett unbeschraenkt.
+    if (r.valText) { fitTextWidth(r.valText, 9); }
+  });
 }, 4000);
 
 let builtSig = null;

@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.15-beta.1 (2026-09-16)
+
+- Tile: Der periodische Kosten-Ticker am Netz-Knoten (wechselt alle 4 s zwischen Watt und €/h) rief nach dem Textwechsel `fitTextWidth()` nicht mehr auf - die Breitenbeschränkung blieb vom letzten regulären Update stehen, der längere „€/h“-Text lief dadurch unbeschränkt breit, der kürzere „W“-Text danach sichtbar zusammengestaucht (Dietmars Fund: "verzieht die Schrift ... in die Breite und wird dann wieder schmäler").
+
 ## 0.9.14-beta.1 (2026-09-16)
 
 - PVMonitor Strompreis-Reiter: Erklärtext für das rote Negativpreis-Band ergänzt - steht jetzt neben der Quellenangabe unter dem Diagramm ("rot hinterlegt: negativer Börsenpreis (§ 51 EEG, keine Einspeisevergütung)"), Dietmars Wunsch nach dem Label-Fix.
