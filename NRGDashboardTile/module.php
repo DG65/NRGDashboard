@@ -4438,9 +4438,25 @@ class NRGDashboardTile extends IPSModule
             $devices[$gridIdx[0]]['isPrimaryGrid'] = true;
             return $devices;
         }
-        $primary = $gridIdx[0];
+        // Vom Nutzer ausgeblendete Kandidaten duerfen den Primaerknoten nicht
+        // gewinnen (Fund sirkentucky, 16.09.2026): die "Anzeigen"-Einstellung
+        // greift erst spaeter in buildPayload() - lief die Auswahl hier ohne
+        // Ruecksicht darauf, konnte ein ausgeblendetes, aber "echtzeitfaehig"
+        // bewertetes Wechselrichter-Netzfeld (score +6) einer manuell
+        // eingetragenen, aber sichtbaren EVU-Variable (score +1) den Platz
+        // wegnehmen - der gewaehlte Primaerknoten fiel dann selbst der
+        // Sichtbarkeitsfilterung zum Opfer, und die Kachel zeigte am Ende gar
+        // keine Netz-Bubble mehr. Nur wenn ALLE Kandidaten ausgeblendet sind,
+        // faellt die Auswahl auf die bisherige Score-Regel ueber alle zurueck.
+        $overrides = $this->deviceOverrideMap();
+        $visibleIdx = array_values(array_filter($gridIdx, function ($i) use ($devices, $overrides) {
+            $o = $this->overrideFor($devices[$i], $overrides);
+            return ($o['enabled'] ?? true) !== false;
+        }));
+        $candidateIdx = $visibleIdx !== [] ? $visibleIdx : $gridIdx;
+        $primary = $candidateIdx[0];
         $best = $this->sourceRichnessScore($devices[$primary]);
-        foreach ($gridIdx as $i) {
+        foreach ($candidateIdx as $i) {
             $s = $this->sourceRichnessScore($devices[$i]);
             if ($s > $best) {
                 $best = $s;
