@@ -3735,6 +3735,15 @@
       var priceDayCheck = (curTab === 'price') ? dayAt(idx) : null;
       var spotCreditEl = document.getElementById('spotCredit');
       var spotCredit = (curTab === 'price' && priceDayCheck && priceDayCheck.spot && priceDayCheck.spot.length) ? spotCreditText() : '';
+      // Erklaerung fuers rote Negativpreis-Band direkt unter dem Diagramm
+      // (Dietmars Wunsch, 16.09.2026: "wie waere es, wenn Du das unten beim
+      // Strompreis, Boersenpreis etc. mit beschreiben wuerdest") - lieber
+      // hier neben der Quellenangabe als ein weiterer Text im Chart selbst,
+      // der bei einem schmalen Band wieder abgeschnitten werden koennte
+      // (siehe Kommentar zum Wasserzeichen-Band oben).
+      if (spotCredit && priceDayCheck && spotNegativeRanges(priceDayCheck).length) {
+        spotCredit += ' - rot hinterlegt: negativer Börsenpreis (§ 51 EEG, keine Einspeisevergütung)';
+      }
       spotCreditEl.textContent = spotCredit;
       spotCreditEl.style.display = spotCredit ? '' : 'none';
       if (curTab === 'price' && priceDayCheck && (!priceDayCheck.price || !priceDayCheck.price.length)

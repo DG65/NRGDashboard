@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.14-beta.1 (2026-09-16)
+
+- PVMonitor Strompreis-Reiter: Erklärtext für das rote Negativpreis-Band ergänzt - steht jetzt neben der Quellenangabe unter dem Diagramm ("rot hinterlegt: negativer Börsenpreis (§ 51 EEG, keine Einspeisevergütung)"), Dietmars Wunsch nach dem Label-Fix.
+
 ## 0.9.13-beta.1 (2026-09-16)
 
 - PVMonitor Strompreis-Reiter: Börsenpreis nicht mehr auf 2 Nachkommastellen gerundet, bevor er ans Diagramm geht - eine winzig negative Viertelstunde (z. B. -0,001 ct/kWh) wurde dadurch als `-0.0` an JavaScript übergeben, wo `-0 >= 0` wahr ist, und fiel fälschlich aus der roten Negativpreis-Markierung (§ 51 EEG) raus (Fund Börsenpreis-Sitzung).
