@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.18-beta.1 (2026-09-16)
+
+- PVMonitor: Der Strompreis-Reiter zeigte den Netzbezug (15-Minuten-Balken) bisher nur an, wenn zusätzlich eine Preiskurve (Tibber/Börsenpreis) vorlag - der Netzbezug kommt aber aus einer eigenen, preisunabhängigen Quelle (GridPowerID). Ohne Preisquelle erscheint jetzt trotzdem das Diagramm mit dem Netzbezug allein, statt des leeren Hinweistextes.
+
 ## 0.9.17-beta.1 (2026-09-16)
 
 - PVMonitor: Der Strompreis-Reiter blieb bisher komplett unsichtbar, solange weder Tibber Grid Rewards noch NRG-Stack Börsenpreis installiert war - Nutzer wussten dadurch gar nicht, dass es das Feature gibt (Fund somm: "da fehlt mir wohl ein ganzes Modul"). Reiter ist jetzt immer sichtbar und zeigt ohne Preisquelle den bestehenden Hinweistext statt des Diagramms.

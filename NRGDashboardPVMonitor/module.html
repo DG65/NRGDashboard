@@ -3756,7 +3756,14 @@
       }
       spotCreditEl.textContent = spotCredit;
       spotCreditEl.style.display = spotCredit ? '' : 'none';
-      if (curTab === 'price' && priceDayCheck && (!priceDayCheck.price || !priceDayCheck.price.length)
+      // Ohne Preisquelle NICHT mehr blind auf die leere Meldung zurueckfallen
+      // (Dietmar, 16.09.2026: "koennen wir den 15-Minuten-Strombezug nicht
+      // einblenden?") - der Netzbezug-Balken haengt an einer ganz eigenen
+      // Quelle (GridPowerID(), unabhaengig von Tibber/Boersenpreis) und soll
+      // auch ohne Preiskurve zu sehen sein. Nur wenn WEDER Preis/Spot NOCH
+      // Netzbezug etwas liefern, bleibt der Reiter leer.
+      if (curTab === 'price' && priceDayCheck && !lastData.hasGrid
+          && (!priceDayCheck.price || !priceDayCheck.price.length)
           && (!priceDayCheck.spot || !priceDayCheck.spot.length)) {
         destroyChart();
         el.innerHTML = '<div class="empty">' + (lastData.hasSpot && !lastData.hasTibber
