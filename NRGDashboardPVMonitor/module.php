@@ -803,7 +803,7 @@ class NRGDashboardPVMonitor extends IPSModule
             if (!isset($slot['start'], $slot['end'], $slot['price'])) {
                 continue;
             }
-            $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000, round((float) $slot['price'], 2)];
+            $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000, (float) $slot['price']];
         }
         return $out;
     }
@@ -852,7 +852,7 @@ class NRGDashboardPVMonitor extends IPSModule
                 continue;
             }
             $this->spotCache['slots'][] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000,
-                round((float) $slot['price'], 2), (int) ($slot['aufloesung'] ?? 900)];
+                (float) $slot['price'], (int) ($slot['aufloesung'] ?? 900)];
             if ($this->spotCache['quelle'] === '' && !empty($slot['quelle'])) {
                 $this->spotCache['quelle'] = (string) $slot['quelle'];
             }
@@ -885,7 +885,7 @@ class NRGDashboardPVMonitor extends IPSModule
                     continue;
                 }
                 $out[] = [(int) $slot['start'] * 1000, (int) $slot['end'] * 1000,
-                    round((float) $slot['price'], 2), (int) ($slot['aufloesung'] ?? 900)];
+                    (float) $slot['price'], (int) ($slot['aufloesung'] ?? 900)];
             }
             return $out;
         }

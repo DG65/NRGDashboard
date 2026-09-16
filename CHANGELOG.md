@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.13-beta.1 (2026-09-16)
+
+- PVMonitor Strompreis-Reiter: Börsenpreis nicht mehr auf 2 Nachkommastellen gerundet, bevor er ans Diagramm geht - eine winzig negative Viertelstunde (z. B. -0,001 ct/kWh) wurde dadurch als `-0.0` an JavaScript übergeben, wo `-0 >= 0` wahr ist, und fiel fälschlich aus der roten Negativpreis-Markierung (§ 51 EEG) raus (Fund Börsenpreis-Sitzung).
+- PVMonitor Strompreis-Reiter (Highcharts): Der Erklärtext "Zeitbereich ohne Bezugsdaten!" landete an vergangenen Tagen mit negativen Börsenpreisen fälschlich auf dem roten Negativpreis-Band statt auf dem grauen Archiv-Nachlauf-Band, weil beide Bänder im selben Array standen und der Text immer auf das erste Element gezeichnet wurde (Fund Börsenpreis-Sitzung, nach Dietmars Screenshot vom 01.05.2026).
+
 ## 0.9.12-beta.1 (2026-09-15)
 
 - NRGDashboardForecast: Hinweis im "Wozu dieses Modul?"-Panel ergänzt, dass die Kachel auf dem Prognose-Modul als Datenquelle basiert und dieses nicht deinstalliert werden sollte, solange die Kachel genutzt wird (spiegelbildlich zu Prognoses eigenem Hinweis auf NRGDashboard, abgestimmt nach einer Nutzerrückfrage im Forum, ob eines der beiden Module gelöscht werden könne).
