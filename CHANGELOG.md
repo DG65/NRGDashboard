@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.19-beta.1 (2026-09-17)
+
+- PVMonitor: `DayBalanceCurve()` (Bilanz-Reiter) und `FlowComponents()` (Energiebilanz + Bilanz-Totale) lasen PV-/Batterieleistung bisher direkt aus `IHUB_GetFunctions()`, statt `PvPowerID()`/`BatPowerID()` aufzurufen - eine manuell gewählte Alternativ-Variable (z. B. SolarEdges "PV-Erzeugung (berechnet)" gegen die PV+Batterie-Vermischung des rohen Registers) wurde dadurch ignoriert. Zeigte sich als nächtliche Phantom-Erzeugung/-Direktverbrauch aus dem rohen PV+Batterie-Signal (Fund somm).
+
 ## 0.9.18-beta.1 (2026-09-16)
 
 - PVMonitor: Der Strompreis-Reiter zeigte den Netzbezug (15-Minuten-Balken) bisher nur an, wenn zusätzlich eine Preiskurve (Tibber/Börsenpreis) vorlag - der Netzbezug kommt aber aus einer eigenen, preisunabhängigen Quelle (GridPowerID). Ohne Preisquelle erscheint jetzt trotzdem das Diagramm mit dem Netzbezug allein, statt des leeren Hinweistextes.

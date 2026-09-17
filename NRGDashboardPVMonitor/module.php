@@ -1867,8 +1867,13 @@ class NRGDashboardPVMonitor extends IPSModule
     {
         $ihub = $this->singleInverterHubID();
         $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
-        $pvPowerID = is_array($data) ? (int) ($data['pvPowerID'] ?? 0) : 0;
-        $batPowerID = is_array($data) ? (int) ($data['batPowerID'] ?? 0) : 0;
+        // PvPowerID()/BatPowerID() statt direkt IHUB_GetFunctions() - siehe
+        // Kommentar in DayBalanceCurve() (Fund somm, 17.09.2026, identischer
+        // Fehler hier: eine manuell gewaehlte PV-/Batterie-Variable wurde
+        // ignoriert, Energiebilanz UND Bilanz-Reiter rechneten mit der
+        // rohen InverterHub-Variable statt der explizit gewaehlten).
+        $pvPowerID = $this->PvPowerID();
+        $batPowerID = $this->BatPowerID();
         $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
 
         $solar = $this->PowerToEnergy($pvPowerID, $start, $end, 1);
@@ -2561,8 +2566,16 @@ class NRGDashboardPVMonitor extends IPSModule
     {
         $ihub = $this->singleInverterHubID();
         $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
-        $pvPowerID = is_array($data) ? (int) ($data['pvPowerID'] ?? 0) : 0;
-        $batPowerID = is_array($data) ? (int) ($data['batPowerID'] ?? 0) : 0;
+        // PvPowerID()/BatPowerID() statt direkt IHUB_GetFunctions() (Fund
+        // somm, 17.09.2026): eine manuell gewaehlte PV-/Batterie-Variable
+        // (z. B. SolarEdges "PV-Erzeugung (berechnet)", die die PV+Batterie-
+        // Vermischung des rohen "PV Gesamtleistung"-Registers auflöst) wurde
+        // hier bisher ignoriert - die Bilanz griff immer auf die rohe
+        // InverterHub-Variable zurueck, auch wenn explizit eine andere im
+        // Formular gewaehlt war. Nachts zeigte "Erzeugung"/"Direktverbrauch"
+        // dadurch Phantomwerte aus dem PV+Batterie-Rohsignal.
+        $pvPowerID = $this->PvPowerID();
+        $batPowerID = $this->BatPowerID();
         $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
 
         $assignments = $this->MeterHubAssignments();
