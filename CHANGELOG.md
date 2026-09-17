@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.20-beta.1 (2026-09-17)
+
+- PVMonitor: Versteckter Entwickler-Reiter "Szenarien" (EMS_SimulateDayPlanScenarios, EMS 0.43.2) - vergleicht den simulierten Tagesplan unter verschiedenen hypothetischen Inbetriebnahme-Daten (unterschiedliche EEG-Rechtslage, z. B. Solarspitzengesetz) übereinandergelegt, mit Vergütung/Einspeisegrenze/§51-Pflicht je Szenario. Nur per Skript aktivierbare, NICHT im Formular sichtbare Property `DevScenarioCompare` - für Dietmars eigene Entwicklungsprüfung, kein Bestandteil des normalen Funktionsumfangs für andere Nutzer.
+
 ## 0.9.19-beta.1 (2026-09-17)
 
 - PVMonitor: `DayBalanceCurve()` (Bilanz-Reiter) und `FlowComponents()` (Energiebilanz + Bilanz-Totale) lasen PV-/Batterieleistung bisher direkt aus `IHUB_GetFunctions()`, statt `PvPowerID()`/`BatPowerID()` aufzurufen - eine manuell gewählte Alternativ-Variable (z. B. SolarEdges "PV-Erzeugung (berechnet)" gegen die PV+Batterie-Vermischung des rohen Registers) wurde dadurch ignoriert. Zeigte sich als nächtliche Phantom-Erzeugung/-Direktverbrauch aus dem rohen PV+Batterie-Signal (Fund somm).

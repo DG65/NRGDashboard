@@ -155,6 +155,16 @@ class NRGDashboardPVMonitor extends IPSModule
         // Intervall - 10s war Dietmars konkreter Wunsch, kein generisches
         // Feature mit Einstellmoeglichkeit.
         $this->RegisterPropertyBoolean('AutoCycleTabs', false);
+        // Szenario-Vergleich (17.09.2026, EMS_SimulateDayPlanScenarios(),
+        // per send_message abgestimmt) - ABSICHTLICH NICHT in form.json:
+        // Dietmars Vorgabe ist, dass andere Nutzer diese Entwickler-Ansicht
+        // (hypothetische EEG-Rechtslagen ueber verschiedene IBN-Daten) gar
+        // nicht erst zu sehen bekommen, auch nicht als abschaltbare Option.
+        // Nur per direktem IPS_SetProperty()/eval aktivierbar. Der
+        // zugehoerige "Szenarien"-Reiter bleibt ohne diese Property
+        // unsichtbar (hasScenarios in buildPayload() bleibt false) - kein
+        // Hinweis im UI, dass es ihn ueberhaupt gibt.
+        $this->RegisterPropertyBoolean('DevScenarioCompare', false);
 
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
@@ -1349,6 +1359,37 @@ class NRGDashboardPVMonitor extends IPSModule
         return $this->pickSingleActiveInstance($ids);
     }
 
+    /**
+     * Versteckter Entwickler-Szenarienvergleich (17.09.2026) - nur aktiv,
+     * wenn Dietmar die NICHT im Formular sichtbare Property
+     * 'DevScenarioCompare' per Skript/eval gesetzt hat. Ruft
+     * EMS_SimulateDayPlanScenarios() mit dessen eigenem Referenzset (4
+     * Faelle, siehe EMS-Vertrag) - rein lesend, keine Aenderung an der
+     * echten Anlagensteuerung.
+     */
+    private function ScenarioCompareAvailable(): bool
+    {
+        return $this->ReadPropertyBoolean('DevScenarioCompare')
+            && $this->EmsInstanceID() > 0
+            && function_exists('EMS_SimulateDayPlanScenarios');
+    }
+
+    private function BuildScenarios(): array
+    {
+        if (!$this->ScenarioCompareAvailable()) {
+            return [];
+        }
+        try {
+            $result = @EMS_SimulateDayPlanScenarios($this->EmsInstanceID());
+        } catch (\Throwable $e) {
+            return [];
+        }
+        if (is_string($result)) {
+            $result = json_decode($result, true);
+        }
+        return is_array($result) ? $result : [];
+    }
+
     private function LfcInstanceID(): int
     {
         $ids = @IPS_GetInstanceListByModuleID(self::LFC_GUID);
@@ -2424,6 +2465,14 @@ class NRGDashboardPVMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'scenarioLoad') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'        => true,
+                'type'      => 'scenarioUpdate',
+                'scenarios' => $this->BuildScenarios(),
+            ]));
+            return;
+        }
         if ($Ident === 'stromgedachtLoad') {
             $this->UpdateVisualizationValue(json_encode([
                 'ok'           => true,
@@ -2960,6 +3009,11 @@ class NRGDashboardPVMonitor extends IPSModule
             // wenn der Tagesplan-Reiter tatsaechlich geoeffnet wird (gleiches
             // Nachforder-Muster wie Bilanz/Jahresvergleich).
             'hasEms'   => $this->EmsInstanceID() > 0,
+            // Versteckter Szenarienvergleich - siehe ScenarioCompareAvailable().
+            // Ohne die per Skript gesetzte Property bleibt dieses Feld immer
+            // false, der "Szenarien"-Reiter also unsichtbar (kein Formular-
+            // Hinweis, dass es ihn gibt).
+            'hasScenarios' => $this->ScenarioCompareAvailable(),
             'hasStromGedacht' => $this->StromGedachtInstanceID() > 0,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),

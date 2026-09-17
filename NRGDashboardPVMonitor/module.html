@@ -254,6 +254,9 @@
      hat, die sich ein-/ausblenden liesse (waere ein irrefuehrender Klick-
      Koeder, wenn er wie die echte Legende aussaehe, aber nichts taete). */
   #planKeyRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .85; }
+  #scenarioInfoRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; padding: 0; margin-top: 6px; font-size: 11px; opacity: .9; }
+  #scenarioInfoRow .scenItem { display: flex; align-items: center; gap: 5px; }
+  #scenarioInfoRow .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
   #planKeyRow .legItem { cursor: default; }
   /* StromGedacht-Netzampel als Zusatzleiste im Tagesplan (21./22.08.2026,
      relayed ueber die StromGedacht-Sitzung) - eigene ECharts/Highcharts-
@@ -486,6 +489,7 @@
           <button class="tab" data-tab="balance">Bilanz</button>
           <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
           <button class="tab" data-tab="tagesplan">Tagesplan</button>
+          <button class="tab" data-tab="scenarios">Szenarien</button>
         </div>
       </div>
       <div id="chartcol">
@@ -500,6 +504,7 @@
         <div id="legendRow"></div>
         <div id="spotCredit" style="display:none; font-size:10px; opacity:.6; text-align:center; margin-top:2px"></div>
         <div id="planKeyRow" style="display:none"></div>
+        <div id="scenarioInfoRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
       </div>
@@ -573,6 +578,9 @@
     // requestAction('dayPlanLoad') geholt, wenn der Reiter tatsaechlich
     // geoeffnet wird. Kein Zeitraum-Parameter noetig (immer heute+morgen).
     var dayPlanCache = null, dayPlanPending = false;
+    // Versteckter Entwickler-Szenarienvergleich (17.09.2026) - gleiches
+    // Nachforder-Muster wie dayPlanCache, siehe scenarioLoad im Backend.
+    var scenarioCache = null, scenarioPending = false;
     // StromGedacht-Netzampel (21.08.2026) - gleiches Nachforder-Muster,
     // eigener Cache/Ident, da unabhaengig von EMS ladbar (auch nutzbar,
     // wenn kein EMS installiert ist).
@@ -824,6 +832,16 @@
           btn.onclick = function () { tagesplanDay = i; render(); };
           quick.appendChild(btn);
         });
+        return;
+      }
+
+      // Versteckter Szenarienvergleich (17.09.2026) - EMS_SimulateDayPlan-
+      // Scenarios() liefert ein festes Referenzset, keine Tag-Navigation.
+      if (curTab === 'scenarios') {
+        pick.style.display = 'none'; pickTo.style.display = 'none';
+        document.getElementById('periodLabel').style.display = 'none';
+        document.getElementById('prev').disabled = true;
+        document.getElementById('next').disabled = true;
         return;
       }
 
@@ -2429,6 +2447,92 @@
       if (planSun) { drawSunTattoosHC(chart, planSun[0], planSun[1]); }
     }
 
+    // Versteckter Entwickler-Szenarienvergleich (17.09.2026,
+    // EMS_SimulateDayPlanScenarios()) - ueberlagert je Szenario eine
+    // Leistungs- und eine SOC-Kurve ueber denselben 96-Slot-Tag, dazu EINE
+    // gemeinsame Preiskurve (Boersenpreis haengt nicht vom IBN-Datum ab,
+    // ist also in jedem Szenario identisch - eine einzige Linie reicht).
+    // Slot-Format 1:1 wie beim echten Tagesplan bestaetigt (EMS,
+    // 17.09.2026): {op, gw, power, reason, price (ct/kWh), soc, time
+    // (Unix-Sekunden)}.
+    var SCENARIO_COLORS = ['#4aa3e0', '#ef9a3d', '#8bd17c', '#e06c9f', '#b39ddb', '#4dd0e1'];
+    function renderScenariosECharts(el, scenarios) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      var keys = Object.keys(scenarios).filter(function (k) { return scenarios[k] && scenarios[k].plan && scenarios[k].plan.length; });
+      var allSeries = [];
+      var first = keys.length ? scenarios[keys[0]] : null;
+      if (first) {
+        var priceData = first.plan.filter(function (s) { return s.price !== null && s.price !== undefined; })
+          .map(function (s) { return [s.time * 1000, s.price]; });
+        if (priceData.length) { allSeries.push({ name: 'Strompreis', data: priceData, axis: 1, color: '#ffb300', dashed: false, step: true }); }
+      }
+      keys.forEach(function (k, i) {
+        var sc = scenarios[k];
+        var color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+        var label = sc.label || sc.ibnText || k;
+        var powerData = sc.plan.filter(function (s) { return s.power !== null && s.power !== undefined; })
+          .map(function (s) { return [s.time * 1000, s.power / 1000]; });
+        if (powerData.length) { allSeries.push({ name: 'Leistung – ' + label, data: powerData, axis: 0, color: color, dashed: false }); }
+        var socData = sc.plan.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
+          .map(function (s) { return [s.time * 1000, s.soc]; });
+        if (socData.length) { allSeries.push({ name: 'SOC – ' + label, data: socData, axis: 2, color: color, dashed: true }); }
+      });
+      renderLegend('scenarios', allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var series = visSeries.map(function (s) {
+        return { name: s.name, type: 'line', showSymbol: false, step: s.step ? 'middle' : false, data: s.data, yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1.2 }, s.dashed ? { type: 'dashed' } : {}) };
+      });
+      var dayStart = first ? first.plan[0].time * 1000 : Date.now();
+      var dayEnd = first ? first.plan[first.plan.length - 1].time * 1000 + 15 * 60000 : Date.now();
+      chart.setOption({
+        backgroundColor: 'transparent',
+        textStyle: lastData.font ? { fontFamily: lastData.font } : {},
+        grid: { left: 46, right: 60, top: 28, bottom: 32 },
+        legend: { show: false },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
+          extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
+          formatter: function (params) {
+            var head = params.length ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(params[0].axisValue).toLocaleString('de-DE') + '</div>' : '';
+            var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
+              var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
+              return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
+            }).join('');
+            return head + lines;
+          }
+        },
+        xAxis: { type: 'time', min: dayStart, max: dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
+        yAxis: [
+          { type: 'value', name: 'kW', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
+          { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } },
+          { type: 'value', name: 'SOC %', position: 'right', offset: 46, min: 0, max: 100, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
+        ],
+        dataZoom: DATA_ZOOM_INSIDE,
+        series: series
+      }, true);
+      // Meta-Infozeile je Szenario (Vergütung/Einspeisegrenze/§51-Pflicht) -
+      // EMS' eigener Vorschlag, damit man ohne Hover sieht, WARUM sich die
+      // Kurven an einem Tag unterscheiden (oder eben nicht: an ruhigen
+      // Tagen mit positiven Preisen koennen alle Szenarien identisch sein).
+      var infoRow = document.getElementById('scenarioInfoRow');
+      infoRow.innerHTML = '';
+      infoRow.style.display = 'flex';
+      keys.forEach(function (k, i) {
+        var sc = scenarios[k];
+        var color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+        var parts = [sc.label || sc.ibnText || k];
+        if (sc.verguetungCt !== null && sc.verguetungCt !== undefined) { parts.push(Number(sc.verguetungCt).toFixed(2).replace('.', ',') + ' ct/kWh'); }
+        if (sc.einspeisegrenzeW) { parts.push('Grenze ' + Math.round(sc.einspeisegrenzeW / 1000).toLocaleString('de-DE') + ' kW'); }
+        if (sc.negativpreisPflicht) { parts.push('§51-Pflicht'); }
+        var span = document.createElement('span');
+        span.className = 'scenItem';
+        span.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + parts.join(' · ');
+        infoRow.appendChild(span);
+      });
+    }
+
     // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):
     // Flaechendiagramm (Tag) bzw. Balkendiagramm (Monat/Jahr/Gesamt), jeweils
     // zwei gestapelte Panels "Verbrauch"/"Erzeugung" mit gemeinsamer Legende
@@ -3694,6 +3798,11 @@
         balance: !!lastData.hasEnergyFlow,
         yearcompare: !!lastData.hasPv,
         tagesplan: !!lastData.hasEms,
+        // Versteckter Entwickler-Reiter (17.09.2026) - hasScenarios ist ohne
+        // die per Skript gesetzte EMS-Property IMMER false, der Button
+        // bleibt dann ueber tabHidden unten unsichtbar. Kein Formularfeld,
+        // keine Standard-Kachel - siehe ScenarioCompareAvailable() im Backend.
+        scenarios: !!lastData.hasScenarios,
       };
       var data = {
         solar: !!(today && today.pv && today.pv.length),
@@ -3707,6 +3816,7 @@
         // (dayPlanLoad) - solange die EMS-Instanz gefunden ist, gilt er
         // als versorgt statt faelschlich rot zu starten.
         tagesplan: true,
+        scenarios: true,
       };
       var firstVisible = null, activeHidden = false;
       Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
@@ -3783,6 +3893,7 @@
         return;
       }
       document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
+      if (curTab !== 'scenarios') { document.getElementById('scenarioInfoRow').style.display = 'none'; }
       if (curTab !== 'tagesplan') { document.getElementById('ampelStrip').style.display = 'none'; }
       if (curTab === 'tagesplan') {
         if (!lastData.hasEms) {
@@ -3838,6 +3949,49 @@
         } else {
           ensureECharts(function () { renderDayPlanECharts(el, dpDay); setTimeout(sizeChart, 60); });
         }
+        return;
+      }
+      // Versteckter Entwickler-Reiter (17.09.2026, EMS_SimulateDayPlanScenarios) -
+      // kein Formularfeld, der Reiter selbst ist ohne lastData.hasScenarios
+      // schon in updateTabStates() unsichtbar; dieser Zweig laeuft also nur,
+      // wenn Dietmar ihn per Skript aktiviert UND den Reiter angeklickt hat.
+      if (curTab === 'scenarios') {
+        document.getElementById('planKeyRow').style.display = 'none';
+        document.getElementById('ampelStrip').style.display = 'none';
+        if (!lastData.hasScenarios) {
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          el.innerHTML = '<div class="empty">Szenarienvergleich nicht verfügbar</div>';
+          return;
+        }
+        if (!scenarioCache) {
+          if (!scenarioPending) {
+            scenarioPending = true;
+            requestAction('scenarioLoad', '{}');
+          }
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          el.innerHTML = '<div class="empty">Lade Szenarien…</div>';
+          return;
+        }
+        var scenKeys = Object.keys(scenarioCache || {});
+        if (!scenKeys.length) {
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          el.innerHTML = '<div class="empty">Keine Szenariodaten erhalten</div>';
+          return;
+        }
+        // Nur ECharts (17.09.2026, v1 des Entwickler-Reiters) - reine
+        // Dev-Ansicht fuer Dietmar, kein Aufwand fuer ein zweites, komplett
+        // gleichwertiges Highcharts-Pendant gerechtfertigt, solange niemand
+        // sonst diesen Reiter je zu sehen bekommt.
+        if ((lastData.engine === 'highcharts')) {
+          destroyChart();
+          document.getElementById('legendRow').innerHTML = '';
+          el.innerHTML = '<div class="empty">Szenarien nur mit ECharts-Engine verfügbar - im Formular „Diagramm-Engine“ auf ECharts umstellen</div>';
+          return;
+        }
+        ensureECharts(function () { renderScenariosECharts(el, scenarioCache); setTimeout(sizeChart, 60); });
         return;
       }
       if (curTab === 'balance') {
@@ -4028,6 +4182,15 @@
         if (curTab === 'tagesplan') { render(); }
         return;
       }
+      // Antwort auf requestAction('scenarioLoad', ...) - versteckter
+      // Entwickler-Szenarienvergleich (17.09.2026), gleiches Nachforder-
+      // Muster wie dayPlanUpdate.
+      if (d.type === 'scenarioUpdate') {
+        scenarioCache = d.scenarios;
+        scenarioPending = false;
+        if (curTab === 'scenarios') { render(); }
+        return;
+      }
       // Antwort auf requestAction('stromgedachtLoad', ...) - StromGedacht-
       // Netzampel als Zusatzleiste im Tagesplan-Reiter (21.08.2026).
       if (d.type === 'stromgedachtUpdate') {
@@ -4202,7 +4365,7 @@
         var dayOnly = (curTab === 'battery' || curTab === 'price');
         var typeSel = document.getElementById('type');
         typeSel.disabled = dayOnly;
-        typeSel.style.display = (curTab === 'tagesplan') ? 'none' : '';
+        typeSel.style.display = (curTab === 'tagesplan' || curTab === 'scenarios') ? 'none' : '';
         if (dayOnly && curView !== 'day') {
           curView = 'day';
           typeSel.value = 'day';
