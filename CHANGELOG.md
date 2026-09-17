@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.21-beta.1 (2026-09-17)
+
+- PVMonitor: `EMS_SimulateDayPlanScenarios()`-Aufruf im versteckten Szenarien-Reiter fehlgeschlagen ("Too few arguments... exactly 2 expected") - der dokumentierte Default `$ibnDaten = []` griff live nicht, das leere Array muss explizit mitgegeben werden. Reiter blieb dadurch komplett leer.
+
 ## 0.9.20-beta.1 (2026-09-17)
 
 - PVMonitor: Versteckter Entwickler-Reiter "Szenarien" (EMS_SimulateDayPlanScenarios, EMS 0.43.2) - vergleicht den simulierten Tagesplan unter verschiedenen hypothetischen Inbetriebnahme-Daten (unterschiedliche EEG-Rechtslage, z. B. Solarspitzengesetz) übereinandergelegt, mit Vergütung/Einspeisegrenze/§51-Pflicht je Szenario. Nur per Skript aktivierbare, NICHT im Formular sichtbare Property `DevScenarioCompare` - für Dietmars eigene Entwicklungsprüfung, kein Bestandteil des normalen Funktionsumfangs für andere Nutzer.

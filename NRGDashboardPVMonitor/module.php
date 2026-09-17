@@ -1380,7 +1380,12 @@ class NRGDashboardPVMonitor extends IPSModule
             return [];
         }
         try {
-            $result = @EMS_SimulateDayPlanScenarios($this->EmsInstanceID());
+            // Trotz dokumentiertem Default "array $ibnDaten = []" verlangt
+            // EMS_SimulateDayPlanScenarios() live zwingend beide Argumente
+            // (Fund 17.09.2026: "Too few arguments... exactly 2 expected") -
+            // leeres Array explizit mitgeben statt sich auf den PHP-Default
+            // zu verlassen, sonst liefert der Aufruf still gar nichts.
+            $result = @EMS_SimulateDayPlanScenarios($this->EmsInstanceID(), []);
         } catch (\Throwable $e) {
             return [];
         }
