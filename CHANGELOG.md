@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.22-beta.1 (2026-09-17)
+
+- PVMonitor: Versteckter Szenarien-Reiter jetzt auch mit Highcharts nutzbar (Dietmars Normal-Engine), nicht mehr nur mit ECharts - Serienaufbau in `scenarioSeriesData()` engine-neutral herausgezogen, `renderScenariosHighcharts()` als Pendant ergänzt.
+
 ## 0.9.21-beta.1 (2026-09-17)
 
 - PVMonitor: `EMS_SimulateDayPlanScenarios()`-Aufruf im versteckten Szenarien-Reiter fehlgeschlagen ("Too few arguments... exactly 2 expected") - der dokumentierte Default `$ibnDaten = []` griff live nicht, das leere Array muss explizit mitgegeben werden. Reiter blieb dadurch komplett leer.

@@ -2456,9 +2456,12 @@
     // 17.09.2026): {op, gw, power, reason, price (ct/kWh), soc, time
     // (Unix-Sekunden)}.
     var SCENARIO_COLORS = ['#4aa3e0', '#ef9a3d', '#8bd17c', '#e06c9f', '#b39ddb', '#4dd0e1'];
-    function renderScenariosECharts(el, scenarios) {
-      if (chart && chartEngine !== 'echarts') { destroyChart(); }
-      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+
+    // Serienaufbau gemeinsam fuer beide Engines - liefert die noch
+    // engine-neutrale Serienliste (axis 0=kW/1=ct/kWh/2=SOC%), die
+    // Szenario-Keys (fuer die Infozeile) und das erste Szenario (fuer den
+    // Zeitrahmen, da alle Szenarien denselben 96-Slot-Tag simulieren).
+    function scenarioSeriesData(scenarios) {
       var keys = Object.keys(scenarios).filter(function (k) { return scenarios[k] && scenarios[k].plan && scenarios[k].plan.length; });
       var allSeries = [];
       var first = keys.length ? scenarios[keys[0]] : null;
@@ -2478,6 +2481,37 @@
           .map(function (s) { return [s.time * 1000, s.soc]; });
         if (socData.length) { allSeries.push({ name: 'SOC – ' + label, data: socData, axis: 2, color: color, dashed: true }); }
       });
+      return { keys: keys, allSeries: allSeries, first: first };
+    }
+
+    // Meta-Infozeile je Szenario (Vergütung/Einspeisegrenze/§51-Pflicht) -
+    // EMS' eigener Vorschlag, damit man ohne Hover sieht, WARUM sich die
+    // Kurven an einem Tag unterscheiden (oder eben nicht: an ruhigen Tagen
+    // mit positiven Preisen koennen alle Szenarien identisch sein). Fuer
+    // beide Engines identisch, eigenes DOM-Element statt Chart-Legende.
+    function renderScenarioInfoRow(scenarios, keys) {
+      var infoRow = document.getElementById('scenarioInfoRow');
+      infoRow.innerHTML = '';
+      infoRow.style.display = 'flex';
+      keys.forEach(function (k, i) {
+        var sc = scenarios[k];
+        var color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+        var parts = [sc.label || sc.ibnText || k];
+        if (sc.verguetungCt !== null && sc.verguetungCt !== undefined) { parts.push(Number(sc.verguetungCt).toFixed(2).replace('.', ',') + ' ct/kWh'); }
+        if (sc.einspeisegrenzeW) { parts.push('Grenze ' + Math.round(sc.einspeisegrenzeW / 1000).toLocaleString('de-DE') + ' kW'); }
+        if (sc.negativpreisPflicht) { parts.push('§51-Pflicht'); }
+        var span = document.createElement('span');
+        span.className = 'scenItem';
+        span.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + parts.join(' · ');
+        infoRow.appendChild(span);
+      });
+    }
+
+    function renderScenariosECharts(el, scenarios) {
+      if (chart && chartEngine !== 'echarts') { destroyChart(); }
+      if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
+      var sd = scenarioSeriesData(scenarios);
+      var keys = sd.keys, allSeries = sd.allSeries, first = sd.first;
       renderLegend('scenarios', allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
@@ -2512,25 +2546,58 @@
         dataZoom: DATA_ZOOM_INSIDE,
         series: series
       }, true);
-      // Meta-Infozeile je Szenario (Vergütung/Einspeisegrenze/§51-Pflicht) -
-      // EMS' eigener Vorschlag, damit man ohne Hover sieht, WARUM sich die
-      // Kurven an einem Tag unterscheiden (oder eben nicht: an ruhigen
-      // Tagen mit positiven Preisen koennen alle Szenarien identisch sein).
-      var infoRow = document.getElementById('scenarioInfoRow');
-      infoRow.innerHTML = '';
-      infoRow.style.display = 'flex';
-      keys.forEach(function (k, i) {
-        var sc = scenarios[k];
-        var color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
-        var parts = [sc.label || sc.ibnText || k];
-        if (sc.verguetungCt !== null && sc.verguetungCt !== undefined) { parts.push(Number(sc.verguetungCt).toFixed(2).replace('.', ',') + ' ct/kWh'); }
-        if (sc.einspeisegrenzeW) { parts.push('Grenze ' + Math.round(sc.einspeisegrenzeW / 1000).toLocaleString('de-DE') + ' kW'); }
-        if (sc.negativpreisPflicht) { parts.push('§51-Pflicht'); }
-        var span = document.createElement('span');
-        span.className = 'scenItem';
-        span.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + parts.join(' · ');
-        infoRow.appendChild(span);
+      renderScenarioInfoRow(scenarios, keys);
+    }
+
+    // Highcharts-Pendant (17.09.2026, Dietmars Wunsch: "ich arbeite im
+    // Normalfall nicht mit ECharts sondern mit Highcharts") - selbe
+    // Datenbasis (scenarioSeriesData()), reines Rendering-Gegenstueck.
+    // Highcharts.dateFormat() bewusst NICHT im Tooltip verwendet (siehe
+    // CLAUDE.md, "Highcharts-Tooltip-Zeit"-Falle: ignoriert useUTC:false,
+    // 2h-Offset) - natives Date stattdessen, gleiches Muster wie im
+    // Tagesplan-Pendant.
+    function renderScenariosHighcharts(el, scenarios) {
+      if (chart && chartEngine !== 'highcharts') { destroyChart(); }
+      var sd = scenarioSeriesData(scenarios);
+      var keys = sd.keys, allSeries = sd.allSeries, first = sd.first;
+      renderLegend('scenarios', allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
+      var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
+      var dayStart = first ? first.plan[0].time * 1000 : Date.now();
+      var dayEnd = first ? first.plan[first.plan.length - 1].time * 1000 + 15 * 60000 : Date.now();
+      chart = Highcharts.chart(el, {
+        time: { useUTC: false },
+        chart: { backgroundColor: 'transparent', alignTicks: false, zoomType: 'x', marginLeft: 55, marginRight: 110, style: lastData.font ? { fontFamily: lastData.font } : {} },
+        title: { text: null },
+        xAxis: { type: 'datetime', min: dayStart, max: dayEnd, labels: { style: themeAxisStyle() }, crosshair: { color: 'rgba(255,255,255,.08)' } },
+        yAxis: [
+          { title: { text: 'kW', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
+          { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true },
+          { title: { text: 'SOC %', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, min: 0, max: 100 }
+        ],
+        legend: { enabled: false },
+        credits: { enabled: false },
+        tooltip: {
+          shared: true, useHTML: true,
+          formatter: function () {
+            var dt = new Date(this.x);
+            var p2 = function (n) { return ('0' + n).slice(-2); };
+            var tsLabel = p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes());
+            var lines = ['<b>' + tsLabel + '</b>'];
+            this.points.forEach(function (p) {
+              lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
+            });
+            return lines.join('');
+          }
+        },
+        series: visSeries.map(function (s) {
+          return {
+            name: s.name, type: 'line', data: s.data, color: s.color, yAxis: s.axis,
+            step: s.step ? 'left' : undefined, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false }, lineWidth: 1.4
+          };
+        })
       });
+      chartEngine = 'highcharts';
+      renderScenarioInfoRow(scenarios, keys);
     }
 
     // Neuer "Bilanz"-Reiter (Dietmars SEMS-Vorbild-Screenshots, 30.07.2026):
@@ -3981,17 +4048,12 @@
           el.innerHTML = '<div class="empty">Keine Szenariodaten erhalten</div>';
           return;
         }
-        // Nur ECharts (17.09.2026, v1 des Entwickler-Reiters) - reine
-        // Dev-Ansicht fuer Dietmar, kein Aufwand fuer ein zweites, komplett
-        // gleichwertiges Highcharts-Pendant gerechtfertigt, solange niemand
-        // sonst diesen Reiter je zu sehen bekommt.
-        if ((lastData.engine === 'highcharts')) {
-          destroyChart();
-          document.getElementById('legendRow').innerHTML = '';
-          el.innerHTML = '<div class="empty">Szenarien nur mit ECharts-Engine verfügbar - im Formular „Diagramm-Engine“ auf ECharts umstellen</div>';
-          return;
+        var wantEngineScen = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
+        if (wantEngineScen === 'highcharts') {
+          ensureHighcharts(function () { el.innerHTML = ''; renderScenariosHighcharts(el, scenarioCache); });
+        } else {
+          ensureECharts(function () { renderScenariosECharts(el, scenarioCache); setTimeout(sizeChart, 60); });
         }
-        ensureECharts(function () { renderScenariosECharts(el, scenarioCache); setTimeout(sizeChart, 60); });
         return;
       }
       if (curTab === 'balance') {
