@@ -150,6 +150,23 @@ class NRGDashboardWPMonitor extends IPSModule
         // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
         $this->RegisterAttributeBoolean('TourSeen', false);
 
+        // Reiterleisten-Animation 1:1 NRGDashboardPVMonitor (Dietmar,
+        // 18.09.2026: Reitermenue "exakt analog wie beim PV Monitor") -
+        // gleiches Profil (NRGDASHMON.TabAnim), eigene Instanzvariable.
+        if (!IPS_VariableProfileExists('NRGDASHMON.TabAnim')) {
+            IPS_CreateVariableProfile('NRGDASHMON.TabAnim', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, 'Federnder Einschub', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, '3D-Kaskaden-Flip', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Ecke für Ecke in den Pfeil', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, 'Blur-Morph', '', -1);
+        $animIsNew = @IPS_GetObjectIDByIdent('TabAnimation', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('TabAnimation', 'Reiterleisten-Animation', 'NRGDASHMON.TabAnim', 10);
+        $this->EnableAction('TabAnimation');
+        if ($animIsNew) {
+            $this->SetValue('TabAnimation', 0);
+        }
+
         $this->RegisterTimer('Refresh', 0, 'NRGDASHWPMON_Render($_IPS[\'TARGET\']);');
     }
 
@@ -776,6 +793,11 @@ class NRGDashboardWPMonitor extends IPSModule
      */
     public function RequestAction($Ident, $Value)
     {
+        if ($Ident === 'TabAnimation') {
+            $this->SetValue('TabAnimation', (int) $Value);
+            $this->Render();
+            return;
+        }
         if ($Ident === 'heatingCurveLoad') {
             $this->UpdateVisualizationValue(json_encode([
                 'ok'    => true,
@@ -982,6 +1004,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:
             // "Natuerlich auch mit der Auswahl Highchart und Echart").
             'engine'     => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
+            'tabAnim'    => (int) $this->GetValue('TabAnimation'),
             'kpi'        => [
                 'copCurrent'   => ($copMeasured !== null && $copMeasured > 0) ? round($copMeasured, 1)
                     : (($copEstimate !== null && $copEstimate > 0) ? round($copEstimate) : null),

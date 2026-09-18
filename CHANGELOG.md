@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.29-beta.1 (2026-09-18)
+
+- WPMonitor: Reitermenü jetzt exakt wie im PVMonitor - einklappbare Seitenleiste mit Pfeil-Knopf, Animationsstil (neue Instanzvariable "Reiterleisten-Animation"), Diagrammtitel aus dem aktiven Reiter, Reiter ohne Quelle ausgeblendet. Vorher nur eine schlichte Knopfleiste (Abweichung von Dietmars Vorgabe "exakt analog zum PV Monitor").
+- WPMonitor Heizkurven-Editor: füllt jetzt die Kachel (statt kleiner Grafik in leerer Fläche), Gitter mit Achsentiteln, Flächenverlauf unter der Kurve, gestrichelte Verlängerung über die Ankerpunkte hinaus, Wertepillen an den Punkten; Heizkreis-/Heizen-Kühlen-Umschalter im Stil der PV-Monitor-Unterreiter. Ein periodischer Refresh holt die Verlauf-Ansicht nicht mehr in den Heizkurven-Reiter zurück.
+
 ## 0.9.28-beta.1 (2026-09-18)
 
 - Tile/PVMonitor `PeriodEnergyCounter()`: Bei einer Archivlücke um Tagesbeginn suchte der Referenzpunkt-Fallback bisher ab Unix-Epoche 0 statt innerhalb des angefragten Tages - konnte dabei einen völlig veralteten Archivpunkt erwischen und einen Fantasiewert erzeugen (53,3 statt echter ~0,011 Mio. kWh bei Solarpark Albersboesch, dessen Archiv genau zwischen gestern Abend und heute 07:03 Uhr eine Lücke hatte). Sucht jetzt nur noch innerhalb des Tagesfensters, explizit chronologisch sortiert; fehlt auch das, bleibt der Tag ehrlich ohne Wert statt zu raten (Gegenprüfung MeterHub-Sitzung direkt am Rohzähler).

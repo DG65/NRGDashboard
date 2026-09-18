@@ -23,22 +23,204 @@
   input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
-  /* Heizkurven-Reiter (18.09.2026) - eigener, schlichter horizontaler
-     Reiterwechsel statt PVMonitors aufwendiger Sidebar-Animation (nur 2
-     Reiter hier, der Aufwand lohnt nicht). Wiederverwendet die Optik von
-     button.qday statt eigener neuer Farben zu erfinden. */
-  #topTabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 8px; }
-  button.ttab { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
-  button.ttab:hover { background: rgba(127,135,145,.22); }
-  button.ttab.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
-  button.ttab.tabHidden { display: none; }
-  #curvePanel { display: none; flex: 1 1 auto; flex-direction: column; align-items: center; gap: 10px; overflow: auto; }
+  /* Reiterleiste 1:1 aus NRGDashboardPVMonitor (Dietmar, 18.09.2026: "der Wechsel
+     soll exakt analog zum PV Monitor erfolgen, auch das Menue") */
+  #body { display: flex; flex: 1 1 auto; min-height: 0; gap: 10px; margin-top: 8px; position: relative; }
+  /* Reiterleiste als OVERLAY ueber dem stehenden Diagramm (Dietmar,
+     27.08.2026: "Waehrend der Animation macht das Diagramm keine gute
+     Figur und zappelt am rechten Rand rum. Wie waere es, wenn die Leiste
+     sich ueber das stehende Diagramm schieben wuerde?") - #tabs ist
+     absolut positioniert und nimmt KEINEN Layoutplatz mehr ein, das
+     Diagramm behaelt beim Ein-/Ausblenden exakt seine Groesse (kein
+     Resize, kein Zappeln). Nur der schmale Pfeil-Knopf bleibt im
+     Layoutfluss. Milchglas-Optik (backdrop-filter) macht die Leiste auf
+     hellem wie dunklem Kachelhintergrund lesbar, ohne das Diagramm
+     dahinter ganz zu verdecken.
+     Animation (Dietmars Wunsch nach etwas "modernem/hippem"): federnder
+     Einschub mit Overshoot (cubic-bezier laeuft kurz uebers Ziel hinaus
+     und schwingt zurueck) + gestaffeltes Einfliegen der einzelnen
+     Reiter (jeder Knopf 30ms nach seinem Vorgaenger, transition-delay
+     je nth-child) - beim Schliessen ohne Staffelung, damit es knackig
+     zugeht. */
+  /* position:relative + hoher z-index am Wrapper: im WebFront zeichneten
+     sich Chart-Elemente (Achsenbeschriftung) UEBER das Panel und schluckten
+     dessen Klicks (Dietmars Screenshot, 27.08.2026 - die Achsenzahlen
+     standen scharf VOR dem Panel, also lag das Chart in einer hoeheren
+     Stapelebene als unser z-index 20). Der Wrapper bildet jetzt selbst
+     einen Stapelkontext weit oberhalb der Chart-Bibliotheken; #tabs
+     ankert damit auch an ihm statt an #body (left:30px bleibt optisch
+     gleich, der Wrapper sitzt am linken Rand von #body). */
+  /* position:absolute statt Flex-Spalte (Dietmar, 28.08.2026: "die
+     Diagramme stehen nicht mittig in der Kachel") - die schmale
+     Pfeil-Spalte hat #chartcol um ~34px nach rechts geschoben, die
+     symmetrischen 58/58-Plotraender waren dadurch in der KACHEL nicht
+     mittig. Jetzt schwebt auch der Pfeil-Knopf ueber dem Diagramm
+     (oben links, dort liegt nur leere Flaeche ueber der Y-Achse),
+     #chartcol nimmt die volle Kachelbreite ein. */
+  /* top:-35px hebt den Pfeil-Knopf auf die Hoehe der Zeitsteuerungszeile
+     (#bar, 30px hoch, sitzt 8px Body-Abstand darueber; 24px Knopf mittig
+     = -(8+30)+3) - Dietmar, 28.08.2026: "der Pfeil ... muss auf genau
+     die gleiche Hoehe der Zeitsteuerungszeile". Die Reiterleiste wandert
+     MIT dem Pfeil nach oben (Dietmars Nachtrag: "die Reiterleiste musst
+     Du exakt wie der Pfeilbutton verschieben") - sie haengt am selben
+     Wrapper und beginnt wieder auf Pfeilhoehe (#tabs top:0), wie vor
+     der Verschiebung; damit stimmt auch der Einsaug-Ursprung der
+     Animation wieder exakt mit dem Knopf ueberein. */
+  /* top:-30px statt -35px (01.09.2026, Dietmar: "der Pfeil kommt oben
+     links unter die Titelzeile der Kachel, so dass ich den Pfeil nicht
+     mehr erreiche. Ich denke 5px sollten reichen.") - in manchen Kontexten
+     (z.B. Demo-/Vorstellungs-Instanz mit sichtbarer Instanz-Titelzeile
+     ueber der Kachel) ragte der Pfeil-Knopf 5px zu weit nach oben unter
+     diese Titelzeile. */
+  #tabsWrap { display: flex; flex-direction: column; perspective: 700px; position: absolute; left: 0; top: -30px; z-index: 900; }
+  /* Deckender Grund (Dietmar, 27.08.2026: "zu latent") - fast opak,
+     Farbe folgt dem Theme (body.light kommt aus handleMessage/lightTheme,
+     dieselbe manuelle Theme-Angabe wie ueberall in der Kachel). */
+  /* VOLL deckender Grund (Dietmar, 27.08.2026: selbst bei 97% war "noch
+     immer sehr viel des darunter liegenden Diagramms sichtbar") - solide
+     Farbe statt rgba, backdrop-filter damit ueberfluessig und entfernt. */
+  #tabs { display: flex; flex-direction: column; gap: 4px; position: absolute; left: 30px; top: 0; z-index: 901; padding: 8px; border-radius: 12px; background: #26292e; border: 1px solid rgba(127,135,145,.30); box-shadow: 0 8px 28px rgba(0,0,0,.35); transform-origin: left center; }
+  body.light #tabs { background: #f2f4f7; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+  #tabsWrap.collapsed #tabs { pointer-events: none; visibility: hidden; }
+  /* Vier waehlbare Animationsstile (Dietmar, 27.08.2026: "Mache doch
+     alle 4") - data-anim am #tabsWrap kommt aus der Doppelpfeil-Variable
+     TabAnimation (Payload-Feld tabAnim). Gemeinsames Prinzip: visibility
+     schaltet verzoegert (nach Ende der Ausblend-Transition), damit die
+     Animation durchlaeuft und das Panel danach trotzdem aus Tab-Fokus/
+     Screenreader verschwindet. */
+  /* 0 "spring": federnder Einschub mit Overshoot + gestaffelt einfliegende Reiter. */
+  [data-anim="spring"] #tabs { transition: transform .38s cubic-bezier(.34,1.56,.64,1), opacity .22s ease, visibility 0s linear 0s; }
+  [data-anim="spring"].collapsed #tabs { transform: translateX(-24px) scale(.92); opacity: 0; transition: transform .25s ease-in, opacity .18s ease-in, visibility 0s linear .25s; }
+  [data-anim="spring"] #tabs .tab { transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .25s ease; }
+  [data-anim="spring"].collapsed #tabs .tab { transform: translateX(-14px); opacity: 0; transition: none; }
+  /* 1 "flip": Reiter klappen nacheinander wie Karten aus der Tiefe auf (3D). */
+  [data-anim="flip"] #tabs { transition: opacity .2s ease, visibility 0s linear 0s; }
+  [data-anim="flip"].collapsed #tabs { opacity: 0; transition: opacity .25s ease .18s, visibility 0s linear .43s; }
+  [data-anim="flip"] #tabs .tab { transform-origin: left center; transition: transform .45s cubic-bezier(.34,1.4,.64,1), opacity .3s ease; }
+  [data-anim="flip"].collapsed #tabs .tab { transform: rotateY(-88deg); opacity: 0; transition: transform .25s ease-in, opacity .2s ease-in; }
+  /* 2 "scale": Panel waechst aus dem Pfeil-Knopf heraus (Kontextmenue-Stil). */
+  /* "Fluessig durch den Pfeil" (Dietmars vierte Fassung, 27.08.2026:
+     "als wenn der Pfeil Button eine Oeffnung waere und das Panel wie
+     etwas fluessiges sich durch die kleine Oeffnung hindurch quetschen
+     muss") - Choreografie in Fluessigkeits-Phasen, Ursprung am Knopf:
+     1. tropfenklein an der Oeffnung (scale ~0, kreisrund),
+     2. ein DUENNER, flachgedrueckter Strahl schiesst horizontal heraus
+        (X waechst stark, Y bleibt winzig - das ist das "Durchquetschen"),
+     3. der Strahl blaeht sich vertikal auf, schwappt ueber (Y-Overshoot),
+     4. wabbelt kurz nach und setzt sich; border-radius laeuft von rund
+        (Tropfen) zu eckig (Panel) mit. Schliessen: umgekehrt - Panel
+        wird erst flachgedrueckt, dann als duenner Strahl in die Oeffnung
+        gesaugt (forwards haelt den Endzustand, bis .collapsed greift). */
+  /* Ecke-fuer-Ecke-Einsaugen (Dietmars finaler Ablauf, 27.08.2026):
+     "Zuerst spitzt sich die linke obere Ecke zu und wird in den Pfeil
+     gezogen. Zu diesem Zeitpunkt stehen die anderen 3 Ecken noch an
+     ihrem urspruenglichen Ort. danach wird die zum Pfeil naechstliegende
+     Ecke eingezogen und dann die naechste und zum Schluss die Letzte
+     Ecke." Umsetzung als animierte clip-path-Polygon-Maske mit 6
+     Punkten (Ecken + 2 Zwischenpunkte an der oberen/linken Kante, die
+     das ZUSPITZEN der linken oberen Ecke formen). Reihenfolge beim
+     Schliessen: 1. TL-Spitze bildet sich (Nachbarpunkte kneifen zur
+     Ecke, die anderen 3 Ecken stehen UNVERAENDERT), 2. die
+     naechstliegende Ecke (oben rechts) wandert zur Saugstelle, 3. dann
+     unten links, 4. zuletzt unten rechts. Ein leichter Scale zum
+     Pfeil-Ursprung verkauft die Zugbewegung des Inhalts, Deckkraft
+     faellt erst ganz am Ende. Oeffnen = exakt rueckwaerts (die zuletzt
+     eingesogene Ecke kommt zuerst wieder heraus). */
+  /* Simulierte Fassung, maximaler Drall (Dietmar, 28.08.2026: "der
+     drall / bogen muss noch staerker werden"): gleiche Physik-Simulation
+     (weicher Koerper aus 20 Feder-Partikeln, 1/r^2-Gravitation am
+     Pfeil-Knopf, Spiral-Einfall, viskose Daempfung, semi-implizite
+     Euler-Integration, Einfang am Loch, Oeffnen = Zeitumkehr), Drall
+     v_t 130 -> 200 bei Daempfung .8 -> 1.2 - der Parameter-Sweep hat
+     gezeigt: 200 ist das MAXIMUM, bei dem das Loch noch alle Ecken
+     einfaengt; ab ~280 entkommen die fernen Ecken der Gravitation
+     (echte Physik: zu viel Drehimpuls = keine Einfangbahn mehr), und
+     die hoehere Daempfung ist noetig, um den zusaetzlichen Drehimpuls
+     abzubauen. Einfangzeiten: TL sofort, TR ~23%, BL ~50%, BR ~91%.
+     Uebrige Parameter: G=4e7, Feder k=18, Softening 9, Einfangradius
+     10. Keyframes PROGRAMMATISCH erzeugt - Generator anpassen, nicht
+     Zahlen von Hand verbiegen. */
+  @keyframes cornerSuckIn {
+    0.0% { opacity: 1.00; transform: scale(1.00); clip-path: polygon(0.0% 0.0%, 20.0% 0.0%, 40.0% 0.0%, 60.0% 0.0%, 80.0% 0.0%, 100.0% 0.0%, 100.0% 20.0%, 100.0% 40.0%, 100.0% 60.0%, 100.0% 80.0%, 100.0% 100.0%, 80.0% 100.0%, 60.0% 100.0%, 40.0% 100.0%, 20.0% 100.0%, 0.0% 100.0%, 0.0% 80.0%, 0.0% 60.0%, 0.0% 40.0%, 0.0% 20.0%); }
+    6.2% { opacity: 1.00; transform: scale(0.94); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 10.0% 0.0%, 45.2% 0.0%, 70.8% 0.0%, 93.7% 0.0%, 98.2% 13.9%, 100.0% 34.2%, 100.0% 55.0%, 100.0% 75.8%, 100.0% 96.5%, 89.6% 96.8%, 70.1% 97.2%, 50.6% 97.7%, 31.0% 98.2%, 11.3% 98.7%, 11.1% 78.1%, 10.6% 56.7%, 8.3% 32.4%, 0.0% 4.0%); }
+    12.5% { opacity: 1.00; transform: scale(0.85); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 43.0% 0.0%, 75.8% 0.0%, 85.7% 7.3%, 98.3% 26.9%, 100.0% 48.5%, 100.0% 70.4%, 100.0% 92.0%, 97.2% 92.6%, 78.2% 93.1%, 59.3% 93.8%, 40.4% 94.7%, 21.3% 95.6%, 20.5% 73.2%, 17.9% 47.5%, 0.0% 4.0%, 0.0% 4.0%); }
+    18.8% { opacity: 1.00; transform: scale(0.77); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 42.1% 0.0%, 59.6% 1.0%, 85.2% 18.4%, 100.0% 40.6%, 100.0% 63.9%, 100.0% 86.6%, 100.0% 87.3%, 84.2% 87.8%, 66.1% 88.6%, 48.0% 89.6%, 29.9% 90.6%, 27.7% 65.2%, 18.3% 30.4%, 0.0% 4.0%, 0.0% 4.0%); }
+    25.0% { opacity: 1.00; transform: scale(0.66); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 4.1% 0.0%, 59.8% 8.8%, 94.3% 31.4%, 100.0% 56.3%, 100.0% 80.2%, 100.0% 80.9%, 88.0% 81.3%, 70.8% 81.9%, 53.8% 82.9%, 36.7% 83.6%, 31.4% 53.1%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    31.2% { opacity: 1.00; transform: scale(0.58); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 3.6% 0.0%, 76.2% 20.5%, 100.0% 47.4%, 100.0% 72.8%, 100.0% 73.6%, 89.4% 73.5%, 73.1% 73.7%, 57.4% 74.5%, 41.3% 74.0%, 28.5% 35.3%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    37.5% { opacity: 1.00; transform: scale(0.50); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 42.6% 7.9%, 96.8% 37.1%, 100.0% 64.1%, 100.0% 65.2%, 88.0% 64.4%, 72.6% 64.0%, 58.2% 64.3%, 42.7% 61.0%, 5.8% 7.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    43.8% { opacity: 1.00; transform: scale(0.42); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 78.0% 24.9%, 100.0% 54.1%, 99.4% 55.7%, 83.1% 53.8%, 68.5% 52.2%, 55.2% 51.7%, 38.5% 43.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    50.0% { opacity: 1.00; transform: scale(0.35); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 45.0% 10.7%, 100.0% 42.4%, 90.4% 44.9%, 73.7% 41.3%, 59.0% 37.9%, 45.8% 35.7%, 22.7% 17.8%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    56.2% { opacity: 1.00; transform: scale(0.26); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 88.2% 28.5%, 75.5% 32.4%, 56.7% 26.1%, 39.2% 19.6%, 20.7% 12.7%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    62.5% { opacity: 1.00; transform: scale(0.18); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 58.2% 12.2%, 50.0% 17.3%, 20.1% 6.3%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    68.8% { opacity: 1.00; transform: scale(0.13); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 0.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    75.0% { opacity: 1.00; transform: scale(0.14); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 25.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    81.2% { opacity: 1.00; transform: scale(0.15); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 39.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    87.5% { opacity: 1.00; transform: scale(0.14); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 38.6%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    93.8% { opacity: 0.52; transform: scale(0.13); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 20.8%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    100.0% { opacity: 0.00; transform: scale(0.12); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+  }
+  @keyframes cornerSuckOut {
+    0.0% { opacity: 0.00; transform: scale(0.12); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    6.2% { opacity: 0.52; transform: scale(0.13); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 20.8%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    12.5% { opacity: 1.00; transform: scale(0.14); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 38.6%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    18.8% { opacity: 1.00; transform: scale(0.15); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 39.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    25.0% { opacity: 1.00; transform: scale(0.14); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 25.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    31.2% { opacity: 1.00; transform: scale(0.13); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 0.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    37.5% { opacity: 1.00; transform: scale(0.18); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 58.2% 12.2%, 50.0% 17.3%, 20.1% 6.3%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    43.8% { opacity: 1.00; transform: scale(0.26); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 88.2% 28.5%, 75.5% 32.4%, 56.7% 26.1%, 39.2% 19.6%, 20.7% 12.7%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    50.0% { opacity: 1.00; transform: scale(0.35); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 45.0% 10.7%, 100.0% 42.4%, 90.4% 44.9%, 73.7% 41.3%, 59.0% 37.9%, 45.8% 35.7%, 22.7% 17.8%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    56.2% { opacity: 1.00; transform: scale(0.42); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 78.0% 24.9%, 100.0% 54.1%, 99.4% 55.7%, 83.1% 53.8%, 68.5% 52.2%, 55.2% 51.7%, 38.5% 43.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    62.5% { opacity: 1.00; transform: scale(0.50); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 42.6% 7.9%, 96.8% 37.1%, 100.0% 64.1%, 100.0% 65.2%, 88.0% 64.4%, 72.6% 64.0%, 58.2% 64.3%, 42.7% 61.0%, 5.8% 7.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    68.8% { opacity: 1.00; transform: scale(0.58); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 3.6% 0.0%, 76.2% 20.5%, 100.0% 47.4%, 100.0% 72.8%, 100.0% 73.6%, 89.4% 73.5%, 73.1% 73.7%, 57.4% 74.5%, 41.3% 74.0%, 28.5% 35.3%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    75.0% { opacity: 1.00; transform: scale(0.66); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 4.1% 0.0%, 59.8% 8.8%, 94.3% 31.4%, 100.0% 56.3%, 100.0% 80.2%, 100.0% 80.9%, 88.0% 81.3%, 70.8% 81.9%, 53.8% 82.9%, 36.7% 83.6%, 31.4% 53.1%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%); }
+    81.2% { opacity: 1.00; transform: scale(0.77); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 42.1% 0.0%, 59.6% 1.0%, 85.2% 18.4%, 100.0% 40.6%, 100.0% 63.9%, 100.0% 86.6%, 100.0% 87.3%, 84.2% 87.8%, 66.1% 88.6%, 48.0% 89.6%, 29.9% 90.6%, 27.7% 65.2%, 18.3% 30.4%, 0.0% 4.0%, 0.0% 4.0%); }
+    87.5% { opacity: 1.00; transform: scale(0.85); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 0.0% 4.0%, 43.0% 0.0%, 75.8% 0.0%, 85.7% 7.3%, 98.3% 26.9%, 100.0% 48.5%, 100.0% 70.4%, 100.0% 92.0%, 97.2% 92.6%, 78.2% 93.1%, 59.3% 93.8%, 40.4% 94.7%, 21.3% 95.6%, 20.5% 73.2%, 17.9% 47.5%, 0.0% 4.0%, 0.0% 4.0%); }
+    93.8% { opacity: 1.00; transform: scale(0.94); clip-path: polygon(0.0% 4.0%, 0.0% 4.0%, 10.0% 0.0%, 45.2% 0.0%, 70.8% 0.0%, 93.7% 0.0%, 98.2% 13.9%, 100.0% 34.2%, 100.0% 55.0%, 100.0% 75.8%, 100.0% 96.5%, 89.6% 96.8%, 70.1% 97.2%, 50.6% 97.7%, 31.0% 98.2%, 11.3% 98.7%, 11.1% 78.1%, 10.6% 56.7%, 8.3% 32.4%, 0.0% 4.0%); }
+    100.0% { opacity: 1.00; transform: scale(1.00); clip-path: polygon(0.0% 0.0%, 20.0% 0.0%, 40.0% 0.0%, 60.0% 0.0%, 80.0% 0.0%, 100.0% 0.0%, 100.0% 20.0%, 100.0% 40.0%, 100.0% 60.0%, 100.0% 80.0%, 100.0% 100.0%, 80.0% 100.0%, 60.0% 100.0%, 40.0% 100.0%, 20.0% 100.0%, 0.0% 100.0%, 0.0% 80.0%, 0.0% 60.0%, 0.0% 40.0%, 0.0% 20.0%); }
+  }
+  [data-anim="scale"] #tabs { transform-origin: -18px 12px; }
+  [data-anim="scale"]:not(.collapsed) #tabs { animation: cornerSuckOut .5s linear; }
+  [data-anim="scale"].collapsed #tabs { transform: scale(.12); opacity: 0; animation: cornerSuckIn .45s linear forwards; transition: visibility 0s linear .45s; }
+  /* 3 "blur": Panel materialisiert sich aus der Unschaerfe. */
+  [data-anim="blur"] #tabs { transition: filter .35s ease, transform .35s ease, opacity .25s ease, visibility 0s linear 0s; }
+  [data-anim="blur"].collapsed #tabs { filter: blur(14px); transform: scale(1.06); opacity: 0; transition: filter .28s ease-in, transform .28s ease-in, opacity .22s ease-in, visibility 0s linear .28s; }
+  /* Gestaffelte Verzoegerungen (spring + flip nutzen sie beim Oeffnen). */
+  [data-anim="spring"] #tabs .tab:nth-child(1), [data-anim="flip"] #tabs .tab:nth-child(1) { transition-delay: .03s; }
+  [data-anim="spring"] #tabs .tab:nth-child(2), [data-anim="flip"] #tabs .tab:nth-child(2) { transition-delay: .06s; }
+  [data-anim="spring"] #tabs .tab:nth-child(3), [data-anim="flip"] #tabs .tab:nth-child(3) { transition-delay: .09s; }
+  [data-anim="spring"] #tabs .tab:nth-child(4), [data-anim="flip"] #tabs .tab:nth-child(4) { transition-delay: .12s; }
+  [data-anim="spring"] #tabs .tab:nth-child(5), [data-anim="flip"] #tabs .tab:nth-child(5) { transition-delay: .15s; }
+  [data-anim="spring"] #tabs .tab:nth-child(6), [data-anim="flip"] #tabs .tab:nth-child(6) { transition-delay: .18s; }
+  [data-anim="spring"] #tabs .tab:nth-child(7), [data-anim="flip"] #tabs .tab:nth-child(7) { transition-delay: .21s; }
+  [data-anim="spring"] #tabs .tab:nth-child(8), [data-anim="flip"] #tabs .tab:nth-child(8) { transition-delay: .24s; }
+  [data-anim="spring"].collapsed #tabs .tab, [data-anim="flip"].collapsed #tabs .tab { transition-delay: 0s; }
+  #tabsToggle { font: inherit; font-size: 12px; line-height: 1; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; opacity: .7; flex: 0 0 auto; margin-bottom: 4px; transition: transform .38s cubic-bezier(.34,1.56,.64,1); }
+  #tabsToggle:hover { opacity: 1; background: rgba(127,135,145,.22); }
+  #tabsWrap.collapsed #tabsToggle { transform: rotate(180deg); }
+  button.tab { font: inherit; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; padding: 7px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; opacity: .6; }
+  button.tab:hover:not(:disabled) { opacity: .85; background: rgba(127,135,145,.10); }
+  button.tab.active { opacity: 1; background: rgba(127,135,145,.16); border-color: rgba(127,135,145,.35); }
+  button.tab:disabled { opacity: .3; cursor: default; }
+  /* Automatische Reiter-Sichtbarkeit (Dietmar, 28.08.2026): Reiter OHNE
+     Datenquelle werden komplett ausgeblendet (.tabHidden); Reiter mit
+     Quelle und aktuellen Daten leicht gruen (.tabOk), Reiter mit Quelle
+     aber ohne aktuelle Daten leicht rot (.tabWarn) - "auf diese Art und
+     Weise wird auch deutlich was derzeit schief laeuft". Zustaende
+     werden bei jedem Payload je Reiter neu bewertet (updateTabStates()). */
+  button.tab.tabHidden { display: none; }
+  button.tab.tabOk { color: #a8d5ac; }
+  button.tab.tabWarn { color: #e6a9a9; }
+  #chartcol { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+  #chartTitle { text-align: center; font-size: 13px; font-weight: 700; opacity: .8; padding: 2px 30px 4px; }
+  .ycSubTabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 8px; }
+  .ycSubTabs button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; opacity: .75; }
+  .ycSubTabs button.active { opacity: 1; font-weight: 700; border-color: rgba(127,135,145,.7); }
+  .ycSubTabs button:disabled { opacity: .3; cursor: default; }
+  #curvePanel { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: center; gap: 10px; overflow: hidden; }
   #curveSubTabs { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
-  #curveSubTabs .grp { display: flex; gap: 4px; }
-  #curveSvgWrap { width: 100%; max-width: 460px; }
-  #curveSvgWrap svg { width: 100%; height: auto; touch-action: none; }
-  .curvePointLabel { font-size: 11px; font-weight: 700; }
-  #curveActions { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  #curveSvgWrap { width: 100%; flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; align-items: center; }
+  #curveSvgWrap svg { touch-action: none; max-width: 100%; }
+  #curveActions { display: flex; align-items: center; gap: 12px; font-size: 12px; padding-bottom: 6px; }
   button.curveSave { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(76,175,80,.55); background: rgba(76,175,80,.18); color: inherit; cursor: pointer; }
   button.curveSave:hover:not(:disabled) { background: rgba(76,175,80,.28); }
   button.curveSave:disabled { opacity: .4; cursor: default; }
@@ -119,10 +301,6 @@
 <body>
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div class="wrap">
-  <div id="topTabs">
-    <button class="ttab active" data-toptab="verlauf">Verlauf</button>
-    <button class="ttab tabHidden" data-toptab="heizkurven">Heizkurven</button>
-  </div>
   <div id="bar">
     <select id="type" class="sel">
       <option value="day">Tag (Verlauf)</option>
@@ -139,6 +317,16 @@
     <button id="next" class="nav" title="Vor">&#9654;</button>
     <span id="quick"></span>
   </div>
+  <div id="body">
+    <div id="tabsWrap" data-anim="spring">
+      <button id="tabsToggle" title="Reiterleiste ein-/ausblenden">&#9664;</button>
+      <div id="tabs">
+        <button class="tab active" data-tab="verlauf">Verlauf</button>
+        <button class="tab" data-tab="heizkurven">Heizkurven</button>
+      </div>
+    </div>
+    <div id="chartcol">
+  <div id="chartTitle"></div>
   <div id="staleHint" style="display:none; margin:6px auto 0; padding:4px 10px; max-width:90%; border-radius:6px; background:rgba(255,193,7,.16); color:#ffc107; font-size:12px; text-align:center"></div>
   <div id="kpiRow"></div>
   <div id="chart"></div>
@@ -157,6 +345,8 @@
     <div id="curveActions">
       <button id="curveSaveBtn" class="curveSave" type="button" disabled>Übernehmen</button>
       <span id="curveStatus"></span>
+    </div>
+  </div>
     </div>
   </div>
   <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
@@ -684,37 +874,90 @@
     }
   }
 
-  // Oberster Reiterwechsel Verlauf/Heizkurven (18.09.2026) - schaltet
-  // zwischen den beiden komplett unabhaengigen Ansichten um; der bisherige
-  // Tag/Woche/Monat-Umschalter (curView) bleibt ausschliesslich Sache des
-  // Verlauf-Reiters, wird beim Wechsel nicht angetastet.
+  // Reiterleiste 1:1 nach NRGDashboardPVMonitor (Dietmar, 18.09.2026: "der
+  // Wechsel soll exakt analog zum PV Monitor erfolgen, auch das Menue") -
+  // einklappbare Seitenleiste (Pfeil-Knopf, Animationsstil aus der
+  // Instanzvariable TabAnimation), Diagrammtitel aus dem aktiven Reiter,
+  // Reiter ohne Datenquelle komplett ausgeblendet (.tabHidden), mit Quelle
+  // und Daten leicht gruen (.tabOk), mit Quelle ohne Daten leicht rot
+  // (.tabWarn).
+  var tabsCollapsedKey = null;
+  function applyTabsCollapsed(collapsed) {
+    document.getElementById('tabsWrap').classList.toggle('collapsed', collapsed);
+  }
+  function setTabsCollapsed(collapsed) {
+    applyTabsCollapsed(collapsed);
+    try { if (tabsCollapsedKey) { localStorage.setItem(tabsCollapsedKey, collapsed ? '1' : '0'); } } catch (e) {}
+  }
+  function loadTabsCollapsed(uid) {
+    tabsCollapsedKey = 'nrgdashwpmon_tabs_' + uid;
+    var collapsed = false;
+    try { collapsed = localStorage.getItem(tabsCollapsedKey) === '1'; } catch (e) {}
+    applyTabsCollapsed(collapsed);
+  }
+  document.getElementById('tabsToggle').onclick = function () {
+    setTabsCollapsed(!document.getElementById('tabsWrap').classList.contains('collapsed'));
+  };
+  function updateChartTitle() {
+    var el = document.getElementById('chartTitle');
+    if (!el) { return; }
+    var active = document.querySelector('button.tab.active');
+    var t = active ? active.textContent : '';
+    if (curTop === 'heizkurven') {
+      var zn = (curveZone === 'z2') ? 'Heizkreis 2' : 'Heizkreis 1';
+      var mn = (curveMode === 'cool') ? 'Kühlen' : 'Heizen';
+      t += ' - ' + zn + ' (' + mn + ')';
+    }
+    el.textContent = t;
+  }
+  function updateTabStates() {
+    if (!lastData) { return; }
+    var today = (lastData.days || [])[0];
+    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve };
+    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache };
+    Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
+      var t = btn.getAttribute('data-tab');
+      var hidden = !src[t];
+      btn.classList.toggle('tabHidden', hidden);
+      btn.classList.toggle('tabOk', !hidden && !!data[t]);
+      btn.classList.toggle('tabWarn', !hidden && !data[t] && t !== 'heizkurven');
+    });
+    if (!src[curTop]) { setTopTab('verlauf'); }
+    updateChartTitle();
+  }
   function setTopTab(tab) {
     curTop = tab;
-    Array.prototype.forEach.call(document.querySelectorAll('.ttab'), function (b) {
-      b.classList.toggle('active', b.getAttribute('data-toptab') === tab);
+    Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
+      b.classList.toggle('active', b.getAttribute('data-tab') === tab);
     });
-    var verlaufEls = ['bar', 'staleHint', 'kpiRow', 'chart', 'legendRow', 'empty'];
+    var verlaufEls = ['staleHint', 'kpiRow', 'chart', 'legendRow', 'empty'];
     verlaufEls.forEach(function (id) {
       document.getElementById(id).style.display = (tab === 'verlauf') ? '' : 'none';
     });
+    // Zeitsteuerung nur im Verlauf-Reiter; der Pfeil-Knopf wandert mit nach
+    // oben, wenn #bar verschwindet (wie im PVMonitor beim Jahresvergleich).
+    document.getElementById('bar').style.display = (tab === 'verlauf') ? '' : 'none';
+    document.getElementById('tabsWrap').style.top = (tab === 'verlauf') ? '' : '0px';
     document.getElementById('curvePanel').style.display = (tab === 'heizkurven') ? 'flex' : 'none';
+    updateChartTitle();
     if (tab === 'heizkurven') { renderCurvePanel(); } else { render(); }
   }
-  Array.prototype.forEach.call(document.querySelectorAll('.ttab'), function (b) {
-    b.onclick = function () { setTopTab(b.getAttribute('data-toptab')); };
+  Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
+    b.onclick = function () { if (!b.classList.contains('tabHidden')) { setTopTab(b.getAttribute('data-tab')); } };
   });
 
   // -- Heizkurven-Editor (18.09.2026) -----------------------------------
   // Zwei-Punkt-Modell je Zone/Modus (Vertrag HEISHA_GetHeatingCurve/
-  // HEISHA_SetHeatingCurve, verbundweit mit HeishaMon/WPHub abgestimmt,
-  // 18.09.2026): {outsideLowC,outsideHighC} -> {targetLowC,targetHighC}.
-  // Eigenes SVG statt Highcharts/ECharts - beide Bibliotheken bieten kein
-  // eingebautes Ziehen von Datenpunkten, ein Zwei-Punkt-Editor ist als
-  // reines SVG einfacher als ein Drag-Plugin nachzuruesten.
+  // HEISHA_SetHeatingCurve, verbundweit mit HeishaMon/WPHub abgestimmt):
+  // {outsideLowC,outsideHighC} -> {targetLowC,targetHighC}. Eigenes SVG
+  // statt Highcharts/ECharts - beide Bibliotheken bieten kein eingebautes
+  // Ziehen von Datenpunkten. Die Zeichenflaeche folgt der tatsaechlichen
+  // Kachelgroesse (viewBox = Pixelmasse), damit das Diagramm den Platz
+  // nutzt wie die Verlaufsdiagramme statt als kleines Bild zu stehen.
   var CURVE_X_MIN = -20, CURVE_X_MAX = 20;   // Aussentemperatur °C
   var CURVE_Y_MIN = 15, CURVE_Y_MAX = 65;    // Vorlauftemperatur °C
-  var CURVE_PAD_L = 34, CURVE_PAD_R = 14, CURVE_PAD_T = 14, CURVE_PAD_B = 26;
-  var CURVE_W = 400, CURVE_H = 260;
+  var CURVE_PAD_L = 76, CURVE_PAD_R = 24, CURVE_PAD_T = 24, CURVE_PAD_B = 46;
+  var CURVE_W = 800, CURVE_H = 420;
 
   function curveXToPx(x) {
     var w = CURVE_W - CURVE_PAD_L - CURVE_PAD_R;
@@ -742,7 +985,7 @@
 
   // Verfuegbare Zone/Modus-Kombinationen aus curveCache - eine Kombination
   // mit null bleibt komplett weg (HeishaMons Prinzip: nichts vortaeuschen,
-  // was die Anlage nicht liefert, siehe deren send_message-Antwort).
+  // was die Anlage nicht liefert).
   function curveAvailableCombos() {
     var out = [];
     ['z1', 'z2'].forEach(function (z) {
@@ -760,31 +1003,29 @@
     row.innerHTML = '';
     var combos = curveAvailableCombos();
     if (!combos.length) { return; }
-    if (!combos.includes(curveZone + '_' + curveMode)) {
+    if (combos.indexOf(curveZone + '_' + curveMode) < 0) {
       var first = combos[0].split('_');
       curveZone = first[0]; curveMode = first[1];
     }
-    var zones = [].concat(combos.map(function (c) { return c.split('_')[0]; })).filter(function (v, i, a) { return a.indexOf(v) === i; });
-    var modes = [].concat(combos.map(function (c) { return c.split('_')[1]; })).filter(function (v, i, a) { return a.indexOf(v) === i; });
-    if (zones.length > 1) {
-      var zg = document.createElement('div'); zg.className = 'grp';
-      zones.forEach(function (z) {
-        var b = document.createElement('button'); b.className = 'ttab' + (z === curveZone ? ' active' : '');
-        b.textContent = (z === 'z1') ? 'Heizkreis 1' : 'Heizkreis 2';
-        b.onclick = function () { curveZone = z; curveDraft = null; renderCurvePanel(); };
-        zg.appendChild(b);
+    var zones = combos.map(function (c) { return c.split('_')[0]; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var modes = combos.map(function (c) { return c.split('_')[1]; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    function group(items, isActive, label, onPick) {
+      var g = document.createElement('div'); g.className = 'ycSubTabs';
+      items.forEach(function (it) {
+        var b = document.createElement('button'); b.className = isActive(it) ? 'active' : '';
+        b.textContent = label(it);
+        b.onclick = function () { onPick(it); };
+        g.appendChild(b);
       });
-      row.appendChild(zg);
+      row.appendChild(g);
+    }
+    if (zones.length > 1) {
+      group(zones, function (z) { return z === curveZone; }, function (z) { return z === 'z1' ? 'Heizkreis 1' : 'Heizkreis 2'; },
+        function (z) { curveZone = z; curveDraft = null; curveStatusText = ''; updateChartTitle(); renderCurvePanel(); });
     }
     if (modes.length > 1) {
-      var mg = document.createElement('div'); mg.className = 'grp';
-      modes.forEach(function (m) {
-        var b = document.createElement('button'); b.className = 'ttab' + (m === curveMode ? ' active' : '');
-        b.textContent = (m === 'heat') ? 'Heizen' : 'Kühlen';
-        b.onclick = function () { curveMode = m; curveDraft = null; renderCurvePanel(); };
-        mg.appendChild(b);
-      });
-      row.appendChild(mg);
+      group(modes, function (m) { return m === curveMode; }, function (m) { return m === 'heat' ? 'Heizen' : 'Kühlen'; },
+        function (m) { curveMode = m; curveDraft = null; curveStatusText = ''; updateChartTitle(); renderCurvePanel(); });
     }
   }
 
@@ -794,88 +1035,146 @@
     return (zoneData && zoneData[curveMode]) ? zoneData[curveMode] : null;
   }
 
+  function curveFitSize() {
+    var wrap = document.getElementById('curveSvgWrap');
+    var col = document.getElementById('chartcol');
+    var w = Math.max(320, wrap.clientWidth || 640);
+    // Hoehe: was #chartcol nach Titel/Unterreitern/Aktionen uebrig laesst.
+    var used = 0;
+    ['chartTitle', 'curveSubTabs', 'curveActions'].forEach(function (id) {
+      var el = document.getElementById(id); if (el) { used += el.offsetHeight + 10; }
+    });
+    var h = Math.max(220, (col.clientHeight || 520) - used - 44);
+    CURVE_W = Math.round(w); CURVE_H = Math.round(Math.min(h, w * 0.75));
+    var svg = document.getElementById('curveSvg');
+    svg.setAttribute('viewBox', '0 0 ' + CURVE_W + ' ' + CURVE_H);
+    svg.setAttribute('width', CURVE_W); svg.setAttribute('height', CURVE_H);
+  }
+
   function drawCurveSvg() {
     var svg = document.getElementById('curveSvg');
     svg.innerHTML = '';
     var vals = curveCurrentValues();
     if (!vals) { return; }
+    curveFitSize();
     var isLight = isLightTheme();
-    var axisColor = isLight ? '#333' : 'rgba(226,232,240,.55)';
-    var gridColor = isLight ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.10)';
-    // Gitter/Achsen.
-    for (var gx = CURVE_X_MIN; gx <= CURVE_X_MAX; gx += 10) {
-      svg.appendChild(curveSvgEl('line', { x1: curveXToPx(gx), y1: CURVE_PAD_T, x2: curveXToPx(gx), y2: CURVE_H - CURVE_PAD_B, stroke: gridColor, 'stroke-width': 1 }));
-      var lx = curveSvgEl('text', { x: curveXToPx(gx), y: CURVE_H - CURVE_PAD_B + 14, fill: axisColor, 'font-size': 10, 'text-anchor': 'middle' });
-      lx.textContent = gx + '°';
-      svg.appendChild(lx);
+    var axisColor = isLight ? '#333' : 'rgba(226,232,240,.65)';
+    var gridColor = isLight ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.08)';
+    var gridStrong = isLight ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.20)';
+    var isCool = curveMode === 'cool';
+    var lineColor = isCool ? '#4aa3e0' : '#ef9a3d';
+    var plotL = CURVE_PAD_L, plotR = CURVE_W - CURVE_PAD_R, plotT = CURVE_PAD_T, plotB = CURVE_H - CURVE_PAD_B;
+
+    var defs = curveSvgEl('defs', {});
+    var grad = curveSvgEl('linearGradient', { id: 'curveGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
+    grad.appendChild(curveSvgEl('stop', { offset: '0%', 'stop-color': lineColor, 'stop-opacity': .32 }));
+    grad.appendChild(curveSvgEl('stop', { offset: '100%', 'stop-color': lineColor, 'stop-opacity': .02 }));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    // Feines Gitter alle 5 °C, kraeftigere Linien alle 10 °C mit Beschriftung.
+    for (var gx = CURVE_X_MIN; gx <= CURVE_X_MAX; gx += 5) {
+      var strongX = (gx % 10 === 0);
+      svg.appendChild(curveSvgEl('line', { x1: curveXToPx(gx), y1: plotT, x2: curveXToPx(gx), y2: plotB, stroke: strongX ? gridStrong : gridColor, 'stroke-width': 1, 'stroke-dasharray': strongX ? '' : '3 4' }));
+      if (strongX) {
+        var lx = curveSvgEl('text', { x: curveXToPx(gx), y: plotB + 18, fill: axisColor, 'font-size': 12, 'text-anchor': 'middle' });
+        lx.textContent = gx + ' °C';
+        svg.appendChild(lx);
+      }
     }
-    for (var gy = CURVE_Y_MIN; gy <= CURVE_Y_MAX; gy += 10) {
-      svg.appendChild(curveSvgEl('line', { x1: CURVE_PAD_L, y1: curveYToPx(gy), x2: CURVE_W - CURVE_PAD_R, y2: curveYToPx(gy), stroke: gridColor, 'stroke-width': 1 }));
-      var ly = curveSvgEl('text', { x: CURVE_PAD_L - 6, y: curveYToPx(gy) + 3, fill: axisColor, 'font-size': 10, 'text-anchor': 'end' });
-      ly.textContent = gy + '°';
-      svg.appendChild(ly);
+    for (var gy = CURVE_Y_MIN; gy <= CURVE_Y_MAX; gy += 5) {
+      var strongY = (gy % 10 === 5);
+      svg.appendChild(curveSvgEl('line', { x1: plotL, y1: curveYToPx(gy), x2: plotR, y2: curveYToPx(gy), stroke: strongY ? gridStrong : gridColor, 'stroke-width': 1, 'stroke-dasharray': strongY ? '' : '3 4' }));
+      if (strongY) {
+        var ly = curveSvgEl('text', { x: plotL - 10, y: curveYToPx(gy) + 4, fill: axisColor, 'font-size': 12, 'text-anchor': 'end' });
+        ly.textContent = gy + ' °C';
+        svg.appendChild(ly);
+      }
     }
-    // Verbindungslinie + zwei ziehbare Punkte. Farbe folgt dem Modus
-    // (Heizen warm/orange, Kuehlen kalt/blau) - rein optisch, kein
-    // Vertragsfeld.
-    var lineColor = (curveMode === 'cool') ? '#4aa3e0' : '#ef9a3d';
-    var p1 = { x: curveXToPx(vals.outsideLowC), y: curveYToPx(vals.targetLowC) };
-    var p2 = { x: curveXToPx(vals.outsideHighC), y: curveYToPx(vals.targetHighC) };
-    svg.appendChild(curveSvgEl('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: lineColor, 'stroke-width': 2.5 }));
-    [[p1, 0, vals.outsideLowC, vals.targetLowC], [p2, 1, vals.outsideHighC, vals.targetHighC]].forEach(function (t) {
-      var pt = t[0], idx2 = t[1], ox = t[2], ty = t[3];
-      var c = curveSvgEl('circle', { cx: pt.x, cy: pt.y, r: 9, fill: lineColor, stroke: isLight ? '#fff' : '#1c1e22', 'stroke-width': 2, style: 'cursor:grab' });
-      c.dataset.idx = String(idx2);
+    // Achsentitel.
+    var tx = curveSvgEl('text', { x: (plotL + plotR) / 2, y: CURVE_H - 6, fill: axisColor, 'font-size': 12, 'font-weight': 600, 'text-anchor': 'middle', opacity: .85 });
+    tx.textContent = 'Außentemperatur';
+    svg.appendChild(tx);
+    var ty = curveSvgEl('text', { x: 16, y: (plotT + plotB) / 2, fill: axisColor, 'font-size': 12, 'font-weight': 600, 'text-anchor': 'middle', opacity: .85, transform: 'rotate(-90 16 ' + ((plotT + plotB) / 2) + ')' });
+    ty.textContent = 'Vorlauftemperatur';
+    svg.appendChild(ty);
+
+    // Kurve: Punkte nach Aussentemperatur sortiert (links = kalt), Linie bis
+    // an den Diagrammrand verlaengert (gleiche Steigung) - zeigt, dass die
+    // Anlage ausserhalb der Ankerpunkte fortsetzt; Verlauf zwischen den
+    // Punkten kraeftig, Verlaengerung gestrichelt.
+    var pts = [
+      { x: vals.outsideLowC, y: vals.targetLowC, idx: 0 },
+      { x: vals.outsideHighC, y: vals.targetHighC, idx: 1 }
+    ].sort(function (a, b) { return a.x - b.x; });
+    var p1 = { x: curveXToPx(pts[0].x), y: curveYToPx(pts[0].y) };
+    var p2 = { x: curveXToPx(pts[1].x), y: curveYToPx(pts[1].y) };
+    // Flaeche unter der Kurve.
+    svg.appendChild(curveSvgEl('polygon', { points: p1.x + ',' + p1.y + ' ' + p2.x + ',' + p2.y + ' ' + p2.x + ',' + plotB + ' ' + p1.x + ',' + plotB, fill: 'url(#curveGrad)' }));
+    var slope = (p2.x !== p1.x) ? (p2.y - p1.y) / (p2.x - p1.x) : 0;
+    function yAt(xpx) { return p1.y + slope * (xpx - p1.x); }
+    function clampY(y) { return Math.max(plotT, Math.min(plotB, y)); }
+    svg.appendChild(curveSvgEl('line', { x1: plotL, y1: clampY(yAt(plotL)), x2: p1.x, y2: p1.y, stroke: lineColor, 'stroke-width': 2, 'stroke-dasharray': '6 5', opacity: .55 }));
+    svg.appendChild(curveSvgEl('line', { x1: p2.x, y1: p2.y, x2: plotR, y2: clampY(yAt(plotR)), stroke: lineColor, 'stroke-width': 2, 'stroke-dasharray': '6 5', opacity: .55 }));
+    svg.appendChild(curveSvgEl('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: lineColor, 'stroke-width': 3.5, 'stroke-linecap': 'round' }));
+
+    // Ziehbare Punkte mit Wertepille.
+    [p1, p2].forEach(function (pt, i) {
+      var src = pts[i];
+      var halo = curveSvgEl('circle', { cx: pt.x, cy: pt.y, r: 17, fill: lineColor, opacity: .18 });
+      svg.appendChild(halo);
+      var c = curveSvgEl('circle', { cx: pt.x, cy: pt.y, r: 10, fill: lineColor, stroke: isLight ? '#fff' : '#1c1e22', 'stroke-width': 3, style: 'cursor:grab' });
+      c.dataset.idx = String(src.idx);
       svg.appendChild(c);
-      var lbl = curveSvgEl('text', {
-        x: pt.x, y: (idx2 === 0) ? pt.y - 16 : pt.y - 16, fill: axisColor, 'font-size': 11, 'font-weight': 700, 'text-anchor': (idx2 === 0 ? 'start' : 'end')
-      });
-      lbl.setAttribute('class', 'curvePointLabel');
-      lbl.textContent = ox + '° → ' + ty + '°';
+      var text = src.x + ' °C  →  ' + src.y + ' °C';
+      var wPill = text.length * 6.6 + 18;
+      var px = Math.max(plotL, Math.min(plotR - wPill, pt.x - wPill / 2));
+      var py = (pt.y - plotT > 46) ? pt.y - 40 : pt.y + 22;
+      svg.appendChild(curveSvgEl('rect', { x: px, y: py, width: wPill, height: 24, rx: 12, fill: isLight ? 'rgba(255,255,255,.92)' : 'rgba(28,30,34,.92)', stroke: lineColor, 'stroke-width': 1.2 }));
+      var lbl = curveSvgEl('text', { x: px + wPill / 2, y: py + 16, fill: isLight ? '#222' : '#eee', 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' });
+      lbl.textContent = text;
       svg.appendChild(lbl);
     });
     wireCurveDrag(svg);
   }
 
+  var curveDragWired = false, curveDragging = null;
   function wireCurveDrag(svg) {
-    var dragging = null;
     function ptFromEvent(evt) {
       var rect = svg.getBoundingClientRect();
       var cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
       var cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
-      // Der SVG-viewBox (400x260) skaliert auf die tatsaechliche
-      // Bildschirmgroesse - Klick-/Touch-Koordinaten muessen zurueck auf
-      // Viewbox-Einheiten umgerechnet werden, sonst greift das Ziehen bei
-      // jeder von 400x260 abweichenden Darstellungsgroesse daneben.
       return { x: cx / rect.width * CURVE_W, y: cy / rect.height * CURVE_H };
     }
     function onDown(evt) {
       var idxAttr = evt.target && evt.target.dataset ? evt.target.dataset.idx : undefined;
       if (idxAttr === undefined) { return; }
-      dragging = +idxAttr;
+      curveDragging = +idxAttr;
       evt.preventDefault();
     }
+    svg.onmousedown = onDown;
+    svg.ontouchstart = onDown;
+    if (curveDragWired) { return; }
+    curveDragWired = true;
+    // Listener am document nur EINMAL (Ziehen ueber den Rand hinaus bricht
+    // nicht ab, kein Aufstauen bei jedem Neuzeichnen).
     function onMove(evt) {
-      if (dragging === null) { return; }
+      if (curveDragging === null) { return; }
       evt.preventDefault();
-      var p = ptFromEvent(evt);
-      var x = curvePxToX(p.x), y = curvePxToY(p.y);
+      var svgNow = document.getElementById('curveSvg');
+      var rect = svgNow.getBoundingClientRect();
+      var cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+      var cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+      var x = curvePxToX(cx / rect.width * CURVE_W), y = curvePxToY(cy / rect.height * CURVE_H);
       var vals = curveCurrentValues();
       if (!vals) { return; }
-      curveDraft = {
-        outsideLowC: vals.outsideLowC, outsideHighC: vals.outsideHighC,
-        targetLowC: vals.targetLowC, targetHighC: vals.targetHighC,
-      };
-      if (dragging === 0) { curveDraft.outsideLowC = x; curveDraft.targetLowC = y; }
+      curveDraft = { outsideLowC: vals.outsideLowC, outsideHighC: vals.outsideHighC, targetLowC: vals.targetLowC, targetHighC: vals.targetHighC };
+      if (curveDragging === 0) { curveDraft.outsideLowC = x; curveDraft.targetLowC = y; }
       else { curveDraft.outsideHighC = x; curveDraft.targetHighC = y; }
       drawCurveSvg();
       updateCurveSaveBtn();
     }
-    function onUp() { dragging = null; }
-    svg.addEventListener('mousedown', onDown);
-    svg.addEventListener('touchstart', onDown, { passive: false });
-    // An document statt svg gehaengt, damit ein Ziehen ueber den Rand hinaus
-    // (schnelle Mausbewegung) nicht mitten im Drag abbricht.
+    function onUp() { curveDragging = null; }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('touchmove', onMove, { passive: false });
     document.addEventListener('mouseup', onUp);
@@ -890,6 +1189,7 @@
   function renderCurvePanel() {
     var svg = document.getElementById('curveSvg');
     var statusEl = document.getElementById('curveStatus');
+    updateChartTitle();
     if (!lastData || !lastData.hasHeatingCurve) {
       document.getElementById('curveSubTabs').innerHTML = '';
       svg.innerHTML = '';
@@ -906,6 +1206,7 @@
       return;
     }
     renderCurveSubTabs();
+    updateChartTitle();
     if (!curveAvailableCombos().length) {
       svg.innerHTML = '';
       statusEl.textContent = 'Keine Heizkurve gefunden.';
@@ -916,6 +1217,7 @@
     updateCurveSaveBtn();
     statusEl.textContent = curveStatusText;
   }
+  window.addEventListener('resize', function () { if (curTop === 'heizkurven' && curveCache) { renderCurvePanel(); } });
 
   document.getElementById('curveSaveBtn').onclick = function () {
     if (!curveDraft || curveSaving) { return; }
@@ -932,6 +1234,9 @@
   };
 
   function render() {
+    // Periodischer Payload-Refresh darf die Verlauf-Elemente nicht in den
+    // Heizkurven-Reiter zurueckholen.
+    if (curTop === 'heizkurven') { updateTabStates(); return; }
     syncNav();
     renderKpi(lastData ? lastData.kpi : null);
     // Keine aktuelle Messung (lastSeenAt, 13.09.2026) - Text kommt fertig
@@ -1027,9 +1332,11 @@
     // module.php::HeatingCurveAvailable()) - faellt die Quelle weg, waehrend
     // der Reiter gerade aktiv ist, zurueck auf "Verlauf" statt eine leere
     // Ansicht stehen zu lassen.
-    var curveTabBtn = document.querySelector('.ttab[data-toptab="heizkurven"]');
-    if (curveTabBtn) { curveTabBtn.classList.toggle('tabHidden', !d.hasHeatingCurve); }
-    if (!d.hasHeatingCurve && curTop === 'heizkurven') { setTopTab('verlauf'); }
+    loadTabsCollapsed(d.uid || 'x');
+    // Animationsstil + Theme-Klasse fuer die Reiterleiste (wie PVMonitor).
+    document.getElementById('tabsWrap').setAttribute('data-anim', ['spring', 'flip', 'scale', 'blur'][d.tabAnim || 0] || 'spring');
+    document.body.classList.toggle('light', !!d.lightTheme);
+    updateTabStates();
     // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
     // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
     // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,
