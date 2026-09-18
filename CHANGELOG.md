@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.27-beta.1 (2026-09-18)
+
+- Tile: `collapseToSingleGrid()` kollabiert nicht mehr pauschal jeden zweiten Netzknoten - nur noch verzögerte/Abrechnungs-Zweitmessungen desselben Anschlusses (`latency==='delayed'`/`authority==='billing'`). Bei Solarpark Hofweier verschwand dadurch "NAP Albersboesch" (ein zweiter, physisch eigenständiger Netzanschlusspunkt) komplett aus dem Energiefluss (Fund Dietmar, nach MeterHub-Bericht). Mehrere echte, unabhängige NAPs erscheinen jetzt gleichzeitig als eigene Knoten.
+
 ## 0.9.26-beta.1 (2026-09-18)
 
 - Verbundweit (Tile/PVMonitor/WPMonitor/Forecast): Die Archiv-Plausibilitätsgrenze `IMPLAUSIBLE_POWER_W` war unausgesprochen selbst anlagenspezifisch (1 MW, gedacht für Heim-/Kleingewerbe-Anlagen) - bei Solarpark Hofweier (live legitim >1 MW) verwarf sie reihenweise echte Messwerte und ließ die Leistungskurve als Trapezform statt der echten, glatten Kurve erscheinen (Fund MeterHub-Sitzung). Auf 50 MW angehoben - fängt den ursprünglichen Defektwert (261.554.185 W, Modbus-TID-Bug) weiterhin klar ab, verwirft aber keine reale Anlage mehr.

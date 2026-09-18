@@ -4402,25 +4402,37 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Genau ein Netzknoten auf Ebene 1 (Dietmar, 11.09.2026, Entscheidung
-     * "a"). Live-Fall: "Netzanschluss" (MeterHub, realtime, mit InverterHub-
-     * "Netz" als Fallback) UND "Inexogy Zaehler (Netzanschluss)" (MeterHub,
-     * delayed, billing) standen beide als grid-Wurzel - die Redundanz-
-     * Erkennung haengt einen verzoegerten Zaehler nur an einen Cluster mit
-     * weniger als zwei Mitgliedern, der war aber schon voll. Folge: der
-     * Preis (erster grid-Knoten) hing am verzoegerten Zaehler mit 0 W, die
-     * Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch.
+     * Hoechstens EIN Netzknoten je REDUNDANTER Messgruppe (Dietmar,
+     * 11.09.2026, Entscheidung "a", 18.09.2026 praezisiert nach Fund
+     * MeterHub-Sitzung/Solarpark Hofweier). Live-Fall Ursprungsbug:
+     * "Netzanschluss" (MeterHub, realtime, mit InverterHub-"Netz" als
+     * Fallback) UND "Inexogy Zaehler (Netzanschluss)" (MeterHub, delayed,
+     * billing) standen beide als grid-Wurzel - die Redundanz-Erkennung
+     * haengt einen verzoegerten Zaehler nur an einen Cluster mit weniger als
+     * zwei Mitgliedern, der war aber schon voll. Folge: der Preis (erster
+     * grid-Knoten) hing am verzoegerten Zaehler mit 0 W, die Mittelpillen-
+     * Bilanz rechnete damit statt mit dem echten Netzaustausch.
      *
-     * Regel: bleibt mehr als eine grid-Wurzel, ueberlebt die mit der besten
-     * sourceRichnessScore() (Echtzeit +6, verzoegert -4 - Dietmars Urteil
-     * vom 30.07.2026: Inexogy ist "fuer Steuerungen total ungeeignet").
-     * Die uebrigen werden NICHT verworfen, sondern an den Primaeren
-     * gehaengt: eine echtzeitfaehige als Fallback (der bestehende Platz,
-     * falls noch frei), alle anderen unter 'secondaryGrid' - so bleibt der
-     * Abrechnungszaehler fuer Energie/Kosten auf der Detailseite sichtbar,
-     * wo ein Abrechnungszaehler der RICHTIGE ist, treibt aber nie mehr
-     * Live-Fluss, Bilanz oder Preis. Der Primaere traegt 'isPrimaryGrid',
-     * damit alle Auswahlstellen (primaryGridDevice()) dieselbe Antwort geben.
+     * URSPRUENGLICHER FEHLER (18.09.2026): die Regel kollabierte pauschal
+     * JEDEN weiteren grid-Eintrag in einen einzigen Knoten - bei Solarpark
+     * Hofweier verschwand dadurch "NAP Albersboesch" (ein zweiter, physisch
+     * eigenstaendiger Netzanschlusspunkt derselben Anlage, eigene MeterHub-
+     * Instanz) komplett aus dem Energiefluss, obwohl er kein redundanter
+     * Zweitmesswert von Hofweier ist, sondern ein echter, unabhaengiger
+     * Anschluss (Dietmars Entscheidung: mehrere echte NAPs sollen
+     * gleichzeitig sichtbar sein). Jetzt kollabiert nur noch, was das
+     * MeterHub-Feld 'latency'==='delayed' oder 'authority'==='billing'
+     * traegt (verzoegerte/Abrechnungs-Zweitmessung DESSELBEN Anschlusses,
+     * verlaesslich vom liefernden Modul selbst gekennzeichnet) - ein
+     * echtzeitfaehiger, nicht als Abrechnung markierter grid-Eintrag bleibt
+     * als EIGENER Primaerknoten stehen, egal wie viele es gibt.
+     *
+     * Bewusste Einschraenkung: die Mittelpillen-Bilanz (EstimateHouseLoadW())
+     * nutzt weiterhin nur primaryGridDevice() (den ERSTEN Primaerknoten) -
+     * bei mehreren echten NAPs ist die Saldo-Rechnung fuer eine einzelne
+     * Anlage mit EINEM Netzanschluss gedacht und bei einem Mehr-NAP-Park
+     * kein vollstaendiges Bild. Das ist eine bewusst unveraenderte, separate
+     * Frage (Dietmar hat nur die Sichtbarkeit im Energiefluss angefragt).
      */
     private function collapseToSingleGrid(array $devices): array
     {
@@ -4471,6 +4483,15 @@ class NRGDashboardTile extends IPSModule
             }
             $other = $devices[$i];
             $latency = $other['latency'] ?? (($other['source'] ?? '') === 'inverterhub' ? 'realtime' : '');
+            $isBillingOrDelayed = $latency === 'delayed' || ($other['authority'] ?? '') === 'billing';
+            if (!$isBillingOrDelayed) {
+                // Echtzeitfaehig UND nicht als Abrechnung markiert - ein
+                // eigenstaendiger Netzanschluss (z.B. ein zweiter NAP eines
+                // Solarparks), kein redundanter Zweitmesswert. Bleibt als
+                // eigener Primaerknoten stehen statt zu kollabieren.
+                $devices[$i]['isPrimaryGrid'] = true;
+                continue;
+            }
             $hasFallback = (int) ($devices[$primary]['fallbackPowerID'] ?? 0) > 0;
             if (!$hasFallback && $latency === 'realtime' && (int) ($other['powerID'] ?? 0) > 0) {
                 $devices[$primary]['fallbackPowerID']       = (int) $other['powerID'];
@@ -4493,7 +4514,7 @@ class NRGDashboardTile extends IPSModule
                 $role = ($other['authority'] ?? '') === 'billing' ? 'Abrechnungs-Nebenquelle' : 'Nebenquelle';
             }
             $this->SendDebug('Netzzähler', sprintf(
-                'Ebene 1: "%s" (%s) als %s an "%s" gehängt - nur ein Netzknoten',
+                'Ebene 1: "%s" (%s) als %s an "%s" gehängt - verzoegerte/Abrechnungs-Zweitmessung desselben Anschlusses',
                 (string) ($other['label'] ?? '?'), $latency !== '' ? $latency : 'ohne latency', $role,
                 (string) ($devices[$primary]['label'] ?? '?')
             ), 0);
