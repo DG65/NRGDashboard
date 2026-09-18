@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.35-beta.1 (2026-09-19)
+
+- WPMonitor: Verschiebe-Regler für die Heizkurve - senkrecht rechts neben dem Diagramm (Dietmars Vorgabe), -5 bis +5 K, gestrichelte Linie zeigt die verschobene Kurve. Nur im Verschiebe-Modus und nur für Heizen (im Direktmodus wäre derselbe Anlagenwert eine Vorlauf-Solltemperatur, dort wird nichts gesendet); Hinweis, wenn Regeln auf der HeishaMon-Platine den Wert überschreiben können (`boardRulesActive`). Rückmeldung per Nachlesen alle 3 s, nach 30 s "nicht bestätigt".
+- WPMonitor: neue Seite "Bedienung" (HeishaMon-Vertrag 1.14, `HEISHA_GetOperations`/`HEISHA_SetOperation`): Flüsterbetrieb, Leistungsbetrieb, Urlaub (nur An/Aus - einen Urlaubstimer gibt es über HeishaMon nicht), Notbetrieb mit Bestätigungsdialog und rotem Punkt am Reiter, Warmwasser-Solltemperatur mit COP-Hinweis über 52 °C. Bedienelemente nur für Werte, die die Anlage tatsächlich meldet; Reiter bleibt ohne Vertrag ausgeblendet.
+
 ## 0.9.34-beta.1 (2026-09-18)
 
 - WPMonitor: Die Reiterleiste blendet nach jeder Auswahl automatisch aus (Dietmars Wunsch); der Pfeil-Knopf holt sie zurück.

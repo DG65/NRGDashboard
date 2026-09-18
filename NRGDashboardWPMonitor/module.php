@@ -101,8 +101,10 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.7';
+    private const NEWS_VERSION = '0.2.8';
     private const NEWS_ITEMS = [
+        'Neu: Seite "Bedienung" (nur bei HeishaMon) - Flüsterbetrieb, Leistungsbetrieb, Urlaub, Notbetrieb (mit Bestätigung und Warnpunkt am Reiter) und Warmwasser-Solltemperatur direkt in der Kachel. Die Wärmepumpe quittiert Befehle nicht - die Kachel wartet auf die Rückmeldung und zeigt ehrlich an, ob sie bestätigt wurde.',
+        'Neu: senkrechter Regler rechts neben dem Heizkurven-Diagramm verschiebt die Heizkurve parallel (-5 bis +5 K), als gestrichelte Linie über der eingestellten Kurve. Nur im Verschiebe-Modus der Anlage, nicht bei Direktvorgabe der Vorlauftemperatur.',
         'Neu: Reiter "Heizkurven" (nur bei HeishaMon) - Vorlauftemperatur je Außentemperatur für bis zu 2 Heizkreise und Heizen/Kühlen direkt zum Ziehen im Diagramm, mit "Übernehmen"-Knopf zum Speichern auf der Wärmepumpe.',
         'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
         '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
@@ -564,6 +566,34 @@ class NRGDashboardWPMonitor extends IPSModule
         return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetHeatingCurve');
     }
 
+    /**
+     * Bedienfunktionen (Fluesterbetrieb, Leistungsbetrieb, Urlaub, Notbetrieb,
+     * Warmwasser-Soll) - HeishaMon-Vertrag 1.14 (HEISHA_GetOperations/
+     * HEISHA_SetOperation), wie der Heizkurven-Vertrag nur bei HeishaMon
+     * und defensiv per function_exists() geprueft.
+     */
+    private function OperationsAvailable(): bool
+    {
+        return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetOperations');
+    }
+
+    private function BuildOperations(): array
+    {
+        $id = $this->HeatingCurveInstanceID();
+        if ($id <= 0 || !function_exists('HEISHA_GetOperations')) {
+            return [];
+        }
+        try {
+            $result = @HEISHA_GetOperations($id);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        if (is_string($result)) {
+            $result = json_decode($result, true);
+        }
+        return is_array($result) ? $result : [];
+    }
+
     private function BuildHeatingCurve(): array
     {
         $id = $this->HeatingCurveInstanceID();
@@ -823,6 +853,63 @@ class NRGDashboardWPMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'heatingCurveShiftSave') {
+            // Verschiebung ("Heizanforderung verschieben") - nur Modus 'shift'
+            // (-5..+5); im Direktmodus waere derselbe Wert eine Vorlauf-
+            // Solltemperatur, dort sendet die Kachel nichts (HeishaMon lehnt
+            // ohnehin ab).
+            $req = json_decode((string) $Value, true);
+            $id = $this->HeatingCurveInstanceID();
+            $ok = false;
+            if (is_array($req) && $id > 0 && function_exists('HEISHA_SetHeatingCurveShift')) {
+                $zone = (string) ($req['zone'] ?? '');
+                if (in_array($zone, ['z1', 'z2'], true)) {
+                    try {
+                        $ok = (bool) @HEISHA_SetHeatingCurveShift($id, $zone, 'shift', (int) ($req['shiftC'] ?? 0));
+                    } catch (\Throwable $e) {
+                        $ok = false;
+                    }
+                }
+            }
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'    => true,
+                'type'  => 'heatingCurveShiftSaved',
+                'saved' => $ok,
+                'curve' => $this->BuildHeatingCurve(),
+            ]));
+            return;
+        }
+        if ($Ident === 'operationsLoad') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'  => true,
+                'type' => 'operationsUpdate',
+                'ops' => $this->BuildOperations(),
+            ]));
+            return;
+        }
+        if ($Ident === 'operationSave') {
+            $req = json_decode((string) $Value, true);
+            $id = $this->HeatingCurveInstanceID();
+            $name = is_array($req) ? (string) ($req['name'] ?? '') : '';
+            $ok = false;
+            // Nur bekannte Namen weiterreichen (HeishaMon prueft ebenfalls).
+            if ($id > 0 && function_exists('HEISHA_SetOperation')
+                && in_array($name, ['quiet', 'powerful', 'holiday', 'emergencyHeater', 'dhwTargetC'], true)) {
+                try {
+                    $ok = (bool) @HEISHA_SetOperation($id, $name, (int) ($req['value'] ?? 0));
+                } catch (\Throwable $e) {
+                    $ok = false;
+                }
+            }
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'    => true,
+                'type'  => 'operationSaved',
+                'saved' => $ok,
+                'name'  => $name,
+                'ops'   => $this->BuildOperations(),
+            ]));
+            return;
+        }
         if ($Ident === 'heatingCurveSave') {
             $req = json_decode((string) $Value, true);
             $id = $this->HeatingCurveInstanceID();
@@ -1016,6 +1103,7 @@ class NRGDashboardWPMonitor extends IPSModule
             'hasFlowTemps' => $mainOutletID > 0 && $mainInletID > 0,
             'hasOutsideTemp' => $outsideTempID > 0,
             'hasHeatingCurve' => $this->HeatingCurveAvailable(),
+            'hasOperations'   => $this->OperationsAvailable(),
             'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:

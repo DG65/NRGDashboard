@@ -218,8 +218,35 @@
   .ycSubTabs button:disabled { opacity: .3; cursor: default; }
   #curvePanel { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; align-items: center; gap: 10px; overflow: hidden; }
   #curveSubTabs { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
-  #curveSvgWrap { width: 100%; flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; align-items: center; }
+  #curveMain { width: 100%; flex: 1 1 auto; min-height: 0; display: flex; align-items: stretch; justify-content: center; gap: 6px; }
+  #curveSvgWrap { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; justify-content: center; align-items: center; }
   #curveSvgWrap svg { touch-action: none; max-width: 100%; }
+  /* Verschiebe-Regler RECHTS neben dem Diagramm (Dietmar, 18.09.2026: die
+     Kurve wandert hoch/runter, also liegt der Regler senkrecht seitlich). */
+  #curveShift { display: none; flex: 0 0 74px; flex-direction: column; align-items: center; font-size: 11px; }
+  #curveShift .shEnd { opacity: .7; height: 16px; line-height: 16px; }
+  #curveShift input[type=range] { -webkit-appearance: slider-vertical; appearance: slider-vertical; writing-mode: vertical-lr; direction: rtl; width: 26px; flex: 1 1 auto; margin: 4px 0; cursor: pointer; accent-color: #ef9a3d; }
+  #curveShiftVal { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  #curveShiftNote { opacity: .7; text-align: center; margin-top: 4px; line-height: 1.25; }
+  #opsPanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
+  #opsBanner { display: none; padding: 8px 12px; border-radius: 8px; background: rgba(229,57,53,.18); color: #ff8a80; font-size: 13px; font-weight: 700; text-align: center; }
+  #opsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; }
+  .opsTile { border: 1px solid rgba(127,135,145,.30); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: rgba(127,135,145,.07); }
+  .opsTile.danger { border-color: rgba(229,57,53,.5); }
+  .opsTile.on { background: rgba(76,175,80,.10); border-color: rgba(76,175,80,.45); }
+  .opsTile.danger.on { background: rgba(229,57,53,.12); border-color: rgba(229,57,53,.6); }
+  .opsTitle { font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .opsState { font-size: 11px; font-weight: 600; opacity: .8; }
+  .opsSeg { display: flex; gap: 4px; flex-wrap: wrap; }
+  .opsSeg button, .opsBtn { font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  .opsSeg button.active, .opsBtn.active { background: rgba(127,135,145,.34); border-color: rgba(127,135,145,.65); font-weight: 700; }
+  .opsBtn.warn { border-color: rgba(229,57,53,.6); background: rgba(229,57,53,.18); }
+  .opsHint { font-size: 11px; opacity: .7; line-height: 1.3; }
+  .opsStatus { font-size: 11px; opacity: .85; min-height: 14px; }
+  .opsRange { display: flex; align-items: center; gap: 10px; }
+  .opsRange input { flex: 1 1 auto; accent-color: #ef9a3d; }
+  .opsRange .val { font-size: 14px; font-weight: 700; min-width: 54px; text-align: right; }
+  button.tab.tabAlert::after { content: " ●"; color: #ff5252; }
   #curveActions { display: flex; align-items: center; gap: 12px; font-size: 12px; padding-bottom: 6px; }
   button.curveSave { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(76,175,80,.55); background: rgba(76,175,80,.18); color: inherit; cursor: pointer; }
   button.curveSave:hover:not(:disabled) { background: rgba(76,175,80,.28); }
@@ -323,6 +350,7 @@
       <div id="tabs">
         <button class="tab active" data-tab="verlauf">Verlauf</button>
         <button class="tab" data-tab="heizkurven">Heizkurven</button>
+        <button class="tab tabHidden" data-tab="bedienung">Bedienung</button>
       </div>
     </div>
     <div id="chartcol">
@@ -339,13 +367,30 @@
        eine leere/erfundene Kurve anzuzeigen). -->
   <div id="curvePanel">
     <div id="curveSubTabs"></div>
-    <div id="curveSvgWrap">
-      <svg id="curveSvg" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="curveMain">
+      <div id="curveSvgWrap">
+        <svg id="curveSvg" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="curveShift">
+        <div class="shEnd" id="curveShiftMax">+5</div>
+        <input id="curveShiftRange" type="range" min="-5" max="5" step="1" value="0" orient="vertical">
+        <div class="shEnd" id="curveShiftMin">-5</div>
+        <div id="curveShiftVal">0 K</div>
+        <div id="curveShiftNote"></div>
+      </div>
     </div>
     <div id="curveActions">
       <button id="curveSaveBtn" class="curveSave" type="button" disabled>Übernehmen</button>
       <span id="curveStatus"></span>
     </div>
+  </div>
+  <!-- Seite "Bedienung" (18.09.2026) - Fluesterbetrieb, Leistungsbetrieb,
+       Urlaub, Notbetrieb, Warmwasser-Soll ueber den HeishaMon-Vertrag 1.14
+       (HEISHA_GetOperations/HEISHA_SetOperation). Kacheln nur fuer Werte,
+       die die Anlage tatsaechlich meldet. -->
+  <div id="opsPanel">
+    <div id="opsBanner">Notbetrieb aktiv - die Anlage heizt elektrisch mit dem Heizstab.</div>
+    <div id="opsGrid"></div>
   </div>
     </div>
   </div>
@@ -913,14 +958,15 @@
   function updateTabStates() {
     if (!lastData) { return; }
     var today = (lastData.days || [])[0];
-    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve };
-    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache };
+    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve, bedienung: !!lastData.hasOperations };
+    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache, bedienung: !!opsCache };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       var t = btn.getAttribute('data-tab');
       var hidden = !src[t];
       btn.classList.toggle('tabHidden', hidden);
       btn.classList.toggle('tabOk', !hidden && !!data[t]);
-      btn.classList.toggle('tabWarn', !hidden && !data[t] && t !== 'heizkurven');
+      btn.classList.toggle('tabWarn', !hidden && !data[t] && t === 'verlauf');
+      if (t === 'bedienung') { btn.classList.toggle('tabAlert', !!(opsCache && opsCache.emergencyHeater && opsCache.emergencyHeater.value > 0)); }
     });
     if (!src[curTop]) { setTopTab('verlauf'); }
     updateChartTitle();
@@ -939,8 +985,11 @@
     document.getElementById('bar').style.display = (tab === 'verlauf') ? '' : 'none';
     document.getElementById('tabsWrap').style.top = (tab === 'verlauf') ? '' : '0px';
     document.getElementById('curvePanel').style.display = (tab === 'heizkurven') ? 'flex' : 'none';
+    document.getElementById('opsPanel').style.display = (tab === 'bedienung') ? 'flex' : 'none';
     updateChartTitle();
-    if (tab === 'heizkurven') { renderCurvePanel(); } else { render(); }
+    if (tab === 'heizkurven') { renderCurvePanel(); }
+    else if (tab === 'bedienung') { renderOps(); }
+    else { render(); }
   }
   Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
     b.onclick = function () {
@@ -965,6 +1014,7 @@
   // Kuehlen 0..40 °C (Kuehl-Vorlauf liegt typisch bei 5..25 °C).
   var CURVE_X_MIN = -25, CURVE_X_MAX = 45;
   var CURVE_Y_MIN = 15, CURVE_Y_MAX = 65;
+  function curveApplyRangeY(y) { return y; }
   function curveApplyRange() {
     if (curveMode === 'cool') { CURVE_Y_MIN = 0; CURVE_Y_MAX = 40; }
     else { CURVE_Y_MIN = 15; CURVE_Y_MAX = 65; }
@@ -1066,6 +1116,60 @@
       requestAction('heatingCurveLoad', '{}');
     }, 4000);
   }
+  // -- Verschiebung ("Heizanforderung verschieben", HeishaMon 1.14) ---------
+  // Senkrechter Regler RECHTS neben dem Diagramm. Nur im Modus 'shift'
+  // (-5..+5) und nur fuer Heizen - im Direktmodus ist derselbe Wert eine
+  // Vorlauf-Solltemperatur, dort wird bewusst nichts gesendet. Die
+  // Verschiebung aendert NICHT die beiden Ankerpunkte, sondern wird von der
+  // Anlage additiv aufgeschlagen: das Diagramm zeigt sie als gestrichelte,
+  // parallel verschobene Linie ueber der eingestellten Kurve.
+  var curveShiftDraft = null, curveShiftSent = null, curveShiftPollTimer = null;
+  function curveShiftInfo() {
+    var zd = curveCache && curveCache.zones && curveCache.zones[curveZone];
+    return (zd && zd.shift && zd.shift.heat) ? zd.shift.heat : null;
+  }
+  function curveShiftValue() {
+    if (curveShiftDraft !== null) { return curveShiftDraft; }
+    if (curveShiftSent && curveShiftSent.zone === curveZone) { return curveShiftSent.val; }
+    var info = curveShiftInfo();
+    return (info && info.mode === 'shift' && typeof info.valueC === 'number') ? info.valueC : 0;
+  }
+  function curveShiftPoll() {
+    if (curveShiftPollTimer) { clearTimeout(curveShiftPollTimer); }
+    curveShiftPollTimer = setTimeout(function () {
+      if (!curveShiftSent) { return; }
+      curvePending = true;
+      requestAction('heatingCurveLoad', '{}');
+    }, 3000);
+  }
+  function renderCurveShift() {
+    var box = document.getElementById('curveShift');
+    var range = document.getElementById('curveShiftRange');
+    var note = document.getElementById('curveShiftNote');
+    var info = curveShiftInfo();
+    var usable = curveMode === 'heat' && info && info.mode === 'shift';
+    if (!usable) {
+      // Statt eines wirkungslosen Reglers ein ehrlicher Hinweis, WARUM es
+      // ihn nicht gibt (nur wenn die Anlage ueberhaupt etwas dazu meldet).
+      box.style.display = 'none';
+      return;
+    }
+    box.style.display = 'flex';
+    // Reglerhoehe an den Plotbereich des Diagramms anpassen.
+    var plotH = CURVE_H - CURVE_PAD_T - CURVE_PAD_B;
+    box.style.marginTop = (CURVE_PAD_T - 20) + 'px';
+    range.style.height = Math.max(120, plotH - 44) + 'px';
+    range.style.flex = '0 0 auto';
+    var v = curveShiftValue();
+    range.value = String(v);
+    range.disabled = !!curveShiftSent && !curveShiftSentDone;
+    document.getElementById('curveShiftVal').textContent = (v > 0 ? '+' : '') + v + ' K';
+    var txt = 'Kurve parallel verschieben';
+    if (curveCache && curveCache.boardRulesActive) { txt += '. Regeln auf der Platine können den Wert überschreiben.'; }
+    note.textContent = txt;
+  }
+  var curveShiftSentDone = true;
+
   function curveCurrentValues() {
     if (curveDraft) { return curveDraft; }
     if (curveSent && curveSent.zone === curveZone && curveSent.mode === curveMode) { return curveSent.vals; }
@@ -1162,6 +1266,16 @@
     svg.appendChild(curveSvgEl('line', { x1: p2.x, y1: p2.y, x2: plotR, y2: clampY(yAt(plotR)), stroke: lineColor, 'stroke-width': 2, 'stroke-dasharray': '6 5', opacity: .55 }));
     svg.appendChild(curveSvgEl('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: lineColor, 'stroke-width': 3.5, 'stroke-linecap': 'round' }));
 
+    // Verschobene Kurve (Anlage schlaegt die Verschiebung additiv auf).
+    var shiftV = (curveMode === 'heat' && curveShiftInfo() && curveShiftInfo().mode === 'shift') ? curveShiftValue() : 0;
+    if (shiftV !== 0) {
+      var dy = curveYToPx(curveApplyRangeY(pts[0].y + shiftV)) - curveYToPx(curveApplyRangeY(pts[0].y));
+      var s1 = { x: p1.x, y: p1.y + dy }, s2 = { x: p2.x, y: p2.y + dy };
+      svg.appendChild(curveSvgEl('line', { x1: s1.x, y1: s1.y, x2: s2.x, y2: s2.y, stroke: '#ffd54f', 'stroke-width': 2.5, 'stroke-dasharray': '8 5' }));
+      var sl = curveSvgEl('text', { x: (s1.x + s2.x) / 2, y: (s1.y + s2.y) / 2 - 8, fill: '#ffd54f', 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' });
+      sl.textContent = 'mit Verschiebung ' + (shiftV > 0 ? '+' : '') + shiftV + ' K';
+      svg.appendChild(sl);
+    }
     // Ziehbare Punkte mit Wertepille.
     [p1, p2].forEach(function (pt, i) {
       var src = pts[i];
@@ -1259,10 +1373,29 @@
       return;
     }
     drawCurveSvg();
+    renderCurveShift();
     updateCurveSaveBtn();
     statusEl.textContent = curveStatusText;
   }
   window.addEventListener('resize', function () { if (curTop === 'heizkurven' && curveCache) { renderCurvePanel(); } });
+
+  (function () {
+    var r = document.getElementById('curveShiftRange');
+    r.oninput = function () {
+      curveShiftDraft = parseInt(r.value, 10);
+      document.getElementById('curveShiftVal').textContent = (curveShiftDraft > 0 ? '+' : '') + curveShiftDraft + ' K';
+      drawCurveSvg();
+    };
+    r.onchange = function () {
+      if (curveShiftDraft === null) { return; }
+      var zone = curveZone;
+      curveShiftSent = { zone: zone, val: curveShiftDraft, tries: 0 };
+      curveShiftSentDone = false;
+      curveStatusText = 'Sende Verschiebung…';
+      document.getElementById('curveStatus').textContent = curveStatusText;
+      requestAction('heatingCurveShiftSave', JSON.stringify({ zone: zone, shiftC: curveShiftDraft }));
+    };
+  })();
 
   document.getElementById('curveSaveBtn').onclick = function () {
     if (!curveDraft || curveSaving) { return; }
@@ -1281,10 +1414,147 @@
   };
   var curveLastReq = null;
 
+
+  // -- Seite "Bedienung" (18.09.2026, HeishaMon-Vertrag 1.14) ------------------
+  // Alles Set-Befehle, alles rueckles-bar. HeishaMon quittiert nichts: die
+  // Anzeige folgt bis zur Rueckmeldung dem gesendeten Stand (Kachel "wartet"),
+  // dann Bestaetigung per Nachlesen alle 3 s, nach 30 s "nicht bestaetigt".
+  var opsCache = null, opsPending = false, opsSent = {}, opsStatus = {}, opsSaving = {}, opsPollTimer = null, opsConfirmKey = null;
+  var OPS_DEFS = [
+    { key: 'quiet', title: 'Flüsterbetrieb', type: 'seg', labels: { 0: 'Aus', 1: 'Leise', 2: 'Leiser', 3: 'Am leisesten' },
+      hint: 'Verdichterleistung und Lüfter werden reduziert - leiser, aber weniger Heizleistung.' },
+    { key: 'powerful', title: 'Leistungsbetrieb', type: 'seg', labels: { 0: 'Aus', 1: '30 min', 2: '60 min', 3: '90 min' },
+      hint: 'Hebt die Leistung zeitlich begrenzt an, danach fällt die Anlage von selbst zurück.' },
+    { key: 'holiday', title: 'Urlaub', type: 'toggle', stateText: { 0: 'Aus', 1: 'Geplant', 2: 'Aktiv' },
+      hint: 'Die Anlage heizt reduziert und schränkt Warmwasser ein. Einen Zeitraum kann das Dashboard nicht setzen - den hinterlegen Sie an der Anlage oder in der Comfort Cloud. "Geplant" ist nicht "aktiv".' },
+    { key: 'emergencyHeater', title: 'Notbetrieb (Heizstab)', type: 'toggle', danger: true, stateText: { 0: 'Aus', 1: 'Aktiv' },
+      hint: 'Wie die Heizstab-Taste der Fernbedienung: die Anlage heizt elektrisch statt mit der Wärmepumpe. Teuerste Wärmequelle, nur bei Störung. HeishaMon schaltet ihn nie selbst wieder ab.',
+      confirm: 'Notbetrieb wirklich einschalten? Die Anlage heizt dann elektrisch mit dem Heizstab (teuerste Wärmequelle) und schaltet sich nicht von selbst wieder ab.' },
+    { key: 'dhwTargetC', title: 'Warmwasser-Solltemperatur', type: 'range', unit: '°C',
+      hint: 'Über etwa 52 °C sinkt die Effizienz (COP) der Wärmepumpe deutlich.' }
+  ];
+
+  function opsValue(key) {
+    var o = opsCache && opsCache[key];
+    return (o && typeof o.value === 'number') ? o.value : null;
+  }
+  function opsDisplayValue(key) {
+    return opsSent[key] ? opsSent[key].value : opsValue(key);
+  }
+  function opsMatches(key, written, read) {
+    if (read === null) { return false; }
+    if (key === 'holiday') { return written === 0 ? read === 0 : read > 0; }
+    return read === written;
+  }
+  function opsPoll() {
+    if (opsPollTimer) { clearTimeout(opsPollTimer); }
+    if (!Object.keys(opsSent).length) { return; }
+    opsPollTimer = setTimeout(function () { opsPending = true; requestAction('operationsLoad', '{}'); }, 3000);
+  }
+  function opsSend(key, value) {
+    opsSaving[key] = true;
+    opsSent[key] = { value: value, tries: 0 };
+    opsStatus[key] = 'Sende…';
+    opsConfirmKey = null;
+    requestAction('operationSave', JSON.stringify({ name: key, value: value }));
+    renderOps();
+  }
+  function updateOpsTabAlert() {
+    var btn = document.querySelector('button.tab[data-tab="bedienung"]');
+    if (btn) { btn.classList.toggle('tabAlert', opsValue('emergencyHeater') > 0); }
+  }
+
+  function renderOps() {
+    var grid = document.getElementById('opsGrid');
+    var banner = document.getElementById('opsBanner');
+    updateChartTitle();
+    if (!lastData || !lastData.hasOperations) {
+      grid.innerHTML = '<div class="empty">Bedienung nicht verfügbar.</div>'; banner.style.display = 'none'; return;
+    }
+    if (!opsCache) {
+      if (!opsPending) { opsPending = true; requestAction('operationsLoad', '{}'); }
+      grid.innerHTML = '<div class="empty">Lade Bedienfunktionen…</div>'; banner.style.display = 'none'; return;
+    }
+    banner.style.display = (opsValue('emergencyHeater') > 0) ? 'block' : 'none';
+    grid.innerHTML = '';
+    var shown = 0;
+    OPS_DEFS.forEach(function (def) {
+      var o = opsCache[def.key];
+      if (!o || o.value === null || o.value === undefined) { return; } // Anlage meldet es nie -> kein Bedienelement
+      shown++;
+      var v = opsDisplayValue(def.key);
+      var tile = document.createElement('div');
+      tile.className = 'opsTile' + (def.danger ? ' danger' : '') + (v > 0 && def.type === 'toggle' ? ' on' : '');
+      var title = document.createElement('div'); title.className = 'opsTitle';
+      title.appendChild(document.createTextNode(def.title));
+      var st = document.createElement('span'); st.className = 'opsState';
+      if (def.type === 'toggle') { st.textContent = def.stateText[v] !== undefined ? def.stateText[v] : String(v); }
+      else if (def.type === 'range') { st.textContent = v + ' ' + def.unit; }
+      else { st.textContent = def.labels[v] !== undefined ? def.labels[v] : String(v); }
+      title.appendChild(st);
+      tile.appendChild(title);
+
+      var min = (typeof o.min === 'number') ? o.min : 0, max = (typeof o.max === 'number') ? o.max : 1;
+      if (opsConfirmKey === def.key) {
+        var q = document.createElement('div'); q.className = 'opsHint'; q.style.opacity = '1'; q.textContent = def.confirm;
+        tile.appendChild(q);
+        var row = document.createElement('div'); row.className = 'opsSeg';
+        var yes = document.createElement('button'); yes.className = 'opsBtn warn'; yes.textContent = 'Ja, einschalten';
+        yes.onclick = function () { opsSend(def.key, 1); };
+        var no = document.createElement('button'); no.className = 'opsBtn'; no.textContent = 'Abbrechen';
+        no.onclick = function () { opsConfirmKey = null; renderOps(); };
+        row.appendChild(yes); row.appendChild(no); tile.appendChild(row);
+      } else if (def.type === 'seg') {
+        var seg = document.createElement('div'); seg.className = 'opsSeg';
+        for (var i = min; i <= max; i++) {
+          (function (val) {
+            var b = document.createElement('button'); b.textContent = def.labels[val] !== undefined ? def.labels[val] : String(val);
+            b.className = (val === v) ? 'active' : '';
+            b.onclick = function () { if (val !== v) { opsSend(def.key, val); } };
+            seg.appendChild(b);
+          })(i);
+        }
+        tile.appendChild(seg);
+      } else if (def.type === 'toggle') {
+        var trow = document.createElement('div'); trow.className = 'opsSeg';
+        [[0, 'Aus'], [1, 'Ein']].forEach(function (pair) {
+          var b = document.createElement('button'); b.textContent = pair[1];
+          var isOn = pair[0] === 1;
+          b.className = ((v > 0) === isOn) ? 'active' : '';
+          b.onclick = function () {
+            if ((v > 0) === isOn) { return; }
+            if (isOn && def.confirm) { opsConfirmKey = def.key; renderOps(); }
+            else { opsSend(def.key, isOn ? 1 : 0); }
+          };
+          trow.appendChild(b);
+        });
+        tile.appendChild(trow);
+      } else if (def.type === 'range') {
+        var rr = document.createElement('div'); rr.className = 'opsRange';
+        var inp = document.createElement('input'); inp.type = 'range'; inp.min = min; inp.max = max; inp.step = 1; inp.value = v;
+        var val = document.createElement('span'); val.className = 'val'; val.textContent = v + ' ' + def.unit;
+        inp.oninput = function () { val.textContent = inp.value + ' ' + def.unit; };
+        inp.onchange = function () { opsSend(def.key, parseInt(inp.value, 10)); };
+        rr.appendChild(inp); rr.appendChild(val); tile.appendChild(rr);
+      }
+      var hint = document.createElement('div'); hint.className = 'opsHint'; hint.textContent = def.hint;
+      tile.appendChild(hint);
+      if (def.key === 'dhwTargetC' && v > 52) {
+        var w52 = document.createElement('div'); w52.className = 'opsHint'; w52.style.color = '#ffb74d'; w52.style.opacity = '1';
+        w52.textContent = 'Achtung: über 52 °C sinkt der COP spürbar.'; tile.appendChild(w52);
+      }
+      var status = document.createElement('div'); status.className = 'opsStatus'; status.textContent = opsStatus[def.key] || '';
+      tile.appendChild(status);
+      grid.appendChild(tile);
+    });
+    if (!shown) { grid.innerHTML = '<div class="empty">Die Anlage meldet keine Bedienfunktionen.</div>'; }
+    updateOpsTabAlert();
+  }
+
   function render() {
     // Periodischer Payload-Refresh darf die Verlauf-Elemente nicht in den
     // Heizkurven-Reiter zurueckholen.
-    if (curTop === 'heizkurven') { updateTabStates(); return; }
+    if (curTop === 'heizkurven' || curTop === 'bedienung') { updateTabStates(); return; }
     syncNav();
     renderKpi(lastData ? lastData.kpi : null);
     // Keine aktuelle Messung (lastSeenAt, 13.09.2026) - Text kommt fertig
@@ -1343,8 +1613,60 @@
     // - NICHT der volle Kachel-Payload, nur das nachgeforderte Heizkurven-
     // Ergebnis (18.09.2026, erster Schreibzugriff dieser Kachel ueberhaupt).
     // Gleiches Muster wie NRGDashboardPVMonitor::flowUpdate/dayPlanUpdate.
+    if (d && d.ok && d.type === 'operationsUpdate') {
+      opsCache = d.ops; opsPending = false;
+      Object.keys(opsSent).forEach(function (key) {
+        var s = opsSent[key];
+        if (opsMatches(key, s.value, opsValue(key))) { delete opsSent[key]; opsStatus[key] = 'Von der Wärmepumpe bestätigt.'; return; }
+        s.tries += 1;
+        if (s.tries < 10) { opsStatus[key] = 'Gesendet - warte auf Rückmeldung (' + s.tries + '/10)…'; }
+        else { delete opsSent[key]; opsStatus[key] = 'Nicht bestätigt - die Anlage meldet noch den alten Wert (HeishaMon im Modus "nur mithören"? MQTT prüfen).'; }
+      });
+      opsPoll();
+      updateTabStates();
+      if (curTop === 'bedienung') { renderOps(); }
+      return;
+    }
+    if (d && d.ok && d.type === 'operationSaved') {
+      opsCache = d.ops; delete opsSaving[d.name];
+      if (d.saved) { opsStatus[d.name] = 'Gesendet - warte auf Rückmeldung der Wärmepumpe…'; opsPoll(); }
+      else { delete opsSent[d.name]; opsStatus[d.name] = 'Nicht gesendet - HeishaMon lehnt ab (Wert außerhalb des Bereichs, MQTT-Gateway getrennt oder HeishaMon zu alt).'; }
+      if (curTop === 'bedienung') { renderOps(); }
+      return;
+    }
+    if (d && d.ok && d.type === 'heatingCurveShiftSaved') {
+      curveCache = d.curve;
+      curveShiftSentDone = true;
+      if (d.saved && curveShiftSent) {
+        curveShiftDraft = null;
+        curveStatusText = 'Verschiebung gesendet - warte auf Rückmeldung der Wärmepumpe…';
+        curveShiftPoll();
+      } else {
+        curveShiftSent = null;
+        curveShiftDraft = null;
+        curveStatusText = 'Verschiebung nicht gesendet - HeishaMon lehnt ab (Zone/Modus nicht aktiv, Direktvorgabe statt Verschiebung, MQTT-Gateway getrennt oder HeishaMon zu alt).';
+      }
+      if (curTop === 'heizkurven') { renderCurvePanel(); }
+      return;
+    }
     if (d && d.ok && d.type === 'heatingCurveUpdate') {
       curveCache = d.curve; curvePending = false;
+      if (curveShiftSent) {
+        var ci = (curveCache.zones && curveCache.zones[curveShiftSent.zone] && curveCache.zones[curveShiftSent.zone].shift) ? curveCache.zones[curveShiftSent.zone].shift.heat : null;
+        if (ci && ci.mode === 'shift' && ci.valueC === curveShiftSent.val) {
+          curveShiftSent = null;
+          curveStatusText = 'Verschiebung von der Wärmepumpe bestätigt.';
+        } else {
+          curveShiftSent.tries += 1;
+          if (curveShiftSent.tries < 10) {
+            curveStatusText = 'Verschiebung gesendet - warte auf Rückmeldung (' + curveShiftSent.tries + '/10)…';
+            curveShiftPoll();
+          } else {
+            curveShiftSent = null;
+            curveStatusText = 'Die Wärmepumpe meldet noch die alte Verschiebung - nicht bestätigt (HeishaMon im Modus "nur mithören"? MQTT prüfen).';
+          }
+        }
+      }
       // Nach dem Senden: mit dem Rueckgelesenen vergleichen (Bestaetigung).
       if (curveSent) {
         var now = curveCachedValues(curveSent.zone, curveSent.mode);
@@ -1407,6 +1729,7 @@
     document.getElementById('tabsWrap').setAttribute('data-anim', ['spring', 'flip', 'scale', 'blur'][d.tabAnim || 0] || 'spring');
     document.body.classList.toggle('light', !!d.lightTheme);
     updateTabStates();
+    if (d.hasOperations && !opsPending) { opsPending = true; requestAction('operationsLoad', '{}'); }
     // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
     // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
     // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,
