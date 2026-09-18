@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.30-beta.1 (2026-09-18)
+
+- WPMonitor Heizkurven-Editor: Außentemperatur-Achse horizontal gespiegelt (warm links, kalt rechts), Dietmars Wunsch.
+
 ## 0.9.29-beta.1 (2026-09-18)
 
 - WPMonitor: Reitermenü jetzt exakt wie im PVMonitor - einklappbare Seitenleiste mit Pfeil-Knopf, Animationsstil (neue Instanzvariable "Reiterleisten-Animation"), Diagrammtitel aus dem aktiven Reiter, Reiter ohne Quelle ausgeblendet. Vorher nur eine schlichte Knopfleiste (Abweichung von Dietmars Vorgabe "exakt analog zum PV Monitor").

@@ -961,7 +961,9 @@
 
   function curveXToPx(x) {
     var w = CURVE_W - CURVE_PAD_L - CURVE_PAD_R;
-    return CURVE_PAD_L + (x - CURVE_X_MIN) / (CURVE_X_MAX - CURVE_X_MIN) * w;
+    // Achse gespiegelt (Dietmar, 18.09.2026): warme Aussentemperaturen links,
+    // kalte rechts.
+    return CURVE_PAD_L + (CURVE_X_MAX - x) / (CURVE_X_MAX - CURVE_X_MIN) * w;
   }
   function curveYToPx(y) {
     var h = CURVE_H - CURVE_PAD_T - CURVE_PAD_B;
@@ -969,7 +971,7 @@
   }
   function curvePxToX(px) {
     var w = CURVE_W - CURVE_PAD_L - CURVE_PAD_R;
-    var x = CURVE_X_MIN + (px - CURVE_PAD_L) / w * (CURVE_X_MAX - CURVE_X_MIN);
+    var x = CURVE_X_MAX - (px - CURVE_PAD_L) / w * (CURVE_X_MAX - CURVE_X_MIN);
     return Math.max(CURVE_X_MIN, Math.min(CURVE_X_MAX, Math.round(x)));
   }
   function curvePxToY(py) {
@@ -1099,14 +1101,14 @@
     ty.textContent = 'Vorlauftemperatur';
     svg.appendChild(ty);
 
-    // Kurve: Punkte nach Aussentemperatur sortiert (links = kalt), Linie bis
+    // Kurve: Punkte nach Aussentemperatur sortiert (links = warm), Linie bis
     // an den Diagrammrand verlaengert (gleiche Steigung) - zeigt, dass die
     // Anlage ausserhalb der Ankerpunkte fortsetzt; Verlauf zwischen den
     // Punkten kraeftig, Verlaengerung gestrichelt.
     var pts = [
       { x: vals.outsideLowC, y: vals.targetLowC, idx: 0 },
       { x: vals.outsideHighC, y: vals.targetHighC, idx: 1 }
-    ].sort(function (a, b) { return a.x - b.x; });
+    ].sort(function (a, b) { return b.x - a.x; }); // links = warm (gespiegelte Achse)
     var p1 = { x: curveXToPx(pts[0].x), y: curveYToPx(pts[0].y) };
     var p2 = { x: curveXToPx(pts[1].x), y: curveYToPx(pts[1].y) };
     // Flaeche unter der Kurve.
