@@ -79,8 +79,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.2.6';
+    private const NEWS_VERSION = '0.2.7';
     private const NEWS_ITEMS = [
+        'Neu: Reiter "Heizkurven" (nur bei HeishaMon) - Vorlauftemperatur je Außentemperatur für bis zu 2 Heizkreise und Heizen/Kühlen direkt zum Ziehen im Diagramm, mit "Übernehmen"-Knopf zum Speichern auf der Wärmepumpe.',
         'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
         '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
         '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
@@ -493,6 +494,54 @@ class NRGDashboardWPMonitor extends IPSModule
         return $entries[0];
     }
 
+    /**
+     * Heizkurven-Reiter (18.09.2026, EMS-Verbundabstimmung mit HeishaMon/
+     * WPHub) - v1 NUR gegen HeishaMon, das als einziges der vier
+     * Waermepumpen-Quellmodule heute einen geprueften Lese-UND-Schreibweg
+     * hat (Zwei-Punkt-Modell je Zone/Heizen-Kuehlen, HEISHA_GetHeatingCurve/
+     * HEISHA_SetHeatingCurve). Panasonic Cloud (WPHub) kennt gar kein
+     * Kurvenkonzept, Vaillant/NIBE/Stiebel Eltron (WPHub/WPModbusHub) sind
+     * an keiner echten Anlage verifiziert - WPHub baut dort bewusst noch
+     * keine Schreibzugriffe. Defensiv per function_exists() geprueft, damit
+     * der Reiter automatisch erscheint, sobald HeishaMon den Vertrag
+     * ausliefert, ohne dass wir hier nochmal etwas anpassen muessen.
+     */
+    private function HeatingCurveInstanceID(): int
+    {
+        $unit = $this->SelectedHeatpump();
+        if ($unit === null) {
+            return 0;
+        }
+        $id = (int) ($unit['_instanceID'] ?? 0);
+        if ($id <= 0 || !@IPS_InstanceExists($id)) {
+            return 0;
+        }
+        $moduleID = @IPS_GetInstance($id)['ModuleInfo']['ModuleID'] ?? '';
+        return ($moduleID === self::HEISHA_GUID) ? $id : 0;
+    }
+
+    private function HeatingCurveAvailable(): bool
+    {
+        return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetHeatingCurve');
+    }
+
+    private function BuildHeatingCurve(): array
+    {
+        $id = $this->HeatingCurveInstanceID();
+        if ($id <= 0 || !function_exists('HEISHA_GetHeatingCurve')) {
+            return ['curveModel' => 'none', 'curveWritable' => false, 'zones' => []];
+        }
+        try {
+            $result = @HEISHA_GetHeatingCurve($id);
+        } catch (\Throwable $e) {
+            return ['curveModel' => 'none', 'curveWritable' => false, 'zones' => []];
+        }
+        if (is_string($result)) {
+            $result = json_decode($result, true);
+        }
+        return is_array($result) ? $result : ['curveModel' => 'none', 'curveWritable' => false, 'zones' => []];
+    }
+
     // 1:1 NRGDashboardPVMonitor::ColorOrEmpty()/FontStack() - dieselbe
     // Darstellungs-Konvention (Hintergrundfarbe/Schriftart aus den
     // Formular-Properties in den Payload, module.html wendet sie an).
@@ -713,6 +762,61 @@ class NRGDashboardWPMonitor extends IPSModule
         return $out;
     }
 
+    /**
+     * Erster Schreibzugriff dieser Kachel ueberhaupt (18.09.2026, Heizkurven-
+     * Reiter) - bisher kam WPMonitor komplett ohne RequestAction() aus (ein
+     * Payload pro Refresh deckte alles ab, siehe buildPayload()-Kommentar).
+     * Ein Nutzer-Klick auf "Übernehmen" ist aber ein echter Schreibvorgang,
+     * kein Nachladen - dafuer braucht es diesen eigenen Weg.
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        if ($Ident === 'heatingCurveLoad') {
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'    => true,
+                'type'  => 'heatingCurveUpdate',
+                'curve' => $this->BuildHeatingCurve(),
+            ]));
+            return;
+        }
+        if ($Ident === 'heatingCurveSave') {
+            $req = json_decode((string) $Value, true);
+            $id = $this->HeatingCurveInstanceID();
+            $ok = false;
+            if (is_array($req) && $id > 0 && function_exists('HEISHA_SetHeatingCurve')) {
+                $zone = (string) ($req['zone'] ?? '');
+                $mode = (string) ($req['mode'] ?? '');
+                if (in_array($zone, ['z1', 'z2'], true) && in_array($mode, ['heat', 'cool'], true)) {
+                    try {
+                        $ok = (bool) @HEISHA_SetHeatingCurve(
+                            $id,
+                            $zone,
+                            $mode,
+                            (int) ($req['targetHighC'] ?? 0),
+                            (int) ($req['targetLowC'] ?? 0),
+                            (int) ($req['outsideHighC'] ?? 0),
+                            (int) ($req['outsideLowC'] ?? 0)
+                        );
+                    } catch (\Throwable $e) {
+                        $ok = false;
+                    }
+                }
+            }
+            $this->UpdateVisualizationValue(json_encode([
+                'ok'    => true,
+                'type'  => 'heatingCurveSaved',
+                'saved' => $ok,
+                // Frische Werte direkt zurueck (statt eines zweiten
+                // Roundtrips) - falls HEISHA_SetHeatingCurve() intern rundet/
+                // begrenzt, sieht der Nutzer sofort den tatsaechlich
+                // uebernommenen Wert, nicht nur seinen eigenen Drag-Stand.
+                'curve' => $this->BuildHeatingCurve(),
+            ]));
+            return;
+        }
+        parent::RequestAction($Ident, $Value);
+    }
+
     public function GetVisualizationTile()
     {
         $payload = $this->buildPayload();
@@ -867,6 +971,7 @@ class NRGDashboardWPMonitor extends IPSModule
             'hasThermal'  => $heatOutID > 0,
             'hasFlowTemps' => $mainOutletID > 0 && $mainInletID > 0,
             'hasOutsideTemp' => $outsideTempID > 0,
+            'hasHeatingCurve' => $this->HeatingCurveAvailable(),
             'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:

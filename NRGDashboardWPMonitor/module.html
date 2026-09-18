@@ -23,6 +23,26 @@
   input.pick, select.sel { font: inherit; font-size: 13px; font-weight: 600; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
   select.sel:disabled { opacity: .35; cursor: default; }
   select.sel { padding-right: 26px; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239aa4b0'/></svg>"); background-repeat: no-repeat; background-position: right 9px center; }
+  /* Heizkurven-Reiter (18.09.2026) - eigener, schlichter horizontaler
+     Reiterwechsel statt PVMonitors aufwendiger Sidebar-Animation (nur 2
+     Reiter hier, der Aufwand lohnt nicht). Wiederverwendet die Optik von
+     button.qday statt eigener neuer Farben zu erfinden. */
+  #topTabs { display: flex; justify-content: center; gap: 6px; margin-bottom: 8px; }
+  button.ttab { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  button.ttab:hover { background: rgba(127,135,145,.22); }
+  button.ttab.active { background: rgba(127,135,145,.30); border-color: rgba(127,135,145,.55); }
+  button.ttab.tabHidden { display: none; }
+  #curvePanel { display: none; flex: 1 1 auto; flex-direction: column; align-items: center; gap: 10px; overflow: auto; }
+  #curveSubTabs { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+  #curveSubTabs .grp { display: flex; gap: 4px; }
+  #curveSvgWrap { width: 100%; max-width: 460px; }
+  #curveSvgWrap svg { width: 100%; height: auto; touch-action: none; }
+  .curvePointLabel { font-size: 11px; font-weight: 700; }
+  #curveActions { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+  button.curveSave { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(76,175,80,.55); background: rgba(76,175,80,.18); color: inherit; cursor: pointer; }
+  button.curveSave:hover:not(:disabled) { background: rgba(76,175,80,.28); }
+  button.curveSave:disabled { opacity: .4; cursor: default; }
+  #curveStatus { opacity: .75; }
   #kpiRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; margin: 10px 0; font-size: 12px; }
   .kpi { flex: 0 0 auto; text-align: center; opacity: .92; }
   .kpi .val { font-size: 17px; font-weight: 700; line-height: 1.1; }
@@ -99,6 +119,10 @@
 <body>
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
 <div class="wrap">
+  <div id="topTabs">
+    <button class="ttab active" data-toptab="verlauf">Verlauf</button>
+    <button class="ttab tabHidden" data-toptab="heizkurven">Heizkurven</button>
+  </div>
   <div id="bar">
     <select id="type" class="sel">
       <option value="day">Tag (Verlauf)</option>
@@ -120,6 +144,21 @@
   <div id="chart"></div>
   <div id="legendRow"></div>
   <div id="empty" class="empty" style="display:none"></div>
+  <!-- Heizkurven-Reiter (18.09.2026) - Zwei-Punkt-Editor je Heizkreis/Modus,
+       siehe renderCurvePanel()/wireCurveDrag() weiter unten. Zone-/Modus-
+       Unterreiter werden nur fuer tatsaechlich vorhandene Kombinationen
+       gezeigt (curve.zones.z1.heat === null etc. bleibt komplett weg, statt
+       eine leere/erfundene Kurve anzuzeigen). -->
+  <div id="curvePanel">
+    <div id="curveSubTabs"></div>
+    <div id="curveSvgWrap">
+      <svg id="curveSvg" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="curveActions">
+      <button id="curveSaveBtn" class="curveSave" type="button" disabled>Übernehmen</button>
+      <span id="curveStatus"></span>
+    </div>
+  </div>
   <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
        Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
        Bewusst KEIN X/Escape zum Wegklicken - nur der Haken-Button am Ende
@@ -142,6 +181,17 @@
   var curView = 'day';
   var viewRef = new Date();
   var customFrom = null, customTo = null;
+
+  // Heizkurven-Reiter (18.09.2026) - eigener Top-Level-Zustand, unabhaengig
+  // von curView/idx des Verlauf-Reiters. curveDraft haelt die gerade per
+  // Drag bearbeiteten (noch nicht uebernommenen) Werte; null = zeigt den
+  // zuletzt vom Backend gelieferten Stand unveraendert.
+  var curTop = 'verlauf';
+  var curveCache = null, curvePending = false, curveSaving = false;
+  var curveZone = 'z1', curveMode = 'heat';
+  var curveDraft = null;
+  var curveDragIdx = null; // 0=low-Punkt, 1=high-Punkt, waehrend eines Drags
+  var curveStatusText = '';
 
   // Theme-Handling 1:1 NRGDashboardPVMonitor::isLightTheme()/themeLabelColor()/
   // themeAxisStyle() - Symcon bietet einer Kachel KEINEN Weg, das aktuelle
@@ -634,6 +684,253 @@
     }
   }
 
+  // Oberster Reiterwechsel Verlauf/Heizkurven (18.09.2026) - schaltet
+  // zwischen den beiden komplett unabhaengigen Ansichten um; der bisherige
+  // Tag/Woche/Monat-Umschalter (curView) bleibt ausschliesslich Sache des
+  // Verlauf-Reiters, wird beim Wechsel nicht angetastet.
+  function setTopTab(tab) {
+    curTop = tab;
+    Array.prototype.forEach.call(document.querySelectorAll('.ttab'), function (b) {
+      b.classList.toggle('active', b.getAttribute('data-toptab') === tab);
+    });
+    var verlaufEls = ['bar', 'staleHint', 'kpiRow', 'chart', 'legendRow', 'empty'];
+    verlaufEls.forEach(function (id) {
+      document.getElementById(id).style.display = (tab === 'verlauf') ? '' : 'none';
+    });
+    document.getElementById('curvePanel').style.display = (tab === 'heizkurven') ? 'flex' : 'none';
+    if (tab === 'heizkurven') { renderCurvePanel(); } else { render(); }
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.ttab'), function (b) {
+    b.onclick = function () { setTopTab(b.getAttribute('data-toptab')); };
+  });
+
+  // -- Heizkurven-Editor (18.09.2026) -----------------------------------
+  // Zwei-Punkt-Modell je Zone/Modus (Vertrag HEISHA_GetHeatingCurve/
+  // HEISHA_SetHeatingCurve, verbundweit mit HeishaMon/WPHub abgestimmt,
+  // 18.09.2026): {outsideLowC,outsideHighC} -> {targetLowC,targetHighC}.
+  // Eigenes SVG statt Highcharts/ECharts - beide Bibliotheken bieten kein
+  // eingebautes Ziehen von Datenpunkten, ein Zwei-Punkt-Editor ist als
+  // reines SVG einfacher als ein Drag-Plugin nachzuruesten.
+  var CURVE_X_MIN = -20, CURVE_X_MAX = 20;   // Aussentemperatur °C
+  var CURVE_Y_MIN = 15, CURVE_Y_MAX = 65;    // Vorlauftemperatur °C
+  var CURVE_PAD_L = 34, CURVE_PAD_R = 14, CURVE_PAD_T = 14, CURVE_PAD_B = 26;
+  var CURVE_W = 400, CURVE_H = 260;
+
+  function curveXToPx(x) {
+    var w = CURVE_W - CURVE_PAD_L - CURVE_PAD_R;
+    return CURVE_PAD_L + (x - CURVE_X_MIN) / (CURVE_X_MAX - CURVE_X_MIN) * w;
+  }
+  function curveYToPx(y) {
+    var h = CURVE_H - CURVE_PAD_T - CURVE_PAD_B;
+    return CURVE_PAD_T + h - (y - CURVE_Y_MIN) / (CURVE_Y_MAX - CURVE_Y_MIN) * h;
+  }
+  function curvePxToX(px) {
+    var w = CURVE_W - CURVE_PAD_L - CURVE_PAD_R;
+    var x = CURVE_X_MIN + (px - CURVE_PAD_L) / w * (CURVE_X_MAX - CURVE_X_MIN);
+    return Math.max(CURVE_X_MIN, Math.min(CURVE_X_MAX, Math.round(x)));
+  }
+  function curvePxToY(py) {
+    var h = CURVE_H - CURVE_PAD_T - CURVE_PAD_B;
+    var y = CURVE_Y_MIN + (CURVE_PAD_T + h - py) / h * (CURVE_Y_MAX - CURVE_Y_MIN);
+    return Math.max(CURVE_Y_MIN, Math.min(CURVE_Y_MAX, Math.round(y)));
+  }
+  function curveSvgEl(tag, attrs) {
+    var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs || {}).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    return el;
+  }
+
+  // Verfuegbare Zone/Modus-Kombinationen aus curveCache - eine Kombination
+  // mit null bleibt komplett weg (HeishaMons Prinzip: nichts vortaeuschen,
+  // was die Anlage nicht liefert, siehe deren send_message-Antwort).
+  function curveAvailableCombos() {
+    var out = [];
+    ['z1', 'z2'].forEach(function (z) {
+      var zoneData = curveCache && curveCache.zones && curveCache.zones[z];
+      if (!zoneData) { return; }
+      ['heat', 'cool'].forEach(function (m) {
+        if (zoneData[m]) { out.push(z + '_' + m); }
+      });
+    });
+    return out;
+  }
+
+  function renderCurveSubTabs() {
+    var row = document.getElementById('curveSubTabs');
+    row.innerHTML = '';
+    var combos = curveAvailableCombos();
+    if (!combos.length) { return; }
+    if (!combos.includes(curveZone + '_' + curveMode)) {
+      var first = combos[0].split('_');
+      curveZone = first[0]; curveMode = first[1];
+    }
+    var zones = [].concat(combos.map(function (c) { return c.split('_')[0]; })).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    var modes = [].concat(combos.map(function (c) { return c.split('_')[1]; })).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    if (zones.length > 1) {
+      var zg = document.createElement('div'); zg.className = 'grp';
+      zones.forEach(function (z) {
+        var b = document.createElement('button'); b.className = 'ttab' + (z === curveZone ? ' active' : '');
+        b.textContent = (z === 'z1') ? 'Heizkreis 1' : 'Heizkreis 2';
+        b.onclick = function () { curveZone = z; curveDraft = null; renderCurvePanel(); };
+        zg.appendChild(b);
+      });
+      row.appendChild(zg);
+    }
+    if (modes.length > 1) {
+      var mg = document.createElement('div'); mg.className = 'grp';
+      modes.forEach(function (m) {
+        var b = document.createElement('button'); b.className = 'ttab' + (m === curveMode ? ' active' : '');
+        b.textContent = (m === 'heat') ? 'Heizen' : 'Kühlen';
+        b.onclick = function () { curveMode = m; curveDraft = null; renderCurvePanel(); };
+        mg.appendChild(b);
+      });
+      row.appendChild(mg);
+    }
+  }
+
+  function curveCurrentValues() {
+    if (curveDraft) { return curveDraft; }
+    var zoneData = curveCache && curveCache.zones && curveCache.zones[curveZone];
+    return (zoneData && zoneData[curveMode]) ? zoneData[curveMode] : null;
+  }
+
+  function drawCurveSvg() {
+    var svg = document.getElementById('curveSvg');
+    svg.innerHTML = '';
+    var vals = curveCurrentValues();
+    if (!vals) { return; }
+    var isLight = isLightTheme();
+    var axisColor = isLight ? '#333' : 'rgba(226,232,240,.55)';
+    var gridColor = isLight ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.10)';
+    // Gitter/Achsen.
+    for (var gx = CURVE_X_MIN; gx <= CURVE_X_MAX; gx += 10) {
+      svg.appendChild(curveSvgEl('line', { x1: curveXToPx(gx), y1: CURVE_PAD_T, x2: curveXToPx(gx), y2: CURVE_H - CURVE_PAD_B, stroke: gridColor, 'stroke-width': 1 }));
+      var lx = curveSvgEl('text', { x: curveXToPx(gx), y: CURVE_H - CURVE_PAD_B + 14, fill: axisColor, 'font-size': 10, 'text-anchor': 'middle' });
+      lx.textContent = gx + '°';
+      svg.appendChild(lx);
+    }
+    for (var gy = CURVE_Y_MIN; gy <= CURVE_Y_MAX; gy += 10) {
+      svg.appendChild(curveSvgEl('line', { x1: CURVE_PAD_L, y1: curveYToPx(gy), x2: CURVE_W - CURVE_PAD_R, y2: curveYToPx(gy), stroke: gridColor, 'stroke-width': 1 }));
+      var ly = curveSvgEl('text', { x: CURVE_PAD_L - 6, y: curveYToPx(gy) + 3, fill: axisColor, 'font-size': 10, 'text-anchor': 'end' });
+      ly.textContent = gy + '°';
+      svg.appendChild(ly);
+    }
+    // Verbindungslinie + zwei ziehbare Punkte. Farbe folgt dem Modus
+    // (Heizen warm/orange, Kuehlen kalt/blau) - rein optisch, kein
+    // Vertragsfeld.
+    var lineColor = (curveMode === 'cool') ? '#4aa3e0' : '#ef9a3d';
+    var p1 = { x: curveXToPx(vals.outsideLowC), y: curveYToPx(vals.targetLowC) };
+    var p2 = { x: curveXToPx(vals.outsideHighC), y: curveYToPx(vals.targetHighC) };
+    svg.appendChild(curveSvgEl('line', { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: lineColor, 'stroke-width': 2.5 }));
+    [[p1, 0, vals.outsideLowC, vals.targetLowC], [p2, 1, vals.outsideHighC, vals.targetHighC]].forEach(function (t) {
+      var pt = t[0], idx2 = t[1], ox = t[2], ty = t[3];
+      var c = curveSvgEl('circle', { cx: pt.x, cy: pt.y, r: 9, fill: lineColor, stroke: isLight ? '#fff' : '#1c1e22', 'stroke-width': 2, style: 'cursor:grab' });
+      c.dataset.idx = String(idx2);
+      svg.appendChild(c);
+      var lbl = curveSvgEl('text', {
+        x: pt.x, y: (idx2 === 0) ? pt.y - 16 : pt.y - 16, fill: axisColor, 'font-size': 11, 'font-weight': 700, 'text-anchor': (idx2 === 0 ? 'start' : 'end')
+      });
+      lbl.setAttribute('class', 'curvePointLabel');
+      lbl.textContent = ox + '° → ' + ty + '°';
+      svg.appendChild(lbl);
+    });
+    wireCurveDrag(svg);
+  }
+
+  function wireCurveDrag(svg) {
+    var dragging = null;
+    function ptFromEvent(evt) {
+      var rect = svg.getBoundingClientRect();
+      var cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+      var cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+      // Der SVG-viewBox (400x260) skaliert auf die tatsaechliche
+      // Bildschirmgroesse - Klick-/Touch-Koordinaten muessen zurueck auf
+      // Viewbox-Einheiten umgerechnet werden, sonst greift das Ziehen bei
+      // jeder von 400x260 abweichenden Darstellungsgroesse daneben.
+      return { x: cx / rect.width * CURVE_W, y: cy / rect.height * CURVE_H };
+    }
+    function onDown(evt) {
+      var idxAttr = evt.target && evt.target.dataset ? evt.target.dataset.idx : undefined;
+      if (idxAttr === undefined) { return; }
+      dragging = +idxAttr;
+      evt.preventDefault();
+    }
+    function onMove(evt) {
+      if (dragging === null) { return; }
+      evt.preventDefault();
+      var p = ptFromEvent(evt);
+      var x = curvePxToX(p.x), y = curvePxToY(p.y);
+      var vals = curveCurrentValues();
+      if (!vals) { return; }
+      curveDraft = {
+        outsideLowC: vals.outsideLowC, outsideHighC: vals.outsideHighC,
+        targetLowC: vals.targetLowC, targetHighC: vals.targetHighC,
+      };
+      if (dragging === 0) { curveDraft.outsideLowC = x; curveDraft.targetLowC = y; }
+      else { curveDraft.outsideHighC = x; curveDraft.targetHighC = y; }
+      drawCurveSvg();
+      updateCurveSaveBtn();
+    }
+    function onUp() { dragging = null; }
+    svg.addEventListener('mousedown', onDown);
+    svg.addEventListener('touchstart', onDown, { passive: false });
+    // An document statt svg gehaengt, damit ein Ziehen ueber den Rand hinaus
+    // (schnelle Mausbewegung) nicht mitten im Drag abbricht.
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchend', onUp);
+  }
+
+  function updateCurveSaveBtn() {
+    var btn = document.getElementById('curveSaveBtn');
+    btn.disabled = !curveDraft || curveSaving;
+  }
+
+  function renderCurvePanel() {
+    var svg = document.getElementById('curveSvg');
+    var statusEl = document.getElementById('curveStatus');
+    if (!lastData || !lastData.hasHeatingCurve) {
+      document.getElementById('curveSubTabs').innerHTML = '';
+      svg.innerHTML = '';
+      statusEl.textContent = 'Heizkurven-Bearbeitung nicht verfügbar.';
+      document.getElementById('curveSaveBtn').disabled = true;
+      return;
+    }
+    if (!curveCache) {
+      if (!curvePending) { curvePending = true; requestAction('heatingCurveLoad', '{}'); }
+      document.getElementById('curveSubTabs').innerHTML = '';
+      svg.innerHTML = '';
+      statusEl.textContent = 'Lade Heizkurve…';
+      document.getElementById('curveSaveBtn').disabled = true;
+      return;
+    }
+    renderCurveSubTabs();
+    if (!curveAvailableCombos().length) {
+      svg.innerHTML = '';
+      statusEl.textContent = 'Keine Heizkurve gefunden.';
+      document.getElementById('curveSaveBtn').disabled = true;
+      return;
+    }
+    drawCurveSvg();
+    updateCurveSaveBtn();
+    statusEl.textContent = curveStatusText;
+  }
+
+  document.getElementById('curveSaveBtn').onclick = function () {
+    if (!curveDraft || curveSaving) { return; }
+    curveSaving = true;
+    curveStatusText = 'Speichere…';
+    updateCurveSaveBtn();
+    document.getElementById('curveStatus').textContent = curveStatusText;
+    requestAction('heatingCurveSave', JSON.stringify({
+      zone: curveZone, mode: curveMode,
+      targetHighC: curveDraft.targetHighC, targetLowC: curveDraft.targetLowC,
+      outsideHighC: curveDraft.outsideHighC, outsideLowC: curveDraft.outsideLowC,
+    }));
+    curveDraft = null;
+  };
+
   function render() {
     syncNav();
     renderKpi(lastData ? lastData.kpi : null);
@@ -689,6 +986,21 @@
     // typeof-Weiche wie in NRGDashboardPVMonitor.
     var d;
     try { d = (typeof raw === 'string') ? JSON.parse(raw) : raw; } catch (e) { return; }
+    // Antworten auf requestAction('heatingCurveLoad'/'heatingCurveSave', ...)
+    // - NICHT der volle Kachel-Payload, nur das nachgeforderte Heizkurven-
+    // Ergebnis (18.09.2026, erster Schreibzugriff dieser Kachel ueberhaupt).
+    // Gleiches Muster wie NRGDashboardPVMonitor::flowUpdate/dayPlanUpdate.
+    if (d && d.ok && d.type === 'heatingCurveUpdate') {
+      curveCache = d.curve; curvePending = false;
+      if (curTop === 'heizkurven') { renderCurvePanel(); }
+      return;
+    }
+    if (d && d.ok && d.type === 'heatingCurveSaved') {
+      curveCache = d.curve; curveSaving = false;
+      curveStatusText = d.saved ? 'Übernommen.' : 'Fehler beim Übernehmen - bitte erneut versuchen.';
+      if (curTop === 'heizkurven') { renderCurvePanel(); }
+      return;
+    }
     if (!d || !d.ok) {
       var emptyEl = document.getElementById('empty');
       emptyEl.style.display = '';
@@ -704,6 +1016,14 @@
     if (d.bg) { document.body.style.background = d.bg; }
     if (d.hookPath) { HOOK_PATH = d.hookPath; }
     if (d.showTour) { showTourOverlay(); }
+    // Heizkurven-Reiter nur zeigen, wenn das Backend eine Quelle mit
+    // geprueftem Lese-/Schreibweg gefunden hat (v1: nur HeishaMon, siehe
+    // module.php::HeatingCurveAvailable()) - faellt die Quelle weg, waehrend
+    // der Reiter gerade aktiv ist, zurueck auf "Verlauf" statt eine leere
+    // Ansicht stehen zu lassen.
+    var curveTabBtn = document.querySelector('.ttab[data-toptab="heizkurven"]');
+    if (curveTabBtn) { curveTabBtn.classList.toggle('tabHidden', !d.hasHeatingCurve); }
+    if (!d.hasHeatingCurve && curTop === 'heizkurven') { setTopTab('verlauf'); }
     // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
     // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
     // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,
