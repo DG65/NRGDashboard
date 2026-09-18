@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.24-beta.1 (2026-09-18)
+
+- WPMonitor Heizkurven-Reiter: Statustext nach dem Übernehmen von "Übernommen" auf "Gesendet - Wärmepumpe bestätigt Sollwert-Änderungen nicht" korrigiert - HeishaMon quittiert MQTT-Set-Befehle nicht, `true` bedeutet nur "Nachricht raus", nicht "von der Anlage übernommen" (Klarstellung von HeishaMon).
+
 ## 0.9.23-beta.1 (2026-09-18)
 
 - WPMonitor: neuer Reiter "Heizkurven" - grafischer Zwei-Punkt-Editor (Außentemp → Vorlauftemp) für bis zu 2 Heizkreise, getrennt nach Heizen/Kühlen, zum Ziehen im Diagramm mit "Übernehmen"-Knopf. v1 nur gegen HeishaMon (einziges der vier Wärmepumpen-Quellmodule mit geprüftem Lese-/Schreibweg, per Verbundabstimmung mit HeishaMon/WPHub festgelegt), defensiv per `function_exists()` geprüft - Reiter erscheint automatisch, sobald HeishaMon `HEISHA_GetHeatingCurve`/`HEISHA_SetHeatingCurve` liefert. Erster Schreibzugriff dieser Kachel überhaupt (neue `RequestAction()`).

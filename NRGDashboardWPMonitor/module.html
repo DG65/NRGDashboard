@@ -997,7 +997,13 @@
     }
     if (d && d.ok && d.type === 'heatingCurveSaved') {
       curveCache = d.curve; curveSaving = false;
-      curveStatusText = d.saved ? 'Übernommen.' : 'Fehler beim Übernehmen - bitte erneut versuchen.';
+      // "Gesendet" statt "Übernommen" (Dietmars Verbund-Grundsatz "keine
+      // erfundene Bestätigung"): HeishaMon quittiert per MQTT nicht, ob die
+      // Waermepumpe den Set-Befehl tatsaechlich angenommen hat - true heisst
+      // hier nur "Zone/Modus vorhanden, Werte plausibel, Nachricht raus"
+      // (HeishaMon-Sitzung, 18.09.2026). Werte oben zeigen nach dem Neuladen
+      // ohnehin den zuletzt gelesenen Ist-Stand, keine Behauptung noetig.
+      curveStatusText = d.saved ? 'Gesendet - die Wärmepumpe bestätigt Sollwert-Änderungen nicht, bitte Werte in Kürze gegenprüfen.' : 'Fehler beim Senden - bitte erneut versuchen.';
       if (curTop === 'heizkurven') { renderCurvePanel(); }
       return;
     }
