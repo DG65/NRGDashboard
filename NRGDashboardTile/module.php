@@ -5545,19 +5545,35 @@ class NRGDashboardTile extends IPSModule
                     ];
                 }
             }
-        } elseif ($fn === 'grid' && count($powerSeries) >= 2) {
-            $importKWh = 0.0;
-            $exportKWh = 0.0;
-            $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
-            foreach ($powerSeries as [$ts, $w]) {
-                if ($w < 0) {
-                    $importKWh += abs($w) * $intervalHours / 1000;
-                } else {
-                    $exportKWh += $w * $intervalHours / 1000;
+        } elseif ($fn === 'grid') {
+            $energyImportID = (int) ($d['energyImportID'] ?? 0);
+            $energyExportID = (int) ($d['energyExportID'] ?? 0);
+            $importKWh = ($energyImportID > 0) ? $this->PeriodEnergyCounter($energyImportID, $dayStart, $dayEnd) : null;
+            $exportKWh = ($energyExportID > 0) ? $this->PeriodEnergyCounter($energyExportID, $dayStart, $dayEnd) : null;
+            // Rueckfall auf Leistungsintegration NUR ohne echten Zaehler
+            // (z.B. reine InverterHub-Quelle ohne eigene *EnergyID) - ein
+            // MeterHub-Netzzaehler hat energyImportID/energyExportID immer,
+            // dessen Zaehlerstand ist reset-sicher und unabhaengig von der
+            // Archiv-Aufloesung der Leistungsreihe.
+            if (($importKWh === null || $exportKWh === null) && count($powerSeries) >= 2) {
+                $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
+                $impFallback = 0.0; $expFallback = 0.0;
+                foreach ($powerSeries as [$ts, $w]) {
+                    if ($w < 0) {
+                        $impFallback += abs($w) * $intervalHours / 1000;
+                    } else {
+                        $expFallback += $w * $intervalHours / 1000;
+                    }
                 }
+                if ($importKWh === null) { $importKWh = $impFallback; }
+                if ($exportKWh === null) { $exportKWh = $expFallback; }
             }
-            $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
-            $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+            if ($importKWh !== null) {
+                $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
+            }
+            if ($exportKWh !== null) {
+                $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+            }
             // Weitere Netzzaehler, die collapseToSingleGrid() an diesen
             // Knoten gehaengt hat (11.09.2026) - der Abrechnungszaehler bleibt
             // so sichtbar, ohne den Live-Fluss zu treiben.
@@ -5808,6 +5824,52 @@ class NRGDashboardTile extends IPSModule
     {
         $ids = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
         return count($ids) > 0 ? (int) $ids[0] : 0;
+    }
+
+    // 1:1 NRGDashboardPVMonitor::ArchiveValueAt()/PeriodEnergyCounter() -
+    // Fund MeterHub-Sitzung, 18.09.2026 (Solarpark Hofweier, NAP-Instanz
+    // #52250): die "Einspeisung/Netzbezug an diesem Tag"-Kennzahl in
+    // BuildHighlights() integrierte bisher NUR die 5-Minuten-Leistungsreihe
+    // (Riemann-Summe ueber powerSeries) - bei Luecken/unregelmaessiger
+    // Archiv-Aufloesung (hier: 787,8 statt echter 4.531,2 kWh laut MeterHubs
+    // eigenem Archiv-Zaehlerabgleich, Faktor ~5,75) weicht das erheblich vom
+    // echten Zaehlerstand ab. Jetzt bevorzugt PeriodEnergyCounter() den
+    // ECHTEN kumulativen Energiezaehler (energyImportID/energyExportID,
+    // reset-sicher per Start-/End-Zaehlerstand), Leistungsintegration bleibt
+    // nur der Rueckfall ohne Zaehlerfeld (z.B. reine InverterHub-PV/Batterie
+    // ohne eigene *EnergyID).
+    private function ArchiveValueAt(int $aid, int $vid, int $t): ?float
+    {
+        if ($t <= 0) {
+            return null;
+        }
+        $r = @AC_GetLoggedValues($aid, $vid, 0, $t, 1);
+        return (is_array($r) && count($r) > 0) ? (float) $r[0]['Value'] : null;
+    }
+
+    private function PeriodEnergyCounter(int $vid, int $start, int $end): ?float
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return null;
+        }
+        $aid = $this->ArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return null;
+        }
+        $endVal = ($end >= time() - 5) ? (float) GetValue($vid) : $this->ArchiveValueAt($aid, $vid, $end);
+        if ($endVal === null) {
+            return null;
+        }
+        $startVal = $this->ArchiveValueAt($aid, $vid, $start);
+        if ($startVal === null) {
+            $r = @AC_GetLoggedValues($aid, $vid, 0, $end, 0);
+            $startVal = (is_array($r) && count($r) > 0) ? (float) $r[count($r) - 1]['Value'] : null;
+        }
+        if ($startVal === null) {
+            return null;
+        }
+        $delta = $endVal - $startVal;
+        return ($delta >= 0) ? $delta : null;
     }
 
     /**

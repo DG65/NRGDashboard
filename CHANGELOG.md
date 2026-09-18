@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.25-beta.1 (2026-09-18)
+
+- Tile Geräte-Detailseite: "Netzbezug/Einspeisung an diesem Tag" nutzt jetzt bevorzugt den echten kumulativen Energiezähler (energyImportID/energyExportID), statt die 5-Minuten-Leistungsreihe zu integrieren - bei Solarpark Hofweiers NAP-Instanz wich die reine Leistungsintegration um Faktor ~5,75 vom echten Zählerstand ab (787,8 statt 4.531,2 kWh, Fund MeterHub-Sitzung). Leistungsintegration bleibt Rückfall für Quellen ohne eigene Energiezähler-Felder (z. B. reine InverterHub-PV/Batterie).
+
 ## 0.9.24-beta.1 (2026-09-18)
 
 - WPMonitor Heizkurven-Reiter: Statustext nach dem Übernehmen von "Übernommen" auf "Gesendet - Wärmepumpe bestätigt Sollwert-Änderungen nicht" korrigiert - HeishaMon quittiert MQTT-Set-Befehle nicht, `true` bedeutet nur "Nachricht raus", nicht "von der Anlage übernommen" (Klarstellung von HeishaMon).
