@@ -943,7 +943,13 @@
     if (tab === 'heizkurven') { renderCurvePanel(); } else { render(); }
   }
   Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
-    b.onclick = function () { if (!b.classList.contains('tabHidden')) { setTopTab(b.getAttribute('data-tab')); } };
+    b.onclick = function () {
+      if (b.classList.contains('tabHidden')) { return; }
+      setTopTab(b.getAttribute('data-tab'));
+      // Menue blendet nach jeder Auswahl automatisch aus (Dietmar,
+      // 18.09.2026) - der Pfeil-Knopf holt es wieder zurueck.
+      setTabsCollapsed(true);
+    };
   });
 
   // -- Heizkurven-Editor (18.09.2026) -----------------------------------
