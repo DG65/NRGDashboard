@@ -5905,12 +5905,17 @@ class NRGDashboardTile extends IPSModule
     // Messwert von 261.554.185 W nachts in InverterHubs eigenem Archiv hat
     // den kompletten Tagesbalken auf einen absurden Wert gezogen). Bewusst
     // KEIN anlagenspezifischer Wert (waere hart verdrahtet, CLAUDE.md
-    // Kernprinzip 2) - 1 MW ist fuer jede denkbare Heim-/Kleingewerbe-Anlage
-    // (Solar, Wallbox, Waermepumpe, Hausanschluss) implausibel, unabhaengig
-    // von Geraetetyp/Hersteller. Der eigentliche Defekt (woher der
-    // Fantasiewert kommt) liegt beim archivierenden Partnermodul - hier nur
-    // Schutz davor, dass EIN kaputter Messwert die Darstellung sprengt.
-    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+    // Kernprinzip 2) - urspruenglich 1 MW ("implausibel fuer jede Heim-/
+    // Kleingewerbe-Anlage"), das war aber SELBST ein anlagenspezifischer
+    // Wert, nur unausgesprochen: Solarpark Hofweier (MeterHub-NAP-Instanz)
+    // liefert live legitim ueber 1 MW (18.09.2026, Fund MeterHub-Sitzung:
+    // Leistungs-Chart einer Solarpark-Instanz zeigte statt der echten Kurve
+    // eine Trapezform, weil reihenweise echte >1MW-Werte hier verworfen
+    // wurden). 50 MW ist fuer JEDE reale Anlage - vom Wallbox-Hausanschluss
+    // bis zum kommerziellen Solarpark - immer noch implausibel, faengt den
+    // urspruenglichen Defektwert (261.554.185 W) mit deutlichem Abstand
+    // weiterhin ab.
+    private const IMPLAUSIBLE_POWER_W = 50_000_000.0;
 
     /**
      * NACHTRAG 01.09.2026 (Dietmar: "Passt aber immer noch nicht die

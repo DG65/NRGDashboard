@@ -60,9 +60,13 @@ class NRGDashboardForecast extends IPSModule
     // absurde Werte gezogen - derselbe Fehlermechanismus betrifft
     // readMeasured() hier 1:1, das den "Ist"-Vergleich zur Prognose aus
     // AC_GetAggregatedValues()-Stundenmittelwerten baut). Bewusst KEIN
-    // anlagenspezifischer Wert (CLAUDE.md Kernprinzip 2) - 1 MW ist fuer
-    // jede denkbare Heim-/Kleingewerbe-Anlage implausibel.
-    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+    // anlagenspezifischer Wert (CLAUDE.md Kernprinzip 2) - urspruenglich
+    // 1 MW, war aber selbst unausgesprochen anlagenspezifisch: Solarpark
+    // Hofweier liefert live legitim >1 MW (18.09.2026, Fund MeterHub-
+    // Sitzung, siehe NRGDashboardTile fuer den vollen Befund). 50 MW ist
+    // fuer jede reale Anlage implausibel, faengt den urspruenglichen
+    // Defektwert (261.554.185 W) weiterhin klar ab.
+    private const IMPLAUSIBLE_POWER_W = 50_000_000.0;
 
     /** Siehe NRGDashboardPVMonitor::RowHasImplausiblePower() - identische
      *  Logik, 'Max'/'Min' statt 'Avg' pruefen (Avg verduennt einen

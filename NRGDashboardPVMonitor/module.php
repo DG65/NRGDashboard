@@ -43,8 +43,12 @@ class NRGDashboardPVMonitor extends IPSModule
     // DailyEnergyMap()/MonthlyEnergyMap(), da beide unveraendert AC_
     // GetAggregatedValues()-Tages-/Monats-Mittelwerte in kWh hochrechnen).
     // Bewusst KEIN anlagenspezifischer Wert (CLAUDE.md Kernprinzip 2) -
-    // 1 MW ist fuer jede denkbare Heim-/Kleingewerbe-PV-Anlage implausibel.
-    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+    // urspruenglich 1 MW, war aber selbst unausgesprochen anlagenspezifisch:
+    // Solarpark Hofweier liefert live legitim >1 MW (18.09.2026, Fund
+    // MeterHub-Sitzung, siehe NRGDashboardTile::IMPLAUSIBLE_POWER_W fuer den
+    // vollen Befund). 50 MW ist fuer jede reale Anlage implausibel, faengt
+    // den urspruenglichen Defektwert (261.554.185 W) weiterhin klar ab.
+    private const IMPLAUSIBLE_POWER_W = 50_000_000.0;
 
     /**
      * NACHTRAG 01.09.2026 (Dietmar: "Passt aber immer noch nicht die

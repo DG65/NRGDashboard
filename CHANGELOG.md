@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.26-beta.1 (2026-09-18)
+
+- Verbundweit (Tile/PVMonitor/WPMonitor/Forecast): Die Archiv-Plausibilitätsgrenze `IMPLAUSIBLE_POWER_W` war unausgesprochen selbst anlagenspezifisch (1 MW, gedacht für Heim-/Kleingewerbe-Anlagen) - bei Solarpark Hofweier (live legitim >1 MW) verwarf sie reihenweise echte Messwerte und ließ die Leistungskurve als Trapezform statt der echten, glatten Kurve erscheinen (Fund MeterHub-Sitzung). Auf 50 MW angehoben - fängt den ursprünglichen Defektwert (261.554.185 W, Modbus-TID-Bug) weiterhin klar ab, verwirft aber keine reale Anlage mehr.
+
 ## 0.9.25-beta.1 (2026-09-18)
 
 - Tile Geräte-Detailseite: "Netzbezug/Einspeisung an diesem Tag" nutzt jetzt bevorzugt den echten kumulativen Energiezähler (energyImportID/energyExportID), statt die 5-Minuten-Leistungsreihe zu integrieren - bei Solarpark Hofweiers NAP-Instanz wich die reine Leistungsintegration um Faktor ~5,75 vom echten Zählerstand ab (787,8 statt 4.531,2 kWh, Fund MeterHub-Sitzung). Leistungsintegration bleibt Rückfall für Quellen ohne eigene Energiezähler-Felder (z. B. reine InverterHub-PV/Batterie).

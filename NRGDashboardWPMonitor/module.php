@@ -55,7 +55,12 @@ class NRGDashboardWPMonitor extends IPSModule
     // hier 1:1). Bewusst KEIN anlagenspezifischer Wert (CLAUDE.md
     // Kernprinzip 2) - 1 MW ist fuer jede denkbare Heim-Waermepumpe
     // implausibel.
-    private const IMPLAUSIBLE_POWER_W = 1_000_000.0;
+    // 18.09.2026: von 1 MW auf 50 MW angehoben - war selbst unausgesprochen
+    // anlagenspezifisch, Solarpark Hofweier liefert live legitim >1 MW
+    // (Fund MeterHub-Sitzung, siehe NRGDashboardTile fuer den vollen
+    // Befund). 50 MW faengt den urspruenglichen Defektwert (261.554.185 W)
+    // weiterhin klar ab.
+    private const IMPLAUSIBLE_POWER_W = 50_000_000.0;
 
     /**
      * NACHTRAG 01.09.2026 (siehe NRGDashboardPVMonitor::RowHasImplausiblePower(),
