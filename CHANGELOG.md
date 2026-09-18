@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.33-beta.1 (2026-09-18)
+
+- WPMonitor Heizkurven-Editor, zwei Fehler beim Speichern (Fund Dietmar: "die Punkte werden beim Speichern nicht in die HeishaMon übertragen"): (1) Punktzuordnung war vertauscht - laut HeishaMon-Firmware gehört Vorlauf HOCH zu Außentemperatur TIEF (Beispiel target high 35/low 25, outside high 15/low -15 = (-15→35) und (15→25)), der Editor paarte tief/tief und sendete beim Ziehen die falschen Werte. (2) Nach dem Senden lud der Editor sofort neu und sprang auf die alten Werte zurück, weil HeishaMon Set-Befehle nicht quittiert und der neue Wert erst mit dem nächsten Datenzyklus zurückkommt - es wirkte, als wäre nichts übertragen worden. Jetzt zeigt er den gesendeten Stand, liest bis zu 6-mal im 4-Sekunden-Takt zurück und meldet "von der Wärmepumpe bestätigt" bzw. nach dem Zeitlimit "noch die alten Werte".
+
 ## 0.9.32-beta.1 (2026-09-18)
 
 - WPMonitor/HeatSchema: Discovery kennt jetzt zusätzlich WPModbusHub, WPModbusHubGateway und SamsungEhs (heatpump-Vertrag 1.15, gleiche Form wie WPHub) - auf Bitte der WPHub-Sitzung, von Dietmar freigegeben. Beta-Quellen: nur SamsungEhs ist an echter Anlage bestätigt, WPModbusHub teilweise, das Gateway gar nicht. PowerID/EnergyID sind dort immer 0, es erscheinen nur Temperatur-/Statusfelder. Der Tile-Energiefluss bleibt unverändert (nur HeishaMon), der Heizkurven-Reiter weiter nur bei HeishaMon.

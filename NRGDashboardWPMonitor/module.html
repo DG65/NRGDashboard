@@ -1038,8 +1038,31 @@
     }
   }
 
+  // Gesendeter, noch nicht von der Waermepumpe zurueckgemeldeter Stand -
+  // HeishaMon quittiert Set-Befehle nicht, der neue Wert kommt erst mit dem
+  // naechsten Datenzyklus zurueck. Bis dahin zeigt der Editor den gesendeten
+  // Stand statt auf die alten Werte zurueckzuspringen (das wirkte, als waere
+  // nichts uebertragen worden).
+  var curveSent = null, curvePollTimer = null;
+  function curveValuesEqual(a, b) {
+    return !!a && !!b && a.outsideLowC === b.outsideLowC && a.outsideHighC === b.outsideHighC
+      && a.targetLowC === b.targetLowC && a.targetHighC === b.targetHighC;
+  }
+  function curveCachedValues(zone, mode) {
+    var zd = curveCache && curveCache.zones && curveCache.zones[zone];
+    return (zd && zd[mode]) ? zd[mode] : null;
+  }
+  function curvePollAfterSave() {
+    if (curvePollTimer) { clearTimeout(curvePollTimer); }
+    curvePollTimer = setTimeout(function () {
+      if (!curveSent) { return; }
+      curvePending = true;
+      requestAction('heatingCurveLoad', '{}');
+    }, 4000);
+  }
   function curveCurrentValues() {
     if (curveDraft) { return curveDraft; }
+    if (curveSent && curveSent.zone === curveZone && curveSent.mode === curveMode) { return curveSent.vals; }
     var zoneData = curveCache && curveCache.zones && curveCache.zones[curveZone];
     return (zoneData && zoneData[curveMode]) ? zoneData[curveMode] : null;
   }
@@ -1113,9 +1136,14 @@
     // an den Diagrammrand verlaengert (gleiche Steigung) - zeigt, dass die
     // Anlage ausserhalb der Ankerpunkte fortsetzt; Verlauf zwischen den
     // Punkten kraeftig, Verlaengerung gestrichelt.
+    // Zuordnung laut HeishaMon-Firmware/Beispiel (SET16): Vorlauf HOCH gehoert
+    // zu Aussentemperatur TIEF (kalter Tag = hoher Vorlauf), Vorlauf TIEF zu
+    // Aussentemperatur HOCH. Beispiel: target high 35 / low 25, outside high
+    // 15 / low -15 = (-15 -> 35) und (15 -> 25). Eine frueher umgekehrte
+    // Paarung (tief/tief) sendete beim Ziehen die falschen Werte.
     var pts = [
-      { x: vals.outsideLowC, y: vals.targetLowC, idx: 0 },
-      { x: vals.outsideHighC, y: vals.targetHighC, idx: 1 }
+      { x: vals.outsideLowC, y: vals.targetHighC, idx: 0 },
+      { x: vals.outsideHighC, y: vals.targetLowC, idx: 1 }
     ].sort(function (a, b) { return b.x - a.x; }); // links = warm (gespiegelte Achse)
     var p1 = { x: curveXToPx(pts[0].x), y: curveYToPx(pts[0].y) };
     var p2 = { x: curveXToPx(pts[1].x), y: curveYToPx(pts[1].y) };
@@ -1180,8 +1208,8 @@
       var vals = curveCurrentValues();
       if (!vals) { return; }
       curveDraft = { outsideLowC: vals.outsideLowC, outsideHighC: vals.outsideHighC, targetLowC: vals.targetLowC, targetHighC: vals.targetHighC };
-      if (curveDragging === 0) { curveDraft.outsideLowC = x; curveDraft.targetLowC = y; }
-      else { curveDraft.outsideHighC = x; curveDraft.targetHighC = y; }
+      if (curveDragging === 0) { curveDraft.outsideLowC = x; curveDraft.targetHighC = y; }
+      else { curveDraft.outsideHighC = x; curveDraft.targetLowC = y; }
       drawCurveSvg();
       updateCurveSaveBtn();
     }
@@ -1236,13 +1264,16 @@
     curveStatusText = 'Speichere…';
     updateCurveSaveBtn();
     document.getElementById('curveStatus').textContent = curveStatusText;
+    curveLastReq = { zone: curveZone, mode: curveMode, vals: {
+      outsideLowC: curveDraft.outsideLowC, outsideHighC: curveDraft.outsideHighC,
+      targetLowC: curveDraft.targetLowC, targetHighC: curveDraft.targetHighC } };
     requestAction('heatingCurveSave', JSON.stringify({
       zone: curveZone, mode: curveMode,
       targetHighC: curveDraft.targetHighC, targetLowC: curveDraft.targetLowC,
       outsideHighC: curveDraft.outsideHighC, outsideLowC: curveDraft.outsideLowC,
     }));
-    curveDraft = null;
   };
+  var curveLastReq = null;
 
   function render() {
     // Periodischer Payload-Refresh darf die Verlauf-Elemente nicht in den
@@ -1308,18 +1339,40 @@
     // Gleiches Muster wie NRGDashboardPVMonitor::flowUpdate/dayPlanUpdate.
     if (d && d.ok && d.type === 'heatingCurveUpdate') {
       curveCache = d.curve; curvePending = false;
+      // Nach dem Senden: mit dem Rueckgelesenen vergleichen (Bestaetigung).
+      if (curveSent) {
+        var now = curveCachedValues(curveSent.zone, curveSent.mode);
+        if (curveValuesEqual(now, curveSent.vals)) {
+          curveSent = null;
+          curveStatusText = 'Von der Wärmepumpe bestätigt.';
+        } else {
+          curveSent.tries += 1;
+          if (curveSent.tries < 6) {
+            curveStatusText = 'Gesendet - warte auf Rückmeldung der Wärmepumpe (' + curveSent.tries + '/6)…';
+            curvePollAfterSave();
+          } else {
+            curveSent = null;
+            curveStatusText = 'Die Wärmepumpe meldet noch die alten Werte - Übernahme nicht bestätigt (Gateway/MQTT prüfen).';
+          }
+        }
+      }
       if (curTop === 'heizkurven') { renderCurvePanel(); }
       return;
     }
     if (d && d.ok && d.type === 'heatingCurveSaved') {
       curveCache = d.curve; curveSaving = false;
+      if (d.saved && curveLastReq) {
+        curveSent = { zone: curveLastReq.zone, mode: curveLastReq.mode, vals: curveLastReq.vals, tries: 0 };
+        curveDraft = null;
+        curvePollAfterSave();
+      }
       // "Gesendet" statt "Übernommen" (Dietmars Verbund-Grundsatz "keine
       // erfundene Bestätigung"): HeishaMon quittiert per MQTT nicht, ob die
       // Waermepumpe den Set-Befehl tatsaechlich angenommen hat - true heisst
       // hier nur "Zone/Modus vorhanden, Werte plausibel, Nachricht raus"
       // (HeishaMon-Sitzung, 18.09.2026). Werte oben zeigen nach dem Neuladen
       // ohnehin den zuletzt gelesenen Ist-Stand, keine Behauptung noetig.
-      curveStatusText = d.saved ? 'Gesendet - die Wärmepumpe bestätigt Sollwert-Änderungen nicht, bitte Werte in Kürze gegenprüfen.' : 'Fehler beim Senden - bitte erneut versuchen.';
+      curveStatusText = d.saved ? 'Gesendet - warte auf Rückmeldung der Wärmepumpe…' : 'Nicht gesendet - HeishaMon lehnt den Befehl ab (Zone/Modus nicht aktiv, MQTT-Gateway getrennt oder HeishaMon zu alt).';
       if (curTop === 'heizkurven') { renderCurvePanel(); }
       return;
     }
