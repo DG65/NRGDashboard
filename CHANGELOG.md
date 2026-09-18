@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.31-beta.1 (2026-09-18)
+
+- WPMonitor Heizkurven-Editor: Außentemperatur-Bereich auf +45 bis -25 °C erweitert, damit auch Kühlen darstellbar ist; Vorlauftemperatur-Achse je Modus (Heizen 15-65 °C, Kühlen 0-40 °C), sonst lägen typische Kühl-Sollwerte unterhalb der Achse.
+
 ## 0.9.30-beta.1 (2026-09-18)
 
 - WPMonitor Heizkurven-Editor: Außentemperatur-Achse horizontal gespiegelt (warm links, kalt rechts), Dietmars Wunsch.

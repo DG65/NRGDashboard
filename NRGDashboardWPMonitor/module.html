@@ -954,8 +954,15 @@
   // Ziehen von Datenpunkten. Die Zeichenflaeche folgt der tatsaechlichen
   // Kachelgroesse (viewBox = Pixelmasse), damit das Diagramm den Platz
   // nutzt wie die Verlaufsdiagramme statt als kleines Bild zu stehen.
-  var CURVE_X_MIN = -20, CURVE_X_MAX = 20;   // Aussentemperatur °C
-  var CURVE_Y_MIN = 15, CURVE_Y_MAX = 65;    // Vorlauftemperatur °C
+  // Aussentemperatur +45 .. -25 °C (Dietmar, 18.09.2026: damit auch Kuehlen
+  // dargestellt werden kann). Vorlauftemperatur je Modus: Heizen 15..65 °C,
+  // Kuehlen 0..40 °C (Kuehl-Vorlauf liegt typisch bei 5..25 °C).
+  var CURVE_X_MIN = -25, CURVE_X_MAX = 45;
+  var CURVE_Y_MIN = 15, CURVE_Y_MAX = 65;
+  function curveApplyRange() {
+    if (curveMode === 'cool') { CURVE_Y_MIN = 0; CURVE_Y_MAX = 40; }
+    else { CURVE_Y_MIN = 15; CURVE_Y_MAX = 65; }
+  }
   var CURVE_PAD_L = 76, CURVE_PAD_R = 24, CURVE_PAD_T = 24, CURVE_PAD_B = 46;
   var CURVE_W = 800, CURVE_H = 420;
 
@@ -1058,6 +1065,7 @@
     svg.innerHTML = '';
     var vals = curveCurrentValues();
     if (!vals) { return; }
+    curveApplyRange();
     curveFitSize();
     var isLight = isLightTheme();
     var axisColor = isLight ? '#333' : 'rgba(226,232,240,.65)';
@@ -1085,7 +1093,7 @@
       }
     }
     for (var gy = CURVE_Y_MIN; gy <= CURVE_Y_MAX; gy += 5) {
-      var strongY = (gy % 10 === 5);
+      var strongY = (gy % 10 === 0);
       svg.appendChild(curveSvgEl('line', { x1: plotL, y1: curveYToPx(gy), x2: plotR, y2: curveYToPx(gy), stroke: strongY ? gridStrong : gridColor, 'stroke-width': 1, 'stroke-dasharray': strongY ? '' : '3 4' }));
       if (strongY) {
         var ly = curveSvgEl('text', { x: plotL - 10, y: curveYToPx(gy) + 4, fill: axisColor, 'font-size': 12, 'text-anchor': 'end' });
@@ -1167,6 +1175,7 @@
       var rect = svgNow.getBoundingClientRect();
       var cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
       var cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+      curveApplyRange();
       var x = curvePxToX(cx / rect.width * CURVE_W), y = curvePxToY(cy / rect.height * CURVE_H);
       var vals = curveCurrentValues();
       if (!vals) { return; }
