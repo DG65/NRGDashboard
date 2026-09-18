@@ -1758,8 +1758,20 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $startVal = $this->ArchiveValueAt($aid, $vid, $start);
         if ($startVal === null) {
-            $r = @AC_GetLoggedValues($aid, $vid, 0, $end, 0);
-            $startVal = (is_array($r) && count($r) > 0) ? (float) $r[count($r) - 1]['Value'] : null;
+            // Archivluecke um den Tagesbeginn (Fund MeterHub-Sitzung,
+            // 18.09.2026, Solarpark Albersboesch, identischer Fehler wie in
+            // NRGDashboardTile::PeriodEnergyCounter() - siehe dort fuer den
+            // vollen Befund) - die Suche ab Unix-Epoche 0 konnte einen viel
+            // AELTEREN, unpassenden Archivpunkt als Referenz erwischen und
+            // einen Fantasiewert erzeugen. Jetzt NUR innerhalb des
+            // angefragten Tages gesucht, explizit chronologisch sortiert.
+            $r = @AC_GetLoggedValues($aid, $vid, $start, $end, 0);
+            if (is_array($r) && count($r) > 0) {
+                usort($r, function ($a, $b) { return $a['TimeStamp'] <=> $b['TimeStamp']; });
+                $startVal = (float) $r[0]['Value'];
+            } else {
+                $startVal = null;
+            }
         }
         if ($startVal === null) {
             return null;

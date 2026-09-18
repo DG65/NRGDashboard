@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.28-beta.1 (2026-09-18)
+
+- Tile/PVMonitor `PeriodEnergyCounter()`: Bei einer Archivlücke um Tagesbeginn suchte der Referenzpunkt-Fallback bisher ab Unix-Epoche 0 statt innerhalb des angefragten Tages - konnte dabei einen völlig veralteten Archivpunkt erwischen und einen Fantasiewert erzeugen (53,3 statt echter ~0,011 Mio. kWh bei Solarpark Albersboesch, dessen Archiv genau zwischen gestern Abend und heute 07:03 Uhr eine Lücke hatte). Sucht jetzt nur noch innerhalb des Tagesfensters, explizit chronologisch sortiert; fehlt auch das, bleibt der Tag ehrlich ohne Wert statt zu raten (Gegenprüfung MeterHub-Sitzung direkt am Rohzähler).
+
 ## 0.9.27-beta.1 (2026-09-18)
 
 - Tile: `collapseToSingleGrid()` kollabiert nicht mehr pauschal jeden zweiten Netzknoten - nur noch verzögerte/Abrechnungs-Zweitmessungen desselben Anschlusses (`latency==='delayed'`/`authority==='billing'`). Bei Solarpark Hofweier verschwand dadurch "NAP Albersboesch" (ein zweiter, physisch eigenständiger Netzanschlusspunkt) komplett aus dem Energiefluss (Fund Dietmar, nach MeterHub-Bericht). Mehrere echte, unabhängige NAPs erscheinen jetzt gleichzeitig als eigene Knoten.

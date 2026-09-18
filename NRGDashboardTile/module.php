@@ -5883,8 +5883,25 @@ class NRGDashboardTile extends IPSModule
         }
         $startVal = $this->ArchiveValueAt($aid, $vid, $start);
         if ($startVal === null) {
-            $r = @AC_GetLoggedValues($aid, $vid, 0, $end, 0);
-            $startVal = (is_array($r) && count($r) > 0) ? (float) $r[count($r) - 1]['Value'] : null;
+            // Archivluecke um den Tagesbeginn (Fund MeterHub-Sitzung,
+            // 18.09.2026, Solarpark Albersboesch: keine archivierte Zeile
+            // zwischen gestern Abend und heute 07:03 Uhr, nicht mal
+            // Mitternacht) - die alte Suche ab Unix-Epoche 0 konnte dabei
+            // einen viel AELTEREN, voelligen unpassenden Archivpunkt als
+            // "Referenz" erwischen und einen Fantasiewert erzeugen (53,3
+            // statt echter ~0,011 Mio. kWh). Jetzt NUR innerhalb des
+            // angefragten Tages gesucht (chronologisch erster Punkt
+            // zwischen $start und $end, explizit sortiert statt sich auf
+            // die Rueckgabereihenfolge von AC_GetLoggedValues() zu
+            // verlassen) - fehlt auch das, bleibt der Tag ehrlich ohne
+            // Wert statt zu raten.
+            $r = @AC_GetLoggedValues($aid, $vid, $start, $end, 0);
+            if (is_array($r) && count($r) > 0) {
+                usort($r, function ($a, $b) { return $a['TimeStamp'] <=> $b['TimeStamp']; });
+                $startVal = (float) $r[0]['Value'];
+            } else {
+                $startVal = null;
+            }
         }
         if ($startVal === null) {
             return null;
