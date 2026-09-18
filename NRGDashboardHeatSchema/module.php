@@ -36,6 +36,23 @@ class NRGDashboardHeatSchema extends IPSModule
     // Schluessel fehlen komplett statt 0) - deshalb ueberall defensiv mit
     // ?? 0 statt fester Schluesselmenge gelesen (siehe DiscoverHeatpumps()).
     private const WPHUB_GUID = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
+    // Waermepumpen-Quellen des heatpump-Vertrags (Discovery-Liste). Neu am
+    // 18.09.2026 auf Bitte der WPHub-Sitzung (Dietmar hat es freigegeben):
+    // WPModbusHub, WPModbusHubGateway (Symcons ModBus-Gateway, RS485/RTU) und
+    // SamsungEhs (NASA-Protokoll) liefern denselben Vertrag wie WPHub
+    // (contractVersion 1.15, PowerID/EnergyID immer 0). Datenlage laut
+    // WPHub-Sitzung: nur SamsungEhs an echter Anlage bestaetigt, WPModbusHub
+    // teilweise, WPModbusHubGateway ueber den Gateway-Weg an keiner Anlage
+    // getestet - also Beta-Quellen. Bewusst eine feste Liste statt
+    // generischer Suche ueber alle *_GetFunctions: die Vertragsfunktionen
+    // fremder Module blind aufzurufen waere riskanter als ein Eintrag mehr.
+    private const HEATPUMP_SOURCES = [
+        '{1919151A-3C0F-4C09-B906-291638EC1469}' => 'HEISHA_GetFunctions',
+        '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}' => 'WPHUB_GetFunctions',
+        '{E878B4D4-8E98-4E89-AE21-8636262EBC55}' => 'WPMBHUB_GetFunctions',
+        '{70FBAC61-A1C0-47B7-8B56-BE047F7C0C6B}' => 'WPMBGW_GetFunctions',
+        '{D2B2A1E8-2F94-426C-8761-505A2F226977}' => 'SAMEHS_GetFunctions',
+    ];
     private const METERHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
 
     // Manuelle Datenanbindung (Dietmar, 17.08.2026): Vertragsfeld =>
@@ -831,7 +848,7 @@ class NRGDashboardHeatSchema extends IPSModule
     private function DiscoverHeatpumps(): array
     {
         $entries = [];
-        foreach ([self::HEISHA_GUID => 'HEISHA_GetFunctions', self::WPHUB_GUID => 'WPHUB_GetFunctions'] as $guid => $fn) {
+        foreach (self::HEATPUMP_SOURCES as $guid => $fn) {
             if (!function_exists($fn)) {
                 continue;
             }

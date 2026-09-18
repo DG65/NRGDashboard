@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.32-beta.1 (2026-09-18)
+
+- WPMonitor/HeatSchema: Discovery kennt jetzt zusätzlich WPModbusHub, WPModbusHubGateway und SamsungEhs (heatpump-Vertrag 1.15, gleiche Form wie WPHub) - auf Bitte der WPHub-Sitzung, von Dietmar freigegeben. Beta-Quellen: nur SamsungEhs ist an echter Anlage bestätigt, WPModbusHub teilweise, das Gateway gar nicht. PowerID/EnergyID sind dort immer 0, es erscheinen nur Temperatur-/Statusfelder. Der Tile-Energiefluss bleibt unverändert (nur HeishaMon), der Heizkurven-Reiter weiter nur bei HeishaMon.
+
 ## 0.9.31-beta.1 (2026-09-18)
 
 - WPMonitor Heizkurven-Editor: Außentemperatur-Bereich auf +45 bis -25 °C erweitert, damit auch Kühlen darstellbar ist; Vorlauftemperatur-Achse je Modus (Heizen 15-65 °C, Kühlen 0-40 °C), sonst lägen typische Kühl-Sollwerte unterhalb der Achse.
