@@ -2032,8 +2032,17 @@
       1: { name: 'PV-Eigenverbrauch (laden)', color: '#4CAF50' },
       2: { name: 'Netz laden', color: '#2196F3' },
       3: { name: 'Eigenverbrauch (entladen)', color: '#FF9800' },
+      4: { name: 'Standby', color: '#78909C' },
       5: { name: 'Einspeisen', color: '#9C27B0' },
-      7: { name: 'Grid Rewards (Tibber)', color: '#E91E63' }
+      6: { name: 'Backup', color: '#8D6E63' },
+      7: { name: 'Grid Rewards (Tibber)', color: '#E91E63' },
+      // Neu (EMS-Abstimmung 19.09.2026): op 8 = 0-W-Fall des frueheren op 5 -
+      // Haus laeuft aus dem Netz, Akku wird geschont, NICHTS geht ins Netz.
+      // Vorher war das derselbe lila "Einspeisen"-Balken wie echte Einspeisung
+      // (irrefuehrend). Tuerkis hebt sich von Automatik (grau), Netz laden
+      // (blau) und Einspeisen (lila) ab. Unbekannte op-Werte fallen weiter
+      // still auf grau "op N" zurueck (planOpInfo).
+      8: { name: 'Akku halten (Netzbezug)', color: '#00ACC1' }
     };
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
 

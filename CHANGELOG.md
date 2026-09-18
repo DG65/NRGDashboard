@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.36-beta.1 (2026-09-19)
+
+- PVMonitor Tagesplan: kennt den neuen EMS-Plan-Modus op 8 "Akku halten (Netzbezug)" (türkis) - der frühere 0-W-Fall von op 5, bei dem nichts ins Netz geht und der lila "Einspeisen"-Balken irreführend war (Beobachtung Dietmar, EMS-Abstimmung). Zusätzlich bekommen die bisher namenlosen op 4 "Standby" und op 6 "Backup" einen Namen. Unbekannte op-Werte fallen unverändert auf grau "op N" zurück.
+
 ## 0.9.35-beta.1 (2026-09-19)
 
 - WPMonitor: Verschiebe-Regler für die Heizkurve - senkrecht rechts neben dem Diagramm (Dietmars Vorgabe), -5 bis +5 K, gestrichelte Linie zeigt die verschobene Kurve. Nur im Verschiebe-Modus und nur für Heizen (im Direktmodus wäre derselbe Anlagenwert eine Vorlauf-Solltemperatur, dort wird nichts gesendet); Hinweis, wenn Regeln auf der HeishaMon-Platine den Wert überschreiben können (`boardRulesActive`). Rückmeldung per Nachlesen alle 3 s, nach 30 s "nicht bestätigt".
