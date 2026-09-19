@@ -588,12 +588,21 @@ class NRGDashboardPVMonitor extends IPSModule
             return 0;
         }
         $ids = @IPS_GetInstanceListByModuleID('{BBE2C593-1A91-426D-A714-29A9C7E87589}');
-        if (!is_array($ids) || count($ids) !== 1) {
+        if (!is_array($ids) || count($ids) === 0) {
             return 0;
         }
-        $data = @IHUB_GetFunctions((int) $ids[0]);
-        $pv = (int) ($data['pvPowerID'] ?? 0);
-        return ($pv > 0 && IPS_VariableExists($pv)) ? $pv : 0;
+        // Mehrere Instanzen (z. B. Alt-Instanz neben der aktuellen): zaehlt nur,
+        // was tatsaechlich eine existierende PV-Leistungsvariable liefert. Genau
+        // EIN solcher Treffer ist eindeutig; bei mehreren wird weiter nicht geraten.
+        $found = [];
+        foreach ($ids as $iid) {
+            $data = @IHUB_GetFunctions((int) $iid);
+            $pv = is_array($data) ? (int) ($data['pvPowerID'] ?? 0) : 0;
+            if ($pv > 0 && IPS_VariableExists($pv)) {
+                $found[$pv] = true;
+            }
+        }
+        return count($found) === 1 ? (int) array_key_first($found) : 0;
     }
 
     /**
@@ -2983,6 +2992,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'lightTheme' => (bool) $this->ReadPropertyBoolean('LightTheme'),
             'autoCycleTabs' => (bool) $this->ReadPropertyBoolean('AutoCycleTabs'),
             'hasPv'    => $pvID > 0,
+            'hasYearHistory' => count($this->ManualHistory()) > 0,
             'hasIrr'   => $irrID > 0,
             'hasModel' => $model !== null,
             'hasMpptModel' => $mpptModelUsable,

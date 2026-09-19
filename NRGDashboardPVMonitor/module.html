@@ -3879,7 +3879,7 @@
         price: true,
         flow: !!lastData.hasEnergyFlow,
         balance: !!lastData.hasEnergyFlow,
-        yearcompare: !!lastData.hasPv,
+        yearcompare: !!(lastData.hasPv || lastData.hasYearHistory),
         tagesplan: !!lastData.hasEms,
         // Versteckter Entwickler-Reiter (17.09.2026) - hasScenarios ist ohne
         // die per Skript gesetzte EMS-Property IMMER false, der Button
