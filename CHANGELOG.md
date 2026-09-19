@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.39-beta.1 (2026-09-19)
+
+- PVMonitor: Jahresvergleich-Reiter ist jetzt immer sichtbar (wie der Strompreis-Reiter). Ohne aufgelöste PV-Leistungsvariable erklärt er den Grund und den Ausweg, statt zu verschwinden.
+
 ## 0.9.38-beta.1 (2026-09-19)
 
 - PVMonitor: Jahresvergleich-Reiter blieb verschwunden, wenn die PV-Leistung nicht automatisch aufgelöst wurde (z. B. zweite InverterHub-Instanz neben der aktuellen). Die Automatik zählt jetzt nur Instanzen mit tatsächlich vorhandener PV-Leistungsvariable; genau ein Treffer genügt. Zusätzlich bleibt der Reiter sichtbar, sobald manuell nachgetragene Vorjahreswerte existieren.

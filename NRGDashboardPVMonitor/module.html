@@ -2772,7 +2772,9 @@
     function renderYearCompare(el, data) {
       if (!data || !data.years || !data.years.length) {
         destroyChart();
-        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Keine Ertragsdaten im Archiv gefunden</div>';
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">' + ((lastData && !lastData.hasPv)
+          ? 'Keine PV-Leistungsvariable gefunden - im Formular „PV-Leistung“ auswählen (bei mehreren InverterHub-Instanzen wird nicht geraten) oder Vorjahreswerte nachtragen'
+          : 'Keine Ertragsdaten im Archiv gefunden') + '</div>';
         return;
       }
       var unit = (yearCompareSub === 'specific' && data.kwp) ? 'kWh/kWp' : 'kWh';
@@ -3879,7 +3881,8 @@
         price: true,
         flow: !!lastData.hasEnergyFlow,
         balance: !!lastData.hasEnergyFlow,
-        yearcompare: !!(lastData.hasPv || lastData.hasYearHistory),
+        // immer sichtbar (wie der Strompreis-Reiter): ohne aufgeloeste PV-Leistung erklaert render() den Grund
+        yearcompare: true,
         tagesplan: !!lastData.hasEms,
         // Versteckter Entwickler-Reiter (17.09.2026) - hasScenarios ist ohne
         // die per Skript gesetzte EMS-Property IMMER false, der Button
