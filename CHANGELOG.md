@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.40-beta.1 (2026-09-19)
+
+- PVMonitor Jahresvergleich: Werte ab Sep 2025 fehlten komplett. Ursache: ein beschädigter Tagesdatensatz im Archiv (Zeitstempel mitten am Tag) ließ `AC_GetAggregatedValues` für jeden Zeitraum, der ihn enthält, FALSE liefern. Der Jahresvergleich fragt jetzt bei FALSE monatsweise, dann tageweise ab und rechnet einen einzeln scheiternden Tag aus den Rohwerten nach.
+
 ## 0.9.39-beta.1 (2026-09-19)
 
 - PVMonitor: Jahresvergleich-Reiter ist jetzt immer sichtbar (wie der Strompreis-Reiter). Ohne aufgelöste PV-Leistungsvariable erklärt er den Grund und den Ausweg, statt zu verschwinden.

@@ -1090,15 +1090,75 @@ class NRGDashboardPVMonitor extends IPSModule
      * ueberfluessig: ein noch laufender Monat hat im Archiv ohnehin nur
      * Zeilen fuer die bereits vergangenen Tage, die Summe stimmt automatisch.
      */
+    /**
+     * Tagesaggregate mit Rueckfall. Ein einziger beschaedigter Tagesdatensatz im
+     * Archiv (live gefunden 19.09.2026: Tagessatz vom 18.09. mit Zeitstempel
+     * mitten am Tag statt 00:00 Uhr) laesst AC_GetAggregatedValues() fuer JEDEN
+     * Zeitraum, der ihn enthaelt, komplett FALSE liefern ("Ungueltige Aggregation
+     * day") - der ganze Jahresvergleich blieb dadurch leer. Deshalb: erst am Stueck,
+     * bei FALSE monatsweise, bei FALSE tageweise; ein Tag, der auch einzeln
+     * scheitert, wird aus den Rohwerten (zeitgewichteter Mittelwert) berechnet.
+     */
+    private function DayAggregatesResilient(int $aid, int $vid, int $start, int $end): array
+    {
+        $all = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
+        if (is_array($all)) {
+            return $all;
+        }
+        $out = [];
+        $m = strtotime(date('Y-m-01 00:00:00', $start));
+        while ($m < $end) {
+            $mEnd = min(strtotime('+1 month', $m), $end);
+            $chunk = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, max($m, $start), $mEnd, 0);
+            if (is_array($chunk)) {
+                $out = array_merge($out, $chunk);
+            } else {
+                for ($d = max($m, $start); $d < $mEnd; $d = strtotime('+1 day', $d)) {
+                    $dEnd = min(strtotime('+1 day', $d), $end);
+                    $one = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $d, $dEnd, 0);
+                    if (is_array($one)) {
+                        // nur Saetze, deren Zeitstempel wirklich in diesen Tag fallen
+                        foreach ($one as $r) {
+                            if ((int) ($r['TimeStamp'] ?? 0) >= $d && (int) $r['TimeStamp'] < $dEnd) {
+                                $out[] = $r;
+                            }
+                        }
+                        continue;
+                    }
+                    $raw = @AC_GetLoggedValues($aid, $vid, $d, $dEnd, 0);
+                    if (!is_array($raw) || count($raw) === 0) {
+                        continue;
+                    }
+                    $sum = 0.0;
+                    $dur = 0.0;
+                    $max = 0.0;
+                    foreach ($raw as $r) {
+                        $t = max((float) $r['TimeStamp'], (float) $d);
+                        $len = min((float) $r['TimeStamp'] + (float) ($r['Duration'] ?? 0), (float) $dEnd) - $t;
+                        if ($len <= 0) {
+                            continue;
+                        }
+                        $sum += (float) $r['Value'] * $len;
+                        $dur += $len;
+                        $max = max($max, (float) $r['Value']);
+                    }
+                    if ($dur > 0) {
+                        // auf den ganzen Tag normieren (Avg ist ueber 24 h gerechnet)
+                        $out[] = ['TimeStamp' => $d, 'Avg' => $sum / ($dEnd - $d), 'Max' => $max];
+                    }
+                }
+            }
+            $m = strtotime('+1 month', $m);
+        }
+        return $out;
+    }
+
     private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
     {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return [];
         }
-        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
-        if (!is_array($data)) {
-            return [];
-        }
+        $data = $this->DayAggregatesResilient($aid, $vid, $start, $end);
         $out = [];
         foreach ($data as $row) {
             if (!isset($row['Avg'])) {
