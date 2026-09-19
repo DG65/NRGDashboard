@@ -2044,6 +2044,13 @@
       // still auf grau "op N" zurueck (planOpInfo).
       8: { name: 'Akku halten (Netzbezug)', color: '#00ACC1' }
     };
+    // Schaltleistung (EMS_GetDayPlan 1.1, optional): "Netz laden mit 24 kW"
+    function planXsetText(slot) {
+      if (!slot || !slot.xsetW) return '';
+      var kw = Math.abs(slot.xsetW) / 1000;
+      var txt = (slot.gwModeLabel ? slot.gwModeLabel + ' mit ' : 'Schaltleistung ') + kw.toFixed(kw >= 10 ? 0 : 1).replace('.', ',') + ' kW';
+      return txt;
+    }
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
 
     // StromGedacht-Netzampel als Zusatzleiste im Tagesplan-Reiter (21.08.2026,
@@ -2286,7 +2293,7 @@
             var ts = params.length ? params[0].axisValue : null;
             var slot = ts !== null ? dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]) : null;
             var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString('de-DE') + '</div>' : '';
-            var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' : '';
+            var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' + (planXsetText(slot) ? '<div>' + planXsetText(slot) + '</div>' : '') : '';
             var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
@@ -2436,7 +2443,7 @@
             var dtP = new Date(ts);
             var p2P = function (n) { return ('0' + n).slice(-2); };
             var tsLabel = p2P(dtP.getDate()) + '.' + p2P(dtP.getMonth() + 1) + '.' + dtP.getFullYear() + ' ' + p2P(dtP.getHours()) + ':' + p2P(dtP.getMinutes());
-            var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '')];
+            var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + (planXsetText(slot) ? '<br>' + planXsetText(slot) : '')];
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
             });

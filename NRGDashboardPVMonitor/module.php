@@ -1507,6 +1507,9 @@ class NRGDashboardPVMonitor extends IPSModule
                         'reason' => (string) ($slot['reason'] ?? ''),
                         'price' => isset($slot['price']) && $slot['price'] !== null ? round((float) $slot['price'] * $priceFactor, 2) : null,
                         'soc'   => isset($slot['soc']) && $slot['soc'] !== null ? (float) $slot['soc'] : null,
+                        // EMS_GetDayPlan Vertrag 1.1 (optional): Schaltleistung + Modus-Text
+                        'xsetW' => (int) ($slot['xsetW'] ?? 0),
+                        'gwModeLabel' => (string) ($slot['gwModeLabel'] ?? ''),
                     ];
                 }
             }

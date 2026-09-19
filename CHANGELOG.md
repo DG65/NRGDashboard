@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.37-beta.1 (2026-09-19)
+
+- PVMonitor Tagesplan: Tooltip zeigt die geplante Schaltleistung je Viertelstunde (z. B. "Netz laden mit 24 kW"), aus `xsetW`/`gwModeLabel` von EMS_GetDayPlan (Vertrag 1.1, optional; fehlt es, bleibt alles wie zuvor).
+
 ## 0.9.36-beta.1 (2026-09-19)
 
 - PVMonitor Tagesplan: kennt den neuen EMS-Plan-Modus op 8 "Akku halten (Netzbezug)" (türkis) - der frühere 0-W-Fall von op 5, bei dem nichts ins Netz geht und der lila "Einspeisen"-Balken irreführend war (Beobachtung Dietmar, EMS-Abstimmung). Zusätzlich bekommen die bisher namenlosen op 4 "Standby" und op 6 "Backup" einen Namen. Unbekannte op-Werte fallen unverändert auf grau "op N" zurück.
