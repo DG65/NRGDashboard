@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.41-beta.1 (2026-09-20)
+
+- PVMonitor als eigenständige Webseite (IPSView/Browser über den WebHook): Bilanz und Jahresvergleich blieben bei "Lade ..." stehen (Fund somm). Ursache: dort gibt es kein `requestAction()` des Symcon-Rahmens, alle nachgeforderten Daten (Bilanz, Jahresvergleich, Tagesplan, Energiebilanz je Zeitraum, weitere Tage, StromGedacht) kamen nie an. Die Seite bringt jetzt ein eigenes `requestAction()` mit, das über `?action=` am WebHook nachfordert. Bewusst nur lesend - Nachtragen/Konfiguration gehen nicht über den offenen WebHook.
+
 ## 0.9.40-beta.1 (2026-09-19)
 
 - PVMonitor Jahresvergleich: Werte ab Sep 2025 fehlten komplett. Ursache: ein beschädigter Tagesdatensatz im Archiv (Zeitstempel mitten am Tag) ließ `AC_GetAggregatedValues` für jeden Zeitraum, der ihn enthält, FALSE liefern. Der Jahresvergleich fragt jetzt bei FALSE monatsweise, dann tageweise ab und rechnet einen einzeln scheiternden Tag aus den Rohwerten nach.

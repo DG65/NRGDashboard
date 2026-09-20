@@ -294,6 +294,26 @@ class NRGDashboardPVMonitor extends IPSModule
             echo json_encode(['ok' => true]);
             return;
         }
+        // Nachforderungen der eigenstaendigen Webseite (IPSView/Browser): dort gibt es
+        // kein requestAction() des Symcon-Rahmens, Bilanz/Jahresvergleich/Tagesplan/
+        // weitere Tage blieben bei "Lade ..." stehen (Fund somm, 20.09.2026). Nur lesende
+        // Nachforderungen - schreibende Aktionen (Nachtragen, Konfiguration) gehen
+        // bewusst NICHT ueber den offenen WebHook.
+        if (isset($_GET['action'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $allowed = ['dayData', 'dayPlanLoad', 'flowPeriod', 'balancePeriod', 'yearCompare', 'stromgedachtLoad'];
+            $ident = (string) $_GET['action'];
+            if (!in_array($ident, $allowed, true)) {
+                echo json_encode([]);
+                return;
+            }
+            $this->hookCapture = [];
+            $this->RequestAction($ident, (string) ($_GET['value'] ?? '{}'));
+            $out = $this->hookCapture;
+            $this->hookCapture = null;
+            echo '[' . implode(',', $out) . ']';
+            return;
+        }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($this->buildPayload());
@@ -302,6 +322,9 @@ class NRGDashboardPVMonitor extends IPSModule
         header('Content-Type: text/html; charset=utf-8');
         $html = file_get_contents(__DIR__ . '/module.html');
         $html = str_replace('/*__ECHARTS_JS__*/', '', $html);
+        $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
+               . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
+               . '.then(function(l){l.forEach(function(m){handleMessage(m);});}).catch(function(){});}</script>';
         $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');'
                . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
@@ -2497,6 +2520,18 @@ class NRGDashboardPVMonitor extends IPSModule
      * UpdateVisualizationValue() zurueck, ohne die Kachel neu zu laden -
      * das Tile-JS erkennt den Typ 'flowUpdate' und rendert bei Bedarf neu.
      */
+    /** Antworten von RequestAction(): normal an die Kachel, ueber den WebHook (?action=) stattdessen einsammeln. */
+    private ?array $hookCapture = null;
+
+    private function PushMessage(string $json): void
+    {
+        if ($this->hookCapture !== null) {
+            $this->hookCapture[] = $json;
+            return;
+        }
+        $this->UpdateVisualizationValue($json);
+    }
+
     public function RequestAction($Ident, $Value)
     {
         // Doppelpfeil-Variable (siehe Create()) - Wert setzen, Kachel neu
@@ -2511,7 +2546,7 @@ class NRGDashboardPVMonitor extends IPSModule
             $start = (int) ($req['start'] ?? 0);
             $end = (int) ($req['end'] ?? 0);
             $flow = ($end > $start) ? $this->EnergyFlow($start, $end) : null;
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'    => true,
                 'type'  => 'flowUpdate',
                 'start' => $start,
@@ -2524,7 +2559,7 @@ class NRGDashboardPVMonitor extends IPSModule
             $req = json_decode((string) $Value, true);
             $key = (string) ($req['key'] ?? '');
             $result = $this->BuildBalancePeriod($req);
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'      => true,
                 'type'    => 'balanceUpdate',
                 'key'     => $key,
@@ -2533,7 +2568,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return;
         }
         if ($Ident === 'yearCompare') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'   => true,
                 'type' => 'yearCompareUpdate',
                 'data' => $this->BuildYearCompare(),
@@ -2543,7 +2578,7 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($Ident === 'yearCompareConfig') {
             $req = json_decode((string) $Value, true);
             $cfg = $this->SaveYearCompareConfig(is_array($req) ? $req : []);
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'   => true,
                 'type' => 'yearCompareUpdate',
                 'data' => $this->BuildYearCompare($cfg),
@@ -2551,7 +2586,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return;
         }
         if ($Ident === 'dayPlanLoad') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'      => true,
                 'type'    => 'dayPlanUpdate',
                 'dayPlan' => $this->BuildDayPlan(),
@@ -2559,7 +2594,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return;
         }
         if ($Ident === 'scenarioLoad') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'        => true,
                 'type'      => 'scenarioUpdate',
                 'scenarios' => $this->BuildScenarios(),
@@ -2567,7 +2602,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return;
         }
         if ($Ident === 'stromgedachtLoad') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'           => true,
                 'type'         => 'stromgedachtUpdate',
                 'stromgedacht' => $this->BuildStromGedacht(),
@@ -2583,7 +2618,7 @@ class NRGDashboardPVMonitor extends IPSModule
             $req = json_decode((string) $Value, true);
             $k = (int) ($req['k'] ?? 0);
             $model = $this->PvfModel();
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'   => true,
                 'type' => 'dayDataUpdate',
                 'k'    => $k,
@@ -2605,7 +2640,7 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($Ident === 'yearCompareHistory') {
             $req = json_decode((string) $Value, true);
             $this->SaveManualHistory(is_array($req) ? $req : []);
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'   => true,
                 'type' => 'yearCompareUpdate',
                 'data' => $this->BuildYearCompare(),
