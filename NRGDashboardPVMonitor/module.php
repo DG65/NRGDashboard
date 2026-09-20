@@ -1633,6 +1633,8 @@ class NRGDashboardPVMonitor extends IPSModule
                         // EMS_GetDayPlan Vertrag 1.1 (optional): Schaltleistung + Modus-Text
                         'xsetW' => (int) ($slot['xsetW'] ?? 0),
                         'gwModeLabel' => (string) ($slot['gwModeLabel'] ?? ''),
+                        // Restwert der Batterieenergie (EMS 0.60.0, GetDayPlan 1.2, optional): ct/kWh
+                        'rw' => isset($slot['rw']) && $slot['rw'] !== null ? round((float) $slot['rw'], 1) : null,
                     ];
                 }
             }

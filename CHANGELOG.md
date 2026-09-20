@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.44-beta.1 (2026-09-20)
+
+- PVMonitor Tagesplan: Tooltip zeigt den Restwert der Batterieenergie (EMS 0.60.0, `rw` je Slot, optional): "Akku geschont: Energie wird später bis 42 ct/kWh gebraucht, Bezug jetzt 22 ct/kWh". Nur bei Slots, die das Feld tragen.
+
 ## 0.9.43-beta.1 (2026-09-20)
 
 - PVMonitor Tagesplan: Hinweis-Chip "Trockenlauf - Plan wird nicht ausgeführt" bzw. "Nur beobachtend" (EMS_GetCurrentDecision Vertrag 1.1: `dryRun`, `observeOnly`, `observeReason`; bei älterem EMS Rückfall auf den Statustext-Präfix), damit niemand glaubt, der Plan werde ausgeführt.
