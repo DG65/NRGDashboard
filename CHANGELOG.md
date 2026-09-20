@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.43-beta.1 (2026-09-20)
+
+- PVMonitor Tagesplan: Hinweis-Chip "Trockenlauf - Plan wird nicht ausgeführt" bzw. "Nur beobachtend" (EMS_GetCurrentDecision Vertrag 1.1: `dryRun`, `observeOnly`, `observeReason`; bei älterem EMS Rückfall auf den Statustext-Präfix), damit niemand glaubt, der Plan werde ausgeführt.
+- PVMonitor Tagesplan: Ersparnis des Netzladens gegenüber dem Durchschnittspreis (EMS_GetDayPlan Vertrag 1.2, `windows[]`/`savingsEur`) - Summe je gewähltem Tag als Zeile unter dem Diagramm, je Ladefenster im Tooltip ("Ladefenster: ca. 0,63 EUR gespart ..."); Planzahl, kein Abrechnungswert, negativ als "Mehrkosten". Fehlt das Feld, erscheint nichts.
+
 ## 0.9.42-beta.1 (2026-09-20)
 
 - WPMonitor als eigenständige Webseite (IPSView/Browser über den WebHook): Heizkurven- und Bedienungsdaten kamen nie an, weil dort das `requestAction()` des Symcon-Rahmens fehlt. Eigenes `requestAction()` fordert jetzt lesend über `?action=` nach (`heatingCurveLoad`, `operationsLoad`). Schreibende Aktionen (Heizkurve senden, Verschiebung, Bedienung) gehen bewusst nicht über den offenen WebHook - dort ist die Kachel nur Anzeige.

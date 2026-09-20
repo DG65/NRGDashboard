@@ -1573,6 +1573,37 @@ class NRGDashboardPVMonitor extends IPSModule
      * einzufuehren). Alles in EINEM Aufruf, wie der Rest des Payloads -
      * kein Nachladen bei Reiterwechsel.
      */
+    /**
+     * Trockenlauf / "nur beobachtend" aus EMS_GetCurrentDecision() (Vertrag 1.1:
+     * dryRun, observeOnly, observeReason). Aelteres EMS ohne diese Felder: Rueckfall
+     * auf den Statustext-Praefix "Trockenlauf" / "Nur beobachtend" - entfaellt, sobald
+     * alle EMS-Instanzen 1.1 liefern.
+     */
+    private function BuildDecisionFlags(int $emsId): array
+    {
+        $out = ['dryRun' => false, 'observeOnly' => false, 'observeReason' => ''];
+        if ($emsId <= 0 || !function_exists('EMS_GetCurrentDecision')) {
+            return $out;
+        }
+        $d = @EMS_GetCurrentDecision($emsId);
+        if (!is_array($d)) {
+            return $out;
+        }
+        if (array_key_exists('dryRun', $d) || array_key_exists('observeOnly', $d)) {
+            $out['dryRun'] = (bool) ($d['dryRun'] ?? false);
+            $out['observeOnly'] = (bool) ($d['observeOnly'] ?? false);
+            $out['observeReason'] = (string) ($d['observeReason'] ?? '');
+            return $out;
+        }
+        $text = (string) ($d['reason'] ?? $d['status'] ?? '');
+        $out['dryRun'] = stripos($text, 'Trockenlauf') === 0;
+        if (stripos($text, 'Nur beobachtend') === 0) {
+            $out['observeOnly'] = true;
+            $out['observeReason'] = $text;
+        }
+        return $out;
+    }
+
     private function BuildDayPlan(): array
     {
         $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => []];
@@ -1606,6 +1637,23 @@ class NRGDashboardPVMonitor extends IPSModule
                 }
             }
         }
+
+        // EMS_GetDayPlan Vertrag 1.2 (optional): Ladefenster mit Ersparnis gegenueber dem
+        // Durchschnittspreis. Fehlt das Feld (aelteres EMS), bleibt 'windows' leer.
+        $out['windows'] = [];
+        if ($emsId > 0 && isset($plan) && is_array($plan) && isset($plan['windows']) && is_array($plan['windows'])) {
+            foreach ($plan['windows'] as $w) {
+                $out['windows'][] = [
+                    'start' => (int) ($w['start'] ?? 0) * 1000,
+                    'end'   => (int) ($w['end'] ?? 0) * 1000,
+                    'kWh'   => round((float) ($w['kWh'] ?? 0), 1),
+                    'avgPriceCt' => round((float) ($w['avgPriceCt'] ?? 0), 2),
+                    'referenceCt' => round((float) ($w['referenceCt'] ?? 0), 2),
+                    'savingsEur' => round((float) ($w['savingsEur'] ?? 0), 2),
+                ];
+            }
+        }
+        $out['decision'] = $this->BuildDecisionFlags($emsId);
 
         $out['pvForecast'] = $this->ForecastSeries($this->PvfInstanceID(), 'PVF_GetForecast');
         $out['loadForecast'] = $this->ForecastSeries($this->LfcInstanceID(), 'LFC_GetForecast');

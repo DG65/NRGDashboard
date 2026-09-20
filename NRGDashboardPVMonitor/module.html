@@ -2051,6 +2051,18 @@
       var txt = (slot.gwModeLabel ? slot.gwModeLabel + ' mit ' : 'Schaltleistung ') + kw.toFixed(kw >= 10 ? 0 : 1).replace('.', ',') + ' kW';
       return txt;
     }
+    // Ersparnis-Zeile fuer das Ladefenster, in dem der Slot liegt (EMS_GetDayPlan 1.2)
+    function planWindowText(slot) {
+      var wins = (dayPlanCache && dayPlanCache.windows) || [];
+      for (var i = 0; slot && i < wins.length; i++) {
+        var w = wins[i];
+        if (slot.time >= w.start && slot.time < w.end) {
+          return 'Ladefenster: ca. ' + w.savingsEur.toFixed(2).replace('.', ',') + ' EUR ' + (w.savingsEur >= 0 ? 'gespart' : 'Mehrkosten')
+            + ' ggü. Ø-Preis (' + w.avgPriceCt.toFixed(1).replace('.', ',') + ' statt ' + w.referenceCt.toFixed(1).replace('.', ',') + ' ct/kWh)';
+        }
+      }
+      return '';
+    }
     function planOpInfo(op) { return PLAN_OP_COLORS[op] || { name: 'op ' + op, color: '#AAAAAA' }; }
 
     // StromGedacht-Netzampel als Zusatzleiste im Tagesplan-Reiter (21.08.2026,
@@ -2160,7 +2172,9 @@
         dayEnd: endMs,
         slots: (dp.slots || []).filter(function (s) { return s.time >= startMs && s.time < endMs; }),
         pvForecast: (dp.pvForecast || []).filter(inRange),
-        loadForecast: (dp.loadForecast || []).filter(inRange)
+        loadForecast: (dp.loadForecast || []).filter(inRange),
+        windows: (dp.windows || []).filter(function (w) { return w.start < endMs && w.end > startMs; }),
+        decision: dp.decision || null
       };
     }
 
@@ -2174,6 +2188,26 @@
       (dp.slots || []).forEach(function (s) { seen[s.op] = true; });
       var row = document.getElementById('planKeyRow');
       row.innerHTML = '';
+      // Trockenlauf/nur beobachtend (EMS_GetCurrentDecision 1.1): deutlich, damit niemand
+      // glaubt, der Plan werde ausgefuehrt
+      var dec = dp.decision || {};
+      if (dec.dryRun || dec.observeOnly) {
+        var chip = document.createElement('span');
+        chip.className = 'legItem';
+        chip.style.cssText = 'font-weight:600;padding:1px 8px;border-radius:10px;background:#F9A825;color:#222;opacity:1';
+        chip.textContent = dec.dryRun ? 'Trockenlauf - Plan wird nicht ausgeführt' : 'Nur beobachtend' + (dec.observeReason ? ' - ' + dec.observeReason : '');
+        row.appendChild(chip);
+      }
+      // Ersparnis der Ladefenster (EMS_GetDayPlan 1.2) - Planzahl, daher "ca."
+      var wins = dp.windows || [];
+      if (wins.length) {
+        var sum = wins.reduce(function (a, w) { return a + (w.savingsEur || 0); }, 0);
+        var sc = document.createElement('span');
+        sc.className = 'legItem';
+        sc.style.fontWeight = '600';
+        sc.textContent = 'Netzladen spart ca. ' + sum.toFixed(2).replace('.', ',') + ' EUR ggü. Ø-Preis';
+        row.appendChild(sc);
+      }
       Object.keys(seen).forEach(function (op) {
         var info = planOpInfo(+op);
         var el = document.createElement('span');
@@ -2293,7 +2327,7 @@
             var ts = params.length ? params[0].axisValue : null;
             var slot = ts !== null ? dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]) : null;
             var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString('de-DE') + '</div>' : '';
-            var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' + (planXsetText(slot) ? '<div>' + planXsetText(slot) + '</div>' : '') : '';
+            var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' + (planXsetText(slot) ? '<div>' + planXsetText(slot) + '</div>' : '') + (planWindowText(slot) ? '<div>' + planWindowText(slot) + '</div>' : '') : '';
             var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
@@ -2443,7 +2477,7 @@
             var dtP = new Date(ts);
             var p2P = function (n) { return ('0' + n).slice(-2); };
             var tsLabel = p2P(dtP.getDate()) + '.' + p2P(dtP.getMonth() + 1) + '.' + dtP.getFullYear() + ' ' + p2P(dtP.getHours()) + ':' + p2P(dtP.getMinutes());
-            var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + (planXsetText(slot) ? '<br>' + planXsetText(slot) : '')];
+            var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + (planXsetText(slot) ? '<br>' + planXsetText(slot) : '') + (planWindowText(slot) ? '<br>' + planWindowText(slot) : '')];
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
             });
