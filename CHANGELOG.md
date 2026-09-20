@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.42-beta.1 (2026-09-20)
+
+- WPMonitor als eigenständige Webseite (IPSView/Browser über den WebHook): Heizkurven- und Bedienungsdaten kamen nie an, weil dort das `requestAction()` des Symcon-Rahmens fehlt. Eigenes `requestAction()` fordert jetzt lesend über `?action=` nach (`heatingCurveLoad`, `operationsLoad`). Schreibende Aktionen (Heizkurve senden, Verschiebung, Bedienung) gehen bewusst nicht über den offenen WebHook - dort ist die Kachel nur Anzeige.
+
 ## 0.9.41-beta.1 (2026-09-20)
 
 - PVMonitor als eigenständige Webseite (IPSView/Browser über den WebHook): Bilanz und Jahresvergleich blieben bei "Lade ..." stehen (Fund somm). Ursache: dort gibt es kein `requestAction()` des Symcon-Rahmens, alle nachgeforderten Daten (Bilanz, Jahresvergleich, Tagesplan, Energiebilanz je Zeitraum, weitere Tage, StromGedacht) kamen nie an. Die Seite bringt jetzt ein eigenes `requestAction()` mit, das über `?action=` am WebHook nachfordert. Bewusst nur lesend - Nachtragen/Konfiguration gehen nicht über den offenen WebHook.

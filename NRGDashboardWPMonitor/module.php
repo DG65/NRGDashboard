@@ -254,6 +254,23 @@ class NRGDashboardWPMonitor extends IPSModule
             echo json_encode(['ok' => true]);
             return;
         }
+        // Nachforderungen der eigenstaendigen Webseite (dort fehlt requestAction() des
+        // Symcon-Rahmens). Nur lesend - Heizkurve/Bedienung SCHREIBEN gehen bewusst nicht
+        // ueber den offenen WebHook.
+        if (isset($_GET['action'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $ident = (string) $_GET['action'];
+            if (!in_array($ident, ['heatingCurveLoad', 'operationsLoad'], true)) {
+                echo json_encode([]);
+                return;
+            }
+            $this->hookCapture = [];
+            $this->RequestAction($ident, (string) ($_GET['value'] ?? '{}'));
+            $out = $this->hookCapture;
+            $this->hookCapture = null;
+            echo '[' . implode(',', $out) . ']';
+            return;
+        }
         $payload = $this->buildPayload();
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
@@ -262,6 +279,9 @@ class NRGDashboardWPMonitor extends IPSModule
         }
         header('Content-Type: text/html; charset=utf-8');
         $html = file_get_contents(__DIR__ . '/module.html');
+        $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
+               . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
+               . '.then(function(l){l.forEach(function(m){handleMessage(m);});}).catch(function(){});}</script>';
         $html .= '<script>handleMessage(' . json_encode($payload) . ');'
                . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
@@ -838,6 +858,18 @@ class NRGDashboardWPMonitor extends IPSModule
      * Ein Nutzer-Klick auf "Übernehmen" ist aber ein echter Schreibvorgang,
      * kein Nachladen - dafuer braucht es diesen eigenen Weg.
      */
+    /** Antworten von RequestAction(): normal an die Kachel, ueber den WebHook (?action=) stattdessen einsammeln. */
+    private ?array $hookCapture = null;
+
+    private function PushMessage(string $json): void
+    {
+        if ($this->hookCapture !== null) {
+            $this->hookCapture[] = $json;
+            return;
+        }
+        $this->UpdateVisualizationValue($json);
+    }
+
     public function RequestAction($Ident, $Value)
     {
         if ($Ident === 'TabAnimation') {
@@ -846,7 +878,7 @@ class NRGDashboardWPMonitor extends IPSModule
             return;
         }
         if ($Ident === 'heatingCurveLoad') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'    => true,
                 'type'  => 'heatingCurveUpdate',
                 'curve' => $this->BuildHeatingCurve(),
@@ -871,7 +903,7 @@ class NRGDashboardWPMonitor extends IPSModule
                     }
                 }
             }
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'    => true,
                 'type'  => 'heatingCurveShiftSaved',
                 'saved' => $ok,
@@ -880,7 +912,7 @@ class NRGDashboardWPMonitor extends IPSModule
             return;
         }
         if ($Ident === 'operationsLoad') {
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'  => true,
                 'type' => 'operationsUpdate',
                 'ops' => $this->BuildOperations(),
@@ -901,7 +933,7 @@ class NRGDashboardWPMonitor extends IPSModule
                     $ok = false;
                 }
             }
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'    => true,
                 'type'  => 'operationSaved',
                 'saved' => $ok,
@@ -933,7 +965,7 @@ class NRGDashboardWPMonitor extends IPSModule
                     }
                 }
             }
-            $this->UpdateVisualizationValue(json_encode([
+            $this->PushMessage(json_encode([
                 'ok'    => true,
                 'type'  => 'heatingCurveSaved',
                 'saved' => $ok,
