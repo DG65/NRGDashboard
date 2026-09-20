@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.45-beta.1 (2026-09-21)
+
+- PVMonitor Tagesplan: Der geplante Batterie-SOC wurde eine Viertelstunde zu früh gezeichnet - EMS liefert je Slot den SOC NACH dem Slot, das Dashboard hat ihn am Slot-Anfang eingetragen, die Linie stieg deshalb sichtbar vor dem Netzladen-Band (Fund Dietmar). Jetzt am Slot-Ende, auch im Szenarien-Reiter.
+- PVMonitor Tagesplan: "Netz laden" (kräftiges Blau) und "Akku halten (Netzbezug)" (Limette) waren als Türkis/Blau kaum zu unterscheiden - neue, deutlich verschiedene Farben.
+
 ## 0.9.44-beta.1 (2026-09-20)
 
 - PVMonitor Tagesplan: Tooltip zeigt den Restwert der Batterieenergie (EMS 0.60.0, `rw` je Slot, optional): "Akku geschont: Energie wird später bis 42 ct/kWh gebraucht, Bezug jetzt 22 ct/kWh". Nur bei Slots, die das Feld tragen.

@@ -1559,7 +1559,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private const PLAN_OP_COLORS = [
         0 => ['name' => 'Automatik',                 'color' => '#AAAAAA'],
         1 => ['name' => 'PV-Eigenverbrauch (laden)',  'color' => '#4CAF50'],
-        2 => ['name' => 'Netz laden',                 'color' => '#2196F3'],
+        2 => ['name' => 'Netz laden',                 'color' => '#2962FF'],
         3 => ['name' => 'Eigenverbrauch (entladen)',  'color' => '#FF9800'],
         5 => ['name' => 'Einspeisen',                 'color' => '#9C27B0'],
         7 => ['name' => 'Grid Rewards (Tibber)',      'color' => '#E91E63'],

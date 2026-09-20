@@ -2027,10 +2027,11 @@
     // bestehende Legende ein-/ausblendbare Linien. PV-/Lastprognose kommen
     // laut EMS bewusst NICHT ueber EMS selbst, sondern direkt von
     // PVPrognose/Lastprognose (keine unnoetige Kopplung).
+    var SLOT_MS = 900000; // Viertelstunde
     var PLAN_OP_COLORS = {
       0: { name: 'Automatik', color: '#AAAAAA' },
       1: { name: 'PV-Eigenverbrauch (laden)', color: '#4CAF50' },
-      2: { name: 'Netz laden', color: '#2196F3' },
+      2: { name: 'Netz laden', color: '#2962FF' },
       3: { name: 'Eigenverbrauch (entladen)', color: '#FF9800' },
       4: { name: 'Standby', color: '#78909C' },
       5: { name: 'Einspeisen', color: '#9C27B0' },
@@ -2039,10 +2040,10 @@
       // Neu (EMS-Abstimmung 19.09.2026): op 8 = 0-W-Fall des frueheren op 5 -
       // Haus laeuft aus dem Netz, Akku wird geschont, NICHTS geht ins Netz.
       // Vorher war das derselbe lila "Einspeisen"-Balken wie echte Einspeisung
-      // (irrefuehrend). Tuerkis hebt sich von Automatik (grau), Netz laden
-      // (blau) und Einspeisen (lila) ab. Unbekannte op-Werte fallen weiter
+      // (irrefuehrend). Limette hebt sich von Automatik (grau), Netz laden
+      // (kraeftiges Blau), PV-Eigenverbrauch (gruen) und Einspeisen (lila) ab. Unbekannte op-Werte fallen weiter
       // still auf grau "op N" zurueck (planOpInfo).
-      8: { name: 'Akku halten (Netzbezug)', color: '#00ACC1' }
+      8: { name: 'Akku halten (Netzbezug)', color: '#CDDC39' }
     };
     // Schaltleistung (EMS_GetDayPlan 1.1, optional): "Netz laden mit 24 kW"
     function planXsetText(slot) {
@@ -2252,7 +2253,7 @@
         .map(function (s) { return [s.time, s.price]; });
       if (priceData.length) { series.push({ name: 'Strompreis', data: priceData, axis: 1, color: '#ffb300', step: true }); }
       var socData = dp.slots.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
-        .map(function (s) { return [s.time, s.soc]; });
+        .map(function (s) { return [s.time + SLOT_MS, s.soc]; }); // EMS liefert den SOC NACH dem Slot -> am Slot-Ende zeichnen
       if (socData.length) { series.push({ name: 'Batterie-SOC (geplant)', data: socData, axis: 2, color: '#9575cd', dashed: true }); }
       // Namen bewusst OHNE "-Prognose"/"(geplant)"-Zusatz (Dietmar,
       // 24.08.2026: "die Vergangenheit so darstellen wie sie war, nicht
@@ -2536,7 +2537,7 @@
           .map(function (s) { return [s.time * 1000, s.power / 1000]; });
         if (powerData.length) { allSeries.push({ name: 'Leistung – ' + label, data: powerData, axis: 0, color: color, dashed: false }); }
         var socData = sc.plan.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
-          .map(function (s) { return [s.time * 1000, s.soc]; });
+          .map(function (s) { return [s.time * 1000 + SLOT_MS, s.soc]; });
         if (socData.length) { allSeries.push({ name: 'SOC – ' + label, data: socData, axis: 2, color: color, dashed: true }); }
       });
       return { keys: keys, allSeries: allSeries, first: first };
