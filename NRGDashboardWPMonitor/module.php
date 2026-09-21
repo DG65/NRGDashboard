@@ -35,8 +35,12 @@ declare(strict_types=1);
  * (Verdichterfrequenz, Durchfluss, WW-Temp, Betriebsart-Farbcodierung) sind
  * bewusst noch nicht gebaut - naechster Ausbauschritt.
  */
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardWPMonitor extends IPSModule
 {
+    use NRGDashFormStatus;
+
     private const HEISHA_GUID  = '{1919151A-3C0F-4C09-B906-291638EC1469}';
     private const WPHUB_GUID   = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
     // Waermepumpen-Quellen des heatpump-Vertrags (Discovery-Liste). Neu am
@@ -289,6 +293,37 @@ class NRGDashboardWPMonitor extends IPSModule
         echo $html;
     }
 
+    /** Verbindungsstatus zur Waermepumpe (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function heatpumpStatusLine(): string
+    {
+        $entries = $this->DiscoverHeatpumps();
+        if (count($entries) === 0) {
+            return 'ℹ️ Keine Wärmepumpe gefunden (HeishaMon, WPHub, WPModbusHub, Gateway, SamsungEhs) - die Kachel zeigt nur einen Hinweis, bis eine Quelle installiert ist.';
+        }
+        $ids = array_values(array_unique(array_map(function ($e) {
+            return (int) $e['_instanceID'];
+        }, $entries)));
+        $want = $this->readIntProperty('HeatpumpInstance', 0);
+        $explicit = $want > 0 && in_array($want, $ids, true);
+        $sel = $this->SelectedHeatpump();
+        $id = (int) ($sel['_instanceID'] ?? 0);
+        $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
+        if (!$explicit && count($ids) > 1) {
+            return '⚠️ ' . count($ids) . ' Wärmepumpen gefunden, keine ausgewählt - verwendet wird ' . $head . '. Bitte unten gezielt auswählen.';
+        }
+        $vals = [];
+        foreach (['powerID' => 'Leistung', 'energyID' => 'Energie'] as $k => $label) {
+            $v = (int) ($sel[$k] ?? $sel[ucfirst($k)] ?? 0);
+            if ($v > 0) {
+                $vals[] = $label . ' #' . $v;
+            }
+        }
+        $curve = $this->HeatingCurveInstanceID() > 0 ? ' Heizkurven-Reiter verfügbar.' : '';
+        $ops = $this->OperationsAvailable() ? ' Bedienung verfügbar.' : '';
+        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
+        return '✅ Wärmepumpe ' . $head . ' ' . $how . ' - übernommen: ' . (count($vals) ? implode(', ', $vals) : 'nur Temperatur-/Statusfelder (keine Leistung/Energie)') . '.' . $curve . $ops;
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashwpmonitor' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -298,6 +333,7 @@ class NRGDashboardWPMonitor extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine());
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

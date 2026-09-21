@@ -66,6 +66,11 @@
       "expanded": true,
       "items": [
         {
+          "type": "Label",
+          "name": "SourcesStatus",
+          "caption": "Verbindungsstatus wird berechnet …"
+        },
+        {
           "type": "SelectVariable",
           "name": "PvPowerID",
           "caption": "PV-Leistung (optional - sonst automatisch über InverterHub)"

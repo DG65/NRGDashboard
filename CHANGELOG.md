@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.47-beta.1 (2026-09-21)
+
+- Verbindungs-Statuszeilen (Verbund-Konvention) jetzt auch in PVMonitor (PV-/Batterie-/Netz-Leistung, Ladestand, EMS, PV-Prognose, Preiskurve - je Quelle mit Instanz/Variable, Herkunft und ⚠️/ℹ️-Folge, z. B. nicht im Archiv protokolliert), WPMonitor (Wärmepumpe mit übernommenen Werten, Heizkurven-/Bedienungsverfügbarkeit) und HeatSchema (erkannte Wärmepumpen).
+
 ## 0.9.46-beta.1 (2026-09-21)
 
 - Formulare Forecast, Map, Topology und Tile (Tessie): live berechnete Verbindungs-Statuszeile nach der neuen Verbund-Konvention (SUITE.md "Verbund-Verbindungen im Formular sichtbar machen"). Sie nennt die gefundene Instanz (ID, Name, Zustand), ob ausgewählt oder automatisch erkannt, und die übernommenen Werte bzw. ⚠️/ℹ️ mit Grund und dem, was dann gilt. Bei mehreren Instanzen ohne Auswahl wird nicht geraten. Gemeinsame Hilfe `libs/FormStatus.php` sucht das Label rekursiv, auch innerhalb von Panels.

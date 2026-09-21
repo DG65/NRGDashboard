@@ -28,8 +28,12 @@ declare(strict_types=1);
  * 1.5, additiv). Fehlt ein Feld (=0), wird es im Schema ausgeblendet statt
  * einer Nullanzeige.
  */
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardHeatSchema extends IPSModule
 {
+    use NRGDashFormStatus;
+
     private const HEISHA_GUID = '{1919151A-3C0F-4C09-B906-291638EC1469}';
     // WPHub-Vertrag (contractVersion 1.3, mit WPHub am 13.08.2026 bestaetigt):
     // liefert NIE die 14 Pumpen-/Ventilfelder (Cloud-API kennt sie nicht,
@@ -487,6 +491,29 @@ class NRGDashboardHeatSchema extends IPSModule
         echo $html;
     }
 
+    /** Verbindungsstatus zu den Waermepumpen (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function heatpumpStatusLine(): string
+    {
+        $entries = $this->DiscoverHeatpumps();
+        if (count($entries) === 0) {
+            return 'ℹ️ Keine Wärmepumpe gefunden (HeishaMon, WPHub, WPModbusHub, Gateway, SamsungEhs) - es gilt die manuelle Datenanbindung unten, sonst zeigt das Schema nur einen Hinweis.';
+        }
+        $ids = array_values(array_unique(array_map(function ($e) {
+            return (int) ($e['_instanceID'] ?? 0);
+        }, $entries)));
+        $manual = in_array($this->InstanceID, $ids, true);
+        $ids = array_values(array_filter($ids, function ($id) {
+            return $id !== $this->InstanceID;
+        }));
+        if (count($ids) === 0) {
+            return 'ℹ️ Keine Wärmepumpen-Instanz gefunden - es gilt die manuelle Datenanbindung unten.';
+        }
+        $names = array_map(function ($id) {
+            return $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
+        }, $ids);
+        return '✅ ' . count($ids) . ' Wärmepumpe' . (count($ids) === 1 ? '' : 'n') . ' automatisch erkannt: ' . implode(', ', $names) . '.' . ($manual ? ' Zusätzlich gilt die manuelle Datenanbindung.' : '');
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashheatschema' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -496,6 +523,7 @@ class NRGDashboardHeatSchema extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine());
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

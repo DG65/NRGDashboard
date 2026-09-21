@@ -45,6 +45,11 @@
       ]
     },
     {
+      "type": "Label",
+      "name": "HeatpumpStatus",
+      "caption": "Verbindungsstatus wird berechnet …"
+    },
+    {
       "type": "SelectInstance",
       "name": "HeatpumpInstance",
       "caption": "Wärmepumpe (leer = automatisch die erste gefundene HeishaMon-/WPHub-Instanz)"

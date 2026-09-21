@@ -16,8 +16,12 @@ declare(strict_types=1);
  * folgen in weiteren Runden - bewusst nicht in einem Schritt, um jede Stufe
  * live verifizieren zu können (Verbund-Arbeitsweise dieser Sitzung).
  */
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardPVMonitor extends IPSModule
 {
+    use NRGDashFormStatus;
+
     private const ARCHIVE_GUID     = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const PVF_GUID         = '{257DD4E8-9705-462E-89FC-56D0A1038353}';
     private const INVERTERHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
@@ -332,6 +336,50 @@ class NRGDashboardPVMonitor extends IPSModule
         echo $html;
     }
 
+    /** Eine Variable-Quelle: ausgewaehlt oder automatisch (InverterHub), sonst ℹ️ mit Folge. */
+    private function varSourceLine(string $label, string $prop, int $resolved, string $noneText): string
+    {
+        if ($resolved <= 0) {
+            return 'ℹ️ ' . $label . ': keine Quelle gefunden - ' . $noneText;
+        }
+        $explicit = $this->readIntProperty($prop, 0) === $resolved;
+        $name = @IPS_ObjectExists($resolved) ? IPS_GetName($resolved) : '?';
+        $logged = '';
+        $aid = $this->ArchiveID();
+        if ($aid > 0 && !@AC_GetLoggingStatus($aid, $resolved)) {
+            return '⚠️ ' . $label . ': #' . $resolved . ' „' . $name . '“ (' . ($explicit ? 'ausgewählt' : 'über InverterHub erkannt') . '), aber nicht im Archiv protokolliert - Verlauf und Jahresvergleich bleiben leer.';
+        }
+        return '✅ ' . $label . ': #' . $resolved . ' „' . $name . '“ (' . ($explicit ? 'ausgewählt' : 'über InverterHub erkannt') . ').';
+    }
+
+    /** Verbindungsstatus aller Datenquellen (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function sourcesStatusLines(): string
+    {
+        $ihubCount = count((array) @IPS_GetInstanceListByModuleID('{BBE2C593-1A91-426D-A714-29A9C7E87589}'));
+        $lines = [];
+        if ($this->readIntProperty('PvPowerID', 0) <= 0 && $ihubCount > 1 && $this->PvPowerID() <= 0) {
+            $lines[] = '⚠️ ' . $ihubCount . ' InverterHub-Instanzen gefunden, aber keine eindeutige PV-Leistung - PV-Leistung, Batterie und Netz unten gezielt auswählen (es wird nicht geraten).';
+        }
+        $lines[] = $this->varSourceLine('PV-Leistung', 'PvPowerID', $this->PvPowerID(), 'PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).');
+        $lines[] = $this->varSourceLine('Batterie-Leistung', 'BatPowerID', $this->BatPowerID(), 'der Batterie-Reiter fehlt.');
+        $lines[] = $this->varSourceLine('Batterie-Ladestand', 'SocID', $this->SocID(), 'kein SOC-Verlauf.');
+        $lines[] = $this->varSourceLine('Netzleistung', 'GridPowerID', $this->GridPowerID(), 'kein Netzbezug-Balken im Strompreis-Reiter.');
+        $ems = $this->EmsInstanceID();
+        $lines[] = $ems > 0
+            ? '✅ EMS: ' . $this->formInstanceLabel($ems) . ' (' . $this->formInstanceState($ems) . ') - Tagesplan, Szenarien.'
+            : 'ℹ️ EMS: nicht gefunden - der Tagesplan-Reiter bleibt ausgeblendet.';
+        $pvf = $this->PvfInstanceID();
+        $lines[] = $pvf > 0
+            ? '✅ PV-Prognose: ' . $this->formInstanceLabel($pvf) . ' (' . $this->formInstanceState($pvf) . ').'
+            : 'ℹ️ PV-Prognose: nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.';
+        $tib = $this->TibberInstanceID();
+        $spot = $this->SpotInstanceID();
+        $lines[] = ($tib > 0 || $spot > 0)
+            ? '✅ Preiskurve: ' . implode(' und ', array_filter([$tib > 0 ? 'Tibber ' . $this->formInstanceLabel($tib) : '', $spot > 0 ? 'Börsenpreis ' . $this->formInstanceLabel($spot) : ''])) . '.'
+            : 'ℹ️ Preiskurve: weder Tibber noch Börsenpreis gefunden - der Strompreis-Reiter zeigt nur den Netzbezug.';
+        return implode("\n", $lines);
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashpvmonitor' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -341,6 +389,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'SourcesStatus', $this->sourcesStatusLines());
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

@@ -49,6 +49,11 @@
       ]
     },
     {
+      "type": "Label",
+      "name": "HeatpumpStatus",
+      "caption": "Verbindungsstatus wird berechnet …"
+    },
+    {
       "type": "ExpansionPanel",
       "caption": "🔌 Manuelle Datenanbindung (ohne HeishaMon/WPHub)",
       "expanded": false,
