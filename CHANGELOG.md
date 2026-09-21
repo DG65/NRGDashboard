@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.49-beta.1 (2026-09-21)
+
+- Verbindungs-Statuszeilen: rein automatisch übernommene Zeilen (🔗) erscheinen grün (Label-Farbe 0x2E8B3D), gemischte und andere Zustände in Standardfarbe (Verbund-Konvention, EMS). Gilt für alle Formulare über `libs/FormStatus.php`.
+
 ## 0.9.48-beta.1 (2026-09-21)
 
 - Quellenfelder nach der Verbund-Regel "Wert kommt automatisch: Eingabefeld ersetzen" (SUITE.md): Liefert eine Automatik einen Wert und ist das Feld leer, wird das Eingabefeld ausgeblendet und stattdessen eine Zeile "🔗 Größe: #ID Name (automatisch von Quelle)" gezeigt; eine eigene Angabe bleibt sichtbar (✏️), ohne Automatik erscheint das Feld mit ℹ️ "wird gebraucht". Der automatische Wert wird nie ins Feld geschrieben. Umgesetzt in PVMonitor (PV-/Batterie-/Netzleistung, Ladestand, PV-Prognose, Tibber), Forecast, Map, Topology, WPMonitor und Tile (PV-Prognose, Tibber). Bei mehreren Instanzen ohne Auswahl bleibt das Feld sichtbar (⚠️).

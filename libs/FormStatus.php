@@ -23,6 +23,17 @@ trait NRGDashFormStatus
             }
             if (($el['name'] ?? null) === $name) {
                 $el['caption'] = $caption;
+                // Verbund-Konvention: rein automatisch uebernommene (🔗) Zeilen GRUEN,
+                // gemischte/andere Zustaende Standardfarbe (Label-Farbe gilt fuer das ganze Label)
+                $lines = array_filter(array_map('trim', explode("\n", $caption)), 'strlen');
+                $allAuto = count($lines) > 0;
+                foreach ($lines as $l) {
+                    if (strpos($l, '🔗') !== 0) {
+                        $allAuto = false;
+                        break;
+                    }
+                }
+                $el['color'] = $allAuto ? 0x2E8B3D : -1;
                 return true;
             }
             foreach (['items', 'elements'] as $key) {
