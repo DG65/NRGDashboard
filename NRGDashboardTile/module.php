@@ -32,8 +32,12 @@ define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
 // mehr als einmal irgendwo eintragen").
 define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardTile extends IPSModule
 {
+    use NRGDashFormStatus;
+
     // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
     // Verteilung -> Verbraucher), siehe Phase 2. functionCategory() ordnet
     // jeden gefundenen function-Wert einer dieser vier Kategorien zu.
@@ -536,6 +540,27 @@ class NRGDashboardTile extends IPSModule
      * herum ein, traegt die Versionsnummer ins Doku-Panel ein - exakte
      * Struktur wie InverterHubTile (Muster fuer den ganzen Verbund).
      */
+    /** Verbindungsstatus zu Tessie (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function tessieStatusLine(): string
+    {
+        $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_TESSIE);
+        $ids = is_array($ids) ? $ids : [];
+        if (count($ids) === 0) {
+            return 'ℹ️ Keine Tessie-Instanz gefunden - es gilt nur die manuelle Fahrzeug-Liste unten (andere Fabrikate).';
+        }
+        if (!function_exists('TESSIE_GetVehicleState')) {
+            return '⚠️ Tessie-Instanz vorhanden (' . $this->formInstanceLabel((int) $ids[0]) . '), aber die Funktion TESSIE_GetVehicleState fehlt - Tessie aktualisieren; bis dahin keine automatische Fahrzeug-Erkennung.';
+        }
+        $vehicles = $this->discoverTessieVehicles();
+        if (count($vehicles) === 0) {
+            return '⚠️ Tessie ' . $this->formInstanceLabel((int) $ids[0]) . ' gefunden, liefert aber kein Fahrzeug mit Ladestand-Variable - Fahrzeug und Ladestand-Datenpunkt in Tessie prüfen.';
+        }
+        $parts = array_map(function ($v) {
+            return $v['name'] . ' (Ladestand #' . $v['socID'] . ($v['connected'] ? ', angesteckt' : '') . ')';
+        }, $vehicles);
+        return '✅ Tessie: ' . count($vehicles) . ' Fahrzeug' . (count($vehicles) === 1 ? '' : 'e') . ' automatisch erkannt - ' . implode(', ', $parts) . '.';
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashtile' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -545,6 +570,7 @@ class NRGDashboardTile extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'TessieStatus', $this->tessieStatusLine());
         $this->injectDeviceToggleValues($form);
         $this->injectDiscoveryResultLabel($form);
 

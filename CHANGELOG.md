@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.46-beta.1 (2026-09-21)
+
+- Formulare Forecast, Map, Topology und Tile (Tessie): live berechnete Verbindungs-Statuszeile nach der neuen Verbund-Konvention (SUITE.md "Verbund-Verbindungen im Formular sichtbar machen"). Sie nennt die gefundene Instanz (ID, Name, Zustand), ob ausgewählt oder automatisch erkannt, und die übernommenen Werte bzw. ⚠️/ℹ️ mit Grund und dem, was dann gilt. Bei mehreren Instanzen ohne Auswahl wird nicht geraten. Gemeinsame Hilfe `libs/FormStatus.php` sucht das Label rekursiv, auch innerhalb von Panels.
+
 ## 0.9.45-beta.1 (2026-09-21)
 
 - PVMonitor Tagesplan: Der geplante Batterie-SOC wurde eine Viertelstunde zu früh gezeichnet - EMS liefert je Slot den SOC NACH dem Slot, das Dashboard hat ihn am Slot-Anfang eingetragen, die Linie stieg deshalb sichtbar vor dem Netzladen-Band (Fund Dietmar). Jetzt am Slot-Ende, auch im Szenarien-Reiter.

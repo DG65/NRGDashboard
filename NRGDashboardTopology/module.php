@@ -16,8 +16,12 @@ declare(strict_types=1);
  * den der Verbund erst gemeinsam abstimmen muesste - das wird hier bewusst
  * NICHT vorweggenommen.
  */
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardTopology extends IPSModule
 {
+    use NRGDashFormStatus;
+
     private const EMS_GUID = '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}';
 
     private const DEF_BACKGROUND = -1;
@@ -363,6 +367,28 @@ class NRGDashboardTopology extends IPSModule
      * Versionsnummer ins Doku-Panel ein - exakte Struktur wie
      * NRGDashboardTile (Muster fuer den ganzen Verbund).
      */
+    /** Verbindungsstatus zur EMS-Instanz (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function emsStatusLine(): string
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
+        $ids = is_array($ids) ? $ids : [];
+        if (count($ids) === 0) {
+            return 'ℹ️ Keine EMS-Instanz gefunden - die Topologie zeigt die übrigen installierten NRG-Stack-Module ohne EMS als Mittelpunkt.';
+        }
+        $cfg = $this->readIntProperty('EmsInstance', 0);
+        $explicit = $cfg > 0 && IPS_InstanceExists($cfg) && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::EMS_GUID;
+        $id = $this->EmsInstanceID();
+        $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
+        if (!$explicit && count($ids) > 1) {
+            return '⚠️ ' . count($ids) . ' EMS-Instanzen gefunden, keine ausgewählt - verwendet wird ' . $head . ' (bevorzugt eine gesunde). Bitte unten gezielt auswählen, z. B. bei Test- und Produktiv-EMS nebeneinander.';
+        }
+        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
+        if ($this->formInstanceState($id) !== 'aktiv') {
+            return '⚠️ EMS ' . $head . ' ' . $how . ', ist aber nicht aktiv - die Topologie zeigt den Zustand der Module, der Mittelpunkt liefert keine Live-Werte.';
+        }
+        return '✅ EMS ' . $head . ' ' . $how . ' - Mittelpunkt der Topologie, Gesundheit und Verbindungen aller Module werden von dort gruppiert.';
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashtopology' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -372,6 +398,7 @@ class NRGDashboardTopology extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'EmsStatus', $this->emsStatusLine());
         $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();

@@ -35,6 +35,11 @@
       "items": [
         {
           "type": "Label",
+          "name": "InverterStatus",
+          "caption": "Verbindungsstatus wird berechnet …"
+        },
+        {
+          "type": "Label",
           "caption": "Optional - wird bei genau einer installierten InverterHub-Instanz automatisch erkannt. Nur bei mehreren Instanzen gezielt auswählen."
         },
         {

@@ -54,6 +54,11 @@
     },
     {
       "type": "Label",
+      "name": "SourceStatus",
+      "caption": "Verbindungsstatus wird berechnet …"
+    },
+    {
+      "type": "Label",
       "caption": "Quellen werden automatisch erkannt (je eine PV- und Lastprognose-Instanz). Nur bei mehreren Instanzen hier festlegen."
     },
     {

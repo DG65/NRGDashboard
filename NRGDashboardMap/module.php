@@ -15,8 +15,12 @@ declare(strict_types=1);
  * genau das Muster, das bei Topology das Ueberfuellen bei vielen
  * MeterHub-Instanzen geloest hat.
  */
+require_once __DIR__ . '/../libs/FormStatus.php';
+
 class NRGDashboardMap extends IPSModule
 {
+    use NRGDashFormStatus;
+
     private const IHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const MHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
     private const CHUB_GUID = '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}';
@@ -244,6 +248,41 @@ class NRGDashboardMap extends IPSModule
      * die Versionsnummer ins Doku-Panel ein - exakte Struktur wie
      * NRGDashboardTopology/Tile (Muster fuer den ganzen Verbund).
      */
+    /** Verbindungsstatus zur InverterHub-Instanz (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
+    private function inverterStatusLine(): string
+    {
+        $ids = @IPS_GetInstanceListByModuleID(self::IHUB_GUID);
+        $ids = is_array($ids) ? $ids : [];
+        if (count($ids) === 0) {
+            return 'ℹ️ Keine InverterHub-Instanz gefunden - ohne Wechselrichter-Quelle bleibt der Mittelpunkt der Karte leer; Geräte aus MeterHub, ChargerHub, HeishaMon und Tessie erscheinen trotzdem.';
+        }
+        $cfg = $this->readIntProperty('InverterInstance', 0);
+        $explicit = $cfg > 0 && IPS_InstanceExists($cfg) && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::IHUB_GUID;
+        $id = $this->InverterInstanceID();
+        $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
+        $vals = [];
+        $ver = '';
+        if (function_exists('IHUB_GetFunctions')) {
+            $d = @IHUB_GetFunctions($id);
+            if (is_array($d)) {
+                $ver = isset($d['contractVersion']) ? ', Vertrag ' . $d['contractVersion'] : '';
+                foreach (['pvPowerID' => 'PV-Leistung', 'batPowerID' => 'Batterie-Leistung', 'gridPowerID' => 'Netz-Leistung'] as $k => $label) {
+                    if ((int) ($d[$k] ?? 0) > 0) {
+                        $vals[] = $label . ' #' . (int) $d[$k];
+                    }
+                }
+            }
+        }
+        if (!$explicit && count($ids) > 1) {
+            return '⚠️ ' . count($ids) . ' InverterHub-Instanzen gefunden, keine ausgewählt - verwendet wird ' . $head . '. Bitte unten gezielt auswählen, damit die Zuordnung eindeutig ist.';
+        }
+        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
+        if (count($vals) === 0) {
+            return '⚠️ InverterHub ' . $head . ' ' . $how . $ver . ', liefert aber keine PV-/Batterie-/Netz-Leistung - Mittelpunkt und Kategorien bleiben leer, bis der Wechselrichter Daten meldet.';
+        }
+        return '✅ InverterHub ' . $head . ' ' . $how . $ver . ' - übernommen: ' . implode(', ', $vals) . '.';
+    }
+
     public function GetConfigurationForm()
     {
         $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
@@ -252,6 +291,7 @@ class NRGDashboardMap extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
+        $this->setFormStatusLine($form['elements'], 'InverterStatus', $this->inverterStatusLine());
         $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
