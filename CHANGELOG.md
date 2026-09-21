@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.48-beta.1 (2026-09-21)
+
+- Quellenfelder nach der Verbund-Regel "Wert kommt automatisch: Eingabefeld ersetzen" (SUITE.md): Liefert eine Automatik einen Wert und ist das Feld leer, wird das Eingabefeld ausgeblendet und stattdessen eine Zeile "🔗 Größe: #ID Name (automatisch von Quelle)" gezeigt; eine eigene Angabe bleibt sichtbar (✏️), ohne Automatik erscheint das Feld mit ℹ️ "wird gebraucht". Der automatische Wert wird nie ins Feld geschrieben. Umgesetzt in PVMonitor (PV-/Batterie-/Netzleistung, Ladestand, PV-Prognose, Tibber), Forecast, Map, Topology, WPMonitor und Tile (PV-Prognose, Tibber). Bei mehreren Instanzen ohne Auswahl bleibt das Feld sichtbar (⚠️).
+
 ## 0.9.47-beta.1 (2026-09-21)
 
 - Verbindungs-Statuszeilen (Verbund-Konvention) jetzt auch in PVMonitor (PV-/Batterie-/Netz-Leistung, Ladestand, EMS, PV-Prognose, Preiskurve - je Quelle mit Instanz/Variable, Herkunft und ⚠️/ℹ️-Folge, z. B. nicht im Archiv protokolliert), WPMonitor (Wärmepumpe mit übernommenen Werten, Heizkurven-/Bedienungsverfügbarkeit) und HeatSchema (erkannte Wärmepumpen).

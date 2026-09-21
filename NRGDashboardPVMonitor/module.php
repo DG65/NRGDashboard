@@ -336,47 +336,43 @@ class NRGDashboardPVMonitor extends IPSModule
         echo $html;
     }
 
-    /** Eine Variable-Quelle: ausgewaehlt oder automatisch (InverterHub), sonst ℹ️ mit Folge. */
-    private function varSourceLine(string $label, string $prop, int $resolved, string $noneText): string
+    /** Eine Variable-Quelle: eigene Angabe ✏️, automatisch 🔗 (Feld ausgeblendet), sonst ℹ️ mit Folge. */
+    private function varSourceLine(array &$elements, string $field, string $label, int $resolved, string $noneText): string
     {
-        if ($resolved <= 0) {
-            return 'ℹ️ ' . $label . ': keine Quelle gefunden - ' . $noneText;
-        }
-        $explicit = $this->readIntProperty($prop, 0) === $resolved;
-        $name = @IPS_ObjectExists($resolved) ? IPS_GetName($resolved) : '?';
-        $logged = '';
+        $line = $this->autoFieldLine($elements, $field, $label, $this->readIntProperty($field, 0) === $resolved ? $resolved : 0, $resolved, 'InverterHub', $noneText, false);
         $aid = $this->ArchiveID();
-        if ($aid > 0 && !@AC_GetLoggingStatus($aid, $resolved)) {
-            return '⚠️ ' . $label . ': #' . $resolved . ' „' . $name . '“ (' . ($explicit ? 'ausgewählt' : 'über InverterHub erkannt') . '), aber nicht im Archiv protokolliert - Verlauf und Jahresvergleich bleiben leer.';
+        if ($resolved > 0 && $aid > 0 && !@AC_GetLoggingStatus($aid, $resolved)) {
+            $line .= ' ⚠️ nicht im Archiv protokolliert - Verlauf und Jahresvergleich bleiben leer.';
         }
-        return '✅ ' . $label . ': #' . $resolved . ' „' . $name . '“ (' . ($explicit ? 'ausgewählt' : 'über InverterHub erkannt') . ').';
+        return $line;
     }
 
-    /** Verbindungsstatus aller Datenquellen (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
-    private function sourcesStatusLines(): string
+    /** Verbindungsstatus aller Datenquellen (SUITE.md "Verbund-Verbindungen sichtbar machen" + "Wert kommt automatisch"). */
+    private function sourcesStatusLines(array &$elements): string
     {
         $ihubCount = count((array) @IPS_GetInstanceListByModuleID('{BBE2C593-1A91-426D-A714-29A9C7E87589}'));
         $lines = [];
         if ($this->readIntProperty('PvPowerID', 0) <= 0 && $ihubCount > 1 && $this->PvPowerID() <= 0) {
             $lines[] = '⚠️ ' . $ihubCount . ' InverterHub-Instanzen gefunden, aber keine eindeutige PV-Leistung - PV-Leistung, Batterie und Netz unten gezielt auswählen (es wird nicht geraten).';
         }
-        $lines[] = $this->varSourceLine('PV-Leistung', 'PvPowerID', $this->PvPowerID(), 'PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).');
-        $lines[] = $this->varSourceLine('Batterie-Leistung', 'BatPowerID', $this->BatPowerID(), 'der Batterie-Reiter fehlt.');
-        $lines[] = $this->varSourceLine('Batterie-Ladestand', 'SocID', $this->SocID(), 'kein SOC-Verlauf.');
-        $lines[] = $this->varSourceLine('Netzleistung', 'GridPowerID', $this->GridPowerID(), 'kein Netzbezug-Balken im Strompreis-Reiter.');
+        $lines[] = $this->varSourceLine($elements, 'PvPowerID', 'PV-Leistung', $this->PvPowerID(), 'wird gebraucht - PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).');
+        $lines[] = $this->varSourceLine($elements, 'BatPowerID', 'Batterie-Leistung', $this->BatPowerID(), 'nicht gefunden - der Batterie-Reiter fehlt.');
+        $lines[] = $this->varSourceLine($elements, 'SocID', 'Batterie-Ladestand', $this->SocID(), 'nicht gefunden - kein SOC-Verlauf.');
+        $lines[] = $this->varSourceLine($elements, 'GridPowerID', 'Netzleistung', $this->GridPowerID(), 'nicht gefunden - kein Netzbezug-Balken im Strompreis-Reiter.');
         $ems = $this->EmsInstanceID();
         $lines[] = $ems > 0
-            ? '✅ EMS: ' . $this->formInstanceLabel($ems) . ' (' . $this->formInstanceState($ems) . ') - Tagesplan, Szenarien.'
+            ? '🔗 EMS: ' . $this->formInstanceLabel($ems) . ' (automatisch erkannt, ' . $this->formInstanceState($ems) . ') - Tagesplan, Szenarien.'
             : 'ℹ️ EMS: nicht gefunden - der Tagesplan-Reiter bleibt ausgeblendet.';
         $pvf = $this->PvfInstanceID();
-        $lines[] = $pvf > 0
-            ? '✅ PV-Prognose: ' . $this->formInstanceLabel($pvf) . ' (' . $this->formInstanceState($pvf) . ').'
-            : 'ℹ️ PV-Prognose: nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.';
+        $lines[] = $this->autoFieldLine($elements, 'PvfInstance', 'PV-Prognose', $this->readIntProperty('PvfInstance', 0) === $pvf ? $pvf : 0, $pvf, 'der Instanzsuche', 'nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.');
         $tib = $this->TibberInstanceID();
         $spot = $this->SpotInstanceID();
-        $lines[] = ($tib > 0 || $spot > 0)
-            ? '✅ Preiskurve: ' . implode(' und ', array_filter([$tib > 0 ? 'Tibber ' . $this->formInstanceLabel($tib) : '', $spot > 0 ? 'Börsenpreis ' . $this->formInstanceLabel($spot) : ''])) . '.'
-            : 'ℹ️ Preiskurve: weder Tibber noch Börsenpreis gefunden - der Strompreis-Reiter zeigt nur den Netzbezug.';
+        $lines[] = $tib > 0
+            ? $this->autoFieldLine($elements, 'TibberInstance', 'Preiskurve Tibber', $this->readIntProperty('TibberInstance', 0) === $tib ? $tib : 0, $tib, 'der Instanzsuche', '')
+            : 'ℹ️ Preiskurve Tibber: nicht gefunden.';
+        $lines[] = $spot > 0
+            ? '🔗 Preiskurve Börsenpreis: ' . $this->formInstanceLabel($spot) . ' (automatisch erkannt).'
+            : 'ℹ️ Preiskurve Börsenpreis: nicht gefunden' . ($tib > 0 ? '.' : ' - der Strompreis-Reiter zeigt nur den Netzbezug.');
         return implode("\n", $lines);
     }
 
@@ -389,7 +385,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
-        $this->setFormStatusLine($form['elements'], 'SourcesStatus', $this->sourcesStatusLines());
+        $this->setFormStatusLine($form['elements'], 'SourcesStatus', $this->sourcesStatusLines($form['elements']));
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

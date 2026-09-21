@@ -294,7 +294,7 @@ class NRGDashboardWPMonitor extends IPSModule
     }
 
     /** Verbindungsstatus zur Waermepumpe (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
-    private function heatpumpStatusLine(): string
+    private function heatpumpStatusLine(array &$elements): string
     {
         $entries = $this->DiscoverHeatpumps();
         if (count($entries) === 0) {
@@ -320,8 +320,10 @@ class NRGDashboardWPMonitor extends IPSModule
         }
         $curve = $this->HeatingCurveInstanceID() > 0 ? ' Heizkurven-Reiter verfügbar.' : '';
         $ops = $this->OperationsAvailable() ? ' Bedienung verfügbar.' : '';
-        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
-        return '✅ Wärmepumpe ' . $head . ' ' . $how . ' - übernommen: ' . (count($vals) ? implode(', ', $vals) : 'nur Temperatur-/Statusfelder (keine Leistung/Energie)') . '.' . $curve . $ops;
+        if (!$explicit) {
+            $this->hideFormField($elements, 'HeatpumpInstance');
+        }
+        return ($explicit ? '✏️' : '🔗') . ' Wärmepumpe: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . ' - übernommen: ' . (count($vals) ? implode(', ', $vals) : 'nur Temperatur-/Statusfelder (keine Leistung/Energie)') . '.' . $curve . $ops;
     }
 
     public function GetConfigurationForm()
@@ -333,7 +335,7 @@ class NRGDashboardWPMonitor extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
-        $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine());
+        $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine($form['elements']));
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

@@ -368,7 +368,7 @@ class NRGDashboardTopology extends IPSModule
      * NRGDashboardTile (Muster fuer den ganzen Verbund).
      */
     /** Verbindungsstatus zur EMS-Instanz (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
-    private function emsStatusLine(): string
+    private function emsStatusLine(array &$elements): string
     {
         $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
         $ids = is_array($ids) ? $ids : [];
@@ -386,7 +386,10 @@ class NRGDashboardTopology extends IPSModule
         if ($this->formInstanceState($id) !== 'aktiv') {
             return '⚠️ EMS ' . $head . ' ' . $how . ', ist aber nicht aktiv - die Topologie zeigt den Zustand der Module, der Mittelpunkt liefert keine Live-Werte.';
         }
-        return '✅ EMS ' . $head . ' ' . $how . ' - Mittelpunkt der Topologie, Gesundheit und Verbindungen aller Module werden von dort gruppiert.';
+        if (!$explicit) {
+            $this->hideFormField($elements, 'EmsInstance');
+        }
+        return ($explicit ? '✏️' : '🔗') . ' EMS: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . ' - Mittelpunkt der Topologie, Gesundheit und Verbindungen aller Module werden von dort gruppiert.';
     }
 
     public function GetConfigurationForm()
@@ -398,7 +401,7 @@ class NRGDashboardTopology extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
-        $this->setFormStatusLine($form['elements'], 'EmsStatus', $this->emsStatusLine());
+        $this->setFormStatusLine($form['elements'], 'EmsStatus', $this->emsStatusLine($form['elements']));
         $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();

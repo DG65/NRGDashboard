@@ -540,6 +540,15 @@ class NRGDashboardTile extends IPSModule
      * herum ein, traegt die Versionsnummer ins Doku-Panel ein - exakte
      * Struktur wie InverterHubTile (Muster fuer den ganzen Verbund).
      */
+    /** Verbindungsstatus PV-Prognose/Tibber (Gesundheit/Diagnose, Strompreis-Kennzahlen) - "Wert kommt automatisch". */
+    private function healthSourcesStatusLines(array &$elements): string
+    {
+        $pvf = $this->PvfInstanceID();
+        $tib = $this->TibberInstanceID();
+        return $this->autoFieldLine($elements, 'PvfInstance', 'PV-Prognose (Ertrag vs. Erwartung)', (int) $this->ReadPropertyInteger('PvfInstance') === $pvf ? $pvf : 0, $pvf, 'der Instanzsuche', 'nicht gefunden - "Ertrag vs. Prognose" entfällt.')
+            . "\n" . $this->autoFieldLine($elements, 'TibberInstance', 'Tibber (Strompreis-Kennzahlen)', (int) $this->ReadPropertyInteger('TibberInstance') === $tib ? $tib : 0, $tib, 'der Instanzsuche', 'nicht gefunden - Preis-Kennzahlen kommen vom BDEW-Richtwert.');
+    }
+
     /** Verbindungsstatus zu Tessie (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
     private function tessieStatusLine(): string
     {
@@ -558,7 +567,7 @@ class NRGDashboardTile extends IPSModule
         $parts = array_map(function ($v) {
             return $v['name'] . ' (Ladestand #' . $v['socID'] . ($v['connected'] ? ', angesteckt' : '') . ')';
         }, $vehicles);
-        return '✅ Tessie: ' . count($vehicles) . ' Fahrzeug' . (count($vehicles) === 1 ? '' : 'e') . ' automatisch erkannt - ' . implode(', ', $parts) . '.';
+        return '🔗 Tessie: ' . count($vehicles) . ' Fahrzeug' . (count($vehicles) === 1 ? '' : 'e') . ' automatisch erkannt - ' . implode(', ', $parts) . '.';
     }
 
     public function GetConfigurationForm()
@@ -571,6 +580,7 @@ class NRGDashboardTile extends IPSModule
 
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'TessieStatus', $this->tessieStatusLine());
+        $this->setFormStatusLine($form['elements'], 'HealthSourcesStatus', $this->healthSourcesStatusLines($form['elements']));
         $this->injectDeviceToggleValues($form);
         $this->injectDiscoveryResultLabel($form);
 

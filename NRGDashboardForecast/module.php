@@ -942,29 +942,28 @@ class NRGDashboardForecast extends IPSModule
         return (count($ids) > 0) ? (int) $ids[0] : 0;
     }
 
-    /** Statuszeile je Prognose-Quelle (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
-    private function sourceStatusPart(string $label, string $guid, string $prop, string $noneText): string
+    /** Statuszeile je Prognose-Quelle (SUITE.md "Verbund-Verbindungen sichtbar machen" + "Wert kommt automatisch"). */
+    private function sourceStatusPart(array &$elements, string $field, string $label, string $guid, string $prop, string $noneText): string
     {
         $ids = @IPS_GetInstanceListByModuleID($guid);
         $ids = is_array($ids) ? $ids : [];
         $cfg = (int) $this->ReadPropertyInteger($prop);
-        $explicit = $cfg > 0 && IPS_InstanceExists($cfg);
-        if (!$explicit && count($ids) === 0) {
+        $explicit = ($cfg > 0 && IPS_InstanceExists($cfg)) ? $cfg : 0;
+        if ($explicit === 0 && count($ids) === 0) {
             return 'ℹ️ ' . $label . ': keine Instanz gefunden - ' . $noneText;
         }
         $id = $this->ResolveSource($guid, $prop);
         if ($id <= 0) {
             return '⚠️ ' . $label . ': ' . count($ids) . ' Instanzen gefunden, mehrere davon aktiv und keine ausgewählt - es wird nicht geraten. Bitte unten eine Instanz wählen.';
         }
-        $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
-        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
-        return ($this->formInstanceState($id) === 'aktiv' ? '✅ ' : '⚠️ ') . $label . ': ' . $head . ' ' . $how . '.';
+        $line = $this->autoFieldLine($elements, $field, $label, $explicit, $id, 'der Instanzsuche', $noneText);
+        return $line . ' (' . $this->formInstanceState($id) . ')' . ($this->formInstanceState($id) === 'aktiv' ? '' : ' ⚠️ nicht aktiv');
     }
 
-    private function forecastSourceStatusLine(): string
+    private function forecastSourceStatusLine(array &$elements): string
     {
-        return $this->sourceStatusPart('PV-Prognose', '{257DD4E8-9705-462E-89FC-56D0A1038353}', 'PVSource', 'die PV-Kurve fehlt in der Kachel.')
-            . "\n" . $this->sourceStatusPart('Lastprognose', '{DC5AD508-507F-40EA-8630-0959AED83050}', 'LoadSource', 'die Kachel zeigt nur die PV-Prognose (Lastprognose ist optional).');
+        return $this->sourceStatusPart($elements, 'PVSource', 'PV-Prognose', '{257DD4E8-9705-462E-89FC-56D0A1038353}', 'PVSource', 'die PV-Kurve fehlt in der Kachel.')
+            . "\n" . $this->sourceStatusPart($elements, 'LoadSource', 'Lastprognose', '{DC5AD508-507F-40EA-8630-0959AED83050}', 'LoadSource', 'die Kachel zeigt nur die PV-Prognose (Lastprognose ist optional).');
     }
 
     public function GetConfigurationForm()
@@ -976,7 +975,7 @@ class NRGDashboardForecast extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
-        $this->setFormStatusLine($form['elements'], 'SourceStatus', $this->forecastSourceStatusLine());
+        $this->setFormStatusLine($form['elements'], 'SourceStatus', $this->forecastSourceStatusLine($form['elements']));
 
         $banner = $this->newsBanner();
         if ($banner !== null) {

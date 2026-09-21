@@ -51,4 +51,47 @@ trait NRGDashFormStatus
         }
         return ((int) (IPS_GetInstance($id)['InstanceStatus'] ?? 0)) === 102 ? 'aktiv' : 'nicht aktiv';
     }
+
+    /**
+     * Blendet ein Eingabefeld aus (visible=false), ebenfalls rekursiv. Der Wert bleibt in
+     * der Konfiguration erhalten - ausgeblendet ist nur die Anzeige. Der automatische Wert
+     * wird NIE per UpdateFormField('value') ins Feld geschrieben, sonst speichert
+     * "Uebernehmen" ihn als eigene Angabe (SUITE.md, "Wert kommt automatisch").
+     */
+    private function hideFormField(array &$items, string $name): bool
+    {
+        foreach ($items as &$el) {
+            if (!is_array($el)) {
+                continue;
+            }
+            if (($el['name'] ?? null) === $name) {
+                $el['visible'] = false;
+                return true;
+            }
+            foreach (['items', 'elements'] as $key) {
+                if (isset($el[$key]) && is_array($el[$key]) && $this->hideFormField($el[$key], $name)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Automatik statt Eingabefeld: eigene Angabe (✏️, Feld bleibt sichtbar), automatisch
+     * erkannt (🔗, Feld ausgeblendet), nichts gefunden (ℹ️, Feld sichtbar). Liefert die Zeile.
+     * $explicit = Wert im Eingabefeld, $resolved = das, was tatsaechlich gilt.
+     */
+    private function autoFieldLine(array &$elements, string $field, string $label, int $explicit, int $resolved, string $source, string $noneText, bool $isInstance = true): string
+    {
+        $what = $isInstance ? $this->formInstanceLabel($resolved) : ('#' . $resolved . ' „' . (@IPS_ObjectExists($resolved) ? IPS_GetName($resolved) : '?') . '“');
+        if ($explicit > 0) {
+            return '✏️ ' . $label . ': ' . $what . ' (eigene Angabe)';
+        }
+        if ($resolved > 0) {
+            $this->hideFormField($elements, $field);
+            return '🔗 ' . $label . ': ' . $what . ' (automatisch von ' . $source . ')';
+        }
+        return 'ℹ️ ' . $label . ': ' . $noneText;
+    }
 }

@@ -249,7 +249,7 @@ class NRGDashboardMap extends IPSModule
      * NRGDashboardTopology/Tile (Muster fuer den ganzen Verbund).
      */
     /** Verbindungsstatus zur InverterHub-Instanz (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
-    private function inverterStatusLine(): string
+    private function inverterStatusLine(array &$elements): string
     {
         $ids = @IPS_GetInstanceListByModuleID(self::IHUB_GUID);
         $ids = is_array($ids) ? $ids : [];
@@ -280,7 +280,10 @@ class NRGDashboardMap extends IPSModule
         if (count($vals) === 0) {
             return '⚠️ InverterHub ' . $head . ' ' . $how . $ver . ', liefert aber keine PV-/Batterie-/Netz-Leistung - Mittelpunkt und Kategorien bleiben leer, bis der Wechselrichter Daten meldet.';
         }
-        return '✅ InverterHub ' . $head . ' ' . $how . $ver . ' - übernommen: ' . implode(', ', $vals) . '.';
+        if (!$explicit) {
+            $this->hideFormField($elements, 'InverterInstance');
+        }
+        return ($explicit ? '✏️' : '🔗') . ' InverterHub: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . $ver . ' - übernommen: ' . implode(', ', $vals) . '.';
     }
 
     public function GetConfigurationForm()
@@ -291,7 +294,7 @@ class NRGDashboardMap extends IPSModule
         }
 
         $this->injectVersionIntoDocPanel($form);
-        $this->setFormStatusLine($form['elements'], 'InverterStatus', $this->inverterStatusLine());
+        $this->setFormStatusLine($form['elements'], 'InverterStatus', $this->inverterStatusLine($form['elements']));
         $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
