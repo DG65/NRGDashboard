@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.116-beta.1 (2026-09-23)
+
+- WPMonitor "Verlauf": spline allein rundete nur die Ecken zwischen Punkten, änderte aber nichts an den groben Treppenstufen selbst (Außentemperatur aktualisiert offenbar nur stündlich). Zusätzlich gleitender Mittelwert (12 Punkte ≈ 1 Stunde bei 5-Minuten-Raster) vor dem Zeichnen - aus Sprüngen wird eine echte Rampe.
+
 ## 0.9.115-beta.1 (2026-09-23)
 
 - WPMonitor "Verlauf": Außentemperatur-Linie wirkte eckig/treppig (Dietmar: "als Bezier oder schön geschwungene Linie wesentlich hübscher"). Als geglättete Kurve gerendert (ECharts smooth:true / Highcharts spline), nur bei der Außentemperatur - El./Therm. Leistung und Vorlauf/Rücklauf bleiben scharfkantig, da dort die schnellen Wechsel (Start/Stopp der Wärmepumpe) die eigentliche Information sind.

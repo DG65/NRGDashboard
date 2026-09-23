@@ -571,6 +571,29 @@
 
   function seriesOrEmpty(pts) { return Array.isArray(pts) ? pts : []; }
 
+  /** Gleitender Mittelwert ueber [ts,val]-Punkte (23.09.2026, Dietmar: "Bitte
+   *  sehr viel staerker glaetten") - spline() allein rundet nur die Ecken
+   *  zwischen den vorhandenen Punkten, aendert aber nichts an groben
+   *  Treppenstufen selbst (Aussentemperatur aktualisiert offenbar nur
+   *  stuendlich, DaySeries() liefert dadurch viele 5-Minuten-Punkte mit
+   *  identischem Wert in Folge). Ein Fenster glaettet die Stufen VOR dem
+   *  Zeichnen selbst weg, dazu kommt weiterhin spline() fuer runde statt
+   *  eckige Verbindungen zwischen den (jetzt bereits geglaetteten) Punkten. */
+  function movingAverage(pts, windowSize) {
+    if (!Array.isArray(pts) || pts.length < 3) { return pts; }
+    var half = Math.floor(windowSize / 2);
+    return pts.map(function (p, i) {
+      var lo = Math.max(0, i - half), hi = Math.min(pts.length - 1, i + half);
+      var sum = 0, n = 0;
+      for (var j = lo; j <= hi; j++) {
+        var v = pts[j][1];
+        if (v === null || v === undefined) { continue; }
+        sum += v; n++;
+      }
+      return [p[0], n > 0 ? sum / n : p[1]];
+    });
+  }
+
   function daySeriesFor(d) {
     var series = [];
     if (lastData.hasElectric) { series.push({ name: 'El. Leistung', data: seriesOrEmpty(d.electricPower), axis: 0, color: '#E8823C' }); }
@@ -584,7 +607,7 @@
     // nicht El./Therm. Leistung oder Vorlauf/Ruecklauf: dort sind die
     // scharfen Kanten (Start/Stopp der Waermepumpe) die eigentliche
     // Information, eine geglaettete Kurve wuerde sie verwischen.
-    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true, smooth: true }); }
+    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: movingAverage(seriesOrEmpty(d.outsideTemp), 12), axis: 1, color: '#5FCB6B', dotted: true, smooth: true }); }
     return series;
   }
 
