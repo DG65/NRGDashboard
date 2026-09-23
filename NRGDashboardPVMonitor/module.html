@@ -362,46 +362,29 @@
   .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
   .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
-  /* Kumulierte Jahressumme, ab Februar (Dietmar, 23.09.2026: "wo man mit der
-     Energieproduktion eines jeden Jahres steht") - EIGENE Tabellenspalte statt
-     zweitem <span> in der Monatswert-Zelle (Dietmar, nach zwei Anläufen mit mehr
-     Abstand: "dann musst Du eben für Monatswerte und kumulierte Werte separate
-     Zellen generieren" - nur eine eigene Spalte macht die Rechtsbündigkeit
-     beider Zahlen unabhaengig voneinander, ein Abstand allein loeste das nicht).
-     Schmaler, kleiner, gedaempfter als die Monatswert-Spalte, damit klar bleibt:
-     Haupt- und Nebenzahl. */
-  /* Monatswert-Zelle (rechts) und Kumuliert-Zelle (links) ruecken mit reduziertem
-     Innen-Padding eng zusammen - der normale 8px-Zellenabstand bleibt nur VOR dem
-     naechsten Monat (Kumuliert-Zelle behaelt ihr rechtes Padding), sonst verschwimmt
-     die Monatsgrenze (Dietmar, 23.09.2026). */
-  .ycTable td.ycPaired { padding-right: 2px; }
-  .ycTable td.ycCumCell { font-size: 9px; font-weight: 300; opacity: .55; padding-left: 2px; }
-  /* Monatsname zentriert ueber seinen zwei Spalten statt rechtsbuendig (sonst
-     steht er praktisch nur ueber der Kumuliert-Spalte). */
-  .ycTable thead th[colspan] { text-align: center; }
-  .ycTable tbody tr.ycExpected td.ycCumCell { opacity: .5; }
+  /* Monatswerte/Kumuliert als SCHALTER statt nebeneinander (Dietmar, 23.09.2026,
+     nach mehreren Anlaeufen mit Abstand/eigenen Spalten: "vielleicht waere es
+     besser, wenn man mit einem Schalter die Monatswerte mit dem kumulierten Wert
+     austauschen koennte") - EIN Wert pro Zelle. Bewusst kein zweiter Knopf
+     "Monatswerte" daneben (Dietmars Praezisierung): Gesamtertrag/Spezifischer
+     Anlagenertrag bleiben ein AUSSCHLIESSENDES Knopfpaar (genau einer aktiv),
+     "Kumuliert" ist ein echter EIN/AUS-Toggle mit eigener Optik (Haekchen-artig
+     gefuellt statt nur hervorgehobenem Rand), damit beide Schalterarten auch
+     optisch als unterschiedliche Konzepte erkennbar sind.
+  */
+  .ycSubTabs + .ycSubTabs { margin-top: 4px; }
+  .ycSubTabs button.ycToggle.active { background: rgba(127,181,255,.22); border-color: #7fb5ff; color: #cfe4ff; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
-     Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). Die Klassen
-     sitzen an eigenen <span>-Elementen (Monatswert UND kumulierter Wert je ein
-     eigener Span), NICHT an der <td> - sonst wuerde die kumulierte Zahl als Kind-
-     Element die Farbe des Monatswerts erben, obwohl beide ein eigenes,
-     unabhaengiges Ranking haben (Fund Dietmar: Feb 2022 wirkte bronze nur wegen
-     des Monatswerts, Feb 2020 blieb trotz hoeherer Summe farblos). */
-  /* ".ycTable td.ycGold" statt nur ".ycGold": die Klasse sitzt jetzt direkt an
-     der <td> (seit der eigenen Kumuliert-Spalte, nicht mehr an einem Kind-Span),
-     braucht deshalb mehr Spezifitaet als ".ycTable tbody td { font-weight: 300 }"
-     oben, sonst gewinnt die duenne Grundschrift und die Fettung verschwindet. */
-  .ycTable td.ycGold { color: #e0b64a; font-weight: 700; }
+     Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"), an einem
+     eigenen <span> statt an der <td> selbst (sonst wuerde die duenne 300er-
+     Grundschrift der Zelle die Fettung ueberschreiben). */
+  .ycGold { color: #e0b64a; font-weight: 700; }
   /* Urspruengliches Silber (#c7ccd1) lag zu nah an der normalen Textfarbe
      (~#e8e8e8) und war dadurch praktisch unsichtbar (Fund Dietmar, 23.09.2026:
      "wie finde ich den Silberwert?") - kuehleres, deutlich saettigeres Blaugrau,
      das sich klar vom neutralen Text UND von Gold/Bronze (warme Toene) abhebt. */
-  .ycTable td.ycSilver { color: #7fa8c9; font-weight: 700; }
-  .ycTable td.ycBronze { color: #cd8a5c; font-weight: 700; }
-  /* Kumuliertes Ranking: gleiche Farben, volle Deckkraft statt der gedaempften
-     ycCumCell-Grundopazitaet (sonst verblasst die Auszeichnung) UND fett (sonst
-     bleibt die kumulierte Zahl trotz Farbe im duennen Grundgewicht haengen). */
-  .ycTable td.ycCumCell.ycGold, .ycTable td.ycCumCell.ycSilver, .ycTable td.ycCumCell.ycBronze { opacity: 1; font-weight: 700; }
+  .ycSilver { color: #7fa8c9; font-weight: 700; }
+  .ycBronze { color: #cd8a5c; font-weight: 700; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -617,7 +600,7 @@
     // Jahresvergleich (SMA-Sunny-Portal-Vorbild, Dietmar, 31.07.2026) - kein
     // Zeitraum-Parameter noetig (immer "seit Inbetriebnahme"), deshalb reicht
     // ein einzelner Cache-Slot statt eines Keys wie bei balanceCache.
-    var yearCompareCache = null, yearComparePending = false, yearCompareSub = 'total';
+    var yearCompareCache = null, yearComparePending = false, yearCompareSub = 'total', yearCompareView = 'month';
     // Tagesplan-Reiter (Dietmar, 21.08.2026: "Laden benoetigt sehr lange") -
     // gleiches Nachforder-Muster wie yearCompareCache: PVF_/LFC_GetForecast()
     // koennen intern sehr teuer sein (bis zu LFC_LookbackDays Kandidatentage),
@@ -2776,15 +2759,12 @@
     }
     function renderYearCompareTable(data, unit, values) {
       var panel = document.getElementById('yearComparePanel');
-      // Monatswert und kumulierte Summe als ZWEI eigene Zellen statt zwei <span>
-      // in einer gemeinsamen rechtsbuendigen Zelle (Dietmar, 23.09.2026: mehr
-      // Abstand allein loeste die "Verformungen" der Rechtsbuendigkeit nicht -
-      // beide Werte brauchen ihre eigene, unabhaengige Spaltenbreite). Januar hat
-      // keine kumulierte Spalte (waere identisch zum Monatswert); Monatsname
-      // ueberspannt seine ein oder zwei Spalten per colspan.
-      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m, i) {
-        return '<th' + (i >= 1 ? ' colspan="2"' : '') + '>' + m + '</th>';
-      }).join('') + '<th>Summe</th></tr>';
+      // Monatswert und kumulierte Summe nebeneinander (in einer oder zwei
+      // Spalten) liessen sich trotz mehrerer Anlaeufe nicht sauber lesbar
+      // unterbringen (Dietmar, 23.09.2026: "vielleicht waere es besser, wenn
+      // man mit einem Schalter die Monatswerte mit dem kumulierten Wert
+      // austauschen koennte") - jetzt EIN Schalter, EIN Wert pro Zelle.
+      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
       function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
       // Siegertreppchen je Spalte (Dietmar, 23.09.2026): die drei hoechsten Werte
       // je Monat (und Summe) ueber alle JAHRE (Mittelwert/Erwartung zaehlen nicht
@@ -2793,23 +2773,17 @@
       // Gleichstand teilt sich denselben Rang, alle drei Raenge bleiben dabei
       // vergeben (bei einer Zweifach-Goldplatzierung ruecken Silber/Bronze normal
       // nach, sie werden NICHT uebersprungen).
-      function topRanks(colIdx, sumCol) {
-        var vals = data.years.map(function (y) { return sumCol ? values[y].reduce(function (s, v) { return s + (v || 0); }, 0) : values[y][colIdx]; })
+      function topRanks(colOf, sumCol) {
+        var vals = data.years.map(function (y) { return sumCol ? values[y].reduce(function (s, v) { return s + (v || 0); }, 0) : colOf(y); })
           .filter(function (v) { return v !== null && v !== undefined; });
         var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
         var ranks = {};
         uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
         return ranks;
       }
-      var colRanks = MONTH_NAMES.map(function (_, i) { return topRanks(i, false); });
-      var sumRanks = topRanks(null, true);
       var RANK_CLASS = ['ycGold', 'ycSilver', 'ycBronze'];
-      // Liefert die reine Klasse ("ycGold" o.ae.) oder '' - Aufrufer haengen sie
-      // je nach Kontext (td oder Span) selbst mit " class=\"...\"" an.
+      // Liefert die reine Klasse ("ycGold" o.ae.) oder ''.
       function rankClass(v, ranks) { return (v !== null && v !== undefined && ranks[v] !== undefined) ? RANK_CLASS[ranks[v]] : ''; }
-      // Kumuliertes Siegertreppchen ist ein EIGENES Ranking, nicht dasselbe wie das
-      // der reinen Monatswerte (Dietmar: "was auf den Monatswert zutrifft, muss
-      // nicht auf den kumulierten zutreffen").
       function cumulate(arr) {
         var cum = 0, cumOk = true;
         return arr.map(function (v) {
@@ -2820,38 +2794,22 @@
       }
       var cumValues = {};
       data.years.forEach(function (y) { cumValues[y] = cumulate(values[y]); });
-      function cumTopRanks(colIdx) {
-        var vals = data.years.map(function (y) { return cumValues[y][colIdx]; }).filter(function (v) { return v !== null && v !== undefined; });
-        var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
-        var ranks = {};
-        uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
-        return ranks;
-      }
-      var cumColRanks = MONTH_NAMES.map(function (_, i) { return (i >= 1) ? cumTopRanks(i) : {}; });
+      // Kumuliertes Siegertreppchen ist ein EIGENES Ranking, nicht dasselbe wie
+      // das der reinen Monatswerte (Dietmar: "was auf den Monatswert zutrifft,
+      // muss nicht auf den kumulierten zutreffen") - je nach Schalterstellung
+      // gilt jeweils nur EIN Ranking pro Spalte.
+      var isCum = (yearCompareView === 'cum');
+      var colRanks = MONTH_NAMES.map(function (_, i) {
+        return topRanks(function (y) { return (isCum ? cumValues[y] : values[y])[i]; }, false);
+      });
+      var sumRanks = topRanks(null, true);
       function rowHtml(label, arr, cls, isYearRow) {
         var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
-        // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
-        // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
-        // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
-        var cumArr = cumulate(arr);
-        // Rang-Farbe sitzt an eigenen <span>-Elementen, NICHT an der <td> selbst -
-        // sonst erbt die kumulierte Zahl (ein <span> INNERHALB der Zelle) die Farbe
-        // des Monatswerts, obwohl sie ihr eigenes, unabhaengiges Ranking hat (Fund
-        // Dietmar, 23.09.2026: Feb 2022 wirkte bronze-gefaerbt nur wegen des
-        // Monatswerts, waehrend Feb 2020 trotz hoeherer Summe farblos blieb).
+        var shown = isCum ? cumulate(arr) : arr;
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
-          + arr.map(function (v, i) {
+          + shown.map(function (v, i) {
               var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
-              var cCls = (isYearRow && i >= 1) ? rankClass(cumArr[i], cumColRanks[i]) : '';
-              // "ycPaired" ruemckt Monatswert und kumulierte Spalte optisch eng
-              // zusammen (kleineres Innen-Padding), der volle Zellenabstand bleibt
-              // nur VOR dem naechsten Monat erhalten (Dietmar, 23.09.2026: "man
-              // kann nicht mehr wirklich erkennen, was welcher Monat ist").
-              var vClasses = [i >= 1 ? 'ycPaired' : '', vCls].filter(Boolean).join(' ');
-              var vTd = '<td' + (vClasses ? ' class="' + vClasses + '"' : '') + '>' + fmt(v) + '</td>';
-              if (i < 1) { return vTd; }
-              var cTd = '<td class="ycCumCell' + (cCls ? ' ' + cCls : '') + '">' + (cumArr[i] !== null ? fmt(cumArr[i]) : '') + '</td>';
-              return vTd + cTd;
+              return '<td>' + (vCls ? '<span class="' + vCls + '">' + fmt(v) + '</span>' : fmt(v)) + '</td>';
             }).join('')
           + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td>' + (sCls ? '<span class="' + sCls + '">' + fmt(sum) + '</span>' : fmt(sum)) + '</td>'; })()
           + '</tr>';
@@ -2859,21 +2817,32 @@
       var body = data.years.map(function (y) { return rowHtml(y, values[y], '', true); }).join('');
       body += rowHtml('Mittelwert', values.mittelwert, 'ycTotal');
       if (values.expected) { body += rowHtml('Erwartung', values.expected, 'ycExpected'); }
+      // Zwei verschiedene Schalterarten (Dietmar, 23.09.2026): Gesamtertrag/
+      // Spezifischer Anlagenertrag bleiben sich AUSSCHLIESSENDE Knoepfe (genau
+      // einer aktiv), "Kumuliert" ist dagegen ein echter EIN/AUS-Toggle (kein
+      // Gegenstueck-Knopf "Monatswerte" mehr).
       var sub = '<div class="ycSubTabs">'
         + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">Gesamtertrag</button>'
         + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">Spezifischer Anlagenertrag</button>'
+        + '</div>'
+        + '<div class="ycSubTabs">'
+        + '<button id="ycCumToggle" class="ycToggle' + (isCum ? ' active' : '') + '" aria-pressed="' + isCum + '">Kumuliert</button>'
         + '</div>';
       var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren oder die Anlagenleistung unten manuell eingeben.</div>';
       panel.innerHTML = sub + hint
         + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>'
         + '<div class="ycFoot"><button id="ycHistoryBtn">Vorjahreswerte nachtragen</button><button id="ycConfigBtn">Erwartete Leistung einstellen</button></div>';
-      Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button'), function (btn) {
+      Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button[data-sub]'), function (btn) {
         btn.onclick = function () {
           if (btn.disabled) { return; }
           yearCompareSub = btn.getAttribute('data-sub');
           renderYearCompare(document.getElementById('chart'), yearCompareCache);
         };
       });
+      document.getElementById('ycCumToggle').onclick = function () {
+        yearCompareView = (yearCompareView === 'cum') ? 'month' : 'cum';
+        renderYearCompare(document.getElementById('chart'), yearCompareCache);
+      };
       document.getElementById('ycConfigBtn').onclick = function () { openYearCompareDialog(data); };
       document.getElementById('ycHistoryBtn').onclick = function () { openManualHistoryDialog(data); };
     }
