@@ -118,7 +118,10 @@
      Titel"), der Ring lag ihr direkt im Weg. */
   #quotaBtn {
     position: absolute; left: 8px; top: 44px; z-index: 4;
-    width: 96px; height: 96px; border-radius: 50%; cursor: pointer;
+    /* 132 statt 96px (Dietmar, 23.09.2026: "die 2 Prozentzahlen genuegend
+       Platz im Inneren finden") - das SVG skaliert per viewBox proportional
+       mit, Ringe/Text/Abstaende wachsen also automatisch alle gleichermassen. */
+    width: 132px; height: 132px; border-radius: 50%; cursor: pointer;
     background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
     border: 1px solid rgba(255,255,255,0.10);
     box-shadow: 0 4px 14px rgba(0,0,0,.35);
@@ -141,7 +144,7 @@
      Klick fuer Klick. Deutlich breiter/aufwendiger als das bisherige schmale
      Panel: eigene Kopfzeile, Mini-Ringe je Zelle statt nur Text. */
   #quotaPanel {
-    position: absolute; left: 8px; top: 146px; z-index: 4;
+    position: absolute; left: 8px; top: 182px; z-index: 4;
     display: none; width: 300px;
     padding: 14px 16px 12px; border-radius: 14px;
     background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
