@@ -109,37 +109,20 @@
      Watch") - oben LINKS, der einzige Kachel-Rand, der bei der radialen
      Knoten-Verteilung immer frei bleibt (unten links/rechts sitzen bereits
      Status-Pille und Diagnose-Badge, oben rechts Symcons eigener Doppelpfeil).
-     Deutlich groesser als die 26px-Pillen ("von der Status-Pille ausgehend
-     ... 10x groesser") - zwei ineinanderliegende Ringe wie die Aktivitaets-
-     Ringe der Apple Watch, keine reine Zahl/Text-Pille. */
-  /* top: 44px statt 8px (Dietmar, 23.09.2026: "muss weiter nach unten rutschen
-     wegen der Ueberdeckung") - Symcon zeichnet den Instanznamen als eigene
-     Kachel-Kopfzeile UEBER unserem SVG (siehe CLAUDE.md "Kachel ohne eigenen
-     Titel"), der Ring lag ihr direkt im Weg. */
-  #quotaBtn {
-    position: absolute; left: 8px; top: 44px; z-index: 4;
-    /* 132 statt 96px (Dietmar, 23.09.2026: "die 2 Prozentzahlen genuegend
-       Platz im Inneren finden") - das SVG skaliert per viewBox proportional
-       mit, Ringe/Text/Abstaende wachsen also automatisch alle gleichermassen. */
-    width: 132px; height: 132px; border-radius: 50%; cursor: pointer;
-    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0 4px 14px rgba(0,0,0,.35);
-    display: none; /* erst sichtbar, sobald buildPayload() eine Tagesquote liefert */
-    align-items: center; justify-content: center;
-  }
-  #quotaBtn.show { display: flex; }
-  #quotaBtn svg { width: 100%; height: 100%; }
-  #quotaBtn .qRingBg { fill: none; stroke: rgba(255,255,255,0.10); }
-  #quotaBtn .qRingAutarky { fill: none; stroke: #4caf50; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
-  #quotaBtn .qRingSelf { fill: none; stroke: #42a5f5; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
-  #quotaBtn .qCenter { font-family: var(--font); pointer-events: none; }
-  /* 15px -> 12px (Dietmar, 23.09.2026: "Abstaende ... zu knapp zwischen den
-     Zahlen und dem inneren Ring ... Zahlen etwas verkleinern") - der Ring
-     selbst blieb beim vorherigen Groesser-Schritt gleich gross (skaliert nur
-     mit dem Container), die Zahlen sollen hier gezielt kleiner werden. */
-  #quotaBtn .qVal { font-size: 12px; font-weight: 700; fill: var(--text, #fff); }
-  #quotaBtn .qLbl { font-size: 6px; fill: var(--textmuted); }
+     ECHTE SVG-Muenze statt HTML-Knopf (Dietmar, 23.09.2026, nach dem ersten
+     HTML/CSS-Kreis-Versuch: "sieht neben den anderen Pillen wie ein Fremdkoerper
+     aus ... im Muenzstil (3D) analog der anderen Pillen und Knoten") - nutzt
+     dieselben Bausteine wie jeder Aussenknoten (plasticFill/bevelGrad/glossHi/
+     glossSpec ueber node-face/node-bevel/node-highlight/node-spec, siehe
+     makeBevel()/makeHighlight()/makeSpecular() in JS), lebt im selben SVG-
+     Koordinatensystem statt als eigenstaendiges HTML-Element obendrueber. */
+  .quota-coin { cursor: pointer; }
+  .quota-coin .node-ring { stroke: rgba(255,255,255,.4); }
+  .qcoin-ring-bg { stroke: rgba(255,255,255,.12); }
+  .qcoin-ring-autarky { stroke: #4caf50; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #42a5f5; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
+  .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: var(--textmuted); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
      Tabelle mit allen acht Werten auf einmal (Dietmar, 23.09.2026: "eher eine
      Tabelle mit allen 4/8 Werten aufpoppen ... darf ruhig grosszuegiger
@@ -148,7 +131,10 @@
      Klick fuer Klick. Deutlich breiter/aufwendiger als das bisherige schmale
      Panel: eigene Kopfzeile, Mini-Ringe je Zelle statt nur Text. */
   #quotaPanel {
-    position: absolute; left: 8px; top: 182px; z-index: 4;
+    /* top-Wert grob geschaetzt wie bei den anderen HTML-Overlays (Diagnose-
+       Badge etc.) - die Muenze selbst lebt jetzt im SVG und skaliert mit der
+       Kachelgroesse, das Panel bleibt bewusst pixelfest wie gehabt. */
+    position: absolute; left: 8px; top: 150px; z-index: 4;
     display: none; width: 300px;
     padding: 14px 16px 12px; border-radius: 14px;
     background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
@@ -171,8 +157,11 @@
   #quotaTable .qSub { display: block; font-size: 9.5px; opacity: .55; margin-top: 1px; }
   #quotaTable .qLoading, #quotaTable .qDash { opacity: .4; }
   #quotaPanel .qFoot { margin-top: 10px; font-size: 10.5px; opacity: .55; line-height: 1.4; }
-  body.light #quotaBtn, body.light #quotaPanel { background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(242,244,247,.95)); border-color: rgba(0,0,0,.10); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
-  body.light #quotaBtn .qRingBg { stroke: rgba(0,0,0,.08); }
+  /* Die Muenze selbst braucht keine eigene Hell/Dunkel-Anpassung mehr - sie
+     nutzt dieselben plasticFill/bevelGrad-Verlaeufe wie jeder andere Knoten,
+     die sind theme-neutral (dunkle 3D-Optik in beiden Faellen, wie der Rest
+     der Kachel). Nur das Panel braucht weiterhin eine Hell-Variante. */
+  body.light #quotaPanel { background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(242,244,247,.95)); border-color: rgba(0,0,0,.10); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 
   .tour-overlay {
     position: absolute; inset: 0; z-index: 10; display: none;
@@ -611,19 +600,6 @@
 <body>
 
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
-<button id="quotaBtn" type="button" title="Autarkie- und Selbstverbrauchsquote">
-  <svg viewBox="0 0 96 96">
-    <circle class="qRingBg" cx="48" cy="48" r="42"/>
-    <circle class="qRingAutarky" id="qRingAutarky" cx="48" cy="48" r="42" stroke-width="8" transform="rotate(-90 48 48)"/>
-    <circle class="qRingBg" cx="48" cy="48" r="30"/>
-    <circle class="qRingSelf" id="qRingSelf" cx="48" cy="48" r="30" stroke-width="8" transform="rotate(-90 48 48)"/>
-    <g class="qCenter" text-anchor="middle">
-      <text class="qVal" id="qValAutarky" x="48" y="42"></text>
-      <text class="qVal" id="qValSelf" x="48" y="58" fill="#42a5f5"></text>
-      <text class="qLbl" x="48" y="70">heute</text>
-    </g>
-  </svg>
-</button>
 <div id="quotaPanel">
   <div class="qHead"><span class="qHeadRing"></span>Autarkie &amp; Eigenverbrauch</div>
   <table id="quotaTable">
@@ -682,6 +658,29 @@
       </feMerge>
     </filter>
   </defs>
+
+  <!-- Quoten-Muenze (23.09.2026) - siehe CSS-Kommentar bei .quota-coin. Feste
+       Position oben links (viewBox "-17 4 594 594"), unabhaengig von der
+       Knoten-Verteilung; dieselben Bausteine wie jeder Aussenknoten. r=46
+       etwas kleiner als DESIGN_R=56, damit sie sich als zusaetzliches,
+       eigenes Element einordnet statt wie ein weiterer Geraete-Knoten zu
+       wirken. display:none, bis buildPayload() eine Tagesquote liefert. -->
+  <g id="quotaCoin" class="quota-coin" transform="translate(70,90)" style="display:none">
+    <title id="quotaCoinTitle">Autarkie- und Selbstverbrauchsquote</title>
+    <circle class="coin-shadow" cx="0" cy="7.4" r="52"/>
+    <circle class="node-face" r="46"/>
+    <circle class="node-ring" r="46"/>
+    <circle class="node-bevel" r="46"/>
+    <circle class="node-highlight" r="33.1" transform="translate(-13.8,-22.1) scale(1,0.57)"/>
+    <circle class="node-spec" r="13.8" transform="translate(-20.2,-25.3) scale(1,0.55)"/>
+    <circle class="qcoin-ring-bg" r="38" fill="none" stroke-width="6"/>
+    <circle class="qcoin-ring-bg" r="26" fill="none" stroke-width="6"/>
+    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="38" fill="none" stroke-width="6" transform="rotate(-90)"/>
+    <circle id="qRingSelf" class="qcoin-ring-self" r="26" fill="none" stroke-width="6" transform="rotate(-90)"/>
+    <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
+    <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#42a5f5"></text>
+    <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
+  </g>
 
   <g id="wires-layer"></g>
 
@@ -3383,7 +3382,7 @@ function handleMessage(raw) {
     // Backend-Seite), Monat/Jahr/Gesamt laedt das Panel erst bei Klick nach.
     if (d.dayQuotas) {
       quotaCache.day = d.dayQuotas;
-      document.getElementById('quotaBtn').classList.add('show');
+      document.getElementById('quotaCoin').style.display = '';
       renderQuotaButton(d.dayQuotas);
       if (document.getElementById('quotaPanel').classList.contains('open')) { renderQuotaTable(); }
     }
@@ -3491,7 +3490,7 @@ function handleMessage(raw) {
   fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
   // Autarkiegrad-Ringsegment am Haus-Knoten entfernt (Dietmar, 23.09.2026) -
   // durch den Quoten-Knopf oben links ersetzt, der Tag/Monat/Jahr/Gesamt
-  // abdeckt statt nur "heute" (siehe #quotaBtn).
+  // abdeckt statt nur "heute" (siehe #quotaCoin).
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
@@ -3513,7 +3512,7 @@ function handleMessage(raw) {
 // quotaCache haelt bereits geladene Zeitraeume, damit ein zweites Oeffnen
 // nicht erneut nachfordert.
 var quotaCache = {};
-var RING_R_OUTER = 42, RING_R_INNER = 30;
+var RING_R_OUTER = 38, RING_R_INNER = 26;
 var RING_C_OUTER = 2 * Math.PI * RING_R_OUTER;
 var RING_C_INNER = 2 * Math.PI * RING_R_INNER;
 var QUOTA_PERIODS = ['day', 'month', 'year', 'total'];
@@ -3539,7 +3538,7 @@ function renderQuotaButton(data) {
   var a = pct(data ? data.autarky : null), s = pct(data ? data.selfConsumption : null);
   document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
   document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
-  document.getElementById('quotaBtn').title = 'Heute: Autarkie ' + (a === null ? 'unbekannt' : a + ' %')
+  document.getElementById('quotaCoinTitle').textContent = 'Heute: Autarkie ' + (a === null ? 'unbekannt' : a + ' %')
     + ' · Eigenverbrauch ' + (s === null ? 'unbekannt' : s + ' %') + ' - Klick für alle Zeiträume';
 }
 
@@ -3582,7 +3581,7 @@ function renderQuotaPeriod(data) {
 }
 
 (function () {
-  var btn = document.getElementById('quotaBtn');
+  var btn = document.getElementById('quotaCoin');
   var panel = document.getElementById('quotaPanel');
   btn.addEventListener('click', function (ev) {
     ev.stopPropagation();
@@ -3603,7 +3602,7 @@ function renderQuotaPeriod(data) {
     });
   });
   document.addEventListener('click', function (ev) {
-    if (panel.classList.contains('open') && !panel.contains(ev.target) && ev.target !== btn) {
+    if (panel.classList.contains('open') && !panel.contains(ev.target) && !btn.contains(ev.target)) {
       panel.classList.remove('open');
       clearTimeout(autoCloseTimers.quotaPanel);
     }

@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.79-beta.1 (2026-09-23)
+
+- Tile Quoten-Knopf: aus dem eigenständigen HTML-Kreis (grauer Kasten mit Rand) eine echte SVG-Münze im 3D-Plastik-Stil der übrigen Knoten geworden (Dietmar: "sieht neben den anderen Pillen wie ein Fremdkörper aus ... im Münzstil analog der anderen Pillen und Knoten") - nutzt dieselben Bausteine (Verlauf, Fase, Glanzlicht) wie jeder Geräte-Knoten und lebt jetzt im selben SVG-Koordinatensystem statt als eigenes HTML-Element obendrüber.
+
 ## 0.9.78-beta.1 (2026-09-23)
 
 - Tile Quoten-Knopf: zwei weitere Plausibilitätslücken live gefunden und behoben. (1) Die direkte Hauslast-Integration lieferte bei Monat/Jahr/Gesamt teils einen kleineren Wert als der reine Netzbezug - physikalisch unmöglich (Hausverbrauch deckt immer mindestens den Netzbezug). Wirkt sie unplausibel klein, gilt jetzt die Energiebilanz (PV + Bezug − Einspeisung) als Ersatz. (2) Bei "Gesamt" konnte die Einspeisung rechnerisch größer als die PV-Erzeugung erscheinen (unterschiedlich lange Archivhistorien von PV- und Netzzähler über viele Jahre) - die betroffene Quote bleibt in so einem Fall jetzt leer statt eine falsche Prozentzahl zu zeigen.
