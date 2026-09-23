@@ -121,9 +121,13 @@
      trotzdem identisch, Fragment-Referenzen gelten dokumentweit. */
   #quotaCoin {
     position: absolute; left: 8px; top: 44px; z-index: 4;
-    /* 104 -> 128px (Dietmar, 23.09.2026: "gerne etwas groesser") - das SVG
-       skaliert per viewBox proportional mit. */
-    width: 128px; height: 128px;
+    /* 128 -> 190px (Dietmar, 23.09.2026: "so gross wie die Knoten") - als
+       fixes Pixel-Element kann sie NICHT automatisch mit der SVG-Fluss-
+       canvas-Skalierung mitwachsen (die passt sich der Kachelgroesse an,
+       ein Element ausserhalb davon nicht) - 190px ist an der hier
+       beobachteten Kachelgroesse ausgerichtet, bei deutlich anderer
+       Kachelgroesse kann das Verhaeltnis wieder abweichen. */
+    width: 190px; height: 190px;
     display: none;
   }
   #quotaCoin.show { display: block; }
@@ -140,8 +144,14 @@
      HELL und zogen dadurch den Blick vom eigentlichen Fluss weg. Jetzt
      tiefere, gesaettigte statt leuchtende Toene: wirkt bewusst gesetzt,
      nicht wie ein zusaetzlicher Blickfang. */
-  .qcoin-ring-autarky { stroke: #1b7a3d; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: #1a56c4; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  /* Zusaetzlich zur dunkleren Grundfarbe (0.9.82) noch eine reduzierte
+     Deckkraft (Dietmar, 23.09.2026, dritter Anlauf: "weiterhin so
+     veraendern, dass der Button nicht der Blickfang ist") - die echten
+     Knoten-Ringe im Fluss (gruen/orange/lila/rot) stehen alle bei voller
+     Deckkraft, das allein macht die Muenze trotz gleicher Groesse
+     unaufdringlicher als sie. */
+  .qcoin-ring-autarky { stroke: #1b7a3d; stroke-linecap: round; opacity: .68; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #1a56c4; stroke-linecap: round; opacity: .68; transition: stroke-dashoffset .6s ease; }
   .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
   .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: var(--textmuted); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
@@ -3554,7 +3564,11 @@ function setRing(el, circumference, frac) {
     el.style.opacity = '0';
     return;
   }
-  el.style.opacity = '1';
+  // Inline-Opazitaet ENTFERNEN statt auf '1' zu setzen - die CSS-Klasse
+  // (.qcoin-ring-autarky/-self) setzt die gedaempfte Grundopazitaet .68,
+  // ein hartes '1' hier wuerde das wieder aufheben (Dietmar, 23.09.2026:
+  // "nicht der Blickfang").
+  el.style.opacity = '';
   el.setAttribute('stroke-dashoffset', (circumference * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1));
 }
 

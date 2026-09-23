@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.83-beta.1 (2026-09-23)
+
+- Tile Quoten-Muenze: auf 190px vergrößert, um sich an die Größe der Fluss-Knoten anzunähern (Dietmar: "so groß wie die Knoten"; als fixes Pixel-Element kann sie nicht automatisch mit der SVG-Skalierung der Kachelgröße mitwachsen). Ringe zusätzlich mit reduzierter Deckkraft, damit sie trotz der größeren Fläche zurückhaltender wirken als die echten, voll deckenden Knoten-Ringe im Fluss.
+
 ## 0.9.82-beta.1 (2026-09-23)
 
 - Tile Quoten-Muenze: von 104 auf 128px vergrößert; Ringfarben von leuchtenden Neontönen auf tiefere, gesättigte Farben umgestellt (Dietmar: "durch das Helle wird der Blick automatisch von der Hauptsache - Energiefluss - zum Quoten-Button gelenkt") - kräftig, aber ohne vom eigentlichen Energiefluss abzulenken.
