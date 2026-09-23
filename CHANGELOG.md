@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.65-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: der "Kumuliert"-Toggle steht jetzt in derselben Zeile wie Gesamtertrag/Spezifischer Anlagenertrag statt in einer eigenen Zeile darunter, mit deutlich größerem Abstand zum Knopfpaar, damit er trotzdem klar als eigenständiger Schalter abgesetzt wirkt (Dietmars Wunsch).
+
 ## 0.9.64-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: Monatswert und kumulierte Summe stehen nicht mehr nebeneinander in oder neben derselben Zelle - nach mehreren gescheiterten Anläufen (Abstand, eigene Spalten) jetzt ein echter Schalter "Kumuliert", der pro Zelle umschaltet, welcher Wert angezeigt wird (Dietmars Wunsch). Bewusst als EIN/AUS-Toggle mit eigener Optik, nicht als zweites, sich ausschließendes Knopfpaar wie Gesamtertrag/Spezifischer Anlagenertrag.

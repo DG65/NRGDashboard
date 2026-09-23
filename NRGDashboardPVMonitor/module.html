@@ -343,7 +343,12 @@
      Prognose hat dafuer noch kein eigenes Konzept, siehe Klaerung 31.07.2026,
      deshalb hier). */
   #yearComparePanel { flex: 0 0 auto; padding-top: 6px; font-size: 12px; }
-  .ycSubTabs { display: flex; justify-content: center; gap: 4px; margin-bottom: 8px; }
+  .ycSubTabs { display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: 8px; }
+  /* Groesserer Abstand zwischen dem ausschliessenden Knopfpaar und dem separaten
+     "Kumuliert"-Toggle, damit er trotz gleicher Zeile deutlich abgesetzt wirkt
+     (Dietmar, 23.09.2026, nachdem der Toggle zunaechst in einer eigenen Zeile
+     stand: "auf die gleiche Hoehe ... Abstand ... etwas groesser"). */
+  .ycToggleGap { width: 14px; }
   .ycSubTabs button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; opacity: .75; }
   .ycSubTabs button.active { opacity: 1; font-weight: 700; border-color: rgba(127,135,145,.7); }
   .ycSubTabs button:disabled { opacity: .3; cursor: default; }
@@ -369,10 +374,10 @@
      "Monatswerte" daneben (Dietmars Praezisierung): Gesamtertrag/Spezifischer
      Anlagenertrag bleiben ein AUSSCHLIESSENDES Knopfpaar (genau einer aktiv),
      "Kumuliert" ist ein echter EIN/AUS-Toggle mit eigener Optik (Haekchen-artig
-     gefuellt statt nur hervorgehobenem Rand), damit beide Schalterarten auch
-     optisch als unterschiedliche Konzepte erkennbar sind.
+     gefuellt statt nur hervorgehobenem Rand), in derselben Zeile wie die beiden
+     anderen Knoepfe, aber durch .ycToggleGap deutlich abgesetzt (Dietmar: "auf
+     die gleiche Hoehe ... Abstand ... etwas groesser").
   */
-  .ycSubTabs + .ycSubTabs { margin-top: 4px; }
   .ycSubTabs button.ycToggle.active { background: rgba(127,181,255,.22); border-color: #7fb5ff; color: #cfe4ff; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
      Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"), an einem
@@ -2824,8 +2829,7 @@
       var sub = '<div class="ycSubTabs">'
         + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">Gesamtertrag</button>'
         + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">Spezifischer Anlagenertrag</button>'
-        + '</div>'
-        + '<div class="ycSubTabs">'
+        + '<span class="ycToggleGap"></span>'
         + '<button id="ycCumToggle" class="ycToggle' + (isCum ? ' active' : '') + '" aria-pressed="' + isCum + '">Kumuliert</button>'
         + '</div>';
       var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren oder die Anlagenleistung unten manuell eingeben.</div>';
