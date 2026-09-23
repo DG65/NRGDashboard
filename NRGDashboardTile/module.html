@@ -179,11 +179,18 @@
      aehnlichen Gruenvariante. Dazu das gleich "gewichtete" Blau aus
      derselben Material-Palette (600er-Stufe) fuer den Eigenverbrauchs-Ring. */
   /* Siebter Anlauf (23.09.2026, Dietmar: "die Ringe sind derzeit flach,
-     nicht rund") - Stroke-Farbe durch einen vertikalen Verlauf ersetzt
-     (siehe ringGradAutarky/-Self in den <defs>), macht aus der bisher
-     flachen Volltonfarbe einen von oben beleuchteten Tubus/Wulst. */
-  .qcoin-ring-autarky { stroke: url(#ringGradAutarky); stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: url(#ringGradSelf); stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
+     nicht rund") RUECKGAENGIG GEMACHT - stroke: url(#ringGradAutarky) via
+     CSS-Klasse hat live die GESAMTE Kachel grau (leer) gerendert (Dietmar:
+     "jetzt kommt nichts mehr"). Vermutete Ursache: die Kachel laeuft als
+     HTMLBox-Inhalt vermutlich in einem eigenen Dokumentkontext (iframe
+     srcdoc/Blob), in dem ein reines Fragment-url() nicht zuverlaessig
+     gegen das eigene Dokument aufgeloest wird (bekannte Browser-Falle,
+     anders als url(#plasticFill) etc., die als SVG-PRAESENTATIONSATTRIBUT
+     statt CSS-Deklaration gesetzt sind) - noch nicht abschliessend
+     verifiziert, deshalb erstmal zurueckgesetzt statt erneut zu raten.
+     Zurueck zu den kraeftigen Volltonfarben (Build 221 zurueckgerollt). */
+  .qcoin-ring-autarky { stroke: #43a047; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #1e88e5; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
@@ -774,26 +781,6 @@
       <stop offset="55%"  stop-color="#000000" stop-opacity="0.72"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
     </radialGradient>
-    <!-- Quoten-Ringe "rund" statt flach (23.09.2026, Dietmar: "die Ringe
-         sind derzeit flach, nicht rund") - der bisherige relief-Filter
-         (feSpecularLighting auf SourceAlpha) hellt bei einem SO BREITEN
-         Streifen (stroke-width 7) nur die duennen Raender auf, die Mitte
-         der Ringflaeche bleibt rechnerisch flach (konstantes Alpha = keine
-         Bump-Steigung dort) - genau das erzeugte den flachen Eindruck.
-         Ein von oben nach unten laufender Verlauf (hell -> Grundfarbe ->
-         dunkel), userSpaceOnUse wie bevelGrad, wirkt wie ein von oben
-         beleuchteter Tubus/Wulst - selbes Prinzip wie bevelGrad selbst,
-         nur als Stroke-Fuellung statt Kontur-Overlay. */
-    <linearGradient id="ringGradAutarky" x1="0" y1="-40" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#8fe39a"/>
-      <stop offset="45%"  stop-color="#43a047"/>
-      <stop offset="100%" stop-color="#245c29"/>
-    </linearGradient>
-    <linearGradient id="ringGradSelf" x1="0" y1="-40" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#7ec1f7"/>
-      <stop offset="45%"  stop-color="#1e88e5"/>
-      <stop offset="100%" stop-color="#0f4c80"/>
-    </linearGradient>
     <filter id="relief" x="-70%" y="-70%" width="240%" height="240%">
       <feGaussianBlur in="SourceAlpha" stdDev="1.3" result="bump"/>
       <feSpecularLighting in="bump" surfaceScale="2.6" specularConstant="1"

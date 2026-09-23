@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.95-beta.1 (2026-09-23)
+
+- Tile: Rollback von 0.9.94 - der Versuch, die Quoten-Ringe per Farbverlauf (`stroke: url(#ringGrad...)` in CSS) "rund" wirken zu lassen, hat live die GESAMTE Kachel grau/leer gerendert (Dietmar: "jetzt kommt nichts mehr"). Zurück zu den Volltonfarben aus 0.9.90-0.9.93. Ursache (vermutlich Fragment-url()-Auflösung im HTMLBox-Dokumentkontext) noch nicht abschließend verifiziert - ein erneuter Anlauf für "runde" Ringe braucht eine andere Technik, keine CSS-`url()`-Stroke-Referenz.
+
 ## 0.9.94-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: die beiden Datenringe wirkten flach statt rund (Dietmar). Stroke-Farbe durch einen vertikalen Verlauf (hell oben, dunkel unten, wie ein von oben beleuchteter Tubus) ersetzt statt einer flachen Volltonfarbe.
