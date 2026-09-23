@@ -351,6 +351,13 @@
   .ycTableWrap { overflow-x: auto; }
   .ycTable { border-collapse: collapse; width: 100%; font-size: 11px; white-space: nowrap; }
   .ycTable th, .ycTable td { padding: 3px 8px; text-align: right; }
+  /* Duenneres Grundgewicht statt staerkerer Medaillen-Fettung (Dietmar,
+     23.09.2026: "dann mache lieber das Normal etwas duenner" - nach dem
+     umgekehrten Versuch, die Medaillen noch fetter zu machen). Die Jahreszahl
+     (erste Spalte) bleibt normal, ycTotal/ycGold/ycSilver/ycBronze setzen ihr
+     eigenes, hoeheres Gewicht und ueberschreiben das dank hoeherer Spezifitaet. */
+  .ycTable tbody td { font-weight: 300; }
+  .ycTable tbody td:first-child { font-weight: 400; }
   .ycTable th:first-child, .ycTable td:first-child { text-align: left; }
   .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
   .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
@@ -368,19 +375,17 @@
      Element die Farbe des Monatswerts erben, obwohl beide ein eigenes,
      unabhaengiges Ranking haben (Fund Dietmar: Feb 2022 wirkte bronze nur wegen
      des Monatswerts, Feb 2020 blieb trotz hoeherer Summe farblos). */
-  /* font-weight 700 gegen die 400 der normalen Werte war Dietmar zu wenig
-     Kontrast ("die Differenz ist nicht sehr auffaellig") - 800 statt 700. */
-  .ycGold { color: #e0b64a; font-weight: 800; }
+  .ycGold { color: #e0b64a; font-weight: 700; }
   /* Urspruengliches Silber (#c7ccd1) lag zu nah an der normalen Textfarbe
      (~#e8e8e8) und war dadurch praktisch unsichtbar (Fund Dietmar, 23.09.2026:
      "wie finde ich den Silberwert?") - kuehleres, deutlich saettigeres Blaugrau,
      das sich klar vom neutralen Text UND von Gold/Bronze (warme Toene) abhebt. */
-  .ycSilver { color: #7fa8c9; font-weight: 800; }
-  .ycBronze { color: #cd8a5c; font-weight: 800; }
+  .ycSilver { color: #7fa8c9; font-weight: 700; }
+  .ycBronze { color: #cd8a5c; font-weight: 700; }
   /* Kumuliertes Ranking: gleiche Farben, volle Deckkraft statt der gedaempften
      .ycCum-Grundopazitaet (sonst verblasst die Auszeichnung) UND fett (sonst
-     bleibt die kumulierte Zahl trotz Farbe im duennen 400er-Grundgewicht haengen). */
-  .ycCum.ycGold, .ycCum.ycSilver, .ycCum.ycBronze { opacity: 1; font-weight: 800; }
+     bleibt die kumulierte Zahl trotz Farbe im duennen Grundgewicht haengen). */
+  .ycCum.ycGold, .ycCum.ycSilver, .ycCum.ycBronze { opacity: 1; font-weight: 700; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so

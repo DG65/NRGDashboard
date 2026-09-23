@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.60-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: statt die Medaillen noch fetter zu machen (0.9.59, wieder zurückgenommen), sind jetzt die normalen Werte dünner (300) - Gold/Silber/Bronze bleiben bei 700, der Kontrast entsteht über die Differenz statt über immer stärkere Fettung (Dietmars Wunsch).
+
 ## 0.9.59-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: Fettung des Siegertreppchens (700) hob sich laut Dietmar zu wenig vom normalen Text (400) ab - auf 800 erhöht, gilt jetzt auch für die kumulierten Medaillenwerte (waren trotz Farbe noch im dünnen Grundgewicht).
