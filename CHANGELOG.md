@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.113-beta.1 (2026-09-23)
+
+- PVMonitor "PV & Einstrahlung": "PV erwartet" nahm bisher senkrechten Lichteinfall an, dadurch wuchs die Abweichung zur echten Erzeugung im Winter (Dietmar). Neue Einfallswinkel-Korrektur (IAM, ASHRAE-Näherung) anhand Sonnenstand (eigene NOAA-Solar-Position-Berechnung) und Modul-Neigung/-Ausrichtung (aus PVF_GetGenerators()) - physikalisch begründet, keine Anpassung an den Ist-Wert, funktioniert automatisch bei jeder Anlage. Live gegen Dietmars echte Anlagengeometrie (27° Neigung, -14° Azimut) und Koordinaten verifiziert; Azimut-Konvention (Open-Meteo Süd-basiert vs. Astronomie Nord-basiert) dabei als Stolperfalle gefunden und umgerechnet. Ohne Standort oder Modul-Geometrie unverändertes bisheriges Verhalten (Faktor 1,0).
+
 ## 0.9.112-beta.1 (2026-09-23)
 
 - Tile Quoten-Panel: nochmals verbreitert (640px → 720px), etwas mehr Luft an den Rändern.

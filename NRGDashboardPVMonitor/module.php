@@ -689,6 +689,116 @@ class NRGDashboardPVMonitor extends IPSModule
     }
 
     /**
+     * Einfallswinkel-Korrektur (IAM, "Incidence Angle Modifier") fuer "PV
+     * erwartet" (23.09.2026, Dietmar: "PV erwartet weicht im Winter immer
+     * staerker ab ... aber ich moechte etwas physikalisch Begruendetes, kein
+     * Nachjustieren an den Ist-Wert"). Reiner Geometrie-/Optik-Effekt, gilt
+     * fuer JEDE Anlage gleich, keine gelernte/anlagenspezifische Konstante:
+     * bei schraegem Lichteinfall (tiefer Sonnenstand, typisch im Winter)
+     * reflektiert die Modul-Glasoberflaeche einen groesseren Anteil des
+     * Lichts, als eine einfache "Einstrahlung x kWp x PR"-Rechnung erfasst -
+     * das bisherige Modell nahm implizit senkrechten Einfall an. Standard-
+     * ASHRAE-Naeherung (b0=0.05, Duffie/Beckman "Solar Engineering of
+     * Thermal Processes"), verbreitet u.a. in PVsyst/PVWatts. Braucht
+     * Sonnenstand (SolarPosition()) UND Modul-Neigung/-Ausrichtung
+     * (PVF_GetGenerators() liefert beides bereits fuer PVPrognose, siehe
+     * PvfModel()) - fehlen Neigung/Ausrichtung eines Generators, bleibt der
+     * Faktor 1.0 (unveraendertes bisheriges Verhalten, kein Rueckschritt).
+     */
+    private function IncidenceAngleFactor(float $sunElevDeg, float $sunAzDeg, float $tiltDeg, float $panelAzDeg): float
+    {
+        if ($sunElevDeg <= 0.0) {
+            return 0.0;
+        }
+        $rad = M_PI / 180.0;
+        $cosAoi = sin($sunElevDeg * $rad) * cos($tiltDeg * $rad)
+            + cos($sunElevDeg * $rad) * sin($tiltDeg * $rad) * cos(($sunAzDeg - $panelAzDeg) * $rad);
+        if ($cosAoi <= 0.01) {
+            // Sonne kommt von hinter der Modulebene - keine direkte
+            // Einstrahlung auf die Vorderseite moeglich.
+            return 0.0;
+        }
+        $b0 = 0.05;
+        return max(0.0, min(1.0, 1.0 - $b0 * (1.0 / $cosAoi - 1.0)));
+    }
+
+    /**
+     * Summe der Generator-kWp, je Generator mit seinem Einfallswinkel-Faktor
+     * zum Zeitpunkt $ts gewichtet (23.09.2026) - ersetzt $model['totalKwp']
+     * an den Stellen, wo die Erwartungskurve tatsaechlich pro Zeitpunkt
+     * berechnet wird. Ohne Standort ($coords===null) oder ohne
+     * Neigung/Ausrichtung eines Generators zaehlt dieser mit Faktor 1.0
+     * (unveraendertes bisheriges Verhalten) - kein erfundener Standardwert.
+     */
+    private function IamWeightedKwp(array $model, ?array $coords, int $ts): float
+    {
+        $geometry = $model['generatorGeometry'] ?? [];
+        $kwpList = $model['generatorKwp'] ?? [];
+        if ($coords === null || count($geometry) !== count($kwpList) || count($kwpList) === 0) {
+            return (float) ($model['totalKwp'] ?? 0.0);
+        }
+        $sun = $this->SolarPosition($coords['lat'], $coords['lon'], $ts);
+        $sum = 0.0;
+        foreach ($kwpList as $i => $kwp) {
+            $tilt = $geometry[$i]['tilt'] ?? null;
+            $azSouthBased = $geometry[$i]['az'] ?? null;
+            if ($tilt !== null && $azSouthBased !== null) {
+                // Konvention-Umrechnung (23.09.2026, live gegen Dietmars
+                // Anlage gefunden): PVF_GetGenerators() liefert 'azimuth' in
+                // der Open-Meteo-API-Konvention (0=Sued, -90=Ost, +90=West -
+                // siehe PVPrognose::fetchOpenMeteo()), SolarPosition() hier
+                // rechnet dagegen NORD-basiert (0-360, 180=Sued, wie in der
+                // Astronomie/NOAA-Formel ueblich) - ohne diese Umrechnung
+                // waere jede Korrektur um 180 Grad verdreht (aus "Sonne
+                // steht frontal" wuerde "Sonne steht im Ruecken" und
+                // umgekehrt).
+                $azNorthBased = fmod(180.0 + $azSouthBased + 360.0, 360.0);
+                $iam = $this->IncidenceAngleFactor($sun['elevation'], $sun['azimuth'], $tilt, $azNorthBased);
+            } else {
+                $iam = 1.0;
+            }
+            $sum += $kwp * $iam;
+        }
+        return $sum;
+    }
+
+    /**
+     * Sonnenhoehe/-azimut fuer einen Zeitpunkt (23.09.2026, fuer
+     * IncidenceAngleFactor()) - date_sun_info() (bereits genutzt in
+     * SunRange()) liefert nur Auf-/Untergang eines TAGES, keine
+     * Momentanposition. Vereinfachter NOAA-Algorithmus (Solar Position
+     * Calculator, https://gml.noaa.gov/grad/solcalc/solareqns.PDF) -
+     * hinreichend genau (< 0.5 Grad) fuer eine Verlust-Korrektur, keine
+     * Praezisions-Astronomie. $ts ist ein Unix-Zeitstempel (UTC), deshalb
+     * ausschliesslich gmdate() darin - jede lokale Zeitzone wuerde die
+     * Ortszeit-Korrektur (4*lon Minuten) verfaelschen.
+     */
+    private function SolarPosition(float $lat, float $lon, int $ts): array
+    {
+        $rad = M_PI / 180.0;
+        $dayOfYear = (int) gmdate('z', $ts) + 1;
+        $hourUtc = (int) gmdate('G', $ts) + ((int) gmdate('i', $ts)) / 60.0 + ((int) gmdate('s', $ts)) / 3600.0;
+        $gamma = 2 * M_PI / 365.0 * ($dayOfYear - 1 + ($hourUtc - 12) / 24.0);
+        $eqtime = 229.18 * (0.000075 + 0.001868 * cos($gamma) - 0.032077 * sin($gamma)
+            - 0.014615 * cos(2 * $gamma) - 0.040849 * sin(2 * $gamma));
+        $decl = 0.006918 - 0.399912 * cos($gamma) + 0.070257 * sin($gamma)
+            - 0.006758 * cos(2 * $gamma) + 0.000907 * sin(2 * $gamma)
+            - 0.002697 * cos(3 * $gamma) + 0.00148 * sin(3 * $gamma);
+        $timeOffset = $eqtime + 4 * $lon; // Minuten, UTC-basiert -> keine Zeitzonen-Konstante noetig
+        $tst = $hourUtc * 60 + $timeOffset; // wahre Sonnenzeit in Minuten
+        $ha = ($tst / 4.0) - 180.0; // Stundenwinkel in Grad
+        $haRad = $ha * $rad;
+        $latRad = $lat * $rad;
+        $elevRad = asin(max(-1.0, min(1.0, sin($latRad) * sin($decl) + cos($latRad) * cos($decl) * cos($haRad))));
+        $cosAzNum = sin($decl) - sin($latRad) * sin($elevRad);
+        $cosAzDen = cos($latRad) * cos($elevRad);
+        $cosAz = ($cosAzDen != 0.0) ? $cosAzNum / $cosAzDen : 0.0;
+        $azRad = acos(max(-1.0, min(1.0, $cosAz)));
+        $azDeg = ($ha > 0) ? 360.0 - $azRad / $rad : $azRad / $rad;
+        return ['elevation' => $elevRad / $rad, 'azimuth' => $azDeg];
+    }
+
+    /**
      * Findet die PV-Leistungsvariable automatisch über InverterHub
      * (IHUB_GetFunctions - Objekt-Vertrag, siehe NRGDashboardTile::
      * discoverInverterHub()), falls keine explizit gewählt wurde. Nimmt die
@@ -2362,7 +2472,15 @@ class NRGDashboardPVMonitor extends IPSModule
             if (is_array($r) && isset($r['generators']) && is_array($r['generators'])) {
                 $pr = (float) ($r['pr'] ?? 0);
                 foreach ($r['generators'] as $g) {
-                    $rows[] = ['kwp' => (float) ($g['kwp'] ?? 0), 'factor' => (float) ($g['factor'] ?? 1.0)];
+                    // tilt/azimuth (23.09.2026, IncidenceAngleFactor()) - PVF_GetGenerators()
+                    // liefert beides bereits (Vertrag: 'tilt'/'azimuth', siehe PVPrognose
+                    // GetGenerators()), null wenn nicht gesetzt statt eines erfundenen
+                    // Standardwerts (SUITE.md).
+                    $rows[] = [
+                        'kwp' => (float) ($g['kwp'] ?? 0), 'factor' => (float) ($g['factor'] ?? 1.0),
+                        'tilt' => isset($g['tilt']) ? (float) $g['tilt'] : null,
+                        'az'   => isset($g['azimuth']) ? (float) $g['azimuth'] : null,
+                    ];
                 }
             }
         }
@@ -2374,7 +2492,11 @@ class NRGDashboardPVMonitor extends IPSModule
                 $list = json_decode($cfg['PVGenerators'] ?? '[]', true);
                 if (is_array($list)) {
                     foreach ($list as $row) {
-                        $rows[] = ['kwp' => (float) ($row['kWp'] ?? 0), 'factor' => (float) ($row['Factor'] ?? 1.0)];
+                        $rows[] = [
+                            'kwp' => (float) ($row['kWp'] ?? 0), 'factor' => (float) ($row['Factor'] ?? 1.0),
+                            'tilt' => isset($row['Tilt']) ? (float) $row['Tilt'] : null,
+                            'az'   => isset($row['Azimuth']) ? (float) $row['Azimuth'] : null,
+                        ];
                     }
                 }
             }
@@ -2384,18 +2506,21 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $totalKwp = 0.0;
         $generatorKwp = [];
+        $generatorGeometry = [];
         foreach ($rows as $row) {
             if ($row['kwp'] > 0.0) {
                 $eff = $row['kwp'] * (($row['factor'] > 0.0) ? $row['factor'] : 1.0);
                 $totalKwp += $eff;
                 $generatorKwp[] = $eff;
+                $generatorGeometry[] = ['tilt' => $row['tilt'], 'az' => $row['az']];
             }
         }
         // generatorKwp additiv fuer die MPP-Tracker-Erwartungskurve (28.07.2026,
         // Dietmars Wunsch) - je Generator effektive kWp (kwp*factor), in der
         // Reihenfolge von PVF_GetGenerators(). Aendert nichts an pr/totalKwp,
-        // die der Solar-Reiter bereits nutzt.
-        return ($totalKwp > 0.0) ? ['pr' => $pr, 'totalKwp' => $totalKwp, 'generatorKwp' => $generatorKwp] : null;
+        // die der Solar-Reiter bereits nutzt. generatorGeometry (23.09.2026)
+        // parallel dazu, fuer die Einfallswinkel-Korrektur.
+        return ($totalKwp > 0.0) ? ['pr' => $pr, 'totalKwp' => $totalKwp, 'generatorKwp' => $generatorKwp, 'generatorGeometry' => $generatorGeometry] : null;
     }
 
     /**
@@ -3077,10 +3202,19 @@ class NRGDashboardPVMonitor extends IPSModule
             // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
             // liefern dadurch real weniger, als die reine Einstrahlungs-
             // Rechnung vorhersagt.
+            // Einfallswinkel-Korrektur (23.09.2026, Dietmar: "im Winter wird
+            // die Differenz groesser ... physikalisch begruendet, kein
+            // Nachjustieren an den Ist-Wert") - IncidenceAngleFactor() je
+            // Generator-Ausrichtung, ersetzt die bisherige Annahme
+            // senkrechten Lichteinfalls. $coords===null (kein Systemstandort)
+            // oder fehlende Neigung/Ausrichtung lassen den Faktor bei 1.0 -
+            // unveraendertes bisheriges Verhalten, kein Rueckschritt.
+            $coords = $this->Coordinates();
             foreach ($irr as $p) {
                 $ta = $tempByTs[$p[0]] ?? null;
                 $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
-                $expected[] = [$p[0], round($p[1] * $model['totalKwp'] * $model['pr'] * $derate, 0)];
+                $effKwp = $this->IamWeightedKwp($model, $coords, (int) ($p[0] / 1000));
+                $expected[] = [$p[0], round($p[1] * $effKwp * $model['pr'] * $derate, 0)];
             }
         }
 
