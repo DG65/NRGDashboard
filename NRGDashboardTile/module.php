@@ -6261,6 +6261,28 @@ class NRGDashboardTile extends IPSModule
             $pvKWh += $this->PowerToEnergy($powerID, $start, $end, 1);
         }
 
+        // Batterie Laden/Entladen (23.09.2026, Dietmar: "das gleiche fuer die
+        // Batterie") - dieselbe Vorzeichen-Konvention wie beim Netz (Netz +=
+        // Einspeisung/-=Bezug, Batterie += Entladen/-=Laden, siehe
+        // InverterHubTile-Referenz weiter oben in dieser Datei) - deshalb
+        // hier ebenfalls ueber activePowerSign() vereinheitlicht statt den
+        // Rohwert direkt zu verwenden. Summiert ueber alle Batterie-Geraete
+        // (Mehrfach-Speicher moeglich, analog zur PV-Schleife oben).
+        $batteryChargeKWh = 0.0; $batteryDischargeKWh = 0.0; $hasBattery = false;
+        foreach ($devices as $dev) {
+            if (($dev['function'] ?? '') !== 'battery') {
+                continue;
+            }
+            $powerID = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
+            if ($powerID <= 0) {
+                continue;
+            }
+            $hasBattery = true;
+            $sign = $this->activePowerSign($dev);
+            $batteryDischargeKWh += $this->PowerToEnergy($powerID, $start, $end, $sign > 0 ? 1 : -1);
+            $batteryChargeKWh += $this->PowerToEnergy($powerID, $start, $end, $sign > 0 ? -1 : 1);
+        }
+
         $gridImportKWh = null; $gridExportKWh = null;
         if ($gi !== null) {
             $gd = $devices[$gi];
@@ -6330,6 +6352,8 @@ class NRGDashboardTile extends IPSModule
             'pvKWh' => $hasPv ? round($pvKWh, 2) : null,
             'gridImportKWh' => $gridImportKWh !== null ? round($gridImportKWh, 2) : null,
             'gridExportKWh' => $gridExportKWh !== null ? round($gridExportKWh, 2) : null,
+            'batteryChargeKWh' => $hasBattery ? round($batteryChargeKWh, 2) : null,
+            'batteryDischargeKWh' => $hasBattery ? round($batteryDischargeKWh, 2) : null,
         ];
     }
 
