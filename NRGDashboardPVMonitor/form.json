@@ -108,6 +108,16 @@
           "caption": "Ohne Temperatur-Variable wird „PV erwartet“ nur aus Einstrahlung berechnet - an heißen, sonnigen Tagen weicht die Linie dann ab Mittag zunehmend nach oben von der tatsächlichen Erzeugung ab, weil wärmere Solarzellen real weniger liefern als die reine Einstrahlungsrechnung annimmt."
         },
         {
+          "type": "CheckBox",
+          "name": "IrradianceHorizontal",
+          "caption": "Einstrahlungssensor horizontal montiert (üblich bei Wetterstationen, z. B. Ecowitt)",
+          "value": true
+        },
+        {
+          "type": "Label",
+          "caption": "Ein horizontaler Sensor misst weniger Einstrahlung als die tatsächlich geneigte Modulfläche empfängt (Dietmar, 23.09.2026: Ecowitt-Wetterstation, horizontal) - „PV erwartet“ rechnet die horizontale Messung auf die Modulebene um (Neigung/Ausrichtung aus der PV-Prognose-Instanz). Haken raus, wenn der Sensor bereits in Modulebene montiert ist."
+        },
+        {
           "type": "SelectVariable",
           "name": "BatPowerID",
           "caption": "Batterie-Leistung (optional - sonst automatisch über InverterHub)"

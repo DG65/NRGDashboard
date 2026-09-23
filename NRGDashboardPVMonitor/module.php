@@ -145,6 +145,10 @@ class NRGDashboardPVMonitor extends IPSModule
         $this->RegisterPropertyInteger('IrradianceID', 0);
         $this->RegisterPropertyInteger('TemperatureID', 0);
         $this->RegisterPropertyFloat('TempCoeff', -0.40);
+        // GHI->POA-Transposition (23.09.2026, Dietmar: Ecowitt-Wetterstation,
+        // horizontal montiert) - Standard AN, weil ein horizontal montierter
+        // Einstrahlungssensor bei Wetterstationen der Regelfall ist.
+        $this->RegisterPropertyBoolean('IrradianceHorizontal', true);
         $this->RegisterPropertyInteger('PvfInstance', 0);
         $this->RegisterPropertyInteger('BatPowerID', 0);
         $this->RegisterPropertyInteger('GridPowerID', 0);
@@ -730,36 +734,101 @@ class NRGDashboardPVMonitor extends IPSModule
      * Neigung/Ausrichtung eines Generators zaehlt dieser mit Faktor 1.0
      * (unveraendertes bisheriges Verhalten) - kein erfundener Standardwert.
      */
-    private function IamWeightedKwp(array $model, ?array $coords, int $ts): float
+    /**
+     * Summe (Modul-Einstrahlung x kWp) je Generator - ersetzt die fruehere
+     * IamWeightedKwp() (23.09.2026, Dietmar-Fund: "Der Einstrahlsensor kommt
+     * von einer Ecowitt Wetterstation und ist horizontal ausgerichtet").
+     * Ein horizontaler Sensor misst GRUNDSAETZLICH weniger als eine geneigte
+     * Suedflaeche bei mittlerem Sonnenstand tatsaechlich abbekommt - das war
+     * die eigentliche, groessere Fehlerquelle (nicht der Einfallswinkel-
+     * Verlust der Modul-Glasoberflaeche allein, siehe IncidenceAngleFactor()
+     * weiter unten, das bleibt zusaetzlich bestehen). GhiToPoa() transponiert
+     * die horizontale Messung per Erbs-Dekomposition + isotropem Himmels-
+     * modell auf die tatsaechliche Modulebene - Standardverfahren der PV-
+     * Ertragsmodellierung (z.B. auch in pvlib), rein geometrisch, keine
+     * anlagenspezifische Konstante, funktioniert also bei jedem Nutzer. Bei
+     * IrradianceHorizontal=false (Sensor bereits in Modulebene montiert)
+     * bleibt nur die reine Einfallswinkel-Reflexionskorrektur wie zuvor.
+     */
+    private function ExpectedIrradianceWeightedKwp(array $model, ?array $coords, int $ts, float $ghi, bool $horizontal): float
     {
         $geometry = $model['generatorGeometry'] ?? [];
         $kwpList = $model['generatorKwp'] ?? [];
         if ($coords === null || count($geometry) !== count($kwpList) || count($kwpList) === 0) {
-            return (float) ($model['totalKwp'] ?? 0.0);
+            return $ghi * (float) ($model['totalKwp'] ?? 0.0);
         }
         $sun = $this->SolarPosition($coords['lat'], $coords['lon'], $ts);
         $sum = 0.0;
         foreach ($kwpList as $i => $kwp) {
             $tilt = $geometry[$i]['tilt'] ?? null;
             $azSouthBased = $geometry[$i]['az'] ?? null;
-            if ($tilt !== null && $azSouthBased !== null) {
-                // Konvention-Umrechnung (23.09.2026, live gegen Dietmars
-                // Anlage gefunden): PVF_GetGenerators() liefert 'azimuth' in
-                // der Open-Meteo-API-Konvention (0=Sued, -90=Ost, +90=West -
-                // siehe PVPrognose::fetchOpenMeteo()), SolarPosition() hier
-                // rechnet dagegen NORD-basiert (0-360, 180=Sued, wie in der
-                // Astronomie/NOAA-Formel ueblich) - ohne diese Umrechnung
-                // waere jede Korrektur um 180 Grad verdreht (aus "Sonne
-                // steht frontal" wuerde "Sonne steht im Ruecken" und
-                // umgekehrt).
-                $azNorthBased = fmod(180.0 + $azSouthBased + 360.0, 360.0);
-                $iam = $this->IncidenceAngleFactor($sun['elevation'], $sun['azimuth'], $tilt, $azNorthBased);
-            } else {
-                $iam = 1.0;
+            if ($tilt === null || $azSouthBased === null) {
+                $sum += $kwp * $ghi;
+                continue;
             }
-            $sum += $kwp * $iam;
+            // Konvention-Umrechnung (23.09.2026, live gegen Dietmars Anlage
+            // gefunden): PVF_GetGenerators() liefert 'azimuth' in der Open-
+            // Meteo-API-Konvention (0=Sued, -90=Ost, +90=West - siehe
+            // PVPrognose::fetchOpenMeteo()), SolarPosition() hier rechnet
+            // dagegen NORD-basiert (0-360, 180=Sued, wie in der Astronomie/
+            // NOAA-Formel ueblich) - ohne diese Umrechnung waere jede
+            // Korrektur um 180 Grad verdreht.
+            $azNorthBased = fmod(180.0 + $azSouthBased + 360.0, 360.0);
+            $poa = $horizontal
+                ? $this->GhiToPoa($ghi, $sun['elevation'], $sun['azimuth'], $tilt, $azNorthBased, $ts)
+                : $ghi * $this->IncidenceAngleFactor($sun['elevation'], $sun['azimuth'], $tilt, $azNorthBased);
+            $sum += $kwp * $poa;
         }
         return $sum;
+    }
+
+    /**
+     * Horizontale Einstrahlung (GHI) auf die tatsaechliche Modulebene (POA)
+     * umgerechnet (23.09.2026) - Standardverfahren: Erbs-Korrelation zerlegt
+     * GHI anhand des Klarheitsindex (Verhaeltnis zur extraterrestrischen
+     * Einstrahlung) in Direkt-/Diffusanteil, danach getrennte Transposition
+     * (Direktstrahl geometrisch per Einfallswinkel inkl. Glas-Reflexions-
+     * verlust, Diffusstrahlung ueber das isotrope Himmelsmodell nach Liu &
+     * Jordan, Bodenreflexion mit Standard-Albedo 0,2 fuer Gras/uebliches
+     * Gelaende). Rein geometrisch/physikalisch, keine gelernte Konstante.
+     */
+    private function GhiToPoa(float $ghi, float $sunElevDeg, float $sunAzDeg, float $tiltDeg, float $panelAzDeg, int $ts): float
+    {
+        if ($ghi <= 0.0 || $sunElevDeg <= 0.0) {
+            return 0.0;
+        }
+        $rad = M_PI / 180.0;
+        $cosZenith = cos((90.0 - $sunElevDeg) * $rad);
+        if ($cosZenith <= 0.01) {
+            return 0.0;
+        }
+        $dayOfYear = (int) gmdate('z', $ts) + 1;
+        $eccCorr = 1.0 + 0.033 * cos(2 * M_PI * $dayOfYear / 365.0);
+        $ghi0 = 1361.0 * $eccCorr * $cosZenith; // extraterrestrische Horizontal-Einstrahlung
+        if ($ghi0 <= 1.0) {
+            return 0.0;
+        }
+        $kt = max(0.0, min(1.0, $ghi / $ghi0)); // Klarheitsindex
+        if ($kt <= 0.22) {
+            $kd = 1.0 - 0.09 * $kt;
+        } elseif ($kt <= 0.80) {
+            $kd = 0.9511 - 0.1604 * $kt + 4.388 * $kt ** 2 - 16.638 * $kt ** 3 + 12.336 * $kt ** 4;
+        } else {
+            $kd = 0.165;
+        }
+        $kd = max(0.0, min(1.0, $kd));
+        $dhi = $kd * $ghi;   // diffuse Horizontal-Einstrahlung
+        $bhi = $ghi - $dhi;  // direkte Horizontal-Einstrahlung
+        $dni = $bhi / $cosZenith; // Direktnormalstrahlung
+
+        $cosAoi = sin($sunElevDeg * $rad) * cos($tiltDeg * $rad)
+            + cos($sunElevDeg * $rad) * sin($tiltDeg * $rad) * cos(($sunAzDeg - $panelAzDeg) * $rad);
+        $iam = ($cosAoi > 0.0) ? $this->IncidenceAngleFactor($sunElevDeg, $sunAzDeg, $tiltDeg, $panelAzDeg) : 0.0;
+        $poaBeam = ($cosAoi > 0.0) ? $dni * $cosAoi * $iam : 0.0;
+        $poaDiffuse = $dhi * (1.0 + cos($tiltDeg * $rad)) / 2.0;
+        $albedo = 0.2;
+        $poaGround = $ghi * $albedo * (1.0 - cos($tiltDeg * $rad)) / 2.0;
+        return max(0.0, $poaBeam + $poaDiffuse + $poaGround);
     }
 
     /**
@@ -3202,19 +3271,21 @@ class NRGDashboardPVMonitor extends IPSModule
             // Einstrahlung deutlich waermer als die 25 C STC-Referenz und
             // liefern dadurch real weniger, als die reine Einstrahlungs-
             // Rechnung vorhersagt.
-            // Einfallswinkel-Korrektur (23.09.2026, Dietmar: "im Winter wird
-            // die Differenz groesser ... physikalisch begruendet, kein
-            // Nachjustieren an den Ist-Wert") - IncidenceAngleFactor() je
-            // Generator-Ausrichtung, ersetzt die bisherige Annahme
-            // senkrechten Lichteinfalls. $coords===null (kein Systemstandort)
-            // oder fehlende Neigung/Ausrichtung lassen den Faktor bei 1.0 -
-            // unveraendertes bisheriges Verhalten, kein Rueckschritt.
+            // Einfallswinkel-Korrektur + GHI->POA-Transposition (23.09.2026,
+            // Dietmar: "im Winter wird die Differenz groesser ... physikalisch
+            // begruendet" + "der Einstrahlsensor ist horizontal ausgerichtet")
+            // - ExpectedIrradianceWeightedKwp()/GhiToPoa() ersetzen die
+            // bisherige Annahme, die horizontale Sensor-Messung entspraeche
+            // direkt der Modul-Einstrahlung bei senkrechtem Lichteinfall.
+            // $coords===null (kein Systemstandort) oder fehlende Neigung/
+            // Ausrichtung lassen den Faktor unveraendert (kein Rueckschritt).
             $coords = $this->Coordinates();
+            $irrHorizontal = (bool) $this->ReadPropertyBoolean('IrradianceHorizontal');
             foreach ($irr as $p) {
                 $ta = $tempByTs[$p[0]] ?? null;
                 $derate = ($ta !== null) ? $this->DerateFactor((float) $ta, (float) $p[1], $tc) : 1.0;
-                $effKwp = $this->IamWeightedKwp($model, $coords, (int) ($p[0] / 1000));
-                $expected[] = [$p[0], round($p[1] * $effKwp * $model['pr'] * $derate, 0)];
+                $weighted = $this->ExpectedIrradianceWeightedKwp($model, $coords, (int) ($p[0] / 1000), (float) $p[1], $irrHorizontal);
+                $expected[] = [$p[0], round($weighted * $model['pr'] * $derate, 0)];
             }
         }
 

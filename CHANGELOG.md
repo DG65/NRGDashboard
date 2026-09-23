@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.114-beta.1 (2026-09-23)
+
+- PVMonitor "PV & Einstrahlung": Hauptursache der Erwartungs-Abweichung gefunden (Dietmar: Einstrahlungssensor ist eine horizontal montierte Ecowitt-Wetterstation) - eine horizontale Messung entspricht NICHT der Einstrahlung auf einer geneigten Modulfläche, das bisherige Modell nahm das aber implizit an. Neue Transposition (GHI→POA, Erbs-Dekomposition + isotropes Himmelsmodell, Standard-PV-Ertragsmodellierung) rechnet die horizontale Messung anhand Sonnenstand und Modul-Neigung/-Ausrichtung auf die tatsächliche Modulebene um. Neue Instanz-Einstellung "Einstrahlungssensor horizontal montiert" (Standard: an) - abschaltbar für POA-montierte Sensoren. Live geprüft: an Dietmars Anlage (27°/-14°) steigt die Erwartung bei einem Testpunkt von 2,80 kW auf 3,29 kW (Ist 4,52 kW) - deutliche, physikalisch begründete Annäherung, kein Vollausgleich (verbleibender Rest vermutlich PR-Kalibrierung, nicht Ziel dieser Änderung).
+
 ## 0.9.113-beta.1 (2026-09-23)
 
 - PVMonitor "PV & Einstrahlung": "PV erwartet" nahm bisher senkrechten Lichteinfall an, dadurch wuchs die Abweichung zur echten Erzeugung im Winter (Dietmar). Neue Einfallswinkel-Korrektur (IAM, ASHRAE-Näherung) anhand Sonnenstand (eigene NOAA-Solar-Position-Berechnung) und Modul-Neigung/-Ausrichtung (aus PVF_GetGenerators()) - physikalisch begründet, keine Anpassung an den Ist-Wert, funktioniert automatisch bei jeder Anlage. Live gegen Dietmars echte Anlagengeometrie (27° Neigung, -14° Azimut) und Koordinaten verifiziert; Azimut-Konvention (Open-Meteo Süd-basiert vs. Astronomie Nord-basiert) dabei als Stolperfalle gefunden und umgerechnet. Ohne Standort oder Modul-Geometrie unverändertes bisheriges Verhalten (Faktor 1,0).
