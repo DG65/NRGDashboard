@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.71-beta.1 (2026-09-23)
+
+- Tile Quoten-Knopf: Prozentzahlen im Ring verkleinert (15px -> 12px), damit genug Abstand zum inneren Ring bleibt (Dietmar).
+
 ## 0.9.70-beta.1 (2026-09-23)
 
 - Tile Quoten-Knopf: Ring von 96 auf 132px vergrößert, damit die beiden Prozentzahlen mehr Platz im Inneren haben (Dietmar); Tabelle darunter entsprechend tiefer gesetzt.

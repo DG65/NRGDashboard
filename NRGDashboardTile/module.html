@@ -134,8 +134,12 @@
   #quotaBtn .qRingAutarky { fill: none; stroke: #4caf50; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
   #quotaBtn .qRingSelf { fill: none; stroke: #42a5f5; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
   #quotaBtn .qCenter { font-family: var(--font); pointer-events: none; }
-  #quotaBtn .qVal { font-size: 15px; font-weight: 700; fill: var(--text, #fff); }
-  #quotaBtn .qLbl { font-size: 7px; fill: var(--textmuted); }
+  /* 15px -> 12px (Dietmar, 23.09.2026: "Abstaende ... zu knapp zwischen den
+     Zahlen und dem inneren Ring ... Zahlen etwas verkleinern") - der Ring
+     selbst blieb beim vorherigen Groesser-Schritt gleich gross (skaliert nur
+     mit dem Container), die Zahlen sollen hier gezielt kleiner werden. */
+  #quotaBtn .qVal { font-size: 12px; font-weight: 700; fill: var(--text, #fff); }
+  #quotaBtn .qLbl { font-size: 6px; fill: var(--textmuted); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
      Tabelle mit allen acht Werten auf einmal (Dietmar, 23.09.2026: "eher eine
      Tabelle mit allen 4/8 Werten aufpoppen ... darf ruhig grosszuegiger
