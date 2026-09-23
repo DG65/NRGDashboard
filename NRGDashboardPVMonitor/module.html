@@ -370,7 +370,15 @@
      beider Zahlen unabhaengig voneinander, ein Abstand allein loeste das nicht).
      Schmaler, kleiner, gedaempfter als die Monatswert-Spalte, damit klar bleibt:
      Haupt- und Nebenzahl. */
+  /* Monatswert-Zelle (rechts) und Kumuliert-Zelle (links) ruecken mit reduziertem
+     Innen-Padding eng zusammen - der normale 8px-Zellenabstand bleibt nur VOR dem
+     naechsten Monat (Kumuliert-Zelle behaelt ihr rechtes Padding), sonst verschwimmt
+     die Monatsgrenze (Dietmar, 23.09.2026). */
+  .ycTable td.ycPaired { padding-right: 2px; }
   .ycTable td.ycCumCell { font-size: 9px; font-weight: 300; opacity: .55; padding-left: 2px; }
+  /* Monatsname zentriert ueber seinen zwei Spalten statt rechtsbuendig (sonst
+     steht er praktisch nur ueber der Kumuliert-Spalte). */
+  .ycTable thead th[colspan] { text-align: center; }
   .ycTable tbody tr.ycExpected td.ycCumCell { opacity: .5; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
      Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). Die Klassen
@@ -2835,7 +2843,12 @@
           + arr.map(function (v, i) {
               var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
               var cCls = (isYearRow && i >= 1) ? rankClass(cumArr[i], cumColRanks[i]) : '';
-              var vTd = '<td' + (vCls ? ' class="' + vCls + '"' : '') + '>' + fmt(v) + '</td>';
+              // "ycPaired" ruemckt Monatswert und kumulierte Spalte optisch eng
+              // zusammen (kleineres Innen-Padding), der volle Zellenabstand bleibt
+              // nur VOR dem naechsten Monat erhalten (Dietmar, 23.09.2026: "man
+              // kann nicht mehr wirklich erkennen, was welcher Monat ist").
+              var vClasses = [i >= 1 ? 'ycPaired' : '', vCls].filter(Boolean).join(' ');
+              var vTd = '<td' + (vClasses ? ' class="' + vClasses + '"' : '') + '>' + fmt(v) + '</td>';
               if (i < 1) { return vTd; }
               var cTd = '<td class="ycCumCell' + (cCls ? ' ' + cCls : '') + '">' + (cumArr[i] !== null ? fmt(cumArr[i]) : '') + '</td>';
               return vTd + cTd;
