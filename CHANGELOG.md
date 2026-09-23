@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.111-beta.1 (2026-09-23)
+
+- Tile Quoten-Panel: "Batterie"-Spalte lief bei 520px rechts aus dem Panel raus, lange "Gesamt"-Werte (z.B. "Einspeisung: 18892,2 kWh") brauchten mehr Platz als der Spaltenkopf selbst (Dietmar). Panel auf 640px verbreitert, lokal mit den tatsächlichen Werten aus Dietmars Screenshot verifiziert.
+
 ## 0.9.110-beta.1 (2026-09-23)
 
 - Tile Quoten-Panel: Netzbezug/-einspeisung und Batterie-Laden/Entladen als zwei weitere Spalten je Zeitraum ergänzt (Dietmar: "PV-Tagesproduktion, den Netzbezug und die Lieferung, das gleiche für die Batterie"). Backend liefert dafür neu batteryChargeKWh/batteryDischargeKWh (dieselbe Vorzeichen-Konvention wie beim Netz, "+ = Entladen"). Panel auf 520px verbreitert, Spaltenabstände ergänzt (liefen bei fünf Spalten ohne Padding ineinander).

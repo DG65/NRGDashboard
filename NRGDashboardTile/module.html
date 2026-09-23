@@ -239,10 +239,11 @@
        lebt im SVG und skaliert mit der Kachelgroesse, das Panel bleibt
        bewusst pixelfest wie gehabt. */
     position: absolute; left: 8px; top: 242px; z-index: 4;
-    /* 300px -> 420px -> 520px (23.09.2026) - zwei weitere Spalten (Netz/
-       Batterie) brauchen Platz, sonst quetscht sich alles zusammen bzw.
-       die Energie-Zeilen brechen um. */
-    display: none; width: 520px;
+    /* 300px -> 420px -> 520px -> 640px (23.09.2026, Dietmar: "Panel ist zu
+       schmal" - "Batterie" lief bei 520px rechts aus dem Panel raus, lange
+       Werte wie "Einspeisung: 18892,2 kWh" brauchen mehr Platz als der
+       Spaltenkopf selbst). */
+    display: none; width: 640px;
     padding: 14px 16px 12px; border-radius: 14px;
     background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
     border: 1px solid rgba(255,255,255,0.10);
