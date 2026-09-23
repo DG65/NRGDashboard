@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.91-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: Schlaglicht nochmals um 50% reduziert (0.25 → 0.125), weiterhin nur bei der Münze.
+
 ## 0.9.90-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: Leerlauf-Kreisbahn (heller/dunkler Hintergrundring hinter den beiden Datenringen) komplett entfernt (Dietmar: "warum bildest Du die Kreisbahnen überhaupt ab? Lass sie einfach weg"). Schlaglicht (Glanzlicht) nur bei der Münze um 50% reduziert, restlicher Energiefluss unverändert.
