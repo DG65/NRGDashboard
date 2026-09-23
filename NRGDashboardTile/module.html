@@ -137,13 +137,17 @@
      optisch mit den beiden echten Datenringen darin). Reine Kontur-Linie,
      keine dritte Wertung. */
   .quota-coin .node-ring { stroke: rgba(255,255,255,.35); stroke-width: 1.3; }
-  /* Leerlauf-Kreisbahn war ein helles Grau (rgba(255,255,255,.12)) - auf dem
-     dunklen Muenzengrund (plasticFill) wirkte das wie eine dritte, unbeteiligte
-     Farbe statt einer "leeren Rille" (Dietmar, 23.09.2026: "die nicht blau
-     ist, ist auch nicht schwarz wie der restliche Hintergrund"). Dunkler,
-     ins Muenzenmaterial eingelassener Ton statt hellem Grau - wirkt jetzt wie
-     eine Vertiefung, nicht wie eine dritte Ringfarbe. */
-  .qcoin-ring-bg { stroke: rgba(0,0,0,.45); }
+  /* Schlaglicht (Glanzlicht) um 50% reduziert, NUR bei der Muenze (Dietmar,
+     23.09.2026) - .node-highlight ist die gemeinsame Klasse aller Knoten
+     (opacity 0.5), ein gezielter Override hier laesst den restlichen
+     Energiefluss unangetastet. */
+  .quota-coin .node-highlight { opacity: 0.25; }
+  /* Leerlauf-Kreisbahn (heller, dann dunkler Grauton als "Vertiefung") ganz
+     entfernt (Dietmar, 23.09.2026: "warum bildest Du die Kreisbahnen
+     ueberhaupt ab? Lass sie einfach weg, damit sie sich gegenueber dem
+     Muenzhintergrund nicht abheben") - keine dritte, unbeteiligte Ringfarbe
+     mehr, nur noch die beiden echten Datenringe auf dem Muenzengrund selbst.
+     Die <circle class="qcoin-ring-bg"> Elemente sind ebenfalls entfernt. */
   /* Kraeftigere, mehr gesaettigte Toene statt der etwas blassen Grundfarben
      (Dietmar, 23.09.2026: "Ringfarben koennten nun etwas kraeftiger werden") -
      dieselbe Grundfarbfamilie (gruen/blau), aber leuchtender. */
@@ -709,8 +713,6 @@
     <circle class="node-bevel" r="42"/>
     <circle class="node-highlight" r="30.2" transform="translate(-12.6,-20.2) scale(1,0.57)"/>
     <circle class="node-spec" r="12.6" transform="translate(-18.5,-23.1) scale(1,0.55)"/>
-    <circle class="qcoin-ring-bg" r="35" fill="none" stroke-width="7"/>
-    <circle class="qcoin-ring-bg" r="24" fill="none" stroke-width="7"/>
     <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <!-- Textblock enger + hoeher (Dietmar, 23.09.2026: "heute musst du auch
