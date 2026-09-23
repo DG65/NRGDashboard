@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.67-beta.1 (2026-09-23)
+
+- Tile: der Kosten-Ticker am Netzanschluss zeigt jetzt den reinen Strompreis (ct/kWh, Bezugspreis bzw. Einspeisevergütung je nach Flussrichtung) statt der auf die aktuelle Leistung hochgerechneten Stundenkosten ("€/h") - Dietmars Wunsch, gerade bei dynamischen Tarifen aussagekräftiger als eine bei schwankender Last ohnehin ungenaue Momentan-Hochrechnung.
+
 ## 0.9.66-beta.1 (2026-09-23)
 
 - Tile Energiefluss: neuer Quoten-Knopf oben links (Dietmar, 23.09.2026: "Autarkie- und Selbstverbrauchsquoten für Tag, Monat, Jahr und Gesamt") - zwei ineinanderliegende Ringe im Stil der Apple-Watch-Aktivitätsringe (außen Autarkiegrad grün, innen Eigenverbrauchsquote blau), zeigen direkt den heutigen Wert; Klick öffnet ein Panel mit den vier Zeiträumen (Tag/Monat/Jahr/Gesamt, Monat/Jahr/Gesamt laden bei Bedarf nach). Autarkiegrad = Anteil des Hausverbrauchs ohne Netzbezug, Eigenverbrauchsquote = Anteil der PV-Erzeugung, der nicht eingespeist wurde. Fehlt eine Quelle (PV-, Netz- oder Hauslast-Leistung), bleibt die jeweilige Quote leer statt eines erfundenen Werts. Auch in der eigenständigen Webseite (IPSView/Browser) nutzbar.

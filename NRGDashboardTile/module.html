@@ -1613,11 +1613,17 @@ function renderValueDisplay(refs) {
   const exporting = (refs.signedW ?? 0) > 0;
   const rateCt = exporting ? refs.feedInTariff : refs.priceNow;
   if (refs.isGrid && COST_TICKER_ON && rateCt != null && refs.active) {
-    const eurPerHour = (refs.magnitude / 1000) * (rateCt / 100);
-    const num = eurPerHour.toFixed(eurPerHour < 1 ? 3 : 2).replace('.', ',');
-    refs.valText.firstChild.nodeValue = (exporting ? '+' : '−') + num;
+    // Reiner ct/kWh-Preis statt hochgerechneter Stundenkosten (Dietmar,
+    // 23.09.2026: "die stuendlichen Kosten sollten durch die einfachen kWh
+    // Kosten ersetzt werden ... macht bei Dynamischen Stromtarifen am
+    // meisten Sinn") - die Hochrechnung auf die aktuelle Leistung (€/h)
+    // suggerierte eine Praezision, die bei schwankender Last ohnehin nicht
+    // stimmte; der Satz selbst (Bezugspreis bzw. Einspeiseverguetung, je
+    // nach Fluss­richtung) ist die eigentlich interessante, stabile Zahl.
+    const num = rateCt.toFixed(1).replace('.', ',');
+    refs.valText.firstChild.nodeValue = (exporting ? '+' : '') + num;
     const unitEl = refs.valText.querySelector('.node-value-unit');
-    if (unitEl) { unitEl.textContent = '€/h'; }
+    if (unitEl) { unitEl.textContent = 'ct/kWh'; }
   } else {
     setValueText(refs.valText, refs.magnitude, refs.measured);
   }
