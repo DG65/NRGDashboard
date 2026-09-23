@@ -162,13 +162,19 @@
      "gedaempft" heisst hier: kein Neon, nicht: kaum sichtbar. */
   .qcoin-ring-autarky { stroke: #3fa565; stroke-linecap: round; opacity: .8; transition: stroke-dashoffset .6s ease; }
   .qcoin-ring-self { stroke: #4a86d6; stroke-linecap: round; opacity: .8; transition: stroke-dashoffset .6s ease; }
-  .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
+  /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
+     kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
+     ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
+     wirklich zusammen"). Jede Zahl traegt jetzt einen deutlich lesbaren Ton
+     IHRES Rings statt eines neutralen Weiss - #qValAutarky/#qValSelf setzen
+     die konkreten Farben inline, diese Klasse liefert nur noch die Basis. */
+  .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; filter: url(#relief); }
   /* var(--textmuted) sass zu dunkel gegen den unteren, dunkleren Teil des
      Muenzen-Verlaufs (plasticFill hat den Lichtpunkt oben links, unten
      rechts wird es deutlich dunkler) - dadurch wirkte "heute" wie
      abgeschnitten statt nur unauffaellig (Dietmar, 23.09.2026). Fester,
      helleres Grau statt der theme-abhaengigen Variable. */
-  .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: rgba(255,255,255,.6); }
+  .qcoin-lbl { font-family: var(--font); font-size: 8px; font-weight: 600; letter-spacing: .3px; fill: rgba(255,255,255,.75); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
      Tabelle mit allen acht Werten auf einmal (Dietmar, 23.09.2026: "eher eine
      Tabelle mit allen 4/8 Werten aufpoppen ... darf ruhig grosszuegiger
@@ -674,9 +680,9 @@
          noch anders platzieren") - bei y=23 sass "heute" fast genau auf dem
          Rand des INNEREN Datenrings (r=24) und wirkte dadurch eingeklemmt/
          abgeschnitten. Jetzt mit klarer Luft zum Ring (y=19 statt 23). -->
-    <text id="qValAutarky" class="qcoin-val" x="0" y="-4" text-anchor="middle"></text>
-    <text id="qValSelf" class="qcoin-val" x="0" y="10" text-anchor="middle" fill="#7fa8e0"></text>
-    <text class="qcoin-lbl" x="0" y="19" text-anchor="middle">heute</text>
+    <text id="qValAutarky" class="qcoin-val" x="0" y="-4" text-anchor="middle" fill="#74d99a"></text>
+    <text id="qValSelf" class="qcoin-val" x="0" y="10" text-anchor="middle" fill="#8fb8f0"></text>
+    <text class="qcoin-lbl" x="0" y="20" text-anchor="middle">heute</text>
   </g>
 </svg>
 <div id="quotaPanel">
