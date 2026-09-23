@@ -6115,6 +6115,16 @@ class NRGDashboardTile extends IPSModule
             $to = min($end, $long ? strtotime('+1 month', strtotime(date('Y-m-01', $from))) : strtotime('+1 day', strtotime('today', $from)));
             $data = @AC_GetAggregatedValues($aid, $vid, $level, $from, $to, 0);
             if (!is_array($data)) {
+                // EIN beschaedigter Datensatz irgendwo im Chunk (Zeitstempel nicht
+                // auf die Aggregations-Grenze ausgerichtet, live gefunden 23.09.2026
+                // bei Dietmar: "Ungueltige Aggregation hour") laesst
+                // AC_GetAggregatedValues() den KOMPLETTEN Chunk als FALSE liefern -
+                // vorher fiel dadurch z.B. der gesamte laufende Monat auf 0 kWh
+                // (Quoten-Knopf zeigte "keine Daten", obwohl die Rohwerte da waren).
+                // Muster wie PVMonitor::DayAggregatesResilient(): bei FALSE
+                // tageweise nachfragen, bei erneutem FALSE aus den 5-Minuten-
+                // Rohwerten selbst nachrechnen statt den Chunk komplett zu verwerfen.
+                $kwh += $this->PowerToEnergyResilientChunk($aid, $vid, $from, $to, $sign);
                 continue;
             }
             foreach ($data as $row) {
@@ -6124,6 +6134,43 @@ class NRGDashboardTile extends IPSModule
                 $avg = (float) $row['Avg'];
                 $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
                 $kwh += $part * $hours / 1000.0;
+            }
+        }
+        return $kwh;
+    }
+
+    /** Rueckfall fuer PowerToEnergy(), wenn ein ganzer Chunk (Monat oder Tag) als
+     *  FALSE zurueckkam - siehe Kommentar dort. Erst tageweise (AGG_DAY), bei
+     *  erneutem FALSE fuer genau diesen Tag aus den 5-Minuten-Rohwerten selbst
+     *  integriert (AC_GetLoggedValues, gleicher Kunstgriff wie DaySeries()). */
+    private function PowerToEnergyResilientChunk(int $aid, int $vid, int $chunkStart, int $chunkEnd, int $sign): float
+    {
+        $kwh = 0.0;
+        for ($d = strtotime('midnight', $chunkStart); $d < $chunkEnd; $d = strtotime('+1 day', $d)) {
+            $dayStart = max($d, $chunkStart);
+            $dayEnd = min($chunkEnd, strtotime('+1 day', $d));
+            $rows = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $dayStart, $dayEnd, 0);
+            if (is_array($rows)) {
+                foreach ($rows as $row) {
+                    if ($this->RowHasImplausiblePower($row)) {
+                        continue;
+                    }
+                    $avg = (float) $row['Avg'];
+                    $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
+                    $kwh += $part * 24.0 / 1000.0;
+                }
+                continue;
+            }
+            // Auch der einzelne Tag scheitert - aus den 5-Minuten-Rohwerten selbst
+            // integrieren (weniger effizient, aber fuer EINEN Tag vertretbar).
+            $series = $this->DaySeries($vid, $dayStart, $dayEnd);
+            if (count($series) < 2) {
+                continue;
+            }
+            $intervalHours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
+            foreach ($series as [, $w]) {
+                $part = ($sign > 0) ? max(0.0, (float) $w) : max(0.0, -(float) $w);
+                $kwh += $part * $intervalHours / 1000.0;
             }
         }
         return $kwh;

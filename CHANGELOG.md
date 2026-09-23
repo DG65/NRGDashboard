@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.76-beta.1 (2026-09-23)
+
+- Tile Quoten-Knopf: Monat/Jahr/Gesamt zeigten teils 0 kWh bzw. implausibel kleine Werte - ein beschädigter Archiv-Zeitstempel (gleiche Ursache wie beim PVMonitor-Jahresvergleich, live bei Dietmar gefunden) ließ `AC_GetAggregatedValues()` für den gesamten betroffenen Monatsblock FALSE liefern, PowerToEnergy() wertete das bisher stillschweigend als 0 statt nachzufragen. Fällt jetzt bei FALSE tageweise, bei Bedarf sogar auf die 5-Minuten-Rohwerte zurück, wie schon bei PVMonitors Jahresvergleich.
+
 ## 0.9.75-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: Mouse-Over auf jedem Jahreswert zeigt jetzt den genauen Platz (Dietmars Idee) - Platz 1-3 mit Medaille (🥇🥈🥉), ab Platz 4 mit Ziffern-Emoji, aber nur, wenn die Spalte mindestens 30 vergleichbare Jahre hat; darunter bleibt es bei reinem Text ("Platz 4 von 14"). Gilt für Monatswerte, kumulierte Werte und die Summe.
