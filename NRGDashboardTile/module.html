@@ -196,7 +196,10 @@
      kein zweiter Klick-Bereich) und gedaempfter (die Muenzen-Fase liegt
      auf dunklem Untergrund, hier auf einer kraeftigen Ringfarbe - volle
      Deckkraft haette die Farbe komplett verdeckt statt nur zu wolben). */
-  .qcoin-ring-bevel { stroke: url(#ringBevelGrad); stroke-linecap: round; opacity: .7; pointer-events: none; transition: stroke-dashoffset .6s ease; }
+  /* Kein gemeinsames stroke mehr - Aussen-/Innenring brauchen wegen des
+     radialen Tubus-Verlaufs (siehe ringTubeOuter/-Inner in den <defs>)
+     unterschiedliche Verlaeufe, je als Attribut direkt am Kreis gesetzt. */
+  .qcoin-ring-bevel { stroke-linecap: round; opacity: .7; pointer-events: none; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
@@ -746,8 +749,8 @@
          (setRing() setzt dashoffset auf beide, siehe module.html JS),
          objectBoundingBox-Verlauf skaliert automatisch je Element, kein
          Koordinaten-Mismatch zwischen den beiden <svg>-Wurzeln moeglich. -->
-    <circle id="qRingAutarkyBevel" class="qcoin-ring-bevel" r="35" fill="none" stroke-width="7" transform="rotate(-90)"/>
-    <circle id="qRingSelfBevel" class="qcoin-ring-bevel" r="24" fill="none" stroke-width="7" transform="rotate(-90)"/>
+    <circle id="qRingAutarkyBevel" class="qcoin-ring-bevel" r="35" fill="none" stroke="url(#ringTubeOuter)" stroke-width="7" transform="rotate(-90)"/>
+    <circle id="qRingSelfBevel" class="qcoin-ring-bevel" r="24" fill="none" stroke="url(#ringTubeInner)" stroke-width="7" transform="rotate(-90)"/>
     <!-- Textblock enger + hoeher (Dietmar, 23.09.2026: "heute musst du auch
          noch anders platzieren") - bei y=23 sass "heute" fast genau auf dem
          Rand des INNEREN Datenrings (r=24) und wirkte dadurch eingeklemmt/
@@ -787,25 +790,36 @@
       <stop offset="70%"  stop-color="#000000" stop-opacity="0"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
     </linearGradient>
-    <!-- Eigener Fasen-Verlauf nur fuer die Quoten-Ringe (23.09.2026, Dietmar
-         Rueckmeldung zur runden Fase: an der Ringspitze immer noch flach).
-         bevelGrad ist DIAGONAL (Ecke oben-links hell, Ecke unten-rechts
-         dunkel) - an der 12-Uhr-Spitze der Ringe (wo der Datenbogen
-         beginnt) liegt genau der Verlaufs-Mittelpunkt, dort wirkte es
-         deshalb flach. Objektbezogener Verlauf, gleiche sichere Technik wie
-         bevelGrad selbst, aber ENTLANG DER LOKALEN X-ACHSE statt diagonal:
-         durch die Drehung der Ring-Kreise wird die lokale plus-X-Richtung
-         zur Bildschirm-Aufwaerts-Richtung (der 12-Uhr-Spitze) - hell bei
-         lokal x nahe eins, dunkel bei x nahe null wird dadurch zu einem
-         echten oben-hell/unten-dunkel-Verlauf, an der Ringspitze am
-         hellsten statt am Mittelpunkt.
-    -->
-    <linearGradient id="ringBevelGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#000000" stop-opacity="0.55"/>
-      <stop offset="42%"  stop-color="#000000" stop-opacity="0"/>
-      <stop offset="58%"  stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85"/>
-    </linearGradient>
+    <!-- Zweiter Anlauf fuer die Ring-Fase (23.09.2026, Dietmar: "die
+         Quotenringe sind oben flach und deshalb oben sehr hell... 'physika-
+         lisch' oben rund oder eben nur aus Fasen bestehen") - ein LINEARER
+         Verlauf (wie zuvor ringBevelGrad) hellt IMMER nur eine Himmels-
+         richtung entlang des Rings auf (hier: die 12-Uhr-Spitze am
+         staerksten), das ist KEIN echter Tubus-Querschnitt, sondern nur
+         eine gerichtete Beleuchtung - an der hellsten Stelle wirkt das
+         "ausgewaschen" statt rund. Ein echter Tubus ist an JEDEM Winkel
+         gleich gewoelbt (Rand dunkler, Mitte des Ringbands heller, Rand
+         wieder dunkler) - das liefert nur ein RADIALER Verlauf, vom
+         RINGMITTELPUNKT aus (nicht vom Ring-Rand), weil der Abstand vom
+         Mittelpunkt fuer jeden Punkt auf dem Kreis unabhaengig vom Winkel
+         genau die Position quer durch das Ringband beschreibt. Getrennte
+         Verlaeufe fuer aussen (r=35)/innen (r=24), weil die Position der
+         Bandkante (Innenkante/Aussenkante der Strichbreite) je Radius einen
+         anderen Prozentsatz vom Gesamtradius einnimmt. userSpaceOnUse mit
+         festem Radius (nicht objectBoundingBox) - unproblematisch, siehe
+         Untersuchung 23.09.2026: der eigentliche Absturz frueher am selben
+         Tag kam von zwei unterschlossenen HTML-Kommentaren, nicht von
+         eigenen Koordinatensystemen in Gradienten. -->
+    <radialGradient id="ringTubeOuter" cx="0" cy="0" r="38.5" gradientUnits="userSpaceOnUse">
+      <stop offset="78%"  stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="91%"  stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+    </radialGradient>
+    <radialGradient id="ringTubeInner" cx="0" cy="0" r="27.5" gradientUnits="userSpaceOnUse">
+      <stop offset="70%"  stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="87%"  stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+    </radialGradient>
     <radialGradient id="glossHi" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.85"/>
       <stop offset="55%"  stop-color="#ffffff" stop-opacity="0.32"/>
