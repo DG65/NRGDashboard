@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.82-beta.1 (2026-09-23)
+
+- Tile Quoten-Muenze: von 104 auf 128px vergrößert; Ringfarben von leuchtenden Neontönen auf tiefere, gesättigte Farben umgestellt (Dietmar: "durch das Helle wird der Blick automatisch von der Hauptsache - Energiefluss - zum Quoten-Button gelenkt") - kräftig, aber ohne vom eigentlichen Energiefluss abzulenken.
+
 ## 0.9.81-beta.1 (2026-09-23)
 
 - Tile Quoten-Muenze: Ursache für "immer noch viel zu weit rechts" gefunden und behoben - sie steckte im Haupt-Flusscanvas mit seiner quadratischen viewBox, die bei einer breiten Kachel per Letterboxing mittig eingepasst wird und den echten linken Rand dadurch nie erreichen kann. Jetzt ein eigenständiges, pixelpositioniertes SVG-Element (wie ursprünglich), das dieselben Verlauf-Definitionen der Knoten weiterverwendet - 3D-Optik bleibt identisch, Position sitzt jetzt wieder am echten Kachelrand. Ringfarben kräftiger (leuchtendes Grün/Blau statt der blasseren Grundtöne).

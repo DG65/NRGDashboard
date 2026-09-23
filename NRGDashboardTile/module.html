@@ -121,7 +121,9 @@
      trotzdem identisch, Fragment-Referenzen gelten dokumentweit. */
   #quotaCoin {
     position: absolute; left: 8px; top: 44px; z-index: 4;
-    width: 104px; height: 104px;
+    /* 104 -> 128px (Dietmar, 23.09.2026: "gerne etwas groesser") - das SVG
+       skaliert per viewBox proportional mit. */
+    width: 128px; height: 128px;
     display: none;
   }
   #quotaCoin.show { display: block; }
@@ -131,8 +133,15 @@
   /* Kraeftigere, mehr gesaettigte Toene statt der etwas blassen Grundfarben
      (Dietmar, 23.09.2026: "Ringfarben koennten nun etwas kraeftiger werden") -
      dieselbe Grundfarbfamilie (gruen/blau), aber leuchtender. */
-  .qcoin-ring-autarky { stroke: #00e676; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: #2979ff; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  /* Nach "gerne...kraeftiger" (0.9.80) kam die Ruecksprache "kraeftiger UND
+     dunkler" (23.09.2026, Dietmar: "durch das Helle wird der Blick
+     automatisch von der Hauptsache - Energiefluss - zum Quoten-Button
+     gelenkt") - die vorherigen Neonfarben waren zwar satt, aber auch sehr
+     HELL und zogen dadurch den Blick vom eigentlichen Fluss weg. Jetzt
+     tiefere, gesaettigte statt leuchtende Toene: wirkt bewusst gesetzt,
+     nicht wie ein zusaetzlicher Blickfang. */
+  .qcoin-ring-autarky { stroke: #1b7a3d; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #1a56c4; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
   .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
   .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: var(--textmuted); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
@@ -637,7 +646,7 @@
     <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
-    <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#5b9dff"></text>
+    <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#7fa8e0"></text>
     <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
   </g>
 </svg>
