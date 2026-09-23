@@ -355,6 +355,12 @@
   .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
   .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
+  /* Kumulierte Jahressumme je Monatszelle, ab Februar (Dietmar, 23.09.2026:
+     "wo man mit der Energieproduktion eines jeden Jahres steht") - dezent
+     UNTER dem Monatswert statt in Klammern daneben, damit die Zelle beim
+     Ueberfliegen nicht doppelt gelesen werden muss. */
+  .ycCum { display: block; font-size: 9px; font-weight: 400; opacity: .55; line-height: 1.3; }
+  .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -2733,8 +2739,20 @@
       function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
       function rowHtml(label, arr, cls) {
         var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
+        // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
+        // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
+        // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
+        var cum = 0, cumOk = true;
+        var cumArr = arr.map(function (v) {
+          if (!cumOk || v === null || v === undefined) { cumOk = false; return null; }
+          cum += v;
+          return cum;
+        });
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
-          + arr.map(function (v) { return '<td>' + fmt(v) + '</td>'; }).join('')
+          + arr.map(function (v, i) {
+              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum">' + fmt(cumArr[i]) + '</span>' : '';
+              return '<td>' + fmt(v) + c + '</td>';
+            }).join('')
           + '<td>' + fmt(sum) + '</td></tr>';
       }
       var body = data.years.map(function (y) { return rowHtml(y, values[y]); }).join('');

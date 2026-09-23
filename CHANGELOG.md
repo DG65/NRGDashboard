@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.51-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: jede Monatszelle zeigt ab Februar zusätzlich, dezent und kleiner darunter, die kumulierte Jahressumme bis zu diesem Monat (Dietmars Wunsch - auf einen Blick sehen, wo man im Jahr steht). Bricht bei der ersten Monatslücke im jeweiligen Jahr ab, statt darüber hinwegzutäuschen.
+
 ## 0.9.50-beta.1 (2026-09-23)
 
 - PVMonitor: Reiter "Jahresvergleich" stand dauerhaft rot, obwohl die Tabelle Werte zeigte (Fund Dietmar). Die Reiterfarbe prüfte `lastData.energy.pv` - das ist die Tages-Energiereihe des PV-Reiters (Wochen-/Monatsansicht), nicht der Jahresvergleich; dieser Bezug war schon falsch, bevor der Reiter zuletzt robuster gemacht wurde. Prüft jetzt dieselbe Bedingung wie die Anzeige selbst (PV-Leistung aufgelöst oder Vorjahreswerte nachgetragen).
