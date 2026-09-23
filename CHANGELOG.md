@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.94-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: die beiden Datenringe wirkten flach statt rund (Dietmar). Stroke-Farbe durch einen vertikalen Verlauf (hell oben, dunkel unten, wie ein von oben beleuchteter Tubus) ersetzt statt einer flachen Volltonfarbe.
+
 ## 0.9.93-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: Schlaglicht weiter reduziert (0.06 → 0.03).
