@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.99-beta.1 (2026-09-23)
+
+- Tile: WURZELURSACHE aller "graue Kachel"-Meldungen seit 0.9.97 gefunden und behoben - ein Rollback-Kommentar endete versehentlich auf "*/" statt "-->" und blieb dadurch offen, bis er zufällig mit dem "-->" eines ganz anderen, weiter unten stehenden Kommentars verschmolz. Alles dazwischen (`</defs>`, der komplette Energiefluss-Aufbau) landete dadurch in einem nie geschlossenen `<defs>`-Block, dessen Inhalt SVG grundsätzlich nie rendert - daher die leere/graue Kachel in JEDEM Browser, nicht nur Firefox. Lokal mit dem echten Live-Payload nachgestellt und verifiziert (DOM vollständig, keine JS-Fehler mehr) bevor erneut ausgerollt wurde.
+
 ## 0.9.98-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: dritter Anlauf für runde statt flache Datenringe - diesmal per Wiederverwendung der bereits bewährten Fasen-Technik der Münze selbst (`bevelGrad`, objectBoundingBox-Verlauf, KEIN Filter, KEINE eigenen `userSpaceOnUse`-Koordinaten), statt der beiden vorherigen, in Dietmars Firefox/Mac fehlgeschlagenen Ansätze (Verlauf-Stroke mit eigenen Koordinaten, eigener feSpecularLighting-Filter).

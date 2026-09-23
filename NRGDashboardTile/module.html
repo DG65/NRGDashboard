@@ -819,14 +819,19 @@
         <feMergeNode in="specClip"/>
       </feMerge>
     </filter>
-    <!-- Runder-Ring-Filter "ringRound" (23.09.2026) WIEDER ENTFERNT - zweiter
-         Anlauf fuer runde statt flache Quoten-Ringe, diesmal per SVG-Filter-
-         Attribut statt CSS-Verlauf-Stroke, hat live ERNEUT die ganze Kachel
-         grau gerendert (Dietmar: "das gleiche wieder"). Beide Anlaeufe
-         (Verlauf-Stroke UND eigener Filter) sind live gescheitert - naechster
-         Versuch braucht erst eine lokale Verifikation (Browser-Tool gegen
-         die Datei selbst) statt eines weiteren Live-Schusses auf Dietmars
-         Anlage. Zurueck zum unveraenderten "relief"-Filter. */
+    <!-- GEFUNDENER WURZELFEHLER (23.09.2026): dieser Kommentar endete hier
+         bis Build 225 auf "*/" statt "-->" (Ueberbleibsel aus einer
+         fruehreren C-Stil-Fassung) - ein HTML-Kommentar OHNE "-->" bleibt
+         bis zum naechsten "-->" IM DOKUMENT offen und verschluckt bis dahin
+         allen Markup-Code, hier bis zur naechsten zufaelligen "-->" mitten
+         im node-center-Kommentar. Dadurch landeten </defs>, wires-layer UND
+         node-center in einem nie geschlossenen <defs> - <defs>-Inhalt wird
+         NIE gerendert, die Kachel blieb komplett leer/grau. Das war die
+         eigentliche Ursache ALLER "graue Kachel"-Meldungen seit Build 224
+         (Rollback-Kommentar selbst enthielt den Tippfehler), nicht die
+         zuvor vermuteten Firefox-/Filter-Eigenheiten. Runder-Ring-Filter
+         "ringRound" bleibt entfernt, zurueck zum unveraenderten
+         "relief"-Filter. -->
   </defs>
 
   <g id="wires-layer"></g>
