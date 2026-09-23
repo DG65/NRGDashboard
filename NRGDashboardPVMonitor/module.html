@@ -361,6 +361,16 @@
      zu viel Hoehe - Dietmars Korrektur direkt nach der ersten Fassung). */
   .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 4px; }
   .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
+  /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
+     Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). */
+  .ycTable td.ycGold { color: #e0b64a; font-weight: 700; }
+  .ycTable td.ycSilver { color: #c7ccd1; font-weight: 700; }
+  .ycTable td.ycBronze { color: #cd8a5c; font-weight: 700; }
+  /* Kumuliertes Ranking: gleiche Farben, aber volle Deckkraft statt der
+     gedaempften .ycCum-Grundopazitaet, sonst verblasst die Auszeichnung. */
+  .ycCum.ycGold { opacity: 1; color: #e0b64a; font-weight: 700; }
+  .ycCum.ycSilver { opacity: 1; color: #c7ccd1; font-weight: 700; }
+  .ycCum.ycBronze { opacity: 1; color: #cd8a5c; font-weight: 700; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -2737,25 +2747,65 @@
       var panel = document.getElementById('yearComparePanel');
       var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
       function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
-      function rowHtml(label, arr, cls) {
-        var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
-        // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
-        // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
-        // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
+      // Siegertreppchen je Spalte (Dietmar, 23.09.2026): die drei hoechsten Werte
+      // je Monat (und Summe) ueber alle JAHRE (Mittelwert/Erwartung zaehlen nicht
+      // mit - das sind keine Jahre) werden Gold/Silber/Bronze eingefaerbt - NUR
+      // Farbe, kein Emoji (Dietmars Korrektur: "stoert mehr wie dass sie bringen").
+      // Gleichstand teilt sich denselben Rang, alle drei Raenge bleiben dabei
+      // vergeben (bei einer Zweifach-Goldplatzierung ruecken Silber/Bronze normal
+      // nach, sie werden NICHT uebersprungen).
+      function topRanks(colIdx, sumCol) {
+        var vals = data.years.map(function (y) { return sumCol ? values[y].reduce(function (s, v) { return s + (v || 0); }, 0) : values[y][colIdx]; })
+          .filter(function (v) { return v !== null && v !== undefined; });
+        var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
+        var ranks = {};
+        uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
+        return ranks;
+      }
+      var colRanks = MONTH_NAMES.map(function (_, i) { return topRanks(i, false); });
+      var sumRanks = topRanks(null, true);
+      var RANK_CLASS = ['ycGold', 'ycSilver', 'ycBronze'];
+      // Liefert die reine Klasse ("ycGold" o.ae.) oder '' - Aufrufer haengen sie
+      // je nach Kontext (td oder Span) selbst mit " class=\"...\"" an.
+      function rankClass(v, ranks) { return (v !== null && v !== undefined && ranks[v] !== undefined) ? RANK_CLASS[ranks[v]] : ''; }
+      // Kumuliertes Siegertreppchen ist ein EIGENES Ranking, nicht dasselbe wie das
+      // der reinen Monatswerte (Dietmar: "was auf den Monatswert zutrifft, muss
+      // nicht auf den kumulierten zutreffen").
+      function cumulate(arr) {
         var cum = 0, cumOk = true;
-        var cumArr = arr.map(function (v) {
+        return arr.map(function (v) {
           if (!cumOk || v === null || v === undefined) { cumOk = false; return null; }
           cum += v;
           return cum;
         });
+      }
+      var cumValues = {};
+      data.years.forEach(function (y) { cumValues[y] = cumulate(values[y]); });
+      function cumTopRanks(colIdx) {
+        var vals = data.years.map(function (y) { return cumValues[y][colIdx]; }).filter(function (v) { return v !== null && v !== undefined; });
+        var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
+        var ranks = {};
+        uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
+        return ranks;
+      }
+      var cumColRanks = MONTH_NAMES.map(function (_, i) { return (i >= 1) ? cumTopRanks(i) : {}; });
+      function rowHtml(label, arr, cls, isYearRow) {
+        var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
+        // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
+        // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
+        // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
+        var cumArr = cumulate(arr);
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
           + arr.map(function (v, i) {
-              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum">' + fmt(cumArr[i]) + '</span>' : '';
-              return '<td>' + fmt(v) + c + '</td>';
+              var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
+              var cCls = (isYearRow && i >= 1) ? rankClass(cumArr[i], cumColRanks[i]) : '';
+              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum' + (cCls ? ' ' + cCls : '') + '">' + fmt(cumArr[i]) + '</span>' : '';
+              return '<td' + (vCls ? ' class="' + vCls + '"' : '') + '>' + fmt(v) + c + '</td>';
             }).join('')
-          + '<td>' + fmt(sum) + '</td></tr>';
+          + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td' + (sCls ? ' class="' + sCls + '"' : '') + '>' + fmt(sum) + '</td>'; })()
+          + '</tr>';
       }
-      var body = data.years.map(function (y) { return rowHtml(y, values[y]); }).join('');
+      var body = data.years.map(function (y) { return rowHtml(y, values[y], '', true); }).join('');
       body += rowHtml('Mittelwert', values.mittelwert, 'ycTotal');
       if (values.expected) { body += rowHtml('Erwartung', values.expected, 'ycExpected'); }
       var sub = '<div class="ycSubTabs">'
