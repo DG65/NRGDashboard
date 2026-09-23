@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.108-beta.1 (2026-09-23)
+
+- Tile: Quoten-Panel (öffnet sich beim Klick auf die Münze) überdeckte beim Öffnen die noch sichtbare Münze selbst - top-Position lag mitten in deren Bereich. Panel jetzt unterhalb der Münze positioniert.
+
 ## 0.9.107-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: gefunden, warum die Ring-Fase nur in Chrome intakt war, in Firefox aber kaputt (Dietmar). Ursache: `gradientUnits="userSpaceOnUse"` kombiniert mit dem `transform="rotate(-90)"` der Ring-Kreise wird von Chrome und Firefox unterschiedlich interpretiert (die Spec ist an dieser Stelle uneindeutig). Ersetzt durch den Standard-Mechanismus (objectBoundingBox, keine eigenen Koordinaten) - dieselbe seit Monaten browserübergreifend zuverlässige Technik wie beim bestehenden bevelGrad, rechnerisch identisches Ergebnis.

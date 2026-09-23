@@ -231,10 +231,14 @@
      Klick fuer Klick. Deutlich breiter/aufwendiger als das bisherige schmale
      Panel: eigene Kopfzeile, Mini-Ringe je Zelle statt nur Text. */
   #quotaPanel {
-    /* top-Wert grob geschaetzt wie bei den anderen HTML-Overlays (Diagnose-
-       Badge etc.) - die Muenze selbst lebt jetzt im SVG und skaliert mit der
-       Kachelgroesse, das Panel bleibt bewusst pixelfest wie gehabt. */
-    position: absolute; left: 8px; top: 150px; z-index: 4;
+    /* top-Wert (23.09.2026, Dietmar: "musst Du das Quoten Panel weiter nach
+       unten schieben") - die Muenze selbst liegt bei top:44px + 190px Hoehe
+       (siehe #quotaCoin), reicht also bis y=234px. 150px lag DEUTLICH
+       darin, das Panel ueberdeckte beim Oeffnen die noch sichtbare Muenze.
+       Jetzt unterhalb der Muenze (234px + etwas Abstand). Die Muenze selbst
+       lebt im SVG und skaliert mit der Kachelgroesse, das Panel bleibt
+       bewusst pixelfest wie gehabt. */
+    position: absolute; left: 8px; top: 242px; z-index: 4;
     display: none; width: 300px;
     padding: 14px 16px 12px; border-radius: 14px;
     background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
