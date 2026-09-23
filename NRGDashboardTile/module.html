@@ -104,6 +104,55 @@
   .diag-row .diag-value { opacity: 0.9; margin: 1px 0; }
   .diag-row .diag-reason { opacity: 0.7; font-size: 11px; }
 
+  /* Quoten-Knopf (23.09.2026, Dietmar: "Autarkie- und Selbstverbrauchsquoten
+     fuer Tag, Monat, Jahr und Gesamt", Stil "wie die Aktivitaet bei der Apple
+     Watch") - oben LINKS, der einzige Kachel-Rand, der bei der radialen
+     Knoten-Verteilung immer frei bleibt (unten links/rechts sitzen bereits
+     Status-Pille und Diagnose-Badge, oben rechts Symcons eigener Doppelpfeil).
+     Deutlich groesser als die 26px-Pillen ("von der Status-Pille ausgehend
+     ... 10x groesser") - zwei ineinanderliegende Ringe wie die Aktivitaets-
+     Ringe der Apple Watch, keine reine Zahl/Text-Pille. */
+  #quotaBtn {
+    position: absolute; left: 8px; top: 8px; z-index: 4;
+    width: 96px; height: 96px; border-radius: 50%; cursor: pointer;
+    background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    display: none; /* erst sichtbar, sobald buildPayload() eine Tagesquote liefert */
+    align-items: center; justify-content: center;
+  }
+  #quotaBtn.show { display: flex; }
+  #quotaBtn svg { width: 100%; height: 100%; }
+  #quotaBtn .qRingBg { fill: none; stroke: rgba(255,255,255,0.10); }
+  #quotaBtn .qRingAutarky { fill: none; stroke: #4caf50; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  #quotaBtn .qRingSelf { fill: none; stroke: #42a5f5; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  #quotaBtn .qCenter { font-family: var(--font); pointer-events: none; }
+  #quotaBtn .qVal { font-size: 15px; font-weight: 700; fill: var(--text, #fff); }
+  #quotaBtn .qLbl { font-size: 7px; fill: var(--textmuted); }
+  #quotaPanel {
+    position: absolute; left: 8px; top: 110px; z-index: 4;
+    display: none; min-width: 220px; max-width: 280px;
+    padding: 10px 12px; border-radius: 12px;
+    background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
+    border: 1px solid rgba(255,255,255,0.10);
+    font-family: var(--font); font-size: 12px; color: var(--text, #fff);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  #quotaPanel.open { display: block; }
+  #quotaPanel .qTabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  #quotaPanel .qTabs button {
+    flex: 1 1 0; background: none; border: 1px solid rgba(255,255,255,0.14); color: inherit;
+    border-radius: 6px; padding: 4px 0; font-size: 11px; cursor: pointer; opacity: .7;
+    font-family: var(--font);
+  }
+  #quotaPanel .qTabs button.active { opacity: 1; font-weight: 700; border-color: rgba(255,255,255,0.4); }
+  #quotaPanel .qRow { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+  #quotaPanel .qRow:first-of-type { border-top: none; }
+  #quotaPanel .qDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  #quotaPanel .qNote { opacity: .6; font-size: 11px; padding-top: 4px; }
+  body.light #quotaBtn, body.light #quotaPanel { background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(242,244,247,.95)); border-color: rgba(0,0,0,.10); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  body.light #quotaBtn .qRingBg { stroke: rgba(0,0,0,.08); }
+
   .tour-overlay {
     position: absolute; inset: 0; z-index: 10; display: none;
     align-items: center; justify-content: center;
@@ -542,6 +591,28 @@
 <body>
 
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<button id="quotaBtn" type="button" title="Autarkie- und Selbstverbrauchsquote">
+  <svg viewBox="0 0 96 96">
+    <circle class="qRingBg" cx="48" cy="48" r="42"/>
+    <circle class="qRingAutarky" id="qRingAutarky" cx="48" cy="48" r="42" stroke-width="8" transform="rotate(-90 48 48)"/>
+    <circle class="qRingBg" cx="48" cy="48" r="30"/>
+    <circle class="qRingSelf" id="qRingSelf" cx="48" cy="48" r="30" stroke-width="8" transform="rotate(-90 48 48)"/>
+    <g class="qCenter" text-anchor="middle">
+      <text class="qVal" id="qValAutarky" x="48" y="42"></text>
+      <text class="qVal" id="qValSelf" x="48" y="58" fill="#42a5f5"></text>
+      <text class="qLbl" x="48" y="70">heute</text>
+    </g>
+  </svg>
+</button>
+<div id="quotaPanel">
+  <div class="qTabs" id="qTabs">
+    <button data-period="day" class="active">Tag</button>
+    <button data-period="month">Monat</button>
+    <button data-period="year">Jahr</button>
+    <button data-period="total">Gesamt</button>
+  </div>
+  <div id="qRows"></div>
+</div>
 <div id="ampelWash"></div>
 <div id="emsDecision"><span class="mode"></span><span class="reason"></span></div>
 
@@ -3223,9 +3294,18 @@ window.addEventListener('resize', function () {
 });
 
 function handleMessage(raw) {
+  const first = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  // Antwort auf requestAction('quotasLoad', ...) - NICHT der volle Kachel-Payload,
+  // nur die nachgeforderten Quoten fuer einen einzelnen Zeitraum (Muster: PVMonitor
+  // dayPlanUpdate/yearCompareUpdate). Frueh abzweigen, bevor der Rest von
+  // handleMessage() das als volles Geraete-Payload fehlinterpretiert.
+  if (first && first.type === 'quotasUpdate') {
+    renderQuotaPeriod(first.data);
+    return;
+  }
   lastRawPayload = raw;
   updateViewBox();
-  const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const d = first;
   renderStatus(d ? d.renderedAt : 0);
   renderDiagnostics(d ? d.diagnostics : []);
 
@@ -3263,6 +3343,15 @@ function handleMessage(raw) {
       emsBadge.classList.add('show');
     } else {
       emsBadge.classList.remove('show');
+    }
+
+    // Quoten-Knopf: Tageswert kommt direkt im Haupt-Payload (throttled auf
+    // Backend-Seite), Monat/Jahr/Gesamt laedt der Knopf erst bei Klick nach.
+    if (d.dayQuotas) {
+      quotaCache.day = d.dayQuotas;
+      document.getElementById('quotaBtn').classList.add('show');
+      if (quotaPeriod === 'day') { renderQuotaPeriod(d.dayQuotas); }
+      else { renderQuotaButton(d.dayQuotas); }
     }
   }
 
@@ -3392,6 +3481,106 @@ function handleMessage(raw) {
   ensureNodes(items);
   items.forEach(item => updateOuterNode(nodeRefs[item.key], item));
 }
+
+// Quoten-Knopf (23.09.2026, Dietmar: "Autarkie- und Selbstverbrauchsquoten
+// fuer Tag, Monat, Jahr und Gesamt" + "Stil wie die Aktivitaet bei der Apple
+// Watch"). Zwei konzentrische Ringe = zwei Kennzahlen (Muster: Move-/Uebungs-
+// Ring der Watch, hier Autarkie aussen gruen, Eigenverbrauch innen blau),
+// Fuellstand = Prozentwert. quotaCache haelt bereits geladene Zeitraeume,
+// damit ein zweiter Klick auf denselben Zeitraum nicht erneut nachfordert.
+var quotaPeriod = 'day';
+var quotaCache = {};
+var RING_R_OUTER = 42, RING_R_INNER = 30;
+var RING_C_OUTER = 2 * Math.PI * RING_R_OUTER;
+var RING_C_INNER = 2 * Math.PI * RING_R_INNER;
+
+function pct(frac) { return (frac === null || frac === undefined) ? null : Math.round(frac * 100); }
+
+function setRing(el, circumference, frac) {
+  el.setAttribute('stroke-dasharray', circumference.toFixed(1));
+  if (frac === null || frac === undefined) {
+    el.setAttribute('stroke-dashoffset', circumference.toFixed(1));
+    el.style.opacity = '0';
+    return;
+  }
+  el.style.opacity = '1';
+  el.setAttribute('stroke-dashoffset', (circumference * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1));
+}
+
+/** Fuellt nur den Knopf selbst (Ringe + zwei Zahlen) - fuer den Tageswert, der
+ *  immer im Haupt-Payload steckt, auch wenn gerade ein anderer Zeitraum offen ist. */
+function renderQuotaButton(data) {
+  setRing(document.getElementById('qRingAutarky'), RING_C_OUTER, data ? data.autarky : null);
+  setRing(document.getElementById('qRingSelf'), RING_C_INNER, data ? data.selfConsumption : null);
+  var a = pct(data ? data.autarky : null), s = pct(data ? data.selfConsumption : null);
+  document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
+  document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
+  var title = 'Heute: ';
+  title += 'Autarkie ' + (a === null ? 'unbekannt' : a + ' %');
+  title += ' · Eigenverbrauch ' + (s === null ? 'unbekannt' : s + ' %');
+  document.getElementById('quotaBtn').title = title;
+}
+
+var QUOTA_PERIOD_LABEL = { day: 'heute', month: 'diesen Monat', year: 'dieses Jahr', total: 'gesamt' };
+
+/** Fuellt das aufgeklappte Panel fuer den gerade gewaehlten Zeitraum - UND,
+ *  wenn dieser Zeitraum "day" ist, gleich auch den Knopf selbst. */
+function renderQuotaPeriod(data) {
+  var rows = document.getElementById('qRows');
+  if (!data) {
+    rows.innerHTML = '<div class="qNote">Keine Daten für diesen Zeitraum.</div>';
+    return;
+  }
+  quotaCache[data.period] = data;
+  if (data.period === quotaPeriod) {
+    var lbl = document.querySelector('#quotaBtn .qLbl');
+    if (lbl) { lbl.textContent = QUOTA_PERIOD_LABEL[data.period] || ''; }
+    setRing(document.getElementById('qRingAutarky'), RING_C_OUTER, data.autarky);
+    setRing(document.getElementById('qRingSelf'), RING_C_INNER, data.selfConsumption);
+    var a = pct(data.autarky), s = pct(data.selfConsumption);
+    document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
+    document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
+  }
+  function row(color, label, frac, kwh, unit) {
+    var v = frac === null || frac === undefined ? 'keine Daten' : pct(frac) + ' %';
+    var extra = (kwh !== null && kwh !== undefined) ? ' <span style="opacity:.6">(' + kwh.toFixed(1).replace('.', ',') + ' ' + unit + ')</span>' : '';
+    return '<div class="qRow"><span><span class="qDot" style="background:' + color + '"></span>' + label + '</span><span>' + v + extra + '</span></div>';
+  }
+  rows.innerHTML = row('#4caf50', 'Autarkiegrad', data.autarky, data.houseKWh, 'kWh Verbrauch')
+    + row('#42a5f5', 'Eigenverbrauchsquote', data.selfConsumption, data.pvKWh, 'kWh PV')
+    + (data.autarky === null || data.selfConsumption === null
+        ? '<div class="qNote">Fehlt eine Quelle (PV-, Netz- oder Hauslast-Leistung) oder gibt es für ' + (QUOTA_PERIOD_LABEL[data.period] || 'diesen Zeitraum') + ' noch keine Archivwerte, bleibt die jeweilige Quote leer.</div>'
+        : '');
+}
+
+(function () {
+  var btn = document.getElementById('quotaBtn');
+  var panel = document.getElementById('quotaPanel');
+  btn.addEventListener('click', function (ev) {
+    ev.stopPropagation();
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open') && quotaCache[quotaPeriod]) {
+      renderQuotaPeriod(quotaCache[quotaPeriod]);
+    }
+  });
+  document.addEventListener('click', function (ev) {
+    if (panel.classList.contains('open') && !panel.contains(ev.target) && ev.target !== btn) {
+      panel.classList.remove('open');
+    }
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#qTabs button'), function (tb) {
+    tb.onclick = function () {
+      quotaPeriod = tb.getAttribute('data-period');
+      Array.prototype.forEach.call(document.querySelectorAll('#qTabs button'), function (b) { b.classList.toggle('active', b === tb); });
+      if (quotaCache[quotaPeriod]) {
+        renderQuotaPeriod(quotaCache[quotaPeriod]);
+      } else {
+        document.getElementById('qRows').innerHTML = '<div class="qNote">Lade …</div>';
+        requestAction('quotasLoad', JSON.stringify({ period: quotaPeriod }));
+      }
+    };
+  });
+})();
 </script>
 </body>
 </html>

@@ -207,6 +207,11 @@ class NRGDashboardTile extends IPSModule
         // (28.08.2026) - dieselbe Throttle-Begruendung wie YesterdayCache.
         $this->RegisterAttributeString('PeakTodayCache', '{}');
         $this->RegisterAttributeString('AutarkyCache', '{}');
+        // Quoten-Knopf (23.09.2026): Tageswert steckt bereits im Haupt-Payload
+        // (fuer die Ringe im Knopf selbst), Monat/Jahr/Gesamt laedt der Knopf
+        // erst bei Klick nach - Cache verhindert, dass buildPayload() bei jedem
+        // Aufruf erneut PowerToEnergy() ueber den heutigen Tag rechnet.
+        $this->RegisterAttributeString('DayQuotasCache', '{}');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
         // Einfuehrungs-Tour bei erster Benutzung (28.08.2026, Dietmar:
         // "eine Tour die bei der ersten Benutzung eingeblendet und nur per
@@ -531,7 +536,36 @@ class NRGDashboardTile extends IPSModule
         if ($Ident === 'OpenAnimStyle' || $Ident === 'BlockedAnimStyle') {
             $this->SetValue($Ident, max(0, min(3, (int) $Value)));
             $this->Render();
+            return;
         }
+        // Quoten-Knopf (23.09.2026, Dietmar: "Autarkie- und Selbstverbrauchsquoten
+        // fuer Tag, Monat, Jahr und Gesamt") - kein Rendern noetig, nur die
+        // Kennzahlen fuer den angefragten Zeitraum an die Kachel zurueckgeben
+        // (Muster: PVMonitor 'yearCompare' etc.). NICHT ueber UpdateVisualizationValue()
+        // direkt, sondern ueber PushMessage() - so kann ProcessHookData() dieselbe
+        // Antwort fuer die eigenstaendige Webseite abfangen (siehe dort).
+        if ($Ident === 'quotasLoad') {
+            $req = json_decode((string) $Value, true);
+            $period = in_array(($req['period'] ?? ''), ['day', 'month', 'year', 'total'], true) ? $req['period'] : 'day';
+            $this->PushMessage(json_encode([
+                'ok'   => true,
+                'type' => 'quotasUpdate',
+                'data' => $this->EnergyQuotas($period),
+            ]));
+            return;
+        }
+    }
+
+    /** Antworten von RequestAction(): normal an die Kachel, ueber den WebHook (?action=) stattdessen einsammeln. */
+    private ?array $hookCapture = null;
+
+    private function PushMessage(string $json): void
+    {
+        if ($this->hookCapture !== null) {
+            $this->hookCapture[] = $json;
+            return;
+        }
+        $this->UpdateVisualizationValue($json);
     }
 
     /**
@@ -1487,6 +1521,23 @@ class NRGDashboardTile extends IPSModule
             echo str_replace('/*%%PAYLOAD%%*/', 'handleDetail(' . json_encode($this->BuildDetailPayload($key, $day)) . ');', $html);
             return;
         }
+        // Nachforderung der eigenstaendigen Webseite (IPSView/Browser): dort gibt es
+        // kein requestAction() des Symcon-Rahmens (Fund somm bei PVMonitor,
+        // 20.09.2026, gleiche Ursache hier fuer den neuen Quoten-Knopf). Nur der
+        // lesende Quoten-Abruf - keine schreibenden Aktionen ueber den offenen Hook.
+        if (isset($_GET['action'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            if ((string) $_GET['action'] !== 'quotasLoad') {
+                echo json_encode([]);
+                return;
+            }
+            $this->hookCapture = [];
+            $this->RequestAction('quotasLoad', (string) ($_GET['value'] ?? '{}'));
+            $out = $this->hookCapture;
+            $this->hookCapture = null;
+            echo '[' . implode(',', $out) . ']';
+            return;
+        }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($this->buildPayload());
@@ -1494,6 +1545,9 @@ class NRGDashboardTile extends IPSModule
         }
         header('Content-Type: text/html; charset=utf-8');
         $html = file_get_contents(__DIR__ . '/module.html');
+        $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
+               . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
+               . '.then(function(l){l.forEach(function(m){handleMessage(m);});}).catch(function(){});}</script>';
         $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');'
                . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
@@ -1796,6 +1850,10 @@ class NRGDashboardTile extends IPSModule
             'emsDecision' => $this->ReadEmsDecision(),
             // Automatische Vorfuehrung (03.09.2026) - nur Vorstellungs-Instanzen.
             'autoTour'    => (bool) $this->GetValue('DemoAutoTour'),
+            // Quoten-Knopf (23.09.2026): Tageswert steckt im Haupt-Payload (fuer die
+            // Ringe im Knopf selbst, throttled), Monat/Jahr/Gesamt laedt der Knopf
+            // per requestAction('quotasLoad') nach (siehe RequestAction()).
+            'dayQuotas'   => $this->DayQuotasCached(),
         ];
     }
 
@@ -2184,6 +2242,19 @@ class NRGDashboardTile extends IPSModule
     }
 
     private const AUTARKY_CACHE_TTL_SEC = 300;
+
+    /** EnergyQuotas('day'), throttled - siehe DayQuotasCache-Kommentar bei Create(). */
+    private function DayQuotasCached(): array
+    {
+        $now = time();
+        $cache = json_decode((string) $this->ReadAttributeString('DayQuotasCache'), true);
+        if (is_array($cache) && ($now - ($cache['fetchedAt'] ?? 0)) < self::AUTARKY_CACHE_TTL_SEC && isset($cache['data'])) {
+            return $cache['data'];
+        }
+        $data = $this->EnergyQuotas('day');
+        $this->WriteAttributeString('DayQuotasCache', json_encode(['data' => $data, 'fetchedAt' => $now]));
+        return $data;
+    }
 
     /** Autarkiegrad heute (28.08.2026): 1 - Netzbezug/Hauslast, aus den
      *  bereits vorhandenen Bausteinen GridDayEnergyKWh()+DaySeries() des
@@ -6005,6 +6076,159 @@ class NRGDashboardTile extends IPSModule
         $max = isset($row['Max']) ? abs((float) $row['Max']) : 0.0;
         $min = isset($row['Min']) ? abs((float) $row['Min']) : 0.0;
         return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
+    }
+
+    private const AGG_HOUR = 0;
+    private const AGG_5MIN = 5;
+
+    /**
+     * 1:1 NRGDashboardPVMonitor::PowerToEnergy() (Store-Checkliste 9g,
+     * 13.09.2026 dort erarbeitet) - hier fuer die Quoten-Kennzahlen
+     * (Autarkie/Eigenverbrauch) gebraucht, die anders als die bisherigen
+     * Tages-Kennzahlen auch Monat/Jahr/Gesamt abdecken sollen. Bis 2 Tage
+     * TAGEWEISE in 5-Minuten-Aufloesung (genau), laengere Zeitraeume
+     * MONATSWEISE ueber die Stundenstufe - AC_GetAggregatedValues bricht bei
+     * haeufig schreibenden Variablen sonst mit "Zu viele Werte (>50000)" ab.
+     */
+    private function PowerToEnergy(int $vid, int $start, int $end, int $sign): float
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return 0.0;
+        }
+        $aid = $this->ArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return 0.0;
+        }
+        $long = strtotime('+2 day', $start) < $end;
+        $level = $long ? self::AGG_HOUR : self::AGG_5MIN;
+        $hours = $long ? 1.0 : 5.0 / 60.0;
+        $kwh = 0.0;
+        for ($from = $start; $from < $end; $from = $to) {
+            $to = min($end, $long ? strtotime('+1 month', strtotime(date('Y-m-01', $from))) : strtotime('+1 day', strtotime('today', $from)));
+            $data = @AC_GetAggregatedValues($aid, $vid, $level, $from, $to, 0);
+            if (!is_array($data)) {
+                continue;
+            }
+            foreach ($data as $row) {
+                if ($this->RowHasImplausiblePower($row)) {
+                    continue;
+                }
+                $avg = (float) $row['Avg'];
+                $part = ($sign > 0) ? max(0.0, $avg) : max(0.0, -$avg);
+                $kwh += $part * $hours / 1000.0;
+            }
+        }
+        return $kwh;
+    }
+
+    /** Start-/Endzeitpunkt der vier Quoten-Zeitraeume, DST-sicher (SUITE.md). */
+    private function QuotaPeriodBounds(string $period): array
+    {
+        $now = time();
+        switch ($period) {
+            case 'month':
+                return [(int) strtotime('first day of this month midnight'), $now];
+            case 'year':
+                return [(int) mktime(0, 0, 0, 1, 1, (int) date('Y')), $now];
+            case 'total':
+                // SPAN_YEARS-Grenze wie im Jahresvergleich - "seit Inbetriebnahme"
+                // ohne die tatsaechlich fruehste Logzeile separat ermitteln zu
+                // muessen.
+                return [(int) strtotime('-20 years', $now), $now];
+            default:
+                return [(int) strtotime('today'), $now];
+        }
+    }
+
+    /**
+     * Autarkiegrad (Anteil des Hausverbrauchs OHNE Netzbezug) und Eigenver-
+     * brauchsquote (Anteil der PV-Erzeugung, der NICHT eingespeist wurde) fuer
+     * einen der vier Zeitraeume (Dietmar, 23.09.2026: "im Energiefluss...
+     * fuer den Tag, Monat, Jahr und Gesamt"). Baut auf denselben Bausteinen
+     * wie AutarkyRatioToday()/GridDayEnergyKWh() auf, aber ueber PowerToEnergy()
+     * statt 5-Minuten-DaySeries() - sonst waere ein Jahr/Gesamt-Zeitraum bei
+     * jeder Anfrage viel zu teuer (siehe PowerToEnergy()-Kommentar). Liefert
+     * null je Kennzahl, wenn die noetige Quelle fehlt - keine erfundenen
+     * Standardwerte (SUITE.md).
+     */
+    private function EnergyQuotas(string $period): array
+    {
+        [$start, $end] = $this->QuotaPeriodBounds($period);
+        $devices = $this->GetDevices();
+        $gi = $this->primaryGridDevice($devices);
+
+        // resolvePowerValue() MUSS vor dem Lesen von 'usingFallback'/'fallbackPowerID'
+        // je Geraet laufen - sie setzt das Flag als Seiteneffekt (Muster:
+        // GridDayEnergyKWh() oben).
+        foreach ($devices as &$dev) {
+            $this->resolvePowerValue($dev);
+        }
+        unset($dev);
+
+        $pvKWh = 0.0; $hasPv = false;
+        foreach ($devices as $dev) {
+            if (($dev['function'] ?? '') !== 'pv') {
+                continue;
+            }
+            $powerID = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
+            if ($powerID <= 0) {
+                continue;
+            }
+            $hasPv = true;
+            $pvKWh += $this->PowerToEnergy($powerID, $start, $end, 1);
+        }
+
+        $gridImportKWh = null; $gridExportKWh = null;
+        if ($gi !== null) {
+            $gd = $devices[$gi];
+            $powerID = (int) (!empty($gd['usingFallback']) ? ($gd['fallbackPowerID'] ?? 0) : ($gd['powerID'] ?? 0));
+            if ($powerID > 0) {
+                $sign = $this->activePowerSign($gd);
+                // sign=-1 heisst: Bezug ist bereits negativ im Rohwert (siehe
+                // GridDayEnergyKWh()) - vor PowerToEnergy() vereinheitlichen,
+                // damit "sign=1" dort immer Bezug meint.
+                $gridImportKWh = $this->PowerToEnergy($powerID, $start, $end, $sign > 0 ? -1 : 1);
+                $gridExportKWh = $this->PowerToEnergy($powerID, $start, $end, $sign > 0 ? 1 : -1);
+            }
+        }
+
+        $houseKWh = null;
+        $housePowerID = 0;
+        foreach ($devices as $dev) {
+            if (($dev['function'] ?? '') === 'house') {
+                $housePowerID = (int) (!empty($dev['usingFallback']) ? ($dev['fallbackPowerID'] ?? 0) : ($dev['powerID'] ?? 0));
+                break;
+            }
+        }
+        if ($housePowerID > 0) {
+            $houseKWh = $this->PowerToEnergy($housePowerID, $start, $end, 1);
+        } elseif ($hasPv && $gridImportKWh !== null) {
+            // Kein eigener Hauslast-Knoten (Standard-Setup) - Energiebilanz:
+            // Hausverbrauch = PV-Erzeugung + Netzbezug - Netzeinspeisung
+            // (Batterie hebt sich ueber eine volle Ladung/Entladung auf,
+            // vernachlaessigbar fuer eine Quoten-Kennzahl, nicht fuer die
+            // exakte Sankey-Bilanz - dort rechnet PVMonitor praeziser).
+            $houseKWh = max(0.0, $pvKWh + $gridImportKWh - ($gridExportKWh ?? 0.0));
+        }
+
+        $autarky = null;
+        if ($houseKWh !== null && $houseKWh > 0.01 && $gridImportKWh !== null) {
+            $autarky = max(0.0, min(1.0, 1 - ($gridImportKWh / $houseKWh)));
+        }
+        $selfConsumption = null;
+        if ($hasPv && $pvKWh > 0.01 && $gridExportKWh !== null) {
+            $selfConsumption = max(0.0, min(1.0, ($pvKWh - $gridExportKWh) / $pvKWh));
+        }
+
+        return [
+            'period' => $period,
+            'autarky' => $autarky,
+            'selfConsumption' => $selfConsumption,
+            'houseKWh' => $houseKWh,
+            'pvKWh' => $hasPv ? round($pvKWh, 2) : null,
+            'gridImportKWh' => $gridImportKWh !== null ? round($gridImportKWh, 2) : null,
+            'gridExportKWh' => $gridExportKWh !== null ? round($gridExportKWh, 2) : null,
+        ];
     }
 
     private function DaySeries(int $vid, int $from, int $to): array
