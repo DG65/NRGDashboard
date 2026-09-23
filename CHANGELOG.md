@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.54-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: die kumulierte Jahressumme je Zelle bekommt ein EIGENES Gold/Silber/Bronze-Ranking, getrennt vom Ranking des reinen Monatswerts (ein Jahr kann im Monatswert vorn liegen und in der Summe zurückfallen, und umgekehrt - Fund Dietmar). Beim kumulierten Wert bewusst nur Farbe, keine Medaille.
+
 ## 0.9.53-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: die drei besten Jahre je Spalte (jeder Monat und die Summe) werden olympisch mit Gold/Silber/Bronze markiert - Farbe plus Medaillen-Symbol, damit es auch farbenblind erkennbar bleibt. Gleichstand teilt sich denselben Rang.

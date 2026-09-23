@@ -368,6 +368,12 @@
   .ycTable td.ycSilver { color: #c7ccd1; font-weight: 700; }
   .ycTable td.ycBronze { color: #cd8a5c; font-weight: 700; }
   .ycMedal { font-size: 9px; margin-left: 2px; }
+  /* Kumuliertes Siegertreppchen: eigenes Ranking, gleiche Farben, aber ohne
+     Medaille und bewusst mit voller Deckkraft (statt der gedaempften .ycCum-
+     Grundopazitaet), sonst verblasst die Auszeichnung wieder. */
+  .ycCum.ycGold { opacity: 1; color: #e0b64a; font-weight: 700; }
+  .ycCum.ycSilver { opacity: 1; color: #c7ccd1; font-weight: 700; }
+  .ycCum.ycBronze { opacity: 1; color: #cd8a5c; font-weight: 700; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -2766,20 +2772,38 @@
         var m = rank === undefined ? '' : ' <span class="ycMedal">' + MEDAL_ICON[rank] + '</span>';
         return { cls: cls, medal: m };
       }
-      function rowHtml(label, arr, cls, isYearRow) {
-        var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
-        // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
-        // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
-        // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
+      // Laufende Jahressumme ab Februar (Januar allein waere identisch zum
+      // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
+      // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
+      function cumulate(arr) {
         var cum = 0, cumOk = true;
-        var cumArr = arr.map(function (v) {
+        return arr.map(function (v) {
           if (!cumOk || v === null || v === undefined) { cumOk = false; return null; }
           cum += v;
           return cum;
         });
+      }
+      // Das Siegertreppchen der kumulierten Werte ist ein EIGENES Ranking, nicht
+      // dasselbe wie das der reinen Monatswerte (Dietmar, 23.09.2026: "was auf den
+      // Monatswert zutrifft, muss nicht auf den kumulierten zutreffen") - nur Farbe,
+      // bewusst OHNE Medaille, damit die Zelle nicht mit zwei Symbolen ueberladen wird.
+      var cumValues = {};
+      data.years.forEach(function (y) { cumValues[y] = cumulate(values[y]); });
+      function cumMedalRanks(colIdx) {
+        var vals = data.years.map(function (y) { return cumValues[y][colIdx]; }).filter(function (v) { return v !== null && v !== undefined; });
+        var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
+        var ranks = {};
+        uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
+        return ranks;
+      }
+      var cumColRanks = MONTH_NAMES.map(function (_, i) { return (i >= 1) ? cumMedalRanks(i) : {}; });
+      function rowHtml(label, arr, cls, isYearRow) {
+        var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
+        var cumArr = cumulate(arr);
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
           + arr.map(function (v, i) {
-              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum">' + fmt(cumArr[i]) + '</span>' : '';
+              var cumCls = (isYearRow && i >= 1 && cumArr[i] !== null && cumColRanks[i][cumArr[i]] !== undefined) ? ' ' + MEDAL_CLASS[cumColRanks[i][cumArr[i]]] : '';
+              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum' + cumCls + '">' + fmt(cumArr[i]) + '</span>' : '';
               var mc = (isYearRow && v !== null && v !== undefined) ? medalCell(v, colRanks[i][v]) : { cls: '', medal: '' };
               return '<td' + mc.cls + '>' + fmt(v) + mc.medal + c + '</td>';
             }).join('')
