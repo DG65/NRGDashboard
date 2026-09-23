@@ -2622,8 +2622,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Beide Klick-Einblendungen (Diagnose-Panel + Quoten-Panel, siehe dort)
+// schliessen sich von selbst nach 30 s (Dietmar, 23.09.2026: "die Tabelle
+// nach 30 s auch wieder verschwinden ... gilt natuerlich auch fuer die
+// Einblendung des Zustands") - EIN gemeinsamer Helfer statt zweimal derselbe
+// Timer-Code, jede erneute Interaktion (Oeffnen) setzt die 30 s neu an.
+var AUTO_CLOSE_MS = 30000;
+var autoCloseTimers = {};
+function armAutoClose(panelId) {
+  clearTimeout(autoCloseTimers[panelId]);
+  autoCloseTimers[panelId] = setTimeout(function () {
+    var el = document.getElementById(panelId);
+    if (el) { el.classList.remove('open'); }
+  }, AUTO_CLOSE_MS);
+}
+
 function toggleDiagPanel() {
-  document.getElementById('diagPanel').classList.toggle('open');
+  var panel = document.getElementById('diagPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) { armAutoClose('diagPanel'); }
+  else { clearTimeout(autoCloseTimers.diagPanel); }
 }
 
 function renderDiagnostics(entries) {
@@ -3569,7 +3587,11 @@ function renderQuotaPeriod(data) {
   btn.addEventListener('click', function (ev) {
     ev.stopPropagation();
     panel.classList.toggle('open');
-    if (!panel.classList.contains('open')) { return; }
+    if (!panel.classList.contains('open')) {
+      clearTimeout(autoCloseTimers.quotaPanel);
+      return;
+    }
+    armAutoClose('quotaPanel');
     renderQuotaTable();
     // Alle noch fehlenden Zeitraeume auf einen Schlag nachfordern (nicht erst
     // Klick fuer Klick wie in der ersten Fassung) - "Tag" steckt immer schon
@@ -3583,6 +3605,7 @@ function renderQuotaPeriod(data) {
   document.addEventListener('click', function (ev) {
     if (panel.classList.contains('open') && !panel.contains(ev.target) && ev.target !== btn) {
       panel.classList.remove('open');
+      clearTimeout(autoCloseTimers.quotaPanel);
     }
   });
 })();

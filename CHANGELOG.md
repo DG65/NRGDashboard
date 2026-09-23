@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.72-beta.1 (2026-09-23)
+
+- Tile: Quoten-Panel und Diagnose-Panel ("Einblendung des Zustands") schließen sich jetzt von selbst nach 30 s, statt offen stehen zu bleiben, bis man daneben klickt (Dietmar). Jede erneute Öffnung setzt die 30 s neu an.
+
 ## 0.9.71-beta.1 (2026-09-23)
 
 - Tile Quoten-Knopf: Prozentzahlen im Ring verkleinert (15px -> 12px), damit genug Abstand zum inneren Ring bleibt (Dietmar).
