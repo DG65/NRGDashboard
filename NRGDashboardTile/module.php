@@ -6256,23 +6256,42 @@ class NRGDashboardTile extends IPSModule
                 break;
             }
         }
+        // Energiebilanz als Rueckfall/Plausibilitaetsnetz: Hausverbrauch = PV-
+        // Erzeugung + Netzbezug - Netzeinspeisung (Batterie hebt sich ueber eine
+        // volle Ladung/Entladung auf, vernachlaessigbar fuer eine Quoten-
+        // Kennzahl, nicht fuer die exakte Sankey-Bilanz - dort rechnet
+        // PVMonitor praeziser).
+        $balanceHouseKWh = ($hasPv && $gridImportKWh !== null) ? max(0.0, $pvKWh + $gridImportKWh - ($gridExportKWh ?? 0.0)) : null;
         if ($housePowerID > 0) {
             $houseKWh = $this->PowerToEnergy($housePowerID, $start, $end, 1);
-        } elseif ($hasPv && $gridImportKWh !== null) {
-            // Kein eigener Hauslast-Knoten (Standard-Setup) - Energiebilanz:
-            // Hausverbrauch = PV-Erzeugung + Netzbezug - Netzeinspeisung
-            // (Batterie hebt sich ueber eine volle Ladung/Entladung auf,
-            // vernachlaessigbar fuer eine Quoten-Kennzahl, nicht fuer die
-            // exakte Sankey-Bilanz - dort rechnet PVMonitor praeziser).
-            $houseKWh = max(0.0, $pvKWh + $gridImportKWh - ($gridExportKWh ?? 0.0));
+            // Der Haus-Knoten ist bei vielen Setups ein BERECHNETER Wert ohne
+            // durchgaengige eigene Archivhistorie (live bei Dietmar gefunden,
+            // 23.09.2026: "Jahr"/"Gesamt" lieferten nur ein paar kWh, obwohl
+            // Netzbezug allein schon ein Vielfaches davon war - physikalisch
+            // unmoeglich, der Hausverbrauch deckt IMMER mindestens den
+            // Netzbezug). Wirkt die direkte Integration unplausibel klein,
+            // gilt stattdessen die Energiebilanz.
+            if ($balanceHouseKWh !== null && $gridImportKWh !== null && $houseKWh < $gridImportKWh) {
+                $houseKWh = $balanceHouseKWh;
+            }
+        } else {
+            $houseKWh = $balanceHouseKWh;
         }
 
+        // Plausibilitaetsnetz statt erfundener 0 % (SUITE.md "keine erfundenen
+        // Standardwerte"): Netzbezug kann nie groesser als der Hausverbrauch
+        // sein, Einspeisung nie groesser als die PV-Erzeugung - beides
+        // physikalisch unmoeglich. Passiert es trotzdem (live gefunden,
+        // 23.09.2026, "Gesamt": Einspeisung > Erzeugung, weil PV- und
+        // Netzzaehler ueber viele Jahre unterschiedlich lange Archivhistorien
+        // haben), bleibt die betroffene Quote lieber leer als eine falsche
+        // Zahl zu zeigen.
         $autarky = null;
-        if ($houseKWh !== null && $houseKWh > 0.01 && $gridImportKWh !== null) {
+        if ($houseKWh !== null && $houseKWh > 0.01 && $gridImportKWh !== null && $gridImportKWh <= $houseKWh) {
             $autarky = max(0.0, min(1.0, 1 - ($gridImportKWh / $houseKWh)));
         }
         $selfConsumption = null;
-        if ($hasPv && $pvKWh > 0.01 && $gridExportKWh !== null) {
+        if ($hasPv && $pvKWh > 0.01 && $gridExportKWh !== null && $gridExportKWh <= $pvKWh) {
             $selfConsumption = max(0.0, min(1.0, ($pvKWh - $gridExportKWh) / $pvKWh));
         }
 

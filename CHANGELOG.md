@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.78-beta.1 (2026-09-23)
+
+- Tile Quoten-Knopf: zwei weitere Plausibilitätslücken live gefunden und behoben. (1) Die direkte Hauslast-Integration lieferte bei Monat/Jahr/Gesamt teils einen kleineren Wert als der reine Netzbezug - physikalisch unmöglich (Hausverbrauch deckt immer mindestens den Netzbezug). Wirkt sie unplausibel klein, gilt jetzt die Energiebilanz (PV + Bezug − Einspeisung) als Ersatz. (2) Bei "Gesamt" konnte die Einspeisung rechnerisch größer als die PV-Erzeugung erscheinen (unterschiedlich lange Archivhistorien von PV- und Netzzähler über viele Jahre) - die betroffene Quote bleibt in so einem Fall jetzt leer statt eine falsche Prozentzahl zu zeigen.
+
 ## 0.9.77-beta.1 (2026-09-23)
 
 - Tile: Fataler Fehler im Quoten-Knopf bei Monat/Jahr/Gesamt behoben - `self::AGG_DAY` war in Tile nie definiert (anders als in PVMonitor), der eben erst gebaute Rückfall in Build 203 stürzte dadurch sofort ab, sobald er griff. Live bei Dietmar gefunden und direkt nachgezogen.
