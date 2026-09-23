@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.104-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: 3D-Wölbung der Ringe war nach der letzten Abschwächung fast verschwunden. Kontrast über dunklere Randstops statt einer breiten hellen Fläche wieder angehoben - Lichtkante bleibt schmal und mäßig hell.
+
 ## 0.9.103-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: Lichtkante der Ring-Fase schmaler und weniger deckend (0.6 → 0.3 Deckkraft). Münzrand probeweise komplett entfernt (Dietmar: "lass uns mal probieren").

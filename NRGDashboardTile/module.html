@@ -814,21 +814,24 @@
          Untersuchung 23.09.2026: der eigentliche Absturz frueher am selben
          Tag kam von zwei unterschlossenen HTML-Kommentaren, nicht von
          eigenen Koordinatensystemen in Gradienten. -->
-    <!-- Helle Flaeche weiter reduziert (23.09.2026, Dietmar: "muss noch
-         weniger werden") - Lichtkante schmaler (zwei eng benachbarte Stops
-         statt einer einzelnen Spitze) UND deutlich weniger deckend
-         (0.6 -> 0.3), die dunklen Randstops bleiben wie gehabt. */
+    <!-- Nachjustiert (23.09.2026, Dietmar: "haben nun wieder kein 3D
+         Aussehen mehr") - die letzte Abschwaechung (0.3 Deckkraft) hat die
+         Woelbung fast unsichtbar gemacht. Kontrast wieder angehoben, aber
+         ueber die dunklen Randstops (0.75 statt 0.6/0.65) statt ueber eine
+         breite helle Flaeche - die Lichtkante selbst bleibt schmal und
+         maessig hell (0.4), den 3D-Eindruck liefert vor allem der dunklere
+         Rand zu beiden Seiten. */
     <radialGradient id="ringTubeOuter" cx="0" cy="0" r="38.5" gradientUnits="userSpaceOnUse">
-      <stop offset="80%"  stop-color="#000000" stop-opacity="0.6"/>
-      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
-      <stop offset="93%"  stop-color="#ffffff" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+      <stop offset="80%"  stop-color="#000000" stop-opacity="0.75"/>
+      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="93%"  stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
     </radialGradient>
     <radialGradient id="ringTubeInner" cx="0" cy="0" r="27.5" gradientUnits="userSpaceOnUse">
-      <stop offset="74%"  stop-color="#000000" stop-opacity="0.6"/>
-      <stop offset="85%"  stop-color="#ffffff" stop-opacity="0.3"/>
-      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+      <stop offset="74%"  stop-color="#000000" stop-opacity="0.75"/>
+      <stop offset="85%"  stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.78"/>
     </radialGradient>
     <radialGradient id="glossHi" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.85"/>
