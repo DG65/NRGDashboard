@@ -140,9 +140,9 @@
   /* Schlaglicht (Glanzlicht) NUR bei der Muenze reduziert (Dietmar,
      23.09.2026) - .node-highlight ist die gemeinsame Klasse aller Knoten
      (opacity 0.5), ein gezielter Override hier laesst den restlichen
-     Energiefluss unangetastet. Erst -50% (0.25), auf Wunsch nochmals -50%
-     (0.125). */
-  .quota-coin .node-highlight { opacity: 0.125; }
+     Energiefluss unangetastet. Schrittweise -50% je Rueckmeldung:
+     0.25 -> 0.125 -> 0.06. */
+  .quota-coin .node-highlight { opacity: 0.06; }
   /* Leerlauf-Kreisbahn (heller, dann dunkler Grauton als "Vertiefung") ganz
      entfernt (Dietmar, 23.09.2026: "warum bildest Du die Kreisbahnen
      ueberhaupt ab? Lass sie einfach weg, damit sie sich gegenueber dem
