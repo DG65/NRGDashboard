@@ -112,8 +112,12 @@
      Deutlich groesser als die 26px-Pillen ("von der Status-Pille ausgehend
      ... 10x groesser") - zwei ineinanderliegende Ringe wie die Aktivitaets-
      Ringe der Apple Watch, keine reine Zahl/Text-Pille. */
+  /* top: 44px statt 8px (Dietmar, 23.09.2026: "muss weiter nach unten rutschen
+     wegen der Ueberdeckung") - Symcon zeichnet den Instanznamen als eigene
+     Kachel-Kopfzeile UEBER unserem SVG (siehe CLAUDE.md "Kachel ohne eigenen
+     Titel"), der Ring lag ihr direkt im Weg. */
   #quotaBtn {
-    position: absolute; left: 8px; top: 8px; z-index: 4;
+    position: absolute; left: 8px; top: 44px; z-index: 4;
     width: 96px; height: 96px; border-radius: 50%; cursor: pointer;
     background: linear-gradient(180deg, rgba(60,64,72,0.92), rgba(28,30,36,0.92));
     border: 1px solid rgba(255,255,255,0.10);
@@ -129,27 +133,37 @@
   #quotaBtn .qCenter { font-family: var(--font); pointer-events: none; }
   #quotaBtn .qVal { font-size: 15px; font-weight: 700; fill: var(--text, #fff); }
   #quotaBtn .qLbl { font-size: 7px; fill: var(--textmuted); }
+  /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
+     Tabelle mit allen acht Werten auf einmal (Dietmar, 23.09.2026: "eher eine
+     Tabelle mit allen 4/8 Werten aufpoppen ... darf ruhig grosszuegiger
+     ausgeschmueckt werden") - alle drei fehlenden Zeitraeume werden beim
+     Oeffnen in EINEM Rutsch nachgefordert (requestQuotaPeriod()), nicht erst
+     Klick fuer Klick. Deutlich breiter/aufwendiger als das bisherige schmale
+     Panel: eigene Kopfzeile, Mini-Ringe je Zelle statt nur Text. */
   #quotaPanel {
-    position: absolute; left: 8px; top: 110px; z-index: 4;
-    display: none; min-width: 220px; max-width: 280px;
-    padding: 10px 12px; border-radius: 12px;
+    position: absolute; left: 8px; top: 146px; z-index: 4;
+    display: none; width: 300px;
+    padding: 14px 16px 12px; border-radius: 14px;
     background: linear-gradient(180deg, rgba(60,64,72,0.97), rgba(28,30,36,0.97));
     border: 1px solid rgba(255,255,255,0.10);
     font-family: var(--font); font-size: 12px; color: var(--text, #fff);
-    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
   }
   #quotaPanel.open { display: block; }
-  #quotaPanel .qTabs { display: flex; gap: 4px; margin-bottom: 8px; }
-  #quotaPanel .qTabs button {
-    flex: 1 1 0; background: none; border: 1px solid rgba(255,255,255,0.14); color: inherit;
-    border-radius: 6px; padding: 4px 0; font-size: 11px; cursor: pointer; opacity: .7;
-    font-family: var(--font);
-  }
-  #quotaPanel .qTabs button.active { opacity: 1; font-weight: 700; border-color: rgba(255,255,255,0.4); }
-  #quotaPanel .qRow { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.08); }
-  #quotaPanel .qRow:first-of-type { border-top: none; }
-  #quotaPanel .qDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-  #quotaPanel .qNote { opacity: .6; font-size: 11px; padding-top: 4px; }
+  #quotaPanel .qHead { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  #quotaPanel .qHead .qHeadRing { width: 20px; height: 20px; border-radius: 50%; background: conic-gradient(#4caf50 0 50%, #42a5f5 50% 100%); flex: none; }
+  #quotaTable { width: 100%; border-collapse: collapse; }
+  #quotaTable th { font-size: 10.5px; font-weight: 600; color: var(--textmuted); text-align: right; padding: 0 0 6px; }
+  #quotaTable th:first-child, #quotaTable td:first-child { text-align: left; }
+  #quotaTable td { padding: 7px 0; border-top: 1px solid rgba(255,255,255,0.08); vertical-align: middle; }
+  #quotaTable tr:first-child td { border-top: none; }
+  #quotaTable .qPeriodLbl { font-weight: 600; }
+  #quotaTable .qCell { text-align: right; white-space: nowrap; }
+  #quotaTable .qMiniRing { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  #quotaTable .qPct { font-weight: 700; font-size: 13px; }
+  #quotaTable .qSub { display: block; font-size: 9.5px; opacity: .55; margin-top: 1px; }
+  #quotaTable .qLoading, #quotaTable .qDash { opacity: .4; }
+  #quotaPanel .qFoot { margin-top: 10px; font-size: 10.5px; opacity: .55; line-height: 1.4; }
   body.light #quotaBtn, body.light #quotaPanel { background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(242,244,247,.95)); border-color: rgba(0,0,0,.10); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
   body.light #quotaBtn .qRingBg { stroke: rgba(0,0,0,.08); }
 
@@ -604,13 +618,12 @@
   </svg>
 </button>
 <div id="quotaPanel">
-  <div class="qTabs" id="qTabs">
-    <button data-period="day" class="active">Tag</button>
-    <button data-period="month">Monat</button>
-    <button data-period="year">Jahr</button>
-    <button data-period="total">Gesamt</button>
-  </div>
-  <div id="qRows"></div>
+  <div class="qHead"><span class="qHeadRing"></span>Autarkie &amp; Eigenverbrauch</div>
+  <table id="quotaTable">
+    <thead><tr><th></th><th>Autarkiegrad</th><th>Eigenverbrauch</th></tr></thead>
+    <tbody id="quotaTableBody"></tbody>
+  </table>
+  <div class="qFoot">Autarkiegrad: Anteil des Hausverbrauchs ohne Netzbezug. Eigenverbrauchsquote: Anteil der PV-Erzeugung, der nicht eingespeist wurde.</div>
 </div>
 <div id="ampelWash"></div>
 <div id="emsDecision"><span class="mode"></span><span class="reason"></span></div>
@@ -3342,12 +3355,12 @@ function handleMessage(raw) {
     }
 
     // Quoten-Knopf: Tageswert kommt direkt im Haupt-Payload (throttled auf
-    // Backend-Seite), Monat/Jahr/Gesamt laedt der Knopf erst bei Klick nach.
+    // Backend-Seite), Monat/Jahr/Gesamt laedt das Panel erst bei Klick nach.
     if (d.dayQuotas) {
       quotaCache.day = d.dayQuotas;
       document.getElementById('quotaBtn').classList.add('show');
-      if (quotaPeriod === 'day') { renderQuotaPeriod(d.dayQuotas); }
-      else { renderQuotaButton(d.dayQuotas); }
+      renderQuotaButton(d.dayQuotas);
+      if (document.getElementById('quotaPanel').classList.contains('open')) { renderQuotaTable(); }
     }
   }
 
@@ -3468,13 +3481,18 @@ function handleMessage(raw) {
 // fuer Tag, Monat, Jahr und Gesamt" + "Stil wie die Aktivitaet bei der Apple
 // Watch"). Zwei konzentrische Ringe = zwei Kennzahlen (Muster: Move-/Uebungs-
 // Ring der Watch, hier Autarkie aussen gruen, Eigenverbrauch innen blau),
-// Fuellstand = Prozentwert. quotaCache haelt bereits geladene Zeitraeume,
-// damit ein zweiter Klick auf denselben Zeitraum nicht erneut nachfordert.
-var quotaPeriod = 'day';
+// Fuellstand = Prozentwert. Der Ring selbst zeigt immer NUR den Tageswert
+// (der ohnehin im Haupt-Payload steckt); alle vier Zeitraeume gleichzeitig
+// stehen in der aufklappenden TABELLE (Dietmar, 23.09.2026, nach der ersten
+// Vier-Knopf-Fassung: "eher eine Tabelle mit allen 4/8 Werten aufpoppen") -
+// quotaCache haelt bereits geladene Zeitraeume, damit ein zweites Oeffnen
+// nicht erneut nachfordert.
 var quotaCache = {};
 var RING_R_OUTER = 42, RING_R_INNER = 30;
 var RING_C_OUTER = 2 * Math.PI * RING_R_OUTER;
 var RING_C_INNER = 2 * Math.PI * RING_R_INNER;
+var QUOTA_PERIODS = ['day', 'month', 'year', 'total'];
+var QUOTA_PERIOD_LABEL = { day: 'Tag', month: 'Monat', year: 'Jahr', total: 'Gesamt' };
 
 function pct(frac) { return (frac === null || frac === undefined) ? null : Math.round(frac * 100); }
 
@@ -3489,50 +3507,53 @@ function setRing(el, circumference, frac) {
   el.setAttribute('stroke-dashoffset', (circumference * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1));
 }
 
-/** Fuellt nur den Knopf selbst (Ringe + zwei Zahlen) - fuer den Tageswert, der
- *  immer im Haupt-Payload steckt, auch wenn gerade ein anderer Zeitraum offen ist. */
+/** Fuellt den Knopf selbst (Ringe + zwei Zahlen) - immer der Tageswert. */
 function renderQuotaButton(data) {
   setRing(document.getElementById('qRingAutarky'), RING_C_OUTER, data ? data.autarky : null);
   setRing(document.getElementById('qRingSelf'), RING_C_INNER, data ? data.selfConsumption : null);
   var a = pct(data ? data.autarky : null), s = pct(data ? data.selfConsumption : null);
   document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
   document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
-  var title = 'Heute: ';
-  title += 'Autarkie ' + (a === null ? 'unbekannt' : a + ' %');
-  title += ' · Eigenverbrauch ' + (s === null ? 'unbekannt' : s + ' %');
-  document.getElementById('quotaBtn').title = title;
+  document.getElementById('quotaBtn').title = 'Heute: Autarkie ' + (a === null ? 'unbekannt' : a + ' %')
+    + ' · Eigenverbrauch ' + (s === null ? 'unbekannt' : s + ' %') + ' - Klick für alle Zeiträume';
 }
 
-var QUOTA_PERIOD_LABEL = { day: 'heute', month: 'diesen Monat', year: 'dieses Jahr', total: 'gesamt' };
+/** Eine Tabellenzeile (ein Zeitraum), mit Mini-Ring je Kennzahl statt nur Text -
+ *  "grosszuegiger ausgeschmueckt" (Dietmar) als die anfaengliche reine Textzeile. */
+function quotaCellHtml(color, frac, kwh, unit) {
+  if (frac === null || frac === undefined) {
+    return '<td class="qCell qDash">–</td>';
+  }
+  var deg = Math.max(0, Math.min(1, frac)) * 360;
+  var ring = 'conic-gradient(' + color + ' 0deg ' + deg + 'deg, rgba(255,255,255,.12) ' + deg + 'deg 360deg)';
+  var kwhTxt = (kwh !== null && kwh !== undefined) ? '<span class="qSub">' + kwh.toFixed(1).replace('.', ',') + ' kWh ' + unit + '</span>' : '';
+  return '<td class="qCell"><span class="qMiniRing" style="background:' + ring + '"></span><span class="qPct">' + pct(frac) + ' %</span>' + kwhTxt + '</td>';
+}
 
-/** Fuellt das aufgeklappte Panel fuer den gerade gewaehlten Zeitraum - UND,
- *  wenn dieser Zeitraum "day" ist, gleich auch den Knopf selbst. */
+function renderQuotaTable() {
+  var body = document.getElementById('quotaTableBody');
+  var anyMissingSource = false;
+  body.innerHTML = QUOTA_PERIODS.map(function (p) {
+    var data = quotaCache[p];
+    var rowLabel = '<td class="qPeriodLbl">' + QUOTA_PERIOD_LABEL[p] + '</td>';
+    if (!data) {
+      return '<tr>' + rowLabel + '<td class="qCell qLoading">Lädt …</td><td class="qCell qLoading">Lädt …</td></tr>';
+    }
+    if (data.autarky === null || data.selfConsumption === null) { anyMissingSource = true; }
+    return '<tr>' + rowLabel
+      + quotaCellHtml('#4caf50', data.autarky, data.houseKWh, 'Verbrauch')
+      + quotaCellHtml('#42a5f5', data.selfConsumption, data.pvKWh, 'PV')
+      + '</tr>';
+  }).join('');
+  document.querySelector('#quotaPanel .qFoot').style.display = anyMissingSource ? 'none' : '';
+}
+
+/** Antwort auf requestAction('quotasLoad', ...) fuer EINEN Zeitraum. */
 function renderQuotaPeriod(data) {
-  var rows = document.getElementById('qRows');
-  if (!data) {
-    rows.innerHTML = '<div class="qNote">Keine Daten für diesen Zeitraum.</div>';
-    return;
-  }
+  if (!data) { return; }
   quotaCache[data.period] = data;
-  if (data.period === quotaPeriod) {
-    var lbl = document.querySelector('#quotaBtn .qLbl');
-    if (lbl) { lbl.textContent = QUOTA_PERIOD_LABEL[data.period] || ''; }
-    setRing(document.getElementById('qRingAutarky'), RING_C_OUTER, data.autarky);
-    setRing(document.getElementById('qRingSelf'), RING_C_INNER, data.selfConsumption);
-    var a = pct(data.autarky), s = pct(data.selfConsumption);
-    document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
-    document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
-  }
-  function row(color, label, frac, kwh, unit) {
-    var v = frac === null || frac === undefined ? 'keine Daten' : pct(frac) + ' %';
-    var extra = (kwh !== null && kwh !== undefined) ? ' <span style="opacity:.6">(' + kwh.toFixed(1).replace('.', ',') + ' ' + unit + ')</span>' : '';
-    return '<div class="qRow"><span><span class="qDot" style="background:' + color + '"></span>' + label + '</span><span>' + v + extra + '</span></div>';
-  }
-  rows.innerHTML = row('#4caf50', 'Autarkiegrad', data.autarky, data.houseKWh, 'kWh Verbrauch')
-    + row('#42a5f5', 'Eigenverbrauchsquote', data.selfConsumption, data.pvKWh, 'kWh PV')
-    + (data.autarky === null || data.selfConsumption === null
-        ? '<div class="qNote">Fehlt eine Quelle (PV-, Netz- oder Hauslast-Leistung) oder gibt es für ' + (QUOTA_PERIOD_LABEL[data.period] || 'diesen Zeitraum') + ' noch keine Archivwerte, bleibt die jeweilige Quote leer.</div>'
-        : '');
+  if (data.period === 'day') { renderQuotaButton(data); }
+  renderQuotaTable();
 }
 
 (function () {
@@ -3541,26 +3562,21 @@ function renderQuotaPeriod(data) {
   btn.addEventListener('click', function (ev) {
     ev.stopPropagation();
     panel.classList.toggle('open');
-    if (panel.classList.contains('open') && quotaCache[quotaPeriod]) {
-      renderQuotaPeriod(quotaCache[quotaPeriod]);
-    }
+    if (!panel.classList.contains('open')) { return; }
+    renderQuotaTable();
+    // Alle noch fehlenden Zeitraeume auf einen Schlag nachfordern (nicht erst
+    // Klick fuer Klick wie in der ersten Fassung) - "Tag" steckt immer schon
+    // im Haupt-Payload.
+    QUOTA_PERIODS.forEach(function (p) {
+      if (p !== 'day' && !quotaCache[p]) {
+        requestAction('quotasLoad', JSON.stringify({ period: p }));
+      }
+    });
   });
   document.addEventListener('click', function (ev) {
     if (panel.classList.contains('open') && !panel.contains(ev.target) && ev.target !== btn) {
       panel.classList.remove('open');
     }
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('#qTabs button'), function (tb) {
-    tb.onclick = function () {
-      quotaPeriod = tb.getAttribute('data-period');
-      Array.prototype.forEach.call(document.querySelectorAll('#qTabs button'), function (b) { b.classList.toggle('active', b === tb); });
-      if (quotaCache[quotaPeriod]) {
-        renderQuotaPeriod(quotaCache[quotaPeriod]);
-      } else {
-        document.getElementById('qRows').innerHTML = '<div class="qNote">Lade …</div>';
-        requestAction('quotasLoad', JSON.stringify({ period: quotaPeriod }));
-      }
-    };
   });
 })();
 </script>

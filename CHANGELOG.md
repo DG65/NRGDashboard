@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.69-beta.1 (2026-09-23)
+
+- Tile Quoten-Knopf: der Ring rutscht 36px weiter nach unten, damit er nicht mehr mit dem von Symcon gezeichneten Kachel-Titel kollidiert (Dietmar: "muss weiter nach unten rutschen wegen der Überdeckung"). Aus den vier Umschalt-Knöpfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) ist eine Tabelle mit allen acht Werten auf einen Blick geworden - Mini-Ringe je Zelle statt nur Text, alle drei fehlenden Zeiträume werden beim Öffnen in einem Rutsch nachgefordert statt Klick für Klick.
+
 ## 0.9.68-beta.1 (2026-09-23)
 
 - Tile: den bisherigen Autarkiegrad-Ring am Haus-Knoten (nur "heute") entfernt - abgelöst durch den neuen Quoten-Knopf, der Tag/Monat/Jahr/Gesamt zeigt (Dietmar, 23.09.2026: "kannst Du damit eliminieren"). Zugehöriger Backend-Code (`AutarkyRatioToday()`, `AutarkyCache`) mit entfernt.
