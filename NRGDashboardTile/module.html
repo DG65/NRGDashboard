@@ -109,18 +109,30 @@
      Watch") - oben LINKS, der einzige Kachel-Rand, der bei der radialen
      Knoten-Verteilung immer frei bleibt (unten links/rechts sitzen bereits
      Status-Pille und Diagnose-Badge, oben rechts Symcons eigener Doppelpfeil).
-     ECHTE SVG-Muenze statt HTML-Knopf (Dietmar, 23.09.2026, nach dem ersten
-     HTML/CSS-Kreis-Versuch: "sieht neben den anderen Pillen wie ein Fremdkoerper
-     aus ... im Muenzstil (3D) analog der anderen Pillen und Knoten") - nutzt
-     dieselben Bausteine wie jeder Aussenknoten (plasticFill/bevelGrad/glossHi/
-     glossSpec ueber node-face/node-bevel/node-highlight/node-spec, siehe
-     makeBevel()/makeHighlight()/makeSpecular() in JS), lebt im selben SVG-
-     Koordinatensystem statt als eigenstaendiges HTML-Element obendrueber. */
+     3D-Muenzenoptik wie die anderen Knoten (Dietmar: "sieht neben den
+     anderen Pillen wie ein Fremdkoerper aus ... im Muenzstil (3D) analog
+     der anderen Pillen und Knoten"), ABER als eigenes, pixelpositioniertes
+     <svg> (siehe HTML), NICHT als Teil des Haupt-Flusscanvas - dessen
+     QUADRATISCHE viewBox wird bei einer breiten/hohen Kachel per
+     Letterboxing mittig eingepasst, ein Element darin erreicht deshalb nie
+     den echten linken Kachelrand, nur die viewBox-Grenze (zweiter Anlauf,
+     Dietmar: "immer noch viel zu weit rechts" trotz bereits verschobenem
+     Wert - das war die eigentliche Ursache). url(#plasticFill) etc. wirken
+     trotzdem identisch, Fragment-Referenzen gelten dokumentweit. */
+  #quotaCoin {
+    position: absolute; left: 8px; top: 44px; z-index: 4;
+    width: 104px; height: 104px;
+    display: none;
+  }
+  #quotaCoin.show { display: block; }
   .quota-coin { cursor: pointer; }
   .quota-coin .node-ring { stroke: rgba(255,255,255,.4); }
   .qcoin-ring-bg { stroke: rgba(255,255,255,.12); }
-  .qcoin-ring-autarky { stroke: #4caf50; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: #42a5f5; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  /* Kraeftigere, mehr gesaettigte Toene statt der etwas blassen Grundfarben
+     (Dietmar, 23.09.2026: "Ringfarben koennten nun etwas kraeftiger werden") -
+     dieselbe Grundfarbfamilie (gruen/blau), aber leuchtender. */
+  .qcoin-ring-autarky { stroke: #00e676; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #2979ff; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
   .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
   .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: var(--textmuted); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
@@ -600,6 +612,35 @@
 <body>
 
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<!-- Quoten-Muenze (23.09.2026) - EIGENSTAENDIGES, pixelpositioniertes SVG statt
+     Teil des Haupt-Flusscanvas (siehe CSS-Kommentar bei .quota-coin): der
+     Haupt-Canvas hat eine QUADRATISCHE viewBox, die bei einer breiten/hohen
+     Kachel per Letterboxing mittig eingepasst wird - ein Element DARIN kann
+     den echten Kachel-Rand nie erreichen, nur die viewBox-Grenze (Dietmar,
+     23.09.2026, zweiter Anlauf: "immer noch viel zu weit rechts", trotz
+     eines bereits nach links verschobenen Werts - Ursache war die
+     Letterboxing-Grenze selbst). Referenziert dieselben <defs>
+     (url(#plasticFill) etc.) aus dem Haupt-SVG weiter unten - eine
+     Fragment-Referenz gilt dokumentweit, nicht nur innerhalb des eigenen
+     <svg>, deshalb bleibt die 3D-Muenzenoptik trotzdem identisch. -->
+<svg id="quotaCoin" class="quota-coin" viewBox="0 0 104 104">
+  <title id="quotaCoinTitle">Autarkie- und Selbstverbrauchsquote</title>
+  <g transform="translate(52,52)">
+    <circle class="coin-shadow" cx="0" cy="7.4" r="46"/>
+    <circle class="node-face" r="42"/>
+    <circle class="node-ring" r="42"/>
+    <circle class="node-bevel" r="42"/>
+    <circle class="node-highlight" r="30.2" transform="translate(-12.6,-20.2) scale(1,0.57)"/>
+    <circle class="node-spec" r="12.6" transform="translate(-18.5,-23.1) scale(1,0.55)"/>
+    <circle class="qcoin-ring-bg" r="35" fill="none" stroke-width="7"/>
+    <circle class="qcoin-ring-bg" r="24" fill="none" stroke-width="7"/>
+    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
+    <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
+    <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
+    <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#5b9dff"></text>
+    <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
+  </g>
+</svg>
 <div id="quotaPanel">
   <div class="qHead"><span class="qHeadRing"></span>Autarkie &amp; Eigenverbrauch</div>
   <table id="quotaTable">
@@ -658,32 +699,6 @@
       </feMerge>
     </filter>
   </defs>
-
-  <!-- Quoten-Muenze (23.09.2026) - siehe CSS-Kommentar bei .quota-coin. Feste
-       Position oben links (viewBox "-17 4 594 594"), unabhaengig von der
-       Knoten-Verteilung; dieselben Bausteine wie jeder Aussenknoten. r=46
-       etwas kleiner als DESIGN_R=56, damit sie sich als zusaetzliches,
-       eigenes Element einordnet statt wie ein weiterer Geraete-Knoten zu
-       wirken. translate(38,85) statt anfangs (70,90) - Dietmar, 23.09.2026:
-       "viel zu weit nach Rechts gerutscht", naeher an den linken Rand
-       geschoben, damit sie nicht mit der Knoten-Verteilung kollidiert.
-       display:none, bis buildPayload() eine Tagesquote liefert. -->
-  <g id="quotaCoin" class="quota-coin" transform="translate(38,85)" style="display:none">
-    <title id="quotaCoinTitle">Autarkie- und Selbstverbrauchsquote</title>
-    <circle class="coin-shadow" cx="0" cy="7.4" r="52"/>
-    <circle class="node-face" r="46"/>
-    <circle class="node-ring" r="46"/>
-    <circle class="node-bevel" r="46"/>
-    <circle class="node-highlight" r="33.1" transform="translate(-13.8,-22.1) scale(1,0.57)"/>
-    <circle class="node-spec" r="13.8" transform="translate(-20.2,-25.3) scale(1,0.55)"/>
-    <circle class="qcoin-ring-bg" r="38" fill="none" stroke-width="7"/>
-    <circle class="qcoin-ring-bg" r="26" fill="none" stroke-width="7"/>
-    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="38" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
-    <circle id="qRingSelf" class="qcoin-ring-self" r="26" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
-    <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
-    <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#42a5f5"></text>
-    <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
-  </g>
 
   <g id="wires-layer"></g>
 
@@ -3385,7 +3400,7 @@ function handleMessage(raw) {
     // Backend-Seite), Monat/Jahr/Gesamt laedt das Panel erst bei Klick nach.
     if (d.dayQuotas) {
       quotaCache.day = d.dayQuotas;
-      document.getElementById('quotaCoin').style.display = '';
+      document.getElementById('quotaCoin').classList.add('show');
       renderQuotaButton(d.dayQuotas);
       if (document.getElementById('quotaPanel').classList.contains('open')) { renderQuotaTable(); }
     }
@@ -3515,7 +3530,7 @@ function handleMessage(raw) {
 // quotaCache haelt bereits geladene Zeitraeume, damit ein zweites Oeffnen
 // nicht erneut nachfordert.
 var quotaCache = {};
-var RING_R_OUTER = 38, RING_R_INNER = 26;
+var RING_R_OUTER = 35, RING_R_INNER = 24;
 var RING_C_OUTER = 2 * Math.PI * RING_R_OUTER;
 var RING_C_INNER = 2 * Math.PI * RING_R_INNER;
 var QUOTA_PERIODS = ['day', 'month', 'year', 'total'];
