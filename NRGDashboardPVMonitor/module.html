@@ -362,15 +362,18 @@
   .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 4px; }
   .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
-     Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). */
-  .ycTable td.ycGold { color: #e0b64a; font-weight: 700; }
-  .ycTable td.ycSilver { color: #c7ccd1; font-weight: 700; }
-  .ycTable td.ycBronze { color: #cd8a5c; font-weight: 700; }
+     Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). Die Klassen
+     sitzen an eigenen <span>-Elementen (Monatswert UND kumulierter Wert je ein
+     eigener Span), NICHT an der <td> - sonst wuerde die kumulierte Zahl als Kind-
+     Element die Farbe des Monatswerts erben, obwohl beide ein eigenes,
+     unabhaengiges Ranking haben (Fund Dietmar: Feb 2022 wirkte bronze nur wegen
+     des Monatswerts, Feb 2020 blieb trotz hoeherer Summe farblos). */
+  .ycGold { color: #e0b64a; font-weight: 700; }
+  .ycSilver { color: #c7ccd1; font-weight: 700; }
+  .ycBronze { color: #cd8a5c; font-weight: 700; }
   /* Kumuliertes Ranking: gleiche Farben, aber volle Deckkraft statt der
      gedaempften .ycCum-Grundopazitaet, sonst verblasst die Auszeichnung. */
-  .ycCum.ycGold { opacity: 1; color: #e0b64a; font-weight: 700; }
-  .ycCum.ycSilver { opacity: 1; color: #c7ccd1; font-weight: 700; }
-  .ycCum.ycBronze { opacity: 1; color: #cd8a5c; font-weight: 700; }
+  .ycCum.ycGold, .ycCum.ycSilver, .ycCum.ycBronze { opacity: 1; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -2795,14 +2798,20 @@
         // Monatswert und somit redundant) - bricht ab, sobald ein Monat fehlt
         // (null), damit die Summe nicht faelschlich ueber eine Luecke hinwegtaeuscht.
         var cumArr = cumulate(arr);
+        // Rang-Farbe sitzt an eigenen <span>-Elementen, NICHT an der <td> selbst -
+        // sonst erbt die kumulierte Zahl (ein <span> INNERHALB der Zelle) die Farbe
+        // des Monatswerts, obwohl sie ihr eigenes, unabhaengiges Ranking hat (Fund
+        // Dietmar, 23.09.2026: Feb 2022 wirkte bronze-gefaerbt nur wegen des
+        // Monatswerts, waehrend Feb 2020 trotz hoeherer Summe farblos blieb).
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
           + arr.map(function (v, i) {
               var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
               var cCls = (isYearRow && i >= 1) ? rankClass(cumArr[i], cumColRanks[i]) : '';
+              var vHtml = vCls ? '<span class="' + vCls + '">' + fmt(v) + '</span>' : fmt(v);
               var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum' + (cCls ? ' ' + cCls : '') + '">' + fmt(cumArr[i]) + '</span>' : '';
-              return '<td' + (vCls ? ' class="' + vCls + '"' : '') + '>' + fmt(v) + c + '</td>';
+              return '<td>' + vHtml + c + '</td>';
             }).join('')
-          + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td' + (sCls ? ' class="' + sCls + '"' : '') + '>' + fmt(sum) + '</td>'; })()
+          + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td>' + (sCls ? '<span class="' + sCls + '">' + fmt(sum) + '</span>' : fmt(sum)) + '</td>'; })()
           + '</tr>';
       }
       var body = data.years.map(function (y) { return rowHtml(y, values[y], '', true); }).join('');
