@@ -166,12 +166,15 @@
      Grundtoene (Waldgruen/Stahlblau statt Tannengruen/Dunkelblau), dafuer
      mit etwas MEHR Deckkraft als vorher (.68 -> .8) statt weniger -
      "gedaempft" heisst hier: kein Neon, nicht: kaum sichtbar. */
-  /* Fuenfter Anlauf (23.09.2026): "die Farben einfach kraeftiger" - deutlich
-     saettigere Grundtoene (statt Waldgruen/Stahlblau ein klares Gruen/Blau)
-     UND volle Deckkraft statt .8, jetzt wo der Hintergrundring nicht mehr
-     mitkonkurriert (siehe .qcoin-ring-bg). */
-  .qcoin-ring-autarky { stroke: #2ecc71; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: #4d8eff; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
+  /* Sechster Anlauf (23.09.2026, Dietmar: "ein Gruen wie das des
+     Netzeinspeiseknotens bei Einspeisung und ein adaequates Blau dazu") -
+     C_GREEN (#43A047, module.html) ist exakt die Farbe, in der der
+     Netz-Knoten bei Einspeisung leuchtet (siehe resolveStyle('grid')): der
+     Autarkie-Ring nutzt jetzt denselben Ton, statt einer eigenen, nur
+     aehnlichen Gruenvariante. Dazu das gleich "gewichtete" Blau aus
+     derselben Material-Palette (600er-Stufe) fuer den Eigenverbrauchs-Ring. */
+  .qcoin-ring-autarky { stroke: #43a047; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #1e88e5; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
@@ -206,7 +209,7 @@
   }
   #quotaPanel.open { display: block; }
   #quotaPanel .qHead { font-size: 13px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-  #quotaPanel .qHead .qHeadRing { width: 20px; height: 20px; border-radius: 50%; background: conic-gradient(#4caf50 0 50%, #42a5f5 50% 100%); flex: none; }
+  #quotaPanel .qHead .qHeadRing { width: 20px; height: 20px; border-radius: 50%; background: conic-gradient(#43a047 0 50%, #1e88e5 50% 100%); flex: none; }
   #quotaTable { width: 100%; border-collapse: collapse; }
   #quotaTable th { font-size: 10.5px; font-weight: 600; color: var(--textmuted); text-align: right; padding: 0 0 6px; }
   #quotaTable th:first-child, #quotaTable td:first-child { text-align: left; }
@@ -657,11 +660,35 @@
   }
   #tourRestartBtn:hover { opacity: 1; background: rgba(127,135,145,.35); }
   body.light #tourRestartBtn { background: rgba(242,244,247,.9); }
+
+  /* Anordnen-Knopf (23.09.2026, Dietmar: "kommt öfter vor, dass die
+     automatische Anordnung nicht passt") - direkt neben #tourRestartBtn,
+     selbe erprobt-kollisionsfreie Ecke (unten links, siehe dortiger
+     Kommentar), gleiche Optik/Größe. Aktiv = eingefärbt (analog
+     .tour-btn-accent), damit klar ist, dass gerade gezogen werden kann. */
+  #arrangeBtn {
+    position: fixed; bottom: 40px; left: 54px; z-index: 950;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(127,135,145,.5); background: rgba(38,41,46,.92);
+    color: inherit; font-size: 15px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; opacity: .9; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  }
+  #arrangeBtn:hover { opacity: 1; background: rgba(127,135,145,.35); }
+  #arrangeBtn.active { background: rgba(108,180,255,.35); border-color: rgba(108,180,255,.7); opacity: 1; }
+  body.light #arrangeBtn { background: rgba(242,244,247,.9); }
+  /* Waehrend des Anordnen-Modus zeigen alle Aussenknoten eine Greifhand statt
+     des normalen Zeigers, gezogene/Ziel-Knoten heben sich sichtbar ab. */
+  body.arrange-mode .node { cursor: grab; }
+  .node.dragging { cursor: grabbing; }
+  .node.dragging .node-visual { filter: drop-shadow(0 6px 16px rgba(0,0,0,.55)); }
+  .node.drop-target .node-ring { stroke: #ffd54f; stroke-width: 4; }
 </style>
 </head>
 <body>
 
 <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<button id="arrangeBtn" title="Knoten per Ziehen neu anordnen" type="button">⠿</button>
 <!-- Quoten-Muenze (23.09.2026) - EIGENSTAENDIGES, pixelpositioniertes SVG statt
      Teil des Haupt-Flusscanvas (siehe CSS-Kommentar bei .quota-coin): der
      Haupt-Canvas hat eine QUADRATISCHE viewBox, die bei einer breiten/hohen
@@ -690,8 +717,8 @@
          noch anders platzieren") - bei y=23 sass "heute" fast genau auf dem
          Rand des INNEREN Datenrings (r=24) und wirkte dadurch eingeklemmt/
          abgeschnitten. Jetzt mit klarer Luft zum Ring (y=19 statt 23). -->
-    <text id="qValAutarky" class="qcoin-val" x="0" y="-5" text-anchor="middle" fill="#5fe08d"></text>
-    <text id="qValSelf" class="qcoin-val" x="0" y="9" text-anchor="middle" fill="#7fb0ff"></text>
+    <text id="qValAutarky" class="qcoin-val" x="0" y="-5" text-anchor="middle" fill="#6fc077"></text>
+    <text id="qValSelf" class="qcoin-val" x="0" y="9" text-anchor="middle" fill="#6facef"></text>
     <!-- Fuenfter Anlauf (23.09.2026, Dietmar: "heute haengt noch immer im Ring") -
          bei y=20 lag die Grundlinie praktisch AUF der Innenkante des inneren
          Datenrings (r=24, Strichbreite 7 -> Innenkante bei r=20.5) - je nach
@@ -2251,6 +2278,7 @@ function ensureNodes(items) {
       attachPressHandlers(refs, item);
     }
     attachSwitchHandler(refs, item);
+    attachArrangeHandlers(refs, item);
     refs.spoke = createSpoke(pt, layout, wiresLayer);
     nodeRefs[item.key] = refs;
     nodesLayer.appendChild(refs.g);
@@ -2696,6 +2724,15 @@ document.addEventListener('DOMContentLoaded', () => {
     TOUR_SHOWN_LOCAL = false;
     showTourOverlay();
   });
+  // Anordnen-Modus (23.09.2026) - reiner An/Aus-Umschalter, kein eigener
+  // "Fertig"-Dialog: erneutes Antippen des Knopfs oder einfach Weiterklicken
+  // in der Kachel (ausserhalb ARRANGE_MODE gilt wieder das normale Klick-/
+  // Lang-Druck-Verhalten) beendet ihn gleichwertig.
+  document.getElementById('arrangeBtn').addEventListener('click', () => {
+    ARRANGE_MODE = !ARRANGE_MODE;
+    document.getElementById('arrangeBtn').classList.toggle('active', ARRANGE_MODE);
+    document.body.classList.toggle('arrange-mode', ARRANGE_MODE);
+  });
 });
 
 // Beide Klick-Einblendungen (Diagnose-Panel + Quoten-Panel, siehe dort)
@@ -2772,6 +2809,35 @@ let AUTO_TOUR = false;     // Instanz-Eigenschaft DemoAutoTour (Payload d.autoTo
 const MEMBER_CACHE = {};   // key -> { ts, label, value, members[] }
 const MEMBER_TTL_MS = 5000;
 let LEVEL_BUSY = false;    // waehrend einer Morph-Animation keine zweite starten
+
+/* ==========================================================================
+ * Knoten-Anordnung per Drag & Drop (23.09.2026, Dietmar: "kommt öfter vor,
+ * dass die automatische Anordnung nicht passt"). Bewusst NICHT frei
+ * wählbare Pixel-Positionen (siehe Rücksprache mit Dietmar) - die
+ * radiale/Pillen-Geometrie (computeLayout()) bleibt unverändert, gespeichert
+ * wird nur die REIHENFOLGE der item.key-Werte. Ein Drop tauscht die
+ * Zielposition im Array (nicht nur zwei Elemente), alle dazwischenliegenden
+ * Knoten rücken auf - wie beim Verschieben einer App auf dem Homescreen.
+ * Nur auf Ebene 1 aktiv (LEVEL_STACK leer) - Mitgliederlisten aufgeschach-
+ * telter Sammelknoten haben pro Ebene andere Keys, eine Anordnung dort wäre
+ * ein eigenes, deutlich größeres Feature (noch nicht gebaut).
+ * ========================================================================== */
+let CURRENT_NODE_ORDER = [];  // zuletzt vom Backend geladene Reihenfolge (Array von item.key)
+let LAST_LEVEL1_ORDER = [];   // tatsaechlich zuletzt gerenderte Reihenfolge (fuer den Drop-Zielindex)
+let ARRANGE_MODE = false;     // Anordnen-Modus aktiv? (Knopf unten links)
+let dragState = null;         // { key, pointerId, dx, dy, g, dropKey } waehrend eines Drags
+
+/** Wendet CURRENT_NODE_ORDER auf die automatisch sortierten items an - unbekannte
+ *  Keys (neue Geraete) haengen sich in ihrer buildItems()-Reihenfolge ans Ende,
+ *  nicht mehr vorhandene Keys fallen einfach raus (kein Abgleich noetig). */
+function applyCustomOrder(items, order) {
+  if (!Array.isArray(order) || order.length === 0) { return items; }
+  const byKey = new Map(items.map(it => [it.key, it]));
+  const ordered = order.map(k => byKey.get(k)).filter(Boolean);
+  const placed = new Set(ordered.map(it => it.key));
+  const rest = items.filter(it => !placed.has(it.key));
+  return [...ordered, ...rest];
+}
 
 function restoreCenterForLevel1() {
   const centerG = document.getElementById('node-center');
@@ -2988,6 +3054,113 @@ function renderLevelView() {
   ensureNodes(items);
   items.forEach(item => updateOuterNode(nodeRefs[item.key], item));
   fadeOthers(null, 1);
+}
+
+// Knoten-Anordnung per Drag & Drop (23.09.2026) - siehe Kommentar bei
+// CURRENT_NODE_ORDER weiter oben. Der Listener sitzt in der CAPTURE-Phase
+// UND ruft ausserhalb des Anordnen-Modus sofort return auf - so bleibt das
+// normale Klick-/Lang-Druck-Verhalten (attachPressHandlers()) im Alltag
+// unveraendert, nur WAEHREND ARRANGE_MODE uebernimmt stopPropagation() in
+// der Capture-Phase den Vorrang vor allen bubble-Listenern desselben
+// Knotens (Klick-Detailseite, Schaltgruppen-Knopf).
+function attachArrangeHandlers(refs, item) {
+  refs.g.addEventListener('pointerdown', e => {
+    if (!ARRANGE_MODE) { return; }
+    e.stopPropagation();
+    e.preventDefault();
+    startNodeDrag(item.key, refs, e);
+  }, true);
+}
+
+/** Wandelt Client-Koordinaten (e.clientX/Y) in das Koordinatensystem des
+ *  Haupt-SVG um - notwendig, weil die viewBox je nach Kachelgroesse per
+ *  Letterboxing skaliert/verschoben wird (siehe Kommentar bei #quotaCoin). */
+function toSvgPoint(ev) {
+  const svg = document.getElementById('svg');
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+/** Naechstgelegener anderer Knoten unter dem Zeiger (innerhalb seines eigenen
+ *  Radius x 1,4 Toleranz) - Kandidat fuer die Drop-Zielposition. */
+function findDropTarget(p, excludeKey) {
+  let best = null, bestDist = Infinity;
+  Object.keys(nodeRefs).forEach(k => {
+    if (k === excludeKey) { return; }
+    const r = nodeRefs[k];
+    if (r.cx === undefined || r.cy === undefined) { return; }
+    const d = Math.hypot(p.x - r.cx, p.y - r.cy);
+    const thresh = (r.nodeR || DESIGN_R) * 1.4;
+    if (d < thresh && d < bestDist) { bestDist = d; best = k; }
+  });
+  return best;
+}
+
+function setDropHighlight(key) {
+  Object.keys(nodeRefs).forEach(k => {
+    nodeRefs[k].g.classList.toggle('drop-target', k === key);
+  });
+}
+
+function startNodeDrag(key, refs, downEv) {
+  const start = toSvgPoint(downEv);
+  dragState = { key, pointerId: downEv.pointerId, dx: 0, dy: 0, g: refs.g, dropKey: null };
+  refs.g.setPointerCapture(downEv.pointerId);
+  refs.g.classList.add('dragging');
+
+  function onMove(ev) {
+    if (!dragState || ev.pointerId !== dragState.pointerId) { return; }
+    const p = toSvgPoint(ev);
+    dragState.dx = p.x - start.x;
+    dragState.dy = p.y - start.y;
+    // CSS-transform auf .node-visual (NICHT das aeussere "g") - das aeussere
+    // "g" traegt sein Positions-transform als SVG-ATTRIBUT (translate zum
+    // Knoten-Mittelpunkt), ein zusaetzliches CSS-style.transform DORT wuerde
+    // dieses per Kaskade komplett ERSETZEN statt zu addieren (die Kachel
+    // haette den Knoten schlagartig nach (dx,dy) relativ zum Leinwand-
+    // Ursprung teleportiert). .node-visual ist genau fuer diesen Zweck ohne
+    // eigenes Attribut-transform gebaut (siehe Kommentar bei fx-shake3d).
+    refs.visual.style.transform = 'translate(' + dragState.dx.toFixed(1) + 'px,' + dragState.dy.toFixed(1) + 'px)';
+    const target = findDropTarget(p, dragState.key);
+    dragState.dropKey = target;
+    setDropHighlight(target);
+  }
+  function onUp(ev) {
+    if (!dragState || ev.pointerId !== dragState.pointerId) { return; }
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    refs.g.releasePointerCapture(ev.pointerId);
+    refs.g.classList.remove('dragging');
+    refs.visual.style.transform = '';
+    setDropHighlight(null);
+    const moved = Math.hypot(dragState.dx, dragState.dy) > 6;
+    const dropKey = dragState.dropKey;
+    dragState = null;
+    if (moved && dropKey && dropKey !== key) {
+      reorderAndSave(key, dropKey);
+    }
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+/** Verschiebt draggedKey an die Position von dropKey (alle dazwischen
+ *  liegenden Knoten ruecken auf, wie beim Verschieben einer App auf dem
+ *  Homescreen), rendert sofort optimistisch neu (kein Warten auf den
+ *  naechsten Server-Push) und speichert die neue Reihenfolge im Backend. */
+function reorderAndSave(draggedKey, dropKey) {
+  const order = LAST_LEVEL1_ORDER.slice();
+  const from = order.indexOf(draggedKey);
+  const to = order.indexOf(dropKey);
+  if (from === -1 || to === -1) { return; }
+  order.splice(from, 1);
+  order.splice(to, 0, draggedKey);
+  CURRENT_NODE_ORDER = order;
+  renderLevel1Nodes(LEVEL1_DEVICES);
+  if (typeof requestAction === 'function') {
+    requestAction('saveNodeOrder', JSON.stringify(order));
+  }
 }
 
 // Schaltgruppen (MeterHub-Vertrag 1.4, 03.09.2026) - eigener, vom Knoten
@@ -3429,6 +3602,7 @@ function handleMessage(raw) {
     if (d.flowRefW) { FLOW_REF_W = Math.max(500, +d.flowRefW); }
     if (d.hookPath) { HOOK_PATH = d.hookPath; }
     if (d.showTour) { showTourOverlay(); }
+    CURRENT_NODE_ORDER = Array.isArray(d.nodeOrder) ? d.nodeOrder : [];
 
     // Netzampel-Farbwaesche (28.08.2026, Dietmar: "alles direkt umsetzen") -
     // sehr dezenter radialer Verlauf von der Ampelfarbe ins Transparente,
@@ -3554,8 +3728,16 @@ function handleMessage(raw) {
     return;
   }
   restoreCenterForLevel1();
+  renderLevel1Nodes(devices);
+}
 
-  const items = buildItems(devices);
+/** Ebene-1-Knoten rendern (ausgelagert 23.09.2026, Dietmar: Knoten-Anordnung
+ *  per Drag & Drop) - reorderAndSave() ruft dasselbe fuer die sofortige,
+ *  optimistische Neuanordnung nach einem Drop auf, ohne auf den naechsten
+ *  Server-Push zu warten. */
+function renderLevel1Nodes(devices) {
+  const items = applyCustomOrder(buildItems(devices), CURRENT_NODE_ORDER);
+  LAST_LEVEL1_ORDER = items.map(it => it.key);
   // Chip-Breite des Hausknotens haengt von der Verbraucherzahl ab (siehe
   // CHIP_THRESHOLD/computeLayout()) - VOR ensureNodes() setzen, damit
   // Chip und Speichen im selben Frame konsistent zueinander stehen.
@@ -3646,8 +3828,8 @@ function renderQuotaTable() {
     }
     if (data.autarky === null || data.selfConsumption === null) { anyMissingSource = true; }
     return '<tr>' + rowLabel
-      + quotaCellHtml('#4caf50', data.autarky, data.houseKWh, 'Verbrauch')
-      + quotaCellHtml('#42a5f5', data.selfConsumption, data.pvKWh, 'PV')
+      + quotaCellHtml('#43a047', data.autarky, data.houseKWh, 'Verbrauch')
+      + quotaCellHtml('#1e88e5', data.selfConsumption, data.pvKWh, 'PV')
       + '</tr>';
   }).join('');
   document.querySelector('#quotaPanel .qFoot').style.display = anyMissingSource ? 'none' : '';

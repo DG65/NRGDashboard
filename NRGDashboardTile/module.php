@@ -386,6 +386,16 @@ class NRGDashboardTile extends IPSModule
         // umgebaut, kein Internet etc.).
         $this->RegisterAttributeString('BdewPriceHistory', '[]');
         $this->RegisterAttributeInteger('BdewLastTry', 0);
+        // Knoten-Anordnung per Drag & Drop (23.09.2026, Dietmar: "kommt öfter
+        // vor, dass die automatische Anordnung nicht passt") - Array der
+        // item.key-Werte in Wunsch-Reihenfolge, NICHT frei wählbare
+        // Pixel-Positionen: die radiale/Pillen-Geometrie (computeLayout() in
+        // module.html) bleibt unverändert, nur WELCHES Gerät in welchem Slot
+        // der Reihenfolge steht, wird hier gespeichert. Neue Geräte (Key
+        // nicht in der Liste) hängen sich automatisch ans Ende, entfernte
+        // Geräte fallen beim Anwenden einfach raus (siehe applyCustomOrder()
+        // in module.html) - kein Abgleich/keine Migration hier nötig.
+        $this->RegisterAttributeString('NodeOrder', '[]');
         $this->RegisterTimer('NRGDASH_BdewCheck', 0, 'NRGDASH_CheckBdewPrice($_IPS[\'TARGET\']);');
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
@@ -566,6 +576,19 @@ class NRGDashboardTile extends IPSModule
                 'type' => 'quotasUpdate',
                 'data' => $this->EnergyQuotas($period),
             ]));
+            return;
+        }
+        // Reihenfolge nach Drag & Drop speichern (23.09.2026) - Value ist ein
+        // JSON-Array von item.key-Strings. Bewusst ohne Plausibilitaets-
+        // Abgleich gegen die aktuelle Geraeteliste (welche Keys es gerade
+        // gibt, weiss nur die Kachel selbst) - applyCustomOrder() in
+        // module.html ist robust gegen unbekannte/fehlende Keys.
+        if ($Ident === 'saveNodeOrder') {
+            $order = json_decode((string) $Value, true);
+            if (is_array($order) && array_is_list($order) && count(array_filter($order, 'is_string')) === count($order)) {
+                $this->WriteAttributeString('NodeOrder', json_encode(array_values($order)));
+                $this->Render();
+            }
             return;
         }
     }
@@ -1892,6 +1915,10 @@ class NRGDashboardTile extends IPSModule
             // Ringe im Knopf selbst, throttled), Monat/Jahr/Gesamt laedt der Knopf
             // per requestAction('quotasLoad') nach (siehe RequestAction()).
             'dayQuotas'   => $this->DayQuotasCached(),
+            // Knoten-Anordnung per Drag & Drop (23.09.2026) - Array von
+            // item.key-Werten in Wunsch-Reihenfolge, siehe RegisterAttribute
+            // in Create(). Leeres Array = automatische Anordnung wie bisher.
+            'nodeOrder'   => json_decode($this->ReadAttributeString('NodeOrder'), true) ?: [],
         ];
     }
 

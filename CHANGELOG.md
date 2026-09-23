@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.89-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: Ringfarben gefielen weiterhin nicht - jetzt exakt das Grün, in dem der Netz-Knoten bei Einspeisung leuchtet (Autarkie), dazu ein dazu passendes Blau derselben Farbfamilie (Eigenverbrauch), statt einer eigenen, nur ähnlichen Farbwahl.
+- Neu: Knoten im Energiefluss lassen sich per Ziehen neu anordnen (Dietmar: "kommt öfter vor, dass die automatische Anordnung nicht passt"). Neuer Knopf unten links ("⠿") schaltet den Anordnen-Modus um; die radiale/Pillen-Geometrie selbst bleibt unverändert, gespeichert wird nur die Reihenfolge der Geräte darin - neue Geräte hängen sich automatisch ans Ende, entfernte fallen raus. Vorerst nur auf der obersten Ebene, nicht innerhalb aufgeschachtelter Sammelknoten.
+
 ## 0.9.88-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: "heute" hing immer noch im inneren Datenring, die leere Kreisbahn (Hintergrund der Ringe) war weder farbig noch dunkel wie der Münzengrund und wirkte dadurch wie eine dritte, unbeteiligte Farbe, die beiden Datenringe waren noch nicht kräftig genug (Dietmar). "heute" jetzt klar unterhalb des inneren Rings, Leerlauf-Kreisbahn dunkel ins Münzenmaterial eingelassen statt hellgrau, Ringfarben (Grün/Blau) deutlich kräftiger und mit voller statt gedämpfter Deckkraft.
