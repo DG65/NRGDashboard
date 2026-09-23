@@ -191,6 +191,12 @@
      Zurueck zu den kraeftigen Volltonfarben (Build 221 zurueckgerollt). */
   .qcoin-ring-autarky { stroke: #43a047; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
   .qcoin-ring-self { stroke: #1e88e5; stroke-linecap: round; opacity: 1; transition: stroke-dashoffset .6s ease; }
+  /* Fase ueber dem Datenring (23.09.2026) - dieselbe bevelGrad-Technik wie
+     .node-bevel der Muenze selbst, nur pointer-events:none (rein optisch,
+     kein zweiter Klick-Bereich) und gedaempfter (die Muenzen-Fase liegt
+     auf dunklem Untergrund, hier auf einer kraeftigen Ringfarbe - volle
+     Deckkraft haette die Farbe komplett verdeckt statt nur zu wolben). */
+  .qcoin-ring-bevel { stroke: url(#bevelGrad); stroke-linecap: round; opacity: .55; pointer-events: none; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
@@ -727,6 +733,21 @@
     <circle class="node-spec" r="12.6" transform="translate(-18.5,-23.1) scale(1,0.55)"/>
     <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
+    <!-- Fase statt flacher Ring, dritter Anlauf (23.09.2026, Dietmar: "Fasen
+         kann ich ja sehen, wie waere es, wenn Du das flache durch die Fasen
+         ersetzen wuerdest") - beide vorherigen Anlaeufe (CSS-Verlauf-Stroke
+         MIT gradientUnits="userSpaceOnUse", eigener feSpecularLighting-
+         Filter) haben in Dietmars Firefox/Mac live die ganze Kachel grau
+         gerendert. Diesmal WIEDERVERWENDUNG der bereits nachweislich
+         funktionierenden Fasen-Technik der Muenze selbst (bevelGrad, siehe
+         .node-bevel/<linearGradient id="bevelGrad">, OHNE eigene
+         userSpaceOnUse-Koordinaten und OHNE Filter) - eine zusaetzliche,
+         duennere Kontur in derselben Dash-Aussparung wie der Datenring
+         (setRing() setzt dashoffset auf beide, siehe module.html JS),
+         objectBoundingBox-Verlauf skaliert automatisch je Element, kein
+         Koordinaten-Mismatch zwischen den beiden <svg>-Wurzeln moeglich. -->
+    <circle id="qRingAutarkyBevel" class="qcoin-ring-bevel" r="35" fill="none" stroke-width="7" transform="rotate(-90)"/>
+    <circle id="qRingSelfBevel" class="qcoin-ring-bevel" r="24" fill="none" stroke-width="7" transform="rotate(-90)"/>
     <!-- Textblock enger + hoeher (Dietmar, 23.09.2026: "heute musst du auch
          noch anders platzieren") - bei y=23 sass "heute" fast genau auf dem
          Rand des INNEREN Datenrings (r=24) und wirkte dadurch eingeklemmt/
@@ -3820,6 +3841,10 @@ function setRing(el, circumference, frac) {
 function renderQuotaButton(data) {
   setRing(document.getElementById('qRingAutarky'), RING_C_OUTER, data ? data.autarky : null);
   setRing(document.getElementById('qRingSelf'), RING_C_INNER, data ? data.selfConsumption : null);
+  // Fasen-Konturen (23.09.2026) - dieselbe Dash-Aussparung wie der jeweilige
+  // Datenring, damit die Fase nie ueber das gefuellte Ringstueck hinausragt.
+  setRing(document.getElementById('qRingAutarkyBevel'), RING_C_OUTER, data ? data.autarky : null);
+  setRing(document.getElementById('qRingSelfBevel'), RING_C_INNER, data ? data.selfConsumption : null);
   var a = pct(data ? data.autarky : null), s = pct(data ? data.selfConsumption : null);
   document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
   document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';

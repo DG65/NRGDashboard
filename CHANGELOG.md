@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.98-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: dritter Anlauf für runde statt flache Datenringe - diesmal per Wiederverwendung der bereits bewährten Fasen-Technik der Münze selbst (`bevelGrad`, objectBoundingBox-Verlauf, KEIN Filter, KEINE eigenen `userSpaceOnUse`-Koordinaten), statt der beiden vorherigen, in Dietmars Firefox/Mac fehlgeschlagenen Ansätze (Verlauf-Stroke mit eigenen Koordinaten, eigener feSpecularLighting-Filter).
+
 ## 0.9.97-beta.1 (2026-09-23)
 
 - Tile: Rollback von 0.9.96 - auch der zweite Anlauf für "runde" Quoten-Ringe (diesmal per eigenem SVG-Filter-Attribut statt CSS-Verlauf-Stroke) hat live erneut die ganze Kachel grau gerendert (Dietmar: "das gleiche wieder"). Zurück zum unveränderten `relief`-Filter. Nächster Anlauf erst nach lokaler Verifikation, kein weiterer Live-Schuss ohne Test.
