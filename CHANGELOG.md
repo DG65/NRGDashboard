@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.62-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: Monatswert und kumulierte Summe stehen jetzt in zwei eigenen Tabellenspalten statt als zwei Zahlen in derselben rechtsbündigen Zelle (Dietmars Wunsch, nachdem mehr Abstand allein die "Verformungen" nicht löste) - jede Spalte richtet sich unabhängig rechtsbündig aus, Januar bleibt ohne Extra-Spalte.
+
 ## 0.9.61-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: mehr Abstand zwischen Monatswert und kumulierter Zahl (Dietmar: "Verformungen bei der Rechtsbündigkeit der Monatswerte" - je nach Länge der kumulierten Zahl rückten beide unterschiedlich eng zusammen, das wirkte wackelig).

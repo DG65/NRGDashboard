@@ -362,17 +362,16 @@
   .ycTable thead th { border-bottom: 1px solid rgba(127,135,145,.35); opacity: .8; }
   .ycTable tbody tr.ycTotal td { border-top: 1px solid rgba(127,135,145,.35); font-weight: 700; }
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
-  /* Kumulierte Jahressumme je Monatszelle, ab Februar (Dietmar, 23.09.2026:
-     "wo man mit der Energieproduktion eines jeden Jahres steht") - dezent
-     HINTER dem Monatswert (nicht untereinander, das kostet pro Tabellenzeile
-     zu viel Hoehe - Dietmars Korrektur direkt nach der ersten Fassung). */
-  /* Abstand deutlich vergroessert (Dietmar, 23.09.2026: "Verformungen bei der
-     Rechtsbuendigkeit der Monatswerte") - Monatswert und kumulierte Zahl stehen
-     in derselben rechtsbuendigen Zelle, ruecken je nach Laenge der kumulierten
-     Zahl unterschiedlich eng zusammen und liessen die Monatswerte dadurch
-     optisch "wackelig" wirken; mehr Luft trennt beide klar als zwei Zahlen. */
-  .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 10px; }
-  .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
+  /* Kumulierte Jahressumme, ab Februar (Dietmar, 23.09.2026: "wo man mit der
+     Energieproduktion eines jeden Jahres steht") - EIGENE Tabellenspalte statt
+     zweitem <span> in der Monatswert-Zelle (Dietmar, nach zwei Anläufen mit mehr
+     Abstand: "dann musst Du eben für Monatswerte und kumulierte Werte separate
+     Zellen generieren" - nur eine eigene Spalte macht die Rechtsbündigkeit
+     beider Zahlen unabhaengig voneinander, ein Abstand allein loeste das nicht).
+     Schmaler, kleiner, gedaempfter als die Monatswert-Spalte, damit klar bleibt:
+     Haupt- und Nebenzahl. */
+  .ycTable td.ycCumCell { font-size: 9px; font-weight: 300; opacity: .55; padding-left: 2px; }
+  .ycTable tbody tr.ycExpected td.ycCumCell { opacity: .5; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
      Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). Die Klassen
      sitzen an eigenen <span>-Elementen (Monatswert UND kumulierter Wert je ein
@@ -380,17 +379,21 @@
      Element die Farbe des Monatswerts erben, obwohl beide ein eigenes,
      unabhaengiges Ranking haben (Fund Dietmar: Feb 2022 wirkte bronze nur wegen
      des Monatswerts, Feb 2020 blieb trotz hoeherer Summe farblos). */
-  .ycGold { color: #e0b64a; font-weight: 700; }
+  /* ".ycTable td.ycGold" statt nur ".ycGold": die Klasse sitzt jetzt direkt an
+     der <td> (seit der eigenen Kumuliert-Spalte, nicht mehr an einem Kind-Span),
+     braucht deshalb mehr Spezifitaet als ".ycTable tbody td { font-weight: 300 }"
+     oben, sonst gewinnt die duenne Grundschrift und die Fettung verschwindet. */
+  .ycTable td.ycGold { color: #e0b64a; font-weight: 700; }
   /* Urspruengliches Silber (#c7ccd1) lag zu nah an der normalen Textfarbe
      (~#e8e8e8) und war dadurch praktisch unsichtbar (Fund Dietmar, 23.09.2026:
      "wie finde ich den Silberwert?") - kuehleres, deutlich saettigeres Blaugrau,
      das sich klar vom neutralen Text UND von Gold/Bronze (warme Toene) abhebt. */
-  .ycSilver { color: #7fa8c9; font-weight: 700; }
-  .ycBronze { color: #cd8a5c; font-weight: 700; }
+  .ycTable td.ycSilver { color: #7fa8c9; font-weight: 700; }
+  .ycTable td.ycBronze { color: #cd8a5c; font-weight: 700; }
   /* Kumuliertes Ranking: gleiche Farben, volle Deckkraft statt der gedaempften
-     .ycCum-Grundopazitaet (sonst verblasst die Auszeichnung) UND fett (sonst
+     ycCumCell-Grundopazitaet (sonst verblasst die Auszeichnung) UND fett (sonst
      bleibt die kumulierte Zahl trotz Farbe im duennen Grundgewicht haengen). */
-  .ycCum.ycGold, .ycCum.ycSilver, .ycCum.ycBronze { opacity: 1; font-weight: 700; }
+  .ycTable td.ycCumCell.ycGold, .ycTable td.ycCumCell.ycSilver, .ycTable td.ycCumCell.ycBronze { opacity: 1; font-weight: 700; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
   /* position:fixed statt absolute (Dietmar, 31.07.2026: "Dialog muss so
@@ -2765,7 +2768,15 @@
     }
     function renderYearCompareTable(data, unit, values) {
       var panel = document.getElementById('yearComparePanel');
-      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
+      // Monatswert und kumulierte Summe als ZWEI eigene Zellen statt zwei <span>
+      // in einer gemeinsamen rechtsbuendigen Zelle (Dietmar, 23.09.2026: mehr
+      // Abstand allein loeste die "Verformungen" der Rechtsbuendigkeit nicht -
+      // beide Werte brauchen ihre eigene, unabhaengige Spaltenbreite). Januar hat
+      // keine kumulierte Spalte (waere identisch zum Monatswert); Monatsname
+      // ueberspannt seine ein oder zwei Spalten per colspan.
+      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m, i) {
+        return '<th' + (i >= 1 ? ' colspan="2"' : '') + '>' + m + '</th>';
+      }).join('') + '<th>Summe</th></tr>';
       function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
       // Siegertreppchen je Spalte (Dietmar, 23.09.2026): die drei hoechsten Werte
       // je Monat (und Summe) ueber alle JAHRE (Mittelwert/Erwartung zaehlen nicht
@@ -2824,9 +2835,10 @@
           + arr.map(function (v, i) {
               var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
               var cCls = (isYearRow && i >= 1) ? rankClass(cumArr[i], cumColRanks[i]) : '';
-              var vHtml = vCls ? '<span class="' + vCls + '">' + fmt(v) + '</span>' : fmt(v);
-              var c = (i >= 1 && cumArr[i] !== null) ? '<span class="ycCum' + (cCls ? ' ' + cCls : '') + '">' + fmt(cumArr[i]) + '</span>' : '';
-              return '<td>' + vHtml + c + '</td>';
+              var vTd = '<td' + (vCls ? ' class="' + vCls + '"' : '') + '>' + fmt(v) + '</td>';
+              if (i < 1) { return vTd; }
+              var cTd = '<td class="ycCumCell' + (cCls ? ' ' + cCls : '') + '">' + (cumArr[i] !== null ? fmt(cumArr[i]) : '') + '</td>';
+              return vTd + cTd;
             }).join('')
           + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td>' + (sCls ? '<span class="' + sCls + '">' + fmt(sum) + '</span>' : fmt(sum)) + '</td>'; })()
           + '</tr>';
