@@ -115,20 +115,29 @@ class NRGDashboardHeatSchema extends IPSModule
     // Versionszeile + GitHub-Hinweis (noch kein Forum-Thread, Modul
     // unveroeffentlicht - einmalig dismissible). NEWS_VERSION bei jeder
     // nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.5.5';
-    private const NEWS_ITEMS = [
-        'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-        'Einführungs-Tour um vier fachlich von HeishaMon geprüfte Erklärungen ergänzt: Verdichterfrequenz, ΔT zwischen Vor-/Rücklauf, Unterschied COP vs. Arbeitszahl, was Abtaubetrieb technisch bedeutet.',
-        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-        '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
-        'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
-        'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
-        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-        'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
-        'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
-        'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
+    // Versionsweise statt EINER flachen Liste (Dietmar, 23.09.2026: "nur die
+    // Neuerungen zwischen der zuletzt verwendeten und der nun installierten
+    // Version anzeigen") - newsBanner() zeigt jeden Schluessel-Eintrag, dessen
+    // Version NEUER ist als das zuletzt bestaetigte Attribut SeenNews (siehe
+    // dort), gruppiert nach Version. Die alte, gewachsene Liste bleibt als EIN
+    // Eintrag unter ihrer letzten Vergabe ('0.5.5') erhalten statt sie
+    // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
+    // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
+    private const NEWS_VERSIONS = [
+        '0.5.5' => [
+            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
+            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
+            'Einführungs-Tour um vier fachlich von HeishaMon geprüfte Erklärungen ergänzt: Verdichterfrequenz, ΔT zwischen Vor-/Rücklauf, Unterschied COP vs. Arbeitszahl, was Abtaubetrieb technisch bedeutet.',
+            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
+            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
+            '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
+            'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
+            'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
+            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
+            'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
+            'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
+            'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
+        ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
@@ -598,17 +607,48 @@ class NRGDashboardHeatSchema extends IPSModule
         $this->propagateDismiss('AckPurposeIntroApply');
     }
 
+    /** Reine Versionszahl ohne Beta-/Build-Zusatz ("0.9.73-beta.1" -> "0.9.73")
+     *  - Vergleichsbasis fuer NEWS_VERSIONS, damit z.B. "0.9.73" (Schluessel) und
+     *  "0.9.73-beta.1" (soeben bestaetigte Bibliotheksversion) als GLEICH gelten
+     *  statt "-beta.1" faelschlich als "neuer" zu werten. */
+    private function BaseVersion(string $v): string
+    {
+        return preg_replace('/-.*$/', '', $v) ?? $v;
+    }
+
+    /**
+     * "Was ist Neu"-Banner: erscheint nach einem Update (Attribut SeenNews
+     * startet leer), bis der Nutzer "Verstanden" klickt - zeigt NUR die
+     * Versionen, die NEUER sind als die zuletzt bestaetigte (Dietmar,
+     * 23.09.2026: "nur die Neuerungen zwischen der zuletzt verwendeten und
+     * der nun installierten Version"), gruppiert nach Version.
+     */
     private function newsBanner(): ?array
     {
-        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+        $seen = (string) @$this->ReadAttributeString('SeenNews');
+        $pending = [];
+        foreach (self::NEWS_VERSIONS as $ver => $lines) {
+            if ($seen === '' || version_compare($ver, $seen, '>')) {
+                $pending[$ver] = $lines;
+            }
+        }
+        if (count($pending) === 0) {
             return null;
         }
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
-        foreach (self::NEWS_ITEMS as $line) {
-            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        uksort($pending, 'version_compare');
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $multi = count($pending) > 1;
+        foreach ($pending as $ver => $lines) {
+            if ($multi) {
+                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+            }
+            foreach ($lines as $line) {
+                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+            }
         }
         $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_AckNews($id);'];
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
+        $latest = array_key_last($pending);
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -662,7 +702,17 @@ class NRGDashboardHeatSchema extends IPSModule
      */
     public function AckNewsApply(): void
     {
-        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        // Die tatsaechlich installierte Bibliotheksversion merken, NICHT nur
+        // den letzten NEWS_VERSIONS-Schluessel - stellt sicher, dass ein
+        // spaeteres Update (neuer NEWS_VERSIONS-Eintrag) den Banner sicher
+        // wieder zeigt, auch wenn zwischen den beiden Versionen kein News-
+        // Eintrag lag.
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $ver = is_array($lib) ? $this->BaseVersion((string) ($lib['Version'] ?? '')) : '';
+        if ($ver === '') {
+            $ver = (string) array_key_last(self::NEWS_VERSIONS);
+        }
+        $this->WriteAttributeString('SeenNews', $ver);
         $this->UpdateFormField('NewsPanel', 'visible', false);
     }
 

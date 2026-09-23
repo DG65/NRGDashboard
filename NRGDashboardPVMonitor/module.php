@@ -84,25 +84,34 @@ class NRGDashboardPVMonitor extends IPSModule
     // Muster NRGDashboardMap/Topology/Tile) - bislang fehlte hier die Haelfte
     // "Was ist Neu" (nur der GitHub-Hinweis existierte). NEWS_VERSION bei
     // jeder nutzersichtbaren Aenderung erhoehen.
-    private const NEWS_VERSION = '0.10.13';
-    private const NEWS_ITEMS = [
-        'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-        'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
-        'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
-        'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
-        'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
-        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-        'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
-        'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
-        'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten.',
-        'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
-        'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
-        'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
-        'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
-        'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
+    // Versionsweise statt EINER flachen Liste (Dietmar, 23.09.2026: "nur die
+    // Neuerungen zwischen der zuletzt verwendeten und der nun installierten
+    // Version anzeigen") - newsBanner() zeigt jeden Schluessel-Eintrag, dessen
+    // Version NEUER ist als das zuletzt bestaetigte Attribut SeenNews (siehe
+    // dort), gruppiert nach Version. Die alte, gewachsene Liste bleibt als EIN
+    // Eintrag unter ihrer letzten Vergabe ('0.10.13') erhalten statt sie
+    // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
+    // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
+    private const NEWS_VERSIONS = [
+        '0.10.13' => [
+            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
+            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
+            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
+            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
+            'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
+            'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
+            'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
+            'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
+            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
+            'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
+            'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
+            'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten.',
+            'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
+            'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
+            'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
+            'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
+            'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
+        ],
     ];
 
     /**
@@ -460,17 +469,48 @@ class NRGDashboardPVMonitor extends IPSModule
         $this->propagateDismiss('AckPurposeIntroApply');
     }
 
+    /** Reine Versionszahl ohne Beta-/Build-Zusatz ("0.9.73-beta.1" -> "0.9.73")
+     *  - Vergleichsbasis fuer NEWS_VERSIONS, damit z.B. "0.9.73" (Schluessel) und
+     *  "0.9.73-beta.1" (soeben bestaetigte Bibliotheksversion) als GLEICH gelten
+     *  statt "-beta.1" faelschlich als "neuer" zu werten. */
+    private function BaseVersion(string $v): string
+    {
+        return preg_replace('/-.*$/', '', $v) ?? $v;
+    }
+
+    /**
+     * "Was ist Neu"-Banner: erscheint nach einem Update (Attribut SeenNews
+     * startet leer), bis der Nutzer "Verstanden" klickt - zeigt NUR die
+     * Versionen, die NEUER sind als die zuletzt bestaetigte (Dietmar,
+     * 23.09.2026: "nur die Neuerungen zwischen der zuletzt verwendeten und
+     * der nun installierten Version"), gruppiert nach Version.
+     */
     private function newsBanner(): ?array
     {
-        if (@$this->ReadAttributeString('SeenNews') === self::NEWS_VERSION) {
+        $seen = (string) @$this->ReadAttributeString('SeenNews');
+        $pending = [];
+        foreach (self::NEWS_VERSIONS as $ver => $lines) {
+            if ($seen === '' || version_compare($ver, $seen, '>')) {
+                $pending[$ver] = $lines;
+            }
+        }
+        if (count($pending) === 0) {
             return null;
         }
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu in diesem Modul — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
-        foreach (self::NEWS_ITEMS as $line) {
-            $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+        uksort($pending, 'version_compare');
+        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $multi = count($pending) > 1;
+        foreach ($pending as $ver => $lines) {
+            if ($multi) {
+                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+            }
+            foreach ($lines as $line) {
+                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+            }
         }
         $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckNews($id);'];
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu in Version ' . self::NEWS_VERSION, 'expanded' => true, 'items' => $items];
+        $latest = array_key_last($pending);
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -524,7 +564,17 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     public function AckNewsApply(): void
     {
-        $this->WriteAttributeString('SeenNews', self::NEWS_VERSION);
+        // Die tatsaechlich installierte Bibliotheksversion merken, NICHT nur
+        // den letzten NEWS_VERSIONS-Schluessel - stellt sicher, dass ein
+        // spaeteres Update (neuer NEWS_VERSIONS-Eintrag) den Banner sicher
+        // wieder zeigt, auch wenn zwischen den beiden Versionen kein News-
+        // Eintrag lag.
+        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
+        $ver = is_array($lib) ? $this->BaseVersion((string) ($lib['Version'] ?? '')) : '';
+        if ($ver === '') {
+            $ver = (string) array_key_last(self::NEWS_VERSIONS);
+        }
+        $this->WriteAttributeString('SeenNews', $ver);
         $this->UpdateFormField('NewsPanel', 'visible', false);
     }
 

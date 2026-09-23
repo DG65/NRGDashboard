@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.74-beta.1 (2026-09-23)
+
+- Map, Topology, PVMonitor, WPMonitor, HeatSchema, Forecast: dasselbe versionsweise "Was ist Neu"-Panel wie zuvor in Tile (0.9.73) - zeigt nur die Versionen zwischen der zuletzt gesehenen und der aktuell installierten, statt pauschal die ganze Historie oder gar nichts. Die bisherige, gewachsene Liste jedes Moduls bleibt als ein Block unter ihrer letzten Versionsnummer erhalten, neue Einträge ab jetzt bekommen ihre eigene Versionsnummer.
+
 ## 0.9.73-beta.1 (2026-09-23)
 
 - Tile: das "Was ist Neu"-Panel zeigt jetzt nur die Versionen an, die zwischen der zuletzt gesehenen und der aktuell installierten Version liegen, statt entweder pauschal die ganze Historie oder gar nichts (Dietmar: "ist so etwas machbar?"). NEWS_ITEMS ist dafür versionsweise strukturiert (`NEWS_VERSIONS`), das Panel erscheint nach jedem Update mit mindestens einem neuen Eintrag automatisch wieder.
