@@ -607,7 +607,23 @@
     // nicht El./Therm. Leistung oder Vorlauf/Ruecklauf: dort sind die
     // scharfen Kanten (Start/Stopp der Waermepumpe) die eigentliche
     // Information, eine geglaettete Kurve wuerde sie verwischen.
-    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: movingAverage(seriesOrEmpty(d.outsideTemp), 12), axis: 1, color: '#5FCB6B', dotted: true, smooth: true }); }
+    if (lastData.hasOutsideTemp) {
+      // Zwei zusaetzliche Mittelwert-Linien (23.09.2026, Dietmar: "1 und
+      // 24 Stunden") - fuer eine ECHTE 24h-Mittelung reichen die Punkte des
+      // angezeigten Tages allein nicht (am Tagesanfang faellt das Fenster
+      // sonst zur Haelfte aus dem Tag heraus) - der VORTAG steckt aber
+      // bereits im selben Payload (days[idx+1], WINDOW_DAYS=8 auf Backend-
+      // Seite), wird hier vorne angehaengt und nach dem Glaetten wieder
+      // auf den sichtbaren Tag zurueckgeschnitten. Kein Backend-Umbau noetig.
+      var days = (lastData && lastData.days) || [];
+      var prevDay = days[idx + 1];
+      var prevPts = (prevDay && Array.isArray(prevDay.outsideTemp)) ? prevDay.outsideTemp : [];
+      var extended = prevPts.concat(seriesOrEmpty(d.outsideTemp));
+      var inDay = function (p) { return p[0] >= d.dayStart; };
+      series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true, smooth: true });
+      series.push({ name: 'Außentemp. Ø1h', data: movingAverage(extended, 12).filter(inDay), axis: 1, color: '#3FA5C4', smooth: true });
+      series.push({ name: 'Außentemp. Ø24h', data: movingAverage(extended, 288).filter(inDay), axis: 1, color: '#B15FCB', smooth: true });
+    }
     return series;
   }
 

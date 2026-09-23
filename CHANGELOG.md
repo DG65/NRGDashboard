@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.117-beta.1 (2026-09-23)
+
+- WPMonitor "Verlauf": zwei zusätzliche Mittelwert-Linien für die Außentemperatur, Ø1h und Ø24h (Dietmar). Für eine echte 24h-Mittelung reichen die Punkte des angezeigten Tages allein nicht - der Vortag steckt bereits im selben Payload (days[idx+1]) und wird für die Berechnung vorne angehängt, danach auf den sichtbaren Tag zurückgeschnitten. Kein Backend-Umbau nötig.
+
 ## 0.9.116-beta.1 (2026-09-23)
 
 - WPMonitor "Verlauf": spline allein rundete nur die Ecken zwischen Punkten, änderte aber nichts an den groben Treppenstufen selbst (Außentemperatur aktualisiert offenbar nur stündlich). Zusätzlich gleitender Mittelwert (12 Punkte ≈ 1 Stunde bei 5-Minuten-Raster) vor dem Zeichnen - aus Sprüngen wird eine echte Rampe.
