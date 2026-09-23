@@ -819,19 +819,21 @@
         <feMergeNode in="specClip"/>
       </feMerge>
     </filter>
-    <!-- GEFUNDENER WURZELFEHLER (23.09.2026): dieser Kommentar endete hier
-         bis Build 225 auf "*/" statt "-->" (Ueberbleibsel aus einer
-         fruehreren C-Stil-Fassung) - ein HTML-Kommentar OHNE "-->" bleibt
-         bis zum naechsten "-->" IM DOKUMENT offen und verschluckt bis dahin
-         allen Markup-Code, hier bis zur naechsten zufaelligen "-->" mitten
-         im node-center-Kommentar. Dadurch landeten </defs>, wires-layer UND
-         node-center in einem nie geschlossenen <defs> - <defs>-Inhalt wird
-         NIE gerendert, die Kachel blieb komplett leer/grau. Das war die
-         eigentliche Ursache ALLER "graue Kachel"-Meldungen seit Build 224
-         (Rollback-Kommentar selbst enthielt den Tippfehler), nicht die
-         zuvor vermuteten Firefox-/Filter-Eigenheiten. Runder-Ring-Filter
-         "ringRound" bleibt entfernt, zurueck zum unveraenderten
-         "relief"-Filter. -->
+    <!-- Wurzelfehler-Historie (23.09.2026), ZWEIMAL live gescheitert: erst
+         endete dieser Kommentar auf einem Stern-Schraegstrich statt dem
+         korrekten HTML-Kommentar-Ende, wodurch alles bis zu einem ganz
+         anderen, zufaelligen Kommentar-Ende weiter unten verschluckt wurde
+         (Ergebnis: der komplette Energiefluss landete in einem nie
+         geschlossenen zweiten defs-Block, dessen Inhalt SVG grundsaetzlich
+         nicht zeichnet). Die NAECHSTE Fassung dieses Kommentars beschrieb
+         genau dieses Problem und enthielt dabei WOERTLICH das schliessende
+         Kommentar-Zeichenmuster als Beispieltext - wodurch der Kommentar
+         SOFORT dort endete und der restliche Fliesstext (inklusive der
+         woertlichen defs-Tag-Namen darin) erneut als echtes Markup geparst
+         wurde: DREI defs-Bloecke statt zwei. Lehre: in einem HTML-Kommentar
+         nie das eigene Endemuster oder Tag-Namen woertlich zitieren, auch
+         nicht als Beispiel. Runder-Ring-Filter bleibt entfernt, es gilt
+         weiter der unveraenderte relief-Filter oben. -->
   </defs>
 
   <g id="wires-layer"></g>

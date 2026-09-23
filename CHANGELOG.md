@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.100-beta.1 (2026-09-23)
+
+- Tile: ZWEITER Wurzelfehler gefunden und behoben - der Rollback-Kommentar aus 0.9.99 (der den ersten Wurzelfehler erklärte) enthielt dabei selbst wörtlich das schließende Kommentar-Zeichenmuster als Beispieltext, wodurch der Kommentar sofort dort endete und der restliche Fließtext (inklusive der darin wörtlich genannten defs-Tags) erneut als echtes Markup geparst wurde - drei defs-Blöcke statt zwei, der komplette Energiefluss landete wieder unsichtbar im letzten davon. Diesmal per echtem DOM-Parent-Check (nicht nur Text-Matching) lokal verifiziert: Energiefluss (Haus, alle Knoten, Animationen) rendert wieder vollständig, zusammen mit der Quoten-Münze.
+
 ## 0.9.99-beta.1 (2026-09-23)
 
 - Tile: WURZELURSACHE aller "graue Kachel"-Meldungen seit 0.9.97 gefunden und behoben - ein Rollback-Kommentar endete versehentlich auf "*/" statt "-->" und blieb dadurch offen, bis er zufällig mit dem "-->" eines ganz anderen, weiter unten stehenden Kommentars verschmolz. Alles dazwischen (`</defs>`, der komplette Energiefluss-Aufbau) landete dadurch in einem nie geschlossenen `<defs>`-Block, dessen Inhalt SVG grundsätzlich nie rendert - daher die leere/graue Kachel in JEDEM Browser, nicht nur Firefox. Lokal mit dem echten Live-Payload nachgestellt und verifiziert (DOM vollständig, keine JS-Fehler mehr) bevor erneut ausgerollt wurde.
