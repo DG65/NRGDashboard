@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.53-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: die drei besten Jahre je Spalte (jeder Monat und die Summe) werden olympisch mit Gold/Silber/Bronze markiert - Farbe plus Medaillen-Symbol, damit es auch farbenblind erkennbar bleibt. Gleichstand teilt sich denselben Rang.
+
 ## 0.9.52-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: die kumulierte Jahressumme je Monatszelle stand untereinander mit dem Monatswert und kostete pro Zeile zu viel Höhe (Dietmars Korrektur direkt nach 0.9.51) - steht jetzt hintereinander in derselben Zeile, dezent kleiner dahinter.
