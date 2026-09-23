@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.80-beta.1 (2026-09-23)
+
+- Tile Quoten-Muenze: naeher an den linken Rand geschoben (war "viel zu weit nach Rechts gerutscht"), die beiden Fortschrittsringe wirken jetzt erhaben (derselbe Relief-Filter wie Icons/Zahlen an den anderen Knoten, etwas dickerer Strich statt einer flachen Linie).
+
 ## 0.9.79-beta.1 (2026-09-23)
 
 - Tile Quoten-Knopf: aus dem eigenständigen HTML-Kreis (grauer Kasten mit Rand) eine echte SVG-Münze im 3D-Plastik-Stil der übrigen Knoten geworden (Dietmar: "sieht neben den anderen Pillen wie ein Fremdkörper aus ... im Münzstil analog der anderen Pillen und Knoten") - nutzt dieselben Bausteine (Verlauf, Fase, Glanzlicht) wie jeder Geräte-Knoten und lebt jetzt im selben SVG-Koordinatensystem statt als eigenes HTML-Element obendrüber.

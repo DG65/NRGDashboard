@@ -664,8 +664,11 @@
        Knoten-Verteilung; dieselben Bausteine wie jeder Aussenknoten. r=46
        etwas kleiner als DESIGN_R=56, damit sie sich als zusaetzliches,
        eigenes Element einordnet statt wie ein weiterer Geraete-Knoten zu
-       wirken. display:none, bis buildPayload() eine Tagesquote liefert. -->
-  <g id="quotaCoin" class="quota-coin" transform="translate(70,90)" style="display:none">
+       wirken. translate(38,85) statt anfangs (70,90) - Dietmar, 23.09.2026:
+       "viel zu weit nach Rechts gerutscht", naeher an den linken Rand
+       geschoben, damit sie nicht mit der Knoten-Verteilung kollidiert.
+       display:none, bis buildPayload() eine Tagesquote liefert. -->
+  <g id="quotaCoin" class="quota-coin" transform="translate(38,85)" style="display:none">
     <title id="quotaCoinTitle">Autarkie- und Selbstverbrauchsquote</title>
     <circle class="coin-shadow" cx="0" cy="7.4" r="52"/>
     <circle class="node-face" r="46"/>
@@ -673,10 +676,10 @@
     <circle class="node-bevel" r="46"/>
     <circle class="node-highlight" r="33.1" transform="translate(-13.8,-22.1) scale(1,0.57)"/>
     <circle class="node-spec" r="13.8" transform="translate(-20.2,-25.3) scale(1,0.55)"/>
-    <circle class="qcoin-ring-bg" r="38" fill="none" stroke-width="6"/>
-    <circle class="qcoin-ring-bg" r="26" fill="none" stroke-width="6"/>
-    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="38" fill="none" stroke-width="6" transform="rotate(-90)"/>
-    <circle id="qRingSelf" class="qcoin-ring-self" r="26" fill="none" stroke-width="6" transform="rotate(-90)"/>
+    <circle class="qcoin-ring-bg" r="38" fill="none" stroke-width="7"/>
+    <circle class="qcoin-ring-bg" r="26" fill="none" stroke-width="7"/>
+    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="38" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
+    <circle id="qRingSelf" class="qcoin-ring-self" r="26" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
     <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#42a5f5"></text>
     <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
