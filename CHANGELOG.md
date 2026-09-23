@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.109-beta.1 (2026-09-23)
+
+- PVMonitor: Tagesplan zeigte die ins Netz eingespeiste Energie fälschlich als Last (Dietmar). Ursache: die Ist-Kurve nutzte den manuell verknüpften, abrechnungsgenauen aber "latency":"delayed" Inexogy-Zähler als Netzquelle - dieser stand an dem Tag durchgehend bei ~6,8 W fest, ohne funktionierenden Netzwert schrieb die Last-Formel den kompletten PV-Überschuss fälschlich der Last zu, sobald die Batterie voll war. Neue Funktion `LiveGridPowerID()`: bevorzugt für die heutige Ist-Kurve den Echtzeit-MeterHub-Zähler (authority "auxiliary"/"realtime", bei Dietmar der PAC2200), fällt erst zurück auf die konfigurierte Quelle (Inexogy), wenn kein Echtzeit-Zähler zugeordnet ist. Andere Stellen (Bilanz-Charts etc.) bleiben bewusst bei der abrechnungsgenauen Quelle. Live gegen echte Archivdaten verifiziert (0-2,5 kW plausible Lastwerte statt 5-7 kW PV-Spiegelung).
+
 ## 0.9.108-beta.1 (2026-09-23)
 
 - Tile: Quoten-Panel (öffnet sich beim Klick auf die Münze) überdeckte beim Öffnen die noch sichtbare Münze selbst - top-Position lag mitten in deren Bereich. Panel jetzt unterhalb der Münze positioniert.

@@ -1771,8 +1771,7 @@ class NRGDashboardPVMonitor extends IPSModule
             $out['pvForecast'] = $this->SpliceActual($out['pvForecast'], $pvActual, $now * 1000);
 
             $batID = $this->BatPowerID();
-            $gridID = $this->GridPowerID();
-            $gridSign = $this->GridPowerSign($gridID);
+            [$gridID, $gridSign] = $this->LiveGridPowerID();
             $loadActual = $this->ActualLoadSeries($aid, $pvID, $batID, $gridID, $gridSign, $todayStart, $now);
             $out['loadForecast'] = $this->SpliceActual($out['loadForecast'], $loadActual, $now * 1000);
         }
@@ -1921,6 +1920,42 @@ class NRGDashboardPVMonitor extends IPSModule
      * Inexogy=billing vs. PAC2200=auxiliary - live an Dietmars Anlage
      * bestaetigt, 29.07.2026).
      */
+    /**
+     * Netz-Quelle fuer die HEUTIGE Ist-Kurve im Tagesplan (23.09.2026,
+     * Dietmar-Fund: "seit wann wird im Tagesplan die ins Netz eingespeiste
+     * Energie als Last dargestellt?") - Ursache war NICHT ein Vorzeichen-
+     * fehler, sondern dass GridPowerID() (manuelle Verknuepfung, bei
+     * Dietmar auf den abrechnungsgenauen, aber "latency":"delayed" Inexogy-
+     * Zaehler gesetzt) fuer den TAGESPLAN verwendet wurde. Der Inexogy-
+     * Zaehler stand an dem Tag durchgehend bei ~6,8 W fest (Verbindungs-
+     * problem), waehrend der echte MeterHub-PAC2200 ("authority":
+     * "auxiliary", "latency":"realtime") mehrere kW Einspeisung zeigte -
+     * ohne funktionierenden Netzwert schrieb die Last-Formel den kompletten
+     * PV-Ueberschuss faelschlich der Last zu, sobald die Batterie voll war.
+     * Fuer die HEUTIGE Ist-Kurve zaehlt Aktualitaet mehr als Abrechnungs-
+     * genauigkeit - deshalb hier bewusst NICHT BestAssignment() (bevorzugt
+     * "billing"), sondern das Gegenteil: der erste "grid"-Zuordnung MIT
+     * authority !== 'billing' (typischerweise der Echtzeit-Zaehler), erst
+     * wenn keine solche existiert, Ruecksprung auf GridPowerID() (das
+     * bisherige Verhalten, z.B. Inexogy). Andere Stellen (Bilanz-Charts
+     * etc.), die weiterhin bewusst die abrechnungsgenaue Quelle wollen,
+     * bleiben unveraendert bei GridPowerID()/BestAssignment().
+     */
+    private function LiveGridPowerID(): array
+    {
+        foreach ($this->MeterHubAssignments() as $a) {
+            if (($a['function'] ?? '') !== 'grid' || ($a['authority'] ?? '') === 'billing') {
+                continue;
+            }
+            $vid = (int) ($a['powerID'] ?? 0);
+            if ($vid > 0 && IPS_VariableExists($vid)) {
+                return [$vid, $this->GridPowerSign($vid)];
+            }
+        }
+        $vid = $this->GridPowerID();
+        return [$vid, $this->GridPowerSign($vid)];
+    }
+
     private function MeterHubAssignments(): array
     {
         $ids = @IPS_GetInstanceListByModuleID(self::METERHUB_GUID);
