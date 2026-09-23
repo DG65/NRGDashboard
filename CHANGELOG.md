@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.86-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: die "heute"-Beschriftung saß fast genau auf dem Rand des inneren Datenrings und wirkte dadurch eingeklemmt/abgeschnitten (Dietmar). Textblock enger und etwas höher platziert, damit klar Luft zum Ring bleibt.
+
 ## 0.9.85-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: der Münzrand (dünne äußere Kontur) war so breit wie bei den normalen Knoten und konkurrierte optisch mit den beiden echten Datenringen darin ("wirkt wie ein Ring mit Gehalt") - deutlich dünner, reine Kontur statt einer dritten Wertung.
