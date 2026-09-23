@@ -579,7 +579,12 @@
       series.push({ name: 'Vorlauf', data: seriesOrEmpty(d.mainOutletTemp), axis: 1, color: '#e0503c', dashed: true });
       series.push({ name: 'Rücklauf', data: seriesOrEmpty(d.mainInletTemp), axis: 1, color: '#4a90d9', dashed: true });
     }
-    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true }); }
+    // smooth (23.09.2026, Dietmar: "waere als Bezier oder als schoen
+    // geschwungene Linie wesentlich huebscher") - nur die Aussentemperatur,
+    // nicht El./Therm. Leistung oder Vorlauf/Ruecklauf: dort sind die
+    // scharfen Kanten (Start/Stopp der Waermepumpe) die eigentliche
+    // Information, eine geglaettete Kurve wuerde sie verwischen.
+    if (lastData.hasOutsideTemp) { series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true, smooth: true }); }
     return series;
   }
 
@@ -611,6 +616,7 @@
     var series = visSeries.map(function (s, i) {
       var line = {
         name: s.name, type: 'line', showSymbol: false, data: s.data, yAxisIndex: s.axis, color: s.color,
+        smooth: !!s.smooth,
         lineStyle: Object.assign({ width: 0.7 }, s.dashed ? { type: 'dashed' } : (s.dotted ? { type: 'dotted' } : {}))
       };
       if (i === 0 && markAreas.length) {
@@ -684,7 +690,9 @@
       },
       series: visSeries.map(function (s) {
         return {
-          name: s.name, type: 'line', data: s.data, color: s.color, yAxis: s.axis,
+          // smooth (23.09.2026) - Highcharts kennt kein "smooth"-Flag auf
+          // einem "line"-Series, sondern einen eigenen Serientyp "spline".
+          name: s.name, type: s.smooth ? 'spline' : 'line', data: s.data, color: s.color, yAxis: s.axis,
           dashStyle: s.dashed ? 'Dash' : (s.dotted ? 'Dot' : 'Solid'), marker: { enabled: false }, lineWidth: 1.4
         };
       })

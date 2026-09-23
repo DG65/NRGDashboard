@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.115-beta.1 (2026-09-23)
+
+- WPMonitor "Verlauf": Außentemperatur-Linie wirkte eckig/treppig (Dietmar: "als Bezier oder schön geschwungene Linie wesentlich hübscher"). Als geglättete Kurve gerendert (ECharts smooth:true / Highcharts spline), nur bei der Außentemperatur - El./Therm. Leistung und Vorlauf/Rücklauf bleiben scharfkantig, da dort die schnellen Wechsel (Start/Stopp der Wärmepumpe) die eigentliche Information sind.
+
 ## 0.9.114-beta.1 (2026-09-23)
 
 - PVMonitor "PV & Einstrahlung": Hauptursache der Erwartungs-Abweichung gefunden (Dietmar: Einstrahlungssensor ist eine horizontal montierte Ecowitt-Wetterstation) - eine horizontale Messung entspricht NICHT der Einstrahlung auf einer geneigten Modulfläche, das bisherige Modell nahm das aber implizit an. Neue Transposition (GHI→POA, Erbs-Dekomposition + isotropes Himmelsmodell, Standard-PV-Ertragsmodellierung) rechnet die horizontale Messung anhand Sonnenstand und Modul-Neigung/-Ausrichtung auf die tatsächliche Modulebene um. Neue Instanz-Einstellung "Einstrahlungssensor horizontal montiert" (Standard: an) - abschaltbar für POA-montierte Sensoren. Live geprüft: an Dietmars Anlage (27°/-14°) steigt die Erwartung bei einem Testpunkt von 2,80 kW auf 3,29 kW (Ist 4,52 kW) - deutliche, physikalisch begründete Annäherung, kein Vollausgleich (verbleibender Rest vermutlich PR-Kalibrierung, nicht Ziel dieser Änderung).
