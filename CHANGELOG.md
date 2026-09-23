@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.107-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: gefunden, warum die Ring-Fase nur in Chrome intakt war, in Firefox aber kaputt (Dietmar). Ursache: `gradientUnits="userSpaceOnUse"` kombiniert mit dem `transform="rotate(-90)"` der Ring-Kreise wird von Chrome und Firefox unterschiedlich interpretiert (die Spec ist an dieser Stelle uneindeutig). Ersetzt durch den Standard-Mechanismus (objectBoundingBox, keine eigenen Koordinaten) - dieselbe seit Monaten browserübergreifend zuverlässige Technik wie beim bestehenden bevelGrad, rechnerisch identisches Ergebnis.
+
 ## 0.9.106-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: Rückbau auf den Build-230-Stand (Dietmar: "die Ringe waren zuletzt bei Build 230 intakt") - sowohl die Kontrastanhebung (0.9.104) als auch der Blend-Mode-Versuch (0.9.105) wurden wieder verworfen. Funktional identisch zu Build 230 verifiziert (Diff gegen den damaligen Commit).

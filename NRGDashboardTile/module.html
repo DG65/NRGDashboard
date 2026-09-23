@@ -800,37 +800,34 @@
       <stop offset="70%"  stop-color="#000000" stop-opacity="0"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
     </linearGradient>
-    <!-- Zweiter Anlauf fuer die Ring-Fase (23.09.2026, Dietmar: "die
-         Quotenringe sind oben flach und deshalb oben sehr hell... 'physika-
-         lisch' oben rund oder eben nur aus Fasen bestehen") - ein LINEARER
-         Verlauf (wie zuvor ringBevelGrad) hellt IMMER nur eine Himmels-
-         richtung entlang des Rings auf (hier: die 12-Uhr-Spitze am
-         staerksten), das ist KEIN echter Tubus-Querschnitt, sondern nur
-         eine gerichtete Beleuchtung - an der hellsten Stelle wirkt das
-         "ausgewaschen" statt rund. Ein echter Tubus ist an JEDEM Winkel
-         gleich gewoelbt (Rand dunkler, Mitte des Ringbands heller, Rand
-         wieder dunkler) - das liefert nur ein RADIALER Verlauf, vom
-         RINGMITTELPUNKT aus (nicht vom Ring-Rand), weil der Abstand vom
-         Mittelpunkt fuer jeden Punkt auf dem Kreis unabhaengig vom Winkel
-         genau die Position quer durch das Ringband beschreibt. Getrennte
-         Verlaeufe fuer aussen (r=35)/innen (r=24), weil die Position der
-         Bandkante (Innenkante/Aussenkante der Strichbreite) je Radius einen
-         anderen Prozentsatz vom Gesamtradius einnimmt. userSpaceOnUse mit
-         festem Radius (nicht objectBoundingBox) - unproblematisch, siehe
-         Untersuchung 23.09.2026: der eigentliche Absturz frueher am selben
-         Tag kam von zwei unterschlossenen HTML-Kommentaren, nicht von
-         eigenen Koordinatensystemen in Gradienten. -->
-    <!-- Rueckbau auf Build 230 (23.09.2026, Dietmar: "die Ringe waren
-         zuletzt bei Build 230 intakt") - der Nachjustierungs-Versuch mit
-         staerkerem Kontrast (0.75/0.78) wirkte "komplett kaputt" (Build
-         231/232). Exakt die Build-230-Werte, unveraendert. */
-    <radialGradient id="ringTubeOuter" cx="0" cy="0" r="38.5" gradientUnits="userSpaceOnUse">
+    <!-- Ring-Fase: echter Tubus-Querschnitt per RADIALEM Verlauf vom
+         Ringmittelpunkt aus (23.09.2026, Dietmar: "physikalisch oben rund")
+         - fuer jeden Punkt auf dem Kreis beschreibt der Abstand vom
+         Mittelpunkt unabhaengig vom Winkel genau die Position quer durch
+         das Ringband, deshalb an JEDEM Winkel gleich gewoelbt statt nur an
+         einer Stelle hell (das war beim vorherigen LINEAREN Verlauf das
+         Problem). Getrennte Verlaeufe fuer aussen (r=35)/innen (r=24), weil
+         die Bandkante je Radius einen anderen Prozentsatz vom Gesamtradius
+         einnimmt.
+         WICHTIG: gradientUnits="userSpaceOnUse" (fruehere Fassung) wird in
+         Kombination mit dem transform="rotate(-90)" der Ring-Kreise von
+         Firefox und Chrome NACHWEISLICH UNTERSCHIEDLICH interpretiert -
+         Dietmar, 23.09.2026: "in Firefox sind die Ringe noch immer kaputt,
+         in Chrome sind sie intakt" (die Spec ist an dieser Stelle
+         uneindeutig, ob sich der Verlauf auf den Raum VOR oder NACH dem
+         eigenen Element-Transform bezieht). Deshalb jetzt OHNE
+         gradientUnits (= Standard objectBoundingBox, dieselbe Technik wie
+         das seit Monaten unauffaellig funktionierende bevelGrad oben) -
+         bei einer echten Kreisflaeche ist die BBox quadratisch, das
+         Standard-r=50% trifft exakt denselben Radius wie zuvor
+         "r=38.5"/"r=27.5" in userSpaceOnUse, nur browserunabhaengig. -->
+    <radialGradient id="ringTubeOuter">
       <stop offset="80%"  stop-color="#000000" stop-opacity="0.6"/>
       <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
       <stop offset="93%"  stop-color="#ffffff" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
     </radialGradient>
-    <radialGradient id="ringTubeInner" cx="0" cy="0" r="27.5" gradientUnits="userSpaceOnUse">
+    <radialGradient id="ringTubeInner">
       <stop offset="74%"  stop-color="#000000" stop-opacity="0.6"/>
       <stop offset="85%"  stop-color="#ffffff" stop-opacity="0.3"/>
       <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
