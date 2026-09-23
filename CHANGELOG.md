@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.85-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: der Münzrand (dünne äußere Kontur) war so breit wie bei den normalen Knoten und konkurrierte optisch mit den beiden echten Datenringen darin ("wirkt wie ein Ring mit Gehalt") - deutlich dünner, reine Kontur statt einer dritten Wertung.
+
 ## 0.9.84-beta.1 (2026-09-23)
 
 - Tile Quoten-Muenze: "heute"-Beschriftung wirkte am unteren, dunkleren Rand des Verlaufs wie abgeschnitten (zu geringer Kontrast, nicht wirklich geclippt) - festere, hellere Textfarbe statt der theme-abhängigen Variable, minimal nach oben gerückt. Ringfarben nochmal angepasst ("klarer, deutlicher aber gedämpfter") - hellere, klar unterscheidbare Grundtöne (Waldgrün/Stahlblau) bei etwas höherer statt niedrigerer Deckkraft, kein Neon.
