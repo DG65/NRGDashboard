@@ -725,8 +725,8 @@
     <circle class="node-bevel" r="42"/>
     <circle class="node-highlight" r="30.2" transform="translate(-12.6,-20.2) scale(1,0.57)"/>
     <circle class="node-spec" r="12.6" transform="translate(-18.5,-23.1) scale(1,0.55)"/>
-    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#ringRound)"/>
-    <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#ringRound)"/>
+    <circle id="qRingAutarky" class="qcoin-ring-autarky" r="35" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
+    <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <!-- Textblock enger + hoeher (Dietmar, 23.09.2026: "heute musst du auch
          noch anders platzieren") - bei y=23 sass "heute" fast genau auf dem
          Rand des INNEREN Datenrings (r=24) und wirkte dadurch eingeklemmt/
@@ -798,30 +798,14 @@
         <feMergeNode in="specClip"/>
       </feMerge>
     </filter>
-    <!-- Runde Quoten-Ringe, zweiter Anlauf (23.09.2026) - NICHT mehr per
-         CSS-Verlauf-Stroke (url() in einer CSS-Deklaration hat live die
-         GANZE Kachel grau gerendert, siehe Rollback 0.9.95), sondern per
-         SVG-FILTER-ATTRIBUT wie das bereits bewaehrte "relief" (das war nie
-         das Problem - Filter-url()s als Praesentationsattribut liefen die
-         ganze Zeit unauffaellig). "relief" blurte mit stdDev 1.3 nur die
-         AUSSENKANTEN eines 7 Einheiten breiten Streifens (Bump-Steigung nur
-         dort, wo sich das Alpha aendert) - die Streifenmitte blieb bei
-         konstantem Alpha flach, das erzeugte den flachen Eindruck. stdDev
-         hier bewusst nahe an der halben Strichbreite (3,5) - der Blur reicht
-         dadurch bis in die Mitte und erzeugt eine durchgehend gewoelbte
-         Kuppe ueber die GESAMTE Ringbreite statt nur an den Raendern. */
-    <filter id="ringRound" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur in="SourceAlpha" stdDev="2.2" result="bump"/>
-      <feSpecularLighting in="bump" surfaceScale="3.4" specularConstant="0.85"
-          specularExponent="11" lighting-color="#ffffff" result="spec">
-        <fePointLight x="-50" y="-80" z="65"/>
-      </feSpecularLighting>
-      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/>
-      <feMerge>
-        <feMergeNode in="SourceGraphic"/>
-        <feMergeNode in="specClip"/>
-      </feMerge>
-    </filter>
+    <!-- Runder-Ring-Filter "ringRound" (23.09.2026) WIEDER ENTFERNT - zweiter
+         Anlauf fuer runde statt flache Quoten-Ringe, diesmal per SVG-Filter-
+         Attribut statt CSS-Verlauf-Stroke, hat live ERNEUT die ganze Kachel
+         grau gerendert (Dietmar: "das gleiche wieder"). Beide Anlaeufe
+         (Verlauf-Stroke UND eigener Filter) sind live gescheitert - naechster
+         Versuch braucht erst eine lokale Verifikation (Browser-Tool gegen
+         die Datei selbst) statt eines weiteren Live-Schusses auf Dietmars
+         Anlage. Zurueck zum unveraenderten "relief"-Filter. */
   </defs>
 
   <g id="wires-layer"></g>

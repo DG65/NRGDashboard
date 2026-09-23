@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.97-beta.1 (2026-09-23)
+
+- Tile: Rollback von 0.9.96 - auch der zweite Anlauf für "runde" Quoten-Ringe (diesmal per eigenem SVG-Filter-Attribut statt CSS-Verlauf-Stroke) hat live erneut die ganze Kachel grau gerendert (Dietmar: "das gleiche wieder"). Zurück zum unveränderten `relief`-Filter. Nächster Anlauf erst nach lokaler Verifikation, kein weiterer Live-Schuss ohne Test.
+
 ## 0.9.96-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: zweiter, sichererer Anlauf für runde statt flache Ringe - diesmal per SVG-Filter-Attribut (neuer Filter `ringRound`, stärker abgestimmter feSpecularLighting-Bump über die gesamte Ringbreite statt nur die Kanten), nicht mehr per CSS-Verlauf-Stroke (das hatte die ganze Kachel grau gerendert, siehe 0.9.95-Rollback).
