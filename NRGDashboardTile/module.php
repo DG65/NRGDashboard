@@ -6087,6 +6087,7 @@ class NRGDashboardTile extends IPSModule
     }
 
     private const AGG_HOUR = 0;
+    private const AGG_DAY = 1;
     private const AGG_5MIN = 5;
 
     /**

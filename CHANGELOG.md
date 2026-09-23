@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.77-beta.1 (2026-09-23)
+
+- Tile: Fataler Fehler im Quoten-Knopf bei Monat/Jahr/Gesamt behoben - `self::AGG_DAY` war in Tile nie definiert (anders als in PVMonitor), der eben erst gebaute Rückfall in Build 203 stürzte dadurch sofort ab, sobald er griff. Live bei Dietmar gefunden und direkt nachgezogen.
+
 ## 0.9.76-beta.1 (2026-09-23)
 
 - Tile Quoten-Knopf: Monat/Jahr/Gesamt zeigten teils 0 kWh bzw. implausibel kleine Werte - ein beschädigter Archiv-Zeitstempel (gleiche Ursache wie beim PVMonitor-Jahresvergleich, live bei Dietmar gefunden) ließ `AC_GetAggregatedValues()` für den gesamten betroffenen Monatsblock FALSE liefern, PowerToEnergy() wertete das bisher stillschweigend als 0 statt nachzufragen. Fällt jetzt bei FALSE tageweise, bei Bedarf sogar auf die 5-Minuten-Rohwerte zurück, wie schon bei PVMonitors Jahresvergleich.
