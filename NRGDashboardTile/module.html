@@ -150,10 +150,21 @@
      Knoten-Ringe im Fluss (gruen/orange/lila/rot) stehen alle bei voller
      Deckkraft, das allein macht die Muenze trotz gleicher Groesse
      unaufdringlicher als sie. */
-  .qcoin-ring-autarky { stroke: #1b7a3d; stroke-linecap: round; opacity: .68; transition: stroke-dashoffset .6s ease; }
-  .qcoin-ring-self { stroke: #1a56c4; stroke-linecap: round; opacity: .68; transition: stroke-dashoffset .6s ease; }
+  /* Vierter Anlauf (23.09.2026): "klarer, deutlicher aber gedaempfter" -
+     #1b7a3d/#1a56c4 waren so dunkel, dass Gruen/Blau kaum noch auseinander-
+     zuhalten waren (beide liefen fast ins Schwarze). Hellere, klarere
+     Grundtoene (Waldgruen/Stahlblau statt Tannengruen/Dunkelblau), dafuer
+     mit etwas MEHR Deckkraft als vorher (.68 -> .8) statt weniger -
+     "gedaempft" heisst hier: kein Neon, nicht: kaum sichtbar. */
+  .qcoin-ring-autarky { stroke: #3fa565; stroke-linecap: round; opacity: .8; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-self { stroke: #4a86d6; stroke-linecap: round; opacity: .8; transition: stroke-dashoffset .6s ease; }
   .qcoin-val { font-family: var(--font); font-size: 13px; font-weight: 700; fill: #fff; filter: url(#relief); }
-  .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: var(--textmuted); }
+  /* var(--textmuted) sass zu dunkel gegen den unteren, dunkleren Teil des
+     Muenzen-Verlaufs (plasticFill hat den Lichtpunkt oben links, unten
+     rechts wird es deutlich dunkler) - dadurch wirkte "heute" wie
+     abgeschnitten statt nur unauffaellig (Dietmar, 23.09.2026). Fester,
+     helleres Grau statt der theme-abhaengigen Variable. */
+  .qcoin-lbl { font-family: var(--font); font-size: 7px; fill: rgba(255,255,255,.6); }
   /* Statt vier Umschalt-Knoepfen (Tag/Monat/Jahr/Gesamt einzeln anklicken) EINE
      Tabelle mit allen acht Werten auf einmal (Dietmar, 23.09.2026: "eher eine
      Tabelle mit allen 4/8 Werten aufpoppen ... darf ruhig grosszuegiger
@@ -657,7 +668,7 @@
     <circle id="qRingSelf" class="qcoin-ring-self" r="24" fill="none" stroke-width="7" transform="rotate(-90)" filter="url(#relief)"/>
     <text id="qValAutarky" class="qcoin-val" x="0" y="-1" text-anchor="middle"></text>
     <text id="qValSelf" class="qcoin-val" x="0" y="13" text-anchor="middle" fill="#7fa8e0"></text>
-    <text class="qcoin-lbl" x="0" y="25" text-anchor="middle">heute</text>
+    <text class="qcoin-lbl" x="0" y="23" text-anchor="middle">heute</text>
   </g>
 </svg>
 <div id="quotaPanel">

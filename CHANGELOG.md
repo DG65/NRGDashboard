@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.84-beta.1 (2026-09-23)
+
+- Tile Quoten-Muenze: "heute"-Beschriftung wirkte am unteren, dunkleren Rand des Verlaufs wie abgeschnitten (zu geringer Kontrast, nicht wirklich geclippt) - festere, hellere Textfarbe statt der theme-abhängigen Variable, minimal nach oben gerückt. Ringfarben nochmal angepasst ("klarer, deutlicher aber gedämpfter") - hellere, klar unterscheidbare Grundtöne (Waldgrün/Stahlblau) bei etwas höherer statt niedrigerer Deckkraft, kein Neon.
+
 ## 0.9.83-beta.1 (2026-09-23)
 
 - Tile Quoten-Muenze: auf 190px vergrößert, um sich an die Größe der Fluss-Knoten anzunähern (Dietmar: "so groß wie die Knoten"; als fixes Pixel-Element kann sie nicht automatisch mit der SVG-Skalierung der Kachelgröße mitwachsen). Ringe zusätzlich mit reduzierter Deckkraft, damit sie trotz der größeren Fläche zurückhaltender wirken als die echten, voll deckenden Knoten-Ringe im Fluss.
