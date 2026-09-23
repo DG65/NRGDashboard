@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.52-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: die kumulierte Jahressumme je Monatszelle stand untereinander mit dem Monatswert und kostete pro Zeile zu viel Höhe (Dietmars Korrektur direkt nach 0.9.51) - steht jetzt hintereinander in derselben Zeile, dezent kleiner dahinter.
+
 ## 0.9.51-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: jede Monatszelle zeigt ab Februar zusätzlich, dezent und kleiner darunter, die kumulierte Jahressumme bis zu diesem Monat (Dietmars Wunsch - auf einen Blick sehen, wo man im Jahr steht). Bricht bei der ersten Monatslücke im jeweiligen Jahr ab, statt darüber hinwegzutäuschen.

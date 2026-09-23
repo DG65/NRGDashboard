@@ -357,9 +357,9 @@
   .ycTable tbody tr.ycExpected td { font-style: italic; opacity: .8; }
   /* Kumulierte Jahressumme je Monatszelle, ab Februar (Dietmar, 23.09.2026:
      "wo man mit der Energieproduktion eines jeden Jahres steht") - dezent
-     UNTER dem Monatswert statt in Klammern daneben, damit die Zelle beim
-     Ueberfliegen nicht doppelt gelesen werden muss. */
-  .ycCum { display: block; font-size: 9px; font-weight: 400; opacity: .55; line-height: 1.3; }
+     HINTER dem Monatswert (nicht untereinander, das kostet pro Tabellenzeile
+     zu viel Hoehe - Dietmars Korrektur direkt nach der ersten Fassung). */
+  .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 4px; }
   .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
   .ycFoot { text-align: center; margin-top: 8px; }
   .ycFoot button { background: none; border: 1px solid rgba(127,135,145,.35); color: inherit; border-radius: 4px; padding: 5px 12px; font-size: 12px; cursor: pointer; margin: 0 4px; }
