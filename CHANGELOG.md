@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.50-beta.1 (2026-09-23)
+
+- PVMonitor: Reiter "Jahresvergleich" stand dauerhaft rot, obwohl die Tabelle Werte zeigte (Fund Dietmar). Die Reiterfarbe prüfte `lastData.energy.pv` - das ist die Tages-Energiereihe des PV-Reiters (Wochen-/Monatsansicht), nicht der Jahresvergleich; dieser Bezug war schon falsch, bevor der Reiter zuletzt robuster gemacht wurde. Prüft jetzt dieselbe Bedingung wie die Anzeige selbst (PV-Leistung aufgelöst oder Vorjahreswerte nachgetragen).
+
 ## 0.9.49-beta.1 (2026-09-21)
 
 - Verbindungs-Statuszeilen: rein automatisch übernommene Zeilen (🔗) erscheinen grün (Label-Farbe 0x2E8B3D), gemischte und andere Zustände in Standardfarbe (Verbund-Konvention, EMS). Gilt für alle Formulare über `libs/FormStatus.php`.

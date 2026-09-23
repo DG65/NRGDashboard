@@ -3940,7 +3940,12 @@
         price: !!(today && ((today.price && today.price.length) || (today.spot && today.spot.length))),
         flow: !!(today && today.flow && today.flow.hasData),
         balance: !!(today && today.flow && today.flow.hasData),
-        yearcompare: !!(lastData.energy && lastData.energy.pv && Object.keys(lastData.energy.pv).length),
+        // War bisher an lastData.energy.pv geknuepft - das ist die Tages-Energiereihe
+        // des PV-Reiters (Wochen-/Monatsansicht), NICHT der Jahresvergleich. Der Reiter
+        // stand dadurch dauerhaft rot, obwohl die Tabelle Werte zeigte (Fund Dietmar,
+        // 23.09.2026). Richtiger Indikator: dieselbe Bedingung, die den Reiter ueberhaupt
+        // Daten zeigen laesst (siehe render() 'yearcompare' - hasPv oder Nachtragswerte).
+        yearcompare: !!(lastData.hasPv || lastData.hasYearHistory),
         // Tagesplan laedt seine Daten erst beim Reiterwechsel nach
         // (dayPlanLoad) - solange die EMS-Instanz gefunden ist, gilt er
         // als versorgt statt faelschlich rot zu starten.
