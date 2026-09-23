@@ -196,7 +196,7 @@
      kein zweiter Klick-Bereich) und gedaempfter (die Muenzen-Fase liegt
      auf dunklem Untergrund, hier auf einer kraeftigen Ringfarbe - volle
      Deckkraft haette die Farbe komplett verdeckt statt nur zu wolben). */
-  .qcoin-ring-bevel { stroke: url(#bevelGrad); stroke-linecap: round; opacity: .55; pointer-events: none; transition: stroke-dashoffset .6s ease; }
+  .qcoin-ring-bevel { stroke: url(#ringBevelGrad); stroke-linecap: round; opacity: .7; pointer-events: none; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
@@ -786,6 +786,25 @@
       <stop offset="28%"  stop-color="#ffffff" stop-opacity="0"/>
       <stop offset="70%"  stop-color="#000000" stop-opacity="0"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
+    </linearGradient>
+    <!-- Eigener Fasen-Verlauf nur fuer die Quoten-Ringe (23.09.2026, Dietmar
+         Rueckmeldung zur runden Fase: an der Ringspitze immer noch flach).
+         bevelGrad ist DIAGONAL (Ecke oben-links hell, Ecke unten-rechts
+         dunkel) - an der 12-Uhr-Spitze der Ringe (wo der Datenbogen
+         beginnt) liegt genau der Verlaufs-Mittelpunkt, dort wirkte es
+         deshalb flach. Objektbezogener Verlauf, gleiche sichere Technik wie
+         bevelGrad selbst, aber ENTLANG DER LOKALEN X-ACHSE statt diagonal:
+         durch die Drehung der Ring-Kreise wird die lokale plus-X-Richtung
+         zur Bildschirm-Aufwaerts-Richtung (der 12-Uhr-Spitze) - hell bei
+         lokal x nahe eins, dunkel bei x nahe null wird dadurch zu einem
+         echten oben-hell/unten-dunkel-Verlauf, an der Ringspitze am
+         hellsten statt am Mittelpunkt.
+    -->
+    <linearGradient id="ringBevelGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="42%"  stop-color="#000000" stop-opacity="0"/>
+      <stop offset="58%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.85"/>
     </linearGradient>
     <radialGradient id="glossHi" cx="50%" cy="50%" r="50%">
       <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.85"/>
