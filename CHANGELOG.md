@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.112-beta.1 (2026-09-23)
+
+- Tile Quoten-Panel: nochmals verbreitert (640px → 720px), etwas mehr Luft an den Rändern.
+
 ## 0.9.111-beta.1 (2026-09-23)
 
 - Tile Quoten-Panel: "Batterie"-Spalte lief bei 520px rechts aus dem Panel raus, lange "Gesamt"-Werte (z.B. "Einspeisung: 18892,2 kWh") brauchten mehr Platz als der Spaltenkopf selbst (Dietmar). Panel auf 640px verbreitert, lokal mit den tatsächlichen Werten aus Dietmars Screenshot verifiziert.
