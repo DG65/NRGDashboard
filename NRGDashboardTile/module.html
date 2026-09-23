@@ -136,7 +136,11 @@
      wie ein Ring MIT GEHALT" - der Standard-node-ring (3 Einheiten) konkurriert
      optisch mit den beiden echten Datenringen darin). Reine Kontur-Linie,
      keine dritte Wertung. */
-  .quota-coin .node-ring { stroke: rgba(255,255,255,.35); stroke-width: 1.3; }
+  /* Muenzrand komplett weggelassen (23.09.2026, Dietmar: "lass uns mal
+     probieren den Muenzrand komplett weg zu lassen") - vorher eine duenne
+     Kontur-Linie, jetzt unsichtbar (Element bleibt im Markup, falls
+     Dietmar es sich anders ueberlegt). */
+  .quota-coin .node-ring { display: none; }
   /* Schlaglicht (Glanzlicht) NUR bei der Muenze reduziert (Dietmar,
      23.09.2026) - .node-highlight ist die gemeinsame Klasse aller Knoten
      (opacity 0.5), ein gezielter Override hier laesst den restlichen
@@ -810,14 +814,20 @@
          Untersuchung 23.09.2026: der eigentliche Absturz frueher am selben
          Tag kam von zwei unterschlossenen HTML-Kommentaren, nicht von
          eigenen Koordinatensystemen in Gradienten. -->
+    <!-- Helle Flaeche weiter reduziert (23.09.2026, Dietmar: "muss noch
+         weniger werden") - Lichtkante schmaler (zwei eng benachbarte Stops
+         statt einer einzelnen Spitze) UND deutlich weniger deckend
+         (0.6 -> 0.3), die dunklen Randstops bleiben wie gehabt. */
     <radialGradient id="ringTubeOuter" cx="0" cy="0" r="38.5" gradientUnits="userSpaceOnUse">
-      <stop offset="78%"  stop-color="#000000" stop-opacity="0.6"/>
-      <stop offset="91%"  stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="80%"  stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="93%"  stop-color="#ffffff" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
     </radialGradient>
     <radialGradient id="ringTubeInner" cx="0" cy="0" r="27.5" gradientUnits="userSpaceOnUse">
-      <stop offset="70%"  stop-color="#000000" stop-opacity="0.6"/>
-      <stop offset="87%"  stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="74%"  stop-color="#000000" stop-opacity="0.6"/>
+      <stop offset="85%"  stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="89%"  stop-color="#ffffff" stop-opacity="0.3"/>
       <stop offset="100%" stop-color="#000000" stop-opacity="0.65"/>
     </radialGradient>
     <radialGradient id="glossHi" cx="50%" cy="50%" r="50%">

@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.103-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: Lichtkante der Ring-Fase schmaler und weniger deckend (0.6 → 0.3 Deckkraft). Münzrand probeweise komplett entfernt (Dietmar: "lass uns mal probieren").
+
 ## 0.9.102-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: der lineare Fasen-Verlauf hellte immer nur EINE Himmelsrichtung entlang des Rings auf (zuletzt die 12-Uhr-Spitze) - keine echte Wölbung, sondern eine gerichtete Beleuchtung, die an der hellsten Stelle "ausgewaschen" wirkte (Dietmar: "physikalisch oben rund"). Ersetzt durch einen radialen Verlauf vom Ringmittelpunkt aus - dadurch an JEDEM Winkel gleich gewölbt (Rand dunkler, Bandmitte heller, Rand wieder dunkler), ein echter Tubus-Querschnitt statt gerichteten Lichts. Vor dem Ausrollen lokal mit DOM-Check und Sichtprüfung (3,5-fach vergrößert) verifiziert.
