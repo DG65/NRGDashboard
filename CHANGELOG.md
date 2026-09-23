@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.59-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: Fettung des Siegertreppchens (700) hob sich laut Dietmar zu wenig vom normalen Text (400) ab - auf 800 erhöht, gilt jetzt auch für die kumulierten Medaillenwerte (waren trotz Farbe noch im dünnen Grundgewicht).
+
 ## 0.9.58-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: Silber-Farbe im Siegertreppchen (#c7ccd1) war praktisch unsichtbar - lag fast auf Höhe der normalen Textfarbe, während Gold/Bronze als warme Töne deutlich abstachen (Fund Dietmar). Auf ein kühleres, deutlich sichtbareres Blaugrau geändert.
