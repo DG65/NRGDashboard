@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.68-beta.1 (2026-09-23)
+
+- Tile: den bisherigen Autarkiegrad-Ring am Haus-Knoten (nur "heute") entfernt - abgelöst durch den neuen Quoten-Knopf, der Tag/Monat/Jahr/Gesamt zeigt (Dietmar, 23.09.2026: "kannst Du damit eliminieren"). Zugehöriger Backend-Code (`AutarkyRatioToday()`, `AutarkyCache`) mit entfernt.
+
 ## 0.9.67-beta.1 (2026-09-23)
 
 - Tile: der Kosten-Ticker am Netzanschluss zeigt jetzt den reinen Strompreis (ct/kWh, Bezugspreis bzw. Einspeisevergütung je nach Flussrichtung) statt der auf die aktuelle Leistung hochgerechneten Stundenkosten ("€/h") - Dietmars Wunsch, gerade bei dynamischen Tarifen aussagekräftiger als eine bei schwankender Last ohnehin ungenaue Momentan-Hochrechnung.

@@ -203,10 +203,9 @@ class NRGDashboardTile extends IPSModule
         // YesterdayCache (Tagesintegration ueber DaySeries() waere sonst bei
         // jedem ereignisgesteuerten buildPayload()-Aufruf zu teuer).
         $this->RegisterAttributeString('PvForecastCache', '{}');
-        // Peak-Marker auf der Speiche + Autarkiegrad-Ring am Haus-Knoten
-        // (28.08.2026) - dieselbe Throttle-Begruendung wie YesterdayCache.
+        // Peak-Marker auf der Speiche (28.08.2026) - dieselbe Throttle-
+        // Begruendung wie YesterdayCache.
         $this->RegisterAttributeString('PeakTodayCache', '{}');
-        $this->RegisterAttributeString('AutarkyCache', '{}');
         // Quoten-Knopf (23.09.2026): Tageswert steckt bereits im Haupt-Payload
         // (fuer die Ringe im Knopf selbst), Monat/Jahr/Gesamt laedt der Knopf
         // erst bei Klick nach - Cache verhindert, dass buildPayload() bei jedem
@@ -1727,20 +1726,8 @@ class NRGDashboardTile extends IPSModule
             }
         }
 
-        // Autarkiegrad-Ringsegment am Haus-Knoten.
-        $houseIdx = null;
-        foreach ($devices as $i => $dd) {
-            if (($dd['function'] ?? '') === 'house') {
-                $houseIdx = $i;
-                break;
-            }
-        }
-        if ($houseIdx !== null && !empty($devices[$houseIdx]['powerID'])) {
-            $autarky = $this->AutarkyRatioToday((int) $devices[$houseIdx]['powerID']);
-            if ($autarky !== null) {
-                $devices[$houseIdx]['autarkyRatio'] = $autarky;
-            }
-        }
+        // Autarkiegrad-Ringsegment am Haus-Knoten entfernt (Dietmar, 23.09.2026) -
+        // durch den Quoten-Knopf (EnergyQuotas()/DayQuotasCached()) ersetzt.
 
         // Fahrzeug-Zuordnung fuer Wallboxen (Dietmar, 29.07.2026: bei
         // eingestecktem Auto sollen subText/SOC-Ring das ERKANNTE Fahrzeug
@@ -2256,39 +2243,9 @@ class NRGDashboardTile extends IPSModule
         return $data;
     }
 
-    /** Autarkiegrad heute (28.08.2026): 1 - Netzbezug/Hauslast, aus den
-     *  bereits vorhandenen Bausteinen GridDayEnergyKWh()+DaySeries() des
-     *  Haus-Knotens - throttled, gleiche Begruendung wie oben. */
-    private function AutarkyRatioToday(int $housePowerID): ?float
-    {
-        if ($housePowerID <= 0) {
-            return null;
-        }
-        $now = time();
-        $cache = json_decode((string) $this->ReadAttributeString('AutarkyCache'), true);
-        if (!is_array($cache)) {
-            $cache = [];
-        }
-        if (is_array($cache) && ($now - ($cache['fetchedAt'] ?? 0)) < self::AUTARKY_CACHE_TTL_SEC) {
-            return $cache['ratio'] ?? null;
-        }
-        $dayStart = strtotime('today');
-        $ratio = null;
-        $grid = $this->GridDayEnergyKWh($dayStart, $now);
-        $houseSeries = $this->DaySeries($housePowerID, $dayStart, $now);
-        if ($grid !== null && count($houseSeries) >= 2) {
-            $intervalHours = ((float) ($houseSeries[1][0] - $houseSeries[0][0])) / 3600000;
-            $houseKWh = 0.0;
-            foreach ($houseSeries as [, $w]) {
-                $houseKWh += max(0.0, $w) * $intervalHours / 1000;
-            }
-            if ($houseKWh > 0.01) {
-                $ratio = max(0.0, min(1.0, 1 - ($grid['importKWh'] / $houseKWh)));
-            }
-        }
-        $this->WriteAttributeString('AutarkyCache', json_encode(['ratio' => $ratio, 'fetchedAt' => $now]));
-        return $ratio;
-    }
+    // AutarkyRatioToday() (nur "heute", Ring am Haus-Knoten) entfernt
+    // (Dietmar, 23.09.2026) - abgeloest durch EnergyQuotas()/DayQuotasCached()
+    // (Tag/Monat/Jahr/Gesamt, Quoten-Knopf).
 
     private function isStaleOrMissing(int $id, ?float $value): bool
     {

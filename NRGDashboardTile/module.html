@@ -295,7 +295,6 @@
 
   .node-forecast-ring { stroke: var(--nc, var(--grey)); stroke-width: 3; stroke-linecap: round; opacity: 0.85; transition: stroke-dashoffset var(--trans) var(--ease); }
   .node-forecast-ring-over { stroke: #4caf50; }
-  .node-autarky-ring { stroke: #4caf50; stroke-width: 3; stroke-linecap: round; opacity: 0.85; transition: stroke-dashoffset var(--trans) var(--ease); }
 
   /* Netzampel-Farbwaesche (28.08.2026) - dezenter Farbverlauf hinter dem
      Flow-Diagramm, nur sichtbar wenn eine StromGedacht-Instanz Daten
@@ -690,12 +689,6 @@
     <rect class="node-face" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <rect class="node-ring" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
     <rect class="node-bevel" x="-56" y="-56" width="112" height="112" rx="56" ry="56"/>
-    <!-- Autarkiegrad-Ringsegment (28.08.2026, Dietmar: "alles direkt
-         umsetzen") - Bogen um den Haus-Chip, Laenge = Anteil des heutigen
-         Verbrauchs, der NICHT aus dem Netz kam. rx=ry=Halbe-Hoehe wie beim
-         Coin selbst (layoutCenterChip() haelt x/y/width/height/rx/ry
-         synchron, +7 Padding nach aussen). -->
-    <rect class="node-autarky-ring" x="-63" y="-63" width="126" height="126" rx="63" ry="63" fill="none"/>
     <circle class="node-highlight" r="40" transform="translate(-16.8,-26.9) scale(1,0.575)"/>
     <circle class="node-spec" r="17" transform="translate(-24.6,-30.8) scale(1,0.559)"/>
     <g id="center-icon" class="node-icon" transform="translate(0,-30)" stroke-width="2" fill="none" filter="url(#relief)">
@@ -1042,7 +1035,6 @@ function layoutCenterChip(hw, hh) {
       cg.style.transform = `translate(${CX}px, ${CY}px) scale(1)`;
     }
   }
-  setRect('.node-autarky-ring', hw + 7, hh + 7);
   // Druck-Fuellring der Pille (09.09.2026) - Geometrie wie die anderen
   // Rechtecke, zusaetzlich der tatsaechliche Umfang der "Stadion"-Form
   // (Rechteck mit zwei Halbkreis-Kappen, rx=ry=Halbhoehe) als Dash-Basis:
@@ -2873,8 +2865,6 @@ function renderLevelView() {
   // Sehr grosse Sammelzaehler-Werte (14.09.2026, Solarpark) ebenso an die
   // Pillenbreite anpassen, nicht nur den Namen.
   fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
-  const autRing = document.querySelector('#node-center .node-autarky-ring');
-  if (autRing) { autRing.style.display = 'none'; }
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
@@ -3461,23 +3451,9 @@ function handleMessage(raw) {
   // Sehr grosse Werte (14.09.2026, Solarpark: mehrstellige MW-Summen) ebenso
   // an die tatsaechliche Pillenbreite anpassen, nicht nur an DESIGN_R.
   fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
-
-  // Autarkiegrad-Ringsegment - Bogenlaenge = tatsaechlicher Umfang der
-  // Pille (identische Formel wie pillPointPair()s perim2, siehe dort),
-  // damit die Strichlaenge zur sichtbaren Randform passt (Kreis ODER Chip).
-  const autRing = document.querySelector('#node-center .node-autarky-ring');
-  if (autRing) {
-    const rhw = chipLayout.hw + 7, rhh = chipLayout.hh + 7;
-    const perim = 4 * (rhw - rhh) + 2 * Math.PI * rhh;
-    autRing.setAttribute('stroke-dasharray', perim.toFixed(1));
-    if (houseDevice && houseDevice.autarkyRatio != null) {
-      const frac = Math.max(0, Math.min(1, houseDevice.autarkyRatio));
-      autRing.setAttribute('stroke-dashoffset', (perim * (1 - frac)).toFixed(1));
-      autRing.style.display = '';
-    } else {
-      autRing.style.display = 'none';
-    }
-  }
+  // Autarkiegrad-Ringsegment am Haus-Knoten entfernt (Dietmar, 23.09.2026) -
+  // durch den Quoten-Knopf oben links ersetzt, der Tag/Monat/Jahr/Gesamt
+  // abdeckt statt nur "heute" (siehe #quotaBtn).
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
