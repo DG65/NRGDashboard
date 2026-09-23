@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.73-beta.1 (2026-09-23)
+
+- Tile: das "Was ist Neu"-Panel zeigt jetzt nur die Versionen an, die zwischen der zuletzt gesehenen und der aktuell installierten Version liegen, statt entweder pauschal die ganze Historie oder gar nichts (Dietmar: "ist so etwas machbar?"). NEWS_ITEMS ist dafür versionsweise strukturiert (`NEWS_VERSIONS`), das Panel erscheint nach jedem Update mit mindestens einem neuen Eintrag automatisch wieder.
+- Tile: Einführungs-Tour erwähnt jetzt den neuen Quoten-Knopf (statt des entfernten Autarkiegrad-Bogens) und den ct/kWh-Kosten-Ticker.
+
 ## 0.9.72-beta.1 (2026-09-23)
 
 - Tile: Quoten-Panel und Diagnose-Panel ("Einblendung des Zustands") schließen sich jetzt von selbst nach 30 s, statt offen stehen zu bleiben, bis man daneben klickt (Dietmar). Jede erneute Öffnung setzt die 30 s neu an.
