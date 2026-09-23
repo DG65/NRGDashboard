@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.75-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: Mouse-Over auf jedem Jahreswert zeigt jetzt den genauen Platz (Dietmars Idee) - Platz 1-3 mit Medaille (🥇🥈🥉), ab Platz 4 mit Ziffern-Emoji, aber nur, wenn die Spalte mindestens 30 vergleichbare Jahre hat; darunter bleibt es bei reinem Text ("Platz 4 von 14"). Gilt für Monatswerte, kumulierte Werte und die Summe.
+
 ## 0.9.74-beta.1 (2026-09-23)
 
 - Map, Topology, PVMonitor, WPMonitor, HeatSchema, Forecast: dasselbe versionsweise "Was ist Neu"-Panel wie zuvor in Tile (0.9.73) - zeigt nur die Versionen zwischen der zuletzt gesehenen und der aktuell installierten, statt pauschal die ganze Historie oder gar nichts. Die bisherige, gewachsene Liste jedes Moduls bleibt als ein Block unter ihrer letzten Versionsnummer erhalten, neue Einträge ab jetzt bekommen ihre eigene Versionsnummer.

@@ -2778,17 +2778,45 @@
       // Gleichstand teilt sich denselben Rang, alle drei Raenge bleiben dabei
       // vergeben (bei einer Zweifach-Goldplatzierung ruecken Silber/Bronze normal
       // nach, sie werden NICHT uebersprungen).
-      function topRanks(colOf, sumCol) {
+      // fullRanks() statt nur der Top-3 (Dietmar, 23.09.2026: "ein Mouse-Over zu
+      // JEDER Zahl ... den Platz") - liefert ALLE Plaetze, topRanks() bleibt fuer
+      // die Farbgebung ein simpler Ausschnitt der ersten drei daraus.
+      function fullRanks(colOf, sumCol) {
         var vals = data.years.map(function (y) { return sumCol ? values[y].reduce(function (s, v) { return s + (v || 0); }, 0) : colOf(y); })
           .filter(function (v) { return v !== null && v !== undefined; });
         var uniqDesc = vals.filter(function (v, i) { return vals.indexOf(v) === i; }).sort(function (a, b) { return b - a; });
         var ranks = {};
-        uniqDesc.slice(0, 3).forEach(function (v, i) { ranks[v] = i; });
+        uniqDesc.forEach(function (v, i) { ranks[v] = i; });
+        return { ranks: ranks, total: uniqDesc.length };
+      }
+      function topRanks(colOf, sumCol) {
+        var full = fullRanks(colOf, sumCol);
+        var ranks = {};
+        Object.keys(full.ranks).forEach(function (v) { if (full.ranks[v] < 3) { ranks[v] = full.ranks[v]; } });
         return ranks;
       }
       var RANK_CLASS = ['ycGold', 'ycSilver', 'ycBronze'];
       // Liefert die reine Klasse ("ycGold" o.ae.) oder ''.
       function rankClass(v, ranks) { return (v !== null && v !== undefined && ranks[v] !== undefined) ? RANK_CLASS[ranks[v]] : ''; }
+      // Ziffern-Emoji fuer Plaetze ab 4 (Tastenkappen-Emoji 0-9 aneinandergereiht,
+      // z.B. "1️⃣5️⃣" fuer Platz 15) - Dietmar, 23.09.2026: "ab dem 4. Platz das
+      // Platz-Emoji ... nur wenn es mindestens 30 Plaetze gibt" - bei WENIGER als
+      // 30 vergleichbaren Jahren bleibt es bei reinem Text, das lohnt den
+      // Ziffern-Aufwand fuer eine Handvoll Jahre nicht.
+      var KEYCAP = { '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣', '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣' };
+      function placeEmoji(place1) {
+        if (place1 === 1) { return '🥇'; }
+        if (place1 === 2) { return '🥈'; }
+        if (place1 === 3) { return '🥉'; }
+        return String(place1).split('').map(function (d) { return KEYCAP[d]; }).join('');
+      }
+      /** Mouse-Over-Text fuer JEDEN Jahreswert (nicht nur das Siegertreppchen). */
+      function placeTitle(v, full) {
+        if (v === null || v === undefined || full.ranks[v] === undefined) { return ''; }
+        var place = full.ranks[v] + 1;
+        var emoji = (place <= 3 || full.total >= 30) ? placeEmoji(place) + ' ' : '';
+        return emoji + 'Platz ' + place + ' von ' + full.total;
+      }
       function cumulate(arr) {
         var cum = 0, cumOk = true;
         return arr.map(function (v) {
@@ -2804,9 +2832,15 @@
       // muss nicht auf den kumulierten zutreffen") - je nach Schalterstellung
       // gilt jeweils nur EIN Ranking pro Spalte.
       var isCum = (yearCompareView === 'cum');
-      var colRanks = MONTH_NAMES.map(function (_, i) {
-        return topRanks(function (y) { return (isCum ? cumValues[y] : values[y])[i]; }, false);
+      var colFullRanks = MONTH_NAMES.map(function (_, i) {
+        return fullRanks(function (y) { return (isCum ? cumValues[y] : values[y])[i]; }, false);
       });
+      var colRanks = colFullRanks.map(function (f) {
+        var r = {};
+        Object.keys(f.ranks).forEach(function (v) { if (f.ranks[v] < 3) { r[v] = f.ranks[v]; } });
+        return r;
+      });
+      var sumFullRanks = fullRanks(null, true);
       var sumRanks = topRanks(null, true);
       function rowHtml(label, arr, cls, isYearRow) {
         var sum = arr.reduce(function (s, v) { return s + (v || 0); }, 0);
@@ -2814,9 +2848,14 @@
         return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + label + '</td>'
           + shown.map(function (v, i) {
               var vCls = isYearRow ? rankClass(v, colRanks[i]) : '';
-              return '<td>' + (vCls ? '<span class="' + vCls + '">' + fmt(v) + '</span>' : fmt(v)) + '</td>';
+              var t = isYearRow ? placeTitle(v, colFullRanks[i]) : '';
+              return '<td' + (t ? ' title="' + t + '"' : '') + '>' + (vCls ? '<span class="' + vCls + '">' + fmt(v) + '</span>' : fmt(v)) + '</td>';
             }).join('')
-          + (function () { var sCls = isYearRow ? rankClass(sum, sumRanks) : ''; return '<td>' + (sCls ? '<span class="' + sCls + '">' + fmt(sum) + '</span>' : fmt(sum)) + '</td>'; })()
+          + (function () {
+              var sCls = isYearRow ? rankClass(sum, sumRanks) : '';
+              var st = isYearRow ? placeTitle(sum, sumFullRanks) : '';
+              return '<td' + (st ? ' title="' + st + '"' : '') + '>' + (sCls ? '<span class="' + sCls + '">' + fmt(sum) + '</span>' : fmt(sum)) + '</td>';
+            })()
           + '</tr>';
       }
       var body = data.years.map(function (y) { return rowHtml(y, values[y], '', true); }).join('');
