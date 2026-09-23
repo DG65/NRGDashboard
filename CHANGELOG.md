@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.93-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: Schlaglicht weiter reduziert (0.06 → 0.03).
+
 ## 0.9.92-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: Schlaglicht weiter reduziert (0.125 → 0.06).
