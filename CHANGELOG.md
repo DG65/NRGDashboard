@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.61-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: mehr Abstand zwischen Monatswert und kumulierter Zahl (Dietmar: "Verformungen bei der Rechtsbündigkeit der Monatswerte" - je nach Länge der kumulierten Zahl rückten beide unterschiedlich eng zusammen, das wirkte wackelig).
+
 ## 0.9.60-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: statt die Medaillen noch fetter zu machen (0.9.59, wieder zurückgenommen), sind jetzt die normalen Werte dünner (300) - Gold/Silber/Bronze bleiben bei 700, der Kontrast entsteht über die Differenz statt über immer stärkere Fettung (Dietmars Wunsch).

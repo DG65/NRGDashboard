@@ -366,7 +366,12 @@
      "wo man mit der Energieproduktion eines jeden Jahres steht") - dezent
      HINTER dem Monatswert (nicht untereinander, das kostet pro Tabellenzeile
      zu viel Hoehe - Dietmars Korrektur direkt nach der ersten Fassung). */
-  .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 4px; }
+  /* Abstand deutlich vergroessert (Dietmar, 23.09.2026: "Verformungen bei der
+     Rechtsbuendigkeit der Monatswerte") - Monatswert und kumulierte Zahl stehen
+     in derselben rechtsbuendigen Zelle, ruecken je nach Laenge der kumulierten
+     Zahl unterschiedlich eng zusammen und liessen die Monatswerte dadurch
+     optisch "wackelig" wirken; mehr Luft trennt beide klar als zwei Zahlen. */
+  .ycCum { font-size: 9px; font-weight: 400; opacity: .55; margin-left: 10px; }
   .ycTable tbody tr.ycExpected .ycCum { opacity: .5; }
   /* Siegertreppchen (Dietmar, 23.09.2026): die drei besten Jahre je Spalte in
      Farbe - bewusst OHNE Emoji ("stoert mehr wie dass sie bringen"). Die Klassen
