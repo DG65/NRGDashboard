@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.88-beta.1 (2026-09-23)
+
+- Tile Quoten-Münze: "heute" hing immer noch im inneren Datenring, die leere Kreisbahn (Hintergrund der Ringe) war weder farbig noch dunkel wie der Münzengrund und wirkte dadurch wie eine dritte, unbeteiligte Farbe, die beiden Datenringe waren noch nicht kräftig genug (Dietmar). "heute" jetzt klar unterhalb des inneren Rings, Leerlauf-Kreisbahn dunkel ins Münzenmaterial eingelassen statt hellgrau, Ringfarben (Grün/Blau) deutlich kräftiger und mit voller statt gedämpfter Deckkraft.
+
 ## 0.9.87-beta.1 (2026-09-23)
 
 - Tile Quoten-Münze: beide Prozentzahlen wirkten praktisch gleich weiß und ließen sich dadurch nicht erkennbar ihrem jeweiligen Ring zuordnen ("passt noch nicht wirklich zusammen") - jede Zahl trägt jetzt einen lesbaren Farbton ihres eigenen Rings (Grün/Blau) statt neutralem Weiß. "heute" etwas größer, fetter und kontrastreicher.
