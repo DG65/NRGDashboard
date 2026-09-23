@@ -203,7 +203,17 @@
   /* Kein gemeinsames stroke mehr - Aussen-/Innenring brauchen wegen des
      radialen Tubus-Verlaufs (siehe ringTubeOuter/-Inner in den <defs>)
      unterschiedliche Verlaeufe, je als Attribut direkt am Kreis gesetzt. */
-  .qcoin-ring-bevel { stroke-linecap: round; opacity: .7; pointer-events: none; transition: stroke-dashoffset .6s ease; }
+  /* mix-blend-mode: overlay statt reiner Alpha-Ueberlagerung (23.09.2026,
+     Dietmar: "komplett kaputt") - die letzte Kontrastanhebung (dunkle
+     Randstops auf 0.75/0.78 Deckkraft) hat als normale Alpha-Flaeche fast
+     die GESAMTE Ringfarbe darunter geschluckt, uebrig blieb nur der
+     schmale helle Streifen - der Rest verschmolz farblich mit dem dunklen
+     Muenzenhintergrund und wirkte wie ein zerbrochener/fehlender Ring.
+     overlay verrechnet Hell/Dunkel gegen die darunterliegende FARBE statt
+     sie zu verdecken (wie Photoshops "Ineinanderkopieren") - dunkle Stops
+     verdunkeln die Ringfarbe, helle hellen sie auf, aber die Farbe selbst
+     bleibt immer sichtbar, kein Verschlucken mehr moeglich. */
+  .qcoin-ring-bevel { stroke-linecap: round; opacity: 1; mix-blend-mode: overlay; pointer-events: none; transition: stroke-dashoffset .6s ease; }
   /* Beide Zahlen standen bisher praktisch gleich weiss da (fill:#fff bzw. ein
      kaum unterscheidbares #7fa8e0) - liessen sich dadurch nicht erkennbar
      ihrem jeweiligen Ring zuordnen (Dietmar, 23.09.2026: "passt noch nicht
