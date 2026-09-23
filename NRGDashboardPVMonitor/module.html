@@ -369,7 +369,11 @@
      unabhaengiges Ranking haben (Fund Dietmar: Feb 2022 wirkte bronze nur wegen
      des Monatswerts, Feb 2020 blieb trotz hoeherer Summe farblos). */
   .ycGold { color: #e0b64a; font-weight: 700; }
-  .ycSilver { color: #c7ccd1; font-weight: 700; }
+  /* Urspruengliches Silber (#c7ccd1) lag zu nah an der normalen Textfarbe
+     (~#e8e8e8) und war dadurch praktisch unsichtbar (Fund Dietmar, 23.09.2026:
+     "wie finde ich den Silberwert?") - kuehleres, deutlich saettigeres Blaugrau,
+     das sich klar vom neutralen Text UND von Gold/Bronze (warme Toene) abhebt. */
+  .ycSilver { color: #7fa8c9; font-weight: 700; }
   .ycBronze { color: #cd8a5c; font-weight: 700; }
   /* Kumuliertes Ranking: gleiche Farben, aber volle Deckkraft statt der
      gedaempften .ycCum-Grundopazitaet, sonst verblasst die Auszeichnung. */

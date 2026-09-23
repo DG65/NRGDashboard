@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.58-beta.1 (2026-09-23)
+
+- PVMonitor Jahresvergleich: Silber-Farbe im Siegertreppchen (#c7ccd1) war praktisch unsichtbar - lag fast auf Höhe der normalen Textfarbe, während Gold/Bronze als warme Töne deutlich abstachen (Fund Dietmar). Auf ein kühleres, deutlich sichtbareres Blaugrau geändert.
+
 ## 0.9.57-beta.1 (2026-09-23)
 
 - PVMonitor Jahresvergleich: die Farbe des Siegertreppchens saß an der ganzen Zelle (`<td>`) statt am Wert selbst - die kumulierte Zahl (ein `<span>` innerhalb der Zelle) erbte dadurch die Rang-Farbe des Monatswerts, unabhängig von ihrem eigenen Ranking (Fund Dietmar: Feb 2022 wirkte bronze nur wegen des Monatswerts, Feb 2020 blieb trotz höherer Summe farblos). Beide Werte tragen jetzt ihre Rang-Farbe an einem eigenen Span, unabhängig voneinander.
