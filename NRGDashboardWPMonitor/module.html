@@ -620,8 +620,18 @@
       var prevPts = (prevDay && Array.isArray(prevDay.outsideTemp)) ? prevDay.outsideTemp : [];
       var extended = prevPts.concat(seriesOrEmpty(d.outsideTemp));
       var inDay = function (p) { return p[0] >= d.dayStart; };
-      series.push({ name: 'Außentemp.', data: seriesOrEmpty(d.outsideTemp), axis: 1, color: '#5FCB6B', dotted: true, smooth: true });
-      series.push({ name: 'Außentemp. Ø1h', data: movingAverage(extended, 12).filter(inDay), axis: 1, color: '#3FA5C4', smooth: true });
+      // Doppelter Durchgang (23.09.2026, Dietmar: "die 24 Std Kurve ist
+      // glatt, aber die 2 anderen nicht") - ein einzelner Mittelungs-
+      // Durchgang mit nur 12 Punkten (roh/Ø1h) buegelt die Ecken an den
+      // stuendlichen Uebergaengen nicht ganz weg (die 288-Punkte-Mittelung
+      // fuer Ø24h ist so breit, dass sie ohnehin kaum noch Ecken zeigt).
+      // Zweimal hintereinander glaetten naehert sich einem Dreiecks-/
+      // Gauss-Kern an (Standardtrick), rundet die verbleibenden Knicke
+      // spuerbar staerker ab, OHNE das Mittelungsfenster selbst (~1h) zu
+      // vergroessern.
+      var smoothed1h = movingAverage(movingAverage(extended, 12), 12);
+      series.push({ name: 'Außentemp.', data: movingAverage(extended, 12).filter(inDay), axis: 1, color: '#5FCB6B', dotted: true, smooth: true });
+      series.push({ name: 'Außentemp. Ø1h', data: smoothed1h.filter(inDay), axis: 1, color: '#3FA5C4', smooth: true });
       series.push({ name: 'Außentemp. Ø24h', data: movingAverage(extended, 288).filter(inDay), axis: 1, color: '#B15FCB', smooth: true });
     }
     return series;

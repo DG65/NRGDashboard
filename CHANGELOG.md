@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.118-beta.1 (2026-09-24)
+
+- WPMonitor "Verlauf": Ø24h-Linie war glatt, "Außentemp." und "Ø1h" zeigten weiterhin sichtbare Knicke an den stündlichen Übergängen (Dietmar). Doppelter Glättungs-Durchgang (nähert sich einem Dreiecks-/Gauss-Kern an) statt einem einzelnen - rundet deutlich stärker, ohne das Mittelungsfenster selbst zu vergrößern.
+
 ## 0.9.117-beta.1 (2026-09-23)
 
 - WPMonitor "Verlauf": zwei zusätzliche Mittelwert-Linien für die Außentemperatur, Ø1h und Ø24h (Dietmar). Für eine echte 24h-Mittelung reichen die Punkte des angezeigten Tages allein nicht - der Vortag steckt bereits im selben Payload (days[idx+1]) und wird für die Berechnung vorne angehängt, danach auf den sichtbaren Tag zurückgeschnitten. Kein Backend-Umbau nötig.
