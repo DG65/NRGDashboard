@@ -56,6 +56,11 @@ class NRGDashboardHeatSchema extends IPSModule
         '{E878B4D4-8E98-4E89-AE21-8636262EBC55}' => 'WPMBHUB_GetFunctions',
         '{70FBAC61-A1C0-47B7-8B56-BE047F7C0C6B}' => 'WPMBGW_GetFunctions',
         '{D2B2A1E8-2F94-426C-8761-505A2F226977}' => 'SAMEHS_GetFunctions',
+        // WPBsbLan (24.09.2026, Meldung der WPHub-Sitzung) - BSB-LAN-Adapter
+        // (Siemens RVS/LMU), erste Anlage Fujitsu Waterstage, im Store
+        // veroeffentlicht und an echter Hardware bestaetigt (Forum-Thread
+        // WPHub #4-#17). Gleicher heatpump-Vertrag, contractVersion 1.15.
+        '{D077685F-50BF-4678-A42A-0A33CDEF8C89}' => 'WPBSBL_GetFunctions',
     ];
     private const METERHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
 

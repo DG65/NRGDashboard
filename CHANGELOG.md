@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.119-beta.1 (2026-09-24)
+
+- WPMonitor/HeatSchema: neue Wärmepumpen-Quelle WPBsbLan (BSB-LAN-Adapter, Siemens RVS/LMU-Regler, erste Anlage Fujitsu Waterstage) in HEATPUMP_SOURCES aufgenommen - Meldung der WPHub-Sitzung, bereits im Store veröffentlicht und an echter Hardware bestätigt. Gleicher heatpump-Vertrag (contractVersion 1.15) wie die übrigen Quellen.
+
 ## 0.9.118-beta.1 (2026-09-24)
 
 - WPMonitor "Verlauf": Ø24h-Linie war glatt, "Außentemp." und "Ø1h" zeigten weiterhin sichtbare Knicke an den stündlichen Übergängen (Dietmar). Doppelter Glättungs-Durchgang (nähert sich einem Dreiecks-/Gauss-Kern an) statt einem einzelnen - rundet deutlich stärker, ohne das Mittelungsfenster selbst zu vergrößern.
