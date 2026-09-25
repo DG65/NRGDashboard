@@ -1010,7 +1010,7 @@
 // wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
 // Geräte-Schema (function/label/value/category) statt fester WR-Felder.
 const CX = 280, CY = 301;
-const DESIGN_R = 76; // 56 -> 66 -> 76 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern", dann "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - moeglich geworden durch die Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()) und die Entkopplung von HOUSE_R (siehe dort)
+const DESIGN_R = 95; // 56 -> 66 -> 76 -> 95 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern", dann zweimal "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - moeglich geworden durch die Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()) und die Entkopplung von HOUSE_R (siehe dort)
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -1069,10 +1069,10 @@ const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (D
 // entkoppelter Radius fuer den Hausknoten selbst (Kreis- wie Pillen-Form).
 // Vorher teilten sich Haus und Knoten denselben Wert DESIGN_R, wodurch die
 // Knotenvergroesserung (Build 255) versehentlich auch die Pille mitwachsen
-// liess. 56 -> 44 (25.09.2026, zweiter Anlauf: "mach die Geraeteknoten ...
-// groesser und die Hauspille kleiner") - Pille jetzt deutlich kleiner als
-// die Verbraucher-Knoten, statt nur gleich gross.
-const HOUSE_R = 44;
+// liess. 56 -> 44 -> 32 (25.09.2026, dritter Anlauf: zweimal wiederholtes
+// "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - Pille
+// jetzt sehr deutlich kleiner als die Verbraucher-Knoten.
+const HOUSE_R = 32;
 const CENTER_R = HOUSE_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
@@ -1290,23 +1290,27 @@ function computeLayout(n) {
     }
   } else {
     // Dieselbe Ausschlusszone in Bogenlaengen-Koordinaten der Pille
-    // umgerechnet - liegt komplett in der LINKEN Kappe (siehe
-    // pillPointPair(): dort a = 90 + (t_lokal/capLen2)*180 im Bereich
-    // [90,270]; COIN_EXCLUDE_ANGLE_* im Bereich [-180,-90] entsprechen
-    // dort [180,270], also der oberen Haelfte der linken Kappe - passt
-    // zur "oben links"-Lage der Muenze).
+    // umgerechnet - beginnt in der LINKEN Kappe (siehe pillPointPair():
+    // dort a = 90 + (t_lokal/capLen2)*180 im Bereich [90,270];
+    // COIN_EXCLUDE_ANGLE_START im Bereich [-180,-90] entspricht dort
+    // [180,270]) und laeuft OHNE zweite Grenze bis zum Wrap-Punkt
+    // (t=perim2 = Start des naechsten Umlaufs) durch. Erster Anlauf
+    // (25.09.2026) endete stattdessen mitten in der Kappe (bei
+    // COIN_EXCLUDE_ANGLE_END) - der letzte, an "oben" grenzende Abschnitt
+    // der oberen Geraden (das kurze Stueck VOR dem Wrap-Punkt) blieb
+    // dadurch ungeschuetzt und ein Knoten landete dort trotzdem in der
+    // Muenze (live gefunden bei sehr grossen Knoten/Muenze + schmaler
+    // Kachel). Ohne zweite Grenze - und damit ohne die fehleranfaellige
+    // Skip-Logik - ist das strukturell ausgeschlossen.
     const straight = Math.max(0, hw - hh);
     const hh2 = hh + ringGap;
     const capLen2 = Math.PI * hh2;
     const perim2 = 4 * straight + 2 * capLen2;
     const leftCapStart = 3 * straight + capLen2;
-    const angleToT = (aDeg) => leftCapStart + (aDeg - 90) / 180 * capLen2;
-    const tExcl1 = angleToT(COIN_EXCLUDE_ANGLE_START + 360);
-    const tExcl2 = angleToT(COIN_EXCLUDE_ANGLE_END + 360);
-    const usablePerim = perim2 - (tExcl2 - tExcl1);
+    const tExcl1 = leftCapStart + (COIN_EXCLUDE_ANGLE_START + 360 - 90) / 180 * capLen2;
+    const usablePerim = tExcl1;
     for (let i = 0; i < n; i++) {
-      const v = (usablePerim / n) * i;
-      const t = v < tExcl1 ? v : v + (tExcl2 - tExcl1);
+      const t = (usablePerim / n) * i;
       const { house, sat } = pillPointPair(t / perim2, hw, hh, ringGap);
       points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
     }
@@ -3758,8 +3762,8 @@ function updateViewBox() {
   // Verhaeltnis viel zu gross) - sie liegt AUSSERHALB des #svg-Flusscanvas
   // (siehe CSS-Kommentar bei .quota-coin) und braucht deshalb ihre
   // Pixelgroesse explizit per JS, aus derselben Referenz wie die Knoten im
-  // Fluss: 594 viewBox-Einheiten Hoehe entsprechen rect.height Pixeln, ein
-  // Knoten hat 2*DESIGN_R viewBox-Einheiten Durchmesser - Dietmars
+  // Fluss: 594 viewBox-Einheiten Hoehe entsprechen effectiveScale Pixeln,
+  // ein Knoten hat 2*DESIGN_R viewBox-Einheiten Durchmesser - Dietmars
   // urspruenglicher Wunsch war ausdruecklich "so gross wie die Knoten".
   // Korrektur 25.09.2026 (somm + Dietmar am eigenen Screenshot bestaetigt:
   // "ist nicht exakt knotengross sondern kleiner"): der erste Anlauf hatte
@@ -3768,10 +3772,24 @@ function updateViewBox() {
   // 104x104-viewBox (siehe <svg id="quotaCoin">), fuellt die Box also nur zu
   // 2*42/104 ≈ 81 %. Deshalb hier zusaetzlich auf den echten Fuellgrad
   // hochskaliert, damit der SICHTBARE Muenzkreis exakt DESIGN_R entspricht.
+  //
+  // Zweite Korrektur 25.09.2026 (live gefunden bei schmaler/hoher Kachel +
+  // grossen Knoten): rect.height war als Skalierungs-Referenz nur korrekt,
+  // SOLANGE die Kachel-Breite die Groesse begrenzt (das ist der einzige
+  // Fall, in dem VIEW_W oben ueberhaupt waechst). Bei einer schmaleren als
+  // quadratischen Kachel (aspect < 1) bleibt VIEW_W beim Minimum (594)
+  // stehen, das SVG wird dann per preserveAspectRatio="meet" an der
+  // tatsaechlich EINSCHRAENKENDEN Dimension - hier die Breite - herunter-
+  // skaliert (Letterboxing oben/unten). rect.height/594 ergab dabei einen
+  // viel zu grossen Massstab, die Muenze wuchs ueber die tatsaechliche
+  // Knotengroesse hinaus. effectiveScale nimmt immer das Minimum aus
+  // Breiten- und Hoehen-Skalierung, wie es preserveAspectRatio="meet"
+  // selbst tut.
   const coinEl = document.getElementById('quotaCoin');
   if (coinEl) {
     const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
-    const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * (rect.height / 594);
+    const effectiveScale = Math.min(rect.width / w, rect.height / 594);
+    const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * effectiveScale;
     coinEl.style.width = coinPx.toFixed(1) + 'px';
     coinEl.style.height = coinPx.toFixed(1) + 'px';
   }

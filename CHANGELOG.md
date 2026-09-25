@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.131-beta.1 (2026-09-25)
+
+- Tile: Kontrast Geräteknoten/Hauspille nochmals verstärkt (Dietmar wiederholte die Anfrage). DESIGN_R 76 -> 95, HOUSE_R 44 -> 32. Dabei zwei Folgefehler gefunden und behoben: (1) die Ausschlusszone für die Quotenmünze im Pillen-Modus endete mitten in der linken Kappe statt bis zum Wrap-Punkt durchzulaufen - der letzte, an "oben" grenzende Abschnitt blieb ungeschützt; läuft jetzt lückenlos bis zum Start durch. (2) Die Münzengröße nahm bei schmaler/hoher Kachel (schmaler als quadratisch) fälschlich die Kachelhöhe als Skalierungsreferenz, obwohl das SVG dort tatsächlich an der Breite skaliert (Letterboxing) - die Münze wurde dadurch zu groß. Nutzt jetzt dieselbe Min-Skalierung wie preserveAspectRatio="meet" selbst. Lokal bei 800×800, 450×800 und 1400×700 mit 4 und 11 Geräten geprüft - keine Überlappung, kein Clipping.
+
 ## 0.9.130-beta.1 (2026-09-25)
 
 - Tile: Kontrast zwischen Hausknoten und Verbraucher-Knoten deutlich verstärkt (Dietmar: "mach die Geräteknoten um die Haus Pille größer und die Hauspille kleiner"). DESIGN_R (Verbraucher-Knoten) 66 -> 76, HOUSE_R (Hausknoten) 56 -> 44. Lokal bei 800×800 und 450×800 mit 4 und 11 Geräten geprüft - keine Überlappung, kein Clipping.
