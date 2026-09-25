@@ -1010,7 +1010,7 @@
 // wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
 // Geräte-Schema (function/label/value/category) statt fester WR-Felder.
 const CX = 280, CY = 301;
-const DESIGN_R = 66; // 56 -> 66 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern") - moeglich geworden durch die neue Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()), die die zuvor gefundene Kollision zuverlaessig vermeidet
+const DESIGN_R = 76; // 56 -> 66 -> 76 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern", dann "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - moeglich geworden durch die Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()) und die Entkopplung von HOUSE_R (siehe dort)
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -1069,9 +1069,10 @@ const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (D
 // entkoppelter Radius fuer den Hausknoten selbst (Kreis- wie Pillen-Form).
 // Vorher teilten sich Haus und Knoten denselben Wert DESIGN_R, wodurch die
 // Knotenvergroesserung (Build 255) versehentlich auch die Pille mitwachsen
-// liess. Bleibt beim alten Wert (56), waehrend DESIGN_R fuer die Knoten
-// groesser sein darf.
-const HOUSE_R = 56;
+// liess. 56 -> 44 (25.09.2026, zweiter Anlauf: "mach die Geraeteknoten ...
+// groesser und die Hauspille kleiner") - Pille jetzt deutlich kleiner als
+// die Verbraucher-Knoten, statt nur gleich gross.
+const HOUSE_R = 44;
 const CENTER_R = HOUSE_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;

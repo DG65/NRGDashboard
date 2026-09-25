@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.130-beta.1 (2026-09-25)
+
+- Tile: Kontrast zwischen Hausknoten und Verbraucher-Knoten deutlich verstärkt (Dietmar: "mach die Geräteknoten um die Haus Pille größer und die Hauspille kleiner"). DESIGN_R (Verbraucher-Knoten) 66 -> 76, HOUSE_R (Hausknoten) 56 -> 44. Lokal bei 800×800 und 450×800 mit 4 und 11 Geräten geprüft - keine Überlappung, kein Clipping.
+
 ## 0.9.129-beta.1 (2026-09-25)
 
 - Tile: Hausknoten (Pille) fälschlich mitgewachsen, als die Verbraucher-Knoten vergrößert wurden (Dietmar: "Du sollst nicht die Pille größer machen, sondern die Knoten"). Ursache: Haus und Verbraucher-Knoten teilten sich bisher denselben Radius DESIGN_R. Neuer, eigenständiger Radius HOUSE_R (unverändert 56) für den Hausknoten, DESIGN_R (66) bleibt nur für die Verbraucher-Knoten. Lokal bei 800×800 mit 4 und 11 Geräten geprüft - Pille wieder in ursprünglicher Größe, Knoten weiterhin groß, keine Überlappung mit der Quotenmünze.
