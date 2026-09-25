@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.122-beta.1 (2026-09-25)
+
+- Tile: Quotenmünze war nach dem Skalierungs-Fix (Build 248) sichtbar kleiner als die Flow-Knoten statt exakt knotengroß - somm und Dietmar unabhängig voneinander am eigenen Screenshot bestätigt. Ursache: der erste Fix hatte die #quotaCoin-Box auf Knotengröße kalibriert, nicht den tatsächlich sichtbaren Kreis darin (r=42 innerhalb einer 104×104-viewBox, füllt die Box nur zu ~81 %). Jetzt zusätzlich auf den echten Füllgrad hochskaliert, sichtbarer Münzkreis entspricht jetzt exakt DESIGN_R wie ein Flow-Knoten.
+
 ## 0.9.121-beta.1 (2026-09-25)
 
 - Tile: Quotenmünze (Autarkie-/Selbstverbrauchsquote) skalierte fix bei 190px in CSS, unabhängig von der tatsächlichen Kachelgröße - Forum-Fund sirkentucky (iPhone/iPad SymconApp): dort ist das Container-Seitenverhältnis anders als im Browser-WebFront, dadurch wirkte die Münze im Verhältnis zum Energiefluss viel zu groß. Münze bekommt ihre Pixelgröße jetzt in `updateViewBox()` dynamisch aus derselben Referenz wie die Flow-Knoten (2×DESIGN_R relativ zur tatsächlichen SVG-Höhe) - skaliert jetzt bei jeder Kachelgröße/jedem Gerät analog zum Energiefluss.

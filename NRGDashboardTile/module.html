@@ -3704,9 +3704,17 @@ function updateViewBox() {
   // Fluss: 594 viewBox-Einheiten Hoehe entsprechen rect.height Pixeln, ein
   // Knoten hat 2*DESIGN_R viewBox-Einheiten Durchmesser - Dietmars
   // urspruenglicher Wunsch war ausdruecklich "so gross wie die Knoten".
+  // Korrektur 25.09.2026 (somm + Dietmar am eigenen Screenshot bestaetigt:
+  // "ist nicht exakt knotengross sondern kleiner"): der erste Anlauf hatte
+  // die #quotaCoin-BOX auf Knotengroesse kalibriert, nicht den tatsaechlich
+  // sichtbaren Kreis darin - der Muenzkreis ist nur r=42 innerhalb einer
+  // 104x104-viewBox (siehe <svg id="quotaCoin">), fuellt die Box also nur zu
+  // 2*42/104 ≈ 81 %. Deshalb hier zusaetzlich auf den echten Fuellgrad
+  // hochskaliert, damit der SICHTBARE Muenzkreis exakt DESIGN_R entspricht.
   const coinEl = document.getElementById('quotaCoin');
   if (coinEl) {
-    const coinPx = (2 * DESIGN_R) * (rect.height / 594);
+    const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
+    const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * (rect.height / 594);
     coinEl.style.width = coinPx.toFixed(1) + 'px';
     coinEl.style.height = coinPx.toFixed(1) + 'px';
   }
