@@ -1010,7 +1010,7 @@
 // wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
 // Geräte-Schema (function/label/value/category) statt fester WR-Felder.
 const CX = 280, CY = 301;
-const DESIGN_R = 56;
+const DESIGN_R = 66; // 56 -> 66 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern") - moeglich geworden durch die neue Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()), die die zuvor gefundene Kollision zuverlaessig vermeidet
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -1248,9 +1248,27 @@ function computeLayout(n) {
   // (Kappen eingeschlossen) in gleichem Bogenlaengen-Abstand statt
   // gleichem Winkel (das ist der Grund, warum die Verbreiterung
   // ueberhaupt zusaetzlichen Platz bringt).
+  //
+  // Ausschlusszone oben links fuer die Quotenmuenze (25.09.2026, Dietmar:
+  // "Du kannst die Knoten wirklich vergroessern") - die Muenze (#quotaCoin,
+  // siehe CSS) sitzt fix in genau dieser Ecke und ist seit dem Knotengroesse-
+  // Angleich (Build 249) genauso gross wie ein Knoten; bei groesserem
+  // DESIGN_R reichte der bisher nur zufaellig freie Platz nicht mehr aus,
+  // ein Knoten landete direkt in der Muenze (live gefunden bei 11 Geraeten,
+  // Chip-Modus). COIN_EXCLUDE_ANGLE_* sind Standard-Geraetewinkel (0=Ost,
+  // -90=Nord/oben, 90=Sued, ±180=West), die Zone deckt das noerdliche
+  // West-Achtel bis knapp vor "oben" ab, wo die Muenze liegt.
+  //
+  // NUR im Chip-Modus angewendet (Fund beim ersten Anlauf, 4-Geraete-Test):
+  // im Kreis-Modus (<=CHIP_THRESHOLD Knoten) reisst die Ausschlusszone die
+  // gewohnte symmetrische Kreuzform (-90/0/90/180) unnoetig aus der Balance,
+  // ohne dass dort je eine echte Kollision beobachtet wurde - der Kreis
+  // bleibt bei der urspruenglichen Formel.
+  const COIN_EXCLUDE_ANGLE_START = -175;
+  const COIN_EXCLUDE_ANGLE_END = -95;
   const points = [];
-  for (let i = 0; i < n; i++) {
-    if (!chip) {
+  if (!chip) {
+    for (let i = 0; i < n; i++) {
       const angleDeg = -90 + (360 / n) * i;
       const rad = angleDeg * Math.PI / 180;
       points.push({
@@ -1258,9 +1276,27 @@ function computeLayout(n) {
         x: rOuterCircle * Math.cos(rad), y: rOuterCircle * Math.sin(rad),
         hx: DESIGN_R * Math.cos(rad), hy: DESIGN_R * Math.sin(rad),
       });
-    } else {
-      const t = i / n;
-      const { house, sat } = pillPointPair(t, hw, hh, ringGap);
+    }
+  } else {
+    // Dieselbe Ausschlusszone in Bogenlaengen-Koordinaten der Pille
+    // umgerechnet - liegt komplett in der LINKEN Kappe (siehe
+    // pillPointPair(): dort a = 90 + (t_lokal/capLen2)*180 im Bereich
+    // [90,270]; COIN_EXCLUDE_ANGLE_* im Bereich [-180,-90] entsprechen
+    // dort [180,270], also der oberen Haelfte der linken Kappe - passt
+    // zur "oben links"-Lage der Muenze).
+    const straight = Math.max(0, hw - hh);
+    const hh2 = hh + ringGap;
+    const capLen2 = Math.PI * hh2;
+    const perim2 = 4 * straight + 2 * capLen2;
+    const leftCapStart = 3 * straight + capLen2;
+    const angleToT = (aDeg) => leftCapStart + (aDeg - 90) / 180 * capLen2;
+    const tExcl1 = angleToT(COIN_EXCLUDE_ANGLE_START + 360);
+    const tExcl2 = angleToT(COIN_EXCLUDE_ANGLE_END + 360);
+    const usablePerim = perim2 - (tExcl2 - tExcl1);
+    for (let i = 0; i < n; i++) {
+      const v = (usablePerim / n) * i;
+      const t = v < tExcl1 ? v : v + (tExcl2 - tExcl1);
+      const { house, sat } = pillPointPair(t / perim2, hw, hh, ringGap);
       points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
     }
   }
