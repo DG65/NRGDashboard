@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.126-beta.1 (2026-09-25)
+
+- Tile: Ursache für das Knoten-Schrumpfen bei größerem NODE_GAP behoben statt nur kompensiert (Dietmar: "warum machst Du die Pille nicht breiter?") - der Chip-Zweig in computeLayout() deckelte die Pillenbreite bisher auf denselben Radius wie die Kreis-Satelliten (R_MAX=234), bevor er die Knoten selbst schrumpfen ließ. R_MAX auf 255 erhöht, gibt der Pille mehr Spielraum. NODE_GAP kann dadurch wieder auf 80px stehen, ohne dass die Knoten kleiner werden. Lokal bei 800×800 und 450×800, je mit 4 und 11 Geräten, ohne Clipping geprüft.
+
 ## 0.9.125-beta.1 (2026-09-25)
 
 - Tile: Regelabstand zwischen Verbraucher-Knoten (NODE_GAP) auf 60px justiert (Dietmar - 80px probeweise getestet, ließ bei vielen Geräten die Knoten selbst per Packungsformel spürbar schrumpfen; 60px als Kompromiss zwischen mehr Abstand und Knotengröße). Lokal mit 4 und 11 Geräten geprüft.

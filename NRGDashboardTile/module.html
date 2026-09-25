@@ -1048,7 +1048,7 @@ let COUPLE_GLOW = true;
 let EFFECT_INTENSITY = 1;
 
 let lastBoltHw = null; // Chip-Blitzboegen nur bei tatsaechlicher Breitenaenderung neu aufbauen
-const R_MAX = 234;
+const R_MAX = 255; // 234 -> 255 (25.09.2026, Dietmar: "warum machst Du die Pille nicht breiter?") - der Chip-Zweig in computeLayout() deckelt die Pillenbreite bisher auf denselben Radius wie die Kreis-Satelliten (hwMax haengt an R_MAX), bevor er stattdessen die Knoten selbst schrumpfen laesst. Erhoehung gibt der Pille mehr Spielraum, bevor die Kompression greift - lokal bei 800x800 (quadratisch) und 450x800 (schmal/hoch), je mit 4 und 11 Geraeten, ohne Clipping (auch Glow-Halo) geprueft.
 // Breite Kacheln in die Breite nutzen statt links/rechts leer zu lassen
 // (Dietmar, 03.09.2026: "die Anordnung auch in die Breite ziehen ... sehr
 // viel mehr Verbraucher an den Tisch"): die urspruengliche, feste 594x594-
@@ -1063,7 +1063,7 @@ const R_MAX = 234;
 const VIEW_HALF_W_DEFAULT = 297;
 let VIEW_W = VIEW_HALF_W_DEFAULT * 2;
 let VIEW_HALF_W = VIEW_HALF_W_DEFAULT;
-const NODE_GAP = 60; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout(); 20->28->40->80->60px, 25.09.2026, Dietmar: "Knotenabstaende vergroessern" - 80px liess bei vielen Geraeten die Knoten selbst per Packungsformel spuerbar schrumpfen, 60px als Kompromiss)
+const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout(); 20->28->40->80->60->80px, 25.09.2026, Dietmar: "Knotenabstaende vergroessern" - 80px liess bei vielen Geraeten die Knoten schrumpfen, zunaechst auf 60px reduziert; nach der R_MAX-Erhoehung (siehe dort, "warum machst Du die Pille nicht breiter?") faengt die breitere Pille den Platzbedarf ab, 80px jetzt ohne Knoten-Schrumpfen moeglich)
 const CENTER_R = DESIGN_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
