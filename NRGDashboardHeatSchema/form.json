@@ -215,6 +215,30 @@
         },
         {
           "type": "Label",
+          "caption": "Kombispeicher (nur bei Speicherart „Kombispeicher“ hinter dem Doppelpfeil relevant)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ComboTopTempID",
+          "caption": "Warmwasser oben (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ComboBottomTempID",
+          "caption": "Warmwasser unten (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ComboMidTempID",
+          "caption": "Wärmespeicher / Pufferzone (°C)"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "ComboReturnTempID",
+          "caption": "Rücklauf (°C)"
+        },
+        {
+          "type": "Label",
           "caption": "Heizkreis 1"
         },
         {

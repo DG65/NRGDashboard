@@ -884,6 +884,18 @@ function buildSchema(unit) {
   var monoblock = bauart === 'monoblock';
   var hasBuffer = cfg.hasBuffer !== false;
   var bufferLiters = cfg.bufferLiters || 100;
+  // Kombispeicher (24.09.2026, Forum-Wunsch Christian "kollaps") - EIN Tank
+  // ersetzt Puffer+WW-Tank. Bewusst NICHT als eigener, paralleler Zeichenpfad
+  // neben dem bestehenden Puffer gebaut (zu hohes Risiko, die sehr fein
+  // abgestimmte Rohrfuehrung/Geometrie kaputtzumachen), sondern additiv AUF
+  // der bestehenden Puffer-Geometrie: hasBuffer wird hier hart auf true
+  // gesetzt, damit JEDE bestehende, an "hasBuffer" haengende Logik (Tank
+  // zeichnen, Wendel, Anschlussleitungen, Chips) unveraendert weiterlaeuft -
+  // nur INNERHALB des Tank-Zeichenblocks wird weiter unten auf hasCombiTank
+  // verzweigt (Speicherinhalt-Temperatur, Beschriftung, dritter Abgang oben
+  // fuer Warmwasser + ΔT-Chip nach dem etablierten Muster von INNEN_PUF_CX).
+  var hasCombiTank = !!cfg.hasCombiTank;
+  if (hasCombiTank) { hasBuffer = true; }
   // Bei Monoblock gibt es niemals ein Innengeraet - und damit auch nie
   // einen integrierten WW-Tank oder die Sanitaerseite (Dietmar,
   // 17.08.2026: "Bei Monoblock gibt es niemals ein Innengeraet ...
@@ -1954,16 +1966,75 @@ function buildSchema(unit) {
     // Wendelmechanismus - die Wendel wird direkt vom Aufrufer gezeichnet
     // (pufCoilD, oben definiert), damit sie exakt auf Leitungshoehe an der
     // Wand andockt (Dietmar, 14.08.2026).
-    tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, unit.bufferTemp, null, null, {
+    // Kombispeicher (24.09.2026): der Tankinhalt selbst zeigt die
+    // Waermespeicher-/Pufferzone-Temperatur (comboMidTemp) statt der
+    // "klassischen" Puffertemperatur - beim Kombispeicher gibt es keinen
+    // separaten bufferTempID-Sensor mehr, comboMidTempID uebernimmt exakt
+    // dieselbe hydraulische Rolle (siehe form.json-Hinweis dort).
+    var pufFillTemp = hasCombiTank ? cfg.comboMidTemp : unit.bufferTemp;
+    tankShape(svg, PUF_CX, PUF_TOP, PUF_W, PUF_H, pufFillTemp, null, null, {
       topColor: SUPC, botColor: RETC
     });
     // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
     // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
     var pufTag = el('text', { x: PUF_CX, y: PUF_TOP + PUF_H + 14, class: 'tag' });
-    pufTag.textContent = 'Puffer ' + bufferLiters + ' l';
+    pufTag.textContent = (hasCombiTank ? 'Kombispeicher ' : 'Puffer ') + bufferLiters + ' l';
     svg.appendChild(pufTag);
-    if (unit.bufferTemp !== null && unit.bufferTemp !== undefined) {
-      svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(unit.bufferTemp), '°C', tempColor(unit.bufferTemp), null));
+    // Beim Kombispeicher entfaellt der einzelne Temperatur-Chip ueber dem
+    // Tank (24.09.2026) - der Platz wird stattdessen fuer den neuen
+    // dritten Abgang (Warmwasser-Stutzen, siehe unten) gebraucht;
+    // "Wärmespeicher" steht stattdessen als fuenfter Eintrag in der
+    // Info-Liste unterhalb des Tanks (gleiche Praesentation wie WW
+    // oben/unten/Ruecklauf statt einer optisch abweichenden Sonderstellung).
+    if (!hasCombiTank && pufFillTemp !== null && pufFillTemp !== undefined) {
+      svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), null));
+    }
+
+    // Dritter Abgang oben: Warmwasser (24.09.2026, Forum-Wunsch Christian
+    // "kollaps" ueber die WPHub-Sitzung: "3 statt 2 Abgaenge: oben
+    // Warmwasser, Mitte Heizen-VL, unten Ruecklauf"). Die Mitte (Heizen-
+    // Vorlauf) und der Ruecklauf sind bereits die bestehenden Primaer-
+    // Anschluesse (PUF_LEFT, y=142/192) - hier kommt NUR der neue, dritte
+    // Anschluss oben dazu: ein kurzer Stutzen nach oben plus fuenf
+    // Info-Chips (WW oben/unten, ΔT, Ruecklauf, Waermespeicher) unterhalb
+    // der Tag-Beschriftung, wo bei einem Kombispeicher (kein separater
+    // WW-Tank mehr, siehe hasDhwTank in buildBasePayload()) reichlich
+    // Platz frei wird.
+    if (hasCombiTank) {
+      var comboStubTopY = PUF_TOP - 22;
+      svg.appendChild(pipe('M' + PUF_CX + ',' + PUF_TOP + ' L' + PUF_CX + ',' + comboStubTopY, 'pipe-hot', false));
+      var wwOutTag = el('text', { x: PUF_CX, y: comboStubTopY - 4, class: 'tag' });
+      wwOutTag.textContent = '→ Warmwasser';
+      svg.appendChild(wwOutTag);
+
+      // comboInfoGap = 34 (24.09.2026, live-korrigiert): jeder Chip mit
+      // Tag-Beschriftung braucht ~32px Gesamthoehe (19px Pille + Tag-Text
+      // darueber, siehe chip()-Kommentar) - 22px Abstand liess die Tag-
+      // Beschriftung des naechsten Chips in die Pille des vorherigen
+      // hineinlaufen.
+      var comboInfoY = PUF_TOP + PUF_H + 34;
+      var comboInfoGap = 34;
+      var comboInfoI = 0;
+      if (cfg.comboTopTemp !== null && cfg.comboTopTemp !== undefined) {
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboTopTemp), '°C', tempColor(cfg.comboTopTemp), 'WW oben'));
+      }
+      if (cfg.comboBottomTemp !== null && cfg.comboBottomTemp !== undefined) {
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboBottomTemp), '°C', tempColor(cfg.comboBottomTemp), 'WW unten'));
+      }
+      // ΔT nach demselben Muster wie INNEN_PUF_CX weiter oben (Betrag,
+      // amber #e0b93c, Einheit 'K') - Schichtung im Speicher (oben minus
+      // unten), keine erfundene Rechnung.
+      if (cfg.comboTopTemp !== null && cfg.comboTopTemp !== undefined
+        && cfg.comboBottomTemp !== null && cfg.comboBottomTemp !== undefined) {
+        var comboDT = Math.abs(cfg.comboTopTemp - cfg.comboBottomTemp);
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, 'ΔT ' + fmtTemp1(comboDT), 'K', '#e0b93c', 'Schichtung'));
+      }
+      if (cfg.comboReturnTemp !== null && cfg.comboReturnTemp !== undefined) {
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboReturnTemp), '°C', tempColor(cfg.comboReturnTemp), 'Rücklauf'));
+      }
+      if (pufFillTemp !== null && pufFillTemp !== undefined) {
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), 'Wärmespeicher'));
+      }
     }
 
     // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet, oben bei

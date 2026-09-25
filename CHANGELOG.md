@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.120-beta.1 (2026-09-25)
+
+- HeatSchema: neue Speicherart "Kombispeicher" (1 Tank, 3 Abgänge statt Puffer + getrennter WW-Speicher) - Forum-Wunsch Christian "kollaps", gemeldet über die WPHub-Sitzung. Einstellung "Speicherart" (WebFront, Doppelpfeil), vier neue manuelle Sensor-Zuordnungen (WW oben/unten, Wärmespeicher, Rücklauf) im Formular. Im Schema: dritter Abgang oben (Warmwasser) am bestehenden Puffer-Tank, darunter fünf Info-Chips (WW oben, WW unten, ΔT Schichtung, Rücklauf, Wärmespeicher). Additiv auf der bestehenden, fein austarierten Puffer-Tank-Geometrie aufgebaut, keine Parallelstruktur - der klassische Puffer/WW-getrennt-Pfad bleibt unverändert.
+
 ## 0.9.119-beta.1 (2026-09-24)
 
 - WPMonitor/HeatSchema: neue Wärmepumpen-Quelle WPBsbLan (BSB-LAN-Adapter, Siemens RVS/LMU-Regler, erste Anlage Fujitsu Waterstage) in HEATPUMP_SOURCES aufgenommen - Meldung der WPHub-Sitzung, bereits im Store veröffentlicht und an echter Hardware bestätigt. Gleicher heatpump-Vertrag (contractVersion 1.15) wie die übrigen Quellen.

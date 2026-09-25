@@ -230,6 +230,18 @@ class NRGDashboardHeatSchema extends IPSModule
         foreach (self::MANUAL_FIELDS as $propertyName) {
             $this->RegisterPropertyInteger($propertyName, 0);
         }
+        // Kombispeicher-Sensoren (24.09.2026, Forum-Wunsch von Christian
+        // "kollaps" ueber die WPHub-Sitzung: ein Kombispeicher/Hygienik-
+        // Speicher statt getrenntem Puffer+WW-Tank braucht eigene
+        // Temperaturpunkte - WW oben, WW unten, Waermespeicher (Pufferzone),
+        // Ruecklauf) - bewusst NICHT in MANUAL_FIELDS: dort geht es um
+        // Auto+Manuell-Merge fuer bestehende heatpump-Vertragsfelder, diese
+        // vier Punkte sind ausschliesslich manuell verknuepfbar (es gibt
+        // keinen Anbieter-Vertrag dafuer).
+        $this->RegisterPropertyInteger('ComboTopTempID', 0);
+        $this->RegisterPropertyInteger('ComboBottomTempID', 0);
+        $this->RegisterPropertyInteger('ComboMidTempID', 0);
+        $this->RegisterPropertyInteger('ComboReturnTempID', 0);
         // Heizkoerper und Fussbodenheizung je Kreis unabhaengig ein-
         // /ausblendbar (Dietmar, 16.08.2026: "manche haben nur
         // Fussbodenheizung ... auch in den Versionen mit nur einem HK
@@ -372,9 +384,27 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->SetValue('Bauart', 0);
         }
 
+        // Speicherart (24.09.2026, Forum-Wunsch Christian "kollaps") - ein
+        // Kombispeicher (z.B. "Hygienik 2.0") ersetzt den getrennten
+        // Puffer+WW-Tank durch EINEN Tank mit 3 Abgaengen (oben WW, Mitte
+        // Heizen-Vorlauf, unten Ruecklauf). Default 0 (Klassisch) haelt das
+        // bisherige Verhalten fuer alle bestehenden Instanzen unveraendert -
+        // keine erfundene Verhaltensaenderung fuer Bestandsnutzer.
+        if (!IPS_VariableProfileExists('NRGDASHHEAT.StorageType')) {
+            IPS_CreateVariableProfile('NRGDASHHEAT.StorageType', VARIABLETYPE_INTEGER);
+        }
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 0, 'Klassisch (Puffer / getrennter WW-Speicher)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 1, 'Kombispeicher (1 Tank, 3 Abgänge)', '', -1);
+        $storageTypeIsNew = @IPS_GetObjectIDByIdent('StorageType', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('StorageType', 'Speicherart', 'NRGDASHHEAT.StorageType', 61);
+        $this->EnableAction('StorageType');
+        if ($storageTypeIsNew) {
+            $this->SetValue('StorageType', 0);
+        }
+
         $componentToggles = [
-            'HasBuffer'  => ['Pufferspeicher vorhanden', 61, true],
-            'HasDhwTank' => ['Warmwasser-Tank vorhanden', 63, true],
+            'HasBuffer'  => ['Pufferspeicher vorhanden', 62, true],
+            'HasDhwTank' => ['Warmwasser-Tank vorhanden', 65, true],
         ];
         foreach ($componentToggles as $ident => $spec) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -388,8 +418,8 @@ class NRGDashboardHeatSchema extends IPSModule
         // Profil noetig) - Position direkt hinter dem zugehoerigen
         // Schalter.
         $literToggles = [
-            'BufferLiters' => ['Pufferspeicher: Volumen (l)', 62, 100],
-            'DhwLiters'    => ['Warmwasser-Tank: Volumen (l)', 64, 185],
+            'BufferLiters' => ['Pufferspeicher: Volumen (l)', 63, 100],
+            'DhwLiters'    => ['Warmwasser-Tank: Volumen (l)', 66, 185],
         ];
         foreach ($literToggles as $ident => $spec) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -807,15 +837,20 @@ class NRGDashboardHeatSchema extends IPSModule
      * im Objektbaum aus, solange Bauart=Monoblock ist - dort gibt es nie
      * einen WW-Tank, siehe hasDhwTank in buildBasePayload() (Dietmar,
      * 17.08.2026: "wenn man Monoblock ankreuzt, dann kann auch der
-     * WW-Tank in den Einstellmoeglichkeiten verschwinden").
+     * WW-Tank in den Einstellmoeglichkeiten verschwinden"). Seit 24.09.2026
+     * zusaetzlich bei StorageType=Kombispeicher ausgeblendet - der eine
+     * Kombispeicher-Tank ERSETZT den getrennten WW-Tank, der Schalter waere
+     * dann wirkungslos (siehe hasDhwTank in buildBasePayload()).
      */
     private function ApplyDhwVisibility(): void
     {
         $monoblock = ((int) $this->GetValue('Bauart')) === 1;
+        $combiTank = ((int) $this->GetValue('StorageType')) === 1;
+        $hide = $monoblock || $combiTank;
         foreach (['HasDhwTank', 'DhwLiters'] as $ident) {
             $id = @IPS_GetObjectIDByIdent($ident, $this->InstanceID);
             if ($id !== false) {
-                IPS_SetHidden($id, $monoblock);
+                IPS_SetHidden($id, $hide);
             }
         }
     }
@@ -893,13 +928,18 @@ class NRGDashboardHeatSchema extends IPSModule
             $this->Render();
             return;
         }
-        if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed', 'Bauart', 'BufferLiters', 'DhwLiters', 'SimulationMode'], true)) {
+        if (in_array($Ident, ['FlowStyle', 'FlowMotion', 'FlowSpeed', 'Bauart', 'StorageType', 'BufferLiters', 'DhwLiters', 'SimulationMode'], true)) {
             $this->SetValue($Ident, (int) $Value);
             if ($Ident === 'Bauart') {
                 // Simulation-Optionen und WW-Tank-Sichtbarkeit haengen
                 // von der Bauart ab - bei einem Wechsel sofort neu
                 // aufbauen, statt erst beim naechsten Kernelstart.
                 $this->ApplySimulationProfile();
+                $this->ApplyDhwVisibility();
+            }
+            if ($Ident === 'StorageType') {
+                // Kombispeicher ersetzt den getrennten WW-Tank - dessen
+                // Einstellungen dann ebenfalls ausblenden (analog Monoblock).
                 $this->ApplyDhwVisibility();
             }
             $this->Render();
@@ -1315,9 +1355,29 @@ class NRGDashboardHeatSchema extends IPSModule
             'flowMotion'  => (int) $this->GetValue('FlowMotion'),
             'flowSpeed'   => (int) $this->GetValue('FlowSpeed'),
             'bauart'      => [0 => 'split', 1 => 'monoblock', 2 => 'sole', 3 => 'wasser', 4 => 'kollektor'][(int) $this->GetValue('Bauart')] ?? 'split',
+            // Kombispeicher (24.09.2026) ERSETZT den getrennten Puffer/WW-
+            // Tank durch einen Tank - hasDhwTank wird deshalb bei
+            // storageType=1 zwingend false erzwungen (unabhaengig vom
+            // HasDhwTank-Schalter, der dann ohnehin ausgeblendet ist, siehe
+            // ApplyDhwVisibility()), damit module.html nie beide Tanks
+            // gleichzeitig zeichnet. hasBuffer bleibt unangetastet: der
+            // Kombispeicher-Tank wird im Frontend an SEINER Stelle
+            // gezeichnet (siehe hasCombiTank), unabhaengig vom klassischen
+            // Puffer-Zweig.
+            'storageType' => (int) $this->GetValue('StorageType'),
+            'hasCombiTank' => ((int) $this->GetValue('StorageType')) === 1,
+            // Kombispeicher-Temperaturen (24.09.2026) - EIN Tank fuer die
+            // ganze Anlage statt je Waermepumpen-Einheit, deshalb hier auf
+            // Payload-Ebene statt in der Pro-Einheit-Schleife (dort stehen
+            // dhwTemp/bufferTemp je WP-Einheit, hier ist es konzeptionell
+            // ein einzelner Tank).
+            'comboTopTemp'    => $this->numTemp($this->readIntProperty('ComboTopTempID', 0)),
+            'comboBottomTemp' => $this->numTemp($this->readIntProperty('ComboBottomTempID', 0)),
+            'comboMidTemp'    => $this->numTemp($this->readIntProperty('ComboMidTempID', 0)),
+            'comboReturnTemp' => $this->numTemp($this->readIntProperty('ComboReturnTempID', 0)),
             'hasBuffer'   => (bool) $this->GetValue('HasBuffer'),
             'bufferLiters' => (int) $this->GetValue('BufferLiters'),
-            'hasDhwTank'  => (bool) $this->GetValue('HasDhwTank'),
+            'hasDhwTank'  => ((int) $this->GetValue('StorageType')) === 1 ? false : (bool) $this->GetValue('HasDhwTank'),
             'dhwLiters'   => (int) $this->GetValue('DhwLiters'),
             'renderedAt'  => time(),
             'units'       => $units,
