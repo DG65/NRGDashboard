@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.125-beta.1 (2026-09-25)
+
+- Tile: Regelabstand zwischen Verbraucher-Knoten (NODE_GAP) auf 60px justiert (Dietmar - 80px probeweise getestet, ließ bei vielen Geräten die Knoten selbst per Packungsformel spürbar schrumpfen; 60px als Kompromiss zwischen mehr Abstand und Knotengröße). Lokal mit 4 und 11 Geräten geprüft.
+
 ## 0.9.124-beta.1 (2026-09-25)
 
 - Tile: Regelabstand zwischen Verbraucher-Knoten (NODE_GAP) weiter von 28px auf 40px erhöht (Dietmar). Lokal mit 4 und 11 Geräten ohne Überlappungen geprüft.
