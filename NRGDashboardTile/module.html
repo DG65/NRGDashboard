@@ -1148,7 +1148,6 @@ function computeLayout(n) {
     outerR = Math.min(DESIGN_R, (R_MAX * s - NODE_GAP / 2) / (1 + s));
   }
   outerR = Math.max(16, outerR);
-  const rOuterCircle = R_MAX - outerR;
 
   // Radialer Abstand Hausrand -> Verbraucher-MITTELPUNKT, wie im Kreis-Fall
   // (dort implizit rOuter-CENTER_R, typischerweise 100+ Px) - NICHT nur ein
@@ -1161,6 +1160,17 @@ function computeLayout(n) {
   // ZWISCHEN benachbarten Verbraucher-Knoten, nicht der radiale Abstand
   // Haus<->Knoten) und dadurch teils sogar negative Speichenlaengen
   // produziert (Knoten und Haus ueberlappten sich rechnerisch).
+  //
+  // RING_GAP_TRIM (25.09.2026, Dietmar: "Abstand zwischen Pille und Knoten
+  // verringern") - zieht die Knoten-Umlaufbahn direkt naeher an Haus/Pille
+  // heran, unabhaengig von R_MAX (das bleibt fuer den Pillenbreiten-Deckel
+  // unangetastet, siehe dort) und unabhaengig von DESIGN_R (also OHNE die
+  // gerade gefundene Kollision mit der Quotenmuenze bei groesseren Knoten
+  // zu riskieren). MIN_RING_GAP haelt den Sicherheitsboden fuer die
+  // Dreieck-Animation.
+  const RING_GAP_TRIM = 40;
+  const MIN_RING_GAP = 24;
+  const rOuterCircle = Math.max(DESIGN_R + MIN_RING_GAP, R_MAX - outerR - RING_GAP_TRIM);
   const ringGap = rOuterCircle - DESIGN_R;
 
   let hw = DESIGN_R;

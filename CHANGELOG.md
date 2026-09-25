@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.127-beta.1 (2026-09-25)
+
+- Tile: Radialabstand zwischen Haus/Pille und Verbraucher-Knoten verringert (Dietmar: "Abstand zwischen Pille und Knoten verringern"). Neuer Trim-Wert zieht die Knoten-Umlaufbahn näher heran, unabhängig von R_MAX (Pillenbreiten-Deckel bleibt unangetastet) und unabhängig von DESIGN_R (Knotengröße unverändert - eine probeweise Vergrößerung der Knoten hätte bei vielen Geräten zu einer Kollision mit der Quotenmünze oben links geführt, siehe Rückmeldung an Dietmar). Sicherheitsboden für die fließende Pfeil-Dreieck-Animation bleibt erhalten. Lokal bei 800×800 und 450×800, je mit 4 und 11 Geräten, ohne Überlappung/Clipping geprüft.
+
 ## 0.9.126-beta.1 (2026-09-25)
 
 - Tile: Ursache für das Knoten-Schrumpfen bei größerem NODE_GAP behoben statt nur kompensiert (Dietmar: "warum machst Du die Pille nicht breiter?") - der Chip-Zweig in computeLayout() deckelte die Pillenbreite bisher auf denselben Radius wie die Kreis-Satelliten (R_MAX=234), bevor er die Knoten selbst schrumpfen ließ. R_MAX auf 255 erhöht, gibt der Pille mehr Spielraum. NODE_GAP kann dadurch wieder auf 80px stehen, ohne dass die Knoten kleiner werden. Lokal bei 800×800 und 450×800, je mit 4 und 11 Geräten, ohne Clipping geprüft.
