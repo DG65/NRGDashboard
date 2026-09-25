@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.121-beta.1 (2026-09-25)
+
+- Tile: Quotenmünze (Autarkie-/Selbstverbrauchsquote) skalierte fix bei 190px in CSS, unabhängig von der tatsächlichen Kachelgröße - Forum-Fund sirkentucky (iPhone/iPad SymconApp): dort ist das Container-Seitenverhältnis anders als im Browser-WebFront, dadurch wirkte die Münze im Verhältnis zum Energiefluss viel zu groß. Münze bekommt ihre Pixelgröße jetzt in `updateViewBox()` dynamisch aus derselben Referenz wie die Flow-Knoten (2×DESIGN_R relativ zur tatsächlichen SVG-Höhe) - skaliert jetzt bei jeder Kachelgröße/jedem Gerät analog zum Energiefluss.
+
 ## 0.9.120-beta.1 (2026-09-25)
 
 - HeatSchema: neue Speicherart "Kombispeicher" (1 Tank, 3 Abgänge statt Puffer + getrennter WW-Speicher) - Forum-Wunsch Christian "kollaps", gemeldet über die WPHub-Sitzung. Einstellung "Speicherart" (WebFront, Doppelpfeil), vier neue manuelle Sensor-Zuordnungen (WW oben/unten, Wärmespeicher, Rücklauf) im Formular. Im Schema: dritter Abgang oben (Warmwasser) am bestehenden Puffer-Tank, darunter fünf Info-Chips (WW oben, WW unten, ΔT Schichtung, Rücklauf, Wärmespeicher). Additiv auf der bestehenden, fein austarierten Puffer-Tank-Geometrie aufgebaut, keine Parallelstruktur - der klassische Puffer/WW-getrennt-Pfad bleibt unverändert.

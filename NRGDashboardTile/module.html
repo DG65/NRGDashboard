@@ -124,9 +124,14 @@
     /* 128 -> 190px (Dietmar, 23.09.2026: "so gross wie die Knoten") - als
        fixes Pixel-Element kann sie NICHT automatisch mit der SVG-Fluss-
        canvas-Skalierung mitwachsen (die passt sich der Kachelgroesse an,
-       ein Element ausserhalb davon nicht) - 190px ist an der hier
-       beobachteten Kachelgroesse ausgerichtet, bei deutlich anderer
-       Kachelgroesse kann das Verhaeltnis wieder abweichen. */
+       ein Element ausserhalb davon nicht). Forum-Fund 25.09.2026
+       (sirkentucky, iPhone/iPad SymconApp): 190px war auf die im Browser-
+       WebFront beobachtete Kachelgroesse geeicht, bei einem anderen
+       Seitenverhaeltnis/Container in der App wirkte die Muenze dadurch
+       im Verhaeltnis zum Energiefluss zu gross. 190px bleibt hier nur als
+       Fallback vor dem ersten Rendern - danach setzt updateViewBox() die
+       tatsaechliche Groesse per JS exakt auf Knotengroesse (2*DESIGN_R in
+       Kachel-Pixeln), siehe dort. */
     width: 190px; height: 190px;
     display: none;
   }
@@ -3690,6 +3695,21 @@ function updateViewBox() {
   VIEW_W = w;
   VIEW_HALF_W = w / 2;
   svgEl.setAttribute('viewBox', (CX - w / 2).toFixed(1) + ' 4 ' + w.toFixed(1) + ' 594');
+
+  // Quotenmuenze (#quotaCoin) analog zum Energiefluss skalieren (Forum-Fund
+  // 25.09.2026, sirkentucky: auf iPhone/iPad SymconApp wirkte die Muenze im
+  // Verhaeltnis viel zu gross) - sie liegt AUSSERHALB des #svg-Flusscanvas
+  // (siehe CSS-Kommentar bei .quota-coin) und braucht deshalb ihre
+  // Pixelgroesse explizit per JS, aus derselben Referenz wie die Knoten im
+  // Fluss: 594 viewBox-Einheiten Hoehe entsprechen rect.height Pixeln, ein
+  // Knoten hat 2*DESIGN_R viewBox-Einheiten Durchmesser - Dietmars
+  // urspruenglicher Wunsch war ausdruecklich "so gross wie die Knoten".
+  const coinEl = document.getElementById('quotaCoin');
+  if (coinEl) {
+    const coinPx = (2 * DESIGN_R) * (rect.height / 594);
+    coinEl.style.width = coinPx.toFixed(1) + 'px';
+    coinEl.style.height = coinPx.toFixed(1) + 'px';
+  }
 }
 window.addEventListener('resize', function () {
   updateViewBox();
