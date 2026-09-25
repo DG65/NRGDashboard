@@ -1064,7 +1064,15 @@ const VIEW_HALF_W_DEFAULT = 297;
 let VIEW_W = VIEW_HALF_W_DEFAULT * 2;
 let VIEW_HALF_W = VIEW_HALF_W_DEFAULT;
 const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout(); 20->28->40->80->60->80px, 25.09.2026, Dietmar: "Knotenabstaende vergroessern" - 80px liess bei vielen Geraeten die Knoten schrumpfen, zunaechst auf 60px reduziert; nach der R_MAX-Erhoehung (siehe dort, "warum machst Du die Pille nicht breiter?") faengt die breitere Pille den Platzbedarf ab, 80px jetzt ohne Knoten-Schrumpfen moeglich)
-const CENTER_R = DESIGN_R;
+// HOUSE_R (25.09.2026, Dietmar: "Du sollst nicht die Pille groesser machen,
+// sondern die Knoten") - eigener, von DESIGN_R (Verbraucher-Knotengroesse)
+// entkoppelter Radius fuer den Hausknoten selbst (Kreis- wie Pillen-Form).
+// Vorher teilten sich Haus und Knoten denselben Wert DESIGN_R, wodurch die
+// Knotenvergroesserung (Build 255) versehentlich auch die Pille mitwachsen
+// liess. Bleibt beim alten Wert (56), waehrend DESIGN_R fuer die Knoten
+// groesser sein darf.
+const HOUSE_R = 56;
+const CENTER_R = HOUSE_R;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
 const BOLT_COUNT = 3;
@@ -1170,11 +1178,13 @@ function computeLayout(n) {
   // Dreieck-Animation.
   const RING_GAP_TRIM = 40;
   const MIN_RING_GAP = 24;
-  const rOuterCircle = Math.max(DESIGN_R + MIN_RING_GAP, R_MAX - outerR - RING_GAP_TRIM);
-  const ringGap = rOuterCircle - DESIGN_R;
+  // HOUSE_R statt DESIGN_R (25.09.2026): der Gap wird vom Hausrand aus
+  // gemessen, nicht vom (jetzt groesseren) Knotenradius.
+  const rOuterCircle = Math.max(HOUSE_R + MIN_RING_GAP, R_MAX - outerR - RING_GAP_TRIM);
+  const ringGap = rOuterCircle - HOUSE_R;
 
-  let hw = DESIGN_R;
-  let hh = DESIGN_R;
+  let hw = HOUSE_R;
+  let hh = HOUSE_R;
   if (chip) {
     // Wie viel zusaetzlicher Umfang noetig ist, damit n Knoten im GLEICHEN
     // Abstand wie beim Kreis (2*outerR+GAP) Platz finden - ueberall gleich
@@ -1199,7 +1209,7 @@ function computeLayout(n) {
     // einer breiteren Kachel (VIEW_HALF_W > VIEW_HALF_W_DEFAULT) darf die
     // Pille dadurch entsprechend weiter nach aussen wachsen.
     const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
-    const hwMax = Math.max(DESIGN_R, VIEW_HALF_W - marginX - ringGap);
+    const hwMax = Math.max(HOUSE_R, VIEW_HALF_W - marginX - ringGap);
     if (hw > hwMax) {
       hw = hwMax;
       // Ideal-Abstand (Dietmar, 28.08.2026: "Regelabstand ~10px, darf enger
@@ -1274,7 +1284,7 @@ function computeLayout(n) {
       points.push({
         angleDeg,
         x: rOuterCircle * Math.cos(rad), y: rOuterCircle * Math.sin(rad),
-        hx: DESIGN_R * Math.cos(rad), hy: DESIGN_R * Math.sin(rad),
+        hx: HOUSE_R * Math.cos(rad), hy: HOUSE_R * Math.sin(rad),
       });
     }
   } else {
