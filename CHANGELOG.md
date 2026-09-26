@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.134-beta.1 (2026-09-26)
+
+- Tile: Hauspille war bei sehr breiten, echten Kacheln (Dietmars eigener Screenshot: 11 Geräte) trotz Build 260 noch deutlich zu dominant, seit die Knotengröße selbst dynamisch mitwächst - die Höhen-Anpassung (hw/MAX_CHIP_ASPECT) skaliert direkt mit der (jetzt oft sehr breiten) Pillenbreite mit. Zusätzlicher harter Deckel: Pillenhöhe höchstens das 1,3-fache des Knotenradius, unabhängig von der Pillenbreite.
+- Tile: feste 36px-Reserve am unteren Rand der Kachel, damit die EMS-Einblendung (`#emsDecision`, spannt fast die volle Breite) die untersten Geräte-Knoten nicht mehr überdeckt - wirkt über die bestehende dynamische Skalierung automatisch mit (kleineres SVG-Rect → alles skaliert konsistent mit).
+- Offen (nächster Schritt): fester Abstand des gesamten Energieflusses zum rechten Kachelrand (aktuell noch mittig um CX zentriert, unabhängig von der Kachelbreite) - bewusst zurückgestellt, um nicht drei größere Änderungen ungetestet in einem Schritt zu bündeln.
+
 ## 0.9.133-beta.1 (2026-09-26)
 
 - Tile: Knotengrößen-Logik grundlegend überarbeitet (Dietmar: "die Knotengröße wird bei jedem Rendern so groß gewählt, wie es die tatsächliche Kachelgröße gerade zulässt ... Haus-Pille ist die Variable"). DESIGN_R ist keine feste Konstante mehr, sondern wird im Pillen-Modus (>8 Geräte) per Bisektion auf die aktuell verfügbare Kachelbreite optimiert; Haus/Pille und Quotenmünze folgen wieder demselben Radius wie die Verbraucher-Knoten (HOUSE_R-Entkopplung aus Build 256/257 zurückgenommen). Ersetzt die alte, an CHIP_THRESHOLD=8 fest verdrahtete Packungsformel, die für jede Gerätezahl über 8 denselben Radius lieferte, unabhängig von der tatsächlichen Kachelbreite.

@@ -44,7 +44,15 @@
   html, body { height: 100dvh; }
   body { max-height: 100dvh; }
 
-  .flow-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Feste untere Reserve (25.09.2026, Dietmar: "die Geraete-Knoten unten
+     werden von den EMS Einblendungen ueberdeckt, das darf nicht sein") -
+     #emsDecision liegt bei bottom:4px, height:26px, reicht also bis 30px
+     von unten; 36px Reserve mit etwas Puffer. Wirkt automatisch auf die
+     gesamte dynamische Skalierung: updateViewBox() liest rect.height vom
+     #svg-Element selbst, ein kleineres rect (durch inset verkuerzt)
+     schrumpft dadurch konsistent Knotengroesse/Muenze/Pillenbreite mit,
+     ohne dass eine weitere Stelle im JS angefasst werden muss. */
+  .flow-svg { position: absolute; inset: 0 0 36px 0; width: 100%; height: calc(100% - 36px); display: block; }
 
   text { font-family: var(--font); }
 
@@ -1313,9 +1321,23 @@ function computeLayout(n) {
       // statt eines Tisches. Ab einem Seitenverhaeltnis von mehr als
       // MAX_CHIP_ASPECT waechst hh proportional mit, bleibt aber ein
       // rundliches Rechteck.
-      if (hw / hh > MAX_CHIP_ASPECT) {
-        hh = hw / MAX_CHIP_ASPECT;
+      //
+      // HARTER DECKEL (25.09.2026, Dietmar am eigenen Screenshot: "Die
+      // Haus-Pille erschlaegt alles und muss um mindestens 50% kleiner
+      // werden") - seit die Knotengroesse selbst dynamisch mitwaechst
+      // (Build 260), fuehrte dieselbe hw/MAX_CHIP_ASPECT-Formel bei sehr
+      // breiten Pillen zu einer Hoehe, die WEIT ueber die Knotengroesse
+      // hinausschoss (hw wird jetzt oft sehr gross, hw/MAX_CHIP_ASPECT
+      // skaliert direkt mit). MAX_CHIP_ASPECT_HARD_CAP begrenzt hh
+      // zusaetzlich auf hoechstens das 1.3-fache des Knotenradius, egal wie
+      // breit die Pille ist - die Pille bleibt dadurch immer sichtbar
+      // kleiner als bzw. hoechstens knapp groesser als ein Verbraucher-
+      // Knoten, nicht mehr "ein Vielfaches davon".
+      const hhCeiling = outerR * 1.3;
+      if (hw / hh > MAX_CHIP_ASPECT && hh < hhCeiling) {
+        hh = Math.min(hw / MAX_CHIP_ASPECT, hhCeiling);
       } else {
+        hh = Math.min(hh, hhCeiling);
         break; // stabil - hh hat sich in diesem Durchlauf nicht geaendert
       }
     }
