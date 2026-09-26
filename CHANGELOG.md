@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.132-beta.1 (2026-09-26)
+
+- Tile: Vier Wärmepumpen-Quellen ergänzt, die die Kachel bisher nicht kannte (WPHub, WPModbusHub, WPModbusGateway, SamsungEhs, WPBsbLan) - Forum-Fund ArMu/Lütfü (WPBsbLan lieferte korrekte Werte in WPMonitor/HeatSchema, tauchte aber in der Energiefluss-Kachel nicht auf), gemeldet über die WPHub-Sitzung. Ursache: Discover() kannte bisher nur HeishaMon als Wärmepumpen-Quelle (discoverHeishaMon(), eigene Feld-Übersetzung wegen abweichendem Type/Caption-Vokabular), nicht den vollen Verbund-Kreis wie WPMonitor/HeatSchema (dort HEATPUMP_SOURCES). Die 4 fehlenden Quellen nutzen den bereits vorhandenen, generischen discoverListContract()-Pfad (standardisierte function/label-Vertragsform, kein Sonderfall wie HeishaMon nötig).
+
 ## 0.9.131-beta.1 (2026-09-25)
 
 - Tile: Kontrast Geräteknoten/Hauspille nochmals verstärkt (Dietmar wiederholte die Anfrage). DESIGN_R 76 -> 95, HOUSE_R 44 -> 32. Dabei zwei Folgefehler gefunden und behoben: (1) die Ausschlusszone für die Quotenmünze im Pillen-Modus endete mitten in der linken Kappe statt bis zum Wrap-Punkt durchzulaufen - der letzte, an "oben" grenzende Abschnitt blieb ungeschützt; läuft jetzt lückenlos bis zum Start durch. (2) Die Münzengröße nahm bei schmaler/hoher Kachel (schmaler als quadratisch) fälschlich die Kachelhöhe als Skalierungsreferenz, obwohl das SVG dort tatsächlich an der Breite skaliert (Letterboxing) - die Münze wurde dadurch zu groß. Nutzt jetzt dieselbe Min-Skalierung wie preserveAspectRatio="meet" selbst. Lokal bei 800×800, 450×800 und 1400×700 mit 4 und 11 Geräten geprüft - keine Überlappung, kein Clipping.

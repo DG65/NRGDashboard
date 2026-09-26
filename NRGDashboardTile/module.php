@@ -21,6 +21,16 @@ define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
 define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
+// Weitere Waermepumpen-Quellen (25.09.2026, Forum-Fund ArMu/Lütfü: WPBsbLan
+// lieferte korrekte Werte, tauchte aber in der Tile nicht auf) - die Tile
+// kannte bisher NUR HeishaMon als Waermepumpen-Quelle (discoverHeishaMon()),
+// nicht den vollen Verbund-Kreis wie WPMonitor/HeatSchema (dort
+// HEATPUMP_SOURCES). Dieselben 4 GUIDs 1:1 uebernommen.
+define('NRGDASH_GUID_WPHUB',          '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}');
+define('NRGDASH_GUID_WPMODBUSHUB',    '{E878B4D4-8E98-4E89-AE21-8636262EBC55}');
+define('NRGDASH_GUID_WPMODBUSGW',     '{70FBAC61-A1C0-47B7-8B56-BE047F7C0C6B}');
+define('NRGDASH_GUID_SAMSUNGEHS',     '{D2B2A1E8-2F94-426C-8761-505A2F226977}');
+define('NRGDASH_GUID_WPBSBLAN',       '{D077685F-50BF-4678-A42A-0A33CDEF8C89}');
 define('NRGDASH_GUID_TESSIE',         '{3F1F7E31-8BA0-4B8F-9B62-47DAD7A0B6C9}');
 define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}');
 define('NRGDASH_GUID_EMS',            '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}');
@@ -1142,6 +1152,24 @@ class NRGDashboardTile extends IPSModule
         $heishaMon = $this->discoverHeishaMon();
         $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
         $devices = array_merge($devices, $heishaMon);
+
+        // Weitere Waermepumpen-Quellen (25.09.2026, Forum-Fund ArMu/Lütfü,
+        // gemeldet von der WPHub-Sitzung) - dieselbe standardisierte
+        // function/label-Vertragsform wie MeterHub/ChargerHub, deshalb ueber
+        // denselben discoverListContract()-Pfad wie diese, nicht ueber die
+        // HeishaMon-Sonderuebersetzung (die liegt an Heishas abweichendem
+        // Type/Caption-Vokabular, siehe discoverHeishaMon()-Kommentar).
+        foreach ([
+            NRGDASH_GUID_WPHUB       => ['WPHUB_GetFunctions', 'WPHub'],
+            NRGDASH_GUID_WPMODBUSHUB => ['WPMBHUB_GetFunctions', 'WPModbusHub'],
+            NRGDASH_GUID_WPMODBUSGW  => ['WPMBGW_GetFunctions', 'WPModbusGateway'],
+            NRGDASH_GUID_SAMSUNGEHS  => ['SAMEHS_GetFunctions', 'SamsungEhs'],
+            NRGDASH_GUID_WPBSBLAN    => ['WPBSBL_GetFunctions', 'WPBsbLan'],
+        ] as $guid => [$fn, $label]) {
+            $found = $this->discoverListContract($guid, $fn, 'heatpump');
+            $this->checkSourceCoverage($label, $guid, count($found));
+            $devices = array_merge($devices, $found);
+        }
 
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
