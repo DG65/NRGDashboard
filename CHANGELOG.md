@@ -10,6 +10,13 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.136-beta.1 (2026-09-26)
+
+- Tile: Wert-/Namenstext lief bei sehr kleinen, jetzt möglichen Knotengrößen (Sicherheitsboden 16) über den Kreisrand hinaus (Dietmar am eigenen Screenshot: "48.400w" beim NAP-Knoten). `fitTextWidth()` hatte einen festen 8-Einheiten-Randabstand und einen festen 20-Einheiten-Fallback für Zeilen außerhalb der Kreishöhe - beides größer als ein 16-Radius-Knoten insgesamt. Beides jetzt proportional zur tatsächlichen Knotengröße.
+- Tile: Hauspille wird bei Hochformat-Kacheln (schmaler als hoch) jetzt hochkant statt querformatig dargestellt, und der Pillen-Modus nutzt dafür die tatsächlich verfügbare Kachelhöhe statt der bisherigen festen 594er-Referenz (Dietmar am eigenen Screenshot: der Energiefluss "hängt klein in der Mitte", oben/unten bleibt Platz ungenutzt). `updateViewBox()` lässt jetzt wahlweise Breite (querformatige Kachel) oder Höhe (Hochformat) über den Standard hinauswachsen, nie beide gleichzeitig. Dieselbe, bereits bewährte Pillen-Geometrie wird für Hochformat einfach um 90° gedreht wiederverwendet (Koordinatentausch bei der Punkteplatzierung), statt einer zweiten Implementierung. Kreis-Modus (≤8 Geräte) bleibt unverändert.
+- Bekannte Einschränkung: einzelne Dekor-Details der Hauspille (Blitzbögen am Rand, Schattenversatz) sind noch nicht auf die gedrehte Ausrichtung abgestimmt und können bei Hochformat leicht "falschherum" wirken - rein kosmetisch, für einen Folge-Schritt vorgemerkt.
+- Lokal geprüft: 800×800, 1900×900, 390×844 (Handy, inkl. Text-Overflow-Testfall), 768×1024 und 1024×768 (Tablet), je mit 4 und 11 Geräten - keine Überlappung, kein Text-Overflow, korrekte Ausrichtung.
+
 ## 0.9.135-beta.1 (2026-09-26)
 
 - Tile: Kollision zwischen Verbraucher-Knoten und Quotenmünze auf sehr breiten Kacheln bei vielen Geräten endgültig behoben (Dietmar am eigenen Screenshot: "die Hauspille auf der linken Seite so weit zurückziehen, dass die Geräte-Knoten nicht mit der Quotenmünze kollidieren"). Statt weiter an der Bogenlängen-Ausschlusszone zu justieren, hält ein neuer, mit der Knoten-/Münzengröße mitskalierender Sicherheitsabstand (COIN_CLEARANCE_FACTOR) die Pille auf beiden Seiten etwas schmaler als technisch möglich - robuster als der reine Ausschlusszonen-Ansatz, der bei vielen Geräte-/Kachelform-Kombinationen knapp wurde. Lokal bei 1900×1080 (Dietmars Szenario, 11 Geräte), 800×800 und 390×844 geprüft - deutlicher, gemessener Abstand zur Münze, keine Überlappung.

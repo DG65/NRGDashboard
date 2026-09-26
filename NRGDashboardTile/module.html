@@ -1080,6 +1080,12 @@ const R_MAX = 255; // 234 -> 255 (25.09.2026, Dietmar: "warum machst Du die Pill
 const VIEW_HALF_W_DEFAULT = 297;
 let VIEW_W = VIEW_HALF_W_DEFAULT * 2;
 let VIEW_HALF_W = VIEW_HALF_W_DEFAULT;
+// VIEW_H/VIEW_HALF_H (25.09.2026, Hochformat-Erweiterung) - Gegenstueck zu
+// VIEW_W/VIEW_HALF_W fuer die Hoehe, siehe updateViewBox(). Bleibt beim
+// 594er-Standard, ausser bei einer Hochformat-Kachel (aspect<1).
+const VIEW_HALF_H_DEFAULT = 297;
+let VIEW_H = VIEW_HALF_H_DEFAULT * 2;
+let VIEW_HALF_H = VIEW_HALF_H_DEFAULT;
 const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout(); 20->28->40->80->60->80px, 25.09.2026, Dietmar: "Knotenabstaende vergroessern" - 80px liess bei vielen Geraeten die Knoten schrumpfen, zunaechst auf 60px reduziert; nach der R_MAX-Erhoehung (siehe dort, "warum machst Du die Pille nicht breiter?") faengt die breitere Pille den Platzbedarf ab, 80px jetzt ohne Knoten-Schrumpfen moeglich)
 // HOUSE_R-Entkopplung (Builds 256/257) wieder rueckgaengig gemacht
 // (25.09.2026, Dietmar: "Du hast alles durcheinander gebracht ... die
@@ -1202,7 +1208,7 @@ function pillPointPair(tFrac, hw, hh, ringGap) {
  * Fassung (DESIGN_R per Bisektion, danach nochmal die alte Kompression
  * obendrauf) live erzeugt hat.
  */
-function chipCapacityAtRadius(r, n) {
+function chipCapacityAtRadius(r, n, viewHalfLong) {
   const rOuterCircle = Math.max(r + MIN_RING_GAP, R_MAX - r - RING_GAP_TRIM);
   const ringGap = rOuterCircle - r;
   const hh2 = rOuterCircle; // = r + ringGap
@@ -1218,15 +1224,23 @@ function chipCapacityAtRadius(r, n) {
   // + COIN_CLEARANCE_FACTOR*r (25.09.2026, Dietmar am eigenen Screenshot:
   // "die Hauspille auf der linken Seite so weit zurueckziehen, dass die
   // Geraete-Knoten nicht mit der Quotenmuenze kollidieren") - die Pille ist
-  // symmetrisch um CX (hw wirkt nach links UND rechts gleich), eine echte
-  // asymmetrische Geometrie waere ein groesserer Umbau der Punkte-
-  // platzierung. Stattdessen wird die Pille insgesamt etwas schmaler
-  // gehalten (auf BEIDEN Seiten etwas Reserve), mit derselben Reserve, mit
-  // der auch die Muenze selbst skaliert (r bzw. DESIGN_R) - so bleibt der
-  // Sicherheitsabstand zur Muenze bei jeder Knotengroesse proportional
-  // gleich gross, statt bei grossen Knoten (grosse Muenze) knapp zu werden.
+  // symmetrisch um CX/CY (hw wirkt nach beiden Seiten der langen Achse
+  // gleich), eine echte asymmetrische Geometrie waere ein groesserer Umbau
+  // der Punkteplatzierung. Stattdessen wird die Pille insgesamt etwas
+  // schmaler gehalten (auf BEIDEN Seiten etwas Reserve), mit derselben
+  // Reserve, mit der auch die Muenze selbst skaliert (r bzw. DESIGN_R) - so
+  // bleibt der Sicherheitsabstand zur Muenze bei jeder Knotengroesse
+  // proportional gleich gross, statt bei grossen Knoten (grosse Muenze)
+  // knapp zu werden.
+  //
+  // viewHalfLong (25.09.2026, Hochformat-Erweiterung, Dietmar: "dann drehe
+  // sie hochkant") - die lange Achse der Pille ist VIEW_HALF_W bei breiter,
+  // VIEW_HALF_H bei hoher Kachel (Aufrufer entscheidet, siehe
+  // computeLayout()); die kurze Achse (hh2/ringGap) bleibt in beiden
+  // Faellen an R_MAX/594 gebunden, das aendert sich nicht mit der
+  // Ausrichtung.
   const marginX = VIEW_HALF_W_DEFAULT - R_MAX + COIN_CLEARANCE_FACTOR * r;
-  const hwMax = Math.max(r, VIEW_HALF_W - marginX - ringGap);
+  const hwMax = Math.max(r, viewHalfLong - marginX - ringGap);
   return { fits: hwUnconstrained <= hwMax + 0.01, hwMax, ringGap, hh2 };
 }
 
@@ -1255,22 +1269,31 @@ function chipCapacityAtRadius(r, n) {
  * (bekannte, separate Baustelle, siehe Forum-Feedback somm "Platz wird
  * schlecht ausgenutzt").
  */
-function fitNodeRadiusForChip(n) {
+function fitNodeRadiusForChip(n, viewHalfLong) {
   let lo = 16, hi = NODE_R_MAX;
   for (let i = 0; i < 24; i++) {
     const mid = (lo + hi) / 2;
-    if (chipCapacityAtRadius(mid, n).fits) { lo = mid; } else { hi = mid; }
+    if (chipCapacityAtRadius(mid, n, viewHalfLong).fits) { lo = mid; } else { hi = mid; }
   }
   return lo;
 }
 
 function computeLayout(n) {
   const chip = n > CHIP_THRESHOLD;
+  // Hochformat-Erkennung (25.09.2026, Dietmar: "dann drehe sie hochkant") -
+  // VIEW_HALF_H waechst NUR bei einer hoeher-als-breiten Kachel ueber den
+  // Standard hinaus (siehe updateViewBox()), Breite und Hoehe wachsen nie
+  // gleichzeitig. "vertical" heisst: die Pille legt ihre lange Achse auf Y
+  // statt X - dieselbe Geometrie wie im Breit-Fall, per Koordinatentausch
+  // bei der Punkteplatzierung unten wiederverwendet, statt einer zweiten,
+  // parallelen Implementierung.
+  const vertical = VIEW_HALF_H > VIEW_HALF_H_DEFAULT;
+  const viewHalfLong = vertical ? VIEW_HALF_H : VIEW_HALF_W;
   let outerR, ringGap;
 
   if (chip) {
-    outerR = fitNodeRadiusForChip(n);
-    ringGap = chipCapacityAtRadius(outerR, n).ringGap;
+    outerR = fitNodeRadiusForChip(n, viewHalfLong);
+    ringGap = chipCapacityAtRadius(outerR, n, viewHalfLong).ringGap;
   } else {
     // Kreis-Modus unveraendert: Radius an R_MAX (feste Hoehe) gebunden,
     // NODE_R_BASELINE als Ausgangsgroesse.
@@ -1303,6 +1326,7 @@ function computeLayout(n) {
     // chipCapacityAtRadius() (siehe dort) - sonst waere hw hier groesser
     // bemessen als der von der Bisektion tatsaechlich vorgesehene Wert.
     const marginX = VIEW_HALF_W_DEFAULT - R_MAX + COIN_CLEARANCE_FACTOR * DESIGN_R;
+    const hwMaxViewHalf = viewHalfLong;
     const MAX_CHIP_ASPECT = 3.2;
     // Iterativ statt einmalig (25.09.2026, live gefunden: zwei Knoten
     // ueberlappten sich auf einer sehr breiten Kachel) - die Hoehen-
@@ -1335,7 +1359,7 @@ function computeLayout(n) {
       // (bis auf Bisektions-/Iterations-Rundung) in den hwMax-Deckel passt
       // - Math.min() bleibt als reiner Rundungsschutz, keine eigene
       // Kompression mehr noetig.
-      const hwMax = Math.max(DESIGN_R, VIEW_HALF_W - marginX - ringGap);
+      const hwMax = Math.max(DESIGN_R, hwMaxViewHalf - marginX - ringGap);
       hw = Math.min(hh + extra / 4, hwMax);
 
       // Hoehe mitwachsen lassen (03.09.2026, Dietmar: "Tisch liegt
@@ -1432,17 +1456,40 @@ function computeLayout(n) {
     for (let i = 0; i < n; i++) {
       const t = (usablePerim / n) * i;
       const { house, sat } = pillPointPair(t / perim2, hw, hh, ringGap);
-      points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
+      if (!vertical) {
+        points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
+      } else {
+        // Hochformat (25.09.2026, Dietmar: "dann drehe sie hochkant") -
+        // pillPointPair() liefert grundsaetzlich eine WAAGRECHTE Kapsel
+        // (lange Achse = x, hw = halbe Laenge, hh = Kappenradius). Statt
+        // einer zweiten, parallelen Punkteplatzierung wird x/y einfach
+        // vertauscht - eine waagrechte Kapsel gespiegelt an der Diagonalen
+        // ist wegen ihrer eigenen Symmetrie identisch mit derselben Kapsel
+        // um 90 Grad gedreht. angleDeg wird aus der geometrisch neuen
+        // Position neu berechnet (atan2), statt eine Winkelformel zu raten -
+        // robust gegen jede interne Parametrisierung von pillPointPair().
+        const sx = sat.y, sy = sat.x;
+        const hxv = house.y, hyv = house.x;
+        points.push({ angleDeg: Math.atan2(sy, sx) * 180 / Math.PI, x: sx, y: sy, hx: hxv, hy: hyv });
+      }
     }
   }
 
-  return { outerR, rOuter: rOuterCircle, chip, hw, hh, points };
+  return { outerR, rOuter: rOuterCircle, chip, hw, hh, vertical, points };
 }
 
 /** Setzt die tatsaechliche Chip-Geometrie am Hausknoten (x/y/width/height/
  *  rx/ry der <rect>-Elemente) - bei hw===hh (unter CHIP_THRESHOLD) optisch
  *  identisch zum bisherigen Kreis. */
-function layoutCenterChip(hw, hh) {
+function layoutCenterChip(hw, hh, vertical) {
+  // Hochformat (25.09.2026, Dietmar: "dann drehe sie hochkant") - hw ist
+  // IMMER die lange, hh IMMER die kurze Halbachse (siehe computeLayout()),
+  // unabhaengig von der Bildschirm-Ausrichtung. wX/hY bilden das auf die
+  // tatsaechlichen Bildschirmachsen ab: bei vertical liegt die lange Achse
+  // auf Y statt X. rx/ry bleiben die KURZE Achse (hY), das aendert sich
+  // nicht - eine Stadion-Form ist an ihrer kurzen Achse immer rund.
+  const wX = vertical ? hh : hw;
+  const hY = vertical ? hw : hh;
   const setRect = (selector, w, h) => {
     const node = document.querySelector('#node-center ' + selector);
     if (!node) return;
@@ -1450,10 +1497,10 @@ function layoutCenterChip(hw, hh) {
     node.setAttribute('width', 2 * w); node.setAttribute('height', 2 * h);
     node.setAttribute('rx', h); node.setAttribute('ry', h);
   };
-  setRect('.node-face', hw, hh);
-  setRect('.node-ring', hw, hh);
-  setRect('.node-bevel', hw, hh);
-  setRect('.node-glow', hw, hh);
+  setRect('.node-face', wX, hY);
+  setRect('.node-ring', wX, hY);
+  setRect('.node-bevel', wX, hY);
+  setRect('.node-glow', wX, hY);
   // Beide Aufrufer setzen den Aktiv-Zustand (applyNodeState) VOR dieser
   // Funktion - dort wurde die Pille also noch mit der ALTEN Form geprueft.
   // Ist die neue Form eine breite Pille, eine evtl. Inaktiv-Schrumpfung hier
@@ -1475,7 +1522,7 @@ function layoutCenterChip(hw, hh) {
   // Render-Tick waehrend des Haltens den Ring zuruecksetzen.
   const cpr = document.getElementById('center-press-ring');
   if (cpr) {
-    const rw = hw + 3, rh = hh + 3;
+    const rw = wX + 3, rh = hY + 3;
     cpr.setAttribute('x', -rw); cpr.setAttribute('y', -rh);
     cpr.setAttribute('width', 2 * rw); cpr.setAttribute('height', 2 * rh);
     cpr.setAttribute('rx', rh); cpr.setAttribute('ry', rh);
@@ -1495,7 +1542,7 @@ function layoutCenterChip(hw, hh) {
   // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
   // auf zwei unabhaengige Halbachsen (hw/hh) statt einen einzelnen Radius
   // angewendet.
-  const sw = hw * 1.13, sh = hh * 1.13, oy = hh * 0.16;
+  const sw = wX * 1.13, sh = hY * 1.13, oy = hY * 0.16;
   const shadow = document.querySelector('#node-center .coin-shadow');
   if (shadow) {
     shadow.setAttribute('x', -sw); shadow.setAttribute('y', -sh + oy);
@@ -2546,7 +2593,11 @@ function ensureNodes(items) {
   // VIEW_W in die Signatur aufgenommen (03.09.2026) - sonst wuerde eine
   // reine Breitenaenderung (Kachel-Resize, gleiche Geraeteliste) NICHT neu
   // layouten, weil sig sich sonst nicht aendert.
-  const sig = items.map(x => x.key + ':' + x.label + ':' + x.icon).join(',') + '|' + Math.round(VIEW_W);
+  // + VIEW_H (25.09.2026, Hochformat-Erweiterung) - eine reine Hoehen-
+  // aenderung (Hochformat-Kachel wird noch hoeher/niedriger, Breite gleich)
+  // muss ebenso neu layouten wie eine Breitenaenderung, sonst bliebe
+  // DESIGN_R/die Pillen-Ausrichtung auf dem alten Stand haengen.
+  const sig = items.map(x => x.key + ':' + x.label + ':' + x.icon).join(',') + '|' + Math.round(VIEW_W) + '|' + Math.round(VIEW_H);
   if (sig === builtSig) return;
   builtSig = sig;
   const nodesLayer = document.getElementById('nodes-layer');
@@ -2807,17 +2858,21 @@ function updateOuterNode(refs, item) {
 // (nur ein Radius) waere dort falsch. Ohne Angabe (Regelfall: Aussenknoten,
 // immer kreisrund) faellt hw/hh auf DESIGN_R zurueck - unveraendertes
 // Verhalten fuer alle bisherigen Aufrufer.
-function fitTextWidth(textEl, y, hw, hh) {
+function fitTextWidth(textEl, y, hw, hh, vertical) {
   textEl.removeAttribute('textLength');
   textEl.removeAttribute('lengthAdjust');
-  const pad = 8; // Rand-/Stroke-Puffer innerhalb des Rings/der Pille
-  const rw = Math.max(0, (hw === undefined ? DESIGN_R : hw) - pad);
-  const rh = Math.max(0, (hh === undefined ? DESIGN_R : hh) - pad);
-  // "Stadion"-Form (Rechteck mit zwei Halbkreis-Kappen, rx=ry=hh, siehe
-  // layoutCenterChip()): die geraden Seiten tragen 2*straight zur Breite
-  // bei, der Rest kommt aus der Kappen-Sehne bei y - degeneriert bei
-  // hw===hh exakt zur bisherigen Kreissehnen-Formel.
-  const straight = Math.max(0, rw - rh);
+  const rBaseW = hw === undefined ? DESIGN_R : hw;
+  const rBaseH = hh === undefined ? DESIGN_R : hh;
+  // pad jetzt proportional statt fest (25.09.2026, live gefunden: "48.400w"
+  // lief beim NAP-Knoten weit ueber den Kreisrand hinaus) - seit die
+  // Knotengroesse dynamisch bis auf den Sicherheitsboden von 16 schrumpfen
+  // kann (Build 260), frass der vorher FESTE 8-Einheiten-Rand allein schon
+  // die Haelfte des Radius auf, UND der Fallback-Wert fuer Zeilen ausserhalb
+  // der Kreishoehe (naechste Zeile) war mit fest 20 groesser als der ganze
+  // Knoten. Beides jetzt an rBaseW/rBaseH gekoppelt.
+  const pad = Math.min(8, rBaseW * 0.25, rBaseH * 0.25);
+  const rw = Math.max(0, rBaseW - pad);
+  const rh = Math.max(0, rBaseH - pad);
   // Math.max(0, ...) gegen Fliesskomma-Rundung nahe der Kreisgrenze
   // (01.09.2026, Safari-Fund: "Invalid value for <text> attribute
   // textLength=''") - bei y knapp unter r kann r*r - y*y durch
@@ -2827,7 +2882,26 @@ function fitTextWidth(textEl, y, hw, hh) {
   // SVG-Engine bricht dagegen die KOMPLETTE Kachel-Darstellung ab -
   // deshalb zusaetzlich ein expliziter isFinite()-Riegel, statt sich
   // auf browserspezifisches Fehlerverhalten zu verlassen.
-  const maxW = Math.abs(y) >= rh ? 20 : 2 * (straight + Math.sqrt(Math.max(0, rh * rh - y * y)));
+  let maxW;
+  if (!vertical) {
+    // "Stadion"-Form (Rechteck mit zwei Halbkreis-Kappen, rx=ry=hh, siehe
+    // layoutCenterChip()): die geraden Seiten tragen 2*straight zur Breite
+    // bei, der Rest kommt aus der Kappen-Sehne bei y - degeneriert bei
+    // hw===hh exakt zur bisherigen Kreissehnen-Formel.
+    const straight = Math.max(0, rw - rh);
+    maxW = Math.abs(y) >= rh ? Math.max(4, rw * 1.3) : 2 * (straight + Math.sqrt(Math.max(0, rh * rh - y * y)));
+  } else {
+    // Hochkant-Pille (25.09.2026, Dietmar: "dann drehe sie hochkant") - hw
+    // ist hier die LANGE Halbachse auf Y, hh die KURZE (Kappenradius) auf X.
+    // Anders als im waagrechten Fall ist die verfuegbare BREITE im geraden
+    // Mittelteil (|y| <= rw-rh) schlicht konstant 2*rh (kein Kappenbeitrag),
+    // erst in der Kappenzone (|y| > rw-rh) nach Kreisbogen schmaler werdend -
+    // eine andere Formel als oben, nicht per Parametertausch daraus ableitbar
+    // (die Kappen liegen jetzt oben/unten statt links/rechts).
+    const straightHalf = Math.max(0, rw - rh);
+    const intoCap = Math.max(0, Math.abs(y) - straightHalf);
+    maxW = intoCap >= rh ? Math.max(4, rh * 1.3) : 2 * Math.sqrt(Math.max(0, rh * rh - intoCap * intoCap));
+  }
   let bbox;
   try { bbox = textEl.getBBox(); } catch (e) { return; }
   if (!bbox || !isFinite(bbox.width) || !isFinite(maxW) || maxW <= 0) { return; }
@@ -3342,15 +3416,15 @@ function renderLevelView() {
   const items = buildItems(devices);
   const chipLayout = computeLayout(items.length);
   LAST_CHIP = chipLayout;
-  layoutCenterChip(chipLayout.hw, chipLayout.hh);
+  layoutCenterChip(chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   // Fund 09.09.2026 (Dietmar): "Küche & Haushalt" rutschte über den
   // Kreisrand hinaus - der Aussenknoten-Fall clippt lange Namen laengst
   // (fitTextWidth() bei jedem updateOuterNode()), fuer den NAMEN DER
   // MITTELPILLE selbst (hier gesetzt) fehlte der Aufruf bislang komplett.
-  if (nm) { fitTextWidth(nm, 33, chipLayout.hw, chipLayout.hh); }
+  if (nm) { fitTextWidth(nm, 33, chipLayout.hw, chipLayout.hh, chipLayout.vertical); }
   // Sehr grosse Sammelzaehler-Werte (14.09.2026, Solarpark) ebenso an die
   // Pillenbreite anpassen, nicht nur den Namen.
-  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
+  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
@@ -3868,14 +3942,27 @@ function updateViewBox() {
   const rect = svgEl.getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
   const aspect = rect.width / rect.height;
-  // Nur in die Breite ziehen, nie in die Hoehe (Hoehe bleibt die Referenz,
-  // an der DESIGN_R/R_MAX kalibriert sind) - auf das 2,6-fache der
-  // urspruenglichen Breite gedeckelt, damit die Pille bei extrem breiten
-  // Kacheln nicht ins Absurde waechst.
-  const w = Math.max(VIEW_HALF_W_DEFAULT * 2, Math.min(VIEW_HALF_W_DEFAULT * 2 * 2.6, 594 * aspect));
+  // Breite ODER Hoehe wachsen lassen, je nachdem was bei der aktuellen
+  // Kachelform ungenutzt bliebe - urspruenglich (bis Build 262) wuchs NUR
+  // die Breite (aspect>=1, breite Kachel), Hochformat-Kacheln (aspect<1)
+  // blieben bei der festen 594er-Referenzhoehe und liessen dadurch oben/
+  // unten Platz ungenutzt (Dietmar am eigenen Screenshot: Energiefluss
+  // "haengt klein in der Mitte"). Jetzt symmetrisch: bei aspect<1 waechst
+  // stattdessen VIEW_H (Breite bleibt Referenz), auf dasselbe 2,6-fache
+  // gedeckelt. Nur EINE der beiden Groessen weicht jemals vom 594er-
+  // Standard ab - genau die, die bei "meet" sonst Letterboxing erzeugen
+  // wuerde.
+  let w = 594, h = 594;
+  if (aspect >= 1) {
+    w = Math.max(594, Math.min(594 * 2.6, 594 * aspect));
+  } else {
+    h = Math.max(594, Math.min(594 * 2.6, 594 / aspect));
+  }
   VIEW_W = w;
   VIEW_HALF_W = w / 2;
-  svgEl.setAttribute('viewBox', (CX - w / 2).toFixed(1) + ' 4 ' + w.toFixed(1) + ' 594');
+  VIEW_H = h;
+  VIEW_HALF_H = h / 2;
+  svgEl.setAttribute('viewBox', (CX - w / 2).toFixed(1) + ' ' + (CY - h / 2).toFixed(1) + ' ' + w.toFixed(1) + ' ' + h.toFixed(1));
 
   // Quotenmuenze (#quotaCoin) analog zum Energiefluss skalieren (Forum-Fund
   // 25.09.2026, sirkentucky: auf iPhone/iPad SymconApp wirkte die Muenze im
@@ -3908,7 +3995,7 @@ function updateViewBox() {
   const coinEl = document.getElementById('quotaCoin');
   if (coinEl) {
     const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
-    const effectiveScale = Math.min(rect.width / w, rect.height / 594);
+    const effectiveScale = Math.min(rect.width / w, rect.height / h);
     const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * effectiveScale;
     coinEl.style.width = coinPx.toFixed(1) + 'px';
     coinEl.style.height = coinPx.toFixed(1) + 'px';
@@ -4086,10 +4173,10 @@ function renderLevel1Nodes(devices) {
   // Chip und Speichen im selben Frame konsistent zueinander stehen.
   const chipLayout = computeLayout(items.length);
   LAST_CHIP = chipLayout;
-  layoutCenterChip(chipLayout.hw, chipLayout.hh);
+  layoutCenterChip(chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   // Sehr grosse Werte (14.09.2026, Solarpark: mehrstellige MW-Summen) ebenso
   // an die tatsaechliche Pillenbreite anpassen, nicht nur an DESIGN_R.
-  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh);
+  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   // Autarkiegrad-Ringsegment am Haus-Knoten entfernt (Dietmar, 23.09.2026) -
   // durch den Quoten-Knopf oben links ersetzt, der Tag/Monat/Jahr/Gesamt
   // abdeckt statt nur "heute" (siehe #quotaCoin).
