@@ -1110,6 +1110,16 @@ const NODE_R_MAX = 140;
 // chipCapacityAtRadius() (sonst waeren beide inkonsistent und outerR zu
 // gross fuer die tatsaechlich nutzbare Restflaeche berechnet).
 const EXCLUDE_ARC_BUDGET = 500;
+// COIN_CLEARANCE_FACTOR (25.09.2026, Dietmar am eigenen Screenshot: "die
+// Hauspille auf der linken Seite so weit zurueckziehen, dass die Geraete-
+// Knoten nicht mit der Quotenmuenze kollidieren") - haelt die Pille (und
+// damit den ganzen Knotenkranz) auf BEIDEN Seiten etwas schmaler als
+// technisch moeglich, proportional zur aktuellen Knoten-/Muenzengroesse
+// (siehe chipCapacityAtRadius()), statt nur ueber die Bogenlaengen-
+// Ausschlusszone (EXCLUDE_ARC_BUDGET) zu versuchen, Knoten gezielt an der
+// Muenze vorbeizulenken - robuster gegen die vielen Kombinationen aus
+// Geraetezahl/Kachelform, bei denen die Ausschlusszone allein nicht reichte.
+const COIN_CLEARANCE_FACTOR = 2.6;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
 const BOLT_COUNT = 3;
@@ -1205,7 +1215,17 @@ function chipCapacityAtRadius(r, n) {
   const ringPerimAtHwEqHh = 2 * Math.PI * hh2;
   const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
   const hwUnconstrained = r + extra / 4;
-  const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
+  // + COIN_CLEARANCE_FACTOR*r (25.09.2026, Dietmar am eigenen Screenshot:
+  // "die Hauspille auf der linken Seite so weit zurueckziehen, dass die
+  // Geraete-Knoten nicht mit der Quotenmuenze kollidieren") - die Pille ist
+  // symmetrisch um CX (hw wirkt nach links UND rechts gleich), eine echte
+  // asymmetrische Geometrie waere ein groesserer Umbau der Punkte-
+  // platzierung. Stattdessen wird die Pille insgesamt etwas schmaler
+  // gehalten (auf BEIDEN Seiten etwas Reserve), mit derselben Reserve, mit
+  // der auch die Muenze selbst skaliert (r bzw. DESIGN_R) - so bleibt der
+  // Sicherheitsabstand zur Muenze bei jeder Knotengroesse proportional
+  // gleich gross, statt bei grossen Knoten (grosse Muenze) knapp zu werden.
+  const marginX = VIEW_HALF_W_DEFAULT - R_MAX + COIN_CLEARANCE_FACTOR * r;
   const hwMax = Math.max(r, VIEW_HALF_W - marginX - ringGap);
   return { fits: hwUnconstrained <= hwMax + 0.01, hwMax, ringGap, hh2 };
 }
@@ -1279,7 +1299,10 @@ function computeLayout(n) {
   let hw = DESIGN_R;
   let hh = DESIGN_R;
   if (chip) {
-    const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
+    // + COIN_CLEARANCE_FACTOR*DESIGN_R: dieselbe Reserve wie in
+    // chipCapacityAtRadius() (siehe dort) - sonst waere hw hier groesser
+    // bemessen als der von der Bisektion tatsaechlich vorgesehene Wert.
+    const marginX = VIEW_HALF_W_DEFAULT - R_MAX + COIN_CLEARANCE_FACTOR * DESIGN_R;
     const MAX_CHIP_ASPECT = 3.2;
     // Iterativ statt einmalig (25.09.2026, live gefunden: zwei Knoten
     // ueberlappten sich auf einer sehr breiten Kachel) - die Hoehen-

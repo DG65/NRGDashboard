@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.135-beta.1 (2026-09-26)
+
+- Tile: Kollision zwischen Verbraucher-Knoten und Quotenmünze auf sehr breiten Kacheln bei vielen Geräten endgültig behoben (Dietmar am eigenen Screenshot: "die Hauspille auf der linken Seite so weit zurückziehen, dass die Geräte-Knoten nicht mit der Quotenmünze kollidieren"). Statt weiter an der Bogenlängen-Ausschlusszone zu justieren, hält ein neuer, mit der Knoten-/Münzengröße mitskalierender Sicherheitsabstand (COIN_CLEARANCE_FACTOR) die Pille auf beiden Seiten etwas schmaler als technisch möglich - robuster als der reine Ausschlusszonen-Ansatz, der bei vielen Geräte-/Kachelform-Kombinationen knapp wurde. Lokal bei 1900×1080 (Dietmars Szenario, 11 Geräte), 800×800 und 390×844 geprüft - deutlicher, gemessener Abstand zur Münze, keine Überlappung.
+- Offen (nächste Schritte, zurückgestellt): fester Abstand des Energieflusses zum rechten Kachelrand; Hauspille bei Hochformat-Kacheln hochkant statt querformatig darstellen.
+
 ## 0.9.134-beta.1 (2026-09-26)
 
 - Tile: Hauspille war bei sehr breiten, echten Kacheln (Dietmars eigener Screenshot: 11 Geräte) trotz Build 260 noch deutlich zu dominant, seit die Knotengröße selbst dynamisch mitwächst - die Höhen-Anpassung (hw/MAX_CHIP_ASPECT) skaliert direkt mit der (jetzt oft sehr breiten) Pillenbreite mit. Zusätzlicher harter Deckel: Pillenhöhe höchstens das 1,3-fache des Knotenradius, unabhängig von der Pillenbreite.
