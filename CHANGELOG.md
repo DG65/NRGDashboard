@@ -10,6 +10,14 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.133-beta.1 (2026-09-26)
+
+- Tile: Knotengrößen-Logik grundlegend überarbeitet (Dietmar: "die Knotengröße wird bei jedem Rendern so groß gewählt, wie es die tatsächliche Kachelgröße gerade zulässt ... Haus-Pille ist die Variable"). DESIGN_R ist keine feste Konstante mehr, sondern wird im Pillen-Modus (>8 Geräte) per Bisektion auf die aktuell verfügbare Kachelbreite optimiert; Haus/Pille und Quotenmünze folgen wieder demselben Radius wie die Verbraucher-Knoten (HOUSE_R-Entkopplung aus Build 256/257 zurückgenommen). Ersetzt die alte, an CHIP_THRESHOLD=8 fest verdrahtete Packungsformel, die für jede Gerätezahl über 8 denselben Radius lieferte, unabhängig von der tatsächlichen Kachelbreite.
+
+  Dabei zwei Folgefehler beim dynamischen Skalieren gefunden und behoben: die Höhen-Nachjustierung (MAX_CHIP_ASPECT) lief nicht mehr konsistent mit der Abstandsberechnung (jetzt iterativ), und die Ausschlusszone für die Quotenmünze wuchs bei sehr breiten Kacheln unverhältnismäßig mit (jetzt auf ein festes Bogenlängen-Budget gedeckelt). Kreis-Modus (≤8 Geräte) unverändert, da dort der Radius an die feste Kachelhöhe statt an die variable Breite gebunden ist (bekannte separate Baustelle, siehe Forum-Feedback somm).
+
+  Lokal getestet: quadratisch (800×800), breit (1400×700), Handy-Hochformat (390×844), Tablet-Hoch- und -Querformat (768×1024, 1024×768), je mit 4 und 11 Geräten - keine Überlappung (Knoten untereinander oder mit der Münze), kein Clipping.
+
 ## 0.9.132-beta.1 (2026-09-26)
 
 - Tile: Vier Wärmepumpen-Quellen ergänzt, die die Kachel bisher nicht kannte (WPHub, WPModbusHub, WPModbusGateway, SamsungEhs, WPBsbLan) - Forum-Fund ArMu/Lütfü (WPBsbLan lieferte korrekte Werte in WPMonitor/HeatSchema, tauchte aber in der Energiefluss-Kachel nicht auf), gemeldet über die WPHub-Sitzung. Ursache: Discover() kannte bisher nur HeishaMon als Wärmepumpen-Quelle (discoverHeishaMon(), eigene Feld-Übersetzung wegen abweichendem Type/Caption-Vokabular), nicht den vollen Verbund-Kreis wie WPMonitor/HeatSchema (dort HEATPUMP_SOURCES). Die 4 fehlenden Quellen nutzen den bereits vorhandenen, generischen discoverListContract()-Pfad (standardisierte function/label-Vertragsform, kein Sonderfall wie HeishaMon nötig).

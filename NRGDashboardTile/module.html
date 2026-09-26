@@ -1010,7 +1010,16 @@
 // wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
 // Geräte-Schema (function/label/value/category) statt fester WR-Felder.
 const CX = 280, CY = 301;
-const DESIGN_R = 95; // 56 -> 66 -> 76 -> 95 (25.09.2026, Dietmar: "Du kannst die Knoten wirklich vergroessern", dann zweimal "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - moeglich geworden durch die Ausschlusszone fuer die Quotenmuenze (siehe COIN_EXCLUDE_ANGLE_* in computeLayout()) und die Entkopplung von HOUSE_R (siehe dort)
+// DESIGN_R (25.09.2026, Dietmar nach mehreren Anlaeufen mit fest verdrahteten
+// Werten: "die Haus-Pille ist die Variable, die regelt, wie die Kachel
+// ausgenutzt werden kann ... Verbraucher-Knoten moeglichst gross") - KEINE
+// feste Konstante mehr, sondern ein bei jedem Rendern neu berechneter Wert
+// (siehe computeLayout(): im Pillen-Modus per Bisektion auf die tatsaechlich
+// verfuegbare Kachelbreite optimiert). Haus/Pille und Quotenmuenze teilen
+// sich wieder DIESELBE Groesse wie die Verbraucher-Knoten (keine eigene
+// HOUSE_R-Konstante mehr, die war der Kern des Missverstaendnisses). 56 ist
+// nur der Startwert vor dem allerersten Rendern.
+let DESIGN_R = 56;
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -1064,16 +1073,35 @@ const VIEW_HALF_W_DEFAULT = 297;
 let VIEW_W = VIEW_HALF_W_DEFAULT * 2;
 let VIEW_HALF_W = VIEW_HALF_W_DEFAULT;
 const NODE_GAP = 80; // Regelabstand zwischen benachbarten Verbraucher-Knoten (Dietmar, 28.08.2026; 10->15->20px erhoeht - bei vielen Knoten griff der Wert wegen eines Bugs in der Kompressionsformel bislang gar nicht, siehe computeLayout(); 20->28->40->80->60->80px, 25.09.2026, Dietmar: "Knotenabstaende vergroessern" - 80px liess bei vielen Geraeten die Knoten schrumpfen, zunaechst auf 60px reduziert; nach der R_MAX-Erhoehung (siehe dort, "warum machst Du die Pille nicht breiter?") faengt die breitere Pille den Platzbedarf ab, 80px jetzt ohne Knoten-Schrumpfen moeglich)
-// HOUSE_R (25.09.2026, Dietmar: "Du sollst nicht die Pille groesser machen,
-// sondern die Knoten") - eigener, von DESIGN_R (Verbraucher-Knotengroesse)
-// entkoppelter Radius fuer den Hausknoten selbst (Kreis- wie Pillen-Form).
-// Vorher teilten sich Haus und Knoten denselben Wert DESIGN_R, wodurch die
-// Knotenvergroesserung (Build 255) versehentlich auch die Pille mitwachsen
-// liess. 56 -> 44 -> 32 (25.09.2026, dritter Anlauf: zweimal wiederholtes
-// "mach die Geraeteknoten ... groesser und die Hauspille kleiner") - Pille
-// jetzt sehr deutlich kleiner als die Verbraucher-Knoten.
-const HOUSE_R = 32;
-const CENTER_R = HOUSE_R;
+// HOUSE_R-Entkopplung (Builds 256/257) wieder rueckgaengig gemacht
+// (25.09.2026, Dietmar: "Du hast alles durcheinander gebracht ... die
+// Haus-Pille ist die Variable, die regelt, wie die Kachel ausgenutzt werden
+// kann"): Haus und Verbraucher-Knoten teilen sich wieder DESIGN_R.
+const CENTER_R = DESIGN_R;
+// RING_GAP_TRIM/MIN_RING_GAP modulweit (vorher lokal in computeLayout()) -
+// fitNodeRadiusForChip() braucht dieselben Werte fuer die Kapazitaetspruefung.
+const RING_GAP_TRIM = 40;
+const MIN_RING_GAP = 24;
+// NODE_R_MIN/MAX (25.09.2026, Dietmar Punkt 3: "die Knotengroesse wird bei
+// jedem Rendern so gross gewaehlt, wie es die tatsaechliche Kachelgroesse
+// gerade zulaesst") - Notfall-Boden bzw. Deckel fuer fitNodeRadiusForChip(),
+// damit weder extrem viele Geraete auf Winzlinge schrumpfen noch extrem
+// wenige Geraete auf einer sehr breiten Kachel zu einem absurd grossen
+// Einzelknoten aufgeblasen werden.
+const NODE_R_BASELINE = 56;
+const NODE_R_MIN = 40;
+const NODE_R_MAX = 140;
+// EXCLUDE_ARC_BUDGET (25.09.2026, live gefunden: zwei Knoten ueberlappten
+// sich auf einer sehr breiten Kachel) - die Muenzen-Ausschlusszone fuer den
+// Pillen-Modus wuerde geometrisch bis zum Wrap-Punkt reichen (siehe
+// Punkteplatzierung in computeLayout()), was bei sehr breiter Pille (grosse
+// "straight"-Strecke) einen unverhaeltnismaessig grossen, MIT der
+// Pillenbreite mitwachsenden Teil des Umfangs blockiert, obwohl die Muenze
+// selbst nicht groesser wird. Fester Bogenlaengen-Deckel, unabhaengig von
+// der Kachelgroesse - sowohl fuer die Punkteplatzierung als auch fuer
+// chipCapacityAtRadius() (sonst waeren beide inkonsistent und outerR zu
+// gross fuer die tatsaechlich nutzbare Restflaeche berechnet).
+const EXCLUDE_ARC_BUDGET = 500;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
 const BOLT_COUNT = 3;
@@ -1144,113 +1172,152 @@ function pillPointPair(tFrac, hw, hh, ringGap) {
   return { house: { x, y: -hh, angleDeg: -90 }, sat: { x, y: -hh2, angleDeg: -90 } };
 }
 
+/**
+ * Kapazitaetspruefung fuer den Pillen-Modus bei Knotenradius r: passen n
+ * Geraete im Regelabstand NODE_GAP auf den Pillenumfang, ohne dass die
+ * Pille breiter werden muesste, als die aktuelle Kachelbreite (VIEW_HALF_W)
+ * erlaubt? Dieselbe Geometrie wie zuvor im Chip-Zweig von computeLayout()
+ * (hw-Zielbreite + hwMax-Deckel), jetzt als eigenstaendige, selbstkonsistente
+ * Funktion: r ist hier NICHT mehr eine separate "Deckel"-Konstante (DESIGN_R)
+ * mit anschliessender Nachkorrektur, sondern DIREKT der gesuchte Knoten-
+ * radius selbst - vermeidet die doppelte Schrumpfung, die eine fruehere
+ * Fassung (DESIGN_R per Bisektion, danach nochmal die alte Kompression
+ * obendrauf) live erzeugt hat.
+ */
+function chipCapacityAtRadius(r, n) {
+  const rOuterCircle = Math.max(r + MIN_RING_GAP, R_MAX - r - RING_GAP_TRIM);
+  const ringGap = rOuterCircle - r;
+  const hh2 = rOuterCircle; // = r + ringGap
+  // + EXCLUDE_ARC_BUDGET: die Muenzen-Ausschlusszone (siehe dort) blockiert
+  // ein festes Bogenlaengen-Stueck fuer die Knotenplatzierung - muss hier
+  // mit eingerechnet werden, sonst waere outerR groesser bemessen, als der
+  // tatsaechlich nutzbare Umfang hergibt (live gefundene Knoten-
+  // Ueberlappung auf sehr breiter Kachel).
+  const neededPerim = n * (2 * r + NODE_GAP) + EXCLUDE_ARC_BUDGET;
+  const ringPerimAtHwEqHh = 2 * Math.PI * hh2;
+  const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
+  const hwUnconstrained = r + extra / 4;
+  const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
+  const hwMax = Math.max(r, VIEW_HALF_W - marginX - ringGap);
+  return { fits: hwUnconstrained <= hwMax + 0.01, hwMax, ringGap, hh2 };
+}
+
+/**
+ * Groesster Knotenradius (Bisektion, 24 Schritte reichen fuer sub-Pixel-
+ * Genauigkeit), bei dem n Geraete im Pillen-Modus noch im Regelabstand
+ * NODE_GAP auf die aktuelle Kachelbreite passen (25.09.2026, Dietmar Punkt
+ * 3: "die Knotengroesse wird bei jedem Rendern so gross gewaehlt, wie es
+ * die tatsaechliche Kachelgroesse gerade zulaesst ... Haus-Pille ist die
+ * Variable"). Ersetzt die alte, an CHIP_THRESHOLD=8 fest verdrahtete
+ * Kreis-Packungsformel, die fuer JEDE Geraetezahl >8 denselben Radius
+ * lieferte (unabhaengig von n und von der tatsaechlichen Kachelbreite) -
+ * das war der eigentliche Grund, warum DESIGN_R-Aenderungen bislang kaum
+ * sichtbaren Einfluss auf die tatsaechliche Knotengroesse im Pillen-Modus
+ * hatten (nur Muenze und Pillen-Ansatzgroesse folgten DESIGN_R direkt).
+ * Untergrenze 16 = bestehender harter Boden (siehe frueherer outerR-Code);
+ * wird nur in extremen Faellen erreicht (sehr viele Geraete, schmale
+ * Kachel), analog zur alten Kompression.
+ *
+ * Nur fuer den Pillen-Modus (viele Geraete) - dort nutzt hwMax bereits
+ * VIEW_HALF_W. Der Kreis-Modus (wenige Geraete) bleibt bei
+ * NODE_R_BASELINE: sein Radius ist an R_MAX (die FESTE Hoehe, 594
+ * viewBox-Einheiten, aendert sich nie) gebunden, nicht an die Breite - eine
+ * breite Kachel mit wenigen Geraeten liesse sich nur mit einer
+ * elliptischen statt kreisrunden Anordnung sinnvoll weiter vergroessern
+ * (bekannte, separate Baustelle, siehe Forum-Feedback somm "Platz wird
+ * schlecht ausgenutzt").
+ */
+function fitNodeRadiusForChip(n) {
+  let lo = 16, hi = NODE_R_MAX;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (chipCapacityAtRadius(mid, n).fits) { lo = mid; } else { hi = mid; }
+  }
+  return lo;
+}
+
 function computeLayout(n) {
   const chip = n > CHIP_THRESHOLD;
-  // Verbraucher-Groesse: normale Kreis-Packungsformel, ab dem Schwellwert
-  // aber mit n auf CHIP_THRESHOLD gedeckelt - danach uebernimmt die
-  // Chip-Verbreiterung die zusaetzliche Kapazitaet statt weiterem
-  // Schrumpfen der einzelnen Knoten.
-  const nForSize = chip ? CHIP_THRESHOLD : Math.max(n, 1);
-  let outerR = DESIGN_R;
-  if (nForSize >= 3) {
-    const s = Math.sin(Math.PI / nForSize);
-    outerR = Math.min(DESIGN_R, (R_MAX * s - NODE_GAP / 2) / (1 + s));
-  }
-  outerR = Math.max(16, outerR);
+  let outerR, ringGap;
 
-  // Radialer Abstand Hausrand -> Verbraucher-MITTELPUNKT, wie im Kreis-Fall
-  // (dort implizit rOuter-CENTER_R, typischerweise 100+ Px) - NICHT nur ein
-  // kleiner Sichtabstand. Dieser Zwischenraum ist notwendig, weil dort die
-  // fliessenden Pfeil-Dreiecke (.flow-tri) entlang der Speiche animiert
-  // werden (Dietmar, 28.08.2026: "der Abstand ist notwendig, weil ja auch
-  // spaeter noch die Dreiecke fliessen sollen"). Fund/Fix: die vorherige
-  // Chip-Fassung hatte hier faelschlich nur outerR+NODE_GAP/2 verwendet
-  // (einen ganz anderen, viel kleineren Wert - NODE_GAP ist der Abstand
-  // ZWISCHEN benachbarten Verbraucher-Knoten, nicht der radiale Abstand
-  // Haus<->Knoten) und dadurch teils sogar negative Speichenlaengen
-  // produziert (Knoten und Haus ueberlappten sich rechnerisch).
-  //
-  // RING_GAP_TRIM (25.09.2026, Dietmar: "Abstand zwischen Pille und Knoten
-  // verringern") - zieht die Knoten-Umlaufbahn direkt naeher an Haus/Pille
-  // heran, unabhaengig von R_MAX (das bleibt fuer den Pillenbreiten-Deckel
-  // unangetastet, siehe dort) und unabhaengig von DESIGN_R (also OHNE die
-  // gerade gefundene Kollision mit der Quotenmuenze bei groesseren Knoten
-  // zu riskieren). MIN_RING_GAP haelt den Sicherheitsboden fuer die
-  // Dreieck-Animation.
-  const RING_GAP_TRIM = 40;
-  const MIN_RING_GAP = 24;
-  // HOUSE_R statt DESIGN_R (25.09.2026): der Gap wird vom Hausrand aus
-  // gemessen, nicht vom (jetzt groesseren) Knotenradius.
-  const rOuterCircle = Math.max(HOUSE_R + MIN_RING_GAP, R_MAX - outerR - RING_GAP_TRIM);
-  const ringGap = rOuterCircle - HOUSE_R;
-
-  let hw = HOUSE_R;
-  let hh = HOUSE_R;
   if (chip) {
-    // Wie viel zusaetzlicher Umfang noetig ist, damit n Knoten im GLEICHEN
-    // Abstand wie beim Kreis (2*outerR+GAP) Platz finden - ueberall gleich
-    // grosse Luecken, siehe pillPointPair(): dort wird konsequent auf dem
-    // VERBRAUCHER-RING (hh2=hh+ringGap) gemessen, deshalb auch hier als
-    // Bezugsgroesse. Eine Verbreiterung um delta verlaengert die beiden
-    // geraden Seiten um je 2*delta, also den Ring-Umfang um 4*delta.
-    const hh2 = hh + ringGap;
-    const ringPerimAtHwEqHh = 2 * Math.PI * hh2; // Ring-Umfang bei hw=hh (reine Kreisform)
-    const neededPerim = n * (2 * outerR + NODE_GAP);
-    const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
-    hw = hh + extra / 4;
-
-    // Die Pille darf nicht beliebig breit werden - die Kachel hat eine
-    // feste Leinwandgroesse (viewBox), ein Kappen-Knoten ganz aussen sitzt
-    // bei hw+ringGap vom Mittelpunkt entfernt. HW_MAX begrenzt das auf
-    // GENAU denselben Radius (R_MAX), den auch die Kreis-Satelliten nie
-    // ueberschreiten - der Chip wandert also nie weiter aus der sichtbaren
-    // Flaeche als ein normaler Kreis-Knoten es duerfte.
-    // Sicherheitsabstand zum Leinwandrand ist bei jeder Breite derselbe wie
-    // urspruenglich im Quadrat-Fall (VIEW_HALF_W_DEFAULT - R_MAX) - bei
-    // einer breiteren Kachel (VIEW_HALF_W > VIEW_HALF_W_DEFAULT) darf die
-    // Pille dadurch entsprechend weiter nach aussen wachsen.
-    const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
-    const hwMax = Math.max(HOUSE_R, VIEW_HALF_W - marginX - ringGap);
-    if (hw > hwMax) {
-      hw = hwMax;
-      // Ideal-Abstand (Dietmar, 28.08.2026: "Regelabstand ~10px, darf enger
-      // werden, wenn die Kachel nicht mehr ausreicht") passt bei dieser
-      // Breite nicht mehr fuer alle n Knoten - statt die Pille dennoch
-      // weiter zu verbreitern (und Knoten aus der Kachel wandern zu
-      // lassen), wird JETZT der Kreisradius selbst nachgeben: kleinster
-      // outerR, mit dem n Knoten im Regelabstand NODE_GAP noch auf den
-      // (jetzt gedeckelten) RING-Umfang passen (auch hier: gleiche
-      // Bezugsgroesse wie pillPointPair(), sonst waere die Verteilung im
-      // Kompressions-Fall wieder ungleichmaessig).
-      //
-      // BUGFIX (28.08.2026, live gemeldet: "Kreise liegen noch immer zu
-      // dicht", NODE_GAP-Erhoehung zeigte keine Wirkung): Diese Zeile hat
-      // faelschlich MIN_NODE_GAP (den harten Notfall-Boden von 3px) statt
-      // NODE_GAP (den eigentlichen Regelabstand) als Zielgroesse verwendet
-      // - bei vielen Knoten (Chip bereits maximal breit, genau Dietmars
-      // reale ueber-50-Verbraucher-Anlage) kollabierte der Abstand dadurch
-      // IMMER auf ~1-3px, unabhaengig vom eingestellten NODE_GAP-Wert.
-      // Der outerR-Mindestwert (16) bleibt der letzte Boden, falls selbst
-      // NODE_GAP bei extrem vielen Knoten nicht mehr vollstaendig passt.
-      const straightMax = Math.max(0, hw - hh);
-      const ringPerimAtHwMax = 4 * straightMax + 2 * Math.PI * hh2;
-      const spacingAtHwMax = ringPerimAtHwMax / n;
-      if (spacingAtHwMax - NODE_GAP < 2 * outerR) {
-        outerR = Math.max(16, Math.min(outerR, (spacingAtHwMax - NODE_GAP) / 2));
-      }
+    outerR = fitNodeRadiusForChip(n);
+    ringGap = chipCapacityAtRadius(outerR, n).ringGap;
+  } else {
+    // Kreis-Modus unveraendert: Radius an R_MAX (feste Hoehe) gebunden,
+    // NODE_R_BASELINE als Ausgangsgroesse.
+    outerR = NODE_R_BASELINE;
+    if (n >= 3) {
+      const s = Math.sin(Math.PI / Math.max(n, 1));
+      outerR = Math.min(NODE_R_BASELINE, (R_MAX * s - NODE_GAP / 2) / (1 + s));
     }
+    outerR = Math.max(16, outerR);
+    const rOuterCircleCircle = Math.max(NODE_R_BASELINE + MIN_RING_GAP, R_MAX - outerR - RING_GAP_TRIM);
+    ringGap = rOuterCircleCircle - NODE_R_BASELINE;
+  }
 
-    // Hoehe mitwachsen lassen (03.09.2026, Dietmar: "Tisch liegt unförmig
-    // in der Mitte" bei sehr vielen Geraeten) - eine sehr breite, aber
-    // starr niedrige Pille wirkt wie ein duenner Balken statt eines
-    // Tisches. Ab einem Seitenverhaeltnis von mehr als MAX_CHIP_ASPECT
-    // waechst hh proportional mit, bleibt aber ein rundliches Rechteck.
-    // Laeuft NACH dem hwMax-Deckel, aber VOR der Punktepositionierung
-    // unten, damit die Knoten auf dem tatsaechlich sichtbaren Pillenrand
-    // sitzen, nicht auf dem alten, schmaleren.
+  // Haus/Pille und Quotenmuenze folgen jetzt DEMSELBEN Radius wie die
+  // Verbraucher-Knoten (Dietmar: "die Haus-Pille ist die Variable, die
+  // regelt, wie die Kachel ausgenutzt werden kann") - im Kreis-Modus ist
+  // das die feste NODE_R_BASELINE, im Pillen-Modus der gerade ermittelte,
+  // an die Kachelbreite angepasste outerR.
+  DESIGN_R = chip ? outerR : NODE_R_BASELINE;
+  // rOuterCircle (Radius Mittelpunkt->Knoten-MITTELPUNKT im Kreis-Modus) =
+  // ringGap + DESIGN_R in beiden Zweigen konsistent (siehe je dortige
+  // Herleitung) - hier einmal gemeinsam, wird unten fuer die
+  // Punktepositionierung im Kreis-Modus gebraucht.
+  const rOuterCircle = ringGap + DESIGN_R;
+
+  let hw = DESIGN_R;
+  let hh = DESIGN_R;
+  if (chip) {
+    const marginX = VIEW_HALF_W_DEFAULT - R_MAX;
     const MAX_CHIP_ASPECT = 3.2;
-    if (hw / hh > MAX_CHIP_ASPECT) {
-      hh = hw / MAX_CHIP_ASPECT;
+    // Iterativ statt einmalig (25.09.2026, live gefunden: zwei Knoten
+    // ueberlappten sich auf einer sehr breiten Kachel) - die Hoehen-
+    // Anpassung (MAX_CHIP_ASPECT, "Tisch liegt unfoermig in der Mitte")
+    // AENDERT hh und damit den Kappenradius hh2, NACHDEM extra/hw schon mit
+    // dem alten (kleineren) hh berechnet wurden. Bei kleinem outerR relativ
+    // zu hh (wie bisher ueblich) war die Abweichung vernachlaessigbar, bei
+    // dynamisch sehr grossem outerR (breite Kachel, wenig Geraete) reisst
+    // sie die Bogenlaengen-Gleichverteilung sichtbar auseinander: der
+    // tatsaechliche Kappenumfang in pillPointPair() weicht von dem ab, der
+    // fuer den Abstand eingeplant wurde. 3 Durchlaeufe konvergieren auf ein
+    // hh, bei dem hw/hh/hh2 zueinander konsistent sind.
+    for (let pass = 0; pass < 3; pass++) {
+      // Wie viel zusaetzlicher Umfang noetig ist, damit n Knoten im
+      // GLEICHEN Abstand wie beim Kreis (2*outerR+GAP) Platz finden -
+      // ueberall gleich grosse Luecken, siehe pillPointPair(): dort wird
+      // konsequent auf dem VERBRAUCHER-RING (hh2=hh+ringGap) gemessen,
+      // deshalb auch hier als Bezugsgroesse. Eine Verbreiterung um delta
+      // verlaengert die beiden geraden Seiten um je 2*delta, also den
+      // Ring-Umfang um 4*delta.
+      const hh2 = hh + ringGap;
+      const ringPerimAtHwEqHh = 2 * Math.PI * hh2; // Ring-Umfang bei hw=hh (reine Kreisform)
+      // + EXCLUDE_ARC_BUDGET: dieselbe Reserve wie in chipCapacityAtRadius()
+      // (siehe dort) - sonst waere hw kleiner bemessen, als fuer die
+      // tatsaechlich nutzbare Restflaeche (nach Abzug der Muenzen-
+      // Ausschlusszone) noetig.
+      const neededPerim = n * (2 * outerR + NODE_GAP) + EXCLUDE_ARC_BUDGET;
+      const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
+      // fitNodeRadiusForChip() hat outerR bereits so gewaehlt, dass dies
+      // (bis auf Bisektions-/Iterations-Rundung) in den hwMax-Deckel passt
+      // - Math.min() bleibt als reiner Rundungsschutz, keine eigene
+      // Kompression mehr noetig.
+      const hwMax = Math.max(DESIGN_R, VIEW_HALF_W - marginX - ringGap);
+      hw = Math.min(hh + extra / 4, hwMax);
+
+      // Hoehe mitwachsen lassen (03.09.2026, Dietmar: "Tisch liegt
+      // unförmig in der Mitte" bei sehr vielen Geraeten) - eine sehr
+      // breite, aber starr niedrige Pille wirkt wie ein duenner Balken
+      // statt eines Tisches. Ab einem Seitenverhaeltnis von mehr als
+      // MAX_CHIP_ASPECT waechst hh proportional mit, bleibt aber ein
+      // rundliches Rechteck.
+      if (hw / hh > MAX_CHIP_ASPECT) {
+        hh = hw / MAX_CHIP_ASPECT;
+      } else {
+        break; // stabil - hh hat sich in diesem Durchlauf nicht geaendert
+      }
     }
   }
 
@@ -1285,7 +1352,7 @@ function computeLayout(n) {
       points.push({
         angleDeg,
         x: rOuterCircle * Math.cos(rad), y: rOuterCircle * Math.sin(rad),
-        hx: HOUSE_R * Math.cos(rad), hy: HOUSE_R * Math.sin(rad),
+        hx: DESIGN_R * Math.cos(rad), hy: DESIGN_R * Math.sin(rad),
       });
     }
   } else {
@@ -1307,7 +1374,15 @@ function computeLayout(n) {
     const capLen2 = Math.PI * hh2;
     const perim2 = 4 * straight + 2 * capLen2;
     const leftCapStart = 3 * straight + capLen2;
-    const tExcl1 = leftCapStart + (COIN_EXCLUDE_ANGLE_START + 360 - 90) / 180 * capLen2;
+    const tExcl1Geo = leftCapStart + (COIN_EXCLUDE_ANGLE_START + 360 - 90) / 180 * capLen2;
+    // Auf ein FESTES Bogenlaengen-Budget gedeckelt (25.09.2026, live
+    // gefunden: bei sehr breiter Pille reicht "geo" bis weit in die obere
+    // Gerade hinein, da sie den GESAMTEN verbleibenden Rest bis zum
+    // Wrap-Punkt einschliesst, siehe Kommentar oben - dessen Laenge waechst
+    // mit der Pillenbreite mit, obwohl die Muenze selbst nicht groesser
+    // wird. EXCLUDE_ARC_BUDGET (siehe chipCapacityAtRadius()) begrenzt das
+    // auf eine mit der Kachel nicht mitwachsende Obergrenze.
+    const tExcl1 = Math.max(tExcl1Geo, perim2 - EXCLUDE_ARC_BUDGET);
     const usablePerim = tExcl1;
     for (let i = 0; i < n; i++) {
       const t = (usablePerim / n) * i;
