@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.137-beta.1 (2026-09-26)
+
+- Tile: Hauspille im Hochformat war ein reines Oval statt einer Stadion-Form (Dietmar am eigenen Screenshot: "hat nun eine ovale Form anstatt dass die horizontale Pille gedreht wird"). Ursache: der Eckenradius (rx/ry) wurde immer vom zweiten Geometrie-Parameter genommen, der im waagrechten Fall zufällig immer die kurze Achse war, bei vertical aber die lange - SVG klemmte rx auf die halbe Breite, ry blieb aber bei der langen Halbachse stehen. Eckenradius ist jetzt ein eigener, immer an die kurze Achse gebundener Parameter (Pillen-Körper, Druckring, Schatten).
+- Tile: Icon UND Wert-/Namenstext passten bei sehr kleinen oder sehr großen dynamischen Knotengrößen nicht mehr in den Knoten (Dietmar am eigenen Screenshot, Batterie-Knoten: "Das Symbol passt nicht mehr in den Knoten, der Text auch nicht - das ist bei jedem Knoten so"). Die ICONS-Formen, Icon-Versatz, Textgröße und Text-y-Positionen waren mit fest verdrahteten Koordinaten für den ursprünglich festen DESIGN_R=56 gezeichnet und blieben bei dynamischer Knotengröße unverändert. Alles jetzt proportional zu DESIGN_R/NODE_R_BASELINE skaliert - Icons, Werte-/Namens-/Untertext bei Außenknoten UND Hauspille.
+- Lokal geprüft: 800×800 (DESIGN_R=16, Extremfall), 1900×900 (DESIGN_R>Baseline), 900×1700 Hochformat - Icon und Text liegen bei allen geprüften Knoten (inkl. Hauspille) vollständig innerhalb des Knotenrands, keine Überlappung.
+
 ## 0.9.136-beta.1 (2026-09-26)
 
 - Tile: Wert-/Namenstext lief bei sehr kleinen, jetzt möglichen Knotengrößen (Sicherheitsboden 16) über den Kreisrand hinaus (Dietmar am eigenen Screenshot: "48.400w" beim NAP-Knoten). `fitTextWidth()` hatte einen festen 8-Einheiten-Randabstand und einen festen 20-Einheiten-Fallback für Zeilen außerhalb der Kreishöhe - beides größer als ein 16-Radius-Knoten insgesamt. Beides jetzt proportional zur tatsächlichen Knotengröße.

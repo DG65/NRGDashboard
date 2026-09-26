@@ -1490,17 +1490,51 @@ function layoutCenterChip(hw, hh, vertical) {
   // nicht - eine Stadion-Form ist an ihrer kurzen Achse immer rund.
   const wX = vertical ? hh : hw;
   const hY = vertical ? hw : hh;
+  // Fund 25.09.2026 (Dietmar am eigenen Screenshot: "hat nun eine ovale
+  // Form anstatt dass die horizontale Pille gedreht wird") - setRect() nahm
+  // den Eckenradius bisher IMMER vom zweiten Argument (h), das war im
+  // waagrechten Fall zufaellig immer die kurze Achse (hh), bei vertical
+  // aber die LANGE (hY=hw!). SVG klemmt einen zu grossen rx zwar auf die
+  // halbe Breite, ry blieb aber bei der langen Halbachse selbst stehen -
+  // aus der Stadion-Form (gerade Seiten + Halbkreis-Kappen) wurde dadurch
+  // ein reines Oval. Der Eckenradius ist jetzt ein EIGENER Parameter
+  // (immer hh, die kurze Achse), unabhaengig davon, welcher Bildschirmachse
+  // w/h gerade zugeordnet sind.
   const setRect = (selector, w, h) => {
     const node = document.querySelector('#node-center ' + selector);
     if (!node) return;
     node.setAttribute('x', -w); node.setAttribute('y', -h);
     node.setAttribute('width', 2 * w); node.setAttribute('height', 2 * h);
-    node.setAttribute('rx', h); node.setAttribute('ry', h);
+    node.setAttribute('rx', hh); node.setAttribute('ry', hh);
   };
   setRect('.node-face', wX, hY);
   setRect('.node-ring', wX, hY);
   setRect('.node-bevel', wX, hY);
   setRect('.node-glow', wX, hY);
+  // Icon-Skalierung wie bei den Aussenknoten (siehe createOuterNode()) -
+  // das feste Markup-transform "translate(0,-30)" war fuer den urspruenglich
+  // festen DESIGN_R=56 gezeichnet, muss bei dynamischer Groesse aber JEDEN
+  // Render aktualisiert werden (anders als bei den Aussenknoten wird
+  // #center-icon nicht bei jeder Groessenaenderung neu erzeugt).
+  const iconScale = DESIGN_R / NODE_R_BASELINE;
+  const centerIcon = document.getElementById('center-icon');
+  if (centerIcon) {
+    centerIcon.setAttribute('transform', 'translate(0,' + (-30 * iconScale).toFixed(2) + ') scale(' + iconScale.toFixed(3) + ')');
+  }
+  // Dieselbe Text-Skalierung wie bei den Aussenknoten (siehe
+  // createOuterNode()) - #lbl-center-val/#lbl-center-name sind statisches
+  // Markup mit fester Schriftgroesse/y-Position, muessen aber wie das Icon
+  // JEDEN Render aktualisiert werden.
+  const centerVal = document.getElementById('lbl-center-val');
+  if (centerVal) {
+    centerVal.setAttribute('y', (9 * iconScale).toFixed(2));
+    centerVal.style.fontSize = (22 * iconScale).toFixed(2) + 'px';
+  }
+  const centerName = document.getElementById('lbl-center-name');
+  if (centerName) {
+    centerName.setAttribute('y', (33 * iconScale).toFixed(2));
+    centerName.style.fontSize = (12.5 * iconScale).toFixed(2) + 'px';
+  }
   // Beide Aufrufer setzen den Aktiv-Zustand (applyNodeState) VOR dieser
   // Funktion - dort wurde die Pille also noch mit der ALTEN Form geprueft.
   // Ist die neue Form eine breite Pille, eine evtl. Inaktiv-Schrumpfung hier
@@ -1523,11 +1557,15 @@ function layoutCenterChip(hw, hh, vertical) {
   const cpr = document.getElementById('center-press-ring');
   if (cpr) {
     const rw = wX + 3, rh = hY + 3;
+    // Derselbe Eckenradius-Fund wie oben: rx/ry und der Umfang muessen an
+    // der KURZEN Achse (hh) haengen, nicht blind am zweiten Halbachsen-Wert
+    // (rh), der bei vertical die LANGE Achse ist.
+    const capR = hh + 3;
     cpr.setAttribute('x', -rw); cpr.setAttribute('y', -rh);
     cpr.setAttribute('width', 2 * rw); cpr.setAttribute('height', 2 * rh);
-    cpr.setAttribute('rx', rh); cpr.setAttribute('ry', rh);
-    const straight = Math.max(0, rw - rh);
-    const perim = 4 * straight + 2 * Math.PI * rh;
+    cpr.setAttribute('rx', capR); cpr.setAttribute('ry', capR);
+    const straight = Math.max(0, hw + 3 - capR);
+    const perim = 4 * straight + 2 * Math.PI * capR;
     cpr.dataset.perim = perim.toFixed(1);
     cpr.setAttribute('stroke-dasharray', perim.toFixed(1));
     if (!cpr.classList.contains('pressing')) {
@@ -1536,18 +1574,22 @@ function layoutCenterChip(hw, hh, vertical) {
     // "runde" Halbachse der Stadion-Form fuer die Ebenenwechsel-Animationen
     // der Pille (playOpenAnim()/playBlockedAnim()) - NICHT rw, sonst waeren
     // Iris/Ping/Seifenblase bei einer breiten Chip-Pille viel zu flach.
-    cpr.dataset.rh = rh.toFixed(1);
+    cpr.dataset.rh = capR.toFixed(1);
   }
   // Schatten wie im Original leicht groesser (Faktor 1.13) und nach unten
   // versetzt (0.16*hh) - Formel 1:1 aus makeCoinShadow() uebernommen, nur
   // auf zwei unabhaengige Halbachsen (hw/hh) statt einen einzelnen Radius
   // angewendet.
-  const sw = wX * 1.13, sh = hY * 1.13, oy = hY * 0.16;
+  // rx/ry und der Versatz (oy) haengen an der KURZEN Achse (hh) - derselbe
+  // Fund wie oben, sonst waere der Schatten bei vertical ein Oval statt
+  // einer Stadion-Form, und der "nach unten"-Versatz unverhaeltnismaessig
+  // gross (skaliert sonst mit der jetzt langen Y-Halbachse mit).
+  const sw = wX * 1.13, sh = hY * 1.13, capRShadow = hh * 1.13, oy = hh * 0.16;
   const shadow = document.querySelector('#node-center .coin-shadow');
   if (shadow) {
     shadow.setAttribute('x', -sw); shadow.setAttribute('y', -sh + oy);
     shadow.setAttribute('width', 2 * sw); shadow.setAttribute('height', 2 * sh);
-    shadow.setAttribute('rx', sh); shadow.setAttribute('ry', sh);
+    shadow.setAttribute('rx', capRShadow); shadow.setAttribute('ry', capRShadow);
   }
   // Blitzboegen (.node-bolt) folgen jetzt dem tatsaechlichen Pillenrand
   // (jagArc/pillRadiusAt) statt eines starren Kreises - nur bei
@@ -2110,7 +2152,7 @@ setInterval(() => {
     // Attribut zuerst und setzt es nur neu, wenn der aktuelle Text
     // tatsaechlich zu breit ist - fuer den kurzen "W"-Text also implizit
     // wieder komplett unbeschraenkt.
-    if (r.valText) { fitTextWidth(r.valText, 9); }
+    if (r.valText) { fitTextWidth(r.valText, 9 * (DESIGN_R / NODE_R_BASELINE)); }
   });
 }, 4000);
 
@@ -2174,21 +2216,49 @@ function createOuterNode(item, pt, layout) {
   visual.appendChild(makeSpecular(DESIGN_R));
   addNodeBolts(g, DESIGN_R, DESIGN_R, Math.round(pt.angleDeg + 360));
 
-  const iconG = el('g', { class: 'node-icon', transform: 'translate(0,-30)', 'stroke-width': 2, fill: 'none', filter: 'url(#relief)' });
+  // Icon-Skalierung (25.09.2026, Dietmar am eigenen Screenshot: "Das Symbol
+  // passt nicht mehr in den Knoten ... das ist bei jedem Knoten so") - die
+  // ICONS-Formen (battery/bolt/heatpump/...) sind mit FEST VERDRAHTETEN
+  // Koordinaten gezeichnet (z.B. Batterie-Rahmen ±20 Einheiten breit),
+  // entworfen fuer den urspruenglichen festen DESIGN_R=56 (=NODE_R_BASELINE).
+  // Seit die Knotengroesse dynamisch schrumpfen/wachsen kann (Build 260),
+  // blieb das Icon IMMER gleich gross - bei kleinem DESIGN_R (z.B. 16)
+  // groesser als der ganze Knoten, bei grossem DESIGN_R winzig und viel zu
+  // weit vom Zentrum abgesetzt (der Versatz -30 ist ebenso fest verdrahtet).
+  // iconScale skaliert Icon-Groesse UND -Versatz proportional mit - bei der
+  // urspruenglichen Ausgangsgroesse (56) unveraendert wie zuvor.
+  const iconScale = DESIGN_R / NODE_R_BASELINE;
+  const iconG = el('g', {
+    class: 'node-icon',
+    transform: 'translate(0,' + (-30 * iconScale).toFixed(2) + ') scale(' + iconScale.toFixed(3) + ')',
+    'stroke-width': 2, fill: 'none', filter: 'url(#relief)',
+  });
   visual.appendChild(iconG);
 
-  const valText = el('text', { x: 0, y: 9, 'text-anchor': 'middle', class: 'node-value', filter: 'url(#relief)' });
+  // Textgroesse/-position ebenso proportional (derselbe Fund wie beim Icon
+  // oben) - .node-value/.node-label haben eine FESTE CSS-Schriftgroesse
+  // (22px/12.5px) und die y-Versaetze (9/33/45) waren fuer DESIGN_R=56
+  // gesetzt; bei kleinem dynamischem DESIGN_R sass der Text dadurch weit
+  // ausserhalb des (jetzt kleinen) Knotens, bei grossem DESIGN_R viel zu
+  // nah am Zentrum und winzig im Verhaeltnis. dx bei .node-value-unit ist
+  // in em/relativen Einheiten definiert und skaliert automatisch mit, wenn
+  // die Schriftgroesse des <text>-Elements selbst per Inline-Style gesetzt
+  // wird - kein separater Eingriff dort noetig.
+  const valText = el('text', { x: 0, y: 9 * iconScale, 'text-anchor': 'middle', class: 'node-value', filter: 'url(#relief)' });
+  valText.style.fontSize = (22 * iconScale).toFixed(2) + 'px';
   valText.appendChild(document.createTextNode('0'));
-  const unit = el('tspan', { class: 'node-value-unit', dx: 2 });
+  const unit = el('tspan', { class: 'node-value-unit', dx: 2 * iconScale });
   unit.textContent = 'kW';
   valText.appendChild(unit);
   visual.appendChild(valText);
 
-  const labelText = el('text', { x: 0, y: 33, 'text-anchor': 'middle', class: 'node-label' });
+  const labelText = el('text', { x: 0, y: 33 * iconScale, 'text-anchor': 'middle', class: 'node-label' });
+  labelText.style.fontSize = (12.5 * iconScale).toFixed(2) + 'px';
   labelText.textContent = item.label;
   visual.appendChild(labelText);
 
-  const subText = el('text', { x: 0, y: 45, 'text-anchor': 'middle', class: 'node-sub' });
+  const subText = el('text', { x: 0, y: 45 * iconScale, 'text-anchor': 'middle', class: 'node-sub' });
+  subText.style.fontSize = (10 * iconScale).toFixed(2) + 'px';
   visual.appendChild(subText);
 
   // Diagnose-Warnsymbol (28.08.2026, Dietmar: "Diagnose-Warnungen direkt
@@ -2722,7 +2792,7 @@ function updateOuterNode(refs, item) {
   // Sammelzaehlern) liefen bei fester Schriftgroesse ueber den Kreisrand
   // hinaus - dieselbe Breitenanpassung wie bei Name/Untertitel (siehe
   // fitTextWidth() oben), nur fuer die Wertzeile.
-  fitTextWidth(refs.valText, 9);
+  fitTextWidth(refs.valText, 9 * (DESIGN_R / NODE_R_BASELINE));
 
   // SOC-Fuellstand (30.08.2026, Dietmar: "wenn Du den Kreis beim Speicher
   // von unten auffuellst, waere es nur konsequent, das bei Auto-/Wallbox-
@@ -2837,12 +2907,22 @@ function updateOuterNode(refs, item) {
   const hasVehicle = !!item.sub;
   // y=47 statt vorher 53 - bei DESIGN_R=56 blieben sonst nur ~3px Abstand
   // zum unteren Ringrand, wirkte gequetscht (Dietmar, 05.08.2026).
-  const labelY = hasVehicle ? 43 : 33;
-  const subY = hasVehicle ? 28 : 45;
+  //
+  // Skalierung (25.09.2026, Dietmar: "das Symbol passt nicht mehr in den
+  // Knoten ... das ist bei jedem Knoten so") - dieser Aufruf laeuft bei
+  // JEDER Wertaktualisierung und ueberschrieb damit auch die skalierte
+  // y-Position aus createOuterNode() wieder mit dem festen Rohwert. Alle
+  // y-Positionen UND Schriftgroessen jetzt proportional zu DESIGN_R/
+  // NODE_R_BASELINE, wie beim Icon.
+  const nodeIconScale = DESIGN_R / NODE_R_BASELINE;
+  const labelY = (hasVehicle ? 43 : 33) * nodeIconScale;
+  const subY = (hasVehicle ? 28 : 45) * nodeIconScale;
   refs.labelText.setAttribute('class', hasVehicle ? 'node-device-name' : 'node-label');
-  refs.labelText.setAttribute('y', labelY);
+  refs.labelText.setAttribute('y', labelY.toFixed(2));
+  refs.labelText.style.fontSize = ((hasVehicle ? 10.5 : 12.5) * nodeIconScale).toFixed(2) + 'px';
   refs.subText.setAttribute('class', hasVehicle ? 'node-vehicle-name' : 'node-sub');
-  refs.subText.setAttribute('y', subY);
+  refs.subText.setAttribute('y', subY.toFixed(2));
+  refs.subText.style.fontSize = ((hasVehicle ? 13.5 : 10) * nodeIconScale).toFixed(2) + 'px';
   refs.subText.textContent = item.sub || '';
   // Lange Namen (z.B. Fahrzeugnamen) sollen nicht ueber den Kreisrand
   // hinaus/dagegen laufen - Breitenbudget haengt von der Sehnenlaenge des
@@ -3239,7 +3319,7 @@ function restoreCenterForLevel1() {
     // beide Attribute immer zuerst und setzt sie nur bei tatsaechlicher
     // Ueberbreite neu - fuer "Haus"/"Saldo" (und jeden anderen kurzen
     // Namen) bleibt es beim reinen Loeschen.
-    fitTextWidth(nm, 33);
+    fitTextWidth(nm, 33 * (DESIGN_R / NODE_R_BASELINE));
   }
   if (centerG) { centerG.classList.remove('can-go-up'); }
   setCenterIcon(hasHouse ? null : 'delta');
@@ -3421,10 +3501,10 @@ function renderLevelView() {
   // Kreisrand hinaus - der Aussenknoten-Fall clippt lange Namen laengst
   // (fitTextWidth() bei jedem updateOuterNode()), fuer den NAMEN DER
   // MITTELPILLE selbst (hier gesetzt) fehlte der Aufruf bislang komplett.
-  if (nm) { fitTextWidth(nm, 33, chipLayout.hw, chipLayout.hh, chipLayout.vertical); }
+  if (nm) { fitTextWidth(nm, 33 * (DESIGN_R / NODE_R_BASELINE), chipLayout.hw, chipLayout.hh, chipLayout.vertical); }
   // Sehr grosse Sammelzaehler-Werte (14.09.2026, Solarpark) ebenso an die
   // Pillenbreite anpassen, nicht nur den Namen.
-  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh, chipLayout.vertical);
+  fitTextWidth(document.getElementById('lbl-center-val'), 9 * (DESIGN_R / NODE_R_BASELINE), chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   if (items.length === 0) {
     document.getElementById('nodes-layer').textContent = '';
     document.getElementById('wires-layer').textContent = '';
@@ -4176,7 +4256,7 @@ function renderLevel1Nodes(devices) {
   layoutCenterChip(chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   // Sehr grosse Werte (14.09.2026, Solarpark: mehrstellige MW-Summen) ebenso
   // an die tatsaechliche Pillenbreite anpassen, nicht nur an DESIGN_R.
-  fitTextWidth(document.getElementById('lbl-center-val'), 9, chipLayout.hw, chipLayout.hh, chipLayout.vertical);
+  fitTextWidth(document.getElementById('lbl-center-val'), 9 * (DESIGN_R / NODE_R_BASELINE), chipLayout.hw, chipLayout.hh, chipLayout.vertical);
   // Autarkiegrad-Ringsegment am Haus-Knoten entfernt (Dietmar, 23.09.2026) -
   // durch den Quoten-Knopf oben links ersetzt, der Tag/Monat/Jahr/Gesamt
   // abdeckt statt nur "heute" (siehe #quotaCoin).
