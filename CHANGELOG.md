@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.143-beta.1 (2026-09-27)
+
+- Tile: EMS-Begruendungszeile unten in der Kachel wurde auf schmalen/Hochformat-Kacheln sehr frueh abgeschnitten (feste Randabstaende left:200px/right:80px liessen dort kaum noch Platz, Dietmar am eigenen Screenshot: "wird beim Hochformat sehr frueh abgeschnitten ... etwas bauen um die ganze Aussage des EMS zu sehen"). Die Zeile ist jetzt antippbar/anklickbar und oeffnet ein kleines Panel mit dem vollstaendigen Text (Modus, Begruendung, Quelle) - unabhaengig von der verfuegbaren Breite immer komplett lesbar, statt nur ueber das auf Touch ohnehin unerreichbare title-Tooltip.
+- Lokal geprueft: 390×844 (Hochformat) - Panel oeffnet vollstaendig innerhalb der Kachel, kompletter Text sichtbar; 1900×900 (breit) - unveraendertes Verhalten, Panel oeffnet/schliesst ebenso.
+
 ## 0.9.142-beta.1 (2026-09-27)
 
 - Tile: Quoten-Detailpanel ("Autarkie & Eigenverbrauch") war mit einer fest verdrahteten Breite von 720px auf schmalen/Hochformat-Kacheln nicht mehr vollstaendig sichtbar - die rechten Spalten (Netz/Batterie) hingen ueber den Kachelrand hinaus (Dietmar am eigenen Screenshot: "die komplette Detailseite nicht sichtbar"). Panel-Breite jetzt auf die tatsaechliche Kachelbreite gedeckelt (`min(720px, calc(100% - 16px))`); die Fuenf-Spalten-Tabelle selbst behaelt ihre natuerliche Breite und bekommt einen eigenen horizontal scrollbaren Wrapper statt die Spalten bis zur Unlesbarkeit zu stauchen, mit einem nur bei Bedarf eingeblendeten "wischen"-Hinweis darunter.
