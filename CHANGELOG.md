@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.142-beta.1 (2026-09-27)
+
+- Tile: Quoten-Detailpanel ("Autarkie & Eigenverbrauch") war mit einer fest verdrahteten Breite von 720px auf schmalen/Hochformat-Kacheln nicht mehr vollstaendig sichtbar - die rechten Spalten (Netz/Batterie) hingen ueber den Kachelrand hinaus (Dietmar am eigenen Screenshot: "die komplette Detailseite nicht sichtbar"). Panel-Breite jetzt auf die tatsaechliche Kachelbreite gedeckelt (`min(720px, calc(100% - 16px))`); die Fuenf-Spalten-Tabelle selbst behaelt ihre natuerliche Breite und bekommt einen eigenen horizontal scrollbaren Wrapper statt die Spalten bis zur Unlesbarkeit zu stauchen, mit einem nur bei Bedarf eingeblendeten "wischen"-Hinweis darunter.
+- Lokal geprueft: 390×844 (Hochformat) - Panel bleibt vollstaendig innerhalb der Kachel, Tabelle per Scroll komplett erreichbar, Hinweis sichtbar; 1900×900 (breit) - unveraendert bei voller 720px-Breite, kein Scroll noetig, Hinweis bleibt ausgeblendet.
+
 ## 0.9.141-beta.1 (2026-09-27)
 
 - Tile: Glanzlicht/Spec-Highlight der Hauspille rotieren jetzt mit der Pille mit statt starr stehenzubleiben (Dietmar: "Dass das Glanzlicht nicht mit rotieren soll habe ich nie gesagt - selbstverstaendlich muss das Glanzlicht der Hauspille mit rotieren"). War bisher komplett statisches Markup ohne jede Skalierung/Ausrichtung an die dynamische Pillengroesse - jetzt wie Icon/Text/Blitzboegen jeden Render aktualisiert, Groesse an hh (kurze Halbachse) gekoppelt, bei Hochformat per rotate(90) mitgedreht.
