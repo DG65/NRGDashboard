@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.139-beta.1 (2026-09-27)
+
+- Tile: Blitzboegen (.node-bolt) am Rand der Hauspille blieben bei Hochformat-Kacheln in ihrer alten waagrechten Ausrichtung stehen und ragten dadurch ueber den tatsaechlichen (schmalen, hohen) Pillenrand hinaus - sichtbar als wiederkehrend auf-/abblendende Fragmente einer waagrechten Pille (Dietmar am eigenen Screenshot: "wird komischerweise immer wieder Teile der horizontalen Hauspille eingeblendet"). Ursache: `jagArc()`/`pillRadiusAt()` zeichnen die Bogen-Pfade grundsaetzlich in "Pillen-eigenen" Koordinaten mit der langen Achse entlang x, wie bei einer waagrechten Pille - eine Drehung fuer den Hochformat-Fall fehlte. Die `#center-bolts`-Gruppe wird jetzt bei Hochformat zusaetzlich um 90° gedreht, unabhaengig vom bestehenden hw-Rebuild-Gate der Pfad-Geometrie selbst. Schliesst die in 0.9.136-beta.1 als bekannte kosmetische Einschraenkung vorgemerkte Luecke.
+- Lokal geprueft: 390×844 (Hochformat, 11 Geraete) - Blitzboegen liegen jetzt entlang der tatsaechlichen Pille, keine Fragmente ausserhalb; 1900×900 (Querformat) unveraendert, keine ungewollte Drehung.
+
 ## 0.9.138-beta.1 (2026-09-27)
 
 - Tile: die eigens für die Quotenmünze eingeführte Winkel-Ausschlusszone (Geräte-Knoten wurden zwischen ca. 9 und 11 Uhr bewusst ausgespart) entfernt (Dietmar auf eigene, per Messung nachvollzogene Nachfrage: "siehst aber schon, dass die Geräte-Knoten und die Quoten Pille nicht kollidieren würden, auch wenn Du die Geräte-Knoten zwischen 9 und 11 Uhr platzieren würdest?"). Empirisch mit hypothetischen Knotenpositionen im 5°-Raster nachgewiesen: der seit 0.9.135-beta.1 bestehende COIN_CLEARANCE_FACTOR hält allein schon überall ausreichend Abstand zur Münze - die Ausschlusszone war überflüssig geworden und erzeugte nur die sichtbare Lücke im Kreis. Geräte-Knoten verteilen sich jetzt wieder gleichmäßig über den vollen Pillenumfang.

@@ -1555,6 +1555,21 @@ function layoutCenterChip(hw, hh, vertical) {
       addNodeBolts(holder, hw, hh, 5);
     }
   }
+  // jagArc()/pillRadiusAt() zeichnen die Blitzboegen-Pfade immer in
+  // "Pillen-eigenen" Koordinaten mit der LANGEN Achse entlang x (wie bei
+  // einer waagrechten Pille) - bei Hochformat-Kacheln blieben sie dadurch
+  // in der alten waagrechten Ausrichtung stehen und ragten ueber den
+  // eigentlichen (jetzt schmalen, hohen) Pillenrand hinaus (Dietmar am
+  // eigenen Screenshot: "immer wieder Teile der horizontalen Hauspille
+  // eingeblendet" - die per boltFlickerV-Animation ein-/ausblendenden
+  // .node-bolt-Pfade). Die Pfad-GEOMETRIE selbst bleibt orientierungs-
+  // unabhaengig (rein lokale Pillenform), ein einfaches 90°-Rotieren der
+  // ganzen Gruppe genuegt, um sie mit der tatsaechlich gedrehten Pille
+  // deckungsgleich zu machen - unabhaengig vom obigen hw-Rebuild-Gate.
+  const boltsHolder = document.getElementById('center-bolts');
+  if (boltsHolder) {
+    boltsHolder.setAttribute('transform', vertical ? 'rotate(90)' : '');
+  }
   // Rueck-Badge (09.09.2026, Dietmar: "nicht Mitten rein", stattdessen wie
   // die anderen Badges AUF den Pillenrand setzen) - oben links ist der
   // einzige der vier Eck-Plaetze, den kein anderes Badge belegt (Warn-
