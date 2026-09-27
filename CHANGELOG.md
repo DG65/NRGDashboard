@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.138-beta.1 (2026-09-27)
+
+- Tile: die eigens für die Quotenmünze eingeführte Winkel-Ausschlusszone (Geräte-Knoten wurden zwischen ca. 9 und 11 Uhr bewusst ausgespart) entfernt (Dietmar auf eigene, per Messung nachvollzogene Nachfrage: "siehst aber schon, dass die Geräte-Knoten und die Quoten Pille nicht kollidieren würden, auch wenn Du die Geräte-Knoten zwischen 9 und 11 Uhr platzieren würdest?"). Empirisch mit hypothetischen Knotenpositionen im 5°-Raster nachgewiesen: der seit 0.9.135-beta.1 bestehende COIN_CLEARANCE_FACTOR hält allein schon überall ausreichend Abstand zur Münze - die Ausschlusszone war überflüssig geworden und erzeugte nur die sichtbare Lücke im Kreis. Geräte-Knoten verteilen sich jetzt wieder gleichmäßig über den vollen Pillenumfang.
+- Lokal geprüft: 1900×900, 800×800 und 390×844 (Hochformat), je mit 11 Geräten - keine Knoten-Knoten- oder Knoten-Münze-Kollision (Kreis-zu-Kreis-Abstand geprüft, nicht nur Bounding-Box).
+
 ## 0.9.137-beta.1 (2026-09-26)
 
 - Tile: Hauspille im Hochformat war ein reines Oval statt einer Stadion-Form (Dietmar am eigenen Screenshot: "hat nun eine ovale Form anstatt dass die horizontale Pille gedreht wird"). Ursache: der Eckenradius (rx/ry) wurde immer vom zweiten Geometrie-Parameter genommen, der im waagrechten Fall zufällig immer die kurze Achse war, bei vertical aber die lange - SVG klemmte rx auf die halbe Breite, ry blieb aber bei der langen Halbachse stehen. Eckenradius ist jetzt ein eigener, immer an die kurze Achse gebundener Parameter (Pillen-Körper, Druckring, Schatten).

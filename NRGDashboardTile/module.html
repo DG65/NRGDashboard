@@ -1105,26 +1105,19 @@ const MIN_RING_GAP = 24;
 const NODE_R_BASELINE = 56;
 const NODE_R_MIN = 40;
 const NODE_R_MAX = 140;
-// EXCLUDE_ARC_BUDGET (25.09.2026, live gefunden: zwei Knoten ueberlappten
-// sich auf einer sehr breiten Kachel) - die Muenzen-Ausschlusszone fuer den
-// Pillen-Modus wuerde geometrisch bis zum Wrap-Punkt reichen (siehe
-// Punkteplatzierung in computeLayout()), was bei sehr breiter Pille (grosse
-// "straight"-Strecke) einen unverhaeltnismaessig grossen, MIT der
-// Pillenbreite mitwachsenden Teil des Umfangs blockiert, obwohl die Muenze
-// selbst nicht groesser wird. Fester Bogenlaengen-Deckel, unabhaengig von
-// der Kachelgroesse - sowohl fuer die Punkteplatzierung als auch fuer
-// chipCapacityAtRadius() (sonst waeren beide inkonsistent und outerR zu
-// gross fuer die tatsaechlich nutzbare Restflaeche berechnet).
-const EXCLUDE_ARC_BUDGET = 500;
 // COIN_CLEARANCE_FACTOR (25.09.2026, Dietmar am eigenen Screenshot: "die
 // Hauspille auf der linken Seite so weit zurueckziehen, dass die Geraete-
 // Knoten nicht mit der Quotenmuenze kollidieren") - haelt die Pille (und
 // damit den ganzen Knotenkranz) auf BEIDEN Seiten etwas schmaler als
 // technisch moeglich, proportional zur aktuellen Knoten-/Muenzengroesse
-// (siehe chipCapacityAtRadius()), statt nur ueber die Bogenlaengen-
-// Ausschlusszone (EXCLUDE_ARC_BUDGET) zu versuchen, Knoten gezielt an der
-// Muenze vorbeizulenken - robuster gegen die vielen Kombinationen aus
-// Geraetezahl/Kachelform, bei denen die Ausschlusszone allein nicht reichte.
+// (siehe chipCapacityAtRadius()). Ersetzt eine fruehere, separate
+// Bogenlaengen-Ausschlusszone (die Knoten explizit aus der Muenzen-Ecke
+// heraushielt) komplett: Dietmar hat live nachgemessen, dass bei JEDER
+// getesteten Kachelform/Geraetezahl schon diese generelle Verschmaelerung
+// ausreicht, keine Kollision entsteht - die Ausschlusszone erzeugte
+// zuletzt nur noch eine unnoetige, sichtbare Luecke im Knotenkranz
+// ("warum fehlen von 9-11 Uhr Geraete-Knoten?") ohne noch gebraucht zu
+// werden, und wurde deshalb entfernt.
 const COIN_CLEARANCE_FACTOR = 2.6;
 const SPOKE_GAP = 9;
 const TRI_COUNT = 3;
@@ -1212,12 +1205,7 @@ function chipCapacityAtRadius(r, n, viewHalfLong) {
   const rOuterCircle = Math.max(r + MIN_RING_GAP, R_MAX - r - RING_GAP_TRIM);
   const ringGap = rOuterCircle - r;
   const hh2 = rOuterCircle; // = r + ringGap
-  // + EXCLUDE_ARC_BUDGET: die Muenzen-Ausschlusszone (siehe dort) blockiert
-  // ein festes Bogenlaengen-Stueck fuer die Knotenplatzierung - muss hier
-  // mit eingerechnet werden, sonst waere outerR groesser bemessen, als der
-  // tatsaechlich nutzbare Umfang hergibt (live gefundene Knoten-
-  // Ueberlappung auf sehr breiter Kachel).
-  const neededPerim = n * (2 * r + NODE_GAP) + EXCLUDE_ARC_BUDGET;
+  const neededPerim = n * (2 * r + NODE_GAP);
   const ringPerimAtHwEqHh = 2 * Math.PI * hh2;
   const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
   const hwUnconstrained = r + extra / 4;
@@ -1349,11 +1337,7 @@ function computeLayout(n) {
       // Ring-Umfang um 4*delta.
       const hh2 = hh + ringGap;
       const ringPerimAtHwEqHh = 2 * Math.PI * hh2; // Ring-Umfang bei hw=hh (reine Kreisform)
-      // + EXCLUDE_ARC_BUDGET: dieselbe Reserve wie in chipCapacityAtRadius()
-      // (siehe dort) - sonst waere hw kleiner bemessen, als fuer die
-      // tatsaechlich nutzbare Restflaeche (nach Abzug der Muenzen-
-      // Ausschlusszone) noetig.
-      const neededPerim = n * (2 * outerR + NODE_GAP) + EXCLUDE_ARC_BUDGET;
+      const neededPerim = n * (2 * outerR + NODE_GAP);
       const extra = Math.max(0, neededPerim - ringPerimAtHwEqHh);
       // fitNodeRadiusForChip() hat outerR bereits so gewaehlt, dass dies
       // (bis auf Bisektions-/Iterations-Rundung) in den hwMax-Deckel passt
@@ -1396,23 +1380,18 @@ function computeLayout(n) {
   // gleichem Winkel (das ist der Grund, warum die Verbreiterung
   // ueberhaupt zusaetzlichen Platz bringt).
   //
-  // Ausschlusszone oben links fuer die Quotenmuenze (25.09.2026, Dietmar:
-  // "Du kannst die Knoten wirklich vergroessern") - die Muenze (#quotaCoin,
-  // siehe CSS) sitzt fix in genau dieser Ecke und ist seit dem Knotengroesse-
-  // Angleich (Build 249) genauso gross wie ein Knoten; bei groesserem
-  // DESIGN_R reichte der bisher nur zufaellig freie Platz nicht mehr aus,
-  // ein Knoten landete direkt in der Muenze (live gefunden bei 11 Geraeten,
-  // Chip-Modus). COIN_EXCLUDE_ANGLE_* sind Standard-Geraetewinkel (0=Ost,
-  // -90=Nord/oben, 90=Sued, ±180=West), die Zone deckt das noerdliche
-  // West-Achtel bis knapp vor "oben" ab, wo die Muenze liegt.
-  //
-  // NUR im Chip-Modus angewendet (Fund beim ersten Anlauf, 4-Geraete-Test):
-  // im Kreis-Modus (<=CHIP_THRESHOLD Knoten) reisst die Ausschlusszone die
-  // gewohnte symmetrische Kreuzform (-90/0/90/180) unnoetig aus der Balance,
-  // ohne dass dort je eine echte Kollision beobachtet wurde - der Kreis
-  // bleibt bei der urspruenglichen Formel.
-  const COIN_EXCLUDE_ANGLE_START = -175;
-  const COIN_EXCLUDE_ANGLE_END = -95;
+  // Frueher gab es hier eine eigene Ausschlusszone (Bogenlaengen-Bereich),
+  // die konsequent keinen Knoten direkt in der Quotenmuenzen-Ecke platzierte
+  // (25.09.2026, urspruenglich noetig bei sehr grossem DESIGN_R ohne die
+  // COIN_CLEARANCE_FACTOR-Reserve unten). Seit COIN_CLEARANCE_FACTOR die
+  // Pille auf beiden Seiten generell schmaler haelt, ist die Zone nicht
+  // mehr noetig - Dietmar live nachgemessen: bei keiner getesteten
+  // Kachelform/Geraetezahl kollidiert ein hypothetischer Knoten irgendwo
+  // im Winkelbereich -180..-90 (9 bis 12 Uhr) noch mit der Muenze. Die Zone
+  // erzeugte dadurch nur noch eine sichtbare, unnoetige Luecke ("warum
+  // fehlen von 9-11 Uhr Geraete-Knoten?") ohne noch einen echten Zweck zu
+  // erfuellen - entfernt, Knoten verteilen sich wieder gleichmaessig ueber
+  // den vollen Umfang.
   const points = [];
   if (!chip) {
     for (let i = 0; i < n; i++) {
@@ -1425,37 +1404,9 @@ function computeLayout(n) {
       });
     }
   } else {
-    // Dieselbe Ausschlusszone in Bogenlaengen-Koordinaten der Pille
-    // umgerechnet - beginnt in der LINKEN Kappe (siehe pillPointPair():
-    // dort a = 90 + (t_lokal/capLen2)*180 im Bereich [90,270];
-    // COIN_EXCLUDE_ANGLE_START im Bereich [-180,-90] entspricht dort
-    // [180,270]) und laeuft OHNE zweite Grenze bis zum Wrap-Punkt
-    // (t=perim2 = Start des naechsten Umlaufs) durch. Erster Anlauf
-    // (25.09.2026) endete stattdessen mitten in der Kappe (bei
-    // COIN_EXCLUDE_ANGLE_END) - der letzte, an "oben" grenzende Abschnitt
-    // der oberen Geraden (das kurze Stueck VOR dem Wrap-Punkt) blieb
-    // dadurch ungeschuetzt und ein Knoten landete dort trotzdem in der
-    // Muenze (live gefunden bei sehr grossen Knoten/Muenze + schmaler
-    // Kachel). Ohne zweite Grenze - und damit ohne die fehleranfaellige
-    // Skip-Logik - ist das strukturell ausgeschlossen.
-    const straight = Math.max(0, hw - hh);
-    const hh2 = hh + ringGap;
-    const capLen2 = Math.PI * hh2;
-    const perim2 = 4 * straight + 2 * capLen2;
-    const leftCapStart = 3 * straight + capLen2;
-    const tExcl1Geo = leftCapStart + (COIN_EXCLUDE_ANGLE_START + 360 - 90) / 180 * capLen2;
-    // Auf ein FESTES Bogenlaengen-Budget gedeckelt (25.09.2026, live
-    // gefunden: bei sehr breiter Pille reicht "geo" bis weit in die obere
-    // Gerade hinein, da sie den GESAMTEN verbleibenden Rest bis zum
-    // Wrap-Punkt einschliesst, siehe Kommentar oben - dessen Laenge waechst
-    // mit der Pillenbreite mit, obwohl die Muenze selbst nicht groesser
-    // wird. EXCLUDE_ARC_BUDGET (siehe chipCapacityAtRadius()) begrenzt das
-    // auf eine mit der Kachel nicht mitwachsende Obergrenze.
-    const tExcl1 = Math.max(tExcl1Geo, perim2 - EXCLUDE_ARC_BUDGET);
-    const usablePerim = tExcl1;
     for (let i = 0; i < n; i++) {
-      const t = (usablePerim / n) * i;
-      const { house, sat } = pillPointPair(t / perim2, hw, hh, ringGap);
+      const t = i / n;
+      const { house, sat } = pillPointPair(t, hw, hh, ringGap);
       if (!vertical) {
         points.push({ angleDeg: sat.angleDeg, x: sat.x, y: sat.y, hx: house.x, hy: house.y });
       } else {
