@@ -1583,7 +1583,14 @@ function layoutCenterChip(hw, hh, vertical) {
     const angDeg = -135;
     const angRad = angDeg * Math.PI / 180;
     const br = pillRadiusAt(angDeg, hw, hh);
-    const bx = br * Math.cos(angRad), by = br * Math.sin(angRad);
+    // pillRadiusAt() rechnet, wie jagArc()/addNodeBolts(), immer in
+    // "Pillen-eigenen" Koordinaten mit der langen Achse entlang x - bei
+    // Hochformat muss dieselbe x/y-Vertauschung wie bei den Speichen-
+    // Ankerpunkten (siehe points.push() weiter oben) angewendet werden,
+    // sonst landet das Rueck-Badge (wie zuvor die Blitzboegen) an der fuer
+    // eine waagrechte Pille berechneten, jetzt falschen Ecke.
+    const localX = br * Math.cos(angRad), localY = br * Math.sin(angRad);
+    const bx = vertical ? localY : localX, by = vertical ? localX : localY;
     backBadge.setAttribute('transform', 'translate(' + bx.toFixed(1) + ',' + by.toFixed(1) + ')');
   }
 }

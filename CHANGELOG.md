@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.140-beta.1 (2026-09-27)
+
+- Tile: bei der Suche nach weiteren Blitzbogen-Artefakten (Dietmar: "schau dir auch die anderen Dekor-Elemente bei Hochformat an") denselben Fehlerpfad noch am Rueck-Badge der Hauspille (Zuschachteln/Ebene-zurueck-Chip, `‹`) gefunden: `pillRadiusAt()` liefert die Position ebenfalls in "Pillen-eigenen" Koordinaten mit der langen Achse entlang x - ohne die bei den Speichen-Ankerpunkten laengst vorhandene x/y-Vertauschung fuer Hochformat wuerde das Badge bei weniger gestreckten Chip-Pillen (hw < 2×hh) am falschen Eck landen. Dieselbe Vertauschung jetzt auch hier angewendet. Alle anderen Dekor-Elemente der Pille (Glanzlicht/Spec-Highlight bewusst ortsfest, Schatten, Druckring, Ebenenwechsel-Ripple) rechnen bereits ausschliesslich mit der orientierungsunabhaengigen kurzen Halbachse (hh) bzw. sind als rein kreisfoermige, zentrierte Effekte unveraendert korrekt - kein weiterer Fund.
+- Lokal geprueft: 390×844 (Hochformat), Ruecknavigations-Badge simuliert (LEVEL_STACK erzwungen) bei n=9 und n=11 - Position konsistent mit der Vorher-Formel bei stark gestreckten Pillen (kein optischer Unterschied, mathematisch identisch bei hw≥2×hh), korrekt vertauscht bei moderaterem Seitenverhaeltnis.
+
 ## 0.9.139-beta.1 (2026-09-27)
 
 - Tile: Blitzboegen (.node-bolt) am Rand der Hauspille blieben bei Hochformat-Kacheln in ihrer alten waagrechten Ausrichtung stehen und ragten dadurch ueber den tatsaechlichen (schmalen, hohen) Pillenrand hinaus - sichtbar als wiederkehrend auf-/abblendende Fragmente einer waagrechten Pille (Dietmar am eigenen Screenshot: "wird komischerweise immer wieder Teile der horizontalen Hauspille eingeblendet"). Ursache: `jagArc()`/`pillRadiusAt()` zeichnen die Bogen-Pfade grundsaetzlich in "Pillen-eigenen" Koordinaten mit der langen Achse entlang x, wie bei einer waagrechten Pille - eine Drehung fuer den Hochformat-Fall fehlte. Die `#center-bolts`-Gruppe wird jetzt bei Hochformat zusaetzlich um 90° gedreht, unabhaengig vom bestehenden hw-Rebuild-Gate der Pfad-Geometrie selbst. Schliesst die in 0.9.136-beta.1 als bekannte kosmetische Einschraenkung vorgemerkte Luecke.
