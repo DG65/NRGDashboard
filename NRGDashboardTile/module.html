@@ -1315,7 +1315,29 @@ function computeLayout(n) {
     // bemessen als der von der Bisektion tatsaechlich vorgesehene Wert.
     const marginX = VIEW_HALF_W_DEFAULT - R_MAX + COIN_CLEARANCE_FACTOR * DESIGN_R;
     const hwMaxViewHalf = viewHalfLong;
-    const MAX_CHIP_ASPECT = 3.2;
+    // Kachel-Seitenverhaeltnis (26.09.2026, Dietmar: "wird die Kachel
+    // quadratisch, muss die Hauspille rund sein") - VIEW_W/VIEW_H tragen
+    // bereits das tatsaechliche Kachel-Seitenverhaeltnis (updateViewBox()
+    // laesst nur die jeweils einschraenkende Dimension ueber den 594er-
+    // Standard wachsen), tileAspect ist >=1 unabhaengig von der
+    // Ausrichtung. Bisher war MAX_CHIP_ASPECT eine feste Konstante (3.2) -
+    // eine quadratische Kachel bekam dieselbe erlaubte Elongation wie eine
+    // sehr breite/hohe. Jetzt richtet sich die erlaubte Elongation nach
+    // dem tatsaechlichen Kachel-Seitenverhaeltnis: quadratisch (~1) -> volle
+    // Rundung, stark gestreckte Kachel -> wie bisher bis zu 3.2.
+    const tileAspect = Math.max(VIEW_W / VIEW_H, VIEW_H / VIEW_W);
+    const MAX_CHIP_ASPECT = Math.max(1, Math.min(3.2, tileAspect));
+    // hhCeiling (siehe unten) deckelte hh bisher IMMER auf outerR*1.3, egal
+    // wie quadratisch die Kachel ist - bei vielen Geraeten waere die Pille
+    // dadurch trotz MAX_CHIP_ASPECT=1 nie wirklich rund geworden (hw haette
+    // den Deckel klar ueberschritten). Bei (fast) quadratischer Kachel darf
+    // die Pille deshalb bis auf hw selbst mitwachsen (= echter Kreis); je
+    // gestreckter die Kachel wird, desto mehr greift wieder der alte,
+    // knappe 1.3-fache Deckel (Dietmars fruehere Vorgabe "Pille muss klein
+    // bleiben" fuer breite/hohe Kacheln bleibt dort unveraendert bestehen).
+    const ROUND_ASPECT_MAX = 1.15; // bis hierhin zaehlt eine Kachel als "quadratisch genug"
+    const BLEND_ASPECT_MAX = 1.6;  // ab hier gilt wieder der alte, knappe Deckel
+    const roundness = Math.max(0, Math.min(1, (BLEND_ASPECT_MAX - tileAspect) / (BLEND_ASPECT_MAX - ROUND_ASPECT_MAX)));
     // Iterativ statt einmalig (25.09.2026, live gefunden: zwei Knoten
     // ueberlappten sich auf einer sehr breiten Kachel) - die Hoehen-
     // Anpassung (MAX_CHIP_ASPECT, "Tisch liegt unfoermig in der Mitte")
@@ -1364,7 +1386,10 @@ function computeLayout(n) {
       // breit die Pille ist - die Pille bleibt dadurch immer sichtbar
       // kleiner als bzw. hoechstens knapp groesser als ein Verbraucher-
       // Knoten, nicht mehr "ein Vielfaches davon".
-      const hhCeiling = outerR * 1.3;
+      // roundness (s.o.) blendet den Deckel zwischen dem alten knappen
+      // 1.3-fachen (gestreckte Kachel) und hw selbst (quadratische Kachel,
+      // "roundness"=1 -> hh darf bis zum echten Kreis mitwachsen).
+      const hhCeiling = outerR * 1.3 + (hw - outerR * 1.3) * roundness;
       if (hw / hh > MAX_CHIP_ASPECT && hh < hhCeiling) {
         hh = Math.min(hw / MAX_CHIP_ASPECT, hhCeiling);
       } else {
@@ -1485,6 +1510,31 @@ function layoutCenterChip(hw, hh, vertical) {
   if (centerName) {
     centerName.setAttribute('y', (33 * iconScale).toFixed(2));
     centerName.style.fontSize = (12.5 * iconScale).toFixed(2) + 'px';
+  }
+  // Glanzlicht/Spec-Highlight der Hauspille (26.09.2026, Dietmar: "das
+  // Glanzlicht muss selbstverstaendlich mitrotieren") - waren bisher
+  // komplettes statisches Markup (fixe r/translate/scale fuer
+  // DESIGN_R=56), skalierten also gar nicht mit der dynamischen
+  // Knotengroesse UND blieben bei Hochformat in der fuer eine waagrechte
+  // Pille berechneten Ausrichtung stehen (derselbe Fehlerpfad wie zuvor
+  // bei den Blitzboegen/dem Rueck-Badge). makeHighlight()/makeSpecular()
+  // (siehe dort) verwenden fuer Aussenknoten dieselben Verhaeltniszahlen
+  // relativ zum Knotenradius r - hier 1:1 uebernommen, r=hh (die
+  // orientierungsunabhaengige kurze/Kappen-Halbachse der Pille). Ein
+  // simples rotate(90) VOR translate/scale (wirkt als AEUSSERSTE, also
+  // zuletzt angewandte Transformation um denselben Ursprung wie die
+  // Blitzboegen-Gruppe) dreht Position UND Stauch-Achse in einem Schritt
+  // korrekt mit, ohne die Formel selbst verdoppeln zu muessen.
+  const rot90 = vertical ? 'rotate(90) ' : '';
+  const centerHighlight = document.querySelector('#node-center .node-highlight');
+  if (centerHighlight) {
+    centerHighlight.setAttribute('r', (hh * 0.72).toFixed(2));
+    centerHighlight.setAttribute('transform', rot90 + 'translate(' + (-hh * 0.30).toFixed(2) + ',' + (-hh * 0.48).toFixed(2) + ') scale(1,0.575)');
+  }
+  const centerSpec = document.querySelector('#node-center .node-spec');
+  if (centerSpec) {
+    centerSpec.setAttribute('r', (hh * 0.30).toFixed(2));
+    centerSpec.setAttribute('transform', rot90 + 'translate(' + (-hh * 0.44).toFixed(2) + ',' + (-hh * 0.55).toFixed(2) + ') scale(1,0.55)');
   }
   // Beide Aufrufer setzen den Aktiv-Zustand (applyNodeState) VOR dieser
   // Funktion - dort wurde die Pille also noch mit der ALTEN Form geprueft.
@@ -2733,6 +2783,10 @@ function applyNodeState(g, glow, color, magnitude, active, cx, cy, baseScale, hi
 
 function updateOuterNode(refs, item) {
   refs.__item = item; // fuer Aufschachteln/Auto-Vorfuehrung (Item am Knoten wiederfinden)
+  // Einmal fuer die ganze Funktion (26.09.2026, Fund beim Verschieben der
+  // Preis-Sparkline hierher) - vorher weiter unten deklariert, aber die
+  // Sparkline braucht sie bereits VOR dieser Stelle im Code.
+  const nodeIconScale = DESIGN_R / NODE_R_BASELINE;
   const w = item.value ?? 0;
   const magnitude = Math.abs(w);
   // "aktiv" (volle Farbe/Größe) darf auch ohne Leistung gelten, z.B.
@@ -2822,13 +2876,23 @@ function updateOuterNode(refs, item) {
     const prices = item.priceTrend.map(p => p.price);
     const lo = Math.min(...prices), hi = Math.max(...prices);
     const span = Math.max(0.01, hi - lo);
-    const w = 36, h = 12;
+    const w = 36 * nodeIconScale, h = 12 * nodeIconScale;
     const pts = item.priceTrend.map((p, i) => {
       const x = (i / (item.priceTrend.length - 1)) * w;
       const y = h - ((p.price - lo) / span) * h;
       return x.toFixed(1) + ',' + y.toFixed(1);
     }).join(' ');
     refs.priceSpark.setAttribute('points', pts);
+    // Position war fest auf translate(-18,50) verdrahtet (Erstellung in
+    // createOuterNode()) und wurde bei DESIGN_R-Aenderungen NIE erneut
+    // gesetzt - anders als Icon/Text blieb die "Welle" dadurch an ihrer
+    // urspruenglichen Stelle stehen, waehrend der Knoten selbst schrumpfte/
+    // wuchs, und driftete sichtbar vom Knotenrand weg (Dietmar am eigenen
+    // Screenshot: "die Welle am Netzknoten muss an die Geraete-Knoten-Kante
+    // gelegt werden"). Jetzt bei jeder Wertaktualisierung wie Icon/Text neu
+    // gesetzt, proportional zu nodeIconScale - bleibt damit immer an
+    // derselben relativen Stelle nahe dem unteren Knotenrand.
+    refs.priceSpark.setAttribute('transform', 'translate(' + (-18 * nodeIconScale).toFixed(2) + ',' + (50 * nodeIconScale).toFixed(2) + ')');
     refs.priceSpark.style.display = hidden ? 'none' : '';
   } else {
     refs.priceSpark.style.display = 'none';
@@ -2887,7 +2951,6 @@ function updateOuterNode(refs, item) {
   // y-Position aus createOuterNode() wieder mit dem festen Rohwert. Alle
   // y-Positionen UND Schriftgroessen jetzt proportional zu DESIGN_R/
   // NODE_R_BASELINE, wie beim Icon.
-  const nodeIconScale = DESIGN_R / NODE_R_BASELINE;
   const labelY = (hasVehicle ? 43 : 33) * nodeIconScale;
   const subY = (hasVehicle ? 28 : 45) * nodeIconScale;
   refs.labelText.setAttribute('class', hasVehicle ? 'node-device-name' : 'node-label');
