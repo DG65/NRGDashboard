@@ -253,7 +253,7 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Beliebig viele zusätzliche Verbraucher, die als eigene Kreise dargestellt werden - unabhängig davon, ob sie über ein Hub-Modul erkannt wurden. Nicht jeder Haushalt hat dieselben Geräte; die Art bestimmt das Icon, die Bezeichnung den Text unter dem Kreis (leer = Vorgabe der Art). Die letzten drei Spalten gelten nur für die Art „Wallbox“ und dürfen sonst leer bleiben - sie beschreiben, woran die Wallbox erkennt, dass ein Fahrzeug eingesteckt ist."
+          "caption": "Beliebig viele zusätzliche Verbraucher, die als eigene Kreise dargestellt werden - unabhängig davon, ob sie über ein Hub-Modul erkannt wurden. Nicht jeder Haushalt hat dieselben Geräte; die Art bestimmt das Icon, die Bezeichnung den Text unter dem Kreis (leer = Vorgabe der Art). Liefert die Leistungs-Variable Kilowatt statt Watt (z. B. manche Wallbox-Register), bei „Einheit“ Kilowatt wählen - Vorgabe Watt entspricht dem bisherigen Verhalten. Die letzten drei Spalten gelten nur für die Art „Wallbox“ und dürfen sonst leer bleiben - sie beschreiben, woran die Wallbox erkennt, dass ein Fahrzeug eingesteckt ist."
         },
         {
           "type": "List",
@@ -308,6 +308,19 @@
               "width": "240px",
               "add": 0,
               "edit": { "type": "SelectVariable" }
+            },
+            {
+              "caption": "Einheit",
+              "name": "Unit",
+              "width": "110px",
+              "add": "W",
+              "edit": {
+                "type": "Select",
+                "options": [
+                  { "caption": "Watt",     "value": "W" },
+                  { "caption": "Kilowatt", "value": "kW" }
+                ]
+              }
             },
             {
               "caption": "Nur Wallbox: Verbunden-Variable",

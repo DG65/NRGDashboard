@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.145-beta.1 (2026-09-27)
+
+- Tile: "Weitere Verbraucher" (frei gewählte Leistungs-Variable, z. B. für eine Wallbox ohne Hub-Modul) wurden bei einer Kilowatt-Variable fälschlich als Watt angezeigt - ein 7,4-kW-Wert erschien als "7,4 W" statt "7.400 W" (Forum-Fund somm: "kommt die Leistung in kW (Wallbox)"). Neue Spalte "Einheit" (Watt/Kilowatt, Vorgabe Watt = bisheriges Verhalten) in der Verbraucherliste - bei Kilowatt wird der gelesene Wert mit 1000 multipliziert, konsistent am Haupt-Leistungswert, am Gestern-Vergleichsring und am Tagesspitzenwert-Marker der Speiche. Nur "Weitere Verbraucher" betroffen; alle Hub-Vertragsquellen (MeterHub, ChargerHub, OCPPHub, ...) liefern ohnehin immer Watt und sind unverändert.
+
 ## 0.9.144-beta.1 (2026-09-27)
 
 - Tile: das neue EMS-Detailpanel (siehe 0.9.143-beta.1) wurde von den beiden Hilfs-Buttons ("?"-Tour-Neustart, "⠿"-Anordnen) verdeckt, die bewusst auf sehr hohem z-index liegen, damit sie immer klickbar bleiben - das Panel sass genau in deren Zeile (Dietmar am eigenen Screenshot: "Das Fragezeichen und der andere Button ueberdecken das EMS Panel"). z-index des Panels jetzt ueber dem der beiden Buttons, hat beim Oeffnen also Vorrang.

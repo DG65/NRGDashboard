@@ -1762,8 +1762,9 @@ class NRGDashboardTile extends IPSModule
             if (!empty($d['powerID'])) {
                 $yv = $this->GetYesterdayValue((int) $d['powerID']);
                 if ($yv !== null) {
-                    // Vorzeichen der eigenen Variable (MeterHub-Netz: + = Bezug)
-                    $d['yesterdayValue'] = $yv * (int) ($d['powerSign'] ?? 1);
+                    // Vorzeichen der eigenen Variable (MeterHub-Netz: + = Bezug),
+                    // powerScale wie in resolvePowerValue() (siehe dort).
+                    $d['yesterdayValue'] = $yv * (int) ($d['powerSign'] ?? 1) * (float) ($d['powerScale'] ?? 1.0);
                 }
             }
             return $d;
@@ -1819,11 +1820,14 @@ class NRGDashboardTile extends IPSModule
 
         // Peak-Marker auf der Speiche - je Geraet mit powerID, throttled.
         foreach ($devices as $i => $dd) {
-            $pid = (int) (!empty($dd['usingFallback']) ? ($dd['fallbackPowerID'] ?? 0) : ($dd['powerID'] ?? 0));
+            $usingFb = !empty($dd['usingFallback']);
+            $pid = (int) ($usingFb ? ($dd['fallbackPowerID'] ?? 0) : ($dd['powerID'] ?? 0));
             if ($pid > 0) {
                 $peak = $this->GetPeakTodayW($pid);
                 if ($peak !== null) {
-                    $devices[$i]['peakTodayW'] = $peak;
+                    // powerScale wie in resolvePowerValue() (siehe dort).
+                    $pScale = (float) ($usingFb ? ($dd['fallbackPowerScale'] ?? 1.0) : ($dd['powerScale'] ?? 1.0));
+                    $devices[$i]['peakTodayW'] = $peak * $pScale;
                 }
             }
         }
@@ -2146,6 +2150,11 @@ class NRGDashboardTile extends IPSModule
     {
         $id = (int) ($device['powerID'] ?? 0);
         $value = $id > 0 ? $this->resolveVariableValue($id) : null;
+        // powerScale (26.09.2026, Forum-Fund somm, siehe discoverManual-
+        // Consumers()) - nur bei frei gewaehlten "Weitere Verbraucher"-
+        // Variablen gesetzt, deren Einheit Kilowatt statt Watt ist. Alle
+        // Hub-Vertraege liefern bereits Watt, Vorgabe 1.0 aendert dort nichts.
+        $scale = (float) ($device['powerScale'] ?? 1.0);
 
         $fallbackId = (int) ($device['fallbackPowerID'] ?? 0);
         if ($fallbackId > 0 && $this->isStaleOrMissing($id, $value)) {
@@ -2153,10 +2162,11 @@ class NRGDashboardTile extends IPSModule
             if ($fbValue !== null) {
                 $device['measured'] = $device['fallbackMeasured'] ?? true;
                 $device['usingFallback'] = true;
-                return $fbValue * $this->activePowerSign($device);
+                $fbScale = (float) ($device['fallbackPowerScale'] ?? 1.0);
+                return $fbValue * $fbScale * $this->activePowerSign($device);
             }
         }
-        return $value === null ? null : $value * $this->activePowerSign($device);
+        return $value === null ? null : $value * $scale * $this->activePowerSign($device);
     }
 
     /**
@@ -4189,6 +4199,20 @@ class NRGDashboardTile extends IPSModule
                 'powerID'  => (int) $row['VariableID'],
                 'measured' => true,
             ];
+            // Einheit der Leistungs-Variable (26.09.2026, Forum-Fund somm:
+            // "kommt die Leistung in kW (Wallbox), Dashboard zeigt aber W") -
+            // Kernprinzip 1 verbietet manuell verknuepfte IDs, nicht aber eine
+            // manuell angegebene Einheit fuer eine SOLCHE ID: bei frei
+            // gewaehlten Verbrauchern kennt das Modul das Herkunftsprofil der
+            // Variable nicht (anders als bei den Hub-Vertraegen, die immer
+            // Watt liefern) - eine Rateloesung ueber das IPS-Variablenprofil
+            // waere bei generischen/eigenen Profilen unzuverlaessig. resolve-
+            // PowerValue() (und die Archiv-Lesungen GetYesterdayValue/
+            // GetPeakTodayW an den jeweiligen Aufrufstellen) wenden den
+            // Faktor an, Vorgabe "W" aendert nichts am bisherigen Verhalten.
+            if ((string) ($row['Unit'] ?? 'W') === 'kW') {
+                $entry['powerScale'] = 1000.0;
+            }
             if (!empty($row['PlugID'])) {
                 $entry['plugStateID'] = (int) $row['PlugID'];
                 $entry['plugOp']      = $row['PlugOp']  ?? 'truthy';
@@ -4212,7 +4236,7 @@ class NRGDashboardTile extends IPSModule
             // funktionierenden Steuer-Buttons, oder "vinID"/"rangeKmID" fuer
             // zusaetzliche Fahrzeug-Kennwerte. Bereits behandelte Felder
             // (Type/Name/VariableID/PlugID/PlugOp/PlugVal/SocID) ausnehmen.
-            $handled = ['Type', 'Name', 'VariableID', 'PlugID', 'PlugOp', 'PlugVal', 'SocID'];
+            $handled = ['Type', 'Name', 'VariableID', 'Unit', 'PlugID', 'PlugOp', 'PlugVal', 'SocID'];
             foreach ($row as $field => $val) {
                 if (in_array($field, $handled, true)) {
                     continue;
