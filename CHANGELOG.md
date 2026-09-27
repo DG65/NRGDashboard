@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.144-beta.1 (2026-09-27)
+
+- Tile: das neue EMS-Detailpanel (siehe 0.9.143-beta.1) wurde von den beiden Hilfs-Buttons ("?"-Tour-Neustart, "⠿"-Anordnen) verdeckt, die bewusst auf sehr hohem z-index liegen, damit sie immer klickbar bleiben - das Panel sass genau in deren Zeile (Dietmar am eigenen Screenshot: "Das Fragezeichen und der andere Button ueberdecken das EMS Panel"). z-index des Panels jetzt ueber dem der beiden Buttons, hat beim Oeffnen also Vorrang.
+- Lokal geprueft: 390×844 - Panel liegt vollstaendig sichtbar ueber beiden Buttons, "Quelle: ..."-Zeile nicht mehr verdeckt.
+
 ## 0.9.143-beta.1 (2026-09-27)
 
 - Tile: EMS-Begruendungszeile unten in der Kachel wurde auf schmalen/Hochformat-Kacheln sehr frueh abgeschnitten (feste Randabstaende left:200px/right:80px liessen dort kaum noch Platz, Dietmar am eigenen Screenshot: "wird beim Hochformat sehr frueh abgeschnitten ... etwas bauen um die ganze Aussage des EMS zu sehen"). Die Zeile ist jetzt antippbar/anklickbar und oeffnet ein kleines Panel mit dem vollstaendigen Text (Modus, Begruendung, Quelle) - unabhaengig von der verfuegbaren Breite immer komplett lesbar, statt nur ueber das auf Touch ohnehin unerreichbare title-Tooltip.

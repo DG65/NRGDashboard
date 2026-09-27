@@ -499,7 +499,13 @@
   #emsDecision .mode { font-weight: 700; white-space: nowrap; color: var(--textmuted); }
   #emsDecision .reason { opacity: .75; color: var(--textmuted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #emsDecisionPanel {
-    position: absolute; left: 4px; right: 4px; bottom: 34px; z-index: 5;
+    /* z-index 960 statt 5 (27.09.2026, Dietmar am eigenen Screenshot: "Das
+       Fragezeichen und der andere Button ueberdecken das EMS Panel") -
+       #tourRestartBtn/#arrangeBtn sitzen bewusst auf z-index:950, damit sie
+       IMMER klickbar bleiben; das Panel liegt bei bottom:34px genau in
+       deren Reihe (bottom:40px) und wurde dadurch verdeckt. Beim Oeffnen
+       soll der volle EMS-Text Vorrang vor den beiden Hilfs-Buttons haben. */
+    position: absolute; left: 4px; right: 4px; bottom: 34px; z-index: 960;
     display: none; max-width: 480px;
     padding: 10px 12px; border-radius: 12px;
     background: linear-gradient(180deg, rgba(60,64,72,0.96), rgba(28,30,36,0.96));
