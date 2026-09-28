@@ -2681,15 +2681,23 @@ class NRGDashboardTile extends IPSModule
         if ($id <= 0 || !IPS_VariableExists($id)) {
             return false;
         }
-        $value = GetValue($id);
-        $op = $d['plugOp'] ?? 'truthy';
+        // Denselben Rohwert-Vergleich (plus Profil-Assoziations-Rückweg) wie
+        // CondMet()/ValEqualsVar() nutzen (27.09.2026, Forum-Fund
+        // sirkentucky) - der vorherige direkte (string)-Vergleich hier hatte
+        // dieselbe Schwaeche: bei einer Integer-Variable mit Profil-
+        // Assoziationen (z.B. 0/1/2 mit Anzeigetext "Getrennt"/"Verbunden"/
+        // "Lädt") sieht der Nutzer nur den Anzeigetext und traegt genau den
+        // ein - ein Vergleich gegen den rohen Zahlenwert schlug dann immer
+        // fehl.
+        $op = (string) ($d['plugOp'] ?? 'truthy');
+        $val = (string) ($d['plugVal'] ?? '');
         if ($op === 'ne') {
-            return (string) $value !== (string) ($d['plugVal'] ?? '');
+            return !$this->CondMet($id, 'eq', $val);
         }
         if ($op === 'eq') {
-            return (string) $value === (string) ($d['plugVal'] ?? '');
+            return (bool) $this->CondMet($id, 'eq', $val);
         }
-        return !empty($value);
+        return $this->ValTruthy(GetValue($id));
     }
 
     /**
@@ -2795,14 +2803,60 @@ class NRGDashboardTile extends IPSModule
         }
         $v = GetValue($varID);
         switch ($op) {
-            case 'eq': return $this->ValEquals($v, $val);
-            case 'ne': return !$this->ValEquals($v, $val);
+            case 'eq': return $this->ValEqualsVar($varID, $v, $val);
+            case 'ne': return !$this->ValEqualsVar($varID, $v, $val);
             case 'gt': return $this->ValNum($v) > (float) $val;
             case 'ge': return $this->ValNum($v) >= (float) $val;
             case 'lt': return $this->ValNum($v) < (float) $val;
             case 'le': return $this->ValNum($v) <= (float) $val;
             default:   return $this->ValTruthy($v);
         }
+    }
+
+    /**
+     * ValEquals() plus Profil-Assoziations-Rückübersetzung (27.09.2026,
+     * Forum-Fund sirkentucky: "Verbunden"-Bedingung eingetragen, korrelierte
+     * trotzdem nie) - bei einer Integer-Variable mit Profil-Assoziationen
+     * (z.B. Wallbox-Status 0/1/2 mit Anzeigetext "Getrennt"/"Verbunden"/
+     * "Lädt") sieht der Nutzer in der Konsole nur den Anzeigetext und trägt
+     * genau den im "Vergleichswert"-Feld ein - GetValue() liefert aber den
+     * rohen Zahlenwert, ValEquals() verglich also z.B. 1 gegen "Verbunden"
+     * und schlug IMMER fehl, egal wie korrekt konfiguriert. Erst der reine
+     * Rohwert-Vergleich, bei Fehlschlag zusätzlich der Rückweg über die
+     * Profil-Assoziation (Anzeigetext -> zugehöriger Rohwert).
+     */
+    private function ValEqualsVar(int $varID, $v, string $val): bool
+    {
+        if ($this->ValEquals($v, $val)) {
+            return true;
+        }
+        $raw = $this->AssociationRawValue($varID, $val);
+        return $raw !== null && $this->ValEquals($v, $raw);
+    }
+
+    /**
+     * Sucht in den Profil-Assoziationen der Variable (eigenes oder
+     * Standard-Profil, siehe VariableSuffix()) einen Anzeigetext, der
+     * (ohne Beachtung von Groß-/Kleinschreibung) $label entspricht, und
+     * liefert dessen Rohwert als String zurück, sonst null.
+     */
+    private function AssociationRawValue(int $varID, string $label): ?string
+    {
+        $v = @IPS_GetVariable($varID);
+        if ($v === false) {
+            return null;
+        }
+        $profile = $v['VariableCustomProfile'] !== '' ? $v['VariableCustomProfile'] : $v['VariableProfile'];
+        if ($profile === '' || !IPS_VariableProfileExists($profile)) {
+            return null;
+        }
+        $assocs = IPS_GetVariableProfile($profile)['Associations'] ?? [];
+        foreach ($assocs as $assoc) {
+            if (strcasecmp(trim((string) ($assoc['Name'] ?? '')), trim($label)) === 0) {
+                return (string) $assoc['Value'];
+            }
+        }
+        return null;
     }
 
     private function ValEquals($v, $val): bool

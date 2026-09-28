@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.146-beta.1 (2026-09-28)
+
+- Tile: die "gleich Wert"/"ungleich Wert"-Bedingung für "Verbunden-Variable" (Wallbox-Fahrzeug-Zuordnung, "Weitere Verbraucher"-Steckererkennung) verglich immer nur den rohen Zahlenwert der Variable - bei einer Integer-Variable mit Profil-Assoziationen (z. B. Wallbox-Status 0/1/2 mit Anzeigetext "Getrennt"/"Verbunden"/"Lädt") sieht man in der Konsole aber nur den Anzeigetext und trägt genau den ins Vergleichswert-Feld ein. Der Vergleich schlug dadurch immer fehl, egal wie korrekt konfiguriert (Forum-Fund sirkentucky: Fahrzeug-Ladestand an der Wallbox blieb trotz vollständig ausgefülltem Formular leer). Vergleicht jetzt zusätzlich über die Profil-Assoziation zurück (Anzeigetext → zugehöriger Rohwert), falls der direkte Rohwert-Vergleich fehlschlägt. Betrifft die Fahrzeug-Zuordnung UND die "eingesteckt"-Erkennung bei "Weitere Verbraucher".
+- Lokal geprüft: Code-Review + Nachbau der Vergleichslogik (Integer-Wert 1 mit Profil-Assoziation "1"→"Verbunden", Vergleichswert-Feld "Verbunden" eingetragen) - Bedingung greift jetzt korrekt; reiner Rohwert-Vergleich (z. B. numerisch oder Bool) bleibt unverändert funktionsfähig.
+
 ## 0.9.145-beta.1 (2026-09-27)
 
 - Tile: "Weitere Verbraucher" (frei gewählte Leistungs-Variable, z. B. für eine Wallbox ohne Hub-Modul) wurden bei einer Kilowatt-Variable fälschlich als Watt angezeigt - ein 7,4-kW-Wert erschien als "7,4 W" statt "7.400 W" (Forum-Fund somm: "kommt die Leistung in kW (Wallbox)"). Neue Spalte "Einheit" (Watt/Kilowatt, Vorgabe Watt = bisheriges Verhalten) in der Verbraucherliste - bei Kilowatt wird der gelesene Wert mit 1000 multipliziert, konsistent am Haupt-Leistungswert, am Gestern-Vergleichsring und am Tagesspitzenwert-Marker der Speiche. Nur "Weitere Verbraucher" betroffen; alle Hub-Vertragsquellen (MeterHub, ChargerHub, OCPPHub, ...) liefern ohnehin immer Watt und sind unverändert.
