@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.147-beta.1 (2026-09-29)
+
+- HeatSchema: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil (Forum-Wunsch cbeham: "Eine Option 'Frischwasserstation' beim Puffer wäre noch Cool!"). Anders als der Kombispeicher (EIN Tank ersetzt Puffer+WW-Tank vollständig) bleibt der Puffer dabei ein ganz normaler, klassischer Puffer - nur ein externes Frischwassermodul bereitet Warmwasser im Durchlauf statt in einem eigenen Tank (üblicher Legionellen-/Hygienevorteil). Keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht; WW-Tank-Einstellungen werden bei dieser Speicherart automatisch ausgeblendet (analog Kombispeicher/Monoblock).
+- Lokal geprüft: alle drei Speicherarten (Klassisch, Kombispeicher, Frischwasserstation) im Test-Harness gerendert - kein Bruch der bestehenden zwei Varianten, neuer dritter Abgang/Beschriftung an der Frischwasserstation liegt oberhalb des bestehenden Puffer-Temperatur-Chips ohne Überlappung.
+
 ## 0.9.146-beta.1 (2026-09-28)
 
 - Tile: die "gleich Wert"/"ungleich Wert"-Bedingung für "Verbunden-Variable" (Wallbox-Fahrzeug-Zuordnung, "Weitere Verbraucher"-Steckererkennung) verglich immer nur den rohen Zahlenwert der Variable - bei einer Integer-Variable mit Profil-Assoziationen (z. B. Wallbox-Status 0/1/2 mit Anzeigetext "Getrennt"/"Verbunden"/"Lädt") sieht man in der Konsole aber nur den Anzeigetext und trägt genau den ins Vergleichswert-Feld ein. Der Vergleich schlug dadurch immer fehl, egal wie korrekt konfiguriert (Forum-Fund sirkentucky: Fahrzeug-Ladestand an der Wallbox blieb trotz vollständig ausgefülltem Formular leer). Vergleicht jetzt zusätzlich über die Profil-Assoziation zurück (Anzeigetext → zugehöriger Rohwert), falls der direkte Rohwert-Vergleich fehlschlägt. Betrifft die Fahrzeug-Zuordnung UND die "eingesteckt"-Erkennung bei "Weitere Verbraucher".

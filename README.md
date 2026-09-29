@@ -1567,6 +1567,15 @@ gleiche IPSView-Fähigkeit.
   Innengerät, Puffer/WW-Tank und Heizkreise bleiben dabei unverändert,
   weil die
   Hauptkreis-Temperaturen bereits quellenneutral sind.
+- **Frischwasserstation statt WW-Tank (`NRGDashboardHeatSchema`):** die
+  Speicherart hinter dem Doppelpfeil kennt neben „Klassisch“ und
+  „Kombispeicher“ jetzt auch „Frischwasserstation“ — anders als beim
+  Kombispeicher bleibt der Puffer dabei ein ganz normaler, klassischer
+  Puffer; ein externes Frischwassermodul bereitet Warmwasser im
+  Durchlauf statt in einem eigenen Tank (üblicher Hygienevorteil
+  gegenüber Legionellen). Das Schema zeichnet dafür nur einen
+  zusätzlichen dritten Abgang oben am Puffer, keine neuen Datenpunkte
+  nötig — der bestehende Puffer-Temperatursensor reicht.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

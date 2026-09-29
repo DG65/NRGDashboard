@@ -143,6 +143,9 @@ class NRGDashboardHeatSchema extends IPSModule
             'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
             'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
         ],
+        '0.9.147' => [
+            '✨ Neu: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil - der Puffer bleibt dabei ein ganz normaler, klassischer Puffer (anders als beim Kombispeicher), ein externes Frischwassermodul bereitet Warmwasser im Durchlauf statt in einem eigenen Tank. Keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht.',
+        ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
@@ -395,6 +398,18 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 0, 'Klassisch (Puffer / getrennter WW-Speicher)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 1, 'Kombispeicher (1 Tank, 3 Abgänge)', '', -1);
+        // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham im WPHub-
+        // Thread: "Eine Option 'Frischwasserstation' beim Puffer wäre noch
+        // Cool!") - anders als der Kombispeicher (EIN Tank ersetzt Puffer+
+        // WW-Tank) bleibt hier der Puffer ein ganz normaler, klassischer
+        // Puffer; zusaetzlich haengt ein externes Frischwassermodul (Platten-
+        // waermetauscher + Pumpe) am oberen Pufferanschluss und bereitet
+        // Warmwasser im Durchlauf statt in einem eigenen Speicher - deshalb
+        // hasDhwTank wie beim Kombispeicher erzwungen aus (siehe unten), aber
+        // OHNE die Kombispeicher-spezifische Tank-/Chip-Geometrie zu
+        // beeinflussen. Legionellen-/Hygienevorteil ist der uebliche Grund
+        // fuer diese Bauart.
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 2, 'Frischwasserstation (am Puffer, kein WW-Tank)', '', -1);
         $storageTypeIsNew = @IPS_GetObjectIDByIdent('StorageType', $this->InstanceID) === false;
         $this->RegisterVariableInteger('StorageType', 'Speicherart', 'NRGDASHHEAT.StorageType', 61);
         $this->EnableAction('StorageType');
@@ -840,13 +855,16 @@ class NRGDashboardHeatSchema extends IPSModule
      * WW-Tank in den Einstellmoeglichkeiten verschwinden"). Seit 24.09.2026
      * zusaetzlich bei StorageType=Kombispeicher ausgeblendet - der eine
      * Kombispeicher-Tank ERSETZT den getrennten WW-Tank, der Schalter waere
-     * dann wirkungslos (siehe hasDhwTank in buildBasePayload()).
+     * dann wirkungslos (siehe hasDhwTank in buildBasePayload()). Seit
+     * 29.09.2026 ebenso bei StorageType=Frischwasserstation - die bereitet
+     * Warmwasser im Durchlauf statt in einem eigenen Speicher, derselbe
+     * Grund wie beim Kombispeicher.
      */
     private function ApplyDhwVisibility(): void
     {
         $monoblock = ((int) $this->GetValue('Bauart')) === 1;
-        $combiTank = ((int) $this->GetValue('StorageType')) === 1;
-        $hide = $monoblock || $combiTank;
+        $storageType = (int) $this->GetValue('StorageType');
+        $hide = $monoblock || $storageType === 1 || $storageType === 2;
         foreach (['HasDhwTank', 'DhwLiters'] as $ident) {
             $id = @IPS_GetObjectIDByIdent($ident, $this->InstanceID);
             if ($id !== false) {
@@ -1366,6 +1384,11 @@ class NRGDashboardHeatSchema extends IPSModule
             // Puffer-Zweig.
             'storageType' => (int) $this->GetValue('StorageType'),
             'hasCombiTank' => ((int) $this->GetValue('StorageType')) === 1,
+            // Frischwasserstation (29.09.2026) - normaler Puffer bleibt
+            // unangetastet (siehe hasBuffer unten), zusaetzlich zeichnet das
+            // Frontend nur den dritten Abgang/das Modul am oberen
+            // Pufferanschluss (siehe hasFreshWaterStation dort).
+            'hasFreshWaterStation' => ((int) $this->GetValue('StorageType')) === 2,
             // Kombispeicher-Temperaturen (24.09.2026) - EIN Tank fuer die
             // ganze Anlage statt je Waermepumpen-Einheit, deshalb hier auf
             // Payload-Ebene statt in der Pro-Einheit-Schleife (dort stehen
@@ -1377,7 +1400,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'comboReturnTemp' => $this->numTemp($this->readIntProperty('ComboReturnTempID', 0)),
             'hasBuffer'   => (bool) $this->GetValue('HasBuffer'),
             'bufferLiters' => (int) $this->GetValue('BufferLiters'),
-            'hasDhwTank'  => ((int) $this->GetValue('StorageType')) === 1 ? false : (bool) $this->GetValue('HasDhwTank'),
+            'hasDhwTank'  => in_array((int) $this->GetValue('StorageType'), [1, 2], true) ? false : (bool) $this->GetValue('HasDhwTank'),
             'dhwLiters'   => (int) $this->GetValue('DhwLiters'),
             'renderedAt'  => time(),
             'units'       => $units,

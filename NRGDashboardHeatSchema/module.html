@@ -896,6 +896,13 @@ function buildSchema(unit) {
   // fuer Warmwasser + ΔT-Chip nach dem etablierten Muster von INNEN_PUF_CX).
   var hasCombiTank = !!cfg.hasCombiTank;
   if (hasCombiTank) { hasBuffer = true; }
+  // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham) - anders als der
+  // Kombispeicher bleibt der Puffer hier ein ganz normaler, klassischer
+  // Puffer (hasBuffer unveraendert, keine Sonderbehandlung der Fuelltemperatur/
+  // Beschriftung); es kommt nur ein zusaetzlicher dritter Abgang oben dazu
+  // (siehe unten, gleiches Muster wie hasCombiTanks Warmwasser-Stutzen, nur
+  // ohne dessen Info-Chip-Block).
+  var hasFreshWaterStation = !!cfg.hasFreshWaterStation;
   // Bei Monoblock gibt es niemals ein Innengeraet - und damit auch nie
   // einen integrierten WW-Tank oder die Sanitaerseite (Dietmar,
   // 17.08.2026: "Bei Monoblock gibt es niemals ein Innengeraet ...
@@ -2035,6 +2042,28 @@ function buildSchema(unit) {
       if (pufFillTemp !== null && pufFillTemp !== undefined) {
         svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), 'Wärmespeicher'));
       }
+    } else if (hasFreshWaterStation) {
+      // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham) - derselbe
+      // dritte Abgang oben wie beim Kombispeicher (Stutzen + Pfeil-
+      // Beschriftung), aber OHNE dessen Info-Chip-Block: der Puffer bleibt
+      // ein ganz normaler klassischer Puffer mit seinem eigenen Temperatur-
+      // Chip (siehe oben, !hasCombiTank-Zweig) - hier kommt nur die
+      // zusaetzliche Entnahmestelle fuers externe Frischwassermodul dazu,
+      // kein eigener Tank und keine eigenen Messpunkte dafuer.
+      // Muss oberhalb des klassischen Puffer-Temperatur-Chips enden (siehe
+      // !hasCombiTank-Zweig oben, chip() bei PUF_TOP-20 mit Pillenhoehe 19,
+      // reicht also bis PUF_TOP-29.5) - beim Kombispeicher gab es diesen
+      // Chip gar nicht erst (siehe dortiger Zweig), hier bleibt er
+      // bestehen, der Stutzen muss also klar darueber enden statt direkt
+      // daneben (24.09.2026-Muster mit -22 haette hier ueberlappt).
+      // Kuerzerer Text als beim Kombispeicher ("→ Frischwasser" statt
+      // "→ Frischwasserstation") - bei PUF_CX zentriert, sonst reicht der
+      // laengere Text seitlich in die therm.-Leistung-Chipspalte hinein.
+      var friwaStubTopY = PUF_TOP - 46;
+      svg.appendChild(pipe('M' + PUF_CX + ',' + PUF_TOP + ' L' + PUF_CX + ',' + friwaStubTopY, 'pipe-hot', false));
+      var friwaTag = el('text', { x: PUF_CX, y: friwaStubTopY - 4, class: 'tag' });
+      friwaTag.textContent = '→ Frischwasser';
+      svg.appendChild(friwaTag);
     }
 
     // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet, oben bei
