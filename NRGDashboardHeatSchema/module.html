@@ -1991,7 +1991,15 @@ function buildSchema(unit) {
     });
     // Beschriftung AUSSERHALB des Puffers statt auf der Speicherflaeche -
     // die Wendel fuellt die Flaeche jetzt aus (Dietmar, 14.08.2026).
-    var pufTag = el('text', { x: PUF_CX, y: PUF_TOP + PUF_H + 14, class: 'tag' });
+    // Bei Frischwasserstation steht die Beschriftung OBEN zwischen Puffer
+    // und Temperatur-Chip statt unten (29.09.2026, Dietmar: "Wie wäre es,
+    // wenn Du Puffer 100 l zwischen den Puffer und die Temperaturpille
+    // oben schreiben würdest?" - deutlich einfacher als die vorherige
+    // Ausweich-Leitungsfuehrung um die untere Beschriftung herum, die er
+    // zu Recht als "Fantasie an der falschen Stelle" bezeichnet hat: die
+    // Leitungen unten laufen jetzt wieder ganz gerade, siehe dort).
+    var pufTagY = hasFreshWaterStation ? (PUF_TOP - 2) : (PUF_TOP + PUF_H + 14);
+    var pufTag = el('text', { x: PUF_CX, y: pufTagY, class: 'tag' });
     pufTag.textContent = (hasCombiTank ? 'Kombispeicher ' : 'Puffer ') + bufferLiters + ' l';
     svg.appendChild(pufTag);
     // Beim Kombispeicher entfaellt der einzelne Temperatur-Chip ueber dem
@@ -2080,27 +2088,14 @@ function buildSchema(unit) {
       // Beschriftung (PUF_BOTTOM+14) lassen, plus etwas Luft.
       var fwY = PUF_BOTTOM + 40;
       var fwSupplyX = PUF_CX - 14, fwReturnX = PUF_CX + 14;
-      // Dritter Anlauf (29.09.2026, Dietmar am eigenen Live-Screenshot):
-      // die beiden geraden Leitungen liefen direkt durch die "Puffer XXX
-      // l"-Beschriftung (PUF_BOTTOM+14) hindurch - jetzt weichen sie in
-      // genau diesem Hoehenband seitlich aus (Ausweich-x weiter als die
-      // laengstmoegliche Beschriftung breit ist), statt gerade durch.
-      var fwTagClearTop = PUF_BOTTOM + 5, fwTagClearBottom = PUF_BOTTOM + 24;
-      var fwDodgeL = fwCX - 58, fwDodgeR = fwCX + 58;
-      svg.appendChild(pipe(
-        'M' + fwSupplyX + ',' + PUF_BOTTOM +
-        ' L' + fwSupplyX + ',' + fwTagClearTop +
-        ' L' + fwDodgeL + ',' + fwTagClearTop +
-        ' L' + fwDodgeL + ',' + fwTagClearBottom +
-        ' L' + fwSupplyX + ',' + fwTagClearBottom +
-        ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
-      svg.appendChild(pipe(
-        'M' + fwReturnX + ',' + fwY +
-        ' L' + fwReturnX + ',' + fwTagClearBottom +
-        ' L' + fwDodgeR + ',' + fwTagClearBottom +
-        ' L' + fwDodgeR + ',' + fwTagClearTop +
-        ' L' + fwReturnX + ',' + fwTagClearTop +
-        ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
+      // Vierter Anlauf (29.09.2026, Dietmar: die Ausweich-Leitungsfuehrung
+      // um die "Puffer XXX l"-Beschriftung herum war "Fantasie an der
+      // falschen Stelle") - seine viel einfachere Loesung: die
+      // Beschriftung wandert stattdessen OBEN zwischen Puffer und
+      // Temperatur-Chip (siehe pufTagY oben), unten bleibt dadurch
+      // wieder Platz fuer ganz simple, gerade Leitungen.
+      svg.appendChild(pipe('M' + fwSupplyX + ',' + PUF_BOTTOM + ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
+      svg.appendChild(pipe('M' + fwReturnX + ',' + fwY + ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
       // Gehaeuse (gleicher Stil wie Aussen-/Innengeraet).
       svg.appendChild(el('rect', { x: fwX, y: fwY, width: fwW, height: fwH, rx: 3, fill: PAL.surface, stroke: PAL.draw, 'stroke-width': 1.5 }));
       // Plattenwaermetauscher-Symbol (Kupferfarbe wie im Referenzbild) -

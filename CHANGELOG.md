@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.152-beta.1 (2026-09-29)
+
+- HeatSchema: die Ausweich-Leitungsführung um die "Puffer XXX l"-Beschriftung herum (0.9.151-beta.1) durch Dietmars viel einfacheren Vorschlag ersetzt: die Beschriftung steht bei Frischwasserstation jetzt OBEN zwischen Puffer und Temperatur-Chip statt unten - die beiden Anschlussleitungen zur Frischwasserstation laufen dadurch wieder ganz gerade, ohne Ausweichbogen.
+- Lokal geprüft: 100 l / 300 l / 1500 l - Beschriftung sitzt lesbar zwischen Chip und Puffer-Oberkante, Leitungen gerade, keine Überlappungen; Klassisch/Kombispeicher unverändert (Beschriftung bleibt dort unten).
+
 ## 0.9.151-beta.1 (2026-09-29)
 
 - HeatSchema: drei Feinheiten an der Frischwasserstation-Darstellung nach Dietmars Live-Screenshot behoben. (1) Die beiden geraden Anschlussleitungen liefen direkt durch die "Puffer XXX l"-Beschriftung unter dem Tank - weichen jetzt in genau diesem Höhenband seitlich aus. (2) Kaltwasser-/Warmwasser-Anschluss saß nahe der unteren, abgerundeten Gehäuseecke und "schnitt" dadurch sichtbar die Kante - sitzt jetzt auf halber Gehäusehöhe, wo die Leitung sauber senkrecht auf die gerade Seitenwand trifft. (3) Die Beschriftung "Frischwasserstation" steht jetzt unter dem Gehäuse statt darüber, analog zum "Puffer XXX l"-Tag unter dem Puffer selbst.
