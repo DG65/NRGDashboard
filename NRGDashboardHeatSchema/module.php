@@ -144,7 +144,7 @@ class NRGDashboardHeatSchema extends IPSModule
             'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
         ],
         '0.9.147' => [
-            '✨ Neu: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil - der Puffer bleibt dabei ein ganz normaler, klassischer Puffer (anders als beim Kombispeicher), ein externes Frischwassermodul bereitet Warmwasser im Durchlauf statt in einem eigenen Tank. Keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht.',
+            '✨ Neu: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil - der Puffer bleibt dabei ein ganz normaler, klassischer Puffer (anders als beim Kombispeicher), ein externes Frischwassermodul mit Plattenwärmetauscher bereitet Warmwasser im Durchlauf statt in einem eigenen Tank. Wird als eigenes Bauteil neben dem Puffer gezeichnet (Puffervorlauf/-rücklauf + Kaltwasser/Warmwasser-Anschluss), keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht.',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';

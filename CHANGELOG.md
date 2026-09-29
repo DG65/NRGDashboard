@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.149-beta.1 (2026-09-29)
+
+- HeatSchema: Frischwasserstation (0.9.147-beta.1) bildete den Aufbau bisher nur als einzelnen Pfeil-Stutzen am Puffer ab - Dietmar hat ein Referenzbild geschickt ("So sieht ein Pufferspeicher mit Frischwasserstation aus"): ein Plattenwärmetauscher hängt als eigenes Bauteil AUSSEN am Puffer, mit zwei eigenen Anschlüssen (Puffervorlauf rein, Pufferrücklauf zurück) sowie einer eigenständigen Sekundärseite (Kaltwasser rein, Warmwasser raus). Jetzt als eigenes Gehäuse neben dem Puffer gezeichnet (gleicher Stil wie Außen-/Innengerät), mit Kupfer-Symbol für die Platten, zwei Anschlussleitungen zum Puffer und den beiden Sekundär-Stutzen.
+- Lokal geprüft: 100 l/300 l/1500 l Puffergrößen (Anschlusspunkte skalieren korrekt mit der Puffer-Höhe statt fester Pixelwerte) - dabei eine echte Kollision gefunden und behoben: die erste Leitungsführung lief waagrecht mitten durch das Innengerät-Gehäuse und dessen Pumpen-Kennzahlen-Zeile, jetzt führt die Leitung erst senkrecht am Puffer entlang bis klar unterhalb beider, dann erst waagrecht zum neuen Bauteil.
+
 ## 0.9.148-beta.1 (2026-09-29)
 
 - Tile: Quoten-Detailpanel zeigt die Batterie-Spalte (Laden/Entladen) jetzt nur noch, wenn die Anlage tatsächlich eine Batterie hat - bei einer Anlage ohne Speicher (z. B. Solarpark) stand dort bisher in jeder Zeile nur "Laden: –"/"Entladen: –" (Dietmar am eigenen Screenshot: "Wenn es keine Batterien gibt, dann sollte im Quoten Detail auch keine Batterie ausgewiesen werden"). Erkennung anhand der tatsächlichen Geräteerkennung (mindestens ein battery-Knoten), nicht anhand der Quoten-Werte selbst, die je Zeitraum asynchron nachladen und dabei kurzzeitig noch leer wären.

@@ -1573,8 +1573,9 @@ gleiche IPSView-Fähigkeit.
   Kombispeicher bleibt der Puffer dabei ein ganz normaler, klassischer
   Puffer; ein externes Frischwassermodul bereitet Warmwasser im
   Durchlauf statt in einem eigenen Tank (üblicher Hygienevorteil
-  gegenüber Legionellen). Das Schema zeichnet dafür nur einen
-  zusätzlichen dritten Abgang oben am Puffer, keine neuen Datenpunkte
+  gegenüber Legionellen). Das Schema zeichnet dafür ein eigenes Bauteil
+  neben dem Puffer (Plattenwärmetauscher mit Puffervorlauf/-rücklauf
+  sowie Kaltwasser-/Warmwasser-Anschluss), keine neuen Datenpunkte
   nötig — der bestehende Puffer-Temperatursensor reicht.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
