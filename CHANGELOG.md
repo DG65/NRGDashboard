@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.150-beta.1 (2026-09-29)
+
+- HeatSchema: Frischwasserstation zieht jetzt unterhalb des Pufferspeichers um, statt seitlich neben dem Innengerät zu hängen (Dietmar am eigenen Live-Screenshot: die erste Platzierung überdeckte die Pumpen-Kennzahlen-Zeile des Innengeräts, weil das im Test-Payload gefehlt hatte - live mit echten Werten kam die Kollision zum Vorschein; zusätzlich "Leitungsführung am Pufferspeicher ist auch nicht gerade toll"). Die beiden Anschlussleitungen (Puffervorlauf/-rücklauf) verlaufen jetzt als einfache, kurze Geraden direkt vom Pufferboden zum darunter stehenden Bauteil - keine Umwege mehr um das Innengerät herum. Der dafür nötige Platz wird über den bestehenden Höhen-Deckelungsmechanismus des Puffers reserviert (pufBottomMax), sonst hätte der Puffer bei fehlendem WW-Tank selbst bis dorthin wachsen können.
+- Lokal geprüft: 100 l / 300 l / 1500 l Puffergrößen mit vollständigem Payload (inkl. Pumpen-Drehzahl-Zeile, die die ursprüngliche Kollision ausgelöst hatte) - keine Überlappung mehr, unabhängig von der Zeilenzahl des Innengeräts.
+
 ## 0.9.149-beta.1 (2026-09-29)
 
 - HeatSchema: Frischwasserstation (0.9.147-beta.1) bildete den Aufbau bisher nur als einzelnen Pfeil-Stutzen am Puffer ab - Dietmar hat ein Referenzbild geschickt ("So sieht ein Pufferspeicher mit Frischwasserstation aus"): ein Plattenwärmetauscher hängt als eigenes Bauteil AUSSEN am Puffer, mit zwei eigenen Anschlüssen (Puffervorlauf rein, Pufferrücklauf zurück) sowie einer eigenständigen Sekundärseite (Kaltwasser rein, Warmwasser raus). Jetzt als eigenes Gehäuse neben dem Puffer gezeichnet (gleicher Stil wie Außen-/Innengerät), mit Kupfer-Symbol für die Platten, zwei Anschlussleitungen zum Puffer und den beiden Sekundär-Stutzen.

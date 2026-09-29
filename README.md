@@ -1574,9 +1574,10 @@ gleiche IPSView-Fähigkeit.
   Puffer; ein externes Frischwassermodul bereitet Warmwasser im
   Durchlauf statt in einem eigenen Tank (üblicher Hygienevorteil
   gegenüber Legionellen). Das Schema zeichnet dafür ein eigenes Bauteil
-  neben dem Puffer (Plattenwärmetauscher mit Puffervorlauf/-rücklauf
-  sowie Kaltwasser-/Warmwasser-Anschluss), keine neuen Datenpunkte
-  nötig — der bestehende Puffer-Temperatursensor reicht.
+  unterhalb des Puffers (Plattenwärmetauscher mit Puffervorlauf/-rücklauf
+  direkt zum Pufferboden sowie Kaltwasser-/Warmwasser-Anschluss), keine
+  neuen Datenpunkte nötig — der bestehende Puffer-Temperatursensor
+  reicht.
 - **Isolierter Demo-Modus (`NRGDashboardTile`):** das Häkchen
   „Isolierter Demo-Modus“ schaltet jede automatische Geräte-Erkennung
   ab — Netz/PV/Batterie/Haus kommen dann ausschließlich aus den

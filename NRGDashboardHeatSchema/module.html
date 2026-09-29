@@ -1785,7 +1785,14 @@ function buildSchema(unit) {
   // echten Abstand (Dietmar, 17.08.2026: "Der Temperatur Chip kollidiert
   // nun mit dem Betriebsmodus Chip. Du musst den Puffer etwa 30 px
   // kleiner machen und das wäre dann die maximal Größe!").
-  var pufTopMin = 90, pufBottomMax = hasDhwTank ? 235 : 440;
+  // pufBottomMax bei Frischwasserstation zusaetzlich gedeckelt (29.09.2026,
+  // Dietmar am eigenen Screenshot: die Beschriftung unterhalb des
+  // Innengeraets wurde ueberdeckt) - die Frischwasserstation zieht jetzt
+  // UNTERHALB des Puffers um (siehe hasFreshWaterStation-Zweig weiter
+  // unten), braucht dafuer aber reservierten Platz, den der Puffer sonst
+  // bei fehlendem WW-Tank (hasDhwTank=false) komplett fuer sich beanspruchen
+  // wuerde.
+  var pufTopMin = 90, pufBottomMax = hasDhwTank ? 235 : (hasFreshWaterStation ? 330 : 440);
   // STRIKT symmetrisch um PUF_CENTER_Y (Dietmar, 17.08.2026 zur
   // Rueckfrage bestaetigt: "die Wendel [liegt] weiterhin/immer in der
   // Mitte des Puffers") - ein frueherer Zwischenstand liess bei
@@ -2046,48 +2053,35 @@ function buildSchema(unit) {
       // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham, per
       // Referenzbild "Aufbau einer Frischwasserstation" praezisiert: ein
       // Plattenwaermetauscher HAENGT AUSSEN am Puffer, mit zwei eigenen
-      // Anschluessen - Puffervorlauf (heiss, oben am Puffer) rein,
-      // Pufferruecklauf (abgekuehlt) zurueck zum Puffer - plus einer
-      // eigenstaendigen Sekundaerseite (Kaltwasser rein, Warmwasser raus).
-      // Der urspruengliche erste Entwurf (nur ein einzelner Stutzen-Pfeil
-      // "→ Frischwasser") bildete das nicht nach - jetzt ein eigenes
-      // Bauteil, das denselben Gehaeuse-Stil wie Aussen-/Innengeraet nutzt
+      // Anschluessen - Puffervorlauf (heiss) rein, Pufferruecklauf
+      // (abgekuehlt) zurueck zum Puffer - plus einer eigenstaendigen
+      // Sekundaerseite (Kaltwasser rein, Warmwasser raus). Eigenes
+      // Bauteil im selben Gehaeuse-Stil wie Aussen-/Innengeraet
       // (PAL.surface/PAL.draw, siehe outdoorUnit()).
       //
-      // Platzierung: der Puffer bleibt ein normaler Puffer (kein eigener
-      // Tank fuer diese Speicherart), hasDhwTank ist aber erzwungen aus
-      // (siehe hasDhwTank oben) - der gesamte Platz, den sonst WW-Tank +
-      // Dusche/Badewanne einnehmen wuerden (x≈300-430, y≈220-400), ist bei
-      // dieser Speicherart komplett frei und bietet genug Raum fuer ein
-      // eigenes Bauteil, ohne mit dem Sekundaerkreis-Anschluss des Puffers
-      // (PUF_RIGHT bei y=142/192, siehe Kommentar dort) zu kollidieren -
-      // beide neuen Anschluesse liegen bewusst UNTERHALB von y=192.
-      // fwY=280 statt urspruenglich 232 (live-korrigiert): das Innengeraet
-      // selbst reicht bis y=225, seine eigene Pumpen-Kennzahlen-Zeile
-      // ("Pumpe .../min") liegt NOCH TIEFER bei y≈250-260 - der erste
-      // Entwurf kollidierte damit direkt.
-      var fwW = 62, fwH = 74;
-      var fwX = 300, fwY = 280;
-      var fwCX = fwX + fwW / 2;
-      // Anschlusspunkt am Puffer: PUF_LEFT, knapp unterhalb des
-      // bestehenden Ruecklauf-Anschlusses (y=192) - derselbe senkrechte
-      // Wandbereich, den auch die klassische Ruecklaufleitung nutzt, aber
-      // deutlich tiefer, damit sich beide Leitungen nicht beruehren.
-      // Live-korrigiert: die Leitung darf NICHT direkt waagrecht auf
-      // Pufferhoehe (y=208/222) zurueck zum Gehaeuse laufen - dieser
-      // Bereich (x zwischen Innengeraet und Puffer) liegt noch INNERHALB
-      // der Innengeraet-Box (bis x=400/y=225) bzw. seiner Pumpen-Kennzahlen-
-      // Zeile (y≈250) und lief mitten hindurch. Erst SENKRECHT am Puffer
-      // entlang bis klar unterhalb beider (y=262/268), danach erst
-      // waagrecht durch den freien Korridor zum Gehaeuse.
-      // Relativ zu PUF_BOTTOM statt fester Zahlen (Fund beim Test: die
-      // Puffer-Hoehe skaliert mit der Literzahl - bei einem kleineren
-      // Puffer waeren feste y=208/222 unterhalb des tatsaechlichen
-      // Tankbodens gelandet, also ausserhalb der Tankwand).
-      var fwPufY1 = PUF_BOTTOM - 21, fwPufY2 = PUF_BOTTOM - 7;
-      var fwClearY1 = 262, fwClearY2 = 268;
-      svg.appendChild(pipe('M' + PUF_LEFT + ',' + fwPufY1 + ' L' + PUF_LEFT + ',' + fwClearY1 + ' L' + (fwCX - 9) + ',' + fwClearY1 + ' L' + (fwCX - 9) + ',' + fwY, 'pipe-hot', false));
-      svg.appendChild(pipe('M' + (fwCX + 9) + ',' + fwY + ' L' + (fwCX + 9) + ',' + fwClearY2 + ' L' + PUF_LEFT + ',' + fwClearY2 + ' L' + PUF_LEFT + ',' + fwPufY2, 'pipe-cold', false));
+      // Zweiter Anlauf (29.09.2026, Dietmar am eigenen Live-Screenshot:
+      // "wird einiges an Beschriftung unterhalb des Innengerätes
+      // überdeckt ... Leitungsführung am Pufferspeicher ist auch nicht
+      // gerade toll ... stelle die Frischwasserstation unterhalb des
+      // Pufferspeichers ab und verbinde die Zuleitungen mit den
+      // Abgängen des Pufferspeichers") - der erste Entwurf (seitlich
+      // neben dem Innengeraet, Leitung zur Pufferwand) kollidierte live
+      // mit dessen Pumpen-Kennzahlen-Zeile, die im Test-Payload gefehlt
+      // hatte. Jetzt STATTDESSEN direkt UNTER dem Puffer, an dessen
+      // eigenen Boden-Abgaengen angeschlossen - weit weg vom
+      // Innengeraet, keine Abhaengigkeit mehr von dessen (variabler)
+      // Zeilenzahl. Der dafuer noetige Platz wird ueber pufBottomMax
+      // reserviert (siehe dort), sonst wuerde der Puffer bei fehlendem
+      // WW-Tank selbst bis dorthin wachsen.
+      var fwW = 66, fwH = 60;
+      var fwCX = PUF_CX;
+      var fwX = fwCX - fwW / 2;
+      // 40px unter dem Puffer-Boden Platz fuer die "Puffer XXX l"-
+      // Beschriftung (PUF_BOTTOM+14) lassen, plus etwas Luft.
+      var fwY = PUF_BOTTOM + 40;
+      var fwSupplyX = PUF_CX - 14, fwReturnX = PUF_CX + 14;
+      svg.appendChild(pipe('M' + fwSupplyX + ',' + PUF_BOTTOM + ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
+      svg.appendChild(pipe('M' + fwReturnX + ',' + fwY + ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
       // Gehaeuse (gleicher Stil wie Aussen-/Innengeraet).
       svg.appendChild(el('rect', { x: fwX, y: fwY, width: fwW, height: fwH, rx: 3, fill: PAL.surface, stroke: PAL.draw, 'stroke-width': 1.5 }));
       // Plattenwaermetauscher-Symbol (Kupferfarbe wie im Referenzbild) -
