@@ -2009,7 +2009,14 @@ function buildSchema(unit) {
     // Info-Liste unterhalb des Tanks (gleiche Praesentation wie WW
     // oben/unten/Ruecklauf statt einer optisch abweichenden Sonderstellung).
     if (!hasCombiTank && pufFillTemp !== null && pufFillTemp !== undefined) {
-      svg.appendChild(chip(PUF_CX, PUF_TOP - 20, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), null));
+      // Bei Frischwasserstation ruetscht der Chip 6px weiter nach oben
+      // (29.09.2026, Dietmar: "zwischen der Temperaturpille ... und der
+      // Pufferbeschriftung sollte mehr Platz sein") - die Beschriftung
+      // sitzt dort (siehe pufTagY oben) direkt ueber dem Puffer, vorher
+      // blieben nur ~8,5px Luft zum Chip, jetzt die ueblichen ~14px wie
+      // sonst zwischen Chip und Tag in diesem Schema.
+      var pufChipY = hasFreshWaterStation ? (PUF_TOP - 26) : (PUF_TOP - 20);
+      svg.appendChild(chip(PUF_CX, pufChipY, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), null));
     }
 
     // Dritter Abgang oben: Warmwasser (24.09.2026, Forum-Wunsch Christian
@@ -2112,15 +2119,27 @@ function buildSchema(unit) {
       // vorher nahe der unteren Gehaeusekante, dort "schnitten" Leitung und
       // Beschriftung sichtbar die abgerundete Ecke). Auf halber Hoehe trifft
       // die Leitung sauber senkrecht auf die gerade Seitenwand.
+      // Laengere Stutzen (20 -> 38px) und die Beschriftung zweizeilig
+      // (29.09.2026, Dietmar: "Kaltwasser ... etwas weiter links beginnen
+      // ... auch trennen in Kalt/Wasser" bzw. "Warmwasser ... weiter nach
+      // rechts ... trennen in Warm/Wasser") - je zwei Zeilen um denselben
+      // Anschlusspunkt zentriert, Pfeil auf der Zeile naeher am Gehaeuse.
       var fwSecY = fwY + fwH / 2;
-      svg.appendChild(pipe('M' + (fwX - 20) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
-      var fwColdTag = el('text', { x: fwX - 24, y: fwSecY + 4, class: 'tag', 'text-anchor': 'end' });
-      fwColdTag.textContent = 'Kaltwasser →';
-      svg.appendChild(fwColdTag);
-      svg.appendChild(pipe('M' + (fwX + fwW) + ',' + fwSecY + ' L' + (fwX + fwW + 20) + ',' + fwSecY, 'pipe-hot', false));
-      var fwWarmTag = el('text', { x: fwX + fwW + 24, y: fwSecY + 4, class: 'tag' });
-      fwWarmTag.textContent = '→ Warmwasser';
-      svg.appendChild(fwWarmTag);
+      var fwStubLen = 38;
+      svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
+      var fwColdTag1 = el('text', { x: fwX - fwStubLen - 4, y: fwSecY - 5, class: 'tag', 'text-anchor': 'end' });
+      fwColdTag1.textContent = 'Kalt';
+      svg.appendChild(fwColdTag1);
+      var fwColdTag2 = el('text', { x: fwX - fwStubLen - 4, y: fwSecY + 9, class: 'tag', 'text-anchor': 'end' });
+      fwColdTag2.textContent = 'Wasser →';
+      svg.appendChild(fwColdTag2);
+      svg.appendChild(pipe('M' + (fwX + fwW) + ',' + fwSecY + ' L' + (fwX + fwW + fwStubLen) + ',' + fwSecY, 'pipe-hot', false));
+      var fwWarmTag1 = el('text', { x: fwX + fwW + fwStubLen + 4, y: fwSecY - 5, class: 'tag' });
+      fwWarmTag1.textContent = '→ Warm';
+      svg.appendChild(fwWarmTag1);
+      var fwWarmTag2 = el('text', { x: fwX + fwW + fwStubLen + 4, y: fwSecY + 9, class: 'tag' });
+      fwWarmTag2.textContent = 'Wasser';
+      svg.appendChild(fwWarmTag2);
       // Beschriftung UNTER dem Gehaeuse statt darueber (29.09.2026, Dietmar:
       // "Frischwasserstation dann eher unter die Frischwasserstation
       // schreiben") - analog dem "Puffer XXX l"-Tag unter dem Puffer selbst.
