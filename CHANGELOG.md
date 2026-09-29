@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.154-beta.1 (2026-09-29)
+
+- HeatSchema: vier weitere Feinheiten an der Frischwasserstation. "Puffer XXX l" steht jetzt mittig zwischen Temperatur-Chip und Puffer-Oberkante statt am Tankrand zu kleben. Die rechte (Rücklauf-)Leitung beginnt jetzt oben am Puffer statt unten - führt außen an der rechten Pufferwand vorbei, dicht an der Sekundärkreis-Chip-Anzeige entlang, ohne sie zu berühren. "Kalt/Wasser" ist jetzt linksbündig und beginnt am äußeren Leitungsstummel, "Warm/Wasser" rechtsbündig und schließt am äußeren Leitungsstummel ab (vorher jeweils umgekehrt, am Gehäuse orientiert).
+- Lokal geprüft: 100 l / 300 l / 1500 l - Beschriftung mittig, Leitung mit knappem, aber sauberem Abstand zum Chip, Textausrichtung wie gewünscht; Klassisch/Kombispeicher unverändert.
+
 ## 0.9.153-beta.1 (2026-09-29)
 
 - HeatSchema: weitere Feinheiten an der Frischwasserstation. Mehr Abstand zwischen Temperatur-Chip und "Puffer XXX l"-Beschriftung über dem Puffer (Dietmar: "sollte mehr Platz sein"). Die Kaltwasser-/Warmwasser-Stutzen sind länger (weiter links/rechts vom Gehäuse) und die Beschriftung steht jetzt zweizeilig ("Kalt"/"Wasser →" bzw. "→ Warm"/"Wasser") statt in einem langen Wort.

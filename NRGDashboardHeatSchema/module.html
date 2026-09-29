@@ -1998,7 +1998,12 @@ function buildSchema(unit) {
     // Ausweich-Leitungsfuehrung um die untere Beschriftung herum, die er
     // zu Recht als "Fantasie an der falschen Stelle" bezeichnet hat: die
     // Leitungen unten laufen jetzt wieder ganz gerade, siehe dort).
-    var pufTagY = hasFreshWaterStation ? (PUF_TOP - 2) : (PUF_TOP + PUF_H + 14);
+    // Bei Frischwasserstation mittig zwischen Chip-Unterkante (chip() bei
+    // PUF_TOP-26, Pillenhoehe 19 -> Unterkante PUF_TOP-16,5, siehe
+    // pufChipY weiter unten) und Puffer-Oberkante (29.09.2026, Dietmar:
+    // "sollte in der Mitte zwischen der Temperaturpille und dem Puffer
+    // stehen" statt direkt am Tankrand zu kleben).
+    var pufTagY = hasFreshWaterStation ? (PUF_TOP - 8) : (PUF_TOP + PUF_H + 14);
     var pufTag = el('text', { x: PUF_CX, y: pufTagY, class: 'tag' });
     pufTag.textContent = (hasCombiTank ? 'Kombispeicher ' : 'Puffer ') + bufferLiters + ' l';
     svg.appendChild(pufTag);
@@ -2102,7 +2107,27 @@ function buildSchema(unit) {
       // Temperatur-Chip (siehe pufTagY oben), unten bleibt dadurch
       // wieder Platz fuer ganz simple, gerade Leitungen.
       svg.appendChild(pipe('M' + fwSupplyX + ',' + PUF_BOTTOM + ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
-      svg.appendChild(pipe('M' + fwReturnX + ',' + fwY + ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
+      // Fuenfter Anlauf (29.09.2026, Dietmar: "Die rechte vertikale
+      // Leitung muss oben am Speicher beginnen") - Puffervorlauf kommt
+      // vom OBEREN Pufferanschluss (heisseste Schicht), nicht mehr vom
+      // Boden. Fuehrt aussen an der rechten Pufferwand vorbei (jenseits
+      // von PUF_RIGHT) nach unten, um weder durch die Tankgrafik noch
+      // durch die Wendel zu laufen - kreuzt dabei die Sekundaerkreis-
+      // Anschluesse bei y=142/192 (siehe PUF_RIGHT-Kommentar oben), was
+      // in einem Hydraulikschema eine normale, unverbundene Kreuzung ist.
+      // fwOutsideX=PUF_RIGHT+4 statt +10 (live-korrigiert): der
+      // Sekundaerkreis-Chip bei y=142 (siehe PUF_RIGHT-Kommentar) beginnt
+      // nur ~16px rechts von PUF_RIGHT - bei +10 blieben nur ~4px Luft
+      // zur 5 Einheiten breiten Leitung, sah wie eine Beruehrung aus.
+      // Jog-Start bei PUF_TOP+3 statt exakt PUF_TOP, um die abgerundete
+      // Tankecke (rx) nicht anzuschneiden.
+      var fwOutsideX = PUF_RIGHT + 4, fwOutsideY = fwY - 10;
+      svg.appendChild(pipe(
+        'M' + fwReturnX + ',' + (PUF_TOP + 3) +
+        ' L' + fwOutsideX + ',' + (PUF_TOP + 3) +
+        ' L' + fwOutsideX + ',' + fwOutsideY +
+        ' L' + fwReturnX + ',' + fwOutsideY +
+        ' L' + fwReturnX + ',' + fwY, 'pipe-cold', false));
       // Gehaeuse (gleicher Stil wie Aussen-/Innengeraet).
       svg.appendChild(el('rect', { x: fwX, y: fwY, width: fwW, height: fwH, rx: 3, fill: PAL.surface, stroke: PAL.draw, 'stroke-width': 1.5 }));
       // Plattenwaermetauscher-Symbol (Kupferfarbe wie im Referenzbild) -
@@ -2126,18 +2151,24 @@ function buildSchema(unit) {
       // Anschlusspunkt zentriert, Pfeil auf der Zeile naeher am Gehaeuse.
       var fwSecY = fwY + fwH / 2;
       var fwStubLen = 38;
+      // Ausrichtung (29.09.2026, Dietmar: "Kalt/Wasser linksbuendig, mit
+      // dem Leitungsstummel beginnend" / "Warm/Wasser rechtsbuendig,
+      // buendig mit dem Rohrstummel auf der rechten Seite abschliessend")
+      // - beide Zeilenpaare jetzt am AEUSSEREN Stutzenende ausgerichtet
+      // (Kalt/Wasser startet dort nach rechts lesend, Warm/Wasser endet
+      // dort von links kommend), statt am gehaeusenahen Ende.
       svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
-      var fwColdTag1 = el('text', { x: fwX - fwStubLen - 4, y: fwSecY - 5, class: 'tag', 'text-anchor': 'end' });
+      var fwColdTag1 = el('text', { x: fwX - fwStubLen, y: fwSecY - 5, class: 'tag', 'text-anchor': 'start' });
       fwColdTag1.textContent = 'Kalt';
       svg.appendChild(fwColdTag1);
-      var fwColdTag2 = el('text', { x: fwX - fwStubLen - 4, y: fwSecY + 9, class: 'tag', 'text-anchor': 'end' });
+      var fwColdTag2 = el('text', { x: fwX - fwStubLen, y: fwSecY + 9, class: 'tag', 'text-anchor': 'start' });
       fwColdTag2.textContent = 'Wasser →';
       svg.appendChild(fwColdTag2);
       svg.appendChild(pipe('M' + (fwX + fwW) + ',' + fwSecY + ' L' + (fwX + fwW + fwStubLen) + ',' + fwSecY, 'pipe-hot', false));
-      var fwWarmTag1 = el('text', { x: fwX + fwW + fwStubLen + 4, y: fwSecY - 5, class: 'tag' });
+      var fwWarmTag1 = el('text', { x: fwX + fwW + fwStubLen, y: fwSecY - 5, class: 'tag', 'text-anchor': 'end' });
       fwWarmTag1.textContent = '→ Warm';
       svg.appendChild(fwWarmTag1);
-      var fwWarmTag2 = el('text', { x: fwX + fwW + fwStubLen + 4, y: fwSecY + 9, class: 'tag' });
+      var fwWarmTag2 = el('text', { x: fwX + fwW + fwStubLen, y: fwSecY + 9, class: 'tag', 'text-anchor': 'end' });
       fwWarmTag2.textContent = 'Wasser';
       svg.appendChild(fwWarmTag2);
       // Beschriftung UNTER dem Gehaeuse statt darueber (29.09.2026, Dietmar:
