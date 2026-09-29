@@ -2080,8 +2080,27 @@ function buildSchema(unit) {
       // Beschriftung (PUF_BOTTOM+14) lassen, plus etwas Luft.
       var fwY = PUF_BOTTOM + 40;
       var fwSupplyX = PUF_CX - 14, fwReturnX = PUF_CX + 14;
-      svg.appendChild(pipe('M' + fwSupplyX + ',' + PUF_BOTTOM + ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
-      svg.appendChild(pipe('M' + fwReturnX + ',' + fwY + ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
+      // Dritter Anlauf (29.09.2026, Dietmar am eigenen Live-Screenshot):
+      // die beiden geraden Leitungen liefen direkt durch die "Puffer XXX
+      // l"-Beschriftung (PUF_BOTTOM+14) hindurch - jetzt weichen sie in
+      // genau diesem Hoehenband seitlich aus (Ausweich-x weiter als die
+      // laengstmoegliche Beschriftung breit ist), statt gerade durch.
+      var fwTagClearTop = PUF_BOTTOM + 5, fwTagClearBottom = PUF_BOTTOM + 24;
+      var fwDodgeL = fwCX - 58, fwDodgeR = fwCX + 58;
+      svg.appendChild(pipe(
+        'M' + fwSupplyX + ',' + PUF_BOTTOM +
+        ' L' + fwSupplyX + ',' + fwTagClearTop +
+        ' L' + fwDodgeL + ',' + fwTagClearTop +
+        ' L' + fwDodgeL + ',' + fwTagClearBottom +
+        ' L' + fwSupplyX + ',' + fwTagClearBottom +
+        ' L' + fwSupplyX + ',' + fwY, 'pipe-hot', false));
+      svg.appendChild(pipe(
+        'M' + fwReturnX + ',' + fwY +
+        ' L' + fwReturnX + ',' + fwTagClearBottom +
+        ' L' + fwDodgeR + ',' + fwTagClearBottom +
+        ' L' + fwDodgeR + ',' + fwTagClearTop +
+        ' L' + fwReturnX + ',' + fwTagClearTop +
+        ' L' + fwReturnX + ',' + PUF_BOTTOM, 'pipe-cold', false));
       // Gehaeuse (gleicher Stil wie Aussen-/Innengeraet).
       svg.appendChild(el('rect', { x: fwX, y: fwY, width: fwW, height: fwH, rx: 3, fill: PAL.surface, stroke: PAL.draw, 'stroke-width': 1.5 }));
       // Plattenwaermetauscher-Symbol (Kupferfarbe wie im Referenzbild) -
@@ -2093,14 +2112,12 @@ function buildSchema(unit) {
         var fwLamX = fwPlateX + (fwPlateW / 4) * fwLam;
         svg.appendChild(el('line', { x1: fwLamX, y1: fwPlateY, x2: fwLamX, y2: fwPlateY + fwPlateH, stroke: '#8a5228', 'stroke-width': 1 }));
       }
-      var fwTag = el('text', { x: fwCX, y: fwY - 6, class: 'tag' });
-      fwTag.textContent = 'Frischwasserstation';
-      svg.appendChild(fwTag);
-      // Sekundaerseite: Kaltwasser rein (links unten), Warmwasser raus
-      // (rechts unten) - kurze Stutzen mit Pfeil-Beschriftung, analog dem
-      // "→ Warmwasser"-Muster beim Kombispeicher, nur waagrecht statt
-      // senkrecht, weil unten am Gehaeuse kein Platz nach oben bleibt.
-      var fwSecY = fwY + fwH - 14;
+      // Sekundaerseite: Kaltwasser rein (links), Warmwasser raus (rechts) -
+      // auf halber Gehaeusehoehe angeschlossen (29.09.2026, live-korrigiert:
+      // vorher nahe der unteren Gehaeusekante, dort "schnitten" Leitung und
+      // Beschriftung sichtbar die abgerundete Ecke). Auf halber Hoehe trifft
+      // die Leitung sauber senkrecht auf die gerade Seitenwand.
+      var fwSecY = fwY + fwH / 2;
       svg.appendChild(pipe('M' + (fwX - 20) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
       var fwColdTag = el('text', { x: fwX - 24, y: fwSecY + 4, class: 'tag', 'text-anchor': 'end' });
       fwColdTag.textContent = 'Kaltwasser →';
@@ -2109,6 +2126,12 @@ function buildSchema(unit) {
       var fwWarmTag = el('text', { x: fwX + fwW + 24, y: fwSecY + 4, class: 'tag' });
       fwWarmTag.textContent = '→ Warmwasser';
       svg.appendChild(fwWarmTag);
+      // Beschriftung UNTER dem Gehaeuse statt darueber (29.09.2026, Dietmar:
+      // "Frischwasserstation dann eher unter die Frischwasserstation
+      // schreiben") - analog dem "Puffer XXX l"-Tag unter dem Puffer selbst.
+      var fwTag = el('text', { x: fwCX, y: fwY + fwH + 14, class: 'tag' });
+      fwTag.textContent = 'Frischwasserstation';
+      svg.appendChild(fwTag);
     }
 
     // Wendel fuer die PRIMAERSEITE: Zulauf (heiss vom Innengeraet, oben bei

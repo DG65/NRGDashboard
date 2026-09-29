@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.151-beta.1 (2026-09-29)
+
+- HeatSchema: drei Feinheiten an der Frischwasserstation-Darstellung nach Dietmars Live-Screenshot behoben. (1) Die beiden geraden Anschlussleitungen liefen direkt durch die "Puffer XXX l"-Beschriftung unter dem Tank - weichen jetzt in genau diesem Höhenband seitlich aus. (2) Kaltwasser-/Warmwasser-Anschluss saß nahe der unteren, abgerundeten Gehäuseecke und "schnitt" dadurch sichtbar die Kante - sitzt jetzt auf halber Gehäusehöhe, wo die Leitung sauber senkrecht auf die gerade Seitenwand trifft. (3) Die Beschriftung "Frischwasserstation" steht jetzt unter dem Gehäuse statt darüber, analog zum "Puffer XXX l"-Tag unter dem Puffer selbst.
+- Lokal geprüft: 100 l / 300 l / 1500 l mit vollständigem Payload - keine Überlappungen mehr an allen drei Stellen.
+
 ## 0.9.150-beta.1 (2026-09-29)
 
 - HeatSchema: Frischwasserstation zieht jetzt unterhalb des Pufferspeichers um, statt seitlich neben dem Innengerät zu hängen (Dietmar am eigenen Live-Screenshot: die erste Platzierung überdeckte die Pumpen-Kennzahlen-Zeile des Innengeräts, weil das im Test-Payload gefehlt hatte - live mit echten Werten kam die Kollision zum Vorschein; zusätzlich "Leitungsführung am Pufferspeicher ist auch nicht gerade toll"). Die beiden Anschlussleitungen (Puffervorlauf/-rücklauf) verlaufen jetzt als einfache, kurze Geraden direkt vom Pufferboden zum darunter stehenden Bauteil - keine Umwege mehr um das Innengerät herum. Der dafür nötige Platz wird über den bestehenden Höhen-Deckelungsmechanismus des Puffers reserviert (pufBottomMax), sonst hätte der Puffer bei fehlendem WW-Tank selbst bis dorthin wachsen können.
