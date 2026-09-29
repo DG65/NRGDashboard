@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.148-beta.1 (2026-09-29)
+
+- Tile: Quoten-Detailpanel zeigt die Batterie-Spalte (Laden/Entladen) jetzt nur noch, wenn die Anlage tatsächlich eine Batterie hat - bei einer Anlage ohne Speicher (z. B. Solarpark) stand dort bisher in jeder Zeile nur "Laden: –"/"Entladen: –" (Dietmar am eigenen Screenshot: "Wenn es keine Batterien gibt, dann sollte im Quoten Detail auch keine Batterie ausgewiesen werden"). Erkennung anhand der tatsächlichen Geräteerkennung (mindestens ein battery-Knoten), nicht anhand der Quoten-Werte selbst, die je Zeitraum asynchron nachladen und dabei kurzzeitig noch leer wären.
+- Lokal geprüft: Payload ohne Batterie-Gerät - Spalte samt Kopfzeile vollständig ausgeblendet; Payload mit Batterie-Gerät - unverändert wie zuvor sichtbar.
+
 ## 0.9.147-beta.1 (2026-09-29)
 
 - HeatSchema: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil (Forum-Wunsch cbeham: "Eine Option 'Frischwasserstation' beim Puffer wäre noch Cool!"). Anders als der Kombispeicher (EIN Tank ersetzt Puffer+WW-Tank vollständig) bleibt der Puffer dabei ein ganz normaler, klassischer Puffer - nur ein externes Frischwassermodul bereitet Warmwasser im Durchlauf statt in einem eigenen Tank (üblicher Legionellen-/Hygienevorteil). Keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht; WW-Tank-Einstellungen werden bei dieser Speicherart automatisch ausgeblendet (analog Kombispeicher/Monoblock).

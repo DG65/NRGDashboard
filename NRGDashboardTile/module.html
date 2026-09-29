@@ -866,7 +866,7 @@
          qEnergyCellHtml() statt quotaCellHtml()). PV-Ertrag und Hausver-
          brauch stehen bereits als qSub UNTER den beiden Quoten-Zellen -
          keine dritte Redundanz noetig, nur Netz und Batterie fehlten. -->
-    <thead><tr><th></th><th>Autarkiegrad</th><th>Eigenverbrauch</th><th>Netz</th><th>Batterie</th></tr></thead>
+    <thead><tr><th></th><th>Autarkiegrad</th><th>Eigenverbrauch</th><th>Netz</th><th id="qBatteryHead">Batterie</th></tr></thead>
     <tbody id="quotaTableBody"></tbody>
   </table>
   </div>
@@ -4119,6 +4119,15 @@ async function autoTourStep() {
 setInterval(() => { autoTourStep(); }, 3000);
 
 let lastRawPayload = null; // fuer erneutes Rendern bei Kachel-Resize (updateViewBox())
+// Anlage OHNE Batterie (27.09.2026, Dietmar am eigenen Screenshot,
+// Solarpark: "Wenn es keine Batterien gibt, dann sollte im Quoten Detail
+// auch keine Batterie ausgewiesen werden") - die Spalte zeigte bei jeder
+// Anlage ohne Speicher nur Gedankenstriche ("Laden: –"/"Entladen: –"),
+// weil der Server dort mangels Batterie-Geraet nichts liefert. Aus der
+// tatsaechlichen Geraeteerkennung (nicht aus den Quoten-Werten selbst,
+// die je nach Zeitraum asynchron nachladen und dabei kurzzeitig noch
+// leer waeren) abgeleitet, siehe handleMessage().
+let HAS_BATTERY = false;
 
 function updateViewBox() {
   const svgEl = document.getElementById('svg');
@@ -4287,6 +4296,7 @@ function handleMessage(raw) {
   // einem nicht gruppierten pv-/battery-Knoten, nicht nur Solarparks.
   const pvSumW = devices.filter(x => x.function === 'pv').reduce((s, x) => s + (x.value || 0), 0);
   const hasPv = devices.some(x => x.function === 'pv');
+  HAS_BATTERY = devices.some(x => x.function === 'battery');
   // Primaerer Netzknoten (11.09.2026, Backend collapseToSingleGrid/
   // primaryGridDevice) statt "erster grid-Eintrag" - bei zwei Netzzaehlern
   // rechnete die Bilanz sonst mit dem verzoegerten Abrechnungszaehler (0 W).
@@ -4456,19 +4466,24 @@ function qEnergyCellHtml(val1, label1, val2, label2) {
 function renderQuotaTable() {
   var body = document.getElementById('quotaTableBody');
   var anyMissingSource = false;
+  // Batterie-Spalte komplett weglassen statt nur Gedankenstriche zu zeigen,
+  // wenn die Anlage gar keine Batterie hat (siehe HAS_BATTERY-Kommentar
+  // oben) - Kopf UND jede Zeile gemeinsam, sonst verrutschen die Spalten.
+  var headBattery = document.getElementById('qBatteryHead');
+  if (headBattery) { headBattery.style.display = HAS_BATTERY ? '' : 'none'; }
   body.innerHTML = QUOTA_PERIODS.map(function (p) {
     var data = quotaCache[p];
     var rowLabel = '<td class="qPeriodLbl">' + QUOTA_PERIOD_LABEL[p] + '</td>';
     if (!data) {
       return '<tr>' + rowLabel + '<td class="qCell qLoading">Lädt …</td><td class="qCell qLoading">Lädt …</td>'
-        + '<td class="qCell qLoading">Lädt …</td><td class="qCell qLoading">Lädt …</td></tr>';
+        + '<td class="qCell qLoading">Lädt …</td>' + (HAS_BATTERY ? '<td class="qCell qLoading">Lädt …</td>' : '') + '</tr>';
     }
     if (data.autarky === null || data.selfConsumption === null) { anyMissingSource = true; }
     return '<tr>' + rowLabel
       + quotaCellHtml('#43a047', data.autarky, data.houseKWh, 'Verbrauch')
       + quotaCellHtml('#1e88e5', data.selfConsumption, data.pvKWh, 'PV')
       + qEnergyCellHtml(data.gridImportKWh, 'Bezug', data.gridExportKWh, 'Einspeisung')
-      + qEnergyCellHtml(data.batteryChargeKWh, 'Laden', data.batteryDischargeKWh, 'Entladen')
+      + (HAS_BATTERY ? qEnergyCellHtml(data.batteryChargeKWh, 'Laden', data.batteryDischargeKWh, 'Entladen') : '')
       + '</tr>';
   }).join('');
   document.querySelector('#quotaPanel .qFoot').style.display = anyMissingSource ? 'none' : '';
