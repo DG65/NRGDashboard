@@ -984,7 +984,19 @@ function buildSchema(unit) {
   // Nutzer gesetzte Hintergrundfarbe (Property ColorBackground) wird
   // weiterhin auf <body> angewandt.
 
-  var running = (unit.compressorFreq || 0) > 0;
+  // running: bevorzugt aus der gemessenen Verdichterfrequenz (feinste
+  // verfuegbare Granularitaet, siehe HeishaMon). Manche Quellen melden
+  // aber GAR KEINE Frequenz - WPHub liefert compressorFreqID weder fuer
+  // Panasonic noch Vaillant (kein Hz-Feld in deren Cloud-APIs), das
+  // Dashboard zeigte dadurch dauerhaft "Standby" ohne Animation, obwohl
+  // die Anlage lief (cbeham, Forum, 01.10.2026: Heizkreise meldeten
+  // HEATING_ACTIVE, Schema zeigte trotzdem Standby). Fallback deshalb
+  // auf den herstellerneutralen VERBUND-Enum operatingModeNorm, wenn der
+  // tatsaechlich etwas ueber den Betriebszustand aussagt (nicht -1/
+  // unbekannt) - 0=standby, 1/2/3/4/5 = irgendeine Form von aktiv.
+  var normModeEarly = unit.operatingModeNorm;
+  var running = (unit.compressorFreq || 0) > 0 ||
+    (normModeEarly !== null && normModeEarly !== undefined && normModeEarly !== -1 && normModeEarly !== 0);
   var toDhw = unit.threeWayValve === 1;
   var toRoom = unit.threeWayValve === 0 || unit.threeWayValve === null;
   var HOT = '#e0503c', COLD = '#4a90d9', COOLRET = '#7d9dc4';

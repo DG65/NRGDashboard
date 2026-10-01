@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.155-beta.1 (2026-10-01)
+
+- HeatSchema: Fix für dauerhaft falsch angezeigten "Standby" ohne Pumpen-/Verdichter-Animation bei WPHub-Quellen (Panasonic UND Vaillant via WPHub). Ursache: `running` wurde ausschließlich aus der gemessenen Verdichterfrequenz (`compressorFreq`) abgeleitet, die WPHub für keinen der beiden Hersteller liefert (kein Hz-Feld in deren Cloud-APIs) - das Schema zeigte dadurch immer Standby, selbst wenn die Anlage tatsächlich heizte. Fallback jetzt auf den herstellerneutralen Verbund-Enum `operatingModeNorm`, wenn der tatsächlich etwas über den Betriebszustand aussagt. Gefunden über cbeham im Forum ("Aber ich dachte es gibt eine Animation wenn die Heizung läuft?"), dessen Vaillant-Heizkreise laut Rohdaten `HEATING_ACTIVE` meldeten, das Schema aber trotzdem Standby zeigte.
+
 ## 0.9.154-beta.1 (2026-09-29)
 
 - HeatSchema: vier weitere Feinheiten an der Frischwasserstation. "Puffer XXX l" steht jetzt mittig zwischen Temperatur-Chip und Puffer-Oberkante statt am Tankrand zu kleben. Die rechte (Rücklauf-)Leitung beginnt jetzt oben am Puffer statt unten - führt außen an der rechten Pufferwand vorbei, dicht an der Sekundärkreis-Chip-Anzeige entlang, ohne sie zu berühren. "Kalt/Wasser" ist jetzt linksbündig und beginnt am äußeren Leitungsstummel, "Warm/Wasser" rechtsbündig und schließt am äußeren Leitungsstummel ab (vorher jeweils umgekehrt, am Gehäuse orientiert).
