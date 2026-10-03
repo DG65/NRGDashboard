@@ -4242,18 +4242,25 @@ function handleMessage(raw) {
     // EMS-Begruendung (03.09.2026) - rein lesend, kein eigener Automatismus.
     const emsBadge = document.getElementById('emsDecision');
     if (d.emsDecision && d.emsDecision.mode) {
+      // Nur Beschriftung: unbekannte Werte (neue EMS-Quellen) erscheinen roh.
+      const emsSourceNames = {
+        netzbetreiber: 'Netzbetreiber', tibber: 'Tibber', stromgedacht: 'StromGedacht',
+        tagesplan: 'Tagesplan', nutzer: 'Nutzer', ems: 'EMS', smartcharging: 'Smart Charging'
+      };
+      const emsSourceLabel = Object.prototype.hasOwnProperty.call(emsSourceNames, d.emsDecision.source)
+        ? emsSourceNames[d.emsDecision.source] : d.emsDecision.source;
       emsBadge.querySelector('.mode').textContent = d.emsDecision.mode;
       emsBadge.querySelector('.reason').textContent = d.emsDecision.reason || '';
       emsBadge.title = 'EMS: ' + d.emsDecision.mode
         + (d.emsDecision.reason ? ' – ' + d.emsDecision.reason : '')
-        + (d.emsDecision.source ? ' (Quelle: ' + d.emsDecision.source + ')' : '');
+        + (emsSourceLabel ? ' (Quelle: ' + emsSourceLabel + ')' : '');
       emsBadge.classList.add('show');
       // Volltext fuers Klick-Panel (siehe CSS-Kommentar bei #emsDecision) -
       // dasselbe title schon vorhanden, aber per Tooltip auf Touch (Symcon
       // App/Tablet) ohnehin unerreichbar.
       document.getElementById('emsPanelMode').textContent = d.emsDecision.mode;
       document.getElementById('emsPanelReason').textContent = d.emsDecision.reason || '';
-      document.getElementById('emsPanelSource').textContent = d.emsDecision.source ? 'Quelle: ' + d.emsDecision.source : '';
+      document.getElementById('emsPanelSource').textContent = emsSourceLabel ? 'Quelle: ' + emsSourceLabel : '';
     } else {
       emsBadge.classList.remove('show');
       document.getElementById('emsDecisionPanel').classList.remove('open');
