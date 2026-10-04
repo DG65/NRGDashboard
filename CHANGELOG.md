@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.158-beta.1 (2026-10-04)
+
+- HeatSchema: Frischwasserstation bei zwei Heizkreisen ohne Überschneidung. Mit zweitem Heizkreis laufen dessen senkrechte Leitungen rechts am Gehäuse vorbei und kreuzten den Warmwasser-Stummel samt Beschriftung "→ Warm / Wasser" (Forum cbeham, Vaillant mit zwei Heizkreisen; reproduziert und ausgemessen: Leitungen bei x=620 und x=645 durch das Label bei x=611 bis 651). Jetzt liegen in diesem Fall beide Stummel links (Kaltwasser oben, Warmwasser unten), und die Beschriftung "Frischwasserstation" sitzt 12 px weiter links, damit sie nicht mehr an der Rücklauf-Leitung von Heizkreis 2 klebt (vorher 0,5 px Abstand, jetzt 12,5 px). Mit einem Heizkreis bleibt alles unverändert, nachgemessen.
+
 ## 0.9.157-beta.1 (2026-10-04)
 
 - HeatSchema: Das Anlagenschema wird jetzt auch gezeichnet, wenn die Wärmepumpe nur die Vorlauftemperatur eines Heizkreises liefert. Bisher verlangte das Dashboard dafür Pumpendurchfluss, Pumpendrehzahl oder Vor-/Rücklauf des Hauptkreises, sonst erschien nur die Karte "Keine Anlagenschema-Daten ... nur Basiswerte". Anlass: Forum (froema, Vaillant VRC720 mit einem Heizkreis ohne Puffer): Vaillants Antwort enthält dort kein `system_flow_temperature`, WPHub liefert daher nur `z1WaterTempID` (Heizkreis-1-Vorlauf), und das Schema blieb leer. Am Test mit genau diesen Daten gezeichnet (Standby, Warmwasser, Heizkreis-Vorlauf). Auswirkung auf andere Quellen: jede Wärmepumpe, die Heizkreis-Vorlauf meldet, bekommt jetzt das Schema statt der Basiskarte.

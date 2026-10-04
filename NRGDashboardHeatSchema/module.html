@@ -2169,6 +2169,27 @@ function buildSchema(unit) {
       // - beide Zeilenpaare jetzt am AEUSSEREN Stutzenende ausgerichtet
       // (Kalt/Wasser startet dort nach rechts lesend, Warm/Wasser endet
       // dort von links kommend), statt am gehaeusenahen Ende.
+      // Mit zweitem Heizkreis laufen dessen senkrechte Leitungen (x=620/645)
+      // rechts am Gehaeuse vorbei und kreuzten den Warmwasser-Stummel samt
+      // Beschriftung (Forum cbeham, 03.10.2026; Dietmar: "Variante A").
+      // Dann liegen beide Stummel links: Kaltwasser oben, Warmwasser unten.
+      var fwColdY = fwY + 15, fwWarmY = fwY + 45;
+      if (z2Active) {
+        svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwColdY + ' L' + fwX + ',' + fwColdY, 'pipe-cold', false));
+        var fwColdTagA1 = el('text', { x: fwX - fwStubLen, y: fwColdY - 5, class: 'tag', 'text-anchor': 'start' });
+        fwColdTagA1.textContent = 'Kalt';
+        svg.appendChild(fwColdTagA1);
+        var fwColdTagA2 = el('text', { x: fwX - fwStubLen, y: fwColdY + 9, class: 'tag', 'text-anchor': 'start' });
+        fwColdTagA2.textContent = 'Wasser →';
+        svg.appendChild(fwColdTagA2);
+        svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwWarmY + ' L' + fwX + ',' + fwWarmY, 'pipe-hot', false));
+        var fwWarmTagA1 = el('text', { x: fwX - fwStubLen, y: fwWarmY - 5, class: 'tag', 'text-anchor': 'start' });
+        fwWarmTagA1.textContent = '← Warm';
+        svg.appendChild(fwWarmTagA1);
+        var fwWarmTagA2 = el('text', { x: fwX - fwStubLen, y: fwWarmY + 9, class: 'tag', 'text-anchor': 'start' });
+        fwWarmTagA2.textContent = 'Wasser';
+        svg.appendChild(fwWarmTagA2);
+      } else {
       svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
       var fwColdTag1 = el('text', { x: fwX - fwStubLen, y: fwSecY - 5, class: 'tag', 'text-anchor': 'start' });
       fwColdTag1.textContent = 'Kalt';
@@ -2183,10 +2204,13 @@ function buildSchema(unit) {
       var fwWarmTag2 = el('text', { x: fwX + fwW + fwStubLen, y: fwSecY + 9, class: 'tag', 'text-anchor': 'end' });
       fwWarmTag2.textContent = 'Wasser';
       svg.appendChild(fwWarmTag2);
+      }
       // Beschriftung UNTER dem Gehaeuse statt darueber (29.09.2026, Dietmar:
       // "Frischwasserstation dann eher unter die Frischwasserstation
       // schreiben") - analog dem "Puffer XXX l"-Tag unter dem Puffer selbst.
-      var fwTag = el('text', { x: fwCX, y: fwY + fwH + 14, class: 'tag' });
+      // Mit zweitem Heizkreis endet die Beschriftung sonst nur ~0,5 px vor
+      // dessen Ruecklauf-Leitung (x=620) - deshalb 12 px nach links.
+      var fwTag = el('text', { x: z2Active ? fwCX - 12 : fwCX, y: fwY + fwH + 14, class: 'tag' });
       fwTag.textContent = 'Frischwasserstation';
       svg.appendChild(fwTag);
     }
