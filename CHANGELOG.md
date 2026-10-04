@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.157-beta.1 (2026-10-04)
+
+- HeatSchema: Das Anlagenschema wird jetzt auch gezeichnet, wenn die Wärmepumpe nur die Vorlauftemperatur eines Heizkreises liefert. Bisher verlangte das Dashboard dafür Pumpendurchfluss, Pumpendrehzahl oder Vor-/Rücklauf des Hauptkreises, sonst erschien nur die Karte "Keine Anlagenschema-Daten ... nur Basiswerte". Anlass: Forum (froema, Vaillant VRC720 mit einem Heizkreis ohne Puffer): Vaillants Antwort enthält dort kein `system_flow_temperature`, WPHub liefert daher nur `z1WaterTempID` (Heizkreis-1-Vorlauf), und das Schema blieb leer. Am Test mit genau diesen Daten gezeichnet (Standby, Warmwasser, Heizkreis-Vorlauf). Auswirkung auf andere Quellen: jede Wärmepumpe, die Heizkreis-Vorlauf meldet, bekommt jetzt das Schema statt der Basiskarte.
+
 ## 0.9.156-beta.1 (2026-10-03)
 
 - Tile: Die EMS-Entscheidungsanzeige beschriftet die Quelle jetzt lesbar ("Quelle: Smart Charging", "Tagesplan", "StromGedacht", "Netzbetreiber" ...) statt mit dem rohen Kennwort ("smartcharging"). Anlass: EMS 0.70.0 meldet neu die Quelle `smartcharging`, solange eine Wallbox im Smart-Charging-Modus (Tibber hat die Hoheit) lädt und das EMS die Batterie schont. Unbekannte künftige Quellen erscheinen weiterhin unverändert, es gibt also keinen Fehlerfall. Nur Beschriftung, keine Logikänderung.

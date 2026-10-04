@@ -1230,10 +1230,16 @@ class NRGDashboardHeatSchema extends IPSModule
                 }
             }
 
+            // Heizkreis-Vorlauf (z1/z2WaterTempID) genuegt ebenfalls: Vaillant-
+            // Anlagen ohne system_flow_temperature (Forum froema, VRC720,
+            // 04.10.2026) liefern nur den Kreis-Vorlauf, mainOutletTempID
+            // bleibt 0 - sie bekamen sonst dauerhaft nur die Basiskarte.
             $hasPipeSchema = (int) ($e['pumpFlowID'] ?? 0) > 0
                 || (int) ($e['pumpSpeedID'] ?? 0) > 0
                 || (int) ($e['mainInletTempID'] ?? 0) > 0
-                || (int) ($e['mainOutletTempID'] ?? 0) > 0;
+                || (int) ($e['mainOutletTempID'] ?? 0) > 0
+                || (int) ($e['z1WaterTempID'] ?? 0) > 0
+                || (int) ($e['z2WaterTempID'] ?? 0) > 0;
 
             $units[] = [
                 'id'              => (int) $e['_instanceID'],
