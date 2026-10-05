@@ -80,7 +80,12 @@
      statt reiner Messtechnik, deshalb bewusst OBEN vor der technischen
      Wertetabelle und optisch als eigene Kachelreihe abgesetzt. */
   #hlWrap { display: none; margin-bottom: 6px; }
-  #hlGrid { display: flex; flex-wrap: wrap; gap: 10px; }
+  #hlGrid, #curSessGrid { display: flex; flex-wrap: wrap; gap: 10px; }
+  #curSessWrap { margin-bottom: 6px; }
+  .hl-card.cs-on { border-color: #3f7a4a; background: #2b3a2f; }
+  .hl-card.cs-on .hl-value { color: #7fd48a; }
+  .hl-card .cs-boost { margin-top: 2px; }
+  .ctlBtn.cs-boost-active { background: #3a5a3f; }
   .hl-card {
     background: #2f333a; border: 1px solid #3d424a; border-radius: 10px;
     padding: 10px 16px; min-width: 148px;
@@ -139,6 +144,15 @@
   <div id="switchStatus"></div>
 </div>
 <div id="err"></div>
+
+<!-- Aktuelle/letzte Ladesitzung als einfache Uebersicht (05.10.2026, Forum
+     Mstaudi: "ein paar Informationen als einfache Uebersicht der aktuellen
+     Ladesitzung" inkl. Boost-Knopf) - nur bei Wallboxen (p.sessions gesetzt). -->
+<div id="curSessWrap" style="display:none">
+  <h2 id="curSessTitle">Ladesitzung</h2>
+  <div id="curSessGrid"></div>
+  <div id="curSessNote" class="note"></div>
+</div>
 
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
@@ -389,6 +403,64 @@ function renderSessions(p) {
   document.getElementById('sessNote').textContent = notes.join(' ');
 }
 
+// Aktuelle/letzte Ladesitzung als Kartenreihe (05.10.2026). Alle Werte kommen
+// aus der bereits berechneten Sitzungsliste (ChargingSessions()), die Zeiten
+// sind deshalb aus der Ladeleistung abgeleitet, nicht aus dem Steckerstatus
+// der Wallbox (den liefert nicht jede Wallbox mit Uhrzeit).
+function renderCurrentSession(p) {
+  const wrap = document.getElementById('curSessWrap');
+  const s = p.sessions;
+  if (!s || !s.list) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const grid = document.getElementById('curSessGrid');
+  const two = n => ('0' + n).slice(-2);
+  const hm = ts => { const d = new Date(ts * 1000); return two(d.getHours()) + ':' + two(d.getMinutes()); };
+  const sameDay = ts => new Date(ts * 1000).toDateString() === new Date().toDateString();
+  const when = ts => (sameDay(ts) ? '' : two(new Date(ts * 1000).getDate()) + '.' + two(new Date(ts * 1000).getMonth() + 1) + '. ') + hm(ts);
+  const dur = sec => { const m = Math.max(0, Math.round(sec / 60)); return Math.floor(m / 60) + ':' + two(m % 60) + ' h'; };
+  const x = s.list.length ? s.list[0] : null;
+  const running = !!(x && x.ongoing);
+  document.getElementById('curSessTitle').textContent = running ? 'Aktuelle Ladesitzung' : 'Letzte Ladesitzung';
+  const card = (label, value, cls) => '<div class="hl-card' + (cls ? ' ' + cls : '') + '"><div class="hl-label">' + esc(label) + '</div><div class="hl-value">' + esc(value) + '</div></div>';
+  let h = card('Status', running ? 'Lädt' : 'Keine Ladung', running ? 'cs-on' : '');
+  if (x) {
+    h += card('Ladebeginn', when(x.start));
+    h += card('Ladeende', running ? 'läuft noch' : when(x.end));
+    h += card('Ladezeit', dur(x.end - x.start));
+    h += card('Geladene Energie', x.kwh.toFixed(1).replace('.', ',') + ' kWh');
+    const cost = x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0);
+    if (cost !== null) h += card('Kosten', cost.toFixed(2).replace('.', ',') + ' €');
+  }
+  h += card('Ladeleistung jetzt', fmtW(p.powerNow));
+  const c = p.control;
+  if (c && c.instanceID && (c.enableID || c.limitID)) {
+    const atMax = !c.limitID || Number(c.limitValue) >= Number(c.maxCurrent);
+    const on = !c.enableID || !!c.enableValue;
+    const active = on && atMax;
+    h += '<div class="hl-card"><div class="hl-label">Boost</div><div class="cs-boost"><button id="csBoost" class="ctlBtn' +
+      (active ? ' cs-boost-active' : '') + '">⚡ ' + (active ? 'Boost aktiv' : 'Volle Leistung') + '</button></div></div>';
+  }
+  grid.innerHTML = h;
+  const b = document.getElementById('csBoost');
+  if (b) b.addEventListener('click', boostCharging);
+  document.getElementById('curSessNote').textContent = x
+    ? 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.' +
+      (c && (c.enableID || c.limitID) ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
+    : 'In den letzten 7 Tagen wurde nicht geladen.';
+}
+
+// Boost: Ladefreigabe an, Stromlimit auf das Geraetemaximum - nutzt dieselben
+// Aktionen wie die Schalter weiter unten (wallboxAction), also auch dieselben
+// Sperren (keine Bedienung bei fremder Regelhoheit).
+function boostCharging() {
+  const c = lastPayload && lastPayload.control;
+  if (!c || !c.instanceID) return;
+  const steps = [];
+  if (c.enableID && !c.enableValue) steps.push(() => wallboxAction('setEnable', { active: '1' }));
+  if (c.limitID && Number(c.limitValue) < Number(c.maxCurrent)) steps.push(() => wallboxAction('setCurrent', { amps: String(c.maxCurrent) }));
+  steps.reduce((pr, f) => pr.then(f), Promise.resolve()).then(() => setTimeout(() => loadDay(''), 1500));
+}
+
 function renderSubMeters(p) {
   const wrap = document.getElementById('subMeterWrap');
   const sub = p.subMeters || [];
@@ -416,6 +488,7 @@ function handleDetail(p) {
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
+  renderCurrentSession(p);
   renderSessions(p);
   renderControl(p);
   renderSwitchControl(p);
