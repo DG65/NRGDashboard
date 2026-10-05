@@ -1511,6 +1511,17 @@ gleiche IPSView-Fähigkeit.
   gekennzeichnet, weil er nach einer Netzladung nicht wirklich gratis ist. Die Sitzungen werden aus dem
   Leistungsverlauf erkannt (Pausen bis 30 Minuten gehören dazu) — das
   klappt auch für eine Wallbox, die nur über einen Zähler eingebunden ist.
+- **Ladesitzung auf einen Blick (`NRGDashboardTile`):** ganz oben auf der
+  Detailseite jeder Wallbox steht eine einfache Übersicht der aktuellen
+  bzw. letzten Ladesitzung — Status, Ladebeginn, Ladeende, Ladezeit,
+  geladene Energie, Kosten und aktuelle Ladeleistung. Die Zeiten sind aus
+  der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung),
+  nicht aus dem Steckerstatus der Wallbox, den nicht jede Wallbox mit
+  Uhrzeit liefert. Bietet das Gerät Ladefreigabe bzw. Stromlimit, gibt es
+  einen „Volle Leistung“-Knopf (Boost): er schaltet die Ladefreigabe ein und
+  setzt das Stromlimit auf das Maximum; zurück geht es mit dem
+  Stromlimit-Regler. Er nutzt dieselben Aktionen und Sperren wie die
+  Schalter darunter (keine Bedienung bei fremder Regelhoheit).
 - **Keine aktuelle Messung statt falscher 0 W (`NRGDashboardTile`):**
   liefert eine Quelle den Zeitpunkt ihrer letzten echten Messung
   (`lastSeenAt`, z. B. ChargerHub und OCPPHub ab Vertrag 1.3) und liegt

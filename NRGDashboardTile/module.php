@@ -170,6 +170,9 @@ class NRGDashboardTile extends IPSModule
             'Der Kosten-Ticker am Netz-Knoten zeigt jetzt den reinen ct/kWh-Preis (Bezugspreis bzw. Einspeisevergütung) statt der auf die aktuelle Leistung hochgerechneten Stundenkosten.',
             'Quoten-Panel und Diagnose-Panel schließen sich jetzt von selbst nach 30 Sekunden.',
         ],
+        '0.9.159' => [
+        '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
+        ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';

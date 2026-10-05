@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.159-beta.1 (2026-10-05)
+
+- Tile: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung: Status, Ladebeginn, Ladeende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (nur wo das Gerät beides anbietet, mit denselben Sperren wie die Schalter darunter). Anlass: Forum (Mstaudi, ChargerHub-Thread): ein einfacher Nutzer wünscht sich Infos zur aktuellen Sitzung wie an der Anzeige einer Wallbox. Die Zeiten sind aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung), nicht aus dem Steckerstatus. Getestet an einer nachgestellten Sitzung: laufend, letzte Sitzung, keine Ladung, Gerät ohne Wallbox-Funktion, Boost-Aufrufe (Freigabe + Limit, nur Limit, schon aktiv).
+
 ## 0.9.158-beta.1 (2026-10-04)
 
 - HeatSchema: Frischwasserstation bei zwei Heizkreisen ohne Überschneidung. Mit zweitem Heizkreis laufen dessen senkrechte Leitungen rechts am Gehäuse vorbei und kreuzten den Warmwasser-Stummel samt Beschriftung "→ Warm / Wasser" (Forum cbeham, Vaillant mit zwei Heizkreisen; reproduziert und ausgemessen: Leitungen bei x=620 und x=645 durch das Label bei x=611 bis 651). Jetzt liegen in diesem Fall beide Stummel links (Kaltwasser oben, Warmwasser unten), und die Beschriftung "Frischwasserstation" sitzt 12 px weiter links, damit sie nicht mehr an der Rücklauf-Leitung von Heizkreis 2 klebt (vorher 0,5 px Abstand, jetzt 12,5 px). Mit einem Heizkreis bleibt alles unverändert, nachgemessen.
