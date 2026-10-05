@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.162-beta.1 (2026-10-05)
+
+- Tile: Die Quoten-Münze (Autarkie/Eigenverbrauch) erscheint nur noch auf der obersten Ebene des Energieflusses. In einer tieferen Ebene (Sammelzähler aufgeschachtelt, z. B. „Ladestation“) ist sie ausgeblendet, ein offenes Quoten-Panel wird mit geschlossen, und beim Zurückgehen ist sie wieder da. Die Quoten gelten für das ganze Haus, nicht für einen Sammelzähler. Getestet: Ebene 1 sichtbar, tiefere Ebene unsichtbar (auch bei neu eintreffenden Daten), zurück sichtbar.
+
 ## 0.9.161-beta.1 (2026-10-05)
 
 - Tile: Die Ladesitzungs-Übersicht auf der Wallbox-Detailseite nutzt jetzt die echten Stecker-Zeiten und die Ladezeit aus dem ChargerHub-Vertrag 1.7 (`pluggedInAtID`, `pluggedOutAtID`, `chargeTimeSecID`, `connectionTimeSecID`): „Angeschlossen um“, „Abgesteckt um“ („noch angesteckt“, solange das Fahrzeug steckt) und die Ladezeit der Wallbox (CHARX/DaheimLader) wie in Mstaudis Wunsch. Fehlen die Felder (älterer Vertrag, andere Anbieter, Option „Stecker-Zeiten“ in ChargerHub aus), bleibt es bei den aus der Ladeleistung abgeleiteten Zeiten. Ein Zeitstempel 0/1970 („noch nie gewechselt“) gilt als unbekannt und erscheint als „–“. Die vier Felder stehen nicht mehr doppelt in „Aktuelle Werte“. Getestet: Oberfläche an fünf Fällen (Martins Konstellation, noch angesteckt, unbekannt, älterer Vertrag, nur Ladezeit), die PHP-Auswertung gegen nachgebaute Variablen (sechs Fälle); mit echten ChargerHub-Daten noch nicht gesehen.
