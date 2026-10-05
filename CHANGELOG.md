@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.2 (2026-10-05)
+
+- Kreiswellen-Animation neu: 4 dünne blaue Ringe mit konstanter Strichstärke laufen versetzt vom Mittelpunkt nach außen (Stein-im-See-Optik).
+
 ## 0.9.169-beta.1 (2026-10-05)
 
 - Neu: Ebenenwechsel-Animation „Kopfnicken“ (wie Kopfschütteln, Drehung um die waagerechte Achse). „Zufällig“ wanderte von Wert 3 auf 4; gespeicherte Werte werden migriert.
