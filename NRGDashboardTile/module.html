@@ -1089,6 +1089,7 @@ const CX = 280, CY = 301;
 // HOUSE_R-Konstante mehr, die war der Kern des Missverstaendnisses). 56 ist
 // nur der Startwert vor dem allerersten Rendern.
 let DESIGN_R = 56;
+let COIN_SCALE = 0;   // effectiveScale aus updateViewBox() - Basis fuer sizeQuotaCoin()
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -1362,6 +1363,7 @@ function computeLayout(n) {
   // das die feste NODE_R_BASELINE, im Pillen-Modus der gerade ermittelte,
   // an die Kachelbreite angepasste outerR.
   DESIGN_R = chip ? outerR : NODE_R_BASELINE;
+  sizeQuotaCoin();
   // rOuterCircle (Radius Mittelpunkt->Knoten-MITTELPUNKT im Kreis-Modus) =
   // ringGap + DESIGN_R in beiden Zweigen konsistent (siehe je dortige
   // Herleitung) - hier einmal gemeinsam, wird unten fuer die
@@ -4189,14 +4191,23 @@ function updateViewBox() {
   // Knotengroesse hinaus. effectiveScale nimmt immer das Minimum aus
   // Breiten- und Hoehen-Skalierung, wie es preserveAspectRatio="meet"
   // selbst tut.
+  COIN_SCALE = Math.min(rect.width / w, rect.height / h);
+  sizeQuotaCoin();
+}
+
+// Muenzgroesse aus DESIGN_R und dem Massstab (siehe oben). Wird auch direkt
+// nach jeder Layout-Berechnung aufgerufen, die DESIGN_R aendert: DESIGN_R
+// haengt von der Knotenzahl der Ebene ab und wird erst NACH updateViewBox()
+// neu gesetzt - sonst zeigte die Muenze beim Ebenenwechsel kurz die Groesse
+// der vorherigen Ebene und sprang erst mit dem naechsten Payload
+// (Dietmar, 05.10.2026: "Groessenaenderung moechte ich nicht sehen").
+function sizeQuotaCoin() {
   const coinEl = document.getElementById('quotaCoin');
-  if (coinEl) {
-    const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
-    const effectiveScale = Math.min(rect.width / w, rect.height / h);
-    const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * effectiveScale;
-    coinEl.style.width = coinPx.toFixed(1) + 'px';
-    coinEl.style.height = coinPx.toFixed(1) + 'px';
-  }
+  if (!coinEl || !COIN_SCALE) return;
+  const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
+  const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * COIN_SCALE;
+  coinEl.style.width = coinPx.toFixed(1) + 'px';
+  coinEl.style.height = coinPx.toFixed(1) + 'px';
 }
 window.addEventListener('resize', function () {
   updateViewBox();

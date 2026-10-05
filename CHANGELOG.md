@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.163-beta.1 (2026-10-05)
+
+- Tile: Die Quoten-Münze ändert beim Ebenenwechsel und beim Wiedereinblenden nicht mehr sichtbar ihre Größe. Ursache: Ihre Pixelgröße wurde in `updateViewBox()` aus dem Knotenradius `DESIGN_R` berechnet, der aber erst danach im Layout neu gesetzt wird (er hängt von der Knotenzahl der Ebene ab). Die Münze zeigte deshalb kurz die Größe der vorherigen Ebene und sprang erst mit dem nächsten Datenabruf. Jetzt wird die Größe in einer eigenen Funktion `sizeQuotaCoin()` direkt nach jeder Layout-Berechnung neu gesetzt. Am alten Stand reproduziert (Hochformat-Kachel, 2 gegen 9 Geräte: Münze 3,8 px zu groß bzw. zu klein), am neuen Stand ist die Abweichung 0, auch unmittelbar nach der Rückkehr aus einer tieferen Ebene.
+
 ## 0.9.162-beta.1 (2026-10-05)
 
 - Tile: Die Quoten-Münze (Autarkie/Eigenverbrauch) erscheint nur noch auf der obersten Ebene des Energieflusses. In einer tieferen Ebene (Sammelzähler aufgeschachtelt, z. B. „Ladestation“) ist sie ausgeblendet, ein offenes Quoten-Panel wird mit geschlossen, und beim Zurückgehen ist sie wieder da. Die Quoten gelten für das ganze Haus, nicht für einen Sammelzähler. Getestet: Ebene 1 sichtbar, tiefere Ebene unsichtbar (auch bei neu eintreffenden Daten), zurück sichtbar.
