@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.166-beta.1 (2026-10-05)
+
+- Tile: Das Kopfschütteln des blockierten Knotens dreht weiter (bis ±42° statt ±32°) und ist deutlich langsamer und ruhiger (1,8 s statt 0,9 s): drei ruhige Hin-und-Her-Bewegungen mit weichen Umkehrpunkten (−42°, +42°, −38°, +30°, dann ausklingend), wie ein menschliches Verneinen. Ein Durchgang von links nach rechts dauert jetzt 0,36 s statt vorher 0,12 s. Die Perspektive ist weiter weg (520 px statt 320 px), damit die nahe Seite beim Drehen nicht zu groß über den Knoten wächst. Die Anzeigedauer im Skript (rote Randfarbe, Rücksetzen) ist auf die neue Länge angepasst. Gemessen: Mittelpunkt bleibt fest; am Bild geprüft, kein Überlappen mit Nachbarknoten.
+
 ## 0.9.165-beta.1 (2026-10-05)
 
 - Tile: Das Kopfschütteln eines blockierten Knotens (Klick auf einen Knoten ohne Ebene dahinter) dreht den Knoten jetzt wirklich um seine eigene senkrechte Mittelachse nach links und rechts, mehrmals und ausklingend. Bisher war es keine Drehung: bei SVG-Elementen bezieht sich `transform-origin: center` ohne `transform-box: fill-box` auf die Mitte der viewBox, der Knoten schwang deshalb um einen weit entfernten Punkt (gemessen: Mittelpunkt wanderte zwischen x=205 und x=399 und zwischen y=50 und y=241, Breite 127 bis 267 px). Jetzt bleibt der Mittelpunkt fest, nur die Breite pendelt, in der Matrix steht eine echte `rotateY`-Drehung mit Perspektive. Ausschläge zugleich etwas größer (±32°/30° statt ±22°/20°), damit die Drehung gut erkennbar ist. Gilt für Knoten und Mittelpille.
