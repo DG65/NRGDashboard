@@ -3577,6 +3577,10 @@ function gotoLevel(targetDepth) {
 function renderLevelView() {
   const top = LEVEL_STACK[LEVEL_STACK.length - 1];
   if (!top) { return; }
+  // Quoten-Muenze gehoert nur zur obersten Ebene - in einer tieferen Ebene
+  // samt offenem Panel ausblenden (siehe handleMessage()).
+  document.getElementById('quotaCoin').classList.remove('show');
+  document.getElementById('quotaPanel').classList.remove('open');
   const entry = MEMBER_CACHE[top.key];
   if (!entry) { fetchMembers(top.key).then(e => { if (e) renderLevelView(); }); return; }
   if ((Date.now() - entry.ts) >= MEMBER_TTL_MS) { fetchMembers(top.key).then(e => { if (e) renderLevelView(); }); }
@@ -4270,7 +4274,9 @@ function handleMessage(raw) {
     // Backend-Seite), Monat/Jahr/Gesamt laedt das Panel erst bei Klick nach.
     if (d.dayQuotas) {
       quotaCache.day = d.dayQuotas;
-      document.getElementById('quotaCoin').classList.add('show');
+      // Nur auf der obersten Ebene (Dietmar, 05.10.2026): die Quoten gelten fuer
+      // das ganze Haus, nicht fuer einen Sammelzaehler in einer tieferen Ebene.
+      document.getElementById('quotaCoin').classList.toggle('show', LEVEL_STACK.length === 0);
       renderQuotaButton(d.dayQuotas);
       if (document.getElementById('quotaPanel').classList.contains('open')) { renderQuotaTable(); }
     }
