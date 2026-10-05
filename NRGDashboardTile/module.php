@@ -174,7 +174,7 @@ class NRGDashboardTile extends IPSModule
         '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
         ],
         '0.9.169' => [
-        'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere dünne, blaue Ringe laufen nacheinander vom Mittelpunkt weit nach außen und werden dabei schmaler und blasser.',
+        'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
         '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit.',
         ],
     ];
