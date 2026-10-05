@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.167-beta.1 (2026-10-05)
+
+- Tile: Bezeichnungen von Geräten erscheinen ohne das Modul-Präfix: ein Knoten hieß „NRG-Stack MeterHub Klimagerät“ statt „Klimagerät“ (Forum Mstaudi). Ein führendes „NRG-Stack <Modul> “ wird bei Geräte-Bezeichnungen (Knoten, aufgeschachtelte Mitglieder, Titel der Detailseite) weggelassen, sofern dahinter noch ein Name steht; ein reiner Modulname bleibt unverändert.
+- Tile: Meldet das Partnermodul beim Schreiben (Ladefreigabe/Stromlimit) etwas Unerwartetes (meist eine PHP-Meldung), steht dessen Text jetzt in der Fehlermeldung der Detailseite statt nur „siehe IPS-Systemlog“. Anlass: eine CHARX meldete bei Freigabe und Stromlimit „Aktion am Partnermodul fehlgeschlagen: Unerwartete Antwort vom Partnermodul“, ohne dass man die Ursache sah.
+- Tile: Der „Volle Leistung“-Knopf (Boost) erscheint nur, wenn das gemeldete Stromlimit nicht über dem gemeldeten Maximum liegt. Bei einer CHARX stand das Limit auf 75 A (469 %) bei einem Maximum von 16 A; der Knopf hätte das Limit dort abgesenkt statt angehoben.
+
 ## 0.9.166-beta.1 (2026-10-05)
 
 - Tile: Das Kopfschütteln des blockierten Knotens dreht weiter (bis ±42° statt ±32°) und ist deutlich langsamer und ruhiger (1,8 s statt 0,9 s): drei ruhige Hin-und-Her-Bewegungen mit weichen Umkehrpunkten (−42°, +42°, −38°, +30°, dann ausklingend), wie ein menschliches Verneinen. Ein Durchgang von links nach rechts dauert jetzt 0,36 s statt vorher 0,12 s. Die Perspektive ist weiter weg (520 px statt 320 px), damit die nahe Seite beim Drehen nicht zu groß über den Knoten wächst. Die Anzeigedauer im Skript (rote Randfarbe, Rücksetzen) ist auf die neue Länge angepasst. Gemessen: Mittelpunkt bleibt fest; am Bild geprüft, kein Überlappen mit Nachbarknoten.

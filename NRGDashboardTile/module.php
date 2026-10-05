@@ -1421,7 +1421,11 @@ class NRGDashboardTile extends IPSModule
         $stray = ob_get_clean();
         if ($stray !== '') {
             IPS_LogMessage('NRGDashboardTile', 'Unerwartete Ausgabe bei Wallbox-Steuerbefehl: ' . substr($stray, 0, 500));
-            return 'Unerwartete Antwort vom Partnermodul (siehe IPS-Systemlog).';
+            // Den Text des Partnermoduls mit anzeigen (Forum Mstaudi, 05.10.2026:
+            // "Aktion am Partnermodul fehlgeschlagen" ohne erkennbaren Grund) -
+            // meist eine PHP-Warnung/Meldung des Partners, ohne HTML und gekuerzt.
+            $text = trim(preg_replace('/\s+/', ' ', strip_tags($stray)));
+            return 'Unerwartete Antwort vom Partnermodul' . ($text !== '' ? ': ' . mb_substr($text, 0, 240) : '') . ' (siehe IPS-Systemlog).';
         }
         return null;
     }
