@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.3 (2026-10-05)
+
+- Kreiswellen: Kopien des Knoten-Randrings (gleiche Farbe, Stärke, Form), nur außerhalb des Knotens sichtbar.
+
 ## 0.9.169-beta.2 (2026-10-05)
 
 - Kreiswellen-Animation neu: 4 dünne blaue Ringe mit konstanter Strichstärke laufen versetzt vom Mittelpunkt nach außen (Stein-im-See-Optik).

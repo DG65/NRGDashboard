@@ -613,16 +613,17 @@
      du schmeisst einfach 3 Kreise weg") - eine echte Wasserwelle entsteht
      KLEIN am Einschlagpunkt und waechst dann nach aussen, statt bereits
      gross zu erscheinen und nur zu verblassen. */
-  /* Kreiswellen (05.10.2026 neu, Dietmar: "wie wenn man einen Stein in einen
-     See wirft und sich zentrische Wellen ausbreiten"): mehrere duenne,
-     gleichmaessig versetzte Ringe, die vom Einschlagpunkt aus weit nach aussen
-     laufen. Strichstaerke bleibt beim Wachsen konstant (non-scaling-stroke),
-     sie wird zum Rand hin duenner und blasser - wie die Energie der Welle. */
-  .fx-ripple { fill: none; stroke: #5bb8e8; stroke-width: 2.4; vector-effect: non-scaling-stroke; opacity: 0; transform-box: fill-box; transform-origin: center; animation: fxRippleOut 1.3s cubic-bezier(.12,.5,.3,1) both; }
+  /* Kreiswellen (05.10.2026, Dietmar: "wie ein Stein im See", dann "nur
+     ausserhalb des Knotens, gleiche Farbe und Staerke wie der ausloesende
+     Knoten"): die Wellen sind Kopien des Randrings (.node-ring) des Knotens
+     bzw. der Pille - Form, Farbe und Strichstaerke stehen als Inline-Style
+     (playOpenAnim()). Sie starten AM Rand und wachsen nur nach aussen; die
+     Strichstaerke bleibt konstant (non-scaling-stroke), nur die Deckkraft
+     nimmt ab. */
+  .fx-ripple { fill: none; vector-effect: non-scaling-stroke; opacity: 0; transform-box: fill-box; transform-origin: center; animation: fxRippleOut 1.3s cubic-bezier(.15,.5,.3,1) both; pointer-events: none; }
   @keyframes fxRippleOut {
-    0% { transform: scale(.04); opacity: 0; stroke-width: 3; }
-    8% { opacity: .95; }
-    100% { transform: scale(2.7); opacity: 0; stroke-width: .6; }
+    0% { transform: scale(1); opacity: .95; }
+    100% { transform: scale(2.6); opacity: 0; }
   }
   /* Kopfschuetteln (10.09.2026 komplett neu, Dietmar: "du machst eine rote
      Scheibe die du VOR dem Knoten drehst - das ist Quark, dreh den Knoten
@@ -3886,8 +3887,22 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
     duration = 650;
   } else {
     const n = 4, step = 170;
+    // Vorlage = Randring des ausloesenden Knotens/der Pille (Form, Farbe, Staerke)
+    const src = visualEl && visualEl.querySelector('.node-ring');
+    const cs = src ? getComputedStyle(src) : null;
     for (let i = 0; i < n; i++) {
-      const c = el('circle', { r: ringRadius, class: 'fx-ripple' });
+      let c;
+      if (src) {
+        c = src.cloneNode(false);
+        c.removeAttribute('class');
+        c.setAttribute('class', 'fx-ripple');
+        c.style.stroke = cs.stroke;
+        c.style.strokeWidth = cs.strokeWidth;
+      } else {
+        c = el('circle', { r: ringRadius, class: 'fx-ripple' });
+        c.style.stroke = '#9aa0a6';
+        c.style.strokeWidth = '3px';
+      }
       c.style.animationDelay = (i * step) + 'ms';
       fxLayer.appendChild(c);
     }
