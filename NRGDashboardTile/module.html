@@ -1090,6 +1090,7 @@ const CX = 280, CY = 301;
 // nur der Startwert vor dem allerersten Rendern.
 let DESIGN_R = 56;
 let COIN_SCALE = 0;   // effectiveScale aus updateViewBox() - Basis fuer sizeQuotaCoin()
+let COIN_FROZEN = false; // true, solange die Muenze beim Ebenenwechsel ausgeblendet wird - Groesse dann nicht mehr anfassen
 const SCALE_INACTIVE = 44 / 56;
 
 // Aktiv-Schwelle (Dietmar, 11.09.2026: 14-W-Terrassenlicht blieb bei der
@@ -3532,6 +3533,11 @@ function enterLevel(item, refs) {
   LEVEL_BUSY = true;
   fetchMembers(item.detailKey || item.key).then(entry => {
     if (!entry || entry.members.length === 0) { LEVEL_BUSY = false; return; }
+    // Quoten-Muenze beim Verlassen der obersten Ebene ausfaden und ihre Groesse
+    // einfrieren: computeLayout() setzt DESIGN_R schon fuer die NAECHSTE Ebene,
+    // waehrend die Muenze noch zu sehen ist (Dietmar, 05.10.2026: Groessensprung
+    // vor dem Wechsel in die naechste Ebene).
+    fadeQuotaCoin(0);
     const nextChip = computeLayout(entry.members.length);
     const from = { x: refs.cx, y: refs.cy, sx: refs.baseScale, sy: refs.baseScale };
     const to = { x: CX, y: CY, sx: nextChip.hw / DESIGN_R, sy: nextChip.hh / DESIGN_R };
@@ -3581,6 +3587,7 @@ function renderLevelView() {
   if (!top) { return; }
   // Quoten-Muenze gehoert nur zur obersten Ebene - in einer tieferen Ebene
   // samt offenem Panel ausblenden (siehe handleMessage()).
+  COIN_FROZEN = true;
   document.getElementById('quotaCoin').classList.remove('show');
   document.getElementById('quotaPanel').classList.remove('open');
   const entry = MEMBER_CACHE[top.key];
@@ -4195,6 +4202,16 @@ function updateViewBox() {
   sizeQuotaCoin();
 }
 
+// Muenze weich ausblenden/einblenden (Ebenenwechsel). Beim Ausblenden wird die
+// Groesse eingefroren, beim Einblenden freigegeben und neu berechnet.
+function fadeQuotaCoin(opacity) {
+  const coinEl = document.getElementById('quotaCoin');
+  if (!coinEl) return;
+  coinEl.style.transition = 'opacity .3s';
+  coinEl.style.opacity = String(opacity);
+  if (opacity === 0) { COIN_FROZEN = true; }
+}
+
 // Muenzgroesse aus DESIGN_R und dem Massstab (siehe oben). Wird auch direkt
 // nach jeder Layout-Berechnung aufgerufen, die DESIGN_R aendert: DESIGN_R
 // haengt von der Knotenzahl der Ebene ab und wird erst NACH updateViewBox()
@@ -4203,7 +4220,7 @@ function updateViewBox() {
 // (Dietmar, 05.10.2026: "Groessenaenderung moechte ich nicht sehen").
 function sizeQuotaCoin() {
   const coinEl = document.getElementById('quotaCoin');
-  if (!coinEl || !COIN_SCALE) return;
+  if (!coinEl || !COIN_SCALE || COIN_FROZEN) return;
   const COIN_VIEWBOX = 104, COIN_FACE_R = 42;
   const coinPx = (2 * DESIGN_R) * (COIN_VIEWBOX / (2 * COIN_FACE_R)) * COIN_SCALE;
   coinEl.style.width = coinPx.toFixed(1) + 'px';
@@ -4287,7 +4304,24 @@ function handleMessage(raw) {
       quotaCache.day = d.dayQuotas;
       // Nur auf der obersten Ebene (Dietmar, 05.10.2026): die Quoten gelten fuer
       // das ganze Haus, nicht fuer einen Sammelzaehler in einer tieferen Ebene.
-      document.getElementById('quotaCoin').classList.toggle('show', LEVEL_STACK.length === 0);
+      (function () {
+        var coinEl = document.getElementById('quotaCoin');
+        var top = LEVEL_STACK.length === 0;
+        var wasHidden = coinEl.style.opacity === '0';   // nur nach dem Ausfaden beim Ebenenwechsel weich einblenden
+        if (top) {
+          COIN_FROZEN = false;
+          sizeQuotaCoin();
+          coinEl.classList.add('show');
+          if (wasHidden) {
+            coinEl.style.transition = 'none';
+            coinEl.style.opacity = '0';
+            void coinEl.offsetWidth;
+            fadeQuotaCoin(1);
+          }
+        } else {
+          coinEl.classList.remove('show');
+        }
+      })();
       renderQuotaButton(d.dayQuotas);
       if (document.getElementById('quotaPanel').classList.contains('open')) { renderQuotaTable(); }
     }

@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.164-beta.1 (2026-10-05)
+
+- Tile: Die Quoten-Münze zeigt beim Klick auf einen Knoten (Wechsel in die nächste Ebene) keinen Größensprung mehr. Ursache war der Fix aus 0.9.163: `enterLevel()` rechnet das Layout der nächsten Ebene schon vorab (für das Ziel der Animation), dadurch änderte sich der Knotenradius mitten in der Animation und die noch sichtbare Münze folgte ihm. Jetzt blendet die Münze beim Klick weich aus und ihre Größe wird eingefroren, bis sie auf der obersten Ebene wieder erscheint (dort mit der richtigen Größe und weichem Einblenden). Nachgestellt im Hochformat (Radius 56 → 53,8 während des Wechsels): die Münze bleibt über den ganzen Wechsel bei 98 px, ist danach unsichtbar und beim Zurückgehen sofort wieder in der richtigen Größe da.
+
 ## 0.9.163-beta.1 (2026-10-05)
 
 - Tile: Die Quoten-Münze ändert beim Ebenenwechsel und beim Wiedereinblenden nicht mehr sichtbar ihre Größe. Ursache: Ihre Pixelgröße wurde in `updateViewBox()` aus dem Knotenradius `DESIGN_R` berechnet, der aber erst danach im Layout neu gesetzt wird (er hängt von der Knotenzahl der Ebene ab). Die Münze zeigte deshalb kurz die Größe der vorherigen Ebene und sprang erst mit dem nächsten Datenabruf. Jetzt wird die Größe in einer eigenen Funktion `sizeQuotaCoin()` direkt nach jeder Layout-Berechnung neu gesetzt. Am alten Stand reproduziert (Hochformat-Kachel, 2 gegen 9 Geräte: Münze 3,8 px zu groß bzw. zu klein), am neuen Stand ist die Abweichung 0, auch unmittelbar nach der Rückkehr aus einer tieferen Ebene.
