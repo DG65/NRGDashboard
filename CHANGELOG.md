@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.165-beta.1 (2026-10-05)
+
+- Tile: Das Kopfschütteln eines blockierten Knotens (Klick auf einen Knoten ohne Ebene dahinter) dreht den Knoten jetzt wirklich um seine eigene senkrechte Mittelachse nach links und rechts, mehrmals und ausklingend. Bisher war es keine Drehung: bei SVG-Elementen bezieht sich `transform-origin: center` ohne `transform-box: fill-box` auf die Mitte der viewBox, der Knoten schwang deshalb um einen weit entfernten Punkt (gemessen: Mittelpunkt wanderte zwischen x=205 und x=399 und zwischen y=50 und y=241, Breite 127 bis 267 px). Jetzt bleibt der Mittelpunkt fest, nur die Breite pendelt, in der Matrix steht eine echte `rotateY`-Drehung mit Perspektive. Ausschläge zugleich etwas größer (±32°/30° statt ±22°/20°), damit die Drehung gut erkennbar ist. Gilt für Knoten und Mittelpille.
+
 ## 0.9.164-beta.1 (2026-10-05)
 
 - Tile: Die Quoten-Münze zeigt beim Klick auf einen Knoten (Wechsel in die nächste Ebene) keinen Größensprung mehr. Ursache war der Fix aus 0.9.163: `enterLevel()` rechnet das Layout der nächsten Ebene schon vorab (für das Ziel der Animation), dadurch änderte sich der Knotenradius mitten in der Animation und die noch sichtbare Münze folgte ihm. Jetzt blendet die Münze beim Klick weich aus und ihre Größe wird eingefroren, bis sie auf der obersten Ebene wieder erscheint (dort mit der richtigen Größe und weichem Einblenden). Nachgestellt im Hochformat (Radius 56 → 53,8 während des Wechsels): die Münze bleibt über den ganzen Wechsel bei 98 px, ist danach unsichtbar und beim Zurückgehen sofort wieder in der richtigen Größe da.

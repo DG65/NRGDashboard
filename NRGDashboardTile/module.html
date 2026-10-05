@@ -628,16 +628,20 @@
      gleichmaessige Ausschlaege nach links/rechts um die vertikale
      Mittelachse (rotateY), wie eine reale "Nein"-Kopfbewegung, am Ende
      kurz gedaempft ausklingend statt abrupt zu stoppen. */
-  .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY .9s ease-in-out; transform-origin: center; }
+  /* transform-box: fill-box (05.10.2026, Dietmar: "das ist kein Kopfschuetteln"):
+     bei SVG-Elementen bezieht sich "center" ohne fill-box auf die viewBox,
+     der Knoten schwang deshalb um einen weit entfernten Punkt statt um seine
+     eigene Mittelachse (Mittelpunkt wanderte etwa +-100 px zur Seite). */
+  .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY .9s ease-in-out; transform-box: fill-box; transform-origin: center; }
   @keyframes fxShakeY {
     0%, 100% { transform: perspective(320px) rotateY(0deg); }
-    12% { transform: perspective(320px) rotateY(-22deg); }
-    25% { transform: perspective(320px) rotateY(20deg); }
-    38% { transform: perspective(320px) rotateY(-22deg); }
-    51% { transform: perspective(320px) rotateY(20deg); }
-    64% { transform: perspective(320px) rotateY(-14deg); }
-    77% { transform: perspective(320px) rotateY(10deg); }
-    88% { transform: perspective(320px) rotateY(-4deg); }
+    12% { transform: perspective(320px) rotateY(-32deg); }
+    25% { transform: perspective(320px) rotateY(30deg); }
+    38% { transform: perspective(320px) rotateY(-32deg); }
+    51% { transform: perspective(320px) rotateY(30deg); }
+    64% { transform: perspective(320px) rotateY(-20deg); }
+    77% { transform: perspective(320px) rotateY(14deg); }
+    88% { transform: perspective(320px) rotateY(-6deg); }
   }
   /* Schwindel-Sternchen (ueberarbeitet: Dietmar "immer noch zu schnell" -
      nochmals deutlich verlangsamt). */
