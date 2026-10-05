@@ -633,6 +633,19 @@
      der Knoten schwang deshalb um einen weit entfernten Punkt statt um seine
      eigene Mittelachse (Mittelpunkt wanderte etwa +-100 px zur Seite). */
   .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY 1.8s ease-in-out; transform-box: fill-box; transform-origin: center; }
+  /* Kopfnicken (05.10.2026, Dietmar: "analog zum Kopfschuetteln, nur um die
+     horizontale statt der vertikalen Achse"): dieselbe Animation (Dauer,
+     Rhythmus, Ausschlaege, Perspektive) wie fxShakeY, aber rotateX. */
+  .node-visual.fx-nod3d, #center-visual.fx-nod3d { animation: fxNodX 1.8s ease-in-out; transform-box: fill-box; transform-origin: center; }
+  @keyframes fxNodX {
+    0%, 100% { transform: perspective(520px) rotateX(0deg); }
+    14% { transform: perspective(520px) rotateX(-42deg); }
+    34% { transform: perspective(520px) rotateX(42deg); }
+    54% { transform: perspective(520px) rotateX(-38deg); }
+    72% { transform: perspective(520px) rotateX(30deg); }
+    86% { transform: perspective(520px) rotateX(-14deg); }
+    94% { transform: perspective(520px) rotateX(4deg); }
+  }
   @keyframes fxShakeY {
     /* Menschliches Verneinen (05.10.2026, Dietmar: "weiter drehen, langsamer und
        ruhiger"): drei ruhige Hin-und-Her-Bewegungen mit weichen Umkehrpunkten
@@ -3792,8 +3805,10 @@ const PRESS_MS = 500, PRESS_MOVE_PX = 8;
 // OPEN_ANIM_STYLE/BLOCKED_ANIM_STYLE kommen aus dem Payload (Instanz-
 // Variablen hinter dem Doppelpfeil, 0-2 = feste Wahl, 3 = zufaellig).
 let OPEN_ANIM_STYLE = 0, BLOCKED_ANIM_STYLE = 0;
-function pickAnimStyle(configured) {
-  return configured === 3 ? Math.floor(Math.random() * 3) : configured;
+// randomValue = der Wert fuer "Zufaellig", count = Anzahl der festen Varianten
+// (Ebenenwechsel: 4 inkl. Kopfnicken, Zufaellig = 4; blockiert: 3, Zufaellig = 3).
+function pickAnimStyle(configured, randomValue, count) {
+  return configured === randomValue ? Math.floor(Math.random() * count) : configured;
 }
 function clearFx(fxLayer) {
   if (fxLayer) { fxLayer.textContent = ''; fxLayer.classList.remove('fx-dizzy'); }
@@ -3836,12 +3851,21 @@ function buildIrisBlades(fxLayer, ringRadius) {
 // (wachsen jetzt aus der Mitte statt nur zu verblassen). ringRadius =
 // Radius/Halbachse (Aussenknoten: DESIGN_R+3, Pille: Halbhoehe+3). Gibt
 // die Anzeigedauer zurueck, jede Variante hat ihr eigenes Timing.
-function playOpenAnim(fxLayer, ringRadius) {
+function playOpenAnim(fxLayer, ringRadius, visualEl) {
   if (!fxLayer) return 0;
   clearFx(fxLayer);
-  const style = pickAnimStyle(OPEN_ANIM_STYLE);
+  const style = pickAnimStyle(OPEN_ANIM_STYLE, 4, 4);
   let duration = 600;
-  if (style === 0) {
+  if (style === 3 && visualEl) {
+    // Kopfnicken: der Knoten bzw. die Pille selbst nickt (wie das Kopfschuetteln,
+    // aber um die waagerechte Achse); Klasse vor dem Ebenenwechsel wieder weg.
+    visualEl.classList.remove('fx-nod3d');
+    void visualEl.getBoundingClientRect();
+    visualEl.classList.add('fx-nod3d');
+    setTimeout(() => visualEl.classList.remove('fx-nod3d'), 1820);
+    return 1850;
+  }
+  if (style === 0 || style === 3) {
     const n = 11;
     for (let i = 0; i < n; i++) {
       const ang = (i / n) * 2 * Math.PI + (Math.random() * 0.4 - 0.2);
@@ -3879,7 +3903,7 @@ function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
   ringEl.classList.add('press-blocked');
   if (fxLayer) { clearFx(fxLayer); }
   if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
-  const style = pickAnimStyle(BLOCKED_ANIM_STYLE);
+  const style = pickAnimStyle(BLOCKED_ANIM_STYLE, 3, 3);
   let duration = 900;
   if (style === 0) {
     if (visualEl) { visualEl.classList.add('fx-shake3d'); }
@@ -3958,7 +3982,7 @@ function attachPressHandlers(refs, item) {
       if (canGoDeeper) {
         refs.pressRing.classList.remove('pressing');
         refs.pressRing.classList.add('press-ok');
-        const d = playOpenAnim(refs.fxLayer, DESIGN_R + 3);
+        const d = playOpenAnim(refs.fxLayer, DESIGN_R + 3, refs.visual);
         setTimeout(() => { resetRing(); enterLevel(item, refs); }, d);
       } else {
         playBlockedAnim(refs.fxLayer, refs.pressRing, DESIGN_R + 3, refs.visual, resetRing);
@@ -4044,7 +4068,7 @@ function attachCenterPressHandlers() {
       if (canGoUp) {
         ring.classList.remove('pressing');
         ring.classList.add('press-ok');
-        const d = playOpenAnim(fxLayer, ringRadius);
+        const d = playOpenAnim(fxLayer, ringRadius, visual);
         setTimeout(() => { resetRing(); leaveLevel(); }, d);
       } else {
         playBlockedAnim(fxLayer, ring, ringRadius, visual, resetRing);
