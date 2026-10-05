@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.1 (2026-10-05)
+
+- Neu: Ebenenwechsel-Animation „Kopfnicken“ (wie Kopfschütteln, Drehung um die waagerechte Achse). „Zufällig“ wanderte von Wert 3 auf 4; gespeicherte Werte werden migriert.
+
 ## 0.9.168-beta.1 (2026-10-05)
 
 - Tile: Die Liste „Automatisch gefundene Geräte“ im Konfigurationsformular aktualisiert sich jetzt nach „Geräte jetzt suchen“ sofort. Bisher änderte sich nur die Zeile „9 Geräte gefunden“, die Liste darunter zeigte den alten Stand (7 Zeilen), bis man das Formular neu öffnete (Forum Mstaudi, auf dem Screenshot sichtbar). Die Zeilen werden jetzt in einer eigenen Funktion berechnet und beim Suchen per UpdateFormField in die offene Liste geschrieben.

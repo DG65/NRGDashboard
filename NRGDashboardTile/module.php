@@ -173,6 +173,9 @@ class NRGDashboardTile extends IPSModule
         '0.9.159' => [
         '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
         ],
+        '0.9.169' => [
+        '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit.',
+        ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
@@ -317,9 +320,21 @@ class NRGDashboardTile extends IPSModule
         // (geht nicht weiter), plus "Zufällig". Auswahl-Profile (Ganzzahl
         // mit Assoziationen) statt Bool/freier Zahl, damit WebFront eine
         // Auswahlliste statt eines Zahlenfelds zeigt.
+        // "Kopfnicken" (05.10.2026) steht als Wert 3 VOR "Zufällig" (jetzt 4).
+        // Alte Profile kennen den Wert 4 noch nicht: dort bedeutete 3 "Zufällig",
+        // eine gespeicherte 3 muss deshalb vorher auf 4 wandern.
+        $oldOpenAnimLayout = false;
+        if (IPS_VariableProfileExists('NRGDASH.OpenAnimStyle')) {
+            $assoc = IPS_GetVariableProfile('NRGDASH.OpenAnimStyle')['Associations'] ?? [];
+            $oldOpenAnimLayout = !in_array(4, array_column($assoc, 'Value'), true);
+        }
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
-            0 => 'Funkenschauer', 1 => 'Portal-Iris', 2 => 'Kreiswellen', 3 => 'Zufällig',
+            0 => 'Funkenschauer', 1 => 'Portal-Iris', 2 => 'Kreiswellen', 3 => 'Kopfnicken', 4 => 'Zufällig',
         ]);
+        $openAnimVarID = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID);
+        if ($oldOpenAnimLayout && $openAnimVarID !== false && (int) GetValue($openAnimVarID) === 3) {
+            SetValue($openAnimVarID, 4);
+        }
         $isNewOpenAnim = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID) === false;
         $this->RegisterVariableInteger('OpenAnimStyle', 'Animation bei Ebenenwechsel', 'NRGDASH.OpenAnimStyle', 207);
         $this->EnableAction('OpenAnimStyle');
@@ -571,7 +586,7 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($Ident === 'OpenAnimStyle' || $Ident === 'BlockedAnimStyle') {
-            $this->SetValue($Ident, max(0, min(3, (int) $Value)));
+            $this->SetValue($Ident, max(0, min($Ident === 'OpenAnimStyle' ? 4 : 3, (int) $Value)));
             $this->Render();
             return;
         }
