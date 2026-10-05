@@ -2117,6 +2117,15 @@ const TAIL_ORDER = ['grid'];
 // "WR 4.1.10.1" einsortiert wird statt lexikografisch danach.
 const LABEL_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
+// Geraete-Bezeichnung ohne Modul-Praefix (Forum Mstaudi, 05.10.2026: Knoten hiess
+// "NRG-Stack MeterHub Klimagerät" statt "Klimagerät"): ein fuehrendes
+// "NRG-Stack <Modul> " wird weggelassen, sofern dahinter noch ein Name steht.
+function niceLabel(s) {
+  s = String(s === undefined || s === null ? '' : s);
+  var m = s.match(/^NRG-Stack\s+[^\s]+\s+(.+)$/);
+  return m ? m[1].trim() : s;
+}
+
 function buildItems(devices) {
   // Reine Erzeugungsparks ohne eigenen Hausverbrauch (14.09.2026, Solarpark
   // Hofweier: Dietmar "Netzeinspeisung oben in der Mitte waere natuerlicher"):
@@ -2138,7 +2147,7 @@ function buildItems(devices) {
         // Discovery-stabiler Schluessel fuers Backend (Klick-Detailseite).
         detailKey: d.detailKey || '',
         function: d.function,
-        label: d.label || d.function,
+        label: niceLabel(d.label) || d.function,
         icon: style.icon,
         value: d.value ?? 0,
         soc: (d.soc !== undefined && d.soc !== null) ? d.soc : null,
@@ -3499,7 +3508,7 @@ function memberToDevice(m) {
   return {
     instanceID: m.key,             // eindeutiger Item-Schluessel je Ebene
     function: m.function || 'other',
-    label: m.label || 'Mitglied',
+    label: niceLabel(m.label) || 'Mitglied',
     detailKey: m.detailKey || m.key,
     value: (m.value === undefined) ? null : m.value,
     soc: (m.soc === undefined) ? null : m.soc,

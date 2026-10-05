@@ -447,7 +447,10 @@ function renderCurrentSession(p) {
   }
   h += card('Ladeleistung jetzt', fmtW(p.powerNow));
   const c = p.control;
-  if (c && c.instanceID && c.limitID) {
+  // Boost nur, wenn das Limit zum gemeldeten Bereich passt: liegt der Ist-Wert
+  // ueber dem Maximum (z. B. andere Einheit/Skala im Partnermodul), wuerde
+  // "Volle Leistung" das Limit eher absenken als anheben.
+  if (c && c.instanceID && c.limitID && Number(c.limitValue) <= Number(c.maxCurrent)) {
     const atMax = !c.limitID || Number(c.limitValue) >= Number(c.maxCurrent);
     const on = !c.enableID || !!c.enableValue;
     const active = on && atMax;
@@ -461,7 +464,7 @@ function renderCurrentSession(p) {
     ? (usePlug
         ? 'Angeschlossen/Abgesteckt aus dem Wechsel des Stecker-Status (Genauigkeit = Leseintervall der Wallbox).'
         : 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.') +
-      (c && c.limitID ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
+      (c && c.limitID && Number(c.limitValue) <= Number(c.maxCurrent) ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
     : 'In den letzten 7 Tagen wurde nicht geladen.';
 }
 
@@ -500,7 +503,7 @@ function handleDetail(p) {
   if (p.font) document.documentElement.style.setProperty('--font', p.font);
   if (p.bg) document.body.style.background = p.bg;
   document.title = p.label + ' — Gerätedetails';
-  document.getElementById('title').textContent = p.label;
+  document.getElementById('title').textContent = (/^NRG-Stack\s+\S+\s+(.+)$/.exec(p.label || '') || [null, p.label])[1];
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
