@@ -423,10 +423,24 @@ function renderCurrentSession(p) {
   document.getElementById('curSessTitle').textContent = running ? 'Aktuelle Ladesitzung' : 'Letzte Ladesitzung';
   const card = (label, value, cls) => '<div class="hl-card' + (cls ? ' ' + cls : '') + '"><div class="hl-label">' + esc(label) + '</div><div class="hl-value">' + esc(value) + '</div></div>';
   let h = card('Status', running ? 'Lädt' : 'Keine Ladung', running ? 'cs-on' : '');
-  if (x) {
+  // Echte Stecker-Zeiten (ChargerHub-Vertrag 1.7), sonst die aus der
+  // Ladeleistung abgeleiteten Zeiten.
+  const pi = p.plugInfo;
+  const usePlug = !!(pi && pi.hasPlug);
+  if (usePlug) {
+    h += card('Angeschlossen um', pi.inAt ? when(pi.inAt) : '–');
+    const stillIn = pi.inAt && (!pi.outAt || pi.outAt < pi.inAt);
+    h += card('Abgesteckt um', stillIn ? 'noch angesteckt' : (pi.outAt ? when(pi.outAt) : '–'));
+  } else if (x) {
     h += card('Ladebeginn', when(x.start));
     h += card('Ladeende', running ? 'läuft noch' : when(x.end));
+  }
+  if (pi && pi.chargeSec) {
+    h += card('Ladezeit', dur(pi.chargeSec));
+  } else if (x) {
     h += card('Ladezeit', dur(x.end - x.start));
+  }
+  if (x) {
     h += card('Geladene Energie', x.kwh.toFixed(1).replace('.', ',') + ' kWh');
     const cost = x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0);
     if (cost !== null) h += card('Kosten', cost.toFixed(2).replace('.', ',') + ' €');
@@ -443,8 +457,10 @@ function renderCurrentSession(p) {
   grid.innerHTML = h;
   const b = document.getElementById('csBoost');
   if (b) b.addEventListener('click', boostCharging);
-  document.getElementById('curSessNote').textContent = x
-    ? 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.' +
+  document.getElementById('curSessNote').textContent = (x || usePlug)
+    ? (usePlug
+        ? 'Angeschlossen/Abgesteckt aus dem Wechsel des Stecker-Status (Genauigkeit = Leseintervall der Wallbox).'
+        : 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.') +
       (c && c.limitID ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
     : 'In den letzten 7 Tagen wurde nicht geladen.';
 }

@@ -123,7 +123,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ladesitzung auf einen Blick, 05.10.2026): ganz oben auf der Detailseite jeder Wallbox steht eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn, Ladeende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Die Zeiten sind aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung), nicht aus dem Steckerstatus, denn den liefert nicht jede Wallbox mit Uhrzeit. Wo das Gerät eine Ladefreigabe bzw. ein Stromlimit anbietet, gibt es einen „Volle Leistung“-Knopf: er schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum, zurück geht es mit dem Stromlimit-Regler."
+          "caption": "✨ Feinheit (Ladesitzung auf einen Blick, 05.10.2026): ganz oben auf der Detailseite jeder Wallbox steht eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn, Ladeende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Die Zeiten sind standardmäßig aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung); liefert ChargerHub (ab Vertrag 1.7, Option „Stecker-Zeiten“ im Panel Datenpunkte) die Stecker-Wechsel, stehen dort „Angeschlossen um“ und „Abgesteckt um“ und - bei CHARX/DaheimLader - die echte Ladezeit der Wallbox. Wo das Gerät eine Ladefreigabe bzw. ein Stromlimit anbietet, gibt es einen „Volle Leistung“-Knopf: er schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum, zurück geht es mit dem Stromlimit-Regler."
         },
         {
           "type": "Label",

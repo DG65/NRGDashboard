@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.161-beta.1 (2026-10-05)
+
+- Tile: Die Ladesitzungs-Übersicht auf der Wallbox-Detailseite nutzt jetzt die echten Stecker-Zeiten und die Ladezeit aus dem ChargerHub-Vertrag 1.7 (`pluggedInAtID`, `pluggedOutAtID`, `chargeTimeSecID`, `connectionTimeSecID`): „Angeschlossen um“, „Abgesteckt um“ („noch angesteckt“, solange das Fahrzeug steckt) und die Ladezeit der Wallbox (CHARX/DaheimLader) wie in Mstaudis Wunsch. Fehlen die Felder (älterer Vertrag, andere Anbieter, Option „Stecker-Zeiten“ in ChargerHub aus), bleibt es bei den aus der Ladeleistung abgeleiteten Zeiten. Ein Zeitstempel 0/1970 („noch nie gewechselt“) gilt als unbekannt und erscheint als „–“. Die vier Felder stehen nicht mehr doppelt in „Aktuelle Werte“. Getestet: Oberfläche an fünf Fällen (Martins Konstellation, noch angesteckt, unbekannt, älterer Vertrag, nur Ladezeit), die PHP-Auswertung gegen nachgebaute Variablen (sechs Fälle); mit echten ChargerHub-Daten noch nicht gesehen.
+
 ## 0.9.160-beta.1 (2026-10-05)
 
 - Tile: Der „Volle Leistung“-Knopf (Boost) auf der Wallbox-Detailseite erscheint nur noch, wenn das Gerät ein Stromlimit anbietet. Bei einer Wallbox, die nur eine Ladefreigabe kennt (z. B. OCPP-Ladepunkt ohne Stromlimit), hätte er nur die Freigabe geschaltet und „Volle Leistung“ versprochen. Dort steht weiterhin die normale Ladefreigabe-Checkbox. Gefunden am Screenshot von Dietmars WB 2.
