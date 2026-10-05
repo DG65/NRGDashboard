@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.168-beta.1 (2026-10-05)
+
+- Tile: Die Liste „Automatisch gefundene Geräte“ im Konfigurationsformular aktualisiert sich jetzt nach „Geräte jetzt suchen“ sofort. Bisher änderte sich nur die Zeile „9 Geräte gefunden“, die Liste darunter zeigte den alten Stand (7 Zeilen), bis man das Formular neu öffnete (Forum Mstaudi, auf dem Screenshot sichtbar). Die Zeilen werden jetzt in einer eigenen Funktion berechnet und beim Suchen per UpdateFormField in die offene Liste geschrieben.
+
 ## 0.9.167-beta.1 (2026-10-05)
 
 - Tile: Bezeichnungen von Geräten erscheinen ohne das Modul-Präfix: ein Knoten hieß „NRG-Stack MeterHub Klimagerät“ statt „Klimagerät“ (Forum Mstaudi). Ein führendes „NRG-Stack <Modul> “ wird bei Geräte-Bezeichnungen (Knoten, aufgeschachtelte Mitglieder, Titel der Detailseite) weggelassen, sofern dahinter noch ein Name steht; ein reiner Modulname bleibt unverändert.

@@ -872,7 +872,7 @@ class NRGDashboardTile extends IPSModule
      * (Store-Review-Regel), nur "Enabled"/"Name" werden aus der vorherigen
      * Einstellung uebernommen, gematcht ueber deviceKey().
      */
-    private function injectDeviceToggleValues(array &$form): void
+    private function deviceToggleRows(): array
     {
         $overrides = $this->deviceOverrideMap();
         $rows = [];
@@ -899,6 +899,13 @@ class NRGDashboardTile extends IPSModule
                     : '',
             ];
         }
+        return $rows;
+    }
+
+    /** Setzt die Zeilen der Geraeteliste in das frisch gebaute Formular. */
+    private function injectDeviceToggleValues(array &$form): void
+    {
+        $rows = $this->deviceToggleRows();
         $walk = function (array &$elements) use (&$walk, $rows) {
             foreach ($elements as &$el) {
                 if (!is_array($el)) {
@@ -1302,6 +1309,9 @@ class NRGDashboardTile extends IPSModule
         // keine Rueckmeldung im Formular selbst). UpdateFormField ist ein
         // No-Op, wenn kein Formular gerade offen ist.
         $this->UpdateFormField('DiscoveryResult', 'caption', $this->getDiscoverySummaryLine());
+        // Auch die Liste "Automatisch gefundene Geräte" neu befuellen - sonst zeigte sie
+        // nach dem Suchen noch den alten Stand ("9 Geräte gefunden", aber 7 Zeilen).
+        $this->UpdateFormField('DeviceVisibility', 'values', json_encode($this->deviceToggleRows()));
 
         // Ereignisgesteuert statt gepollt (Muster: InverterHubTile - RegisterMessage
         // je Quellvariable, sofortiger Push bei jeder Aenderung). Der 5-Minuten-
