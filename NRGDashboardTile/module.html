@@ -620,9 +620,9 @@
      (playOpenAnim()). Sie starten AM Rand und wachsen nur nach aussen; die
      Strichstaerke bleibt konstant (non-scaling-stroke), nur die Deckkraft
      nimmt ab. */
-  .fx-ripple { fill: none; vector-effect: non-scaling-stroke; opacity: 0; transform-box: fill-box; transform-origin: center; animation: fxRippleOut 1.3s cubic-bezier(.15,.5,.3,1) both; pointer-events: none; }
+  .fx-ripple { fill: none; vector-effect: non-scaling-stroke; opacity: 0; transform-box: fill-box; transform-origin: center; animation: fxRippleOut 1.4s cubic-bezier(.15,.5,.3,1) both; pointer-events: none; }
   @keyframes fxRippleOut {
-    0% { transform: scale(1); opacity: .95; }
+    0% { transform: scale(1); opacity: var(--rp, .95); }
     100% { transform: scale(2.6); opacity: 0; }
   }
   /* Kopfschuetteln (10.09.2026 komplett neu, Dietmar: "du machst eine rote
@@ -3886,27 +3886,33 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
     buildIrisBlades(fxLayer, ringRadius);
     duration = 650;
   } else {
-    const n = 4, step = 170;
+    const n = 3, step = 320;
     // Vorlage = Randring des ausloesenden Knotens/der Pille (Form, Farbe, Staerke)
     const src = visualEl && visualEl.querySelector('.node-ring');
     const cs = src ? getComputedStyle(src) : null;
+    const baseW = cs ? (parseFloat(cs.strokeWidth) || 3) : 3;
+    // Weicher Wellenrand ohne filter:blur (Safari-Falle): je Welle drei
+    // uebereinanderliegende Striche - breit+blass, mittel, Kern - ergeben
+    // einen zum Rand hin auslaufenden Verlauf.
+    const layers = [[3.4, .22], [2.2, .38], [1.35, .95]];
     for (let i = 0; i < n; i++) {
-      let c;
-      if (src) {
-        c = src.cloneNode(false);
-        c.removeAttribute('class');
-        c.setAttribute('class', 'fx-ripple');
-        c.style.stroke = cs.stroke;
-        c.style.strokeWidth = cs.strokeWidth;
-      } else {
-        c = el('circle', { r: ringRadius, class: 'fx-ripple' });
-        c.style.stroke = '#9aa0a6';
-        c.style.strokeWidth = '3px';
-      }
-      c.style.animationDelay = (i * step) + 'ms';
-      fxLayer.appendChild(c);
+      layers.forEach(([k, op]) => {
+        let c;
+        if (src) {
+          c = src.cloneNode(false);
+          c.setAttribute('class', 'fx-ripple');
+          c.style.stroke = cs.stroke;
+        } else {
+          c = el('circle', { r: ringRadius, class: 'fx-ripple' });
+          c.style.stroke = '#9aa0a6';
+        }
+        c.style.strokeWidth = (baseW * k * 1.5).toFixed(1) + 'px';
+        c.style.setProperty('--rp', op);
+        c.style.animationDelay = (i * step) + 'ms';
+        fxLayer.appendChild(c);
+      });
     }
-    duration = 1300 + (n - 1) * step;
+    duration = 1400 + (n - 1) * step;
   }
   setTimeout(() => clearFx(fxLayer), duration);
   return duration;

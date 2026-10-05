@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.4 (2026-10-06)
+
+- Kreiswellen: langsamere Abfolge (3 Wellen), dicker, weich auslaufende Ränder.
+
 ## 0.9.169-beta.3 (2026-10-05)
 
 - Kreiswellen: Kopien des Knoten-Randrings (gleiche Farbe, Stärke, Form), nur außerhalb des Knotens sichtbar.
