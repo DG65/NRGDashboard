@@ -5140,6 +5140,10 @@ class NRGDashboardTile extends IPSModule
             // siehe ChargingSessions().
             'sessions'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
                 ? $this->ChargingSessions($this->SessionPowerIDs($key, $d, $powerID), $dayStart) : null,
+            // Stecker-Zeiten und Ladezeit aus dem Vertrag (ChargerHub CHUB 1.7,
+            // 05.10.2026) - null, wenn der Anbieter die Felder nicht liefert.
+            'plugInfo'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
+                ? $this->SessionPlugInfo($d) : null,
             // Kaskadierte Unterzaehler (Dietmar, 28.08.2026: "wenn es
             // hinter den Knotenpunkten weitere Unterzaehler geben wuerde ...
             // man koennte diese Erweiterung auch im Overlay fortfuehren").
@@ -5171,6 +5175,41 @@ class NRGDashboardTile extends IPSModule
             // statt Wallboxen; beide koennen nebeneinander null sein.
             'switchControl' => $this->SwitchControlInfo($d),
         ];
+    }
+
+    /**
+     * Stecker-Zeiten und Ladezeit einer Wallbox (CHUB_GetFunctions 1.7,
+     * 05.10.2026): pluggedInAtID/pluggedOutAtID (Unix-Zeitstempel),
+     * chargeTimeSecID/connectionTimeSecID (Sekunden). Rein lesend, generische
+     * Referenzfelder - kein Anbieter ist hart verdrahtet. Ein Zeitstempel
+     * <= 1 Tag (0/1970) bedeutet "noch nie gewechselt" und zaehlt als
+     * unbekannt. null, wenn der Eintrag KEINES der Felder hat (aeltere
+     * Vertraege, andere Anbieter) - dann bleiben die aus der Ladeleistung
+     * abgeleiteten Zeiten.
+     */
+    private function SessionPlugInfo(array $d): ?array
+    {
+        $has = false;
+        $read = function (string $field, bool $isTime) use ($d, &$has) {
+            $id = (int) ($d[$field] ?? 0);
+            if ($id <= 0 || !IPS_VariableExists($id)) {
+                return null;
+            }
+            $has = true;
+            $v = (int) round((float) GetValue($id));
+            if ($isTime) {
+                return $v > 86400 ? $v : null;
+            }
+            return $v > 0 ? $v : null;
+        };
+        $info = [
+            'inAt'    => $read('pluggedInAtID', true),
+            'outAt'   => $read('pluggedOutAtID', true),
+            'chargeSec' => $read('chargeTimeSecID', false),
+            'connSec' => $read('connectionTimeSecID', false),
+        ];
+        $info['hasPlug'] = isset($d['pluggedInAtID']) && (int) $d['pluggedInAtID'] > 0 && IPS_VariableExists((int) $d['pluggedInAtID']);
+        return $has ? $info : null;
     }
 
     /**
@@ -6075,7 +6114,7 @@ class NRGDashboardTile extends IPSModule
         // des Steuer-Panels da (Dietmar 31.08.2026: "Beschriftung und
         // Aussage gehoeren zusammen", genau das ist die Aufgabe des
         // Steuer-Panels, nicht dieser generischen Tabelle).
-        $controlFields = ['chargeEnableID', 'currentLimitID', 'blockReasonID'];
+        $controlFields = ['chargeEnableID', 'currentLimitID', 'blockReasonID', 'pluggedInAtID', 'pluggedOutAtID', 'chargeTimeSecID', 'connectionTimeSecID'];
         foreach ($d as $field => $val) {
             if ($field === 'instanceID' || str_starts_with($field, '_') || in_array($field, $controlFields, true)) {
                 continue;

@@ -1515,9 +1515,12 @@ gleiche IPSView-Fähigkeit.
   Detailseite jeder Wallbox steht eine einfache Übersicht der aktuellen
   bzw. letzten Ladesitzung — Status, Ladebeginn, Ladeende, Ladezeit,
   geladene Energie, Kosten und aktuelle Ladeleistung. Die Zeiten sind aus
-  der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung),
-  nicht aus dem Steckerstatus der Wallbox, den nicht jede Wallbox mit
-  Uhrzeit liefert. Bietet das Gerät Ladefreigabe bzw. Stromlimit, gibt es
+  der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung).
+  Liefert ChargerHub ab Vertrag 1.7 die Stecker-Wechsel
+  (`pluggedInAtID`/`pluggedOutAtID`, Option „Stecker-Zeiten“ im Panel
+  Datenpunkte) und bei CHARX/DaheimLader die Ladezeit (`chargeTimeSecID`),
+  zeigt die Übersicht stattdessen „Angeschlossen um“, „Abgesteckt um“ und die
+  echte Ladezeit; fehlen die Felder, bleibt es bei den abgeleiteten Zeiten. Bietet das Gerät Ladefreigabe bzw. Stromlimit, gibt es
   einen „Volle Leistung“-Knopf (Boost): er schaltet die Ladefreigabe ein und
   setzt das Stromlimit auf das Maximum; zurück geht es mit dem
   Stromlimit-Regler. Er nutzt dieselben Aktionen und Sperren wie die
