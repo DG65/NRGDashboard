@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.160-beta.1 (2026-10-05)
+
+- Tile: Der „Volle Leistung“-Knopf (Boost) auf der Wallbox-Detailseite erscheint nur noch, wenn das Gerät ein Stromlimit anbietet. Bei einer Wallbox, die nur eine Ladefreigabe kennt (z. B. OCPP-Ladepunkt ohne Stromlimit), hätte er nur die Freigabe geschaltet und „Volle Leistung“ versprochen. Dort steht weiterhin die normale Ladefreigabe-Checkbox. Gefunden am Screenshot von Dietmars WB 2.
+
 ## 0.9.159-beta.1 (2026-10-05)
 
 - Tile: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung: Status, Ladebeginn, Ladeende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (nur wo das Gerät beides anbietet, mit denselben Sperren wie die Schalter darunter). Anlass: Forum (Mstaudi, ChargerHub-Thread): ein einfacher Nutzer wünscht sich Infos zur aktuellen Sitzung wie an der Anzeige einer Wallbox. Die Zeiten sind aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung), nicht aus dem Steckerstatus. Getestet an einer nachgestellten Sitzung: laufend, letzte Sitzung, keine Ladung, Gerät ohne Wallbox-Funktion, Boost-Aufrufe (Freigabe + Limit, nur Limit, schon aktiv).

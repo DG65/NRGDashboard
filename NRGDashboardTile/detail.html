@@ -433,7 +433,7 @@ function renderCurrentSession(p) {
   }
   h += card('Ladeleistung jetzt', fmtW(p.powerNow));
   const c = p.control;
-  if (c && c.instanceID && (c.enableID || c.limitID)) {
+  if (c && c.instanceID && c.limitID) {
     const atMax = !c.limitID || Number(c.limitValue) >= Number(c.maxCurrent);
     const on = !c.enableID || !!c.enableValue;
     const active = on && atMax;
@@ -445,7 +445,7 @@ function renderCurrentSession(p) {
   if (b) b.addEventListener('click', boostCharging);
   document.getElementById('curSessNote').textContent = x
     ? 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.' +
-      (c && (c.enableID || c.limitID) ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
+      (c && c.limitID ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
     : 'In den letzten 7 Tagen wurde nicht geladen.';
 }
 
