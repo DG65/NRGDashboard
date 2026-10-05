@@ -3856,7 +3856,7 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
   clearFx(fxLayer);
   const style = pickAnimStyle(OPEN_ANIM_STYLE, 4, 4);
   let duration = 600;
-  if (style === 3 && visualEl) {
+  if (style === 0 && visualEl) {
     // Kopfnicken: der Knoten bzw. die Pille selbst nickt (wie das Kopfschuetteln,
     // aber um die waagerechte Achse); Klasse vor dem Ebenenwechsel wieder weg.
     visualEl.classList.remove('fx-nod3d');
@@ -3865,7 +3865,7 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
     setTimeout(() => visualEl.classList.remove('fx-nod3d'), 1820);
     return 1850;
   }
-  if (style === 0 || style === 3) {
+  if (style === 0 || style === 1) {
     const n = 11;
     for (let i = 0; i < n; i++) {
       const ang = (i / n) * 2 * Math.PI + (Math.random() * 0.4 - 0.2);
@@ -3876,7 +3876,7 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
       fxLayer.appendChild(c);
     }
     duration = 620;
-  } else if (style === 1) {
+  } else if (style === 2) {
     buildIrisBlades(fxLayer, ringRadius);
     duration = 650;
   } else {
