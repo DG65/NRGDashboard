@@ -632,16 +632,19 @@
      bei SVG-Elementen bezieht sich "center" ohne fill-box auf die viewBox,
      der Knoten schwang deshalb um einen weit entfernten Punkt statt um seine
      eigene Mittelachse (Mittelpunkt wanderte etwa +-100 px zur Seite). */
-  .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY .9s ease-in-out; transform-box: fill-box; transform-origin: center; }
+  .node-visual.fx-shake3d, #center-visual.fx-shake3d { animation: fxShakeY 1.8s ease-in-out; transform-box: fill-box; transform-origin: center; }
   @keyframes fxShakeY {
-    0%, 100% { transform: perspective(320px) rotateY(0deg); }
-    12% { transform: perspective(320px) rotateY(-32deg); }
-    25% { transform: perspective(320px) rotateY(30deg); }
-    38% { transform: perspective(320px) rotateY(-32deg); }
-    51% { transform: perspective(320px) rotateY(30deg); }
-    64% { transform: perspective(320px) rotateY(-20deg); }
-    77% { transform: perspective(320px) rotateY(14deg); }
-    88% { transform: perspective(320px) rotateY(-6deg); }
+    /* Menschliches Verneinen (05.10.2026, Dietmar: "weiter drehen, langsamer und
+       ruhiger"): drei ruhige Hin-und-Her-Bewegungen mit weichen Umkehrpunkten
+       (ease-in-out je Abschnitt), ausklingend. Perspektive weiter weg (520px),
+       damit die nahe Seite beim Drehen nicht zu stark ueber den Knoten waechst. */
+    0%, 100% { transform: perspective(520px) rotateY(0deg); }
+    14% { transform: perspective(520px) rotateY(-42deg); }
+    34% { transform: perspective(520px) rotateY(42deg); }
+    54% { transform: perspective(520px) rotateY(-38deg); }
+    72% { transform: perspective(520px) rotateY(30deg); }
+    86% { transform: perspective(520px) rotateY(-14deg); }
+    94% { transform: perspective(520px) rotateY(4deg); }
   }
   /* Schwindel-Sternchen (ueberarbeitet: Dietmar "immer noch zu schnell" -
      nochmals deutlich verlangsamt). */
@@ -3871,7 +3874,7 @@ function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
   let duration = 900;
   if (style === 0) {
     if (visualEl) { visualEl.classList.add('fx-shake3d'); }
-    duration = 950;
+    duration = 1850;   // = CSS-Dauer von fxShakeY (1,8 s) + kurzer Puffer
   } else if (style === 1) {
     if (fxLayer) {
       const n = 3;
