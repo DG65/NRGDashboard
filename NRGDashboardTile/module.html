@@ -603,6 +603,10 @@
      <rect> DARIN. */
   .fx-iris-glass { fill: url(#glossSpec); opacity: 0; animation: fxIrisGlassShow .6s ease-out forwards; }
   @keyframes fxIrisGlassShow { 0% { opacity: .95; } 65% { opacity: .8; } 100% { opacity: 0; } }
+  /* Kamerablende (06.10.2026): Lamellen als berechnete Polygone, siehe buildIrisBlades(). */
+  .fx-iris-leaf { fill: url(#plasticFill); stroke: rgba(255,255,255,.42); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+  .fx-iris-rim { fill: none; stroke: rgba(20,22,26,.65); stroke-width: 2.5; pointer-events: none; }
+  .fx-iris-glass { animation: none; }
   .fx-iris-blade { fill: url(#plasticFill); stroke: rgba(255,255,255,.3); stroke-width: 1; opacity: 0; transform-origin: 0 0; }
   .fx-iris-blade.closing { opacity: .98; animation: fxIrisBladeClose .6s cubic-bezier(.6,0,.85,.3) forwards; }
   @keyframes fxIrisBladeClose {
@@ -3852,25 +3856,66 @@ function clearFx(fxLayer) {
 // Attribut dieses ersetzen statt ergaenzen wuerde (siehe Kommentar oben
 // bei .fx-layer). */
 function buildIrisBlades(fxLayer, ringRadius) {
-  const n = 6;
-  const pivot = ringRadius * 0.62;
-  const bladeLen = ringRadius * 1.2;
-  const bladeW = ringRadius * 0.5;
-  // Glasreflex in der Mitte (schimmert durch die Lamellen hindurch, bis sie
-  // sich schliessen) - MUSS zuerst gezeichnet werden, damit er unter den
-  // Lamellen liegt.
-  fxLayer.appendChild(el('circle', { r: (ringRadius * 0.42).toFixed(1), class: 'fx-iris-glass' }));
+  // Echte Kamerablende (06.10.2026, Dietmar: "wie eine Blende beim
+  // Fotoapparat"): 7 gleiche Lamellen, jede mit einer geraden Innenkante.
+  // Zusammen lassen die Kanten eine regelmaessige Oeffnung (Siebeneck) frei,
+  // deren Inkreis-Radius r sich beim Schliessen auf fast 0 verkleinert, waehrend
+  // sich die Lamellen leicht verdrehen (wie bei der echten Mechanik). Jede
+  // Lamelle liegt ueber ihrer Vorgaengerin und schiebt sich unter ihre
+  // Nachfolgerin - so sieht man die ueberlappenden Kanten. Die Geometrie
+  // wird je Frame exakt berechnet (kein CSS-Drehen von Rechtecken, das nur
+  // grob wie eine Blende aussah) und auf den Knotenrand geclippt.
+  const n = 7, R = ringRadius;
+  const NS = 'http://www.w3.org/2000/svg';
+  const clipId = 'irisClip' + Math.floor(Math.random() * 1e9);
+  const clip = document.createElementNS(NS, 'clipPath');
+  clip.setAttribute('id', clipId);
+  clip.appendChild(el('circle', { r: R.toFixed(1) }));
+  fxLayer.appendChild(clip);
+  const wrap = el('g', { 'clip-path': 'url(#' + clipId + ')' });
+  fxLayer.appendChild(wrap);
+  const glass = el('circle', { r: (R * 0.5).toFixed(1), class: 'fx-iris-glass' });
+  wrap.appendChild(glass);
+  const blades = [];
   for (let i = 0; i < n; i++) {
-    const home = el('g', { transform: 'rotate(' + (i * 360 / n).toFixed(1) + ')' });
-    const pivotG = el('g', { transform: 'translate(' + pivot.toFixed(1) + ',0)' });
-    pivotG.appendChild(el('rect', {
-      class: 'fx-iris-blade closing',
-      x: (-bladeLen * 0.18).toFixed(1), y: (-bladeW / 2).toFixed(1),
-      width: bladeLen.toFixed(1), height: bladeW.toFixed(1), rx: 3,
-    }));
-    home.appendChild(pivotG);
-    fxLayer.appendChild(home);
+    const b = el('polygon', { class: 'fx-iris-leaf', points: '' });
+    wrap.appendChild(b);
+    blades.push(b);
   }
+  const rim = el('circle', { r: R.toFixed(1), class: 'fx-iris-rim' });
+  fxLayer.appendChild(rim);
+  const rOpen = R * 1.25, rShut = R * 0.035;
+  const TWIST = 0.55;                       // rad: Verdrehung der Lamellen ueber den ganzen Hub
+  const tHalf = Math.tan(Math.PI / n);
+  const T_CLOSE = 520, T_HOLD = 60, T_OPEN = 330;
+  const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  function draw(r) {
+    const k = 1 - Math.min(1, Math.max(0, (r - rShut) / (rOpen - rShut)));
+    const tw = TWIST * k;
+    for (let i = 0; i < n; i++) {
+      const al = i * 2 * Math.PI / n + tw;
+      const nx = Math.cos(al), ny = Math.sin(al), tx = -ny, ty = nx;
+      const v = r * tHalf;                  // Abstand Lotfusspunkt - Ecke der Oeffnung
+      const t1 = -(v + R * 0.12), t2 = v + R * 0.45, w = R * 2.6;
+      const fx = nx * r, fy = ny * r;
+      const pts = [[t1, 0], [t2, 0], [t2, w], [t1, w]].map(([t, u]) =>
+        (fx + tx * t + nx * u).toFixed(1) + ',' + (fy + ty * t + ny * u).toFixed(1)).join(' ');
+      blades[i].setAttribute('points', pts);
+    }
+    glass.style.opacity = String(Math.min(.9, k * 1.1));
+  }
+  draw(rOpen);
+  const t0 = performance.now();
+  (function frame(now) {
+    if (!wrap.isConnected) return;
+    const t = now - t0;
+    let r;
+    if (t < T_CLOSE) { r = rOpen + (rShut - rOpen) * ease(t / T_CLOSE); }
+    else if (t < T_CLOSE + T_HOLD) { r = rShut; }
+    else { r = rShut + (rOpen - rShut) * ease(Math.min(1, (t - T_CLOSE - T_HOLD) / T_OPEN)); }
+    draw(r);
+    if (t < T_CLOSE + T_HOLD + T_OPEN) { requestAnimationFrame(frame); }
+  })(t0);
 }
 // Erfolg (Ebene wird tatsaechlich gewechselt): 0 Funkenschauer (Standard),
 // 1 Portal-Iris (echte Lamellen, siehe buildIrisBlades()), 2 Kreiswellen
@@ -3938,7 +3983,7 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
     duration = 620;
   } else if (style === 3) {
     buildIrisBlades(fxLayer, ringRadius);
-    duration = 650;
+    duration = 960;
   } else if (style === 1) {
     // Abfluss: der Knoten dreht sich, schrumpft zur Mitte und wird eingesaugt;
     // Strudelringe in Randfarbe laufen gestrichelt ins Zentrum. Danach sieht
