@@ -321,23 +321,34 @@ class NRGDashboardTile extends IPSModule
         // (geht nicht weiter), plus "Zufällig". Auswahl-Profile (Ganzzahl
         // mit Assoziationen) statt Bool/freier Zahl, damit WebFront eine
         // Auswahlliste statt eines Zahlenfelds zeigt.
-        // Reihenfolge (05.10.2026): 0 Kopfnicken, 1 Funkenschauer, 2 Portal-Iris,
-        // 3 Kreiswellen, 4 Zufällig. Frühere Belegungen werden umgestellt:
-        // bis 0.9.168 (kein Wert 4): 0,1,2,3(Zufällig) -> 1,2,3,4;
-        // 0.9.169 (Wert 4, Wert 0 = Funkenschauer): 0,1,2,3(Nicken),4 -> 1,2,3,0,4.
+        // Reihenfolge (06.10.2026, Dietmar): 0 Kopfnicken, 1 Abfluss,
+        // 2 Funkenschauer, 3 Portal-Iris, 4 Zufällig. Kreiswellen wanderten in
+        // die Blockiert-Liste. Frühere Belegungen werden umgestellt (Kreiswellen
+        // -> Funkenschauer):
+        //  - Abfluss-Fassung (0 Nicken,1 Funken,2 Iris,3 Wellen,4 Abfluss,5 Zufällig)
+        //  - Nicken-Fassung (0 Nicken,1 Funken,2 Iris,3 Wellen,4 Zufällig)
+        //  - Zwischenfassung (0 Funken,1 Iris,2 Wellen,3 Nicken,4 Zufällig)
+        //  - bis 0.9.168 (0 Funken,1 Iris,2 Wellen,3 Zufällig)
         $openAnimMap = null;
         if (IPS_VariableProfileExists('NRGDASH.OpenAnimStyle')) {
             $assoc = IPS_GetVariableProfile('NRGDASH.OpenAnimStyle')['Associations'] ?? [];
             $byVal = array_column($assoc, 'Name', 'Value');
-            if (($byVal[4] ?? '') === 'Zufällig' && ($byVal[0] ?? '') === 'Kopfnicken') {
-                $openAnimMap = [4 => 5]; // Abfluss (06.10.2026) steht vor Zufällig
-            } elseif (($byVal[0] ?? '') !== 'Kopfnicken') {
-                $openAnimMap = isset($byVal[4]) ? [0 => 1, 1 => 2, 2 => 3, 3 => 0, 4 => 5] : [0 => 1, 1 => 2, 2 => 3, 3 => 5];
+            if (($byVal[1] ?? '') === 'Abfluss') {
+                $openAnimMap = null; // schon neue Belegung
+            } elseif (isset($byVal[5])) {
+                $openAnimMap = [0 => 0, 1 => 2, 2 => 3, 3 => 2, 4 => 1, 5 => 4];
+            } elseif (($byVal[0] ?? '') === 'Kopfnicken') {
+                $openAnimMap = [0 => 0, 1 => 2, 2 => 3, 3 => 2, 4 => 4];
+            } elseif (isset($byVal[4])) {
+                $openAnimMap = [0 => 2, 1 => 3, 2 => 2, 3 => 0, 4 => 4];
+            } else {
+                $openAnimMap = [0 => 2, 1 => 3, 2 => 2, 3 => 4];
             }
         }
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
-            0 => 'Kopfnicken', 1 => 'Funkenschauer', 2 => 'Portal-Iris', 3 => 'Kreiswellen', 4 => 'Abfluss', 5 => 'Zufällig',
+            0 => 'Kopfnicken', 1 => 'Abfluss', 2 => 'Funkenschauer', 3 => 'Portal-Iris', 4 => 'Zufällig',
         ]);
+        IPS_SetVariableProfileAssociation('NRGDASH.OpenAnimStyle', 5, '', '', -1); // alter Eintrag (leerer Name löscht)
         $openAnimVarID = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID);
         if ($openAnimMap !== null && $openAnimVarID !== false) {
             $old = (int) GetValue($openAnimVarID);
@@ -349,11 +360,27 @@ class NRGDashboardTile extends IPSModule
         $this->RegisterVariableInteger('OpenAnimStyle', 'Animation bei Ebenenwechsel', 'NRGDASH.OpenAnimStyle', 207);
         $this->EnableAction('OpenAnimStyle');
         if ($isNewOpenAnim) {
-            $this->SetValue('OpenAnimStyle', 1);
+            $this->SetValue('OpenAnimStyle', 2);
+        }
+        // Reihenfolge (06.10.2026): 0 Kopfschütteln, 1 Kreiswellen, 2 Schwindel-
+        // Sternchen, 3 Häufchen, 4 Zufällig (vorher 0,1 Schwindel,2 Häufchen,3 Zufällig).
+        $blockedMap = null;
+        if (IPS_VariableProfileExists('NRGDASH.BlockedAnimStyle')) {
+            $bAssoc = array_column(IPS_GetVariableProfile('NRGDASH.BlockedAnimStyle')['Associations'] ?? [], 'Name', 'Value');
+            if (($bAssoc[1] ?? '') === 'Schwindel-Sternchen') {
+                $blockedMap = [0 => 0, 1 => 2, 2 => 3, 3 => 4];
+            }
         }
         $this->ensureEnumProfile('NRGDASH.BlockedAnimStyle', [
-            0 => 'Kopfschütteln', 1 => 'Schwindel-Sternchen', 2 => 'Häufchen', 3 => 'Zufällig',
+            0 => 'Kopfschütteln', 1 => 'Kreiswellen', 2 => 'Schwindel-Sternchen', 3 => 'Häufchen', 4 => 'Zufällig',
         ]);
+        $blockedVarID = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID);
+        if ($blockedMap !== null && $blockedVarID !== false) {
+            $oldB = (int) GetValue($blockedVarID);
+            if (isset($blockedMap[$oldB])) {
+                SetValue($blockedVarID, $blockedMap[$oldB]);
+            }
+        }
         $isNewBlockedAnim = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID) === false;
         $this->RegisterVariableInteger('BlockedAnimStyle', 'Animation, wenn keine Ebene mehr möglich ist', 'NRGDASH.BlockedAnimStyle', 208);
         $this->EnableAction('BlockedAnimStyle');
@@ -531,7 +558,7 @@ class NRGDashboardTile extends IPSModule
         $this->SetValue('FlowRefW', self::DEF_FLOWREF);
         $this->SetValue('TransitionMs', self::DEF_TRANSITION);
         $this->SetValue('DemoAutoTour', false);
-        $this->SetValue('OpenAnimStyle', 1);
+        $this->SetValue('OpenAnimStyle', 2);
         $this->SetValue('BlockedAnimStyle', 0);
         $this->Render();
     }
@@ -596,7 +623,7 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($Ident === 'OpenAnimStyle' || $Ident === 'BlockedAnimStyle') {
-            $this->SetValue($Ident, max(0, min($Ident === 'OpenAnimStyle' ? 5 : 3, (int) $Value)));
+            $this->SetValue($Ident, max(0, min(4, (int) $Value)));
             $this->Render();
             return;
         }

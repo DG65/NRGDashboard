@@ -3877,59 +3877,10 @@ function buildIrisBlades(fxLayer, ringRadius) {
 // (wachsen jetzt aus der Mitte statt nur zu verblassen). ringRadius =
 // Radius/Halbachse (Aussenknoten: DESIGN_R+3, Pille: Halbhoehe+3). Gibt
 // die Anzeigedauer zurueck, jede Variante hat ihr eigenes Timing.
-function playOpenAnim(fxLayer, ringRadius, visualEl) {
-  if (!fxLayer) return 0;
-  SKIP_LEVEL_FLIGHT = false;
-  clearFx(fxLayer);
-  const style = pickAnimStyle(OPEN_ANIM_STYLE, 5, 5);
-  let duration = 600;
-  if (style === 0 && visualEl) {
-    // Kopfnicken: der Knoten bzw. die Pille selbst nickt (wie das Kopfschuetteln,
-    // aber um die waagerechte Achse); Klasse vor dem Ebenenwechsel wieder weg.
-    visualEl.classList.remove('fx-nod3d');
-    void visualEl.getBoundingClientRect();
-    visualEl.classList.add('fx-nod3d');
-    setTimeout(() => visualEl.classList.remove('fx-nod3d'), 1820);
-    return 1850;
-  }
-  if (style === 0 || style === 1) {
-    const n = 11;
-    for (let i = 0; i < n; i++) {
-      const ang = (i / n) * 2 * Math.PI + (Math.random() * 0.4 - 0.2);
-      const dist = 52 + Math.random() * 34;
-      const c = el('circle', { r: 4.2, class: 'fx-spark fire' });
-      c.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(1) + 'px');
-      c.style.setProperty('--dy', (Math.sin(ang) * dist).toFixed(1) + 'px');
-      fxLayer.appendChild(c);
-    }
-    duration = 620;
-  } else if (style === 2) {
-    buildIrisBlades(fxLayer, ringRadius);
-    duration = 650;
-  } else if (style === 4) {
-    // Abfluss: der Knoten dreht sich, schrumpft zur Mitte und wird eingesaugt;
-    // Strudelringe in Randfarbe laufen gestrichelt ins Zentrum. Danach sieht
-    // die neue Ebene frisch aus (Rendering ersetzt das Element).
-    const src = visualEl && visualEl.querySelector('.node-ring');
-    const cs = src ? getComputedStyle(src) : null;
-    if (visualEl) {
-      visualEl.classList.remove('fx-drain');
-      void visualEl.getBoundingClientRect();
-      visualEl.classList.add('fx-drain');
-      setTimeout(() => visualEl.classList.remove('fx-drain'), 2200);
-    }
-    for (let i = 0; i < 3; i++) {
-      let c;
-      if (src) { c = src.cloneNode(false); c.setAttribute('class', 'fx-swirl'); c.style.stroke = cs.stroke; }
-      else { c = el('circle', { r: ringRadius, class: 'fx-swirl' }); c.style.stroke = '#9aa0a6'; }
-      c.style.strokeWidth = ((parseFloat(cs && cs.strokeWidth) || 3) * 1.2).toFixed(1) + 'px';
-      c.style.animationDelay = (i * 60) + 'ms';
-      c.style.setProperty('--sw', (i % 2 ? -1 : 1));
-      fxLayer.appendChild(c);
-    }
-    SKIP_LEVEL_FLIGHT = true;
-    duration = 1250;
-  } else {
+// Kreiswellen (Blockiert-Animation): Kopien des Randrings laufen nach aussen.
+function playRipples(fxLayer, ringRadius, visualEl) {
+  let duration = 0;
+  if (!fxLayer) return 900;
     const n = 3, step = 320;
     // Vorlage = Randring des ausloesenden Knotens/der Pille (Form, Farbe, Staerke)
     const src = visualEl && visualEl.querySelector('.node-ring');
@@ -3957,6 +3908,60 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
       });
     }
     duration = 1400 + (n - 1) * step;
+  return duration;
+}
+function playOpenAnim(fxLayer, ringRadius, visualEl) {
+  if (!fxLayer) return 0;
+  SKIP_LEVEL_FLIGHT = false;
+  clearFx(fxLayer);
+  const style = pickAnimStyle(OPEN_ANIM_STYLE, 4, 4);
+  let duration = 600;
+  if (style === 0 && visualEl) {
+    // Kopfnicken: der Knoten bzw. die Pille selbst nickt (wie das Kopfschuetteln,
+    // aber um die waagerechte Achse); Klasse vor dem Ebenenwechsel wieder weg.
+    visualEl.classList.remove('fx-nod3d');
+    void visualEl.getBoundingClientRect();
+    visualEl.classList.add('fx-nod3d');
+    setTimeout(() => visualEl.classList.remove('fx-nod3d'), 1820);
+    return 1850;
+  }
+  if (style === 2 || style === 0) {
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * 2 * Math.PI + (Math.random() * 0.4 - 0.2);
+      const dist = 52 + Math.random() * 34;
+      const c = el('circle', { r: 4.2, class: 'fx-spark fire' });
+      c.style.setProperty('--dx', (Math.cos(ang) * dist).toFixed(1) + 'px');
+      c.style.setProperty('--dy', (Math.sin(ang) * dist).toFixed(1) + 'px');
+      fxLayer.appendChild(c);
+    }
+    duration = 620;
+  } else if (style === 3) {
+    buildIrisBlades(fxLayer, ringRadius);
+    duration = 650;
+  } else if (style === 1) {
+    // Abfluss: der Knoten dreht sich, schrumpft zur Mitte und wird eingesaugt;
+    // Strudelringe in Randfarbe laufen gestrichelt ins Zentrum. Danach sieht
+    // die neue Ebene frisch aus (Rendering ersetzt das Element).
+    const src = visualEl && visualEl.querySelector('.node-ring');
+    const cs = src ? getComputedStyle(src) : null;
+    if (visualEl) {
+      visualEl.classList.remove('fx-drain');
+      void visualEl.getBoundingClientRect();
+      visualEl.classList.add('fx-drain');
+      setTimeout(() => visualEl.classList.remove('fx-drain'), 2200);
+    }
+    for (let i = 0; i < 3; i++) {
+      let c;
+      if (src) { c = src.cloneNode(false); c.setAttribute('class', 'fx-swirl'); c.style.stroke = cs.stroke; }
+      else { c = el('circle', { r: ringRadius, class: 'fx-swirl' }); c.style.stroke = '#9aa0a6'; }
+      c.style.strokeWidth = ((parseFloat(cs && cs.strokeWidth) || 3) * 1.2).toFixed(1) + 'px';
+      c.style.animationDelay = (i * 60) + 'ms';
+      c.style.setProperty('--sw', (i % 2 ? -1 : 1));
+      fxLayer.appendChild(c);
+    }
+    SKIP_LEVEL_FLIGHT = true;
+    duration = 1250;
   }
   setTimeout(() => clearFx(fxLayer), duration);
   return duration;
@@ -3973,12 +3978,14 @@ function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
   ringEl.classList.add('press-blocked');
   if (fxLayer) { clearFx(fxLayer); }
   if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
-  const style = pickAnimStyle(BLOCKED_ANIM_STYLE, 3, 3);
+  const style = pickAnimStyle(BLOCKED_ANIM_STYLE, 4, 4);
   let duration = 900;
   if (style === 0) {
     if (visualEl) { visualEl.classList.add('fx-shake3d'); }
     duration = 1850;   // = CSS-Dauer von fxShakeY (1,8 s) + kurzer Puffer
   } else if (style === 1) {
+    duration = playRipples(fxLayer, ringRadius, visualEl);
+  } else if (style === 2) {
     if (fxLayer) {
       const n = 3;
       for (let i = 0; i < n; i++) {
