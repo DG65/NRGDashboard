@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.17 (2026-10-06)
+
+- PVMonitor: Monats-Spitzenwert (gelbe Linie, Strompreis-Reiter) zeigte bei kurzen Rohwert-Ausreißern einen zu niedrigen Wert. Jetzt werden die Tage nach Rohwert-Obergrenze absteigend geprüft, bis kein Tag den besten 15-Minuten-Durchschnitt mehr übertreffen kann (Fund von Stefan im Forum).
+
 ## 0.9.169-beta.16 (2026-10-06)
 
 - Flamme: feiner Farbverlauf aus 10 halbdurchsichtigen Schichten (dunkelrot über orange und gelb zu weißgelbem Kern), keine sichtbaren Stufen mehr.
