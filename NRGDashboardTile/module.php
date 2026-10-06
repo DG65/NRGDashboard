@@ -348,7 +348,11 @@ class NRGDashboardTile extends IPSModule
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
             0 => 'Kopfnicken', 1 => 'Abfluss', 2 => 'Funkenschauer', 3 => 'Portal-Iris', 4 => 'Zufällig',
         ]);
-        IPS_SetVariableProfileAssociation('NRGDASH.OpenAnimStyle', 5, '', '', -1); // alter Eintrag (leerer Name löscht)
+        // alter Eintrag 5 (Zufällig der Abfluss-Fassung) - nur löschen, wenn er noch existiert
+        // (IPS meldet sonst eine Warnung, die Create() abbricht)
+        if (in_array(5, array_column(IPS_GetVariableProfile('NRGDASH.OpenAnimStyle')['Associations'] ?? [], 'Value'), true)) {
+            IPS_SetVariableProfileAssociation('NRGDASH.OpenAnimStyle', 5, '', '', -1);
+        }
         $openAnimVarID = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID);
         if ($openAnimMap !== null && $openAnimVarID !== false) {
             $old = (int) GetValue($openAnimVarID);
