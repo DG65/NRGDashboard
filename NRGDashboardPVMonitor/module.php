@@ -2754,35 +2754,45 @@ class NRGDashboardPVMonitor extends IPSModule
         if (!is_array($dailyRows) || count($dailyRows) === 0) {
             return null;
         }
-        $peakDayStart = null;
-        $peakDrawW = 0.0;
+        // Obergrenze je Tag = staerkster Rohwert des Tages (AGG_DAY-Min/-Max).
+        // Der Rohwert-Extremwert sagt aber NICHT, an welchem Tag der hoechste
+        // 15-Minuten-DURCHSCHNITT liegt: ein kurzer Ausreisser an einem Tag
+        // (z.B. 05.10., 1,86 kW) schlug frueher den Tag mit dem eigentlich
+        // hoechsten Slot (z.B. 06.10., 2,6 kW) - live gemeldet von Stefan
+        // (somm), 06.10.2026: "es wird der falsche Max-kW-Wert angezeigt".
+        // Der Rohwert ist eine echte Obergrenze fuer jeden Durchschnitt des
+        // Tages, deshalb: Tage nach Obergrenze absteigend abarbeiten, je Tag den
+        // besten Slot bestimmen und aufhoeren, sobald die naechste Obergrenze
+        // den bisher besten Slot nicht mehr uebertreffen kann.
+        $cands = [];
         foreach ($dailyRows as $row) {
-            // Vorzeichenkanonisierung wie in SlotEnergyBars(): bei $sign=-1
-            // (MeterHub, "+ = Bezug") ist der taegliche BEZUGS-Spitzenwert
-            // das Max statt das Min der 5-Minuten-Mittelwerte.
             $extreme = ($sign > 0) ? ($row['Min'] ?? null) : ($row['Max'] ?? null);
             if ($extreme === null) {
                 continue;
             }
-            $drawW = max(0.0, -$sign * (float) $extreme);
-            if ($peakDayStart === null || $drawW > $peakDrawW) {
-                $peakDrawW = $drawW;
-                $peakDayStart = (int) $row['TimeStamp'];
+            $upper = max(0.0, -$sign * (float) $extreme);
+            if ($upper > 0.0) {
+                $cands[] = [$upper, (int) $row['TimeStamp']];
             }
         }
-        if ($peakDayStart === null || $peakDrawW <= 0.0) {
+        if (count($cands) === 0) {
             return null;
         }
-        $dayEnd = min($monthEnd, strtotime('+1 day', $peakDayStart));
-        $bars = $this->SlotEnergyBars($aid, $vid, $peakDayStart, $dayEnd, $sign);
-        if (count($bars) === 0) {
-            return null;
-        }
+        usort($cands, static fn($x, $y) => $y[0] <=> $x[0]);
         $best = null;
-        foreach ($bars as $b) {
-            if ($best === null || $b[1] > $best[1]) {
-                $best = $b;
+        foreach ($cands as [$upper, $dayTs]) {
+            if ($best !== null && $upper <= $best[1] * 4000.0) {
+                break;
             }
+            $dayEnd = min($monthEnd, strtotime('+1 day', $dayTs));
+            foreach ($this->SlotEnergyBars($aid, $vid, $dayTs, $dayEnd, $sign) as $b) {
+                if ($best === null || $b[1] > $best[1]) {
+                    $best = $b;
+                }
+            }
+        }
+        if ($best === null) {
+            return null;
         }
         return [
             'kw' => round($best[1] * 4.0, 3),
