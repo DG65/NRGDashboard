@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.10 (2026-10-06)
+
+- Kamerablende: Lamellen nach außen unbegrenzt, damit vor dem Schließen keine Lücke zwischen den Rechtecken bleibt.
+
 ## 0.9.169-beta.9 (2026-10-06)
 
 - Fix: Instanz startete nach dem Animations-Umbau nicht (Warnung beim Löschen des alten Profileintrags 5).
