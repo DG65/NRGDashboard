@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.19 (2026-10-06)
+
+- Leere Kachel: verständlicher Hinweistext statt "NRGDASH_Discover() ausführen" (Forum hbraun).
+
 ## 0.9.169-beta.18 (2026-10-06)
 
 - Fix Wallbox-Steuerung (Boost, Freigabe, Stromlimit): liegt die Steuervariable in einer Kategorie unter der Instanz (ChargerHub), wird jetzt die zugehörige Instanz gefunden statt der Kategorie (Meldung "Instanz #… existiert nicht", Fund von Martin; Hinweis aus der ChargerHub-Sitzung).
