@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.7 (2026-10-06)
+
+- Animationen neu sortiert: Ebenenwechsel = Kopfnicken, Abfluss, Funkenschauer, Portal-Iris; keine Ebene möglich = Kopfschütteln, Kreiswellen, Schwindel-Sternchen, Häufchen (Kreiswellen wanderten in die zweite Liste). Gespeicherte Auswahl wird migriert (alte Kreiswellen beim Ebenenwechsel -> Funkenschauer).
+
 ## 0.9.169-beta.6 (2026-10-06)
 
 - Abfluss: kein anschließender Knotenflug mehr (zweite Animation entfällt), Strudelringe enden mit dem Knoten.

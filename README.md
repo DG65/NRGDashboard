@@ -1400,14 +1400,14 @@ gleiche IPSView-Fähigkeit.
   überlappende Lamellen um einen randnahen Drehpunkt, im selben
   dunkel-glänzenden Metall-Look wie die Haus-/Knoten-Münze selbst, mit
   Glasreflex in der Mitte, wie bei einer echten Kamerablende — oder
-  Kreiswellen, die aus der Mitte nach außen wachsen
-  wie ein Stein im Wasser, oder Abfluss (der Knoten wird wie in einen Wasserabfluss eingesaugt) oder Kopfnicken — das Kopfschüttel-Muster um
-  die waagerechte Achse; Auswahl inkl. "Zufällig" hinter dem
+  Kopfnicken, Abfluss (der Knoten wird wie in
+  einen Wasserabfluss eingesaugt); Auswahl inkl. "Zufällig" hinter dem
   Doppelpfeil). Geht es in die jeweilige Richtung nicht (ein Blatt ohne
   Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber), spielt
-  stattdessen eine der drei Blockiert-Animationen — Kopfschütteln (der
+  stattdessen eine der vier Blockiert-Animationen — Kopfschütteln (der
   echte Knoten/die echte Pille dreht sich um die vertikale Achse),
-  Schwindel-Sternchen oder Häufchen (dieselbe echte Fläche staucht sich
+  Kreiswellen (Ringe in der Farbe des Knotenrands laufen wie ein Stein im
+  See nach außen), Schwindel-Sternchen oder Häufchen (dieselbe echte Fläche staucht sich
   sichtbar nach unten zusammen) — ebenfalls mit "Zufällig" wählbar,
   ohne Wirkung. Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
