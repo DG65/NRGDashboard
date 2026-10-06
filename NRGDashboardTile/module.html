@@ -604,7 +604,9 @@
   .fx-iris-glass { fill: url(#glossSpec); opacity: 0; animation: fxIrisGlassShow .6s ease-out forwards; }
   @keyframes fxIrisGlassShow { 0% { opacity: .95; } 65% { opacity: .8; } 100% { opacity: 0; } }
   /* Kamerablende (06.10.2026): Lamellen als berechnete Polygone, siehe buildIrisBlades(). */
-  .fx-iris-leaf { fill: url(#plasticFill); stroke: rgba(255,255,255,.42); stroke-width: 1; stroke-linejoin: round; pointer-events: none; }
+  .fx-iris-leaf { stroke: none; pointer-events: none; }
+  .fx-iris-edge { fill: none; stroke: rgba(255,255,255,.5); stroke-width: 1; stroke-linecap: round; pointer-events: none; }
+  .fx-iris-edge-shadow { fill: none; stroke: rgba(0,0,0,.45); stroke-width: 2.6; stroke-linecap: round; pointer-events: none; }
   .fx-iris-rim { fill: none; stroke: rgba(20,22,26,.65); stroke-width: 2.5; pointer-events: none; }
   .fx-iris-glass { animation: none; }
   .fx-iris-blade { fill: url(#plasticFill); stroke: rgba(255,255,255,.3); stroke-width: 1; opacity: 0; transform-origin: 0 0; }
@@ -3876,11 +3878,34 @@ function buildIrisBlades(fxLayer, ringRadius) {
   fxLayer.appendChild(wrap);
   const glass = el('circle', { r: (R * 0.5).toFixed(1), class: 'fx-iris-glass' });
   wrap.appendChild(glass);
-  const blades = [];
+  // Alle Lamellen sind gleich aufgebaut: Flaeche mit eigenem Verlauf (vom
+  // Lichtkante zur dunklen Aussenseite, je Lamelle in ihre eigene Richtung
+  // gedreht - ein gemeinsamer objectBoundingBox-Verlauf liess die Lamellen je
+  // nach Lage unterschiedlich aussehen), die Kanten kommen danach in einer
+  // eigenen Ebene darueber, damit jede Lamelle gleich viel Kante zeigt
+  // (Dietmar, 06.10.2026: "Aufteilung der Lamellen nicht gleichmaessig").
+  const defs = document.createElementNS(NS, 'defs');
+  wrap.appendChild(defs);
+  const blades = [], grads = [], edges = [];
   for (let i = 0; i < n; i++) {
-    const b = el('polygon', { class: 'fx-iris-leaf', points: '' });
+    const gid = clipId + 'g' + i;
+    const lg = document.createElementNS(NS, 'linearGradient');
+    lg.setAttribute('id', gid); lg.setAttribute('gradientUnits', 'userSpaceOnUse');
+    [['0', '#3c4458'], ['1', '#171b26']].forEach(([o, c]) => {
+      const st = document.createElementNS(NS, 'stop'); st.setAttribute('offset', o); st.setAttribute('stop-color', c); lg.appendChild(st);
+    });
+    defs.appendChild(lg); grads.push(lg);
+    const b = el('polygon', { class: 'fx-iris-leaf', points: '', fill: 'url(#' + gid + ')' });
     wrap.appendChild(b);
     blades.push(b);
+  }
+  const edgeLayer = el('g', {});
+  wrap.appendChild(edgeLayer);
+  for (let i = 0; i < n; i++) {
+    const shadow = el('path', { class: 'fx-iris-edge-shadow', d: '' });
+    const line = el('path', { class: 'fx-iris-edge', d: '' });
+    edgeLayer.appendChild(shadow); edgeLayer.appendChild(line);
+    edges.push([shadow, line]);
   }
   const rim = el('circle', { r: R.toFixed(1), class: 'fx-iris-rim' });
   fxLayer.appendChild(rim);
@@ -3906,6 +3931,13 @@ function buildIrisBlades(fxLayer, ringRadius) {
       const pts = [[t1, 0], [t2, 0], [t2, w], [t1, w]].map(([t, u]) =>
         (fx + tx * t + nx * u).toFixed(1) + ',' + (fy + ty * t + ny * u).toFixed(1)).join(' ');
       blades[i].setAttribute('points', pts);
+      grads[i].setAttribute('x1', fx.toFixed(1)); grads[i].setAttribute('y1', fy.toFixed(1));
+      grads[i].setAttribute('x2', (fx + nx * R * 1.5).toFixed(1)); grads[i].setAttribute('y2', (fy + ny * R * 1.5).toFixed(1));
+      // Kanten: Innenkante der Lamelle (Ecke zu Ecke) und Schnittkante am
+      // Minus-Ende nach aussen - bei jeder Lamelle identisch.
+      const ex = (t, u) => (fx + tx * t + nx * u).toFixed(1) + ',' + (fy + ty * t + ny * u).toFixed(1);
+      const dEdge = 'M' + ex(-v, 0) + 'L' + ex(v, 0) + 'M' + ex(t1, 0) + 'L' + ex(t1, R * 2.2);
+      edges[i][0].setAttribute('d', dEdge); edges[i][1].setAttribute('d', dEdge);
     }
     glass.style.opacity = String(Math.min(.9, k * 1.1));
   }
@@ -3961,6 +3993,12 @@ function playRipples(fxLayer, ringRadius, visualEl) {
   return duration;
 }
 function playOpenAnim(fxLayer, ringRadius, visualEl) {
+  // Eine Animation darf den Ebenenwechsel nie verhindern: bei einem Fehler
+  // (z. B. Browser-Eigenheit) ohne Effekt weiter.
+  try { return playOpenAnimInner(fxLayer, ringRadius, visualEl); }
+  catch (e) { try { clearFx(fxLayer); } catch (e2) {} console.error('playOpenAnim', e); return 0; }
+}
+function playOpenAnimInner(fxLayer, ringRadius, visualEl) {
   if (!fxLayer) return 0;
   SKIP_LEVEL_FLIGHT = false;
   clearFx(fxLayer);
