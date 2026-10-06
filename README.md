@@ -1407,8 +1407,9 @@ gleiche IPSView-Fähigkeit.
   stattdessen eine der vier Blockiert-Animationen — Kopfschütteln (der
   echte Knoten/die echte Pille dreht sich um die vertikale Achse),
   Kreiswellen (Ringe in der Farbe des Knotenrands laufen wie ein Stein im
-  See nach außen), Schwindel-Sternchen oder Häufchen (dieselbe echte Fläche staucht sich
-  sichtbar nach unten zusammen) — ebenfalls mit "Zufällig" wählbar,
+  See nach außen), Schwindel-Sternchen oder Häufchen (der echte Knoten brennt von unten
+  nach oben ab - glühende Kante, Flammen, Rauch - und ein Aschehäufchen
+  bleibt übrig) — ebenfalls mit "Zufällig" wählbar,
   ohne Wirkung. Abgezogene
   Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus. Die
   Hierarchie kommt vom Anbieter (MeterHub liefert nur die eigene Ebene,

@@ -4061,11 +4061,147 @@ function playOpenAnimInner(fxLayer, ringRadius, visualEl) {
 // die Sternchen (rein dekorative Umkreisung, nichts am Knoten selbst zu
 // veraendern) bleiben in der fx-layer-Ebene. ringEl bekommt kurz die rote
 // Randfarbe (.press-blocked). Gibt die Anzeigedauer zurueck.
+// Haeufchen (06.10.2026, Dietmar: "der Knoten soll abbrennen und ein
+// Aschehaeufchen uebrig bleiben"): von unten nach oben frisst sich eine
+// gezackte Brandfront durch den Knoten (bzw. die Pille). Der Knoten selbst
+// wird ueber einen clip-path (Attribut, laeuft ueberall) von der Front weg
+// abgeschnitten; an der Front glueht eine Kante, darueber ist er angekohlt,
+// Flammen zuengeln und Rauch steigt auf. Unten waechst ein Aschehaeufchen,
+// das nach dem Abbrennen kurz stehen bleibt, bevor der Knoten wiederkommt.
+function clearBurn(visualEl) { if (visualEl) { visualEl.removeAttribute('clip-path'); visualEl.style.opacity = ''; visualEl.style.transition = ''; } }
+function playBurn(fxLayer, ringRadius, visualEl) {
+  const T_BURN = 1600, T_HOLD = 750, T_BACK = 380;
+  const total = T_BURN + T_HOLD + T_BACK;
+  if (!fxLayer || !visualEl) return 900;
+  const NS = 'http://www.w3.org/2000/svg';
+  const src = visualEl.querySelector('.node-ring');
+  let bb;
+  try { bb = src ? src.getBBox() : null; } catch (e) { bb = null; }
+  if (!bb || !bb.width) { bb = { x: -ringRadius, y: -ringRadius, width: 2 * ringRadius, height: 2 * ringRadius }; }
+  const x0 = bb.x, x1 = bb.x + bb.width, yTop = bb.y, yBot = bb.y + bb.height, w = bb.width, h = bb.height, cx = bb.x + w / 2;
+  const uid = 'burn' + Math.floor(Math.random() * 1e9);
+  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.keys(attrs || {}).forEach(k => e.setAttribute(k, attrs[k])); return e; };
+  const defs = mk('defs');
+  // Knotenumriss als Clip (Kopie des Randrings) fuer Glut/Anruss
+  const silClip = mk('clipPath', { id: uid + 's' });
+  silClip.appendChild(src ? src.cloneNode(false) : mk('circle', { r: ringRadius }));
+  const visClip = mk('clipPath', { id: uid + 'v' });
+  const visPoly = mk('polygon', { points: '' }); visClip.appendChild(visPoly);
+  const fg = mk('linearGradient', { id: uid + 'f', x1: 0, y1: 1, x2: 0, y2: 0 });
+  [['0', '#fff3b0', 1], ['.45', '#ffb028', .95], ['1', '#e8480c', 0]].forEach(([o, c, op]) => fg.appendChild(mk('stop', { offset: o, 'stop-color': c, 'stop-opacity': op })));
+  defs.appendChild(silClip); defs.appendChild(visClip); defs.appendChild(fg);
+  fxLayer.appendChild(defs);
+  const root = mk('g'); fxLayer.appendChild(root);
+  const burnG = mk('g', { 'clip-path': 'url(#' + uid + 's)' }); root.appendChild(burnG);
+  const char = mk('path', { fill: 'rgba(24,14,8,.55)' });
+  const glow = mk('path', { fill: 'rgba(255,120,20,.42)' });
+  const ember = mk('path', { fill: '#ffd25a' });
+  burnG.appendChild(char); burnG.appendChild(glow); burnG.appendChild(ember);
+  // Flammen
+  const NF = Math.max(7, Math.round(w / 12));
+  const flames = [];
+  for (let i = 0; i < NF; i++) {
+    const f = mk('path', { d: 'M0,0 C-5,-5 -4,-12 0,-22 C4,-12 5,-5 0,0Z', fill: 'url(#' + uid + 'f)' });
+    root.appendChild(f); flames.push({ el: f, x: x0 + w * (i + .5) / NF, ph: Math.random() * 6, sc: .8 + Math.random() * .7 });
+  }
+  // Rauch
+  const smoke = [];
+  for (let i = 0; i < 6; i++) {
+    const c = mk('circle', { r: 4, fill: 'rgba(150,150,150,.5)' });
+    root.appendChild(c); smoke.push({ el: c, x: x0 + w * (.2 + .6 * Math.random()), t0: .15 + i * .13 });
+  }
+  // Asche
+  const ashW = Math.min(w * .78, 90), ashH = Math.min(h * .42, 34), ashY = yBot;
+  const bumps = []; for (let i = 0; i <= 24; i++) { bumps.push(Math.random()); }
+  const ash = mk('path', { fill: '#8a857e' });
+  const ash2 = mk('path', { fill: '#5d5953' });
+  const ashFlecks = [];
+  for (let i = 0; i < 9; i++) { const c = mk('circle', { r: (1 + Math.random() * 1.4).toFixed(1), fill: '#b3aea6' }); ashFlecks.push({ el: c, u: Math.random() * 2 - 1, v: Math.random() }); }
+  root.appendChild(ash); root.appendChild(ash2); ashFlecks.forEach(f => root.appendChild(f.el));
+  visualEl.setAttribute('clip-path', 'url(#' + uid + 'v)');
+  const wave = (x, t) => 3 * Math.sin(x * .33 + t * .011) + 2 * Math.sin(x * .81 - t * .019) + 1.4 * Math.sin(x * 1.7 + t * .03);
+  const N = 36;
+  const frontY = (x, t, k) => (yBot + 10) - k * (h + 26) + wave(x, t);
+  function strip(t, k, up, down) {
+    let top = '', bot = '';
+    for (let i = 0; i <= N; i++) {
+      const x = x0 - 6 + (w + 12) * i / N, y = frontY(x, t, k);
+      top += (i ? 'L' : 'M') + x.toFixed(1) + ',' + (y - up).toFixed(1);
+    }
+    for (let i = N; i >= 0; i--) {
+      const x = x0 - 6 + (w + 12) * i / N, y = frontY(x, t, k);
+      bot += 'L' + x.toFixed(1) + ',' + (y + down).toFixed(1);
+    }
+    return top + bot + 'Z';
+  }
+  function moundPath(k) {
+    const hh = ashH * k, hw = ashW / 2; let d = 'M' + (cx - hw).toFixed(1) + ',' + ashY.toFixed(1);
+    for (let i = 0; i <= 24; i++) {
+      const u = i / 24 * 2 - 1, y = ashY - hh * Math.pow(Math.max(0, 1 - u * u), 1.1) * (.9 + .16 * bumps[i]);
+      d += 'L' + (cx + u * hw).toFixed(1) + ',' + y.toFixed(1);
+    }
+    return d + 'Z';
+  }
+  const t0 = performance.now();
+  (function frame(now) {
+    if (!root.isConnected) { clearBurn(visualEl); return; }
+    const t = now - t0;
+    const k = Math.min(1, t / T_BURN);
+    const ke = k * k * (3 - 2 * k) * .35 + k * .65;      // zu Beginn etwas zoegerlich
+    // Knoten: alles OBERHALB der Front bleibt sichtbar
+    let pts = (x0 - 80) + ',' + (yTop - 120) + ' ' + (x1 + 80) + ',' + (yTop - 120);
+    for (let i = N; i >= 0; i--) {
+      const x = x0 - 6 + (w + 12) * i / N;
+      pts += ' ' + x.toFixed(1) + ',' + frontY(x, t, ke).toFixed(1);
+    }
+    visPoly.setAttribute('points', pts);
+    const burning = t < T_BURN;
+    char.setAttribute('d', strip(t, ke, 34, 0));
+    glow.setAttribute('d', strip(t, ke, 12, 0));
+    ember.setAttribute('d', strip(t, ke, 3.2, 0));
+    burnG.style.opacity = burning ? '1' : String(Math.max(0, 1 - (t - T_BURN) / 300));
+    flames.forEach(f => {
+      const y = frontY(f.x, t, ke), fl = .75 + .45 * Math.sin(t * .02 + f.ph) * Math.sin(t * .013 + f.ph * 2);
+      const on = burning && y > yTop - 4 && y < yBot + 4;
+      f.el.setAttribute('transform', 'translate(' + f.x.toFixed(1) + ',' + (y + 1).toFixed(1) + ') scale(' + (f.sc * 1.1).toFixed(2) + ',' + (f.sc * fl * 1.3).toFixed(2) + ')');
+      f.el.style.opacity = on ? '1' : '0';
+    });
+    smoke.forEach(sm => {
+      const p = (k - sm.t0) / .55;
+      if (p <= 0 || p >= 1 || !burning) { sm.el.style.opacity = '0'; return; }
+      sm.el.setAttribute('cx', (sm.x + Math.sin(p * 5 + sm.t0 * 9) * 5).toFixed(1));
+      sm.el.setAttribute('cy', (yTop + h * (.3) - p * 34).toFixed(1));
+      sm.el.setAttribute('r', (3 + p * 7).toFixed(1));
+      sm.el.style.opacity = String(.45 * (1 - p));
+    });
+    // Asche waechst mit dem Brandfortschritt, danach stehen
+    const ak = Math.min(1, ke * 1.08);
+    ash.setAttribute('d', moundPath(ak));
+    ash2.setAttribute('d', moundPath(ak * .55));
+    ashFlecks.forEach(f => {
+      f.el.setAttribute('cx', (cx + f.u * ashW * .36).toFixed(1));
+      f.el.setAttribute('cy', (ashY - 2 - f.v * ashH * ak * Math.max(0, 1 - f.u * f.u) * .8).toFixed(1));
+      f.el.style.opacity = ak > .15 ? '.8' : '0';
+    });
+    // Rueckkehr: Knoten blendet wieder ein, Asche aus
+    if (t >= T_BURN + T_HOLD) {
+      const q = Math.min(1, (t - T_BURN - T_HOLD) / T_BACK);
+      visualEl.removeAttribute('clip-path');
+      visualEl.style.opacity = String(q);
+      [ash, ash2].forEach(e => { e.style.opacity = String(1 - q); });
+      ashFlecks.forEach(f => { f.el.style.opacity = String(.8 * (1 - q)); });
+    } else if (t >= T_BURN) {
+      visualEl.style.opacity = '0';
+    }
+    if (t < total) { requestAnimationFrame(frame); } else { clearBurn(visualEl); }
+  })(t0);
+  return total;
+}
 function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
   ringEl.classList.remove('pressing');
   ringEl.classList.add('press-blocked');
   if (fxLayer) { clearFx(fxLayer); }
-  if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
+  if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); clearBurn(visualEl); }
   const style = pickAnimStyle(BLOCKED_ANIM_STYLE, 4, 4);
   let duration = 900;
   if (style === 0) {
@@ -4089,30 +4225,12 @@ function playBlockedAnim(fxLayer, ringEl, ringRadius, visualEl, resetFn) {
     }
     duration = 2450;
   } else {
-    if (visualEl) { visualEl.classList.add('fx-crumble'); }
-    if (fxLayer) {
-      // Ein paar kleine "Kruemel" verstaerken den Haeufchen-Eindruck -
-      // reine Zusatz-Deko in der fx-layer, der eigentliche Zerfall passiert
-      // an visualEl selbst (siehe .fx-crumble in der CSS).
-      const n = 6;
-      for (let i = 0; i < n; i++) {
-        const c = el('rect', {
-          class: 'fx-crumb falling', width: (4 + Math.random() * 4).toFixed(1), height: (4 + Math.random() * 4).toFixed(1),
-          x: (Math.random() * ringRadius * 1.1 - ringRadius * 0.55).toFixed(1), y: (ringRadius * 0.25).toFixed(1),
-        });
-        c.style.setProperty('--dx', (Math.random() * 44 - 22).toFixed(1) + 'px');
-        c.style.setProperty('--dy', (ringRadius * 0.55 + Math.random() * 20).toFixed(1) + 'px');
-        c.style.setProperty('--rot', (Math.random() * 140 - 70).toFixed(0) + 'deg');
-        c.style.animationDelay = (i * 35) + 'ms';
-        fxLayer.appendChild(c);
-      }
-    }
-    duration = 1250;
+    duration = playBurn(fxLayer, ringRadius, visualEl);
   }
   setTimeout(() => {
     ringEl.classList.remove('press-blocked');
     clearFx(fxLayer);
-    if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); }
+    if (visualEl) { visualEl.classList.remove('fx-shake3d', 'fx-crumble'); clearBurn(visualEl); }
     resetFn();
   }, duration);
   return duration;
@@ -4123,7 +4241,7 @@ function attachPressHandlers(refs, item) {
   const resetRing = () => {
     refs.pressRing.classList.remove('pressing', 'press-ok', 'press-blocked');
     clearFx(refs.fxLayer);
-    refs.visual.classList.remove('fx-shake3d', 'fx-crumble');
+    refs.visual.classList.remove('fx-shake3d', 'fx-crumble'); clearBurn(refs.visual);
     refs.pressRing.style.transition = 'none';
     refs.pressRing.setAttribute('stroke-dashoffset', refs.pressCirc.toFixed(1));
     void refs.pressRing.getBoundingClientRect();
@@ -4202,7 +4320,7 @@ function attachCenterPressHandlers() {
   const resetRing = () => {
     ring.classList.remove('pressing', 'press-ok', 'press-blocked');
     clearFx(fxLayer);
-    if (visual) { visual.classList.remove('fx-shake3d', 'fx-crumble'); }
+    if (visual) { visual.classList.remove('fx-shake3d', 'fx-crumble'); clearBurn(visual); }
     ring.style.transition = 'none';
     ring.setAttribute('stroke-dashoffset', ring.dataset.perim || '0');
     void ring.getBoundingClientRect();

@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.12 (2026-10-06)
+
+- Häufchen-Animation neu: der Knoten brennt von unten nach oben ab (glühende Kante, Flammen, Rauch), ein Aschehäufchen bleibt kurz übrig, dann kehrt der Knoten zurück.
+
 ## 0.9.169-beta.11 (2026-10-06)
 
 - Kamerablende: alle 7 Lamellen gleich aufgebaut (eigener Verlauf, Kanten in eigener Ebene). Erfolgs-Animation kann den Ebenenwechsel nie mehr verhindern (Fehler werden abgefangen).
