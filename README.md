@@ -1401,7 +1401,7 @@ gleiche IPSView-Fähigkeit.
   dunkel-glänzenden Metall-Look wie die Haus-/Knoten-Münze selbst, mit
   Glasreflex in der Mitte, wie bei einer echten Kamerablende — oder
   Kreiswellen, die aus der Mitte nach außen wachsen
-  wie ein Stein im Wasser, oder Kopfnicken — das Kopfschüttel-Muster um
+  wie ein Stein im Wasser, oder Abfluss (der Knoten wird wie in einen Wasserabfluss eingesaugt) oder Kopfnicken — das Kopfschüttel-Muster um
   die waagerechte Achse; Auswahl inkl. "Zufällig" hinter dem
   Doppelpfeil). Geht es in die jeweilige Richtung nicht (ein Blatt ohne
   Mitglieder, oder die Pille auf Ebene 1 ohne Ebene darüber), spielt
