@@ -3896,7 +3896,12 @@ function buildIrisBlades(fxLayer, ringRadius) {
       const al = i * 2 * Math.PI / n + tw;
       const nx = Math.cos(al), ny = Math.sin(al), tx = -ny, ty = nx;
       const v = r * tHalf;                  // Abstand Lotfusspunkt - Ecke der Oeffnung
-      const t1 = -(v + R * 0.12), t2 = v + R * 0.45, w = R * 2.6;
+      // Plus-Ende UNBEGRENZT (bis weit ausserhalb des Knotens): sonst bleibt kurz
+      // vor dem Schliessen zwischen den begrenzten Rechtecken eine Luecke
+      // (Dietmar, 06.10.2026). Jeder Punkt ausserhalb der Oeffnung liegt auf der
+      // Plus-Seite oder im Bereich mindestens einer Lamelle. Das Minus-Ende
+      // endet kurz hinter der Ecke und liegt sichtbar auf der Vorgaengerin.
+      const t1 = -(v + R * 0.1), t2 = 4 * R, w = 4 * R;
       const fx = nx * r, fy = ny * r;
       const pts = [[t1, 0], [t2, 0], [t2, w], [t1, w]].map(([t, u]) =>
         (fx + tx * t + nx * u).toFixed(1) + ',' + (fy + ty * t + ny * u).toFixed(1)).join(' ');
