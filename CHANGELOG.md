@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.5 (2026-10-06)
+
+- Neu: Ebenenwechsel-Animation „Abfluss“ (Knoten dreht sich schrumpfend zur Mitte, Strudelringe). „Zufällig' jetzt Wert 5, migriert.
+
 ## 0.9.169-beta.4 (2026-10-06)
 
 - Kreiswellen: langsamere Abfolge (3 Wellen), dicker, weich auslaufende Ränder.

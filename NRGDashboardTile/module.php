@@ -175,7 +175,7 @@ class NRGDashboardTile extends IPSModule
         ],
         '0.9.169' => [
         'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
-        '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit.',
+        '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit. Ebenfalls neu: „Abfluss“ - der Knoten dreht sich beim Schrumpfen zur Mitte, als würde er in einen Wasserabfluss eingesaugt.',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -329,12 +329,14 @@ class NRGDashboardTile extends IPSModule
         if (IPS_VariableProfileExists('NRGDASH.OpenAnimStyle')) {
             $assoc = IPS_GetVariableProfile('NRGDASH.OpenAnimStyle')['Associations'] ?? [];
             $byVal = array_column($assoc, 'Name', 'Value');
-            if (($byVal[0] ?? '') !== 'Kopfnicken') {
-                $openAnimMap = isset($byVal[4]) ? [0 => 1, 1 => 2, 2 => 3, 3 => 0, 4 => 4] : [0 => 1, 1 => 2, 2 => 3, 3 => 4];
+            if (($byVal[4] ?? '') === 'Zufällig' && ($byVal[0] ?? '') === 'Kopfnicken') {
+                $openAnimMap = [4 => 5]; // Abfluss (06.10.2026) steht vor Zufällig
+            } elseif (($byVal[0] ?? '') !== 'Kopfnicken') {
+                $openAnimMap = isset($byVal[4]) ? [0 => 1, 1 => 2, 2 => 3, 3 => 0, 4 => 5] : [0 => 1, 1 => 2, 2 => 3, 3 => 5];
             }
         }
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
-            0 => 'Kopfnicken', 1 => 'Funkenschauer', 2 => 'Portal-Iris', 3 => 'Kreiswellen', 4 => 'Zufällig',
+            0 => 'Kopfnicken', 1 => 'Funkenschauer', 2 => 'Portal-Iris', 3 => 'Kreiswellen', 4 => 'Abfluss', 5 => 'Zufällig',
         ]);
         $openAnimVarID = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID);
         if ($openAnimMap !== null && $openAnimVarID !== false) {
@@ -594,7 +596,7 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($Ident === 'OpenAnimStyle' || $Ident === 'BlockedAnimStyle') {
-            $this->SetValue($Ident, max(0, min($Ident === 'OpenAnimStyle' ? 4 : 3, (int) $Value)));
+            $this->SetValue($Ident, max(0, min($Ident === 'OpenAnimStyle' ? 5 : 3, (int) $Value)));
             $this->Render();
             return;
         }
