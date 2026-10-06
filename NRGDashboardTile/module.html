@@ -4068,7 +4068,13 @@ function playOpenAnimInner(fxLayer, ringRadius, visualEl) {
 // abgeschnitten; an der Front glueht eine Kante, darueber ist er angekohlt,
 // Flammen zuengeln und Rauch steigt auf. Unten waechst ein Aschehaeufchen,
 // das nach dem Abbrennen kurz stehen bleibt, bevor der Knoten wiederkommt.
-function clearBurn(visualEl) { if (visualEl) { visualEl.removeAttribute('clip-path'); visualEl.style.opacity = ''; visualEl.style.transition = ''; } }
+function clearBurn(visualEl) {
+  if (!visualEl) { return; }
+  visualEl.removeAttribute('clip-path'); visualEl.style.opacity = ''; visualEl.style.transition = '';
+  // Blitzboegen/Aura der Aussenknoten haengen neben (nicht in) dem Knoten-Inhalt
+  (visualEl._burnExtras || []).forEach(e => e.removeAttribute('clip-path'));
+  visualEl._burnExtras = null;
+}
 function playBurn(fxLayer, ringRadius, visualEl) {
   const T_BURN = 1600, T_HOLD = 750, T_BACK = 380;
   const total = T_BURN + T_HOLD + T_BACK;
@@ -4120,14 +4126,19 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     root.appendChild(c); smoke.push({ el: c, x: x0 + w * (.2 + .6 * Math.random()), t0: .15 + i * .13 });
   }
   // Asche
-  const ashW = w, ashH = Math.max(5, Math.min(9, h * .09)), ashY = yBot;
-  const bumps = []; for (let i = 0; i <= 48; i++) { bumps.push(Math.random()); }
-  const ash = mk('path', { fill: '#8a857e' });
-  const ash2 = mk('path', { fill: '#5d5953' });
+  const ashW = w, ashH = Math.max(2.4, Math.min(4, h * .035)), ashY = yBot;
+  const bumps = []; for (let i = 0; i <= 96; i++) { bumps.push(Math.random()); }
+  const ash = mk('path', { fill: '#6f6b65' });
+  const ash2 = mk('path', { fill: '#9a958d' });
   const ashFlecks = [];
-  for (let i = 0; i < 16; i++) { const c = mk('circle', { r: (.6 + Math.random() * .9).toFixed(1), fill: '#b3aea6' }); ashFlecks.push({ el: c, u: Math.random() * 2 - 1, v: Math.random() }); }
+  for (let i = 0; i < 70; i++) { const g0 = 120 + Math.floor(Math.random() * 90); const c = mk('circle', { r: (.35 + Math.random() * .6).toFixed(2), fill: 'rgb(' + g0 + ',' + (g0 - 4) + ',' + (g0 - 10) + ')' }); ashFlecks.push({ el: c, u: Math.random() * 2 - 1, v: Math.random() }); }
   root.appendChild(ash); root.appendChild(ash2); ashFlecks.forEach(f => root.appendChild(f.el));
   visualEl.setAttribute('clip-path', 'url(#' + uid + 'v)');
+  // Blitzboegen und Aura sitzen bei Aussenknoten als Geschwister neben dem Knoten-
+  // Inhalt und muessen mit abbrennen (Dietmar: "nach dem Abbrennen sind noch die
+  // Blitzboegen da"): gleicher Clip.
+  visualEl._burnExtras = visualEl.parentNode ? Array.from(visualEl.parentNode.querySelectorAll(':scope > .node-bolt, :scope > .node-aura')) : [];
+  visualEl._burnExtras.forEach(e => e.setAttribute('clip-path', 'url(#' + uid + 'v)'));
   const wave = (x, t) => 3 * Math.sin(x * .33 + t * .011) + 2 * Math.sin(x * .81 - t * .019) + 1.4 * Math.sin(x * 1.7 + t * .03);
   const N = 36;
   const frontY = (x, t, k) => (yBot + 10) - k * (h + 26) + wave(x, t);
@@ -4147,8 +4158,8 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     // flache Ascheschicht ueber die ganze Breite: an den Raendern duenn, zur Mitte
     // leicht aufgeschuettet, mit kleinen Unregelmaessigkeiten
     const hh = ashH * k, hw = ashW / 2; let d = 'M' + (cx - hw).toFixed(1) + ',' + ashY.toFixed(1);
-    for (let i = 0; i <= 48; i++) {
-      const u = i / 48 * 2 - 1, prof = .35 + .65 * Math.pow(Math.max(0, 1 - u * u), .7);
+    for (let i = 0; i <= 96; i++) {
+      const u = i / 96 * 2 - 1, prof = .3 + .7 * Math.pow(Math.max(0, 1 - u * u), .5);
       d += 'L' + (cx + u * hw).toFixed(1) + ',' + (ashY - hh * prof * (.8 + .4 * bumps[i])).toFixed(1);
     }
     return d + 'L' + (cx + hw).toFixed(1) + ',' + ashY.toFixed(1) + 'Z';
@@ -4196,16 +4207,17 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     // Asche waechst mit dem Brandfortschritt, danach stehen
     const ak = Math.min(1, ke * 1.08);
     ash.setAttribute('d', moundPath(ak));
-    ash2.setAttribute('d', moundPath(ak * .55));
+    ash2.setAttribute('d', moundPath(ak * .5));
     ashFlecks.forEach(f => {
-      f.el.setAttribute('cx', (cx + f.u * ashW * .46).toFixed(1));
-      f.el.setAttribute('cy', (ashY - .8 - f.v * ashH * ak * .6).toFixed(1));
+      f.el.setAttribute('cx', (cx + f.u * ashW * .49).toFixed(1));
+      f.el.setAttribute('cy', (ashY - .5 - f.v * ashH * ak * .9).toFixed(1));
       f.el.style.opacity = ak > .15 ? '.8' : '0';
     });
     // Rueckkehr: Knoten blendet wieder ein, Asche aus
     if (t >= T_BURN + T_HOLD) {
       const q = Math.min(1, (t - T_BURN - T_HOLD) / T_BACK);
       visualEl.removeAttribute('clip-path');
+      (visualEl._burnExtras || []).forEach(e => e.removeAttribute('clip-path'));
       visualEl.style.opacity = String(q);
       [ash, ash2].forEach(e => { e.style.opacity = String(1 - q); });
       ashFlecks.forEach(f => { f.el.style.opacity = String(.8 * (1 - q)); });

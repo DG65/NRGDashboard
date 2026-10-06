@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.14 (2026-10-06)
+
+- Abbrennen: Blitzbögen und Aura brennen mit ab (blieben vorher stehen); Asche nur noch ein feiner, körniger Film statt eines Häufchens.
+
 ## 0.9.169-beta.13 (2026-10-06)
 
 - Abbrennen realistischer: eine zusammenhängende Flamme (vier Schichten, rot bis weißgelber Kern) statt vieler Zungen; Asche als flache Schicht über die volle Knoten-/Pillenbreite.
