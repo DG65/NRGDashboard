@@ -4097,13 +4097,22 @@ function playBurn(fxLayer, ringRadius, visualEl) {
   const glow = mk('path', { fill: 'rgba(255,120,20,.42)' });
   const ember = mk('path', { fill: '#ffd25a' });
   burnG.appendChild(char); burnG.appendChild(glow); burnG.appendChild(ember);
-  // Flammen
-  const NF = Math.max(7, Math.round(w / 12));
-  const flames = [];
-  for (let i = 0; i < NF; i++) {
-    const f = mk('path', { d: 'M0,0 C-5,-5 -4,-12 0,-22 C4,-12 5,-5 0,0Z', fill: 'url(#' + uid + 'f)' });
-    root.appendChild(f); flames.push({ el: f, x: x0 + w * (i + .5) / NF, ph: Math.random() * 6, sc: .8 + Math.random() * .7 });
-  }
+  // Eine einzige zusammenhaengende Flamme entlang der Front (statt vieler gleicher
+  // Zuengelchen): mehrere ineinanderliegende Schichten derselben unruhigen
+  // Kontur - aussen rot, dann orange, gelb und ein heller Kern.
+  const flameLayers = [
+    { k: 1.00, c: 'rgba(235,70,10,.55)' }, { k: .78, c: 'rgba(255,128,20,.78)' },
+    { k: .56, c: 'rgba(255,196,60,.88)' }, { k: .32, c: 'rgba(255,244,190,.92)' },
+  ].map(l => { const e = mk('path', { fill: l.c }); root.appendChild(e); return { el: e, k: l.k }; });
+  const flameH = Math.min(h * .5, 52);
+  const flameAt = (x, t) => {
+    const u = (x - x0) / w;                                   // 0..1 ueber die Breite
+    const env = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), .6);  // Mitte hoch, Raender flach
+    const n = .5 + .5 * Math.sin(u * 17 + t * .009) * Math.sin(u * 7.3 - t * .006)
+      + .35 * Math.pow(Math.abs(Math.sin(u * 23 + t * .021)), 1.6) + .1 * Math.sin(u * 53 - t * .033);
+    const big = .65 + .35 * Math.sin(t * .0071) * Math.sin(t * .0113 + 1.3);    // Gesamtflackern
+    return flameH * env * Math.max(.08, n) * big;
+  };
   // Rauch
   const smoke = [];
   for (let i = 0; i < 6; i++) {
@@ -4111,12 +4120,12 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     root.appendChild(c); smoke.push({ el: c, x: x0 + w * (.2 + .6 * Math.random()), t0: .15 + i * .13 });
   }
   // Asche
-  const ashW = Math.min(w * .78, 90), ashH = Math.min(h * .42, 34), ashY = yBot;
-  const bumps = []; for (let i = 0; i <= 24; i++) { bumps.push(Math.random()); }
+  const ashW = w, ashH = Math.max(5, Math.min(9, h * .09)), ashY = yBot;
+  const bumps = []; for (let i = 0; i <= 48; i++) { bumps.push(Math.random()); }
   const ash = mk('path', { fill: '#8a857e' });
   const ash2 = mk('path', { fill: '#5d5953' });
   const ashFlecks = [];
-  for (let i = 0; i < 9; i++) { const c = mk('circle', { r: (1 + Math.random() * 1.4).toFixed(1), fill: '#b3aea6' }); ashFlecks.push({ el: c, u: Math.random() * 2 - 1, v: Math.random() }); }
+  for (let i = 0; i < 16; i++) { const c = mk('circle', { r: (.6 + Math.random() * .9).toFixed(1), fill: '#b3aea6' }); ashFlecks.push({ el: c, u: Math.random() * 2 - 1, v: Math.random() }); }
   root.appendChild(ash); root.appendChild(ash2); ashFlecks.forEach(f => root.appendChild(f.el));
   visualEl.setAttribute('clip-path', 'url(#' + uid + 'v)');
   const wave = (x, t) => 3 * Math.sin(x * .33 + t * .011) + 2 * Math.sin(x * .81 - t * .019) + 1.4 * Math.sin(x * 1.7 + t * .03);
@@ -4135,12 +4144,14 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     return top + bot + 'Z';
   }
   function moundPath(k) {
+    // flache Ascheschicht ueber die ganze Breite: an den Raendern duenn, zur Mitte
+    // leicht aufgeschuettet, mit kleinen Unregelmaessigkeiten
     const hh = ashH * k, hw = ashW / 2; let d = 'M' + (cx - hw).toFixed(1) + ',' + ashY.toFixed(1);
-    for (let i = 0; i <= 24; i++) {
-      const u = i / 24 * 2 - 1, y = ashY - hh * Math.pow(Math.max(0, 1 - u * u), 1.1) * (.9 + .16 * bumps[i]);
-      d += 'L' + (cx + u * hw).toFixed(1) + ',' + y.toFixed(1);
+    for (let i = 0; i <= 48; i++) {
+      const u = i / 48 * 2 - 1, prof = .35 + .65 * Math.pow(Math.max(0, 1 - u * u), .7);
+      d += 'L' + (cx + u * hw).toFixed(1) + ',' + (ashY - hh * prof * (.8 + .4 * bumps[i])).toFixed(1);
     }
-    return d + 'Z';
+    return d + 'L' + (cx + hw).toFixed(1) + ',' + ashY.toFixed(1) + 'Z';
   }
   const t0 = performance.now();
   (function frame(now) {
@@ -4156,15 +4167,23 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     }
     visPoly.setAttribute('points', pts);
     const burning = t < T_BURN;
+    const flameGrow = Math.min(1, t / 250) * (1 - Math.max(0, (k - .86) / .14) * .7);   // zuendet an, laeuft zum Schluss aus
     char.setAttribute('d', strip(t, ke, 34, 0));
     glow.setAttribute('d', strip(t, ke, 12, 0));
     ember.setAttribute('d', strip(t, ke, 3.2, 0));
     burnG.style.opacity = burning ? '1' : String(Math.max(0, 1 - (t - T_BURN) / 300));
-    flames.forEach(f => {
-      const y = frontY(f.x, t, ke), fl = .75 + .45 * Math.sin(t * .02 + f.ph) * Math.sin(t * .013 + f.ph * 2);
-      const on = burning && y > yTop - 4 && y < yBot + 4;
-      f.el.setAttribute('transform', 'translate(' + f.x.toFixed(1) + ',' + (y + 1).toFixed(1) + ') scale(' + (f.sc * 1.1).toFixed(2) + ',' + (f.sc * fl * 1.3).toFixed(2) + ')');
-      f.el.style.opacity = on ? '1' : '0';
+    flameLayers.forEach(L => {
+      let top = '', bot = '';
+      for (let i = 0; i <= N; i++) {
+        const x = x0 + w * i / N, y = frontY(x, t, ke);
+        top += (i ? 'L' : 'M') + x.toFixed(1) + ',' + (y + 1 - flameAt(x, t) * L.k * flameGrow).toFixed(1);
+      }
+      for (let i = N; i >= 0; i--) {
+        const x = x0 + w * i / N;
+        bot += 'L' + x.toFixed(1) + ',' + (frontY(x, t, ke) + 1).toFixed(1);
+      }
+      L.el.setAttribute('d', top + bot + 'Z');
+      L.el.style.opacity = burning ? '1' : '0';
     });
     smoke.forEach(sm => {
       const p = (k - sm.t0) / .55;
@@ -4179,8 +4198,8 @@ function playBurn(fxLayer, ringRadius, visualEl) {
     ash.setAttribute('d', moundPath(ak));
     ash2.setAttribute('d', moundPath(ak * .55));
     ashFlecks.forEach(f => {
-      f.el.setAttribute('cx', (cx + f.u * ashW * .36).toFixed(1));
-      f.el.setAttribute('cy', (ashY - 2 - f.v * ashH * ak * Math.max(0, 1 - f.u * f.u) * .8).toFixed(1));
+      f.el.setAttribute('cx', (cx + f.u * ashW * .46).toFixed(1));
+      f.el.setAttribute('cy', (ashY - .8 - f.v * ashH * ak * .6).toFixed(1));
       f.el.style.opacity = ak > .15 ? '.8' : '0';
     });
     // Rueckkehr: Knoten blendet wieder ein, Asche aus

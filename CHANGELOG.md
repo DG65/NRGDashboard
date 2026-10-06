@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.13 (2026-10-06)
+
+- Abbrennen realistischer: eine zusammenhängende Flamme (vier Schichten, rot bis weißgelber Kern) statt vieler Zungen; Asche als flache Schicht über die volle Knoten-/Pillenbreite.
+
 ## 0.9.169-beta.12 (2026-10-06)
 
 - Häufchen-Animation neu: der Knoten brennt von unten nach oben ab (glühende Kante, Flammen, Rauch), ein Aschehäufchen bleibt kurz übrig, dann kehrt der Knoten zurück.
