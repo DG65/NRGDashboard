@@ -630,7 +630,7 @@
     80% { opacity: 1; }
     100% { transform: rotate(-600deg) scale(0); opacity: 0; }
   }
-  .fx-swirl { fill: none; stroke-dasharray: 14 10; vector-effect: non-scaling-stroke; opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: fxSwirlIn 1.1s cubic-bezier(.5,0,.8,.5) both; }
+  .fx-swirl { fill: none; stroke-dasharray: 14 10; vector-effect: non-scaling-stroke; opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: fxSwirlIn 1s cubic-bezier(.5,0,.8,.5) both; }
   @keyframes fxSwirlIn {
     0% { transform: rotate(0deg) scale(1.9); opacity: 0; }
     25% { opacity: .75; }
@@ -3578,6 +3578,9 @@ function fadeOthers(exceptG, opacity) {
   if (wires) { wires.style.transition = 'opacity .3s'; wires.style.opacity = String(opacity); }
 }
 
+// Abfluss: der Knoten ist eingesaugt, ein anschliessender Flug in die Mitte
+// (bzw. aus ihr heraus) waere eine zweite, unerwuenschte Animation.
+let SKIP_LEVEL_FLIGHT = false;
 function enterLevel(item, refs) {
   if (LEVEL_BUSY || !HOOK_PATH || !item || !item.hasMembers) return;
   LEVEL_BUSY = true;
@@ -3594,7 +3597,8 @@ function enterLevel(item, refs) {
     const g = refs.g;
     g.parentNode.appendChild(g); // nach oben
     fadeOthers(g, 0);
-    animateNodeTransform(g, from, to, 550, () => {
+    const skipFlight = SKIP_LEVEL_FLIGHT; SKIP_LEVEL_FLIGHT = false;
+    animateNodeTransform(g, from, to, skipFlight ? 1 : 550, () => {
       LEVEL_STACK.push({ key: item.detailKey || item.key, label: item.label, fromItemKey: item.key, icon: item.icon });
       renderLevelView();
       LEVEL_BUSY = false;
@@ -3619,7 +3623,8 @@ function gotoLevel(targetDepth) {
   }
   // ... und den Knoten, der eben noch die Pille war, von dort zurueckfliegen lassen.
   const refs = leaving ? nodeRefs[leaving.fromItemKey] : null;
-  if (refs && LAST_CHIP) {
+  const skipFlight = SKIP_LEVEL_FLIGHT; SKIP_LEVEL_FLIGHT = false;
+  if (refs && LAST_CHIP && !skipFlight) {
     const g = refs.g;
     g.parentNode.appendChild(g);
     fadeOthers(g, 0);
@@ -3874,6 +3879,7 @@ function buildIrisBlades(fxLayer, ringRadius) {
 // die Anzeigedauer zurueck, jede Variante hat ihr eigenes Timing.
 function playOpenAnim(fxLayer, ringRadius, visualEl) {
   if (!fxLayer) return 0;
+  SKIP_LEVEL_FLIGHT = false;
   clearFx(fxLayer);
   const style = pickAnimStyle(OPEN_ANIM_STYLE, 5, 5);
   let duration = 600;
@@ -3917,10 +3923,11 @@ function playOpenAnim(fxLayer, ringRadius, visualEl) {
       if (src) { c = src.cloneNode(false); c.setAttribute('class', 'fx-swirl'); c.style.stroke = cs.stroke; }
       else { c = el('circle', { r: ringRadius, class: 'fx-swirl' }); c.style.stroke = '#9aa0a6'; }
       c.style.strokeWidth = ((parseFloat(cs && cs.strokeWidth) || 3) * 1.2).toFixed(1) + 'px';
-      c.style.animationDelay = (i * 160) + 'ms';
+      c.style.animationDelay = (i * 60) + 'ms';
       c.style.setProperty('--sw', (i % 2 ? -1 : 1));
       fxLayer.appendChild(c);
     }
+    SKIP_LEVEL_FLIGHT = true;
     duration = 1250;
   } else {
     const n = 3, step = 320;
