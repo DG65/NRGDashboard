@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.16 (2026-10-06)
+
+- Flamme: feiner Farbverlauf aus 10 halbdurchsichtigen Schichten (dunkelrot über orange und gelb zu weißgelbem Kern), keine sichtbaren Stufen mehr.
+
 ## 0.9.169-beta.15 (2026-10-06)
 
 - Abbrennen: realistischere Flamme (weiche, wandernde Zungen mit Verlauf zur durchsichtigen Spitze, gerundete Kontur, aufsteigende Funken).
