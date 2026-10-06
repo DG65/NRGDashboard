@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.18 (2026-10-06)
+
+- Fix Wallbox-Steuerung (Boost, Freigabe, Stromlimit): liegt die Steuervariable in einer Kategorie unter der Instanz (ChargerHub), wird jetzt die zugehörige Instanz gefunden statt der Kategorie (Meldung "Instanz #… existiert nicht", Fund von Martin; Hinweis aus der ChargerHub-Sitzung).
+
 ## 0.9.169-beta.17 (2026-10-06)
 
 - PVMonitor: Monats-Spitzenwert (gelbe Linie, Strompreis-Reiter) zeigte bei kurzen Rohwert-Ausreißern einen zu niedrigen Wert. Jetzt werden die Tage nach Rohwert-Obergrenze absteigend geprüft, bis kein Tag den besten 15-Minuten-Durchschnitt mehr übertreffen kann (Fund von Stefan im Forum).

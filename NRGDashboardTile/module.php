@@ -1472,7 +1472,21 @@ class NRGDashboardTile extends IPSModule
         if ($ident === '' || $parentID <= 0) {
             return null;
         }
-        return [$parentID, $ident];
+        // Variablen liegen nicht immer DIREKT unter der Instanz: ChargerHub legt
+        // sie in Kategorien (CAT_control/CAT_device) ab, IPS_GetParent() liefert
+        // dort die Kategorie - IPS_RequestAction() meldet dann "Instanz #... existiert
+        // nicht" (Forum Mstaudi, 06.10.2026). Also zum naechsten Vorfahren mit
+        // ObjectType 1 (Instanz) hochlaufen.
+        for ($hops = 0; $hops < 8 && $parentID > 0; $hops++) {
+            if (!IPS_ObjectExists($parentID)) {
+                return null;
+            }
+            if ((int) (IPS_GetObject($parentID)['ObjectType'] ?? -1) === 1) {
+                return [$parentID, $ident];
+            }
+            $parentID = (int) (IPS_GetObject($parentID)['ParentID'] ?? 0);
+        }
+        return null;
     }
 
     private function runPartnerCall(callable $fn): ?string
