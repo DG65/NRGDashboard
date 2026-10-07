@@ -3316,7 +3316,15 @@ function showTourOverlay() {
 // Tour zu schliessen, und meldet das gleichzeitig per WebHook an die
 // Instanz zurueck (die Kachel selbst hat als sandboxed HTML-SDK-Tile
 // keinen anderen Rueckkanal, siehe module.php Create()).
+// Zusaetzlich im Browser merken (Forum hbraun, 07.10.2026: in IPSView kam die Tour
+// bei jedem Laden wieder, obwohl bestaetigt) - der Server-Rueckkanal (WebHook)
+// kann in WebViews scheitern oder zurueckgesetzt werden, localStorage haelt
+// die Bestaetigung dann trotzdem pro Seite fest. Immer in try/catch: der Zugriff
+// kann in Vorschau-/Privat-Modi eine Ausnahme werfen.
+function tourKey() { return 'nrgdash_tour_' + (HOOK_PATH || location.pathname); }
+function tourDismissedLocally() { try { return localStorage.getItem(tourKey()) === '1'; } catch (e) { return false; } }
 function dismissTour() {
+  try { localStorage.setItem(tourKey(), '1'); } catch (e) {}
   document.getElementById('tourOverlay').classList.remove('show');
   if (HOOK_PATH) {
     fetch(HOOK_PATH + '?dismissTour=1').catch(() => {});
@@ -4657,7 +4665,7 @@ function handleMessage(raw) {
     }
     if (d.flowRefW) { FLOW_REF_W = Math.max(500, +d.flowRefW); }
     if (d.hookPath) { HOOK_PATH = d.hookPath; }
-    if (d.showTour) { showTourOverlay(); }
+    if (d.showTour && !tourDismissedLocally()) { showTourOverlay(); }
     CURRENT_NODE_ORDER = Array.isArray(d.nodeOrder) ? d.nodeOrder : [];
 
     // Netzampel-Farbwaesche (28.08.2026, Dietmar: "alles direkt umsetzen") -
