@@ -2594,6 +2594,7 @@ function createSpoke(pt, layout, layer) {
 }
 
 let FLOW_REF_W = 10000; // wie GLOW_MAX_W: InverterHubTile-Original übernommen
+let EMPTY_STREAK = 0, HAD_DEVICES = false;
 let HOOK_PATH = ''; // eigener WebHook-Pfad, aus dem Payload (module.php)
 
 // Container-Transform-Morph fuers Oeffnen/Schliessen des Detail-Overlays
@@ -4738,6 +4739,12 @@ function handleMessage(raw) {
 
   const empty = document.getElementById('nrgdash-empty');
   const devices = (d && Array.isArray(d.devices)) ? d.devices : [];
+  // Eine Nachricht OHNE Geraete (Teilantwort, Partnermodul laedt gerade neu, Fehlerseite
+  // eines Proxys) darf eine schon aufgebaute Kachel nicht leerraeumen: erst die dritte
+  // leere Nachricht in Folge zaehlt als "wirklich keine Geraete" (Forum hbraun,
+  // 08.10.2026: nach Detailseite/Quoten-Panel erschien ploetzlich "Keine Geraete").
+  if (devices.length > 0) { EMPTY_STREAK = 0; HAD_DEVICES = true; }
+  else if (HAD_DEVICES && ++EMPTY_STREAK < 3) { return; }
   if (devices.length === 0) {
     empty.style.display = 'flex';
     document.getElementById('svg').style.display = 'none';
