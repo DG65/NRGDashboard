@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.21 (2026-10-08)
+
+- Kachel räumt sich nicht mehr leer, wenn einzelne Nachrichten ohne Geräte ankommen (erst die dritte leere in Folge zählt). Fund aus IPSView-Videos von hbraun.
+
 ## 0.9.169-beta.20 (2026-10-07)
 
 - Einführungs-Tour: die Bestätigung "Verstanden, nicht mehr zeigen" wird zusätzlich im Browser gemerkt (localStorage), damit die Tour in IPSView-WebViews nicht bei jedem Laden wiederkommt (Forum hbraun). Der Knopf "Einführungs-Tour erneut anzeigen" zeigt sie weiterhin.
