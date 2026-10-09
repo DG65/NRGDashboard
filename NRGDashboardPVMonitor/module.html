@@ -612,7 +612,7 @@
     // deshalb NICHT mehr Teil des Haupt-Payloads, sondern erst per
     // requestAction('dayPlanLoad') geholt, wenn der Reiter tatsaechlich
     // geoeffnet wird. Kein Zeitraum-Parameter noetig (immer heute+morgen).
-    var dayPlanCache = null, dayPlanPending = false;
+    var dayPlanCache = null, dayPlanPending = false, dayPlanLoadedAt = 0;
     // Versteckter Entwickler-Szenarienvergleich (17.09.2026) - gleiches
     // Nachforder-Muster wie dayPlanCache, siehe scenarioLoad im Backend.
     var scenarioCache = null, scenarioPending = false;
@@ -4169,6 +4169,19 @@
           el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
           return;
         }
+        // Tagesplan nicht ewig halten (Fund EMS, 10.10.2026: in einer ueber Mitternacht
+        // offenen Seite zeigte der Tooltip fuer 00:15 noch den Plan-SOC von gestern
+        // Abend statt des Ist-Werts). Neuer Kalendertag -> Cache verwerfen; sonst nach
+        // 5 Minuten im Hintergrund nachladen (alte Anzeige bleibt bis zur Antwort).
+        if (dayPlanCache && !dayPlanPending) {
+          var _now = new Date(), _was = new Date(dayPlanLoadedAt);
+          if (_now.toDateString() !== _was.toDateString()) {
+            dayPlanCache = null;
+          } else if (_now.getTime() - dayPlanLoadedAt > 300000) {
+            dayPlanPending = true;
+            requestAction('dayPlanLoad', '{}');
+          }
+        }
         if (!dayPlanCache) {
           if (!dayPlanPending) {
             dayPlanPending = true;
@@ -4438,6 +4451,7 @@
       // (21.08.2026), gleiches Nachforder-Muster wie yearCompareUpdate.
       if (d.type === 'dayPlanUpdate') {
         dayPlanCache = d.dayPlan;
+        dayPlanLoadedAt = Date.now();
         dayPlanPending = false;
         if (curTab === 'tagesplan') { render(); }
         return;

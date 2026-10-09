@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.22 (2026-10-10)
+
+- PVMonitor Tagesplan: der geladene EMS-Plan wurde in einer länger offenen Seite nie erneuert (nach Mitternacht Plan-SOC von gestern statt Ist-Wert im Tooltip). Neuer Kalendertag verwirft den Cache, sonst Nachladen nach 5 Minuten (Fund aus der EMS-Sitzung).
+
 ## 0.9.169-beta.21 (2026-10-08)
 
 - Kachel räumt sich nicht mehr leer, wenn einzelne Nachrichten ohne Geräte ankommen (erst die dritte leere in Folge zählt). Fund aus IPSView-Videos von hbraun.
