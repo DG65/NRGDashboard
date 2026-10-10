@@ -100,6 +100,9 @@ class NRGDashboardForecast extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.2.8' => [
+            '🎨 Gemessene Linien haben jetzt eigene Legendeneinträge ("PV (Ist)", "Verbrauch (Ist)") und lassen sich einzeln ausblenden; auf Wunsch mit eigener Farbe (Schalter "Eigene Farbe für die gemessene ...-Linie"). Ohne Schalter bleibt alles wie bisher (Anregung aus dem Forum).',
+        ],
         '0.2.7' => [
             'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
             '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
@@ -187,6 +190,10 @@ class NRGDashboardForecast extends IPSModule
             'ShowLoad'       => ['Verbrauch anzeigen', 11, true],
             'ShowActualPV'   => ['Gemessenen PV-Tagesverlauf (heute) als Linie zeigen', 31, false],
             'ShowActualLoad' => ['Gemessenen Verbrauchs-Tagesverlauf (heute) als Linie zeigen', 32, false],
+            // Forum Ghostraider (10.10.2026): gemessene Linien mit eigener Farbe + eigenem Legendeneintrag.
+            // Aus = Farbe der Prognosekurve (bisheriges Verhalten, keine Aenderung fuer bestehende Instanzen).
+            'ActualOwnPV'        => ['Eigene Farbe für die gemessene PV-Linie', 35, false],
+            'ActualOwnLoad'      => ['Eigene Farbe für die gemessene Verbrauchs-Linie', 36, false],
             'ShowYesterday'  => ['Gestern mit anzeigen', 33, false],
             'Smooth'         => ['Kurven glaetten (gegen kantige Linien)', 49, self::DEF_SMOOTH],
             'ShowBand'       => ['Unsicherheitsband (P10-P90) anzeigen', 50, self::DEF_BAND],
@@ -212,6 +219,8 @@ class NRGDashboardForecast extends IPSModule
             'ChartEngine'      => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
             'ColorPV'          => ['Farbe PV-Erzeugung', '~HexColor', 41, self::DEF_PV],
             'ColorLoad'        => ['Farbe Verbrauch', '~HexColor', 42, self::DEF_LOAD],
+            'ColorActualPV'        => ['Farbe gemessene PV-Linie', '~HexColor', 37, self::DEF_PV],
+            'ColorActualLoad'        => ['Farbe gemessene Verbrauchs-Linie', '~HexColor', 38, self::DEF_LOAD],
             'ColorBackground'  => ['Hintergrundfarbe (falls nicht automatisch)', '~HexColor', 44, 0xFFFFFF],
             'FontFamily'       => ['Schriftart', 'NRGDASHFC.Font', 45, 0],
         ];
@@ -393,8 +402,8 @@ class NRGDashboardForecast extends IPSModule
     public function RequestAction($Ident, $Value)
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
-                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto'];
-        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorBackground', 'FontFamily'];
+                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
+        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
         if (in_array($Ident, $boolIdents, true)) {
@@ -560,6 +569,8 @@ class NRGDashboardForecast extends IPSModule
         $style = [
             'pvColor'    => sprintf('#%06x', (int) $this->GetValue('ColorPV')),
             'loadColor'  => sprintf('#%06x', (int) $this->GetValue('ColorLoad')),
+            'actualPvColor'   => $this->GetValue('ActualOwnPV') ? sprintf('#%06x', (int) $this->GetValue('ColorActualPV')) : '',
+            'actualLoadColor' => $this->GetValue('ActualOwnLoad') ? sprintf('#%06x', (int) $this->GetValue('ColorActualLoad')) : '',
             'bg'         => $this->GetValue('ColorBackgroundAuto') ? '' : sprintf('#%06x', (int) $this->GetValue('ColorBackground')),
             'scale'      => $this->FontScaleValue(),
             'lineWidth'  => max(0.5, min(6.0, (float) $this->GetValue('LineWidth'))),
@@ -1221,6 +1232,10 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('ChartEngine', 0);
         $this->SetValue('ColorPV', self::DEF_PV);
         $this->SetValue('ColorLoad', self::DEF_LOAD);
+        $this->SetValue('ColorActualPV', self::DEF_PV);
+        $this->SetValue('ColorActualLoad', self::DEF_LOAD);
+        $this->SetValue('ActualOwnPV', false);
+        $this->SetValue('ActualOwnLoad', false);
         $this->SetValue('ColorBackgroundAuto', true);
         $this->SetValue('ColorBackground', 0xFFFFFF);
         $this->SetValue('FontFamily', 0);
