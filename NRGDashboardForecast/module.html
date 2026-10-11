@@ -599,11 +599,16 @@
             var h = '';
             function item(id, name, color, present, actual, hidden) {
                 if (!present) { return; }
-                var v = actual != null ? (' · jetzt <b>' + kw(actual) + ' kW</b>') : '';
+                var v = actual != null ? (' · Ist jetzt <b>' + kw(actual) + ' kW</b>') : '';
                 h += '<span class="lg" onclick="toggleSeries(\'' + id + '\')" title="Klick: aus-/einblenden" style="opacity:' + (hidden ? 0.4 : 1) + '"><span class="sw" style="background:' + color + '"></span>' + name + v + '</span>';
             }
-            item('pv', 'PV', D.pvC, D.pvPresent, D.actualPV, userHide.pv);
-            item('load', 'Verbrauch', D.loC, D.loPresent, D.actualLoad, userHide.load);
+            // Gespiegelt von Prognoses Energiebilanz (Build 133, Forum hbraun #42): die Prognosekurve
+            // heisst "Soll", sobald es ein Ist-Gegenstueck gibt (gemessene Linie ODER Momentanwert);
+            // der Momentanwert heisst "Ist jetzt". Ohne Ist bleibt der nackte Name.
+            var pvSuffix = (D.pvMeas.length > 1 || D.actualPV != null) ? ' (Soll)' : '';
+            var loSuffix = (D.loMeas.length > 1 || D.actualLoad != null) ? ' (Soll)' : '';
+            item('pv', 'PV' + pvSuffix, D.pvC, D.pvPresent, D.actualPV, userHide.pv);
+            item('load', 'Verbrauch' + loSuffix, D.loC, D.loPresent, D.actualLoad, userHide.load);
             // gemessene Linien als eigene Eintraege (Forum Ghostraider, 10.10.2026)
             item('pvm', 'PV (Ist)', D.pvMC, D.pvMeas.length > 1, null, userHide.pvm);
             item('lom', 'Verbrauch (Ist)', D.loMC, D.loMeas.length > 1, null, userHide.lom);
