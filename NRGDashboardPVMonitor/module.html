@@ -4240,7 +4240,16 @@
         // "2" - wurde am 23.08.2026 wieder entfernt) - unabhaengig vom
         // EMS-Tagesplan geladen, zeigt sich nur, wenn eine StromGedacht-
         // Instanz gefunden wurde.
-        if (lastData.hasStromGedacht && tagesplanDay >= 0) {
+        if (tagesplanDay < 0) {
+          // Rueckblick: Ampel-Verlauf kommt mit dem Tagesplan-Rueckblick (gemerkt/API ~4 Tage)
+          var pastAmpel = (dp && dp.ampel) || [];
+          if (lastData.hasStromGedacht && pastAmpel.length) {
+            document.getElementById('ampelStrip').style.display = '';
+            renderAmpelChart('ampelStrip', pastAmpel, dpDay.dayStart, dpDay.dayEnd, false);
+          } else {
+            document.getElementById('ampelStrip').style.display = 'none';
+          }
+        } else if (lastData.hasStromGedacht) {
           if (!stromgedachtCache) {
             ensureStromGedacht();
             document.getElementById('ampelStrip').style.display = 'none';

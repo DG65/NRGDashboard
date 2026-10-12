@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.26 (2026-10-12)
+
+- PVMonitor Tagesplan-Rückblick: Netzampel auch für vergangene Tage - bis ca. 4 Tage direkt aus der StromGedacht-API, ältere Tage aus einem gemerkten Verlauf (füllt sich ab jetzt, 16 Tage).
+
 ## 0.9.169-beta.25 (2026-10-12)
 
 - PVMonitor Tagesplan: Rückblick der letzten 14 Tage (nur Ist), aus den Archiven rekonstruiert - Betriebsart (EMS_Mode), Strompreis (EMS_GetPurchasePriceHistory), Batterie-SOC, PV und Last. Neu: Knopf Gestern, Pfeil zurück bis 14 Tage.
