@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.28 (2026-10-12)
+
+- Store-Review-Punkt 15: IPS_LogMessage durch $this->LogMessage ersetzt (Wallbox-Steuerbefehl), Prüfung im Workflow ergänzt.
+
 ## 0.9.169-beta.27 (2026-10-12)
 
 - PVMonitor Tagesplan: Netzampel auch für die schon vergangenen Stunden von heute (vorher nur ab "jetzt"); gemerkter Ampel-Verlauf wird zusammengeführt statt ersetzt.
