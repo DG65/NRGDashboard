@@ -14,3 +14,8 @@ jobs:
           php-version: '8.1'
       - name: PHP Syntax-Check
         run: find . -name "*.php" -not -path "./node_modules/*" -print0 | xargs -0 -n1 php -l
+      - name: Kein IPS_LogMessage in Modulklassen (Store-Review-Punkt 15, nur $this->LogMessage)
+        run: |
+          if grep -rn "IPS_LogMessage(" --include=module.php . --exclude-dir=node_modules; then
+            echo "IPS_LogMessage gefunden - bitte \$this->LogMessage(\$text, KL_*) verwenden"; exit 1
+          fi
