@@ -198,6 +198,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $this->RegisterAttributeString('YearCompareConfig', '{}');
         // 15-Minuten-Cache der PV-Prognose fuer die Sonnen-Tattoos
         // (PvfSunForecast()).
+        $this->RegisterAttributeString('AmpelHistory', '');
         $this->RegisterAttributeString('PvfSunCache', '');
         // Manuell nachgetragene Vorjahreswerte (Dietmar, 05.08.2026): Monate
         // vor Inbetriebnahme des Archivs/der Anlage haben keine Zaehler-
@@ -1820,7 +1821,93 @@ class NRGDashboardPVMonitor extends IPSModule
                 ];
             }
         }
+        $this->AmpelStore($segments, time());
         return ['hasStromGedacht' => true, 'segments' => $segments];
+    }
+
+    /**
+     * Netzampel-Verlauf je Kalendertag (Dietmar, 12.10.2026: "Netzampel auch fuer alte
+     * Tage"): StromGedacht liefert per API nur etwa 4 Tage Vergangenheit (hoursInPast
+     * <= 96) und das StromGedacht-Modul selbst keine Vergangenheit. Deshalb werden
+     * alle gesehenen Segmente je Tag gemerkt ('AmpelHistory': Y-m-d => {ts, seg}),
+     * ein Tag gilt als vollstaendig, wenn er NACH seinem Ende gespeichert wurde.
+     * Aeltere Tage fuellen sich ab jetzt von selbst; 16 Tage werden gehalten.
+     */
+    private function AmpelStore(array $segments, int $fetchedAt): void
+    {
+        if (count($segments) === 0) {
+            return;
+        }
+        $raw = (string) $this->ReadAttributeString('AmpelHistory');
+        $map = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+        if (!is_array($map)) { $map = []; }
+        $byDay = [];
+        foreach ($segments as $seg) {
+            $from = (int) ($seg['from'] ?? 0); $to = (int) ($seg['to'] ?? 0);
+            if ($to <= $from) { continue; }
+            $d = (int) strtotime('today', (int) ($from / 1000));
+            while ($d * 1000 < $to) {
+                $dEnd = (int) strtotime('+1 day', $d);
+                $a = max($from, $d * 1000); $b = min($to, $dEnd * 1000);
+                if ($b > $a) { $byDay[date('Y-m-d', $d)][] = [$a, $b, (int) ($seg['value'] ?? 1)]; }
+                $d = $dEnd;
+            }
+        }
+        foreach ($byDay as $day => $segs) {
+            $dayStart = (int) strtotime($day . ' 00:00:00');
+            $dayEnd = (int) strtotime('+1 day', $dayStart);
+            $old = $map[$day] ?? null;
+            // Eine bereits vollstaendige Speicherung nicht durch eine unvollstaendigere ersetzen
+            if ($old !== null && (int) ($old['ts'] ?? 0) >= $dayEnd) { continue; }
+            $map[$day] = ['ts' => $fetchedAt, 'seg' => $segs];
+        }
+        $limit = date('Y-m-d', (int) strtotime('-16 days'));
+        foreach (array_keys($map) as $k) { if ($k < $limit) { unset($map[$k]); } }
+        $this->WriteAttributeString('AmpelHistory', json_encode($map));
+    }
+
+    /** Segmente [{from,to,value}] eines vergangenen Tages (aus Speicher, ggf. frisch von der API). */
+    private function AmpelForPastDay(int $dayStart, int $dayEnd): array
+    {
+        $id = $this->StromGedachtInstanceID();
+        if ($id <= 0) {
+            return [];
+        }
+        $key = date('Y-m-d', $dayStart);
+        $read = function () use ($key) {
+            $map = json_decode((string) $this->ReadAttributeString('AmpelHistory'), true);
+            return is_array($map) ? ($map[$key] ?? null) : null;
+        };
+        $day = $read();
+        $complete = $day !== null && (int) ($day['ts'] ?? 0) >= $dayEnd;
+        // Hoechstens ~4 Tage zurueck von der API holen
+        if (!$complete && (time() - $dayStart) <= 4 * 86400 - 3600) {
+            $zip = trim((string) @IPS_GetProperty($id, 'ZipCode'));
+            if ($zip !== '') {
+                $url = 'https://api.stromgedacht.de/v1/statesRelative?zip=' . urlencode($zip) . '&hoursInPast=96&hoursInFuture=1';
+                $body = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 8]]));
+                $data = is_string($body) ? json_decode($body, true) : null;
+                if (is_array($data) && isset($data['states']) && is_array($data['states'])) {
+                    $segs = [];
+                    foreach ($data['states'] as $st) {
+                        if (!isset($st['from'], $st['to'], $st['state'])) { continue; }
+                        $segs[] = ['from' => (int) strtotime((string) $st['from']) * 1000,
+                                   'to' => (int) strtotime((string) $st['to']) * 1000,
+                                   'value' => (int) $st['state']];
+                    }
+                    $this->AmpelStore($segs, time());
+                    $day = $read();
+                }
+            }
+        }
+        if ($day === null) {
+            return [];
+        }
+        $out = [];
+        foreach ((array) ($day['seg'] ?? []) as $s) {
+            $out[] = ['from' => (int) $s[0], 'to' => (int) $s[1], 'value' => (int) $s[2]];
+        }
+        return $out;
     }
 
     // Farben/Namen je EMS_OP_*-Konstante - 1:1 aus EMS::getPlanActions()
@@ -2034,6 +2121,7 @@ class NRGDashboardPVMonitor extends IPSModule
             ];
         }
 
+        $out['ampel'] = $this->AmpelForPastDay($dayStart, $dayEnd);
         $out['pvForecast'] = $this->DaySeries($aid, $this->PvPowerID(), $dayStart, $dayEnd);
         [$gridID, $gridSign] = $this->LiveGridPowerID();
         $out['loadForecast'] = $this->ActualLoadSeries($aid, $this->PvPowerID(), $this->BatPowerID(), $gridID, $gridSign, $dayStart, $dayEnd);
