@@ -199,6 +199,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // 15-Minuten-Cache der PV-Prognose fuer die Sonnen-Tattoos
         // (PvfSunForecast()).
         $this->RegisterAttributeString('AmpelHistory', '');
+        $this->RegisterAttributeInteger('AmpelBackfillAt', 0);
         $this->RegisterAttributeString('PvfSunCache', '');
         // Manuell nachgetragene Vorjahreswerte (Dietmar, 05.08.2026): Monate
         // vor Inbetriebnahme des Archivs/der Anlage haben keine Zaehler-
@@ -1822,7 +1823,53 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
         $this->AmpelStore($segments, time());
+        // Heute ab 00:00: die Prognose beginnt erst bei "jetzt" - die Ampel der schon
+        // vergangenen Stunden kommt aus dem gemerkten Verlauf bzw. (max. 4 Tage zurueck,
+        // hoechstens alle 30 Minuten) direkt von der API. Sonst bliebe der linke Teil
+        // der Leiste im Tagesplan "Heute" leer (Dietmar, 12.10.2026).
+        $segments = array_merge($this->AmpelTodayPast($start), $segments);
         return ['hasStromGedacht' => true, 'segments' => $segments];
+    }
+
+    /** Ampel-Segmente [{from,to,value}] von heute 00:00 bis $nowTs aus Speicher, ggf. API-Nachladen. */
+    private function AmpelTodayPast(int $nowTs): array
+    {
+        $dayStart = (int) strtotime('today');
+        $read = function () use ($dayStart) {
+            $map = json_decode((string) $this->ReadAttributeString('AmpelHistory'), true);
+            $day = is_array($map) ? ($map[date('Y-m-d', $dayStart)] ?? null) : null;
+            return is_array($day) ? (array) ($day['seg'] ?? []) : [];
+        };
+        $segs = $read();
+        $first = count($segs) ? min(array_map(static fn($x) => (int) $x[0], $segs)) : PHP_INT_MAX;
+        if ($first > ($dayStart + 60) * 1000 && (time() - (int) $this->ReadAttributeInteger('AmpelBackfillAt')) > 1800) {
+            $this->WriteAttributeInteger('AmpelBackfillAt', time());
+            $id = $this->StromGedachtInstanceID();
+            $zip = $id > 0 ? trim((string) @IPS_GetProperty($id, 'ZipCode')) : '';
+            if ($zip !== '') {
+                $url = 'https://api.stromgedacht.de/v1/statesRelative?zip=' . urlencode($zip) . '&hoursInPast=96&hoursInFuture=1';
+                $body = @file_get_contents($url, false, stream_context_create(['http' => ['timeout' => 6]]));
+                $data = is_string($body) ? json_decode($body, true) : null;
+                if (is_array($data) && isset($data['states']) && is_array($data['states'])) {
+                    $api = [];
+                    foreach ($data['states'] as $st) {
+                        if (!isset($st['from'], $st['to'], $st['state'])) { continue; }
+                        $api[] = ['from' => (int) strtotime((string) $st['from']) * 1000,
+                                  'to' => (int) strtotime((string) $st['to']) * 1000,
+                                  'value' => (int) $st['state']];
+                    }
+                    $this->AmpelStore($api, time());
+                    $segs = $read();
+                }
+            }
+        }
+        $out = [];
+        $cut = $nowTs * 1000;
+        foreach ($segs as $x) {
+            $from = (int) $x[0]; $to = min((int) $x[1], $cut);
+            if ($to > $from) { $out[] = ['from' => $from, 'to' => $to, 'value' => (int) $x[2]]; }
+        }
+        return $out;
     }
 
     /**
@@ -1859,7 +1906,20 @@ class NRGDashboardPVMonitor extends IPSModule
             $old = $map[$day] ?? null;
             // Eine bereits vollstaendige Speicherung nicht durch eine unvollstaendigere ersetzen
             if ($old !== null && (int) ($old['ts'] ?? 0) >= $dayEnd) { continue; }
-            $map[$day] = ['ts' => $fetchedAt, 'seg' => $segs];
+            // Zusammenfuehren: neue Segmente gelten in ihrem Zeitbereich, davor/danach bleibt Altes
+            $nMin = min(array_map(static fn($x) => $x[0], $segs));
+            $nMax = max(array_map(static fn($x) => $x[1], $segs));
+            $keep = [];
+            foreach ((array) ($old['seg'] ?? []) as $o) {
+                if ($o[1] <= $nMin || $o[0] >= $nMax) { $keep[] = $o; }
+                else {
+                    if ($o[0] < $nMin) { $keep[] = [$o[0], $nMin, $o[2]]; }
+                    if ($o[1] > $nMax) { $keep[] = [$nMax, $o[1], $o[2]]; }
+                }
+            }
+            $merged = array_merge($keep, $segs);
+            usort($merged, static fn($a, $b) => $a[0] <=> $b[0]);
+            $map[$day] = ['ts' => $fetchedAt, 'seg' => $merged];
         }
         $limit = date('Y-m-d', (int) strtotime('-16 days'));
         foreach (array_keys($map) as $k) { if ($k < $limit) { unset($map[$k]); } }
