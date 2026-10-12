@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.25 (2026-10-12)
+
+- PVMonitor Tagesplan: Rückblick der letzten 14 Tage (nur Ist), aus den Archiven rekonstruiert - Betriebsart (EMS_Mode), Strompreis (EMS_GetPurchasePriceHistory), Batterie-SOC, PV und Last. Neu: Knopf Gestern, Pfeil zurück bis 14 Tage.
+
 ## 0.9.169-beta.24 (2026-10-11)
 
 - Prognose-Kachel: Legende "PV (Soll)" / "Verbrauch (Soll)" und "Ist jetzt", sobald es ein Ist-Gegenstück gibt (gespiegelt von Prognoses Energiebilanz, Build 133).
