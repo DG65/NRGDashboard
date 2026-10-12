@@ -613,6 +613,10 @@
     // requestAction('dayPlanLoad') geholt, wenn der Reiter tatsaechlich
     // geoeffnet wird. Kein Zeitraum-Parameter noetig (immer heute+morgen).
     var dayPlanCache = null, dayPlanPending = false, dayPlanLoadedAt = 0;
+    // Rueckblick der letzten 14 Tage (Dietmar, 12.10.2026): je Tag EINMAL aus den Archiven
+    // nachgefordert (dayPlanHistory) und im Browser gehalten; Schluessel = Tagesversatz (-1..-14).
+    var dayPlanHistCache = {}, dayPlanHistPending = {};
+    var TAGESPLAN_MIN_DAY = -14;
     // Versteckter Entwickler-Szenarienvergleich (17.09.2026) - gleiches
     // Nachforder-Muster wie dayPlanCache, siehe scenarioLoad im Backend.
     var scenarioCache = null, scenarioPending = false;
@@ -857,14 +861,14 @@
       if (curTab === 'tagesplan') {
         pick.style.display = 'none'; pickTo.style.display = 'none';
         document.getElementById('periodLabel').style.display = '';
-        document.getElementById('periodLabel').textContent = (tagesplanDay === 0) ? 'Heute' : 'Morgen';
-        document.getElementById('prev').disabled = (tagesplanDay <= 0);
+        document.getElementById('periodLabel').textContent = tagesplanLabel(tagesplanDay);
+        document.getElementById('prev').disabled = (tagesplanDay <= TAGESPLAN_MIN_DAY);
         document.getElementById('next').disabled = (tagesplanDay >= 1);
-        ['Heute', 'Morgen'].forEach(function (l, i) {
+        [[-1, 'Gestern'], [0, 'Heute'], [1, 'Morgen']].forEach(function (e) {
           var btn = document.createElement('button');
-          btn.className = 'qday' + (tagesplanDay === i ? ' active' : '');
-          btn.textContent = l;
-          btn.onclick = function () { tagesplanDay = i; render(); };
+          btn.className = 'qday' + (tagesplanDay === e[0] ? ' active' : '');
+          btn.textContent = e[1];
+          btn.onclick = function () { tagesplanDay = e[0]; render(); };
           quick.appendChild(btn);
         });
         return;
@@ -2078,7 +2082,9 @@
       // (irrefuehrend). Limette hebt sich von Automatik (grau), Netz laden
       // (kraeftiges Blau), PV-Eigenverbrauch (gruen) und Einspeisen (lila) ab. Unbekannte op-Werte fallen weiter
       // still auf grau "op N" zurueck (planOpInfo).
-      8: { name: 'Akku halten (Netzbezug)', color: '#CDDC39' }
+      8: { name: 'Akku halten (Netzbezug)', color: '#CDDC39' },
+      // Rueckblick: fuer diese Viertelstunde ist keine Betriebsart archiviert
+      '-1': { name: 'unbekannt', color: '#555B63' }
     };
     // Schaltleistung (EMS_GetDayPlan 1.1, optional): "Netz laden mit 24 kW"
     function planXsetText(slot) {
@@ -2204,6 +2210,14 @@
     // loadForecast werden auf die lokale Kalendertag-Grenze gefiltert, dazu
     // die Tagesgrenzen selbst (fuer eine feste x-Achse, gleiches Muster wie
     // die normale Tagesansicht mit d.dayStart/d.dayEnd).
+    function tagesplanLabel(off) {
+      if (off === 0) { return 'Heute'; }
+      if (off === 1) { return 'Morgen'; }
+      if (off === -1) { return 'Gestern'; }
+      var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
+      return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' +
+        ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.';
+    }
     function dayPlanForSelectedDay(dp) {
       var start = new Date(); start.setHours(0, 0, 0, 0);
       start.setDate(start.getDate() + tagesplanDay);
@@ -4195,6 +4209,22 @@
           return;
         }
         var dp = dayPlanCache;
+        if (tagesplanDay < 0) {
+          // Rueckblick: eigener, aus den Archiven gebauter Plan je Tag
+          dp = dayPlanHistCache[tagesplanDay];
+          if (!dp) {
+            if (!dayPlanHistPending[tagesplanDay]) {
+              dayPlanHistPending[tagesplanDay] = true;
+              requestAction('dayPlanHistory', JSON.stringify({ offset: tagesplanDay }));
+            }
+            destroyChart();
+            document.getElementById('legendRow').innerHTML = '';
+            document.getElementById('planKeyRow').style.display = 'none';
+            document.getElementById('ampelStrip').style.display = 'none';
+            el.innerHTML = '<div class="empty">Lade Rückblick…</div>';
+            return;
+          }
+        }
         if (!dp.hasEms || !dp.slots || !dp.slots.length) {
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
@@ -4210,7 +4240,7 @@
         // "2" - wurde am 23.08.2026 wieder entfernt) - unabhaengig vom
         // EMS-Tagesplan geladen, zeigt sich nur, wenn eine StromGedacht-
         // Instanz gefunden wurde.
-        if (lastData.hasStromGedacht) {
+        if (lastData.hasStromGedacht && tagesplanDay >= 0) {
           if (!stromgedachtCache) {
             ensureStromGedacht();
             document.getElementById('ampelStrip').style.display = 'none';
@@ -4449,6 +4479,12 @@
       }
       // Antwort auf requestAction('dayPlanLoad', ...) - Tagesplan-Reiter
       // (21.08.2026), gleiches Nachforder-Muster wie yearCompareUpdate.
+      if (d.type === 'dayPlanHistoryUpdate') {
+        dayPlanHistCache[d.offset] = d.dayPlan || { hasEms: false, slots: [] };
+        dayPlanHistPending[d.offset] = false;
+        if (curTab === 'tagesplan' && tagesplanDay === d.offset) { render(); }
+        return;
+      }
       if (d.type === 'dayPlanUpdate') {
         dayPlanCache = d.dayPlan;
         dayPlanLoadedAt = Date.now();
@@ -4524,7 +4560,7 @@
 
     document.getElementById('prev').onclick = function () {
       if (curTab === 'tagesplan') {
-        if (tagesplanDay > 0) { tagesplanDay--; render(); }
+        if (tagesplanDay > TAGESPLAN_MIN_DAY) { tagesplanDay--; render(); }
       } else if (curView === 'day') {
         // Kein Ende mehr fuer "zurueck" (Dietmar, 23.08.2026) - dayAt()
         // fordert jeden Tag jenseits des eager-Fensters selbst nach.

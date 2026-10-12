@@ -318,7 +318,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // bewusst NICHT ueber den offenen WebHook.
         if (isset($_GET['action'])) {
             header('Content-Type: application/json; charset=utf-8');
-            $allowed = ['dayData', 'dayPlanLoad', 'flowPeriod', 'balancePeriod', 'yearCompare', 'stromgedachtLoad'];
+            $allowed = ['dayData', 'dayPlanLoad', 'dayPlanHistory', 'flowPeriod', 'balancePeriod', 'yearCompare', 'stromgedachtLoad'];
             $ident = (string) $_GET['action'];
             if (!in_array($ident, $allowed, true)) {
                 echo json_encode([]);
@@ -1959,6 +1959,88 @@ class NRGDashboardPVMonitor extends IPSModule
     }
 
     /**
+     * Tagesplan-Rueckblick (Dietmar, 12.10.2026: "den Tagesplan auch fuer laenger
+     * in die Vergangenheit sichtbar machen", 14 Tage, nur Ist): das EMS liefert
+     * nur heute+morgen und behaelt keinen alten Plan - der Rueckblick wird aus
+     * den Archiven rekonstruiert, im selben Format wie BuildDayPlan(), damit
+     * der Reiter dieselbe Darstellung benutzt:
+     *  - Betriebsart je Viertelstunde: archivierte EMS-Variable 'EMS_Mode'
+     *    (dieselben op-Codes wie die Plan-Slots), Wert zur Slot-Mitte, davor
+     *    letzter bekannter Wert; ohne Archivwert op=-1 ("unbekannt").
+     *  - Strompreis: EMS_GetPurchasePriceHistory() (Bezugspreis brutto).
+     *  - Batterie-SOC: archivierter Wert am Slot-ENDE (wie der Plan, der den
+     *    SOC nach dem Slot liefert).
+     *  - PV/Last: Archivleistung (wie die Vergangenheit des heutigen Tages).
+     * Kein Plan, keine Ladefenster, keine Entscheidungs-Flags.
+     */
+    private function BuildPastDayPlan(int $offset): array
+    {
+        $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => [],
+                'windows' => [], 'decision' => null, 'history' => true];
+        $emsId = $this->EmsInstanceID();
+        $aid = $this->ArchiveID();
+        if ($emsId <= 0 || $aid <= 0) {
+            return $out;
+        }
+        $out['hasEms'] = true;
+        $dayStart = (int) strtotime('today ' . $offset . ' days');
+        $dayEnd = (int) strtotime('+1 day', $dayStart);
+
+        // Betriebsart-Verlauf (Aenderungen), aufsteigend
+        $modeVar = (int) @IPS_GetObjectIDByIdent('EMS_Mode', $emsId);
+        $modes = [];
+        if ($modeVar > 0 && @AC_GetLoggingStatus($aid, $modeVar)) {
+            $rows = @AC_GetLoggedValues($aid, $modeVar, $dayStart - 86400, $dayEnd, 0);
+            if (is_array($rows)) {
+                usort($rows, static fn($a, $b) => (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']);
+                foreach ($rows as $r) {
+                    $modes[] = [(int) $r['TimeStamp'], (int) round((float) $r['Value'])];
+                }
+            }
+        }
+
+        // Preise je Viertelstunde
+        $prices = [];
+        if (function_exists('EMS_GetPurchasePriceHistory')) {
+            $hist = @EMS_GetPurchasePriceHistory($emsId, $dayStart, $dayEnd);
+            if (is_array($hist) && isset($hist['slots']) && is_array($hist['slots'])) {
+                foreach ($hist['slots'] as $sl) {
+                    if (isset($sl['start']) && array_key_exists('priceCt', $sl) && $sl['priceCt'] !== null) {
+                        $prices[(int) $sl['start']] = round((float) $sl['priceCt'], 2);
+                    }
+                }
+            }
+        }
+
+        // SOC (5-Minuten-Mittel), aufsteigend
+        $soc = $this->DaySeries($aid, $this->SocID(), $dayStart, $dayEnd);
+
+        $mi = 0; $lastMode = null; $si = 0; $lastSoc = null;
+        for ($t = $dayStart; $t < $dayEnd; $t += 900) {
+            $mid = $t + 450;
+            while ($mi < count($modes) && $modes[$mi][0] <= $mid) { $lastMode = $modes[$mi][1]; $mi++; }
+            $slotEnd = min($t + 900, $dayEnd);
+            while ($si < count($soc) && (int) ($soc[$si][0] / 1000) <= $slotEnd) { $lastSoc = (float) $soc[$si][1]; $si++; }
+            $out['slots'][] = [
+                'time'  => $t * 1000,
+                'op'    => $lastMode !== null ? $lastMode : -1,
+                'power' => 0,
+                'reason' => 'Rückblick',
+                'price' => $prices[$t] ?? null,
+                'soc'   => $lastSoc,
+                'xsetW' => 0,
+                'gwModeLabel' => '',
+                'rw'    => null,
+            ];
+        }
+
+        $out['pvForecast'] = $this->DaySeries($aid, $this->PvPowerID(), $dayStart, $dayEnd);
+        [$gridID, $gridSign] = $this->LiveGridPowerID();
+        $out['loadForecast'] = $this->ActualLoadSeries($aid, $this->PvPowerID(), $this->BatPowerID(), $gridID, $gridSign, $dayStart, $dayEnd);
+        return $out;
+    }
+
+    /**
      * Ersetzt in einer Prognose-Zeitreihe alle Punkte VOR $cutoffMs durch
      * $actual (Archivwerte), Punkte ab $cutoffMs bleiben unveraendert
      * Prognose - siehe BuildDayPlan(). Bewusst reine Punktkonkatenation
@@ -2974,6 +3056,17 @@ class NRGDashboardPVMonitor extends IPSModule
                 'ok'      => true,
                 'type'    => 'dayPlanUpdate',
                 'dayPlan' => $this->BuildDayPlan(),
+            ]));
+            return;
+        }
+        if ($Ident === 'dayPlanHistory') {
+            $req = json_decode((string) $Value, true);
+            $offset = max(-14, min(-1, (int) ($req['offset'] ?? -1)));
+            $this->PushMessage(json_encode([
+                'ok'      => true,
+                'type'    => 'dayPlanHistoryUpdate',
+                'offset'  => $offset,
+                'dayPlan' => $this->BuildPastDayPlan($offset),
             ]));
             return;
         }
