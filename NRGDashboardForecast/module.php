@@ -102,7 +102,7 @@ class NRGDashboardForecast extends IPSModule
     private const NEWS_VERSIONS = [
         '0.2.9' => [
             '📊 Neue Darstellung "Balken je Zeitscheibe" (gespiegelt von Prognoses Energiebilanz, Idee aus dem Forum): im WebFront über den Doppelpfeil unter "Darstellung" wählbar - je Viertelstunde ein Soll-Balken, gefüllt mit dem Ist-Wert, der Verbrauch als Linie. Die Standarddarstellung bleibt die Kurve.',
-            '🩹 Gemessene Linie verschwindet nicht mehr, wenn das Stunden-Aggregat im Archiv defekt ist - sie wird dann ersatzweise aus den Rohwerten gebildet.',
+            '🩹 Gemessene Linie verschwindet nicht mehr, wenn das Stunden-Aggregat im Archiv defekt ist - sie wird dann ersatzweise aus den Rohwerten gebildet. Über den Ist-Feldern im Formular zeigt eine Zeile, ob die Variable archiviert ist, ob die Linie eingeschaltet ist und wie viele Messwerte heute ankommen.',
         ],
         '0.2.8' => [
             '🎨 Gemessene Linien haben jetzt eigene Legendeneinträge ("PV (Ist)", "Verbrauch (Ist)") und lassen sich einzeln ausblenden; auf Wunsch mit eigener Farbe (Schalter "Eigene Farbe für die gemessene ...-Linie"). Ohne Schalter bleibt alles wie bisher (Anregung aus dem Forum).',
@@ -857,6 +857,9 @@ class NRGDashboardForecast extends IPSModule
         return $data;
     }
 
+    /** Variablen, bei denen das Stunden-Aggregat defekt war (fuer die Formular-Statuszeile). */
+    private $aggFault = [];
+
     /**
      * AC_GetAggregatedValues (stuendlich) mit abgefangener nativer Warnung: bei einem defekten Stunden-Aggregat
      * liefert Symcon false UND gibt eine PHP-Warnung aus. Rueckgabe: Array (ggf. leer) oder false bei Fehler.
@@ -884,6 +887,7 @@ class NRGDashboardForecast extends IPSModule
             // Abfragefenster (Verbund-DST-Audit, 27.08.2026).
             $rows = $this->aggregatedHourly($aid, $vid, $start, strtotime('+1 day', $start) - 1);
             if ($rows === false) {
+                $this->aggFault[$vid] = true;
                 // Defektes Stunden-Aggregat im Archiv ("Ungueltige Aggregation hour"): AC_GetAggregatedValues
                 // liefert fuer den GANZEN Tag false - die gemessene Linie verschwand komplett (Forum hbraun #47,
                 // gespiegelt von Prognoses Energiebilanz Build 141). Ersatzweise aus den Rohwerten bilden.
@@ -1019,6 +1023,43 @@ class NRGDashboardForecast extends IPSModule
             . "\n" . $this->sourceStatusPart($elements, 'LoadSource', 'Lastprognose', '{DC5AD508-507F-40EA-8630-0959AED83050}', 'LoadSource', 'die Kachel zeigt nur die PV-Prognose (Lastprognose ist optional).');
     }
 
+    /**
+     * Statuszeile zur gemessenen Linie (gespiegelt von Prognoses Energiebilanz Build 141, Forum hbraun #47):
+     * Variable gewaehlt/existiert/archiviert, ob die Linie eingeschaltet ist und wie viele Messpunkte heute ankommen.
+     */
+    private function actualStatusLine(string $prop, string $name, string $showIdent, string $showCaption): string
+    {
+        $vid = (int) $this->ReadPropertyInteger($prop);
+        if ($vid <= 0) {
+            return 'ℹ️ ' . $name . ': keine Variable gewählt (Feld unten) - ohne sie gibt es weder Momentanwert noch gemessene Linie.';
+        }
+        if (!IPS_VariableExists($vid)) {
+            return '⚠️ ' . $name . ': die gewählte Variable #' . $vid . ' existiert nicht mehr.';
+        }
+        $vname = '„' . IPS_GetName($vid) . '“ (#' . $vid . ')';
+        $on = (bool) $this->GetValue($showIdent);
+        $aid = $this->getArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return '⚠️ ' . $name . ': Variable ' . $vname . ' ist nicht archiviert - die gemessene Linie braucht die Archivierung (Momentanwert geht auch ohne).';
+        }
+        $this->aggFault = [];
+        $data = $this->readMeasured($vid, 24, (int) strtotime('today'));
+        $n = 0;
+        if (is_array($data)) { foreach ($data as $x) { if ($x !== null) { $n++; } } }
+        $switch = $on
+            ? 'Linie ist eingeschaltet'
+            : 'Linie ist AUSGESCHALTET (Schalter „' . $showCaption . '“ im WebFront-Doppelpfeil bzw. als Instanzvariable)';
+        if (!empty($this->aggFault[$vid])) {
+            return '⚠️ ' . $name . ': Variable ' . $vname . ' - das Stunden-Aggregat im Archiv ist defekt („Ungültige Aggregation“). Die Linie wird ersatzweise aus den Rohwerten gebildet'
+                . ($n > 0 ? ' (' . $n . ' Stunden mit Werten heute)' : ', heute aber ohne Werte')
+                . '. Dauerhaft helfen: im Archiv Control für diese Variable „Neu aggregieren“. ' . $switch . '.';
+        }
+        if ($n === 0) {
+            return '⚠️ ' . $name . ': Variable ' . $vname . ' ist archiviert, aber heute ohne Messwerte im Archiv - die Linie bleibt leer. ' . $switch . '.';
+        }
+        return ($on ? '✅ ' : 'ℹ️ ') . $name . ': Variable ' . $vname . ' archiviert, heute ' . $n . ' Stunden mit Messwerten. ' . $switch . '.';
+    }
+
     public function GetConfigurationForm()
     {
         $raw = str_replace('%%HOOK%%', '/hook/nrgdashforecast' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
@@ -1029,6 +1070,8 @@ class NRGDashboardForecast extends IPSModule
 
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'SourceStatus', $this->forecastSourceStatusLine($form['elements']));
+        $this->setFormStatusLine($form['elements'], 'ActualStatusPV', $this->actualStatusLine('ActualPV', 'PV (Ist)', 'ShowActualPV', 'Gemessenen PV-Tagesverlauf (heute) als Linie zeigen'));
+        $this->setFormStatusLine($form['elements'], 'ActualStatusLoad', $this->actualStatusLine('ActualLoad', 'Verbrauch (Ist)', 'ShowActualLoad', 'Gemessenen Verbrauchs-Tagesverlauf (heute) als Linie zeigen'));
 
         $banner = $this->newsBanner();
         if ($banner !== null) {
