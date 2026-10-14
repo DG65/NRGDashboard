@@ -100,6 +100,10 @@ class NRGDashboardForecast extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.2.9' => [
+            '📊 Neue Darstellung "Balken je Zeitscheibe" (gespiegelt von Prognoses Energiebilanz, Idee aus dem Forum): im WebFront über den Doppelpfeil unter "Darstellung" wählbar - je Viertelstunde ein Soll-Balken, gefüllt mit dem Ist-Wert, der Verbrauch als Linie. Die Standarddarstellung bleibt die Kurve.',
+            '🩹 Gemessene Linie verschwindet nicht mehr, wenn das Stunden-Aggregat im Archiv defekt ist - sie wird dann ersatzweise aus den Rohwerten gebildet.',
+        ],
         '0.2.8' => [
             '🎨 Gemessene Linien haben jetzt eigene Legendeneinträge ("PV (Ist)", "Verbrauch (Ist)") und lassen sich einzeln ausblenden; auf Wunsch mit eigener Farbe (Schalter "Eigene Farbe für die gemessene ...-Linie"). Ohne Schalter bleibt alles wie bisher (Anregung aus dem Forum).',
         ],
@@ -216,6 +220,8 @@ class NRGDashboardForecast extends IPSModule
             'Days'             => ['Anzuzeigende Tage', 'NRGDASHFC.Days', 20, self::DEF_DAYS],
             'PowerUnit'        => ['Einheit der Ist-Leistungsvariablen', 'NRGDASHFC.PowerUnit', 30, 2],
             'MeasuredCacheSec' => ['Ist-Verlauf neu berechnen alle ... s (Archiv-Cache)', 'NRGDASHFC.CacheSec', 34, 120],
+            // Darstellung (Forum Ghostraider #48, gespiegelt von Prognoses Energiebilanz Build 142): Kurve oder Balken je Slot (15 min)
+            'ChartView'        => ['Darstellung (Kurve oder Balken je Zeitscheibe)', 'NRGDASHFC.View', 39, 0],
             'ChartEngine'      => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
             'ColorPV'          => ['Farbe PV-Erzeugung', '~HexColor', 41, self::DEF_PV],
             'ColorLoad'        => ['Farbe Verbrauch', '~HexColor', 42, self::DEF_LOAD],
@@ -267,6 +273,10 @@ class NRGDashboardForecast extends IPSModule
         IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 0, 'W (Watt)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 1, 'kW (Kilowatt)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.PowerUnit', 2, 'Automatisch erkennen (Profil/Größenordnung)', '', -1);
+
+        if (!IPS_VariableProfileExists('NRGDASHFC.View')) { IPS_CreateVariableProfile('NRGDASHFC.View', VARIABLETYPE_INTEGER); }
+        IPS_SetVariableProfileAssociation('NRGDASHFC.View', 0, 'Kurve (Linien mit Unsicherheitsband)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.View', 1, 'Balken je Zeitscheibe (15 min, Soll gefüllt mit Ist)', '', -1);
 
         if (!IPS_VariableProfileExists('NRGDASHFC.CacheSec')) { IPS_CreateVariableProfile('NRGDASHFC.CacheSec', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileValues('NRGDASHFC.CacheSec', 15, 900, 5);
@@ -403,7 +413,7 @@ class NRGDashboardForecast extends IPSModule
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
                        'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
-        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
+        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
         if (in_array($Ident, $boolIdents, true)) {
@@ -583,6 +593,7 @@ class NRGDashboardForecast extends IPSModule
             'yMaxManual' => max(0.0, (float) $this->GetValue('YMaxManual')),
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
+            'view'       => ((int) $this->GetValue('ChartView') === 1) ? 'bars' : 'curve',
             'hookPath'   => '/hook/nrgdashforecast' . $this->InstanceID,
             'showTour'   => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
@@ -846,6 +857,18 @@ class NRGDashboardForecast extends IPSModule
         return $data;
     }
 
+    /**
+     * AC_GetAggregatedValues (stuendlich) mit abgefangener nativer Warnung: bei einem defekten Stunden-Aggregat
+     * liefert Symcon false UND gibt eine PHP-Warnung aus. Rueckgabe: Array (ggf. leer) oder false bei Fehler.
+     */
+    private function aggregatedHourly(int $aid, int $vid, int $start, int $end)
+    {
+        set_error_handler(function () { return true; });
+        $rows = AC_GetAggregatedValues($aid, $vid, 0, $start, $end, 0);
+        restore_error_handler();
+        return is_array($rows) ? $rows : false;
+    }
+
     private function readMeasured(int $vid, int $slots, int $start)
     {
         if ($vid <= 0 || !IPS_VariableExists($vid)) { return null; }
@@ -859,7 +882,17 @@ class NRGDashboardForecast extends IPSModule
             // strtotime('+1 day', ...) statt +86400: an DST-Tagen sonst zu
             // kurzes (Oktober) oder in den Folgetag ragendes (Maerz)
             // Abfragefenster (Verbund-DST-Audit, 27.08.2026).
-            $rows = AC_GetAggregatedValues($aid, $vid, 0, $start, strtotime('+1 day', $start) - 1, 0);
+            $rows = $this->aggregatedHourly($aid, $vid, $start, strtotime('+1 day', $start) - 1);
+            if ($rows === false) {
+                // Defektes Stunden-Aggregat im Archiv ("Ungueltige Aggregation hour"): AC_GetAggregatedValues
+                // liefert fuer den GANZEN Tag false - die gemessene Linie verschwand komplett (Forum hbraun #47,
+                // gespiegelt von Prognoses Energiebilanz Build 141). Ersatzweise aus den Rohwerten bilden.
+                $fine = $this->measuredFine($aid, $vid, $start, $slots);
+                if (is_array($fine) && $f !== 1.0) {
+                    foreach ($fine as $i => $v) { if ($v !== null) { $fine[$i] = $v * $f; } }
+                }
+                return $fine;
+            }
             if (!is_array($rows) || count($rows) === 0) { return null; }
             $out = array_fill(0, $slots, null);
             foreach ($rows as $r) {
@@ -1229,6 +1262,7 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('Days', self::DEF_DAYS);
         $this->SetValue('PowerUnit', 2);
         $this->SetValue('MeasuredCacheSec', 120);
+        $this->SetValue('ChartView', 0);
         $this->SetValue('ChartEngine', 0);
         $this->SetValue('ColorPV', self::DEF_PV);
         $this->SetValue('ColorLoad', self::DEF_LOAD);
