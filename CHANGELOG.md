@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.29 (2026-10-14)
+
+- Prognose-Kachel (NRGDashboardForecast), gespiegelt von Prognoses Energiebilanz: Darstellung "Balken je Zeitscheibe" (Build 142) und gemessene Linie bei defektem Stunden-Aggregat aus Rohwerten (Build 141).
+
 ## 0.9.169-beta.28 (2026-10-12)
 
 - Store-Review-Punkt 15: IPS_LogMessage durch $this->LogMessage ersetzt (Wallbox-Steuerbefehl), Prüfung im Workflow ergänzt.
