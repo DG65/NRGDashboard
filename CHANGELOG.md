@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.14 (2026-10-16)
+
+- Hinweis in „Was ist neu“ entfernt (Überraschung).
+
 ## 0.9.170-beta.13 (2026-10-16)
 
 - Halloween-Jagd: Während einer Jagd (und der Ergebnistabelle) fängt die Szene alle Berührungen ab - Knoten, Details und Bedienelemente der Kachel reagieren dann nicht mehr; der Mauszeiger wird zum Fadenkreuz.
