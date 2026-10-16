@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.5 (2026-10-16)
+
+- Halloween: Klick auf eine Fledermaus traf auf hochauflösenden Bildschirmen daneben (Pixeldichte nicht umgerechnet); behoben, Treffbereich etwas größer.
+
 ## 0.9.170-beta.4 (2026-10-16)
 
 - Halloween-Effekte: jetzt als gezeichnete Szene (Mond mit Kratern, Sterne, Baum, wabernder Nebel, gelenkige Fledermäuse); bei aktivem Modus wird der Hintergrund dunkel. Der Kürbis wandert gelegentlich durchs Bild, verwandelt sich in ein Monster mit Brüllen und stürzt auf den Betrachter zu. Ein Klick auf eine Fledermaus lässt sie abstürzen.
