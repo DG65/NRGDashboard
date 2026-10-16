@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.3 (2026-10-16)
+
+- Halloween noch dichter: detailliertere Fledermäuse (Flügel mit Fingerknochen, Reißzähne), glänzende Spinne mit zweigliedrigen Beinen, zerfaserter Geist, kahler Baum mit Krähe, Grabsteine im Nebel, fallende Blätter, aufsteigende Funken am Kürbis.
+
 ## 0.9.170-beta.2 (2026-10-16)
 
 - Halloween gruseliger: Fledermäuse mit schlagenden Flügeln und roten Augen (eine große stößt zu), Spinne mit Sanduhr-Zeichnung und ruckartigem Abseilen, Geist mit hohlen Augen, Mond mit Kratern, Spinnweben, Augenpaare im Dunkeln, Blitz, Randabdunklung. Ton: Hinweis "Ton: antippen" bis entsperrt, sofortige Hörprobe, Takt 14 bis 40 s, lauter, dazu Glockenschlag und Grollen nach Blitz.

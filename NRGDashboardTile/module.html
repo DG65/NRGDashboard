@@ -781,8 +781,9 @@
     animation: hwBatFly var(--d, 20s) linear infinite var(--delay, 0s); }
   #halloween .hw-bat svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 120, 40, .9)); }
   #halloween .hw-bat .body { fill: #14101a; }
-  #halloween .hw-bat .wl, #halloween .hw-bat .wr { fill: #1b1523; transform-origin: 46px 27px; animation: hwWingL .28s ease-in-out infinite alternate; }
+  #halloween .hw-bat .wl, #halloween .hw-bat .wr { transform-origin: 46px 27px; animation: hwWingL .28s ease-in-out infinite alternate; }
   #halloween .hw-bat .wr { transform-origin: 54px 27px; animation-name: hwWingR; }
+  #halloween .hw-bat .wl path:first-child, #halloween .hw-bat .wr path:first-child { fill: #1b1523; }
   #halloween .hw-bat .eye { fill: #ff3b2a; filter: drop-shadow(0 0 2px #ff3b2a); }
   @keyframes hwWingL { from { transform: rotate(-34deg); } to { transform: rotate(26deg); } }
   @keyframes hwWingR { from { transform: rotate(34deg); } to { transform: rotate(-26deg); } }
@@ -818,6 +819,20 @@
   #halloween .hw-sound { position: absolute; right: 2%; bottom: 7%; pointer-events: auto; cursor: pointer; font-size: 12px; padding: 4px 9px; border-radius: 12px;
     background: rgba(20,10,30,.78); color: #ffb35a; border: 1px solid rgba(255,150,50,.5); animation: hwFlicker 3s steps(1, end) infinite; }
   @media (prefers-reduced-motion: reduce) { #halloween * { animation: none !important; } #halloween .hw-bat, #halloween .hw-ghost, #halloween .hw-eyes, #halloween .hw-flash { display: none; } }
+  #halloween .hw-tree { position: absolute; right: 0; bottom: 9%; height: 44%; aspect-ratio: 160 / 200; opacity: .95; }
+  #halloween .hw-tree svg { width: 100%; height: 100%; display: block; }
+  #halloween .hw-tree .crow { transform-origin: 70px 56px; animation: hwCrow 7s ease-in-out infinite; }
+  @keyframes hwCrow { 0%, 60%, 100% { transform: rotate(0) translateY(0); } 66% { transform: rotate(-9deg) translateY(1px); } 72% { transform: rotate(5deg); } 80% { transform: rotate(0); } }
+  #halloween .hw-stones { position: absolute; left: 22%; bottom: 7%; width: 40%; opacity: .75; }
+  #halloween .hw-stones svg { width: 100%; height: auto; display: block; }
+  #halloween .hw-leaf { position: absolute; top: -6%; width: 2.2vmin; min-width: 11px; animation: hwLeaf var(--d, 40s) linear infinite var(--delay, 0s); opacity: .85; }
+  #halloween .hw-leaf svg { width: 100%; height: auto; display: block; }
+  @keyframes hwLeaf { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(28px, 28vh) rotate(160deg); } 50% { transform: translate(-14px, 55vh) rotate(300deg); }
+    75% { transform: translate(24px, 82vh) rotate(480deg); } 100% { transform: translate(0, 112vh) rotate(620deg); } }
+  #halloween .hw-embers { position: absolute; left: 50%; top: 10%; width: 0; height: 0; }
+  #halloween .hw-embers i { position: absolute; left: 0; top: 0; width: 3px; height: 3px; border-radius: 50%; background: #ffb84a; box-shadow: 0 0 5px 2px rgba(255,140,30,.8);
+    animation: hwEmber 4.2s ease-out infinite var(--delay, 0s); opacity: 0; }
+  @keyframes hwEmber { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(var(--dx, 0), -9vmin); opacity: 0; } }
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -3944,22 +3959,42 @@ function halloweenActive() {
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
   return (m === 10 && day >= 24) || (m === 11 && day === 1);
 }
-// Fledermaus: Koerper mit Ohren und glühenden Augen, zwei Fluegel schlagen gegeneinander.
-const HW_BAT = '<svg viewBox="0 0 100 50"><path class="wl" d="M46 27C34 10 14 10 1 22c7-1 11 3 13 10 4-4 9-4 13 1 3-4 8-4 12 1z"/>' +
-  '<path class="wr" d="M54 27C66 10 86 10 99 22c-7-1-11 3-13 10-4-4-9-4-13 1-3-4-8-4-12 1z"/>' +
-  '<ellipse class="body" cx="50" cy="30" rx="5" ry="10"/><circle class="body" cx="50" cy="19" r="5"/><path class="body" d="M45.5 17l-1.5-9 6 5zM54.5 17l1.5-9-6 5z"/>' +
-  '<circle class="eye" cx="48" cy="19" r="1.2"/><circle class="eye" cx="52" cy="19" r="1.2"/></svg>';
-// Spinne: dicker Hinterleib mit Sanduhr-Zeichnung, acht gekruemmte Beine, rote Augen.
-const HW_SPIDER = '<svg viewBox="0 0 60 60"><g class="legs" stroke="#15101a" stroke-width="2.2" fill="none" stroke-linecap="round">' +
-  '<path d="M26 22C16 12 8 14 3 26M26 25C14 22 6 28 3 40M26 28C16 32 10 40 8 54M27 30C22 38 20 46 21 57"/>' +
-  '<path d="M34 22C44 12 52 14 57 26M34 25C46 22 54 28 57 40M34 28C44 32 50 40 52 54M33 30C38 38 40 46 39 57"/></g>' +
-  '<ellipse cx="30" cy="40" rx="11" ry="14" fill="#16111c"/><circle cx="30" cy="23" r="7" fill="#1b1522"/>' +
-  '<path d="M26 36h8l-3 4 3 4h-8l3-4z" fill="#c4281d"/>' +
-  '<g fill="#ff3b2a"><circle cx="27" cy="21" r="1.5"/><circle cx="33" cy="21" r="1.5"/><circle cx="25.5" cy="24" r=".9"/><circle cx="34.5" cy="24" r=".9"/></g></svg>';
-// Geist: flatternde Gestalt mit Armen, ausgehoelten Augen und heulendem Mund.
-const HW_GHOST = '<svg viewBox="0 0 60 90"><path fill="rgba(235,242,255,.86)" d="M30 3C16 3 9 14 9 28c0 10-4 14-8 22 6 0 8 3 9 8-2 6-5 10-7 16 6-2 9 1 11 6 4-3 8-3 10 2 3-5 7-5 11-2 3-6 9-7 14-4-3-7-5-11-6-16 2-6 6-8 12-8-4-8-7-14-7-22C51 14 44 3 30 3z"/>' +
-  '<ellipse cx="22" cy="28" rx="4" ry="6.5" fill="#12101a"/><ellipse cx="38" cy="28" rx="4" ry="6.5" fill="#12101a"/>' +
-  '<ellipse cx="30" cy="45" rx="5" ry="9" fill="#12101a"/><circle cx="22" cy="29" r="1.3" fill="#9fe3ff"/><circle cx="38" cy="29" r="1.3" fill="#9fe3ff"/></svg>';
+// Fledermaus (v2): Fluegel mit Fingerknochen und gezacktem Hinterrand, Reisszaehne, rot glühende Augen.
+const HW_BAT = '<svg viewBox="0 0 100 50"><g class="wl"><path d="M47 27C40 13 24 7 2 15c7 1 9 5 9 10 4-4 8-3 10 2 4-3 8-2 10 3 5-2 9 0 12 5z"/>' +
+  '<path d="M47 27L2 15M47 27L11 25M47 27L21 27M47 27L31 30" stroke="#2d2338" stroke-width=".9" fill="none"/></g>' +
+  '<g class="wr"><path d="M53 27C60 13 76 7 98 15c-7 1-9 5-9 10-4-4-8-3-10 2-4-3-8-2-10 3-5-2-9 0-12 5z"/>' +
+  '<path d="M53 27L98 15M53 27L89 25M53 27L79 27M53 27L69 30" stroke="#2d2338" stroke-width=".9" fill="none"/></g>' +
+  '<ellipse class="body" cx="50" cy="30" rx="4.6" ry="10"/><path class="body" d="M50 40l-2 7 2-3 2 3z"/><circle class="body" cx="50" cy="19" r="5.2"/>' +
+  '<path class="body" d="M45 17l-2.5-10 7 6zM55 17l2.5-10-7 6z"/>' +
+  '<path d="M48.4 23l.8 2.6.8-2.6zM50.8 23l.8 2.6.8-2.6z" fill="#f3f3f3"/>' +
+  '<circle class="eye" cx="47.8" cy="18.6" r="1.3"/><circle class="eye" cx="52.2" cy="18.6" r="1.3"/></svg>';
+// Spinne (v2): glaenzender Hinterleib, zweigliedrige behaarte Beine, acht rote Augen, Sanduhr.
+const HW_SPIDER = '<svg viewBox="0 0 60 60"><defs><radialGradient id="hwAb" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#4a3b56"/><stop offset=".45" stop-color="#1c1524"/><stop offset="1" stop-color="#07040a"/></radialGradient></defs>' +
+  '<g class="legs" stroke="#120d17" stroke-linecap="round" stroke-linejoin="round" fill="none"><g stroke-width="2.6">' +
+  '<path d="M26 22L13 8L3 24"/><path d="M26 25L10 20L1 38"/><path d="M26 29L9 34L7 55"/><path d="M27 31L17 44L20 59"/>' +
+  '<path d="M34 22L47 8L57 24"/><path d="M34 25L50 20L59 38"/><path d="M34 29L51 34L53 55"/><path d="M33 31L43 44L40 59"/></g>' +
+  '<g stroke-width=".7" stroke="#3a2e45"><path d="M18 14l-3-3M8 16l-3-2M14 22l-4-1M6 32l-3 0M12 42l-3 2M12 46l-3 0M42 14l3-3M52 16l3-2M46 22l4-1M54 32l3 0M48 42l3 2M48 46l3 0"/></g></g>' +
+  '<ellipse cx="30" cy="40" rx="11.5" ry="14.5" fill="url(#hwAb)"/><ellipse cx="26" cy="34" rx="3.2" ry="5.5" fill="rgba(255,255,255,.12)"/><circle cx="30" cy="23" r="7.4" fill="#1d1625"/>' +
+  '<path d="M26 37h8l-3 4.5 3 4.5h-8l3-4.5z" fill="#d12a1c"/>' +
+  '<path d="M27 17q-2-4-1-6M33 17q2-4 1-6" stroke="#120d17" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+  '<g fill="#ff3b2a" style="filter:drop-shadow(0 0 1.5px #ff3b2a)"><circle cx="26.6" cy="21" r="1.6"/><circle cx="33.4" cy="21" r="1.6"/><circle cx="29" cy="19.6" r="1"/><circle cx="31" cy="19.6" r="1"/><circle cx="25.4" cy="24.2" r="1"/><circle cx="34.6" cy="24.2" r="1"/><circle cx="28.4" cy="23.6" r=".8"/><circle cx="31.6" cy="23.6" r=".8"/></g></svg>';
+// Geist (v2): zerfaserter Schleier, nach unten ausblendend, leere Augenhoehlen mit kaltem Glimmen.
+const HW_GHOST = '<svg viewBox="0 0 70 110"><defs><linearGradient id="hwGh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f8ff" stop-opacity=".92"/><stop offset=".6" stop-color="#d9e4f7" stop-opacity=".7"/><stop offset="1" stop-color="#c9d8f2" stop-opacity="0"/></linearGradient></defs>' +
+  '<path fill="url(#hwGh)" d="M35 4C20 4 11 16 11 32c0 11-6 16-10 25 6-1 9 3 10 9-3 7-8 11-10 19 8-3 12 1 14 8 3-5 8-6 11 0 3-6 8-6 11 0 3-5 8-4 11 1 3-7 8-9 14-6-3-8-5-13-6-19 2-6 6-9 11-9-5-9-9-15-9-26C59 16 50 4 35 4z"/>' +
+  '<path fill="url(#hwGh)" opacity=".6" d="M4 62c-6 4-9 9-9 16 5-3 9-3 12 1zM66 62c6 4 9 9 9 16-5-3-9-3-12 1z"/>' +
+  '<ellipse cx="26" cy="33" rx="5" ry="8" fill="#0d0b14"/><ellipse cx="44" cy="33" rx="5" ry="8" fill="#0d0b14"/><ellipse cx="35" cy="54" rx="6" ry="11" fill="#0d0b14"/>' +
+  '<circle cx="26" cy="35" r="1.6" fill="#a8e6ff"/><circle cx="44" cy="35" r="1.6" fill="#a8e6ff"/></svg>';
+// Kahler Baum mit Krähe, Grabsteine, Blaetter
+const HW_TREE = '<svg viewBox="0 0 160 200" preserveAspectRatio="xMaxYMax meet"><g stroke="#0a060d" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M118 200C116 170 120 148 114 120C110 100 100 84 84 66" stroke-width="9"/><path d="M114 126C124 108 140 100 152 78" stroke-width="5"/>' +
+  '<path d="M104 96C96 80 78 74 62 56" stroke-width="4"/><path d="M84 66C76 52 62 46 56 30" stroke-width="3"/><path d="M84 66C90 52 88 40 94 28" stroke-width="2.6"/>' +
+  '<path d="M152 78C148 66 150 56 156 46" stroke-width="2.4"/><path d="M62 56C50 52 40 54 30 48M62 56C58 44 50 40 46 30" stroke-width="2"/>' +
+  '<path d="M140 98C132 92 124 92 118 84" stroke-width="2.2"/></g>' +
+  '<g class="crow" fill="#0a060d"><path d="M64 57c2-6 8-8 12-5l5-3-1 5 7 2-6 3c-2 5-8 7-13 4l-6 3z"/><circle cx="77" cy="52" r=".9" fill="#ff3b2a"/></g></svg>';
+const HW_STONES = '<svg viewBox="0 0 220 60" preserveAspectRatio="xMidYMax meet"><g fill="#171320"><path d="M10 60V28c0-9 6-14 12-14s12 5 12 14v32z"/><path d="M60 60V34c0-6 5-10 9-10s9 4 9 10v26z"/>' +
+  '<path d="M104 60V22c0-10 7-16 14-16s14 6 14 16v38z"/><path d="M158 60V32c0-7 5-12 10-12s10 5 10 12v28z"/><path d="M196 60V38c0-5 4-8 7-8s7 3 7 8v22z"/></g>' +
+  '<g stroke="#2b2438" stroke-width="1.6"><path d="M22 22v14M16 27h12M118 14v18M110 20h16"/></g></svg>';
+const HW_LEAF = '<svg viewBox="0 0 20 20"><path d="M10 1C4 5 2 11 6 18c2-3 3-3 4-3s2 0 4 3c4-7 2-13-4-17z" fill="currentColor"/></svg>';
 const HW_PUMPKIN = '<svg viewBox="0 0 60 56"><path d="M29 12c0-5 2-9 6-10" stroke="#3f6a24" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="26" y="9" width="7" height="8" rx="2" fill="#4a7a2a"/>' +
   '<ellipse cx="30" cy="35" rx="27" ry="20" fill="#d9661a"/><ellipse cx="17" cy="35" rx="11" ry="19" fill="#e9761e"/><ellipse cx="43" cy="35" rx="11" ry="19" fill="#cc5a14"/><ellipse cx="30" cy="35" rx="9" ry="20" fill="#f08a2c"/>' +
   '<g class="glow" fill="#ffe066"><path d="M15 27l9 3-6 5z"/><path d="M45 27l-9 3 6 5z"/><path d="M30 34l-3 5h6z"/><path d="M14 43q16 12 32 0l-5-3-4 4-4-4-4 4-4-4-5 4z"/></g></svg>';
@@ -3969,15 +4004,19 @@ const HW_WEB = '<svg viewBox="0 0 100 100"><path d="M0 0L100 0M0 0L0 100M0 0L82 
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
   // [oben %, Groesse, Dauer s, Verzoegerung s]; die erste Fledermaus kreuzt den Mond.
-  const bats = [[7, .9, 19, 0], [24, 1.0, 24, 6], [14, .75, 29, 12], [40, 1.2, 22, 3], [30, .7, 34, 17]]
+  const bats = [[7, .9, 19, 0], [24, 1.0, 24, 6], [14, .75, 29, 12], [40, 1.2, 22, 3], [30, .7, 34, 17], [18, .85, 26, 21]]
     .map(b => '<div class="hw-bat" style="--y:' + b[0] + '%;--s:' + b[1] + ';--d:' + b[2] + 's;--delay:' + b[3] + 's">' + HW_BAT + '</div>').join('');
-  const eyes = [['8%', '66%', '2s'], ['86%', '40%', '8s'], ['72%', '84%', '12s']]
+  const eyes = [['8%', '66%', '2s'], ['86%', '40%', '8s'], ['72%', '84%', '12s'], ['38%', '90%', '5s']]
     .map(e => '<div class="hw-eyes" style="left:' + e[0] + ';top:' + e[1] + ';--delay:' + e[2] + '">' + HW_EYES + '</div>').join('');
-  el.innerHTML = '<div class="hw-vig"></div><div class="hw-moon"></div><div class="hw-fog"></div><div class="hw-fog f2"></div><div class="hw-fog f3"></div>' +
-    '<div class="hw-web tl">' + HW_WEB + '</div><div class="hw-web tr">' + HW_WEB + '</div>' + eyes + bats +
+  const leaves = [[8, '#8a4b14', 38, 0], [26, '#b5651d', 46, 9], [44, '#6e3a10', 52, 20], [63, '#9a5a1a', 41, 14], [81, '#c27a22', 49, 27]]
+    .map(l => '<div class="hw-leaf" style="left:' + l[0] + '%;color:' + l[1] + ';--d:' + l[2] + 's;--delay:-' + l[3] + 's">' + HW_LEAF + '</div>').join('');
+  const embers = [0, 1, 2, 3, 4, 5].map(i => '<i style="--dx:' + ((i % 3) * 10 - 10) + 'px;--delay:-' + (i * 0.7) + 's"></i>').join('');
+  el.innerHTML = '<div class="hw-vig"></div><div class="hw-moon"></div><div class="hw-tree">' + HW_TREE + '</div><div class="hw-stones">' + HW_STONES + '</div>' +
+    '<div class="hw-fog"></div><div class="hw-fog f2"></div><div class="hw-fog f3"></div>' +
+    '<div class="hw-web tl">' + HW_WEB + '</div><div class="hw-web tr">' + HW_WEB + '</div>' + eyes + leaves + bats +
     '<div class="hw-bat big" style="--s:1;--d:47s;--delay:9s">' + HW_BAT + '</div>' +
-    '<div class="hw-spider" style="--x:14%">' + HW_SPIDER + '</div><div class="hw-ghost">' + HW_GHOST + '</div><div class="hw-pumpkin">' + HW_PUMPKIN + '</div>' +
-    '<div class="hw-flash"></div>';
+    '<div class="hw-spider" style="--x:14%">' + HW_SPIDER + '</div><div class="hw-ghost">' + HW_GHOST + '</div>' +
+    '<div class="hw-pumpkin">' + HW_PUMPKIN + '<div class="hw-embers">' + embers + '</div></div><div class="hw-flash"></div>';
   el.classList.add('on'); HW_BUILT = true; hwSoundHint();
 }
 function removeHalloween() {
