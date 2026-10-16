@@ -1389,8 +1389,25 @@ function computeLayout(n) {
   const viewHalfLong = vertical ? VIEW_HALF_H : VIEW_HALF_W;
   let outerR, ringGap;
 
+  // Platz fuer die Fluss-Pfeile (Dietmar, 16.10.2026, Ebene mit 9 Geraeten: "die zentrale
+  // Pille kleiner machen, damit die Pfeile auch tatsaechlich wandern koennen - in der
+  // Root geht es doch auch"): der sichtbare Abstand zwischen Pillenrand und Knotenrand
+  // ist ringGap - outerR (die Pillenhoehe kuerzt sich heraus, die Knoten wandern mit ihr).
+  // Bei wenigen Geraeten wird outerR gross und der Abstand schrumpft auf wenige Einheiten -
+  // die Pfeile haben dann keinen Weg (9 Geraete: 26 Einheiten, 12 Geraete: 77). Deshalb:
+  // (1) Knotenradius so deckeln, dass der Zielabstand ueberhaupt erreichbar ist, (2) die
+  // Pille danach um das Fehlende schrumpfen und den Ring um dasselbe Stueck aufweiten,
+  // sodass die Knoten exakt an ihrem Platz bleiben (siehe unten). Nicht bei (fast)
+  // quadratischer Kachel: dort gilt "Pille rund" (26.09.2026).
+  const gapTileAspect = Math.max(VIEW_W / VIEW_H, VIEW_H / VIEW_W);
+  const GAP_RATIO = 1.2, GAP_HH_MIN = 1.0, GAP_HH_CEIL = 1.3;
+  const applyGap = chip && gapTileAspect >= 1.15;
   if (chip) {
     outerR = fitNodeRadiusForChip(n, viewHalfLong);
+    if (applyGap) {
+      const rCap = (R_MAX - RING_GAP_TRIM) / (3 - (GAP_HH_CEIL - GAP_HH_MIN) + GAP_RATIO);
+      outerR = Math.max(16, Math.min(outerR, rCap));
+    }
     ringGap = chipCapacityAtRadius(outerR, n, viewHalfLong).ringGap;
   } else {
     // Kreis-Modus unveraendert: Radius an R_MAX (feste Hoehe) gebunden,
@@ -1507,6 +1524,19 @@ function computeLayout(n) {
         hh = Math.min(hh, hhCeiling);
         break; // stabil - hh hat sich in diesem Durchlauf nicht geaendert
       }
+    }
+  }
+
+  // Pille schrumpfen, Ring aufweiten: sichtbaren Abstand fuer die Pfeile herstellen.
+  // hw, hh UND ringGap aendern sich um dasselbe Stueck 'used' - hh2 (= hh + ringGap, Lage
+  // der Knoten) und straight (= hw - hh, Geradenlaenge) bleiben unveraendert, die Knoten
+  // sitzen also exakt wie vorher; nur die Pille ist kleiner und die Luecke groesser.
+  if (applyGap) {
+    const gap = ringGap - outerR;
+    const target = GAP_RATIO * outerR;
+    if (gap < target) {
+      const used = Math.max(0, Math.min(target - gap, hh - GAP_HH_MIN * DESIGN_R));
+      if (used > 0) { hw -= used; hh -= used; ringGap += used; }
     }
   }
 
