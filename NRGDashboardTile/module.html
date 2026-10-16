@@ -754,85 +754,14 @@
   .node-switch-ico { stroke: #e8eaed; stroke-width: 1.6; fill: none; }
 
 
-  /* Halloween-Effekte (16.10.2026, Dietmar: "Gimmicks zu Halloween, evtl. mit Gruselgeraeuschen",
-     danach "gruseliger und realistischer"): reine HTML/CSS-Ebene ueber der Kachel (pointer-events: none,
-     ausser dem kleinen Ton-Hinweis), vom 24.10. bis 01.11. automatisch, sonst per Doppelpfeil.
-     Positionen in Prozent/vmin, damit sie bei jeder Kachelgroesse passen; prefers-reduced-motion
-     stoppt alle Bewegungen. */
+  /* Halloween-Effekte (16.10.2026): eine Canvas-Ebene ueber der Kachel, siehe hwDraw() in module.js-Teil;
+     pointer-events: none, nur der kleine Ton-Hinweis ist anklickbar. */
+  html.hw-night, html.hw-night body { background: radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%) !important; }
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
-  #halloween .hw-vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 38%, rgba(8,2,14,.62) 100%); animation: hwVig 7s ease-in-out infinite; }
-  @keyframes hwVig { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
-  #halloween .hw-moon { position: absolute; top: 3%; right: 5%; width: 10vmin; height: 10vmin; min-width: 44px; min-height: 44px; border-radius: 50%;
-    background: radial-gradient(circle at 36% 34%, #fffbe6 0 30%, #f1dd96 58%, #c9b061 100%); opacity: .9;
-    box-shadow: 0 0 4vmin 1.6vmin rgba(255, 232, 150, .38), 0 0 12vmin 4vmin rgba(255, 200, 90, .12); animation: hwMoon 11s ease-in-out infinite; }
-  #halloween .hw-moon::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
-    background: radial-gradient(circle at 62% 30%, rgba(150,130,70,.35) 0 9%, transparent 10%), radial-gradient(circle at 30% 64%, rgba(150,130,70,.3) 0 12%, transparent 13%), radial-gradient(circle at 70% 70%, rgba(150,130,70,.25) 0 7%, transparent 8%); }
-  @keyframes hwMoon { 0%, 100% { opacity: .78; } 50% { opacity: .95; } }
-  #halloween .hw-fog { position: absolute; left: -40%; width: 180%; height: 30%; bottom: -2%; opacity: .34;
-    background: radial-gradient(ellipse at 50% 100%, rgba(205, 215, 230, .95), rgba(205, 215, 230, 0) 70%); animation: hwFog 34s ease-in-out infinite; }
-  #halloween .hw-fog.f2 { height: 22%; opacity: .26; animation-duration: 47s; animation-direction: reverse; }
-  #halloween .hw-fog.f3 { height: 14%; opacity: .3; animation-duration: 23s; bottom: -4%; }
-  @keyframes hwFog { 0% { transform: translateX(-10%) scaleY(1); } 50% { transform: translateX(10%) scaleY(1.25); } 100% { transform: translateX(-10%) scaleY(1); } }
-  #halloween .hw-web { position: absolute; width: 17vmin; min-width: 70px; opacity: .55; }
-  #halloween .hw-web.tl { top: 0; left: 0; } #halloween .hw-web.tr { top: 0; right: 0; transform: scaleX(-1); }
-  #halloween .hw-web svg { width: 100%; height: auto; display: block; } #halloween .hw-web path { stroke: rgba(235,238,245,.8); fill: none; stroke-width: .8; }
-  #halloween .hw-bat { position: absolute; left: -14%; top: var(--y, 20%); width: calc(7vmin * var(--s, 1)); min-width: calc(34px * var(--s, 1));
-    animation: hwBatFly var(--d, 20s) linear infinite var(--delay, 0s); }
-  #halloween .hw-bat svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 120, 40, .9)); }
-  #halloween .hw-bat .body { fill: #14101a; }
-  #halloween .hw-bat .wl, #halloween .hw-bat .wr { transform-origin: 46px 27px; animation: hwWingL .28s ease-in-out infinite alternate; }
-  #halloween .hw-bat .wr { transform-origin: 54px 27px; animation-name: hwWingR; }
-  #halloween .hw-bat .wl path:first-child, #halloween .hw-bat .wr path:first-child { fill: #1b1523; }
-  #halloween .hw-bat .eye { fill: #ff3b2a; filter: drop-shadow(0 0 2px #ff3b2a); }
-  @keyframes hwWingL { from { transform: rotate(-34deg); } to { transform: rotate(26deg); } }
-  @keyframes hwWingR { from { transform: rotate(34deg); } to { transform: rotate(-26deg); } }
-  @keyframes hwBatFly { 0% { left: -14%; transform: translateY(0) rotate(-3deg); } 12% { transform: translateY(-22px) rotate(4deg); } 26% { transform: translateY(14px) rotate(-5deg); }
-    42% { transform: translateY(-30px) rotate(3deg); } 58% { transform: translateY(18px) rotate(-4deg); } 74% { transform: translateY(-16px) rotate(5deg); } 100% { left: 114%; transform: translateY(6px) rotate(-3deg); } }
-  #halloween .hw-bat.big { animation-name: hwBatSwoop; }
-  @keyframes hwBatSwoop { 0% { left: 20%; top: 40%; transform: scale(.3); opacity: 0; } 12% { opacity: 1; } 45% { left: 46%; top: 44%; transform: scale(2.8) rotate(-6deg); }
-    60% { left: 58%; top: 40%; transform: scale(3.6) rotate(8deg); opacity: 1; } 78% { left: 90%; top: 18%; transform: scale(1.1); opacity: .9; } 100% { left: 110%; top: 8%; transform: scale(.5); opacity: 0; } }
-  #halloween .hw-spider { position: absolute; top: 0; left: var(--x, 14%); width: 6.4vmin; min-width: 34px; transform: translateX(-50%); animation: hwSpider 13s ease-in-out infinite; }
-  #halloween .hw-spider::before { content: ''; position: absolute; left: 50%; bottom: 55%; width: 1.4px; height: 130vh; background: linear-gradient(#f0f0f5, rgba(240,240,245,.45)); }
-  #halloween .hw-spider svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
-  #halloween .hw-spider .legs { animation: hwLegs .7s ease-in-out infinite alternate; transform-origin: 30px 24px; }
-  @keyframes hwLegs { from { transform: scale(1, 1) rotate(-1.5deg); } to { transform: scale(1.06, .95) rotate(1.5deg); } }
-  @keyframes hwSpider { 0%, 6% { transform: translateX(-50%) translateY(-110%); } 22% { transform: translateX(-50%) translateY(250%); } 26% { transform: translateX(-50%) translateY(190%); }
-    30% { transform: translateX(-50%) translateY(275%); } 56% { transform: translateX(-50%) translateY(290%) rotate(5deg); } 62% { transform: translateX(-50%) translateY(280%) rotate(-5deg); } 100% { transform: translateX(-50%) translateY(-110%); } }
-  #halloween .hw-ghost { position: absolute; bottom: 12%; left: -12%; width: 10vmin; min-width: 54px; opacity: 0; animation: hwGhost 52s linear infinite 5s; }
-  #halloween .hw-ghost svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 8px rgba(170, 200, 255, .9)); animation: hwSway 2.4s ease-in-out infinite alternate; transform-origin: 50% 100%; }
-  @keyframes hwSway { from { transform: skewX(-5deg) rotate(-2deg); } to { transform: skewX(5deg) rotate(2deg); } }
-  @keyframes hwGhost { 0% { left: -12%; opacity: 0; transform: translateY(0); } 7% { opacity: .62; } 25% { transform: translateY(-34px); } 50% { transform: translateY(10px); opacity: .5; }
-    75% { transform: translateY(-26px); } 93% { opacity: .55; } 100% { left: 108%; opacity: 0; transform: translateY(0); } }
-  #halloween .hw-eyes { position: absolute; width: 4.4vmin; min-width: 24px; opacity: 0; animation: hwEyes 17s steps(1, end) infinite var(--delay, 0s); }
-  #halloween .hw-eyes svg { width: 100%; height: auto; display: block; }
-  @keyframes hwEyes { 0%, 18% { opacity: 0; } 19% { opacity: .95; } 25% { opacity: .95; } 26% { opacity: 0; } 27% { opacity: .95; } 41% { opacity: .95; } 42%, 100% { opacity: 0; } }
-  #halloween .hw-pumpkin { position: absolute; bottom: 11%; left: 3%; width: 10vmin; min-width: 52px; }
-  #halloween .hw-pumpkin::before { content: ''; position: absolute; left: -45%; right: -45%; top: -40%; bottom: -45%; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,150,30,.5), rgba(255,110,10,.18) 45%, transparent 70%); animation: hwFlicker 2.6s steps(1, end) infinite; }
-  #halloween .hw-pumpkin svg { position: relative; width: 100%; height: auto; display: block; }
-  #halloween .hw-pumpkin .glow { animation: hwFlicker 2.6s steps(1, end) infinite; }
-  @keyframes hwFlicker { 0% { opacity: 1; } 12% { opacity: .72; } 20% { opacity: 1; } 47% { opacity: .82; } 52% { opacity: 1; } 71% { opacity: .62; } 76% { opacity: 1; } 100% { opacity: 1; } }
-  #halloween .hw-flash { position: absolute; inset: 0; background: rgba(215, 225, 255, .9); opacity: 0; }
-  #halloween .hw-flash.zap { animation: hwZap 1s linear; }
-  @keyframes hwZap { 0% { opacity: 0; } 5% { opacity: .75; } 12% { opacity: .05; } 20% { opacity: .55; } 32% { opacity: 0; } 100% { opacity: 0; } }
+  #halloween .hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #halloween .hw-sound { position: absolute; right: 2%; bottom: 7%; pointer-events: auto; cursor: pointer; font-size: 12px; padding: 4px 9px; border-radius: 12px;
-    background: rgba(20,10,30,.78); color: #ffb35a; border: 1px solid rgba(255,150,50,.5); animation: hwFlicker 3s steps(1, end) infinite; }
-  @media (prefers-reduced-motion: reduce) { #halloween * { animation: none !important; } #halloween .hw-bat, #halloween .hw-ghost, #halloween .hw-eyes, #halloween .hw-flash { display: none; } }
-  #halloween .hw-tree { position: absolute; right: 0; bottom: 9%; height: 44%; aspect-ratio: 160 / 200; opacity: .95; }
-  #halloween .hw-tree svg { width: 100%; height: 100%; display: block; }
-  #halloween .hw-tree .crow { transform-origin: 70px 56px; animation: hwCrow 7s ease-in-out infinite; }
-  @keyframes hwCrow { 0%, 60%, 100% { transform: rotate(0) translateY(0); } 66% { transform: rotate(-9deg) translateY(1px); } 72% { transform: rotate(5deg); } 80% { transform: rotate(0); } }
-  #halloween .hw-stones { position: absolute; left: 22%; bottom: 7%; width: 40%; opacity: .75; }
-  #halloween .hw-stones svg { width: 100%; height: auto; display: block; }
-  #halloween .hw-leaf { position: absolute; top: -6%; width: 2.2vmin; min-width: 11px; animation: hwLeaf var(--d, 40s) linear infinite var(--delay, 0s); opacity: .85; }
-  #halloween .hw-leaf svg { width: 100%; height: auto; display: block; }
-  @keyframes hwLeaf { 0% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(28px, 28vh) rotate(160deg); } 50% { transform: translate(-14px, 55vh) rotate(300deg); }
-    75% { transform: translate(24px, 82vh) rotate(480deg); } 100% { transform: translate(0, 112vh) rotate(620deg); } }
-  #halloween .hw-embers { position: absolute; left: 50%; top: 10%; width: 0; height: 0; }
-  #halloween .hw-embers i { position: absolute; left: 0; top: 0; width: 3px; height: 3px; border-radius: 50%; background: #ffb84a; box-shadow: 0 0 5px 2px rgba(255,140,30,.8);
-    animation: hwEmber 4.2s ease-out infinite var(--delay, 0s); opacity: 0; }
-  @keyframes hwEmber { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(var(--dx, 0), -9vmin); opacity: 0; } }
+    background: rgba(20,10,30,.78); color: #ffb35a; border: 1px solid rgba(255,150,50,.5); }
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -3959,69 +3888,297 @@ function halloweenActive() {
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
   return (m === 10 && day >= 24) || (m === 11 && day === 1);
 }
-// Fledermaus (v2): Fluegel mit Fingerknochen und gezacktem Hinterrand, Reisszaehne, rot glühende Augen.
-const HW_BAT = '<svg viewBox="0 0 100 50"><g class="wl"><path d="M47 27C40 13 24 7 2 15c7 1 9 5 9 10 4-4 8-3 10 2 4-3 8-2 10 3 5-2 9 0 12 5z"/>' +
-  '<path d="M47 27L2 15M47 27L11 25M47 27L21 27M47 27L31 30" stroke="#2d2338" stroke-width=".9" fill="none"/></g>' +
-  '<g class="wr"><path d="M53 27C60 13 76 7 98 15c-7 1-9 5-9 10-4-4-8-3-10 2-4-3-8-2-10 3-5-2-9 0-12 5z"/>' +
-  '<path d="M53 27L98 15M53 27L89 25M53 27L79 27M53 27L69 30" stroke="#2d2338" stroke-width=".9" fill="none"/></g>' +
-  '<ellipse class="body" cx="50" cy="30" rx="4.6" ry="10"/><path class="body" d="M50 40l-2 7 2-3 2 3z"/><circle class="body" cx="50" cy="19" r="5.2"/>' +
-  '<path class="body" d="M45 17l-2.5-10 7 6zM55 17l2.5-10-7 6z"/>' +
-  '<path d="M48.4 23l.8 2.6.8-2.6zM50.8 23l.8 2.6.8-2.6z" fill="#f3f3f3"/>' +
-  '<circle class="eye" cx="47.8" cy="18.6" r="1.3"/><circle class="eye" cx="52.2" cy="18.6" r="1.3"/></svg>';
-// Spinne (v2): glaenzender Hinterleib, zweigliedrige behaarte Beine, acht rote Augen, Sanduhr.
-const HW_SPIDER = '<svg viewBox="0 0 60 60"><defs><radialGradient id="hwAb" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#4a3b56"/><stop offset=".45" stop-color="#1c1524"/><stop offset="1" stop-color="#07040a"/></radialGradient></defs>' +
-  '<g class="legs" stroke="#120d17" stroke-linecap="round" stroke-linejoin="round" fill="none"><g stroke-width="2.6">' +
-  '<path d="M26 22L13 8L3 24"/><path d="M26 25L10 20L1 38"/><path d="M26 29L9 34L7 55"/><path d="M27 31L17 44L20 59"/>' +
-  '<path d="M34 22L47 8L57 24"/><path d="M34 25L50 20L59 38"/><path d="M34 29L51 34L53 55"/><path d="M33 31L43 44L40 59"/></g>' +
-  '<g stroke-width=".7" stroke="#3a2e45"><path d="M18 14l-3-3M8 16l-3-2M14 22l-4-1M6 32l-3 0M12 42l-3 2M12 46l-3 0M42 14l3-3M52 16l3-2M46 22l4-1M54 32l3 0M48 42l3 2M48 46l3 0"/></g></g>' +
-  '<ellipse cx="30" cy="40" rx="11.5" ry="14.5" fill="url(#hwAb)"/><ellipse cx="26" cy="34" rx="3.2" ry="5.5" fill="rgba(255,255,255,.12)"/><circle cx="30" cy="23" r="7.4" fill="#1d1625"/>' +
-  '<path d="M26 37h8l-3 4.5 3 4.5h-8l3-4.5z" fill="#d12a1c"/>' +
-  '<path d="M27 17q-2-4-1-6M33 17q2-4 1-6" stroke="#120d17" stroke-width="2" fill="none" stroke-linecap="round"/>' +
-  '<g fill="#ff3b2a" style="filter:drop-shadow(0 0 1.5px #ff3b2a)"><circle cx="26.6" cy="21" r="1.6"/><circle cx="33.4" cy="21" r="1.6"/><circle cx="29" cy="19.6" r="1"/><circle cx="31" cy="19.6" r="1"/><circle cx="25.4" cy="24.2" r="1"/><circle cx="34.6" cy="24.2" r="1"/><circle cx="28.4" cy="23.6" r=".8"/><circle cx="31.6" cy="23.6" r=".8"/></g></svg>';
-// Geist (v2): zerfaserter Schleier, nach unten ausblendend, leere Augenhoehlen mit kaltem Glimmen.
-const HW_GHOST = '<svg viewBox="0 0 70 110"><defs><linearGradient id="hwGh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f8ff" stop-opacity=".92"/><stop offset=".6" stop-color="#d9e4f7" stop-opacity=".7"/><stop offset="1" stop-color="#c9d8f2" stop-opacity="0"/></linearGradient></defs>' +
-  '<path fill="url(#hwGh)" d="M35 4C20 4 11 16 11 32c0 11-6 16-10 25 6-1 9 3 10 9-3 7-8 11-10 19 8-3 12 1 14 8 3-5 8-6 11 0 3-6 8-6 11 0 3-5 8-4 11 1 3-7 8-9 14-6-3-8-5-13-6-19 2-6 6-9 11-9-5-9-9-15-9-26C59 16 50 4 35 4z"/>' +
-  '<path fill="url(#hwGh)" opacity=".6" d="M4 62c-6 4-9 9-9 16 5-3 9-3 12 1zM66 62c6 4 9 9 9 16-5-3-9-3-12 1z"/>' +
-  '<ellipse cx="26" cy="33" rx="5" ry="8" fill="#0d0b14"/><ellipse cx="44" cy="33" rx="5" ry="8" fill="#0d0b14"/><ellipse cx="35" cy="54" rx="6" ry="11" fill="#0d0b14"/>' +
-  '<circle cx="26" cy="35" r="1.6" fill="#a8e6ff"/><circle cx="44" cy="35" r="1.6" fill="#a8e6ff"/></svg>';
-// Kahler Baum mit Krähe, Grabsteine, Blaetter
-const HW_TREE = '<svg viewBox="0 0 160 200" preserveAspectRatio="xMaxYMax meet"><g stroke="#0a060d" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
-  '<path d="M118 200C116 170 120 148 114 120C110 100 100 84 84 66" stroke-width="9"/><path d="M114 126C124 108 140 100 152 78" stroke-width="5"/>' +
-  '<path d="M104 96C96 80 78 74 62 56" stroke-width="4"/><path d="M84 66C76 52 62 46 56 30" stroke-width="3"/><path d="M84 66C90 52 88 40 94 28" stroke-width="2.6"/>' +
-  '<path d="M152 78C148 66 150 56 156 46" stroke-width="2.4"/><path d="M62 56C50 52 40 54 30 48M62 56C58 44 50 40 46 30" stroke-width="2"/>' +
-  '<path d="M140 98C132 92 124 92 118 84" stroke-width="2.2"/></g>' +
-  '<g class="crow" fill="#0a060d"><path d="M64 57c2-6 8-8 12-5l5-3-1 5 7 2-6 3c-2 5-8 7-13 4l-6 3z"/><circle cx="77" cy="52" r=".9" fill="#ff3b2a"/></g></svg>';
-const HW_STONES = '<svg viewBox="0 0 220 60" preserveAspectRatio="xMidYMax meet"><g fill="#171320"><path d="M10 60V28c0-9 6-14 12-14s12 5 12 14v32z"/><path d="M60 60V34c0-6 5-10 9-10s9 4 9 10v26z"/>' +
-  '<path d="M104 60V22c0-10 7-16 14-16s14 6 14 16v38z"/><path d="M158 60V32c0-7 5-12 10-12s10 5 10 12v28z"/><path d="M196 60V38c0-5 4-8 7-8s7 3 7 8v22z"/></g>' +
-  '<g stroke="#2b2438" stroke-width="1.6"><path d="M22 22v14M16 27h12M118 14v18M110 20h16"/></g></svg>';
-const HW_LEAF = '<svg viewBox="0 0 20 20"><path d="M10 1C4 5 2 11 6 18c2-3 3-3 4-3s2 0 4 3c4-7 2-13-4-17z" fill="currentColor"/></svg>';
-const HW_PUMPKIN = '<svg viewBox="0 0 60 56"><path d="M29 12c0-5 2-9 6-10" stroke="#3f6a24" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="26" y="9" width="7" height="8" rx="2" fill="#4a7a2a"/>' +
-  '<ellipse cx="30" cy="35" rx="27" ry="20" fill="#d9661a"/><ellipse cx="17" cy="35" rx="11" ry="19" fill="#e9761e"/><ellipse cx="43" cy="35" rx="11" ry="19" fill="#cc5a14"/><ellipse cx="30" cy="35" rx="9" ry="20" fill="#f08a2c"/>' +
-  '<g class="glow" fill="#ffe066"><path d="M15 27l9 3-6 5z"/><path d="M45 27l-9 3 6 5z"/><path d="M30 34l-3 5h6z"/><path d="M14 43q16 12 32 0l-5-3-4 4-4-4-4 4-4-4-5 4z"/></g></svg>';
-const HW_EYES = '<svg viewBox="0 0 40 16"><g fill="#ffe14a" style="filter:drop-shadow(0 0 3px #ff9a1a)"><ellipse cx="11" cy="8" rx="5" ry="3" transform="rotate(-12 11 8)"/><ellipse cx="29" cy="8" rx="5" ry="3" transform="rotate(12 29 8)"/></g>' +
-  '<g fill="#1a0a00"><ellipse cx="11.5" cy="8" rx="1.1" ry="2.4"/><ellipse cx="28.5" cy="8" rx="1.1" ry="2.4"/></g></svg>';
-const HW_WEB = '<svg viewBox="0 0 100 100"><path d="M0 0L100 0M0 0L0 100M0 0L82 36M0 0L36 82M0 0L96 12M0 0L12 96"/><path d="M22 0Q18 14 0 22M44 0Q38 28 0 44M68 0Q58 42 0 68M90 0Q76 56 0 90"/></svg>';
+// ---- Halloween-Szene (Canvas, prozedural) -----------------------------------------
+// Eine einzige 2D-Zeichenflaeche ueber der Kachel (keine Bilddateien): Mond mit Kratern und ziehenden
+// Wolken, kahler Baum mit Kraehe, Grabsteine, volumetrischer Nebel (Rauschtextur), Fledermaeuse mit
+// gelenkigen Fluegeln (Oberarm, Unterarm, vier Finger, gezackte Haut) und Schwung auf den Betrachter zu,
+// Spinne mit Gelenkbeinen am Faden, Geist als wehender Schleier, Augenpaare mit Schlitzpupillen,
+// fallende Blaetter, Funken, Spinnweben mit Tau, Blitze mit Verzweigungen. ~30 Bilder/s, pausiert im
+// Hintergrund; bei "Bewegung reduzieren" nur ein Standbild.
+const HW = { cv: null, ctx: null, w: 0, h: 0, u: 1, raf: 0, last: 0, t0: 0, pre: null, st: null, bolt: null };
+function hwRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function hwMake(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
+function hwNoiseTex(w, h, seed, falloff) {                 // kachelbares Wertrauschen (fBm), vertikal ausblendend
+  const c = hwMake(w, h), g = c.getContext('2d'), img = g.createImageData(w, h), R = hwRng(seed);
+  const oct = [[8, 1], [16, .55], [32, .3], [64, .16]], grids = oct.map(([n]) => { const gw = n, gh = Math.max(2, Math.round(n * h / w)); const a = []; for (let i = 0; i < gw * gh; i++) { a.push(R()); } return { gw, gh, a }; });
+  const sm = t => t * t * (3 - 2 * t);
+  for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) {
+    let v = 0, tot = 0;
+    for (let k = 0; k < oct.length; k++) { const { gw, gh, a } = grids[k], amp = oct[k][1], fx = x / w * gw, fy = y / h * gh, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = sm(fx - x0), ty = sm(fy - y0);
+      const p = (i, j) => a[((j % gh + gh) % gh) * gw + ((i % gw + gw) % gw)];
+      v += amp * ((p(x0, y0) * (1 - tx) + p(x0 + 1, y0) * tx) * (1 - ty) + (p(x0, y0 + 1) * (1 - tx) + p(x0 + 1, y0 + 1) * tx) * ty); tot += amp; }
+    v = Math.pow(Math.max(0, v / tot - .28) / .72, 1.25);
+    const f = falloff(y / h), i = (y * w + x) * 4; img.data[i] = 206; img.data[i + 1] = 216; img.data[i + 2] = 232; img.data[i + 3] = Math.min(255, v * f * 255 * 1.5);
+  } }
+  g.putImageData(img, 0, 0); return c;
+}
+function hwBuildPre(w, h, u) {
+  const P = {}, R = hwRng(7);
+  // Mond (vorgerendert): Kugel, Maria, Krater mit Schatten und Licht, Randabdunklung
+  const mr = Math.round(46 * u), mc = hwMake(mr * 2, mr * 2), mg = mc.getContext('2d');
+  let gr = mg.createRadialGradient(mr * .8, mr * .75, mr * .1, mr, mr, mr);
+  gr.addColorStop(0, '#fffbe8'); gr.addColorStop(.55, '#efdf9f'); gr.addColorStop(1, '#b39b58'); mg.fillStyle = gr; mg.beginPath(); mg.arc(mr, mr, mr, 0, 7); mg.fill();
+  mg.save(); mg.beginPath(); mg.arc(mr, mr, mr, 0, 7); mg.clip();
+  for (let i = 0; i < 9; i++) { const x = R() * mr * 2, y = R() * mr * 2, rr = (.16 + R() * .3) * mr; const g2 = mg.createRadialGradient(x, y, 0, x, y, rr); g2.addColorStop(0, 'rgba(120,100,50,.38)'); g2.addColorStop(1, 'rgba(120,100,50,0)'); mg.fillStyle = g2; mg.beginPath(); mg.arc(x, y, rr, 0, 7); mg.fill(); }
+  for (let i = 0; i < 38; i++) { const x = R() * mr * 2, y = R() * mr * 2, rr = (.025 + R() * .09) * mr;
+    mg.fillStyle = 'rgba(110,90,45,.32)'; mg.beginPath(); mg.arc(x, y, rr, 0, 7); mg.fill();
+    mg.strokeStyle = 'rgba(255,250,220,.55)'; mg.lineWidth = Math.max(.6, rr * .25); mg.beginPath(); mg.arc(x, y, rr, 3.5, 5.2); mg.stroke(); }
+  gr = mg.createRadialGradient(mr, mr, mr * .55, mr, mr, mr); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(40,28,6,.5)'); mg.fillStyle = gr; mg.fillRect(0, 0, mr * 2, mr * 2); mg.restore();
+  P.moon = mc; P.moonR = mr;
+  // Baum: rekursive Verzweigung mit verjuengtem Stamm, Rindenfurchen
+  const tw = Math.round(w * .24), th = Math.round(h * .6), tc = hwMake(tw, th), tg = tc.getContext('2d'), TR = hwRng(21);
+  tg.lineCap = 'round'; tg.strokeStyle = '#08050b';
+  const branch = (x, y, ang, len, wd, depth) => { if (depth > 6 || len < 4) { return; }
+    const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len; tg.lineWidth = wd; tg.beginPath(); tg.moveTo(x, y);
+    tg.quadraticCurveTo((x + x2) / 2 + (TR() - .5) * len * .35, (y + y2) / 2 + (TR() - .5) * len * .25, x2, y2); tg.stroke();
+    const n = depth < 2 ? 2 : (TR() < .6 ? 2 : 1);
+    for (let i = 0; i < n; i++) { branch(x2, y2, ang + (TR() - .5) * 1.25 + (i ? .35 : -.35), len * (.62 + TR() * .2), wd * .66, depth + 1); } };
+  branch(tw * .62, th, -Math.PI / 2 - .08, th * .36, Math.max(5, tw * .06), 0);
+  branch(tw * .62, th * .62, -Math.PI / 2 - .9, th * .22, Math.max(3, tw * .035), 2);
+  P.tree = tc;
+  // Grabsteine mit Verwitterung, Moos, Rissen
+  const sw = Math.round(w * .46), sh = Math.round(h * .17), sc = hwMake(sw, sh), sg = sc.getContext('2d'), SR = hwRng(33);
+  for (let i = 0; i < 6; i++) { const x = (i + .3 + SR() * .35) * sw / 6.3, bw = sw * (.07 + SR() * .04), bh = sh * (.5 + SR() * .45), tilt = (SR() - .5) * .14;
+    sg.save(); sg.translate(x + bw / 2, sh); sg.rotate(tilt); const g2 = sg.createLinearGradient(-bw / 2, 0, bw / 2, 0); g2.addColorStop(0, '#2a2833'); g2.addColorStop(.5, '#3a3744'); g2.addColorStop(1, '#1c1a23');
+    sg.fillStyle = g2; sg.beginPath(); sg.moveTo(-bw / 2, 0); sg.lineTo(-bw / 2, -bh * .75); sg.quadraticCurveTo(-bw / 2, -bh, 0, -bh); sg.quadraticCurveTo(bw / 2, -bh, bw / 2, -bh * .75); sg.lineTo(bw / 2, 0); sg.fill();
+    sg.fillStyle = 'rgba(70,90,50,.35)'; sg.beginPath(); sg.ellipse(-bw * .2, -bh * .15, bw * .3, bh * .1, 0, 0, 7); sg.fill();
+    sg.strokeStyle = 'rgba(8,6,12,.7)'; sg.lineWidth = 1; sg.beginPath(); sg.moveTo(0, -bh * .95); sg.lineTo(bw * .08, -bh * .6); sg.lineTo(-bw * .06, -bh * .4); sg.stroke();
+    if (i % 2 === 0) { sg.strokeStyle = 'rgba(15,12,20,.8)'; sg.lineWidth = Math.max(1.4, bw * .09); sg.beginPath(); sg.moveTo(0, -bh * .78); sg.lineTo(0, -bh * .45); sg.moveTo(-bw * .17, -bh * .66); sg.lineTo(bw * .17, -bh * .66); sg.stroke(); }
+    sg.restore(); }
+  P.stones = sc;
+  // Nebel: drei kachelbare Texturen
+  const fw = 512, fh = 150;
+  P.fog = [hwNoiseTex(fw, fh, 5, t => Math.pow(t, 1.1)), hwNoiseTex(fw, fh, 9, t => Math.pow(t, 1.4)), hwNoiseTex(fw, fh, 14, t => Math.pow(t, 1.8))];
+  // Sterne
+  const stc = hwMake(w, h), stg = stc.getContext('2d'), SR2 = hwRng(55);
+  for (let i = 0; i < 90; i++) { const x = SR2() * w, y = SR2() * h * .62, r = (.4 + SR2() * 1.1) * Math.max(.8, u), a = .25 + SR2() * .6; stg.fillStyle = 'rgba(235,240,255,' + a.toFixed(2) + ')'; stg.beginPath(); stg.arc(x, y, r, 0, 7); stg.fill(); }
+  P.stars = stc;
+  // Randabdunklung
+  const vc = hwMake(w, h), vg = vc.getContext('2d'); const v = vg.createRadialGradient(w * .5, h * .46, Math.min(w, h) * .3, w * .5, h * .5, Math.max(w, h) * .72);
+  v.addColorStop(0, 'rgba(6,2,12,0)'); v.addColorStop(1, 'rgba(6,2,12,.72)'); vg.fillStyle = v; vg.fillRect(0, 0, w, h); P.vig = vc;
+  return P;
+}
+function hwBatDraw(g, k, flap, bank, eyesGlow) {            // Frontansicht, Halbspannweite = k
+  const S = (sx) => { const side = sx;                       // sx = +1 rechts, -1 links
+    const lift = Math.sin(flap), al = .28 + .62 * lift, be = al * .45 - .3 + .35 * Math.sin(flap - 1.0);
+    const sh = [side * .1 * k, -.06 * k], el = [sh[0] + side * Math.cos(al) * .4 * k, sh[1] - Math.sin(al) * .4 * k];
+    const wr = [el[0] + side * Math.cos(be) * .55 * k, el[1] - Math.sin(be) * .55 * k];
+    const spread = [.8, .26, -.3, -.85].map(a => a * (.82 + .18 * lift)), len = [.5, .6, .56, .42];
+    const tips = spread.map((a, i) => [wr[0] + side * Math.cos(be + a) * len[i] * k, wr[1] - Math.sin(be + a) * len[i] * k]);
+    const hip = [side * .1 * k, .42 * k];
+    g.beginPath(); g.moveTo(sh[0], sh[1]); g.lineTo(el[0], el[1]); g.lineTo(wr[0], wr[1]); g.lineTo(tips[0][0], tips[0][1]);
+    for (let i = 0; i < 3; i++) { const a = tips[i], b = tips[i + 1], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; g.quadraticCurveTo(mx + (wr[0] - mx) * .3, my + (wr[1] - my) * .3, b[0], b[1]); }
+    const a = tips[3], mx = (a[0] + hip[0]) / 2, my = (a[1] + hip[1]) / 2; g.quadraticCurveTo(mx + (wr[0] - mx) * .15, my + (wr[1] - my) * .15, hip[0], hip[1]); g.closePath();
+    const gr = g.createLinearGradient(sh[0], sh[1], tips[2][0], tips[2][1]); gr.addColorStop(0, '#201826'); gr.addColorStop(1, '#0b0810'); g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(255,190,120,.22)'; g.lineWidth = Math.max(.6, k * .016); g.stroke();
+    g.strokeStyle = 'rgba(60,46,74,.9)'; g.lineWidth = Math.max(.6, k * .03); g.lineCap = 'round'; g.beginPath(); g.moveTo(sh[0], sh[1]); g.lineTo(el[0], el[1]); g.lineTo(wr[0], wr[1]);
+    tips.forEach(t => { g.moveTo(wr[0], wr[1]); g.lineTo(t[0], t[1]); }); g.stroke(); };
+  g.save(); g.rotate(bank); S(1); S(-1);
+  const bd = g.createRadialGradient(-.03 * k, .05 * k, .02 * k, 0, .12 * k, .34 * k); bd.addColorStop(0, '#3a2c44'); bd.addColorStop(1, '#0c0910'); g.fillStyle = bd;
+  g.beginPath(); g.ellipse(0, .13 * k, .13 * k, .3 * k, 0, 0, 7); g.fill();
+  g.beginPath(); g.arc(0, -.2 * k, .115 * k, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(-.09 * k, -.27 * k); g.lineTo(-.14 * k, -.46 * k); g.lineTo(-.02 * k, -.3 * k); g.moveTo(.09 * k, -.27 * k); g.lineTo(.14 * k, -.46 * k); g.lineTo(.02 * k, -.3 * k); g.fill();
+  g.fillStyle = '#f1efe9'; g.beginPath(); g.moveTo(-.04 * k, -.13 * k); g.lineTo(-.025 * k, -.07 * k); g.lineTo(-.01 * k, -.13 * k); g.moveTo(.04 * k, -.13 * k); g.lineTo(.025 * k, -.07 * k); g.lineTo(.01 * k, -.13 * k); g.fill();
+  g.fillStyle = '#ff3a26'; if (eyesGlow) { g.shadowColor = '#ff3a26'; g.shadowBlur = k * .25; }
+  g.beginPath(); g.arc(-.045 * k, -.215 * k, .026 * k, 0, 7); g.arc(.045 * k, -.215 * k, .026 * k, 0, 7); g.fill(); g.restore();
+}
+function hwSpiderDraw(g, k, t) {                            // k = Koerperradius
+  const wig = i => Math.sin(t * 3.1 + i * 1.7) * .05;
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#0d0912';
+  const legs = [[-1.2, -.5, -2.2, -1.5, -2.6, .4], [-1.3, -.1, -2.5, -.3, -2.9, 1.6], [-1.2, .3, -2.1, 1.0, -2.2, 2.6], [-.9, .6, -1.4, 1.5, -1.3, 2.8]];
+  legs.forEach((l, i) => { for (const s of [1, -1]) { g.lineWidth = k * .2; g.beginPath(); g.moveTo(s * .5 * k, -.9 * k + i * .22 * k);
+    g.lineTo(s * -l[0] * k, (l[1] - .7 + wig(i)) * k); g.lineTo(s * -l[2] * k, (l[3] - .5 + wig(i + 4)) * k); g.lineWidth = k * .11; g.lineTo(s * -l[4] * k, (l[5] + wig(i + 8)) * k); g.stroke(); } });
+  const ab = g.createRadialGradient(-.3 * k, .45 * k, .1 * k, 0, .9 * k, 1.5 * k); ab.addColorStop(0, '#5a4868'); ab.addColorStop(.35, '#241a2c'); ab.addColorStop(1, '#06030a');
+  g.fillStyle = ab; g.beginPath(); g.ellipse(0, .95 * k, .95 * k, 1.25 * k, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.13)'; g.beginPath(); g.ellipse(-.35 * k, .5 * k, .22 * k, .42 * k, -.3, 0, 7); g.fill();
+  g.fillStyle = '#cf2a1c'; g.beginPath(); g.moveTo(-.28 * k, .65 * k); g.lineTo(.28 * k, .65 * k); g.lineTo(0, 1.05 * k); g.lineTo(.28 * k, 1.45 * k); g.lineTo(-.28 * k, 1.45 * k); g.lineTo(0, 1.05 * k); g.closePath(); g.fill();
+  g.fillStyle = '#1c1424'; g.beginPath(); g.ellipse(0, -.5 * k, .62 * k, .55 * k, 0, 0, 7); g.fill();
+  g.fillStyle = '#ff3b2a'; g.shadowColor = '#ff3b2a'; g.shadowBlur = k * .5;
+  [[-.2, -.6, .1], [.2, -.6, .1], [-.08, -.72, .06], [.08, -.72, .06], [-.38, -.45, .06], [.38, -.45, .06], [-.15, -.45, .05], [.15, -.45, .05]].forEach(e => { g.beginPath(); g.arc(e[0] * k, e[1] * k, e[2] * k, 0, 7); g.fill(); });
+  g.restore();
+}
+function hwGhostDraw(g, k, t, alpha) {                      // k = Hoehe
+  g.save(); g.globalAlpha = alpha; g.globalCompositeOperation = 'screen'; g.shadowColor = 'rgba(160,200,255,.9)'; g.shadowBlur = k * .22;
+  const N = 34;
+  for (let i = 0; i < N; i++) { const y = i / N, prof = y < .22 ? Math.sqrt(1 - Math.pow((.22 - y) / .22, 2)) * .3 : .3 + (y - .22) * .42 + Math.sin(y * 18 + t * 2) * .03 * y;
+    const off = Math.sin(y * 7 - t * 2.1) * .08 * y * y * 3 + Math.sin(y * 3.3 + t * 1.2) * .03, hw = prof * k * .5, a = (1 - y) * .55 + .08;
+    g.fillStyle = 'rgba(225,235,255,' + (a * .55).toFixed(3) + ')'; g.fillRect(-hw + off * k, y * k, hw * 2, k / N + 1); }
+  g.globalCompositeOperation = 'source-over'; g.shadowBlur = 0;
+  for (const s of [1, -1]) { g.strokeStyle = 'rgba(225,235,255,.4)'; g.lineWidth = k * .06; g.lineCap = 'round'; g.beginPath(); g.moveTo(s * .13 * k, .3 * k);
+    g.bezierCurveTo(s * (.3 + Math.sin(t * 2 + s) * .05) * k, .35 * k, s * .42 * k, .52 * k, s * (.36 + Math.sin(t * 1.7) * .06) * k, .68 * k); g.stroke(); }
+  g.fillStyle = 'rgba(8,6,16,.88)'; g.beginPath(); g.ellipse(-.075 * k, .17 * k, .035 * k, .065 * k, 0, 0, 7); g.ellipse(.075 * k, .17 * k, .035 * k, .065 * k, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(0, .31 * k, .045 * k, .085 * k, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(160,225,255,.9)'; g.beginPath(); g.arc(-.075 * k, .185 * k, .01 * k, 0, 7); g.arc(.075 * k, .185 * k, .01 * k, 0, 7); g.fill(); g.restore();
+}
+function hwCrowDraw(g, k, t) {
+  const bob = Math.max(0, Math.sin(t * .9)) > .96 ? Math.sin(t * 40) * .06 : 0;
+  g.save(); g.fillStyle = '#07050a'; g.translate(0, 0); g.rotate(bob);
+  g.beginPath(); g.ellipse(0, 0, .6 * k, .34 * k, -.15, 0, 7); g.fill(); g.beginPath(); g.moveTo(-.5 * k, .05 * k); g.lineTo(-1.1 * k, .35 * k); g.lineTo(-.5 * k, .28 * k); g.fill();
+  g.beginPath(); g.arc(.58 * k, -.22 * k, .22 * k, 0, 7); g.fill(); g.beginPath(); g.moveTo(.74 * k, -.28 * k); g.lineTo(1.12 * k, -.16 * k); g.lineTo(.74 * k, -.12 * k); g.fill();
+  g.fillStyle = '#ff4a30'; g.beginPath(); g.arc(.64 * k, -.27 * k, .035 * k, 0, 7); g.fill(); g.restore();
+}
+function hwBolt(x0, y0, x1, y1, d, out, depth) {
+  if (d < 6) { out.push([x0, y0, x1, y1, depth]); return; }
+  const mx = (x0 + x1) / 2 + (Math.random() - .5) * d, my = (y0 + y1) / 2 + (Math.random() - .5) * d * .35;
+  hwBolt(x0, y0, mx, my, d / 2, out, depth); hwBolt(mx, my, x1, y1, d / 2, out, depth);
+  if (depth < 2 && Math.random() < .14) { hwBolt(mx, my, mx + (Math.random() - .3) * d * 2.2, my + d * 2.4 + Math.random() * d, d / 2, out, depth + 1); }
+}
+function hwInitState() {
+  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, pump: { t: -1, next: 10 + R() * 12, zapped: false } };
+  for (let i = 0; i < 7; i++) { S.bats.push({ x: R(), y: .08 + R() * .42, sp: .018 + R() * .022, ph: R() * 7, s: .55 + R() * .6, dir: R() < .5 ? 1 : -1, wob: R() * 7, fs: 9 + R() * 4 }); }
+  for (let i = 0; i < 16; i++) { S.leaves.push({ x: R(), y: R(), vy: .03 + R() * .03, ph: R() * 7, sp: 1.5 + R() * 2.5, c: ['#8a4b14', '#b5651d', '#6e3a10', '#9a5a1a', '#c27a22', '#7a4012'][i % 6], s: .7 + R() * .8 }); }
+  for (let i = 0; i < 3; i++) { S.eyes.push({ x: .06 + R() * .88, y: .52 + R() * .4, t: -R() * 14, life: 4 + R() * 3, blink: 1 + R() * 2, c: R() < .5 ? 0 : 1 }); }
+  return S;
+}
+function hwResize() {
+  const el = document.getElementById('halloween'); if (!el || !HW.cv) { return; }
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5), w = Math.max(80, el.clientWidth), h = Math.max(80, el.clientHeight);
+  HW.cv.width = Math.round(w * dpr); HW.cv.height = Math.round(h * dpr); HW.cv.style.width = '100%'; HW.cv.style.height = '100%';
+  HW.w = HW.cv.width; HW.h = HW.cv.height; HW.u = Math.min(HW.w, HW.h) / 600; HW.pre = hwBuildPre(HW.w, HW.h, HW.u);
+}
+function hwFrame(now) {
+  if (!HW_BUILT) { return; }
+  HW.raf = requestAnimationFrame(hwFrame);
+  if (now - HW.last < 33) { return; }                       // ~30 Bilder/s
+  const dt = Math.min(.1, (now - HW.last) / 1000); HW.last = now; const t = (now - HW.t0) / 1000;
+  hwDraw(t, dt);
+}
+function hwDraw(t, dt) {
+  const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P) { return; }
+  const R = Math.random; g.clearRect(0, 0, w, h);
+  // Blitz (Zeitplan siehe hwScheduleZap): Himmel hell, Mond gedimmt
+  let flash = 0; if (S.bolt) { const age = (t - S.bolt.t0); if (age > 1.1) { S.bolt = null; } else { flash = [0, .9, .1, .7, .05, .35, 0][Math.min(6, Math.floor(age / .16))] * Math.max(0, 1 - age / 1.1) * 1.2; } }
+  g.globalAlpha = .75 + .25 * Math.sin(t * .6); g.drawImage(P.stars, 0, 0); g.globalAlpha = 1;
+  // Mond mit Hof und ziehenden Wolken
+  const mx = w * .86, my = h * .14, mr = P.moonR;
+  let gr = g.createRadialGradient(mx, my, mr * .6, mx, my, mr * 4.2); gr.addColorStop(0, 'rgba(255,235,170,.38)'); gr.addColorStop(.35, 'rgba(255,215,140,.1)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(mx - mr * 4.2, my - mr * 4.2, mr * 8.4, mr * 8.4);
+  g.globalAlpha = .93 - flash * .3; g.drawImage(P.moon, mx - mr, my - mr); g.globalAlpha = 1;
+  for (let i = 0; i < 3; i++) { const cx = ((t * (5 + i * 2) * u + i * 220 * u) % (w + 300 * u)) - 150 * u, cy = my + (i - 1) * 16 * u, rx = (110 + i * 36) * u, ry = (13 + i * 5) * u;
+    const cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx); cg.addColorStop(0, 'rgba(14,10,22,.55)'); cg.addColorStop(.6, 'rgba(14,10,22,.22)'); cg.addColorStop(1, 'rgba(14,10,22,0)');
+    g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill(); g.restore(); }
+  // Baum (leichtes Schwanken) mit Kraehe
+  const tw = P.tree.width, th = P.tree.height, tx = w - tw * .93, ty = h * .92 - th;
+  g.save(); g.translate(tx + tw * .62, ty + th); g.rotate(Math.sin(t * .5) * .006); g.translate(-tw * .62, -th); g.drawImage(P.tree, 0, 0);
+  g.translate(tw * .5, th * .3); hwCrowDraw(g, 11 * u, t); g.restore();
+  g.drawImage(P.stones, w * .2, h * .93 - P.stones.height);
+  // Nebel, hinten
+  // Nebel wabert: Streifen mit wanderndem Hoehenversatz, atmender Deckkraft und Dichteschwaden
+  const fog = (i, speed, alpha, scale) => { const tex = P.fog[i], fw = tex.width * scale, fh = h * (.3 - i * .06), off = (t * speed * u) % fw, SW = 10, dir = i === 1 ? -1 : 1, ph = i * 2.3;
+    const breath = .78 + .22 * Math.sin(t * .35 + ph);
+    for (let sx = 0; sx < w; sx += SW) { const tx = (((sx + off) % fw) + fw) % fw, srcW = Math.min(SW / scale, tex.width - tx / scale);
+      const dy = Math.sin(sx * .011 + t * .5 * dir + ph) * fh * .08 + Math.sin(sx * .027 - t * .31 + ph) * fh * .05 + Math.sin(t * .23 + ph) * fh * .04;
+      const dens = .72 + .28 * Math.sin(sx * .006 + t * .17 * dir + ph * 1.7) * Math.sin(sx * .0143 - t * .11 + ph);
+      g.globalAlpha = Math.max(0, alpha * breath * dens * (1 + flash * .5)); g.drawImage(tex, tx / scale, 0, Math.max(1, srcW), tex.height, sx, h - fh * .95 + dy, SW + 1, fh * (1 + .06 * Math.sin(t * .4 + ph + sx * .004))); }
+    g.globalAlpha = 1; };
+  fog(0, 7, .55, 1.4);
+  // Augenpaare im Dunkeln
+  S.eyes.forEach(e => { e.t += dt; if (e.t < 0) { return; } if (e.t > e.life) { e.t = -(4 + R() * 12); e.x = .06 + R() * .88; e.y = .52 + R() * .4; e.life = 4 + R() * 3; e.c = R() < .5 ? 0 : 1; return; }
+    const a = Math.min(1, e.t / .6, (e.life - e.t) / .6) * (Math.sin(e.t * 2.4 / e.blink) > .93 ? .1 : 1), ex = e.x * w, ey = e.y * h, k = 9 * u;
+    g.save(); g.globalAlpha = a; g.translate(ex, ey); g.shadowColor = e.c ? '#ffd24a' : '#9dff5a'; g.shadowBlur = k * 1.4;
+    for (const s of [-1, 1]) { const eg = g.createRadialGradient(s * k, 0, 0, s * k, 0, k * .9); eg.addColorStop(0, '#fffbd0'); eg.addColorStop(.5, e.c ? '#ffc23a' : '#b6ff55'); eg.addColorStop(1, e.c ? '#c47a10' : '#4d8a1a');
+      g.fillStyle = eg; g.beginPath(); g.ellipse(s * k, 0, k * .7, k * .36, s * -.2, 0, 7); g.fill(); g.shadowBlur = 0; g.fillStyle = '#0a0500'; g.beginPath(); g.ellipse(s * k, 0, k * .1, k * .32, 0, 0, 7); g.fill(); g.shadowBlur = k; }
+    g.restore(); });
+  // Geist
+  const G = S.ghost; G.next -= dt; if (G.t < 0 && G.next <= 0) { G.t = 0; G.y = .46 + R() * .25; } 
+  if (G.t >= 0) { G.t += dt; const p = G.t / 26; if (p >= 1) { G.t = -1; G.next = 18 + R() * 25; } else { const gx = (-.1 + 1.2 * p) * w, gy = G.y * h + Math.sin(p * 9) * 18 * u + Math.sin(p * 23) * 4 * u;
+    g.save(); g.translate(gx, gy); hwGhostDraw(g, 128 * u, t, Math.min(1, p * 6, (1 - p) * 6) * .62); g.restore(); } }
+  // Fledermaeuse
+  S.bats.forEach(b => {
+    if (b.dead) { const d = b.dead; d.vy += 900 * u * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.spin * dt; d.t += dt;
+      if (d.y > h + 60 * u || d.t > 5) { b.dead = null; b.x = b.dir > 0 ? -.15 : 1.15; b.y = .08 + R() * .42; return; }
+      g.save(); g.globalAlpha = Math.max(0, Math.min(1, (h + 40 * u - d.y) / (80 * u))); g.translate(d.x, d.y); g.rotate(d.rot); hwBatDraw(g, 30 * u * b.s, d.t * 3 + Math.sin(d.t * 30) * .3, .4, false); g.restore(); return; }
+    b.x += b.dir * b.sp * dt; if (b.x > 1.15) { b.x = -.15; b.dir = 1; b.y = .08 + R() * .42; } if (b.x < -.15) { b.x = 1.15; b.dir = -1; b.y = .08 + R() * .42; }
+    const fl = t * b.fs + b.ph, by = b.y * h + Math.sin(t * .9 + b.wob) * 22 * u + Math.sin(fl * .5) * 3 * u, bank = Math.sin(t * .9 + b.wob + 1.2) * .22 * b.dir; b.sx = b.x * w; b.sy = by;
+    g.save(); g.translate(b.x * w, by); hwBatDraw(g, 30 * u * b.s, fl, bank, false); g.restore(); });
+  S.swoop.next -= dt; if (S.swoop.t < 0 && S.swoop.next <= 0) { S.swoop.t = 0; S.swoop.x0 = .25 + R() * .5; S.swoop.dx = (R() < .5 ? -1 : 1) * (.15 + R() * .2); }
+  if (S.swoop.t >= 0) { S.swoop.t += dt; const p = S.swoop.t / 4.2; if (p >= 1) { S.swoop.t = -1; S.swoop.next = 40 + R() * 40; } else { const e = p < .7 ? Math.pow(p / .7, 2.2) : 1 - (p - .7) / .3 * .2, sc = .15 + e * 4.4 * (p < .7 ? 1 : 1 - (p - .7) / .3 * .85);
+    const sx = (S.swoop.x0 + S.swoop.dx * p) * w, sy = h * (.35 + .1 * Math.sin(p * 6) + (p > .7 ? -(p - .7) * .8 : 0));
+    g.save(); g.globalAlpha = Math.min(1, p * 8, (1 - p) * 4); g.translate(sx, sy); hwBatDraw(g, 38 * u * sc, t * 17, Math.sin(p * 9) * .12, true); g.restore(); } }
+  // Spinne am Faden: schnelles Abseilen, Verharren, Zucken, Hochziehen
+  const sp = S.spider, cyc = ((t + sp.phase) % 16) / 16, ease = x => x * x * (3 - 2 * x);
+  const depth = cyc < .08 ? 0 : cyc < .2 ? ease((cyc - .08) / .12) * .75 : cyc < .26 ? .75 - .12 * ease((cyc - .2) / .06) : cyc < .3 ? .63 + .14 * ease((cyc - .26) / .04) : cyc < .62 ? .77 + Math.sin(t * 7) * .004 : cyc < .75 ? .77 - ease((cyc - .62) / .13) * .77 : 0;
+  const spx = sp.x * w + Math.sin(t * 1.3) * 2.5 * u * depth, spy = -10 * u + depth * h * .42; g.strokeStyle = 'rgba(235,238,248,.62)'; g.lineWidth = Math.max(1, 1.1 * u); g.beginPath(); g.moveTo(sp.x * w, 0); g.lineTo(spx, spy); g.stroke();
+  if (depth > .01) { g.save(); g.translate(spx, spy); g.rotate(Math.sin(t * 1.3) * .08); hwSpiderDraw(g, 10 * u, t); g.restore(); }
+  // fallende Blaetter mit Wind
+  S.wind = Math.sin(t * .35) * 18 * u + Math.sin(t * .9) * 6 * u;
+  S.leaves.forEach(l => { l.y += l.vy * dt; l.ph += l.sp * dt; if (l.y > 1.05) { l.y = -.05; l.x = R(); } const x = l.x * w + Math.sin(l.ph) * 22 * u + S.wind * l.y, y = l.y * h, sx = Math.cos(l.ph * 1.7);
+    g.save(); g.translate(x, y); g.rotate(l.ph * .9); g.scale(Math.max(.15, Math.abs(sx)), 1); g.fillStyle = l.c; g.globalAlpha = .88;
+    const k = 6.5 * u * l.s; g.beginPath(); g.moveTo(0, -k); g.bezierCurveTo(k * .9, -k * .5, k * .8, k * .6, 0, k); g.bezierCurveTo(-k * .8, k * .6, -k * .9, -k * .5, 0, -k); g.fill();
+    g.strokeStyle = 'rgba(40,20,5,.6)'; g.lineWidth = .8; g.beginPath(); g.moveTo(0, -k); g.lineTo(0, k); g.stroke(); g.restore(); });
+  fog(1, -11, .5, 1.1); fog(2, 17, .5, 1.8);
+  // Kuerbis: wandert nach Zeitplan durchs Bild, verwandelt sich in ein Monster und stuerzt auf den Betrachter zu
+  const Pm = S.pump; Pm.next -= dt; if (Pm.t < 0 && Pm.next <= 0) { Pm.t = 0; if (SEASONAL_SOUND) { setTimeout(() => hwPlay('creak'), 5200); setTimeout(() => hwPlay('roar'), 8300); } }
+  let px = w * .075, py = h * .8, pk = 34 * u, morph = 0, jaw = 0, rot = 0, sq = 1, shake = 0;
+  if (Pm.t >= 0) { Pm.t += dt; const T = Pm.t; if (T > 16) { Pm.t = -1; Pm.next = 45 + R() * 40; Pm.zapped = false; }
+    const ease2 = x => x * x * (3 - 2 * x), x0 = w * .075, y0 = h * .8, xc = w * .5, yc = h * .86;
+    if (T < 5.5) { const p = T / 5.5, hop = Math.abs(Math.sin(p * Math.PI * 7)); px = x0 + (xc - x0) * ease2(p); py = y0 + (yc - y0) * ease2(p) - hop * 38 * u; sq = 1 + (hop < .12 ? -.16 : .06 * hop); rot = Math.sin(p * Math.PI * 7) * .14; }
+    else if (T < 8.5) { const p = (T - 5.5) / 3; px = xc; py = yc; morph = ease2(p); shake = Math.sin(T * 60) * (1 - p * .4) * 3 * u * Math.min(1, p * 3); pk = 34 * u * (1 + .45 * morph); jaw = .15 * morph; }
+    else if (T < 12) { const p = (T - 8.5) / 3.5, e = p * p; morph = 1; px = xc + Math.sin(p * 9) * 8 * u; py = yc + (h * .46 - yc) * e; pk = 34 * u * (1.45 + 7.5 * e); jaw = .15 + .85 * Math.min(1, p * 1.6); shake = Math.sin(T * 70) * 4 * u * p; if (!Pm.zapped && p > .65) { Pm.zapped = true; hwLightning(); } }
+    else if (T < 16) { const p = (T - 12) / 4, q = Math.min(1, p * 1.2); morph = 1 - ease2(Math.min(1, p * 1.3)); px = xc + (x0 - xc) * ease2(p); py = h * .46 + (y0 - h * .46) * ease2(p); pk = 34 * u * (1 + 8.9 * Math.pow(1 - ease2(q), 2)); jaw = .6 * (1 - p); } }
+  const flick = .78 + .22 * Math.sin(t * 17) * Math.sin(t * 7.3) + (R() < .04 ? -.25 : 0);
+  gr = g.createRadialGradient(px, py, 0, px, py, pk * 4); const gcol = morph > .5 ? '255,70,30' : '255,150,40'; gr.addColorStop(0, 'rgba(' + gcol + ',' + (Math.min(.75, .42 * flick * (1 + morph * .6))).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(' + gcol + ',0)');
+  g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(px - pk * 4, py - pk * 4, pk * 8, pk * 8); g.globalCompositeOperation = 'source-over';
+  g.save(); g.translate(px + shake, py + (shake ? Math.cos(t * 55) * shake * .5 : 0)); g.rotate(rot); g.scale(1 / sq * (1 + morph * .25), sq);
+  const col = (a1, a2) => 'rgb(' + Math.round(a1[0] + (a2[0] - a1[0]) * morph) + ',' + Math.round(a1[1] + (a2[1] - a1[1]) * morph) + ',' + Math.round(a1[2] + (a2[2] - a1[2]) * morph) + ')';
+  if (morph > .05) { g.strokeStyle = '#2d4a18'; g.lineCap = 'round'; g.lineWidth = Math.max(1.5, pk * .08); for (const sd of [-1, 1]) { for (let i = 0; i < 3; i++) { const ph = t * 3 + i * 1.7 + sd; g.beginPath(); g.moveTo(sd * pk * .85, (-.2 + i * .35) * pk);
+      g.bezierCurveTo(sd * pk * (1.2 + morph * .5), (-.1 + i * .35) * pk + Math.sin(ph) * pk * .15, sd * pk * (1.5 + morph * .7), (.2 + i * .3) * pk, sd * pk * (1.7 + morph * .9 + Math.sin(ph) * .1), (.45 + i * .3) * pk + Math.cos(ph) * pk * .12); g.stroke(); } } }
+  const body = g.createRadialGradient(-pk * .25, -pk * .2, pk * .1, 0, 0, pk * 1.15); body.addColorStop(0, col([243, 154, 58], [190, 70, 30])); body.addColorStop(.6, col([210, 100, 26], [120, 28, 12])); body.addColorStop(1, col([110, 42, 8], [40, 6, 4]));
+  g.fillStyle = body; g.beginPath(); g.ellipse(0, 0, pk * 1.05, pk * .86, 0, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(60,15,3,.6)'; g.lineWidth = Math.max(1, pk * .06); for (let i = -2; i <= 2; i++) { const rx = pk * (i === 0 ? .03 : .2 + Math.abs(i) * .3 - (Math.abs(i) === 1 ? .1 : 0)); g.beginPath(); if (i < 0) { g.ellipse(0, 0, rx, pk * .85, 0, Math.PI - 1.4, Math.PI + 1.4); } else { g.ellipse(0, 0, rx, pk * .85, 0, -1.4, 1.4); } g.stroke(); }
+  g.fillStyle = col([74, 106, 36], [60, 70, 20]); g.save(); g.translate(0, -pk * .86); g.rotate(Math.sin(t * 2) * .1 * morph); g.beginPath(); g.moveTo(-pk * .1, 0); g.lineTo(-pk * .05, -pk * (.28 + .3 * morph)); g.lineTo(pk * .1, -pk * (.2 + .25 * morph)); g.lineTo(pk * .1, 0); g.fill(); g.restore();
+  const ec = morph > .5 ? 'rgba(255,' + Math.round(70 + 90 * (1 - morph)) + ',40,' : 'rgba(255,225,110,', ea = Math.min(1, flick + morph * .3).toFixed(3);
+  g.shadowColor = morph > .5 ? '#ff2a10' : '#ffa030'; g.shadowBlur = pk * (.6 + morph * .8); const tilt = .42 * morph; g.fillStyle = ec + ea + ')';
+  for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * pk * (.62 + .1 * morph), -pk * (.28 + .1 * morph)); g.lineTo(sd * pk * (.2 - .05 * morph), -pk * (.1 - tilt * .5)); g.lineTo(sd * pk * (.5 + .05 * morph), pk * (.08 + .08 * morph)); g.closePath(); g.fill(); }
+  const mw = pk * (.66 + .25 * morph), mh = pk * (.25 + .5 * jaw + .15 * morph), my2 = pk * (.3 + .06 * morph);
+  g.fillStyle = morph > .3 ? '#150204' : ec + ea + ')'; g.beginPath(); g.moveTo(-mw, my2); g.quadraticCurveTo(0, my2 + mh * 1.3, mw, my2); g.quadraticCurveTo(0, my2 - mh * .25, -mw, my2); g.fill();
+  if (morph > .3) { const rg = g.createRadialGradient(0, my2 + mh * .4, 0, 0, my2 + mh * .4, mw); rg.addColorStop(0, 'rgba(255,90,30,' + (.6 * morph).toFixed(2) + ')'); rg.addColorStop(1, 'rgba(255,40,10,0)'); g.fillStyle = rg; g.beginPath(); g.ellipse(0, my2 + mh * .4, mw * .8, mh * .55, 0, 0, 7); g.fill();
+    g.shadowBlur = 0; g.fillStyle = '#efe6cc'; const nt = 7; for (let i = 0; i < nt; i++) { const x = -mw * .85 + i * (mw * 1.7 / (nt - 1)), tl = pk * (.1 + .12 * morph) * (1 + (i % 2) * .5), lw = mh * Math.sin(i / (nt - 1) * Math.PI) * .9;
+      g.beginPath(); g.moveTo(x - pk * .06, my2); g.lineTo(x, my2 + tl); g.lineTo(x + pk * .06, my2); g.fill();
+      g.beginPath(); g.moveTo(x - pk * .05, my2 + lw); g.lineTo(x, my2 + lw - tl * .9); g.lineTo(x + pk * .05, my2 + lw); g.fill(); } }
+  g.restore();
+  if (R() < dt * (9 + morph * 30)) { S.embers.push({ x: px + (R() - .5) * pk * .8, y: py - pk * .8, vx: (R() - .5) * 8 * u, vy: -(14 + R() * 14) * u, life: 2.2 + R() * 2, age: 0 }); }
+  g.globalCompositeOperation = 'lighter'; S.embers = S.embers.filter(e => { e.age += dt; if (e.age > e.life) { return false; } e.vx += (R() - .5) * 20 * u * dt + S.wind * .02 * dt; e.x += e.vx * dt; e.y += e.vy * dt;
+    const a = 1 - e.age / e.life; g.fillStyle = 'rgba(255,' + Math.round(120 + 90 * a) + ',40,' + (a * .9).toFixed(3) + ')'; g.beginPath(); g.arc(e.x, e.y, (1 + 1.4 * a) * u, 0, 7); g.fill(); return true; }); g.globalCompositeOperation = 'source-over';
+  // Spinnweben mit Tau
+  const web = (sx) => { g.save(); g.translate(sx > 0 ? 0 : w, 0); g.scale(sx, 1); const L = 120 * u; g.strokeStyle = 'rgba(232,236,246,.55)'; g.lineWidth = Math.max(.7, .9 * u); g.lineCap = 'round';
+    const sway = Math.sin(t * .8) * 1.5 * u; const rays = 7; g.beginPath(); for (let i = 0; i < rays; i++) { const a = i / (rays - 1) * Math.PI / 2; g.moveTo(0, 0); g.lineTo(Math.cos(a) * L + sway, Math.sin(a) * L + sway * .5); } g.stroke();
+    for (let r = 1; r <= 5; r++) { const rr = r * L / 5.3; g.beginPath(); for (let i = 0; i < rays - 1; i++) { const a0 = i / (rays - 1) * Math.PI / 2, a1 = (i + 1) / (rays - 1) * Math.PI / 2, am = (a0 + a1) / 2;
+      const p0 = [Math.cos(a0) * rr, Math.sin(a0) * rr], p1 = [Math.cos(a1) * rr, Math.sin(a1) * rr]; if (i === 0) { g.moveTo(p0[0], p0[1]); } g.quadraticCurveTo(Math.cos(am) * rr * .9 + sway * .3, Math.sin(am) * rr * .9, p1[0], p1[1]); } g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,.85)'; [[.34, .5], [.62, .22], [.78, .66], [.45, .8]].forEach(d => { g.beginPath(); g.arc(d[0] * L, d[1] * L * .8, 1.5 * u, 0, 7); g.fill(); }); g.restore(); };
+  web(1); web(-1);
+  // Blitz selbst
+  if (S.bolt && flash > .05) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(215,225,255,' + Math.min(1, flash).toFixed(3) + ')'; g.shadowColor = '#a9bdff'; g.shadowBlur = 14 * u; g.lineCap = 'round';
+    S.bolt.segs.forEach(s => { g.lineWidth = (s[4] === 0 ? 3 : 1.6) * u; g.beginPath(); g.moveTo(s[0] * w, s[1] * h); g.lineTo(s[2] * w, s[3] * h); g.stroke(); }); g.restore();
+    g.fillStyle = 'rgba(190,205,255,' + (flash * .28).toFixed(3) + ')'; g.fillRect(0, 0, w, h); }
+  g.drawImage(P.vig, 0, 0);
+}
+function hwBatClick(ev) {                           // Klick auf eine Fledermaus: getroffen, sie stuerzt tot ab
+  const S = HW.st, cv = HW.cv; if (!S || !cv || !HW_BUILT) { return; }
+  const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top; let best = null, bd = 1e9;
+  S.bats.forEach(b => { if (b.dead || b.sx === undefined) { return; } const rad = 34 * HW.u * b.s, d = Math.hypot(x - b.sx, (y - b.sy) * 1.3); if (d < rad && d < bd) { bd = d; best = b; } });
+  if (!best) { return; }
+  best.dead = { x: best.sx, y: best.sy, vx: best.dir * 40 * HW.u, vy: -80 * HW.u, rot: 0, spin: best.dir * (4 + Math.random() * 4), t: 0 };
+  if (SEASONAL_SOUND) { hwPlay('squeak'); }
+}
+function hwLightning() {
+  if (!HW.st) { return; }
+  const x = .1 + Math.random() * .8, segs = []; hwBolt(x, 0, x + (Math.random() - .5) * .25, .72 + Math.random() * .12, .22, segs, 0);
+  HW.st.bolt = { segs: segs.map(s => [s[0], s[1], s[2], s[3], s[4]]), t0: (performance.now() - HW.t0) / 1000 };
+}
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
-  // [oben %, Groesse, Dauer s, Verzoegerung s]; die erste Fledermaus kreuzt den Mond.
-  const bats = [[7, .9, 19, 0], [24, 1.0, 24, 6], [14, .75, 29, 12], [40, 1.2, 22, 3], [30, .7, 34, 17], [18, .85, 26, 21]]
-    .map(b => '<div class="hw-bat" style="--y:' + b[0] + '%;--s:' + b[1] + ';--d:' + b[2] + 's;--delay:' + b[3] + 's">' + HW_BAT + '</div>').join('');
-  const eyes = [['8%', '66%', '2s'], ['86%', '40%', '8s'], ['72%', '84%', '12s'], ['38%', '90%', '5s']]
-    .map(e => '<div class="hw-eyes" style="left:' + e[0] + ';top:' + e[1] + ';--delay:' + e[2] + '">' + HW_EYES + '</div>').join('');
-  const leaves = [[8, '#8a4b14', 38, 0], [26, '#b5651d', 46, 9], [44, '#6e3a10', 52, 20], [63, '#9a5a1a', 41, 14], [81, '#c27a22', 49, 27]]
-    .map(l => '<div class="hw-leaf" style="left:' + l[0] + '%;color:' + l[1] + ';--d:' + l[2] + 's;--delay:-' + l[3] + 's">' + HW_LEAF + '</div>').join('');
-  const embers = [0, 1, 2, 3, 4, 5].map(i => '<i style="--dx:' + ((i % 3) * 10 - 10) + 'px;--delay:-' + (i * 0.7) + 's"></i>').join('');
-  el.innerHTML = '<div class="hw-vig"></div><div class="hw-moon"></div><div class="hw-tree">' + HW_TREE + '</div><div class="hw-stones">' + HW_STONES + '</div>' +
-    '<div class="hw-fog"></div><div class="hw-fog f2"></div><div class="hw-fog f3"></div>' +
-    '<div class="hw-web tl">' + HW_WEB + '</div><div class="hw-web tr">' + HW_WEB + '</div>' + eyes + leaves + bats +
-    '<div class="hw-bat big" style="--s:1;--d:47s;--delay:9s">' + HW_BAT + '</div>' +
-    '<div class="hw-spider" style="--x:14%">' + HW_SPIDER + '</div><div class="hw-ghost">' + HW_GHOST + '</div>' +
-    '<div class="hw-pumpkin">' + HW_PUMPKIN + '<div class="hw-embers">' + embers + '</div></div><div class="hw-flash"></div>';
-  el.classList.add('on'); HW_BUILT = true; hwSoundHint();
+  el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d'); el.classList.add('on'); HW_BUILT = true; document.documentElement.classList.add('hw-night');
+  hwResize(); HW.st = hwInitState(); HW.t0 = performance.now(); HW.last = 0;
+  window.addEventListener('resize', hwResize);
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (still) { hwDraw(8, .03); } else { HW.raf = requestAnimationFrame(hwFrame); }
+  hwSoundHint();
 }
 function removeHalloween() {
   const el = document.getElementById('halloween'); if (!el) { return; }
-  el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false;
+  if (HW.raf) { cancelAnimationFrame(HW.raf); HW.raf = 0; }
+  window.removeEventListener('resize', hwResize);
+  el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false; HW.st = null; HW.pre = null; document.documentElement.classList.remove('hw-night');
   if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
 }
 // Gruselgeraeusche: rein synthetisch (Web Audio, keine Dateien). Browser/WebViews geben Ton erst
@@ -4082,6 +4239,13 @@ function hwPlay(kind) {
       o.frequency.setValueAtTime(3200, t + off); o.frequency.exponentialRampToValueAtTime(5600, t + off + 0.09);
       gg.gain.setValueAtTime(0, t + off); gg.gain.linearRampToValueAtTime(0.1, t + off + 0.01); gg.gain.exponentialRampToValueAtTime(0.0008, t + off + 0.11);
       o.connect(gg); gg.connect(a.destination); o.start(t + off); o.stop(t + off + 0.13); });
+  } else if (kind === 'roar') {                // Bruellen des Kuerbismonsters: tiefes Knurren plus Windstoss
+    const o = a.createOscillator(), o2 = a.createOscillator(), f = a.createBiquadFilter(), l = a.createOscillator(), lg = a.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t); o.frequency.linearRampToValueAtTime(48, t + 1.8); o2.type = 'square'; o2.frequency.setValueAtTime(47, t); o2.frequency.linearRampToValueAtTime(24, t + 1.8);
+    f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.linearRampToValueAtTime(260, t + 1.8); l.frequency.value = 26; lg.gain.value = 18; l.connect(lg); lg.connect(o.frequency);
+    o.connect(f); o2.connect(f); f.connect(g); env(0.5, 0.15, 2.0); [o, o2, l].forEach(x => { x.start(t); x.stop(t + 2.1); });
+    const n = hwNoise(a, 1.6), nf = a.createBiquadFilter(), ng = a.createGain(); nf.type = 'bandpass'; nf.frequency.value = 500; nf.Q.value = .8; ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(.25, t + .2); ng.gain.exponentialRampToValueAtTime(.0008, t + 1.6);
+    n.connect(nf); nf.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + 1.6);
   } else if (kind === 'bell') {                // dumpfer Glockenschlag
     [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
       gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);
@@ -4104,10 +4268,9 @@ function hwScheduleZap() {
   if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
   if (!HW_BUILT) { return; }
   HW_ZAP_TIMER = setTimeout(() => {
-    const f = document.querySelector('#halloween .hw-flash');
-    if (f) { f.classList.remove('zap'); void f.offsetWidth; f.classList.add('zap'); if (SEASONAL_SOUND) { setTimeout(() => hwPlay('rumble'), 700); } }
+    hwLightning(); if (SEASONAL_SOUND) { setTimeout(() => hwPlay('rumble'), 600 + Math.random() * 1200); }
     hwScheduleZap();
-  }, 35000 + Math.random() * 55000);
+  }, 30000 + Math.random() * 50000);
 }
 function applySeasonal() {
   if (halloweenActive()) { buildHalloween(); } else { removeHalloween(); }
@@ -4115,7 +4278,7 @@ function applySeasonal() {
   hwScheduleSound(false);
   hwScheduleZap();
 }
-document.addEventListener('pointerdown', hwUnlock, { passive: true });
+document.addEventListener('pointerdown', hwUnlock, { passive: true }); document.addEventListener('pointerdown', hwBatClick, { passive: true });
 
 const PRESS_MS = 500, PRESS_MOVE_PX = 8;
 
