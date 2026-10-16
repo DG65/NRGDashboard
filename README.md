@@ -1195,6 +1195,11 @@ Wenige Klicks, aber ein bewusster Nutzereingriff — gehört explizit ins
 das Modul veröffentlicht wird (siehe auch `EMS/SUITE.md`, Abschnitt
 „WebFront-Kachel-Wechsel InverterHubTile → NRGDashboardTile").
 
+
+### 🎃 Saison-Effekte (Halloween)
+
+Vom 24.10. bis 01.11. fliegen Fledermäuse über die Energiefluss-Kachel, eine Spinne seilt sich am Faden ab, ein Geist schwebt vorbei, ein Mond leuchtet, Nebel zieht am unteren Rand auf und ein Kürbis flackert in der Ecke (reine Ebene über der Kachel, bedienen lässt sich alles darunter weiter). Im WebFront über den Doppelpfeil: **Saison-Effekte** (Automatisch nach Datum / Aus / Immer an zum Ausprobieren) und **Gruselgeräusche** (Standard: Aus). Die Geräusche werden im Browser synthetisiert (Heulen, Knarren, Fledermaus-Zirpen, fernes Grollen, alle 25 bis 70 Sekunden, leise); Browser geben Ton erst nach der ersten Berührung der Kachel frei. Bei „Bewegung reduzieren“ im Betriebssystem stehen die Effekte still, Fledermäuse und Geist sind dann ausgeblendet.
+
 ## Feinheiten — konservierter Text für Doku & Community (28.08.2026)
 
 Dietmars Auftrag: die eingebauten Details sollen im "Dokumentation &
