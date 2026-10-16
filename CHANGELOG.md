@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.169-beta.31 (2026-10-16)
+
+- Energiefluss: bei wenigen Geräten (z. B. 9 in einer Ebene) ist die Mittelpille jetzt kleiner und die Knoten etwas weniger groß, damit zwischen Pille und Knoten Platz für die Fluss-Pfeile bleibt (vorher nur 26 statt wie bei 12 Geräten etwa 77 Einheiten). Die Knoten behalten ihren Platz, nur die Pille schrumpft. Nicht bei (fast) quadratischer Kachel.
+
 ## 0.9.169-beta.30 (2026-10-14)
 
 - Prognose-Kachel: Statuszeile über den Ist-Feldern im Formular (archiviert, Linie an/aus, Messwerte heute, defektes Aggregat), gespiegelt von Prognoses Energiebilanz Build 141.
