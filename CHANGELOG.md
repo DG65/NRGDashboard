@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.15 (2026-10-16)
+
+- Intern: Saison-Effekte als austauschbare Themen umgebaut (gemeinsame Schicht für Jagd, Boss, Ton und Bestenliste).
+
 ## 0.9.170-beta.14 (2026-10-16)
 
 - Hinweis in „Was ist neu“ entfernt (Überraschung).
