@@ -760,6 +760,8 @@
     radial-gradient(1px 1px at 47% 24%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 58% 14%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 69% 33%, rgba(235,240,255,.55), transparent),
     radial-gradient(1.4px 1.4px at 78% 8%, rgba(235,240,255,.75), transparent), radial-gradient(1px 1px at 88% 22%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 94% 38%, rgba(235,240,255,.6), transparent),
     radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent), var(--hw-sky, radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%)) !important; }
+  html.hw-night.hw-night-easter, html.hw-night.hw-night-easter body { background: var(--hw-sky) !important; }
+  html.hw-night-easter { --hw-sky: linear-gradient(to bottom, #1f2f66 0%, #5d4f9c 36%, #d7708a 70%, #e8967a 100%); }
   html.hw-night-nye { --hw-sky: radial-gradient(ellipse at 50% 30%, #1d1040 0%, #080515 74%); }
   html.hw-night-xmas { --hw-sky: radial-gradient(ellipse at 50% 30%, #12294d 0%, #060e1f 74%); }
   /* Hintergrund-Ebene der Saison-Szene: UNTER dem Diagramm (wie #ampelWash), damit Knoten mit Energiefluss nie verdeckt werden */
@@ -3894,7 +3896,7 @@ function attachSwitchHandler(refs, item) {
 // Aktiv: Modus 2 (immer) oder Modus 0 (automatisch) vom 24.10. bis 01.11.; Modus 1 = aus.
 let HW_THEMES = {}, SEASONAL_BG = 0, HW_RAIN = null, SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
 function hwNight() {
-  const th = HW_BUILT && HW.theme ? HW.theme.id : ''; document.documentElement.classList.toggle('hw-night-xmas', th === 'xmas'); document.documentElement.classList.toggle('hw-night-nye', th === 'nye');                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
+  const th = HW_BUILT && HW.theme ? HW.theme.id : ''; document.documentElement.classList.toggle('hw-night-xmas', th === 'xmas'); document.documentElement.classList.toggle('hw-night-nye', th === 'nye'); document.documentElement.classList.toggle('hw-night-easter', th === 'easter');                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
   const on = SEASONAL_BG === 2 || (SEASONAL_BG === 0 && HW_BUILT);
   document.documentElement.classList.toggle('hw-night', on);
 }
@@ -3903,10 +3905,13 @@ function hwThemeNow() {                                    // welches Saison-The
   if (SEASONAL_MODE === 2) { return HW_THEMES.halloween; }
   if (SEASONAL_MODE === 3) { return HW_THEMES.xmas; }
   if (SEASONAL_MODE === 4) { return HW_THEMES.nye; }
+  if (SEASONAL_MODE === 5) { return HW_THEMES.easter; }
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
   if ((m === 10 && day >= 24) || (m === 11 && day === 1)) { return HW_THEMES.halloween; }
   if (m === 12 && day <= 26) { return HW_THEMES.xmas; }
   if ((m === 12 && day >= 28) || (m === 1 && day === 1)) { return HW_THEMES.nye; }
+  const ed = hwEasterDate(d.getFullYear()), es = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate() - 14), ee = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate() + 2);
+  if (d >= es && d < ee) { return HW_THEMES.easter; }
   return null;
 }
 // ---- Halloween-Szene (Canvas, prozedural) -----------------------------------------
@@ -4578,6 +4583,127 @@ HW_THEMES.nye = {
   onEnd(S) { S.rocketEvery = 4.5; S.balEvery = 4; },
   pace(S, p) { S.rocketEvery = 3.2 - 2.4 * p; S.balEvery = 3.2 - 2.0 * p; S.corkNext = Math.min(S.corkNext, 14 - 9 * p); S.pig.next = Math.min(S.pig.next, 12 - 7 * p); },
 };
+// ---- Ostern (Thema "easter"): Ostermorgen mit Sonnenaufgang, Bluetenbaeume, Wiese; Eier, Hase, Kueken, Schmetterlinge
+function hwEasterDate(y) {                                     // Ostersonntag (Gauss/Meeus, gregorianisch)
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  return new Date(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, (h + l - 7 * m + 114) % 31 + 1);
+}
+const HW_EGG_COL = [['#ff8fb1', '#ffe27a'], ['#6ec6ff', '#ffffff'], ['#9be28a', '#ff8fb1'], ['#c79bff', '#ffe27a'], ['#ffb86b', '#6ec6ff'], ['#ff6b6b', '#ffffff']];
+function hwEggDraw(g, s, c1, c2, pat, hurt) {                  // Mitte bei (0,0), Hoehe 2s
+  g.save(); g.beginPath(); g.ellipse(0, 0, s * .78, s, 0, 0, 7); g.clip(); g.fillStyle = c1; g.fillRect(-s, -s, s * 2, s * 2); g.fillStyle = c2;
+  if (pat === 0) { g.beginPath(); g.moveTo(-s, -s * .12); for (let i = 1; i <= 8; i++) { g.lineTo(-s + i * s / 4, i % 2 ? s * .12 : -s * .12); } g.lineTo(s, s * .3); g.lineTo(-s, s * .3); g.closePath(); g.fill(); }
+  else if (pat === 1) { for (const r of [-.55, -.1, .35, .75]) { for (let i = -2; i <= 2; i++) { g.beginPath(); g.arc(i * s * .38 + (r > 0 && r < .5 ? s * .19 : 0), r * s, s * .09, 0, 7); g.fill(); } } }
+  else if (pat === 2) { for (const r of [-.5, -.05, .4]) { g.fillRect(-s, r * s, s * 2, s * .13); } }
+  else { g.beginPath(); g.arc(0, 0, s * .12, 0, 7); g.fill(); for (let i = 0; i < 5; i++) { const a = i * 1.2566; g.beginPath(); g.arc(Math.cos(a) * s * .25, Math.sin(a) * s * .25, s * .12, 0, 7); g.fill(); } g.fillStyle = c1; g.beginPath(); g.arc(0, 0, s * .09, 0, 7); g.fill(); }
+  const sh = g.createRadialGradient(-s * .25, -s * .4, s * .05, 0, 0, s * 1.05); sh.addColorStop(0, 'rgba(255,255,255,.6)'); sh.addColorStop(.35, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(40,20,60,.4)'); g.fillStyle = sh; g.fillRect(-s, -s, s * 2, s * 2);
+  if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.fillRect(-s, -s, s * 2, s * 2); }
+  g.restore();
+}
+function hwBunnyDraw(g, k, t, air) {                           // Osterhase, Blick nach rechts, Mitte des Koerpers bei (0,0); air = -1..1 (Sprungphase)
+  const ear = -.35 - air * .5 + Math.sin(t * 6) * .04;
+  g.fillStyle = '#f4efe8'; for (const sd of [0, 1]) { g.save(); g.translate(k * (.8 + sd * .22), -k * .75); g.rotate(ear - sd * .25); g.beginPath(); g.ellipse(0, -k * .5, k * .2, k * .62, 0, 0, 7); g.fill(); g.fillStyle = '#ffb3c6'; g.beginPath(); g.ellipse(0, -k * .5, k * .09, k * .45, 0, 0, 7); g.fill(); g.fillStyle = '#f4efe8'; g.restore(); }
+  const bg = g.createRadialGradient(-k * .3, -k * .3, k * .1, 0, 0, k * 1.1); bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, '#d9d2c8'); g.fillStyle = bg; g.beginPath(); g.ellipse(0, 0, k, k * .72, 0, 0, 7); g.fill(); g.beginPath(); g.arc(k * .95, -k * .38, k * .5, 0, 7); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.arc(-k * 1.0, -k * .1, k * .3, 0, 7); g.fill();
+  g.fillStyle = '#e9e1d6'; g.beginPath(); g.ellipse(-k * .55, k * .62, k * .5, k * .2, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(k * .55, k * .62, k * .3, k * .15, 0, 0, 7); g.fill();
+  g.fillStyle = '#2a1a22'; g.beginPath(); g.arc(k * 1.12, -k * .5, k * .07, 0, 7); g.fill(); g.fillStyle = '#ff8fa8'; g.beginPath(); g.arc(k * 1.43, -k * .32, k * .09, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(90,70,60,.5)'; g.lineWidth = Math.max(1, k * .03); for (const dy of [-.1, .06]) { g.beginPath(); g.moveTo(k * 1.35, -k * (.3 - dy)); g.lineTo(k * 1.75, -k * (.38 - dy * 2)); g.stroke(); }
+  g.strokeStyle = '#8a5a32'; g.lineWidth = k * .06; g.beginPath(); g.arc(k * .75, k * .3, k * .3, Math.PI, 0); g.stroke(); g.fillStyle = '#b07a42'; g.beginPath(); g.moveTo(k * .42, k * .32); g.lineTo(k * 1.08, k * .32); g.lineTo(k * .98, k * .62); g.lineTo(k * .52, k * .62); g.closePath(); g.fill();
+  ['#ff8fb1', '#6ec6ff', '#ffe27a'].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.ellipse(k * (.55 + i * .2), k * .3, k * .09, k * .12, 0, 0, 7); g.fill(); });
+}
+function hwChickDraw(g, k, t, ph) {                            // Kueken mit Eierschale auf dem Kopf, Blick nach rechts, Mitte des Koerpers bei (0,0)
+  const run = t * 16 + ph; g.strokeStyle = '#ff9a3a'; g.lineWidth = k * .12; g.lineCap = 'round';
+  for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .3, k * .85); g.lineTo(sd * k * .3 + Math.sin(run + sd) * k * .3, k * 1.45 - Math.max(0, Math.cos(run + sd)) * k * .2); g.stroke(); }
+  const bg = g.createRadialGradient(-k * .25, -k * .3, k * .1, 0, 0, k * 1.1); bg.addColorStop(0, '#fff2a0'); bg.addColorStop(1, '#ffc93a'); g.fillStyle = bg; g.beginPath(); g.arc(0, 0, k, 0, 7); g.fill(); g.beginPath(); g.arc(k * .65, -k * .65, k * .62, 0, 7); g.fill();
+  g.fillStyle = '#ffb41f'; g.beginPath(); g.ellipse(-k * .25, k * .1, k * .35, k * .5, -.5 + Math.sin(run) * .15, 0, 7); g.fill();
+  g.fillStyle = '#ff7a2a'; g.beginPath(); g.moveTo(k * 1.18, -k * .7); g.lineTo(k * 1.65, -k * .58); g.lineTo(k * 1.18, -k * .48); g.closePath(); g.fill(); g.fillStyle = '#2a1a10'; g.beginPath(); g.arc(k * .88, -k * .8, k * .08, 0, 7); g.fill();
+  g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(k * .15, -k * 1.15); for (let i = 0; i <= 6; i++) { g.lineTo(k * (.15 + i * .17), -k * (1.15 + (i % 2 ? .0 : .24))); } g.lineTo(k * 1.17, -k * 1.15); g.arc(k * .66, -k * 1.15, k * .51, 0, Math.PI, true); g.closePath(); g.fill();
+}
+function hwButterflyDraw(g, k, t, c1, c2) {                    // Mitte bei (0,0)
+  const fl = Math.abs(Math.sin(t * 16)) * .85 + .15; g.save(); g.fillStyle = c1;
+  for (const sd of [-1, 1]) { g.save(); g.scale(sd * fl, 1); g.beginPath(); g.ellipse(k * .6, -k * .35, k * .7, k * .5, -.5, 0, 7); g.fill(); g.fillStyle = c2; g.beginPath(); g.ellipse(k * .5, k * .45, k * .45, k * .38, .5, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.arc(k * .7, -k * .4, k * .13, 0, 7); g.fill(); g.fillStyle = c1; g.restore(); }
+  g.fillStyle = '#2a1a22'; g.beginPath(); g.ellipse(0, 0, k * .12, k * .55, 0, 0, 7); g.fill(); g.strokeStyle = '#2a1a22'; g.lineWidth = Math.max(1, k * .05); g.beginPath(); g.moveTo(0, -k * .5); g.lineTo(-k * .25, -k * .85); g.moveTo(0, -k * .5); g.lineTo(k * .25, -k * .85); g.stroke(); g.restore();
+}
+function hwEasterBossDraw(g, k, t, hurt, hp) {                 // Goldenes Riesenei: Mitte bei (0,0)
+  const f = .8 + .2 * Math.sin(t * 8); let gr = g.createRadialGradient(0, 0, k * .4, 0, 0, k * 3); gr.addColorStop(0, 'rgba(255,215,90,' + (.5 * f).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,190,60,0)');
+  g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-k * 3, -k * 3, k * 6, k * 6); g.globalCompositeOperation = 'source-over';
+  g.save(); g.rotate(Math.sin(t * 3) * .08);
+  g.save(); g.beginPath(); g.ellipse(0, 0, k * .9, k * 1.15, 0, 0, 7); g.clip(); const bg = g.createLinearGradient(-k, -k, k, k); bg.addColorStop(0, '#fff0a0'); bg.addColorStop(.5, '#f2b81c'); bg.addColorStop(1, '#a8740a'); g.fillStyle = bg; g.fillRect(-k, -k * 1.2, k * 2, k * 2.4);
+  g.fillStyle = '#d6322a'; g.beginPath(); g.moveTo(-k, -k * .25); for (let i = 1; i <= 10; i++) { g.lineTo(-k + i * k / 5, i % 2 ? k * .0 : -k * .25); } g.lineTo(k, k * .35); g.lineTo(-k, k * .35); g.closePath(); g.fill();
+  g.fillStyle = '#3a8ae0'; for (let i = -2; i <= 2; i++) { g.beginPath(); g.arc(i * k * .35, k * .75, k * .09, 0, 7); g.fill(); }
+  g.restore();
+  g.shadowColor = '#ff5a2a'; g.shadowBlur = k * .25; g.fillStyle = '#3a1608'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .5, -k * .62); g.lineTo(sd * k * .12, -k * .5); g.lineTo(sd * k * .42, -k * .36); g.closePath(); g.fill(); } g.shadowBlur = 0;
+  g.strokeStyle = '#3a1608'; g.lineWidth = k * .06; g.lineCap = 'round'; g.beginPath(); g.moveTo(-k * .62, -k * .8); g.lineTo(-k * .14, -k * .62); g.moveTo(k * .62, -k * .8); g.lineTo(k * .14, -k * .62); g.stroke();
+  g.strokeStyle = 'rgba(90,50,10,.9)'; g.lineWidth = Math.max(1.2, k * .04); for (let i = 0; i < 5 - hp; i++) { const a = i * 1.45 + .3; g.beginPath(); g.moveTo(Math.cos(a) * k * .2, Math.sin(a) * k * .25); g.lineTo(Math.cos(a + .2) * k * .55, Math.sin(a + .2) * k * .65); g.lineTo(Math.cos(a - .1) * k * .85, Math.sin(a - .1) * k * 1.0); g.stroke(); }
+  if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.beginPath(); g.ellipse(0, 0, k * .9, k * 1.15, 0, 0, 7); g.fill(); }
+  g.restore();
+}
+function hwBlossomTree(h, seed) {                              // Bluetenbaum, vorgerendert
+  const R = hwRng(seed), tw = Math.round(h * .9), c = hwMake(tw, h), g = c.getContext('2d'), cx = tw / 2;
+  g.strokeStyle = '#4a2f22'; g.lineCap = 'round'; g.lineWidth = h * .05; g.beginPath(); g.moveTo(cx, h); g.bezierCurveTo(cx - h * .04, h * .75, cx + h * .06, h * .6, cx, h * .45); g.stroke();
+  g.lineWidth = h * .025; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx, h * .62); g.quadraticCurveTo(cx + sd * h * .14, h * .5, cx + sd * h * .26, h * .4); g.stroke(); }
+  const pal = ['#ffc2d6', '#ffd9e6', '#ffb0c8', '#fff0f5', '#ffa9c4'];
+  for (let i = 0; i < 110; i++) { const a = R() * 6.283, rr = Math.sqrt(R()) * h * .34, x = cx + Math.cos(a) * rr * 1.1, y = h * .36 + Math.sin(a) * rr * .8, r = h * (.05 + R() * .05), col = pal[Math.floor(R() * pal.length)];
+    const bg = g.createRadialGradient(x - r * .3, y - r * .3, r * .1, x, y, r); bg.addColorStop(0, 'rgba(255,255,255,.9)'); bg.addColorStop(.45, col); bg.addColorStop(1, 'rgba(235,140,175,.0)'); g.fillStyle = bg; g.beginPath(); g.arc(x, y, r * 1.15, 0, 7); g.fill(); }
+  return c;
+}
+function hwEasterHill(w, hh, amp, base, c0, c1, seed) { return hwXmasHill(w, hh, amp, base, c0, c1, seed); }
+function hwEasterBuild(w, h, u) {
+  const P = {}, R = hwRng(31);
+  P.hillFar = hwEasterHill(w, Math.round(h * .5), h * .03, h * .12, '#7a64a8', '#4a3f80', 2); P.hillMid = hwEasterHill(w, Math.round(h * .4), h * .035, h * .1, '#6aa45a', '#3c7a3c', 6); P.hillNear = hwEasterHill(w, Math.round(h * .3), h * .025, h * .07, '#8fd05f', '#3f8f3a', 9);
+  P.tree1 = hwBlossomTree(Math.round(h * .42), 4); P.tree2 = hwBlossomTree(Math.round(h * .3), 7); P.tree3 = hwBlossomTree(Math.round(h * .24), 11);
+  P.clouds = []; for (let i = 0; i < 4; i++) { P.clouds.push({ x: R() * w, y: h * (.08 + R() * .3), s: (60 + R() * 70) * u, v: (3 + R() * 4) * u }); }
+  P.flowers = []; for (let i = 0; i < 42; i++) { P.flowers.push({ x: R() * w, y: h * (.84 + R() * .15), c: ['#ff6b8b', '#ffd24a', '#ffffff', '#c98bff', '#ff9a3a'][Math.floor(R() * 5)], ph: R() * 7, l: (10 + R() * 9) * u }); }
+  const vc = hwMake(w, h), vg = vc.getContext('2d'), v = vg.createRadialGradient(w * .5, h * .46, Math.min(w, h) * .35, w * .5, h * .5, Math.max(w, h) * .75); v.addColorStop(0, 'rgba(30,10,40,0)'); v.addColorStop(1, 'rgba(30,10,40,.45)'); vg.fillStyle = v; vg.fillRect(0, 0, w, h); P.vig = vc;
+  return P;
+}
+function hwEasterInit(S) {
+  const R = Math.random; Object.assign(S, { eggs: [], eggT: 1, eggEvery: 2.2, bunny: { t: -1, next: 8 + R() * 6, dir: 1 }, chicks: [], chickT: 4, chickEvery: 8, butter: [], butT: 5, butEvery: 7, petals: [], flock: { t: -1, next: 6 }, sndT: 0 });
+}
+function hwEasterDraw(g, t, dt, w, h, u, P, S, gb) {
+  const R = Math.random, sx = w * .7, sy = h * .6;
+  // --- Hintergrund: Sonne mit Strahlen, Wolken, Huegel, Baeume, Blumen, Blueten
+  let gr = gb.createRadialGradient(sx, sy, 0, sx, sy, h * .55); gr.addColorStop(0, 'rgba(255,230,160,.85)'); gr.addColorStop(.2, 'rgba(255,190,120,.45)'); gr.addColorStop(1, 'rgba(255,150,110,0)'); gb.fillStyle = gr; gb.fillRect(0, 0, w, h);
+  gb.save(); gb.globalCompositeOperation = 'lighter'; gb.fillStyle = 'rgba(255,225,160,.07)'; for (let i = 0; i < 14; i++) { const a = -Math.PI + i * Math.PI / 13 + Math.sin(t * .05) * .06; gb.beginPath(); gb.moveTo(sx, sy); gb.lineTo(sx + Math.cos(a - .045) * h * 1.3, sy + Math.sin(a - .045) * h * 1.3); gb.lineTo(sx + Math.cos(a + .045) * h * 1.3, sy + Math.sin(a + .045) * h * 1.3); gb.closePath(); gb.fill(); } gb.restore();
+  gb.fillStyle = '#fff3c4'; gb.beginPath(); gb.arc(sx, sy, 34 * u, 0, 7); gb.fill();
+  P.clouds.forEach(c => { c.x += c.v * dt; if (c.x - c.s * 1.6 > w) { c.x = -c.s * 1.6; } const cg = gb.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.s); cg.addColorStop(0, 'rgba(255,225,215,.7)'); cg.addColorStop(.6, 'rgba(255,200,200,.3)'); cg.addColorStop(1, 'rgba(255,190,200,0)'); gb.save(); gb.translate(c.x, c.y); gb.scale(1.7, .45); gb.translate(-c.x, -c.y); gb.fillStyle = cg; gb.beginPath(); gb.arc(c.x, c.y, c.s, 0, 7); gb.fill(); gb.restore(); });
+  const fk = S.flock; fk.next -= dt; if (fk.t < 0 && fk.next <= 0) { fk.t = 0; fk.y = h * (.12 + R() * .2); } if (fk.t >= 0) { fk.t += dt; const p = fk.t / 16; if (p >= 1) { fk.t = -1; fk.next = 18 + R() * 20; } else { gb.strokeStyle = 'rgba(40,30,60,.55)'; gb.lineWidth = Math.max(1, 1.6 * u); gb.lineCap = 'round'; for (let i = 0; i < 5; i++) { const bx = (-.1 + 1.2 * p) * w - i * 26 * u, by = fk.y + Math.sin(p * 20 + i) * 8 * u + i * 6 * u, fl = Math.sin(t * 9 + i) * 5 * u; gb.beginPath(); gb.moveTo(bx - 8 * u, by + fl); gb.quadraticCurveTo(bx - 3 * u, by - 3 * u, bx, by); gb.quadraticCurveTo(bx + 3 * u, by - 3 * u, bx + 8 * u, by + fl); gb.stroke(); } } }
+  gb.drawImage(P.hillFar, 0, h * .5); gb.drawImage(P.tree3, w * .42, h * .66 - P.tree3.height * .1);
+  gb.drawImage(P.hillMid, 0, h * .6); gb.drawImage(P.tree1, w * .02, h * .8 - P.tree1.height); gb.drawImage(P.tree2, w * .86, h * .78 - P.tree2.height);
+  gb.drawImage(P.hillNear, 0, h * .72);
+  P.flowers.forEach(f => { const sw = Math.sin(t * 1.6 + f.ph) * 3 * u, hx = f.x + sw, hy = f.y - f.l; gb.strokeStyle = '#2f7a34'; gb.lineWidth = Math.max(1, 1.6 * u); gb.beginPath(); gb.moveTo(f.x, f.y); gb.quadraticCurveTo(f.x + sw * .3, f.y - f.l * .5, hx, hy); gb.stroke();
+    gb.fillStyle = f.c; for (const dx of [-1, 0, 1]) { gb.beginPath(); gb.ellipse(hx + dx * 2.6 * u, hy - Math.abs(dx) * .8 * u, 2.2 * u, 3.6 * u, dx * .35, 0, 7); gb.fill(); } });
+  if (S.petals.length < 36 && R() < dt * 6) { S.petals.push({ x: R() * w, y: -8 * u, vy: (16 + R() * 18) * u, ph: R() * 7, r: (2 + R() * 2) * u }); }
+  gb.fillStyle = 'rgba(255,205,220,.9)'; S.petals = S.petals.filter(q => { q.y += q.vy * dt; q.x += (Math.sin(t * .9 + q.ph) * 14 + 10) * u * dt; if (q.y > h + 10) { return false; } gb.beginPath(); gb.ellipse(q.x, q.y, q.r, q.r * .6, t + q.ph, 0, 7); gb.fill(); return true; });
+  gb.drawImage(P.vig, 0, 0);
+  // --- Versteckte Eier poppen aus der Wiese
+  S.eggT -= dt; const maxE = S.game.st === 1 ? 7 : 4; if (S.eggT <= 0 && S.eggs.length < maxE) { S.eggT = S.eggEvery * (.6 + .8 * R()); const cl = HW_EGG_COL[Math.floor(R() * HW_EGG_COL.length)]; S.eggs.push({ x: w * (.06 + .88 * R()), y: h * (.82 + .14 * R()), s: (12 + R() * 6) * u, c1: cl[0], c2: cl[1], pat: Math.floor(R() * 4), age: 0, life: 6 + R() * 4, dead: false }); }
+  S.eggs = S.eggs.filter(e => { if (e.dead) { return false; } e.age += dt; if (e.age > e.life) { return false; }
+    const rem = e.life - e.age, sc = e.age < .35 ? (() => { const x = e.age / .35 - 1; return 1 + 2.7 * x * x * x + 1.7 * x * x; })() : (rem < .4 ? rem / .4 : 1);
+    g.fillStyle = 'rgba(30,60,20,.3)'; g.beginPath(); g.ellipse(e.x, e.y + e.s * .95 * sc, e.s * .7 * sc, e.s * .2 * sc, 0, 0, 7); g.fill();
+    g.save(); g.translate(e.x, e.y); g.scale(sc, sc); hwEggDraw(g, e.s, e.c1, e.c2, e.pat, 0); g.restore();
+    if (sc > .8) { S.hits.push({ x: e.x, y: e.y, r: e.s * 1.3, pts: 10, c: '255,210,120', snd: 'pop', kill: () => { e.dead = true; } }); } return true; });
+  // --- Osterhase huepft durchs Bild und verliert Eier
+  const BN = S.bunny; BN.next -= dt; if (BN.t < 0 && BN.next <= 0) { BN.t = 0; BN.dir = R() < .5 ? 1 : -1; }
+  if (BN.t >= 0) { BN.t += dt; const p = BN.t / 12; if (p >= 1) { BN.t = -1; BN.next = 24 + R() * 16; } else { const hp = Math.abs(Math.sin(p * Math.PI * 12)), air = Math.cos(p * Math.PI * 12 * 1) * Math.sign(Math.sin(p * Math.PI * 12) || 1), bx = BN.dir > 0 ? (-.12 + 1.24 * p) * w : (1.12 - 1.24 * p) * w, by = h * .875 - hp * 70 * u;
+    g.save(); g.translate(bx, by); g.scale(BN.dir * (1 + (1 - hp) * .05), 1 - (1 - hp) * .07); hwBunnyDraw(g, 20 * u, t, Math.max(-1, Math.min(1, hp * 2 - 1))); g.restore();
+    S.hits.push({ x: bx, y: by, r: 44 * u, pts: 30, c: '255,235,240', snd: 'boing', kill: () => { BN.t = -1; BN.next = 12 + R() * 8; for (let i = 0; i < 3; i++) { const cl = HW_EGG_COL[Math.floor(R() * HW_EGG_COL.length)]; S.eggs.push({ x: bx + (i - 1) * 40 * u, y: h * (.86 + .08 * R()), s: (13 + R() * 4) * u, c1: cl[0], c2: cl[1], pat: Math.floor(R() * 4), age: 0, life: 6, dead: false }); } } }); } }
+  // --- Kueken rennen ueber die Wiese
+  S.chickT -= dt; if (S.chickT <= 0) { S.chickT = S.chickEvery * (.7 + .6 * R()); const dir = R() < .5 ? 1 : -1; S.chicks.push({ x: dir > 0 ? -20 * u : w + 20 * u, y: h * (.9 + .06 * R()), v: dir * (70 + R() * 50) * u, ph: R() * 7, dead: false }); }
+  S.chicks = S.chicks.filter(c => { if (c.dead) { return false; } c.x += c.v * dt; if (c.x < -40 * u || c.x > w + 40 * u) { return false; } g.save(); g.translate(c.x, c.y - Math.abs(Math.sin(t * 16 + c.ph)) * 4 * u); g.scale(c.v > 0 ? 1 : -1, 1); hwChickDraw(g, 11 * u, t, c.ph); g.restore();
+    S.hits.push({ x: c.x, y: c.y - 6 * u, r: 24 * u, pts: 15, c: '255,225,90', snd: 'chirp', kill: () => { c.dead = true; } }); return true; });
+  // --- Schmetterlinge flattern
+  S.butT -= dt; if (S.butT <= 0) { S.butT = S.butEvery * (.7 + .6 * R()); const dir = R() < .5 ? 1 : -1; S.butter.push({ x: dir > 0 ? -20 * u : w + 20 * u, y0: h * (.45 + .35 * R()), vx: dir * (35 + R() * 25) * u, ph: R() * 7, c1: ['#ff8fb1', '#6ec6ff', '#ffd24a', '#c79bff'][Math.floor(R() * 4)], c2: ['#ffe27a', '#ffffff', '#ff9a3a'][Math.floor(R() * 3)], dead: false }); }
+  S.butter = S.butter.filter(b => { if (b.dead) { return false; } b.x += b.vx * dt; if (b.x < -40 * u || b.x > w + 40 * u) { return false; } const by = b.y0 + Math.sin(t * 1.7 + b.ph) * 40 * u + Math.sin(t * 5.3 + b.ph) * 12 * u; g.save(); g.translate(b.x, by); hwButterflyDraw(g, 12 * u, t + b.ph, b.c1, b.c2); g.restore();
+    S.hits.push({ x: b.x, y: by, r: 24 * u, pts: 20, c: '255,200,240', snd: 'sparkle', kill: () => { b.dead = true; } }); return true; });
+  hwBossRun(g, S, t, dt, w, h, u, hwEasterBossDraw, 'bell', { bar: '#ffd24a', hit: '255,210,90', burst: '255,235,150' });
+}
+HW_THEMES.easter = {
+  id: 'easter', keyBest: 'nrgOsBest', keyScores: 'nrgOsScores', zap: false, ambient: null, sounds: ['chirp', 'cuckoo', 'wind', 'chirp'],
+  build: hwEasterBuild, init: hwEasterInit, draw: hwEasterDraw,
+  onStart(S) { S.eggT = 0; S.eggEvery = 1.2; S.bunny.next = Math.min(S.bunny.next, 2); S.chickT = Math.min(S.chickT, 1); S.butT = Math.min(S.butT, 1.5); },
+  onEnd(S) { S.eggEvery = 2.2; S.chickEvery = 8; S.butEvery = 7; },
+  pace(S, p) { S.eggEvery = 2.2 - 1.5 * p; S.bunny.next = Math.min(S.bunny.next, 12 - 8 * p); S.chickEvery = 8 - 5 * p; S.butEvery = 7 - 4.5 * p; },
+};
 HW_THEMES.halloween = {
   id: 'halloween', keyBest: 'nrgHwBest', keyScores: 'nrgHwScores', zap: true, ambient: { f: 3200, q: .45, g: .05 }, sounds: ['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'],
   build: hwBuildPre, init: hwHalloweenInit, draw: hwHalloweenDraw,
@@ -4703,6 +4829,12 @@ function hwPlay(kind) {
     const n = hwNoise(a, .06), ng = a.createGain(); ng.gain.setValueAtTime(.18, t); ng.gain.exponentialRampToValueAtTime(.0008, t + .05); n.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + .06);
   } else if (kind === 'finale') {               // Mitternacht: Salve aus Knallen
     for (let i = 0; i < 9; i++) { setTimeout(() => hwPlay('boom'), i * 420); }
+  } else if (kind === 'chirp') {                // Vogelgezwitscher: schnelle, hohe Tonspruenge
+    for (let i = 0; i < 4; i++) { const at = t + i * .13 + Math.random() * .03, o = a.createOscillator(), gg = a.createGain(), f0 = 2600 + Math.random() * 1200; o.type = 'sine'; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f0 * (1.3 + Math.random() * .4), at + .07); gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.09, at + .01); gg.gain.exponentialRampToValueAtTime(.0008, at + .09); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .1); }
+  } else if (kind === 'cuckoo') {               // Kuckuck: zwei hohle Toene, zweimal
+    for (let r = 0; r < 2; r++) { [[740, 0], [590, .28]].forEach(([fr, off]) => { const at = t + r * .9 + off, o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(fr, at); o.frequency.linearRampToValueAtTime(fr * .97, at + .24); gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.18, at + .03); gg.gain.linearRampToValueAtTime(.12, at + .18); gg.gain.exponentialRampToValueAtTime(.0008, at + .3); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .32); }); }
+  } else if (kind === 'boing') {                // Hasenhuepfer: federnder Tonsprung
+    const o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain(), gg = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(760, t + .16); l.frequency.value = 30; lg.gain.value = 25; l.connect(lg); lg.connect(o.frequency); gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(.28, t + .02); gg.gain.exponentialRampToValueAtTime(.0008, t + .32); o.connect(gg); gg.connect(a.destination); o.start(t); l.start(t); o.stop(t + .34); l.stop(t + .34);
   } else if (kind === 'bell') {                // dumpfer Glockenschlag
     [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
       gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);
