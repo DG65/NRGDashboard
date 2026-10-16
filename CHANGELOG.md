@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.17 (2026-10-16)
+
+- Saison-Töne: das tiefe „Ho ho ho“ war auf kleinen Lautsprechern kaum zu hören; es klingt jetzt heller (Vokalfilter), ist lauter und kommt früher.
+
 ## 0.9.170-beta.16 (2026-10-16)
 
 - Saison-Szenen: große Dekorationen (Hügel, Bäume, Mond, Himmel) liegen jetzt als eigene Ebene hinter dem Diagramm; Knoten und Energieflüsse werden nie mehr verdeckt.
