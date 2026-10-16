@@ -397,14 +397,19 @@ class NRGDashboardTile extends IPSModule
         $this->ensureEnumProfile('NRGDASH.Seasonal', [
             0 => 'Automatisch (nach Jahreszeit)', 1 => 'Aus', 2 => 'Immer an: Gruselzeit (zum Ausprobieren)', 3 => 'Immer an: Winterzeit (zum Ausprobieren)', 4 => 'Immer an: Feierzeit (zum Ausprobieren)', 5 => 'Immer an: Frühlingszeit (zum Ausprobieren)',
         ]);
-        $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => 'Aus', 1 => 'Gruselgeräusche an'] );
+        $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => 'Aus', 1 => 'Geräusche an']);
         $this->ensureEnumProfile('NRGDASH.SeasonalBg', [0 => 'Dunkel mit den Effekten', 1 => 'Immer Standard', 2 => 'Immer dunkel (Nachthimmel)']);
         $isNewSeasonal = @IPS_GetObjectIDByIdent('Seasonal', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('Seasonal', 'Saison-Effekte (Halloween)', 'NRGDASH.Seasonal', 209);
+        $this->RegisterVariableInteger('Seasonal', 'Saison-Effekte', 'NRGDASH.Seasonal', 209);
         $this->EnableAction('Seasonal');
         $isNewSeasonalSound = @IPS_GetObjectIDByIdent('SeasonalSound', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('SeasonalSound', 'Saison-Effekte: Gruselgeräusche', 'NRGDASH.SeasonalSound', 210);
+        $this->RegisterVariableInteger('SeasonalSound', 'Saison-Effekte: Geräusche', 'NRGDASH.SeasonalSound', 210);
         $this->EnableAction('SeasonalSound');
+        // Bestehende Instanzen: alte Namen auf die neutralen umstellen (nur wenn nicht vom Nutzer umbenannt)
+        foreach ([['Seasonal', 'Saison-Effekte (Halloween)', 'Saison-Effekte'], ['SeasonalSound', 'Saison-Effekte: Gruselgeräusche', 'Saison-Effekte: Geräusche']] as [$sIdent, $sOld, $sNew]) {
+            $sVid = @IPS_GetObjectIDByIdent($sIdent, $this->InstanceID);
+            if ($sVid && IPS_GetName($sVid) === $sOld) { IPS_SetName($sVid, $sNew); }
+        }
         $isNewSeasonalBg = @IPS_GetObjectIDByIdent('SeasonalBg', $this->InstanceID) === false;
         $this->RegisterVariableInteger('SeasonalBg', 'Saison-Effekte: Hintergrund', 'NRGDASH.SeasonalBg', 211);
         $this->EnableAction('SeasonalBg');

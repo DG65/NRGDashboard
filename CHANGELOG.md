@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.21 (2026-10-16)
+
+- Schalter „Saison-Effekte“: Namen neutral („Saison-Effekte“, „Saison-Effekte: Geräusche“, „Geräusche an“); bestehende Instanzen werden beim Update umbenannt.
+
 ## 0.9.170-beta.20 (2026-10-16)
 
 - Saison-Effekte: weiteres Thema.
