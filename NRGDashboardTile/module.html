@@ -754,42 +754,70 @@
   .node-switch-ico { stroke: #e8eaed; stroke-width: 1.6; fill: none; }
 
 
-  /* Halloween-Effekte (16.10.2026, Dietmar: "Gimmicks zu Halloween, evtl. mit Gruselgeraeuschen"):
-     reine HTML/CSS-Ebene ueber der Kachel (pointer-events: none), vom 24.10. bis 01.11. automatisch,
-     sonst per Doppelpfeil (Saison-Effekte). Positionen in Prozent, damit sie bei jeder Kachelgroesse
-     passen; prefers-reduced-motion stoppt alle Bewegungen. */
+  /* Halloween-Effekte (16.10.2026, Dietmar: "Gimmicks zu Halloween, evtl. mit Gruselgeraeuschen",
+     danach "gruseliger und realistischer"): reine HTML/CSS-Ebene ueber der Kachel (pointer-events: none,
+     ausser dem kleinen Ton-Hinweis), vom 24.10. bis 01.11. automatisch, sonst per Doppelpfeil.
+     Positionen in Prozent/vmin, damit sie bei jeder Kachelgroesse passen; prefers-reduced-motion
+     stoppt alle Bewegungen. */
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
-  #halloween .hw-moon { position: absolute; top: 4%; right: 5%; width: 8vmin; height: 8vmin; min-width: 36px; min-height: 36px; border-radius: 50%;
-    background: radial-gradient(circle at 38% 36%, #fff8dc 0 38%, #f3e3a2 62%, #d9c47a 100%); opacity: .8;
-    box-shadow: 0 0 3vmin 1.2vmin rgba(255, 236, 160, .35); animation: hwMoon 9s ease-in-out infinite; }
-  @keyframes hwMoon { 0%, 100% { opacity: .7; } 50% { opacity: .92; } }
-  #halloween .hw-fog { position: absolute; left: -30%; width: 160%; height: 22%; bottom: 0; opacity: .22;
-    background: radial-gradient(ellipse at 50% 100%, rgba(210, 220, 230, .9), rgba(210, 220, 230, 0) 68%); animation: hwFog 28s linear infinite; }
-  #halloween .hw-fog.f2 { height: 16%; opacity: .16; animation-duration: 41s; animation-direction: reverse; }
-  @keyframes hwFog { 0% { transform: translateX(-9%); } 50% { transform: translateX(9%); } 100% { transform: translateX(-9%); } }
-  #halloween .hw-bat { position: absolute; left: -12%; top: var(--y, 20%); width: calc(5vmin * var(--s, 1)); min-width: calc(28px * var(--s, 1));
+  #halloween .hw-vig { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 38%, rgba(8,2,14,.62) 100%); animation: hwVig 7s ease-in-out infinite; }
+  @keyframes hwVig { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
+  #halloween .hw-moon { position: absolute; top: 3%; right: 5%; width: 10vmin; height: 10vmin; min-width: 44px; min-height: 44px; border-radius: 50%;
+    background: radial-gradient(circle at 36% 34%, #fffbe6 0 30%, #f1dd96 58%, #c9b061 100%); opacity: .9;
+    box-shadow: 0 0 4vmin 1.6vmin rgba(255, 232, 150, .38), 0 0 12vmin 4vmin rgba(255, 200, 90, .12); animation: hwMoon 11s ease-in-out infinite; }
+  #halloween .hw-moon::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle at 62% 30%, rgba(150,130,70,.35) 0 9%, transparent 10%), radial-gradient(circle at 30% 64%, rgba(150,130,70,.3) 0 12%, transparent 13%), radial-gradient(circle at 70% 70%, rgba(150,130,70,.25) 0 7%, transparent 8%); }
+  @keyframes hwMoon { 0%, 100% { opacity: .78; } 50% { opacity: .95; } }
+  #halloween .hw-fog { position: absolute; left: -40%; width: 180%; height: 30%; bottom: -2%; opacity: .34;
+    background: radial-gradient(ellipse at 50% 100%, rgba(205, 215, 230, .95), rgba(205, 215, 230, 0) 70%); animation: hwFog 34s ease-in-out infinite; }
+  #halloween .hw-fog.f2 { height: 22%; opacity: .26; animation-duration: 47s; animation-direction: reverse; }
+  #halloween .hw-fog.f3 { height: 14%; opacity: .3; animation-duration: 23s; bottom: -4%; }
+  @keyframes hwFog { 0% { transform: translateX(-10%) scaleY(1); } 50% { transform: translateX(10%) scaleY(1.25); } 100% { transform: translateX(-10%) scaleY(1); } }
+  #halloween .hw-web { position: absolute; width: 17vmin; min-width: 70px; opacity: .55; }
+  #halloween .hw-web.tl { top: 0; left: 0; } #halloween .hw-web.tr { top: 0; right: 0; transform: scaleX(-1); }
+  #halloween .hw-web svg { width: 100%; height: auto; display: block; } #halloween .hw-web path { stroke: rgba(235,238,245,.8); fill: none; stroke-width: .8; }
+  #halloween .hw-bat { position: absolute; left: -14%; top: var(--y, 20%); width: calc(7vmin * var(--s, 1)); min-width: calc(34px * var(--s, 1));
     animation: hwBatFly var(--d, 20s) linear infinite var(--delay, 0s); }
-  #halloween .hw-bat svg { width: 100%; height: auto; display: block; fill: #1d1526; filter: drop-shadow(0 0 3px rgba(255, 150, 50, .95));
-    transform-origin: 50% 60%; animation: hwFlap .32s ease-in-out infinite alternate; }
-  @keyframes hwBatFly { 0% { left: -12%; transform: translateY(0); } 25% { transform: translateY(-18px); } 50% { transform: translateY(10px); }
-    75% { transform: translateY(-12px); } 100% { left: 112%; transform: translateY(0); } }
-  @keyframes hwFlap { from { transform: scaleY(1); } to { transform: scaleY(.45); } }
-  #halloween .hw-spider { position: absolute; top: 0; left: var(--x, 14%); width: 4.6vmin; min-width: 26px; transform: translateX(-50%);
-    animation: hwSpider 11s ease-in-out infinite; }
-  #halloween .hw-spider::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: 1px; height: 120vh; background: rgba(230, 230, 235, .55); }
-  #halloween .hw-spider svg { width: 100%; height: auto; display: block; fill: #15121a; filter: drop-shadow(0 0 2px rgba(255, 255, 255, .35)); }
-  @keyframes hwSpider { 0%, 8% { transform: translateX(-50%) translateY(-60%); } 38%, 56% { transform: translateX(-50%) translateY(260%); }
-    68% { transform: translateX(-50%) translateY(200%); } 100% { transform: translateX(-50%) translateY(-60%); } }
-  #halloween .hw-ghost { position: absolute; bottom: 14%; left: -10%; width: 7vmin; min-width: 40px; opacity: 0; animation: hwGhost 46s linear infinite 6s; }
-  #halloween .hw-ghost svg { width: 100%; height: auto; display: block; fill: rgba(245, 248, 255, .85); filter: drop-shadow(0 0 6px rgba(190, 210, 255, .8)); }
-  @keyframes hwGhost { 0% { left: -10%; opacity: 0; transform: translateY(0); } 6% { opacity: .55; } 25% { transform: translateY(-26px); }
-    50% { transform: translateY(8px); opacity: .5; } 75% { transform: translateY(-20px); } 94% { opacity: .5; } 100% { left: 108%; opacity: 0; transform: translateY(0); } }
-  #halloween .hw-pumpkin { position: absolute; bottom: 11%; left: 3%; width: 8vmin; min-width: 44px; }
-  #halloween .hw-pumpkin svg { width: 100%; height: auto; display: block; }
+  #halloween .hw-bat svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 3px rgba(255, 120, 40, .9)); }
+  #halloween .hw-bat .body { fill: #14101a; }
+  #halloween .hw-bat .wl, #halloween .hw-bat .wr { fill: #1b1523; transform-origin: 46px 27px; animation: hwWingL .28s ease-in-out infinite alternate; }
+  #halloween .hw-bat .wr { transform-origin: 54px 27px; animation-name: hwWingR; }
+  #halloween .hw-bat .eye { fill: #ff3b2a; filter: drop-shadow(0 0 2px #ff3b2a); }
+  @keyframes hwWingL { from { transform: rotate(-34deg); } to { transform: rotate(26deg); } }
+  @keyframes hwWingR { from { transform: rotate(34deg); } to { transform: rotate(-26deg); } }
+  @keyframes hwBatFly { 0% { left: -14%; transform: translateY(0) rotate(-3deg); } 12% { transform: translateY(-22px) rotate(4deg); } 26% { transform: translateY(14px) rotate(-5deg); }
+    42% { transform: translateY(-30px) rotate(3deg); } 58% { transform: translateY(18px) rotate(-4deg); } 74% { transform: translateY(-16px) rotate(5deg); } 100% { left: 114%; transform: translateY(6px) rotate(-3deg); } }
+  #halloween .hw-bat.big { animation-name: hwBatSwoop; }
+  @keyframes hwBatSwoop { 0% { left: 20%; top: 40%; transform: scale(.3); opacity: 0; } 12% { opacity: 1; } 45% { left: 46%; top: 44%; transform: scale(2.8) rotate(-6deg); }
+    60% { left: 58%; top: 40%; transform: scale(3.6) rotate(8deg); opacity: 1; } 78% { left: 90%; top: 18%; transform: scale(1.1); opacity: .9; } 100% { left: 110%; top: 8%; transform: scale(.5); opacity: 0; } }
+  #halloween .hw-spider { position: absolute; top: 0; left: var(--x, 14%); width: 6.4vmin; min-width: 34px; transform: translateX(-50%); animation: hwSpider 13s ease-in-out infinite; }
+  #halloween .hw-spider::before { content: ''; position: absolute; left: 50%; bottom: 55%; width: 1.4px; height: 130vh; background: linear-gradient(#f0f0f5, rgba(240,240,245,.45)); }
+  #halloween .hw-spider svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 2px rgba(255,255,255,.35)); }
+  #halloween .hw-spider .legs { animation: hwLegs .7s ease-in-out infinite alternate; transform-origin: 30px 24px; }
+  @keyframes hwLegs { from { transform: scale(1, 1) rotate(-1.5deg); } to { transform: scale(1.06, .95) rotate(1.5deg); } }
+  @keyframes hwSpider { 0%, 6% { transform: translateX(-50%) translateY(-110%); } 22% { transform: translateX(-50%) translateY(250%); } 26% { transform: translateX(-50%) translateY(190%); }
+    30% { transform: translateX(-50%) translateY(275%); } 56% { transform: translateX(-50%) translateY(290%) rotate(5deg); } 62% { transform: translateX(-50%) translateY(280%) rotate(-5deg); } 100% { transform: translateX(-50%) translateY(-110%); } }
+  #halloween .hw-ghost { position: absolute; bottom: 12%; left: -12%; width: 10vmin; min-width: 54px; opacity: 0; animation: hwGhost 52s linear infinite 5s; }
+  #halloween .hw-ghost svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 8px rgba(170, 200, 255, .9)); animation: hwSway 2.4s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  @keyframes hwSway { from { transform: skewX(-5deg) rotate(-2deg); } to { transform: skewX(5deg) rotate(2deg); } }
+  @keyframes hwGhost { 0% { left: -12%; opacity: 0; transform: translateY(0); } 7% { opacity: .62; } 25% { transform: translateY(-34px); } 50% { transform: translateY(10px); opacity: .5; }
+    75% { transform: translateY(-26px); } 93% { opacity: .55; } 100% { left: 108%; opacity: 0; transform: translateY(0); } }
+  #halloween .hw-eyes { position: absolute; width: 4.4vmin; min-width: 24px; opacity: 0; animation: hwEyes 17s steps(1, end) infinite var(--delay, 0s); }
+  #halloween .hw-eyes svg { width: 100%; height: auto; display: block; }
+  @keyframes hwEyes { 0%, 18% { opacity: 0; } 19% { opacity: .95; } 25% { opacity: .95; } 26% { opacity: 0; } 27% { opacity: .95; } 41% { opacity: .95; } 42%, 100% { opacity: 0; } }
+  #halloween .hw-pumpkin { position: absolute; bottom: 11%; left: 3%; width: 10vmin; min-width: 52px; }
+  #halloween .hw-pumpkin::before { content: ''; position: absolute; left: -45%; right: -45%; top: -40%; bottom: -45%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,150,30,.5), rgba(255,110,10,.18) 45%, transparent 70%); animation: hwFlicker 2.6s steps(1, end) infinite; }
+  #halloween .hw-pumpkin svg { position: relative; width: 100%; height: auto; display: block; }
   #halloween .hw-pumpkin .glow { animation: hwFlicker 2.6s steps(1, end) infinite; }
-  @keyframes hwFlicker { 0% { opacity: 1; } 12% { opacity: .78; } 20% { opacity: 1; } 47% { opacity: .85; } 52% { opacity: 1; } 71% { opacity: .7; } 76% { opacity: 1; } 100% { opacity: 1; } }
-  @media (prefers-reduced-motion: reduce) { #halloween * { animation: none !important; } #halloween .hw-bat, #halloween .hw-ghost { display: none; } }
+  @keyframes hwFlicker { 0% { opacity: 1; } 12% { opacity: .72; } 20% { opacity: 1; } 47% { opacity: .82; } 52% { opacity: 1; } 71% { opacity: .62; } 76% { opacity: 1; } 100% { opacity: 1; } }
+  #halloween .hw-flash { position: absolute; inset: 0; background: rgba(215, 225, 255, .9); opacity: 0; }
+  #halloween .hw-flash.zap { animation: hwZap 1s linear; }
+  @keyframes hwZap { 0% { opacity: 0; } 5% { opacity: .75; } 12% { opacity: .05; } 20% { opacity: .55; } 32% { opacity: 0; } 100% { opacity: 0; } }
+  #halloween .hw-sound { position: absolute; right: 2%; bottom: 7%; pointer-events: auto; cursor: pointer; font-size: 12px; padding: 4px 9px; border-radius: 12px;
+    background: rgba(20,10,30,.78); color: #ffb35a; border: 1px solid rgba(255,150,50,.5); animation: hwFlicker 3s steps(1, end) infinite; }
+  @media (prefers-reduced-motion: reduce) { #halloween * { animation: none !important; } #halloween .hw-bat, #halloween .hw-ghost, #halloween .hw-eyes, #halloween .hw-flash { display: none; } }
   #nrgdash-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 13px; opacity: .7; text-align: center; padding: 12px; }
 
   /* Geraete-Detail-Overlay (28.08.2026, dritte Fassung): bildschirmfuellend
@@ -3909,42 +3937,84 @@ function attachSwitchHandler(refs, item) {
 
 // ---- Halloween-Effekte ---------------------------------------------------------
 // Aktiv: Modus 2 (immer) oder Modus 0 (automatisch) vom 24.10. bis 01.11.; Modus 1 = aus.
-let SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_AUDIO = null;
+let SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
 function halloweenActive() {
   if (SEASONAL_MODE === 2) { return true; }
   if (SEASONAL_MODE === 1) { return false; }
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
   return (m === 10 && day >= 24) || (m === 11 && day === 1);
 }
-const HW_BAT = '<svg viewBox="0 0 56 34"><path d="M28 18C24 10 14 6 2 10c6 2 6 8 10 12 4-2 8 0 12 4l4-6 4 6c4-4 8-6 12-4 4-4 4-10 10-12C42 6 32 10 28 18z"/></svg>';
-const HW_SPIDER = '<svg viewBox="0 0 40 40"><circle cx="20" cy="24" r="8"/><circle cx="20" cy="14" r="5"/>' +
-  '<g stroke="#15121a" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M13 20L3 12M13 24L2 24M14 28L5 37M27 20L37 12M27 24L38 24M26 28L35 37"/><path d="M15 17L7 6M25 17L33 6"/></g>' +
-  '<circle cx="17.5" cy="13" r="1.4" fill="#ff5a4a"/><circle cx="22.5" cy="13" r="1.4" fill="#ff5a4a"/></svg>';
-const HW_GHOST = '<svg viewBox="0 0 40 52"><path d="M20 2C9 2 4 11 4 22v26l6-5 5 5 5-5 5 5 5-5 6 5V22C36 11 31 2 20 2z"/>' +
-  '<circle cx="14" cy="21" r="3.2" fill="#15121a"/><circle cx="26" cy="21" r="3.2" fill="#15121a"/><ellipse cx="20" cy="31" rx="3.4" ry="4.4" fill="#15121a"/></svg>';
-const HW_PUMPKIN = '<svg viewBox="0 0 60 56"><rect x="27" y="2" width="6" height="10" rx="2" fill="#4a7a2a"/>' +
-  '<ellipse cx="30" cy="34" rx="27" ry="20" fill="#e8741c"/><ellipse cx="18" cy="34" rx="12" ry="19" fill="#f08a2c" opacity=".7"/><ellipse cx="42" cy="34" rx="12" ry="19" fill="#d8641a" opacity=".7"/>' +
-  '<g class="glow" fill="#ffe066"><path d="M16 26l8 4-8 4z"/><path d="M44 26l-8 4 8 4z"/><path d="M18 42q12 10 24 0l-4-3-4 3-4-3-4 3-4-3z"/></g></svg>';
+// Fledermaus: Koerper mit Ohren und glühenden Augen, zwei Fluegel schlagen gegeneinander.
+const HW_BAT = '<svg viewBox="0 0 100 50"><path class="wl" d="M46 27C34 10 14 10 1 22c7-1 11 3 13 10 4-4 9-4 13 1 3-4 8-4 12 1z"/>' +
+  '<path class="wr" d="M54 27C66 10 86 10 99 22c-7-1-11 3-13 10-4-4-9-4-13 1-3-4-8-4-12 1z"/>' +
+  '<ellipse class="body" cx="50" cy="30" rx="5" ry="10"/><circle class="body" cx="50" cy="19" r="5"/><path class="body" d="M45.5 17l-1.5-9 6 5zM54.5 17l1.5-9-6 5z"/>' +
+  '<circle class="eye" cx="48" cy="19" r="1.2"/><circle class="eye" cx="52" cy="19" r="1.2"/></svg>';
+// Spinne: dicker Hinterleib mit Sanduhr-Zeichnung, acht gekruemmte Beine, rote Augen.
+const HW_SPIDER = '<svg viewBox="0 0 60 60"><g class="legs" stroke="#15101a" stroke-width="2.2" fill="none" stroke-linecap="round">' +
+  '<path d="M26 22C16 12 8 14 3 26M26 25C14 22 6 28 3 40M26 28C16 32 10 40 8 54M27 30C22 38 20 46 21 57"/>' +
+  '<path d="M34 22C44 12 52 14 57 26M34 25C46 22 54 28 57 40M34 28C44 32 50 40 52 54M33 30C38 38 40 46 39 57"/></g>' +
+  '<ellipse cx="30" cy="40" rx="11" ry="14" fill="#16111c"/><circle cx="30" cy="23" r="7" fill="#1b1522"/>' +
+  '<path d="M26 36h8l-3 4 3 4h-8l3-4z" fill="#c4281d"/>' +
+  '<g fill="#ff3b2a"><circle cx="27" cy="21" r="1.5"/><circle cx="33" cy="21" r="1.5"/><circle cx="25.5" cy="24" r=".9"/><circle cx="34.5" cy="24" r=".9"/></g></svg>';
+// Geist: flatternde Gestalt mit Armen, ausgehoelten Augen und heulendem Mund.
+const HW_GHOST = '<svg viewBox="0 0 60 90"><path fill="rgba(235,242,255,.86)" d="M30 3C16 3 9 14 9 28c0 10-4 14-8 22 6 0 8 3 9 8-2 6-5 10-7 16 6-2 9 1 11 6 4-3 8-3 10 2 3-5 7-5 11-2 3-6 9-7 14-4-3-7-5-11-6-16 2-6 6-8 12-8-4-8-7-14-7-22C51 14 44 3 30 3z"/>' +
+  '<ellipse cx="22" cy="28" rx="4" ry="6.5" fill="#12101a"/><ellipse cx="38" cy="28" rx="4" ry="6.5" fill="#12101a"/>' +
+  '<ellipse cx="30" cy="45" rx="5" ry="9" fill="#12101a"/><circle cx="22" cy="29" r="1.3" fill="#9fe3ff"/><circle cx="38" cy="29" r="1.3" fill="#9fe3ff"/></svg>';
+const HW_PUMPKIN = '<svg viewBox="0 0 60 56"><path d="M29 12c0-5 2-9 6-10" stroke="#3f6a24" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="26" y="9" width="7" height="8" rx="2" fill="#4a7a2a"/>' +
+  '<ellipse cx="30" cy="35" rx="27" ry="20" fill="#d9661a"/><ellipse cx="17" cy="35" rx="11" ry="19" fill="#e9761e"/><ellipse cx="43" cy="35" rx="11" ry="19" fill="#cc5a14"/><ellipse cx="30" cy="35" rx="9" ry="20" fill="#f08a2c"/>' +
+  '<g class="glow" fill="#ffe066"><path d="M15 27l9 3-6 5z"/><path d="M45 27l-9 3 6 5z"/><path d="M30 34l-3 5h6z"/><path d="M14 43q16 12 32 0l-5-3-4 4-4-4-4 4-4-4-5 4z"/></g></svg>';
+const HW_EYES = '<svg viewBox="0 0 40 16"><g fill="#ffe14a" style="filter:drop-shadow(0 0 3px #ff9a1a)"><ellipse cx="11" cy="8" rx="5" ry="3" transform="rotate(-12 11 8)"/><ellipse cx="29" cy="8" rx="5" ry="3" transform="rotate(12 29 8)"/></g>' +
+  '<g fill="#1a0a00"><ellipse cx="11.5" cy="8" rx="1.1" ry="2.4"/><ellipse cx="28.5" cy="8" rx="1.1" ry="2.4"/></g></svg>';
+const HW_WEB = '<svg viewBox="0 0 100 100"><path d="M0 0L100 0M0 0L0 100M0 0L82 36M0 0L36 82M0 0L96 12M0 0L12 96"/><path d="M22 0Q18 14 0 22M44 0Q38 28 0 44M68 0Q58 42 0 68M90 0Q76 56 0 90"/></svg>';
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
-  const bats = [[16, 1.0, 22, 0], [28, .8, 27, 7], [9, .9, 31, 13], [38, 1.15, 24, 4], [22, .7, 36, 19]]
+  // [oben %, Groesse, Dauer s, Verzoegerung s]; die erste Fledermaus kreuzt den Mond.
+  const bats = [[7, .9, 19, 0], [24, 1.0, 24, 6], [14, .75, 29, 12], [40, 1.2, 22, 3], [30, .7, 34, 17]]
     .map(b => '<div class="hw-bat" style="--y:' + b[0] + '%;--s:' + b[1] + ';--d:' + b[2] + 's;--delay:' + b[3] + 's">' + HW_BAT + '</div>').join('');
-  el.innerHTML = '<div class="hw-moon"></div><div class="hw-fog"></div><div class="hw-fog f2"></div>' + bats +
-    '<div class="hw-spider" style="--x:14%">' + HW_SPIDER + '</div><div class="hw-ghost">' + HW_GHOST + '</div><div class="hw-pumpkin">' + HW_PUMPKIN + '</div>';
-  el.classList.add('on'); HW_BUILT = true;
+  const eyes = [['8%', '66%', '2s'], ['86%', '40%', '8s'], ['72%', '84%', '12s']]
+    .map(e => '<div class="hw-eyes" style="left:' + e[0] + ';top:' + e[1] + ';--delay:' + e[2] + '">' + HW_EYES + '</div>').join('');
+  el.innerHTML = '<div class="hw-vig"></div><div class="hw-moon"></div><div class="hw-fog"></div><div class="hw-fog f2"></div><div class="hw-fog f3"></div>' +
+    '<div class="hw-web tl">' + HW_WEB + '</div><div class="hw-web tr">' + HW_WEB + '</div>' + eyes + bats +
+    '<div class="hw-bat big" style="--s:1;--d:47s;--delay:9s">' + HW_BAT + '</div>' +
+    '<div class="hw-spider" style="--x:14%">' + HW_SPIDER + '</div><div class="hw-ghost">' + HW_GHOST + '</div><div class="hw-pumpkin">' + HW_PUMPKIN + '</div>' +
+    '<div class="hw-flash"></div>';
+  el.classList.add('on'); HW_BUILT = true; hwSoundHint();
 }
 function removeHalloween() {
   const el = document.getElementById('halloween'); if (!el) { return; }
   el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false;
+  if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
 }
-// Gruselgeraeusche: rein synthetisch (Web Audio, keine Dateien), leise, selten. Browser
-// geben Ton erst nach einer Bedienung frei -> beim ersten Klick/Tipp auf die Kachel entsperren.
+// Gruselgeraeusche: rein synthetisch (Web Audio, keine Dateien). Browser/WebViews geben Ton erst
+// nach einer Bedienung frei -> solange der Ton noch nicht entsperrt ist, steht ein kleiner Hinweis
+// "Ton: antippen" in der Kachel; der erste Tipp entsperrt und spielt sofort eine Hoerprobe.
 function hwAudio() {
   if (HW_AUDIO) { return HW_AUDIO; }
   try { const C = window.AudioContext || window.webkitAudioContext; if (C) { HW_AUDIO = new C(); } } catch (e) { HW_AUDIO = null; }
   return HW_AUDIO;
 }
-function hwUnlock() { const a = hwAudio(); if (a && a.state === 'suspended') { a.resume().catch(() => {}); } }
+function hwUnlock() {
+  if (!SEASONAL_SOUND || !HW_BUILT) { return; }
+  const a = hwAudio(); if (!a) { return; }
+  const done = () => {
+    const h = document.querySelector('#halloween .hw-sound'); if (h) { h.remove(); }
+    if (HW_FIRST_SOUND) { HW_FIRST_SOUND = false; hwPlay('wuuh'); hwScheduleSound(true); }
+  };
+  if (a.state === 'running') { done(); } else { a.resume().then(done).catch(() => {}); }
+}
+function hwSoundHint() {
+  const el = document.getElementById('halloween'); if (!el || !SEASONAL_SOUND) { return; }
+  const a = hwAudio();
+  if (a && a.state === 'running') {
+    // Umgebung erlaubt Ton ohne Bedienung (z. B. App/Desktop): Hoerprobe nach kurzer Zeit, dann im Takt
+    if (HW_FIRST_SOUND) { HW_FIRST_SOUND = false; setTimeout(() => hwPlay('wuuh'), 3000); hwScheduleSound(true); }
+    return;
+  }
+  if (el.querySelector('.hw-sound')) { return; }
+  const b = document.createElement('div'); b.className = 'hw-sound'; b.textContent = '🔈 Ton: antippen';
+  b.addEventListener('pointerdown', e => { e.stopPropagation(); hwUnlock(); }, { passive: true });
+  el.appendChild(b);
+}
 function hwNoise(a, secs) {
   const n = Math.floor(a.sampleRate * secs), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
   for (let i = 0; i < n; i++) { d[i] = Math.random() * 2 - 1; }
@@ -3954,38 +4024,57 @@ function hwPlay(kind) {
   const a = hwAudio(); if (!a || a.state !== 'running') { return; }
   const t = a.currentTime, g = a.createGain(); g.connect(a.destination); g.gain.value = 0;
   const env = (peak, att, dur) => { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + att); g.gain.exponentialRampToValueAtTime(0.0008, t + dur); };
-  if (kind === 'wuuh') {                       // Geisterheulen: Sinus mit Vibrato und fallender Tonhoehe
+  if (kind === 'wuuh') {                       // Geisterheulen: Sinus mit Vibrato, faellt in der Tonhoehe, dazu hauchendes Rauschen
     const o = a.createOscillator(), l = a.createOscillator(), lg = a.createGain();
-    o.type = 'sine'; o.frequency.setValueAtTime(330, t); o.frequency.exponentialRampToValueAtTime(170, t + 1.9);
-    l.frequency.value = 5.5; lg.gain.value = 9; l.connect(lg); lg.connect(o.frequency);
-    o.connect(g); env(0.07, 0.5, 2.0); o.start(t); l.start(t); o.stop(t + 2.1); l.stop(t + 2.1);
-  } else if (kind === 'creak') {               // knarzende Tuer: Saege mit schnellem Tremolo
+    o.type = 'sine'; o.frequency.setValueAtTime(380, t); o.frequency.exponentialRampToValueAtTime(150, t + 2.4);
+    l.frequency.value = 5.2; lg.gain.value = 14; l.connect(lg); lg.connect(o.frequency);
+    o.connect(g); env(0.2, 0.7, 2.6); o.start(t); l.start(t); o.stop(t + 2.7); l.stop(t + 2.7);
+    const n = hwNoise(a, 2.6), f = a.createBiquadFilter(), ng = a.createGain(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 2;
+    ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(0.05, t + 0.8); ng.gain.exponentialRampToValueAtTime(0.0008, t + 2.6);
+    n.connect(f); f.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + 2.6);
+  } else if (kind === 'creak') {               // knarzende Tuer: Saege, langsam fallend, mit schnellem Tremolo
     const o = a.createOscillator(), f = a.createBiquadFilter(), l = a.createOscillator(), lg = a.createGain();
-    o.type = 'sawtooth'; o.frequency.setValueAtTime(95, t); o.frequency.linearRampToValueAtTime(58, t + 1.1);
-    f.type = 'bandpass'; f.frequency.value = 520; f.Q.value = 4;
-    l.frequency.value = 19; lg.gain.value = 22; l.connect(lg); lg.connect(o.frequency);
-    o.connect(f); f.connect(g); env(0.05, 0.15, 1.2); o.start(t); l.start(t); o.stop(t + 1.3); l.stop(t + 1.3);
-  } else if (kind === 'squeak') {              // Fledermaus: zwei kurze hohe Zirper
-    [0, 0.18].forEach(off => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine';
-      o.frequency.setValueAtTime(3000, t + off); o.frequency.exponentialRampToValueAtTime(5200, t + off + 0.09);
-      gg.gain.setValueAtTime(0, t + off); gg.gain.linearRampToValueAtTime(0.025, t + off + 0.01); gg.gain.exponentialRampToValueAtTime(0.0008, t + off + 0.1);
-      o.connect(gg); gg.connect(a.destination); o.start(t + off); o.stop(t + off + 0.12); });
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(110, t); o.frequency.linearRampToValueAtTime(52, t + 1.5);
+    f.type = 'bandpass'; f.frequency.value = 560; f.Q.value = 5;
+    l.frequency.value = 17; lg.gain.value = 26; l.connect(lg); lg.connect(o.frequency);
+    o.connect(f); f.connect(g); env(0.16, 0.2, 1.6); o.start(t); l.start(t); o.stop(t + 1.7); l.stop(t + 1.7);
+  } else if (kind === 'squeak') {              // Fledermaus: mehrere hohe Zirper
+    [0, 0.16, 0.36].forEach(off => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(3200, t + off); o.frequency.exponentialRampToValueAtTime(5600, t + off + 0.09);
+      gg.gain.setValueAtTime(0, t + off); gg.gain.linearRampToValueAtTime(0.1, t + off + 0.01); gg.gain.exponentialRampToValueAtTime(0.0008, t + off + 0.11);
+      o.connect(gg); gg.connect(a.destination); o.start(t + off); o.stop(t + off + 0.13); });
+  } else if (kind === 'bell') {                // dumpfer Glockenschlag
+    [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
+      gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);
+      o.connect(gg); gg.connect(a.destination); o.start(t); o.stop(t + 3.3); });
   } else {                                      // fernes Grollen
-    const n = hwNoise(a, 2.4), f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 140;
-    n.connect(f); f.connect(g); env(0.12, 0.35, 2.3); n.start(t); n.stop(t + 2.4);
+    const n = hwNoise(a, 2.8), f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 150;
+    n.connect(f); f.connect(g); env(0.5, 0.4, 2.7); n.start(t); n.stop(t + 2.8);
   }
 }
-function hwScheduleSound() {
+function hwScheduleSound(soon) {
   if (HW_SOUND_TIMER) { clearTimeout(HW_SOUND_TIMER); HW_SOUND_TIMER = null; }
   if (!HW_BUILT || !SEASONAL_SOUND) { return; }
   HW_SOUND_TIMER = setTimeout(() => {
-    hwPlay(['wuuh', 'creak', 'squeak', 'rumble'][Math.floor(Math.random() * 4)]);
-    hwScheduleSound();
-  }, 25000 + Math.random() * 45000);
+    hwPlay(['wuuh', 'creak', 'squeak', 'bell', 'rumble'][Math.floor(Math.random() * 5)]);
+    hwScheduleSound(false);
+  }, soon ? 8000 : 14000 + Math.random() * 26000);
+}
+// Blitz: kurzes Doppelflackern der ganzen Kachel, mit Grollen kurz danach (wenn Ton an und entsperrt).
+function hwScheduleZap() {
+  if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
+  if (!HW_BUILT) { return; }
+  HW_ZAP_TIMER = setTimeout(() => {
+    const f = document.querySelector('#halloween .hw-flash');
+    if (f) { f.classList.remove('zap'); void f.offsetWidth; f.classList.add('zap'); if (SEASONAL_SOUND) { setTimeout(() => hwPlay('rumble'), 700); } }
+    hwScheduleZap();
+  }, 35000 + Math.random() * 55000);
 }
 function applySeasonal() {
   if (halloweenActive()) { buildHalloween(); } else { removeHalloween(); }
-  hwScheduleSound();
+  if (!SEASONAL_SOUND) { const h = document.querySelector('#halloween .hw-sound'); if (h) { h.remove(); } } else { hwSoundHint(); }
+  hwScheduleSound(false);
+  hwScheduleZap();
 }
 document.addEventListener('pointerdown', hwUnlock, { passive: true });
 

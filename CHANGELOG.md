@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.2 (2026-10-16)
+
+- Halloween gruseliger: Fledermäuse mit schlagenden Flügeln und roten Augen (eine große stößt zu), Spinne mit Sanduhr-Zeichnung und ruckartigem Abseilen, Geist mit hohlen Augen, Mond mit Kratern, Spinnweben, Augenpaare im Dunkeln, Blitz, Randabdunklung. Ton: Hinweis "Ton: antippen" bis entsperrt, sofortige Hörprobe, Takt 14 bis 40 s, lauter, dazu Glockenschlag und Grollen nach Blitz.
+
 ## 0.9.170-beta.1 (2026-10-16)
 
 - Neu: Halloween-Effekte (24.10. bis 01.11. automatisch): Fledermäuse, Spinne, Geist, Mond, Nebel, flackernder Kürbis; Doppelpfeil "Saison-Effekte" (automatisch/aus/immer an) und "Gruselgeräusche" (synthetisch, standardmäßig aus). Bewegung reduzieren im Betriebssystem stoppt die Animationen.
