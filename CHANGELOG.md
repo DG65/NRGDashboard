@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.10 (2026-10-16)
+
+- Halloween: Fehlerbehebung - beim Einbau der Jagd ging die Vampir-Zeichenfunktion verloren; sobald der Vampir erschien, brach die Szene ab (Nebel, Figuren, Countdown und Tabelle fehlten). Außerdem fängt die Szene Zeichenfehler jetzt ab, statt stehenzubleiben.
+
 ## 0.9.170-beta.9 (2026-10-16)
 
 - Halloween-Jagd dauert jetzt 1 Minute. Am Ende steht eine Bestenliste (Top 8 mit Datum, eigener Platz markiert) bis zum Antippen; darüber hinaus zeigt die Kachel dauerhaft „Letzte Runde / Rekord“. Die Liste wird im Browser gespeichert.
