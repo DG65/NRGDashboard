@@ -4022,7 +4022,7 @@ function hwBolt(x0, y0, x1, y1, d, out, depth) {
   if (depth < 2 && Math.random() < .14) { hwBolt(mx, my, mx + (Math.random() - .3) * d * 2.2, my + d * 2.4 + Math.random() * d, d / 2, out, depth + 1); }
 }
 function hwInitState() {
-  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, hits: [], pops: [], sparks: [], age: 0, game: { st: 0, t: 0, score: 0, best: hwBest(), newBest: false }, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } };
+  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, hits: [], pops: [], sparks: [], age: 0, game: { st: 0, t: 0, score: 0, last: 0, best: hwBest(), newBest: false, rank: -1, list: hwScores() }, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } };
   for (let i = 0; i < 7; i++) { S.bats.push({ x: R(), y: .08 + R() * .42, sp: .018 + R() * .022, ph: R() * 7, s: .55 + R() * .6, dir: R() < .5 ? 1 : -1, wob: R() * 7, fs: 9 + R() * 4 }); }
   for (let i = 0; i < 16; i++) { S.leaves.push({ x: R(), y: R(), vy: .03 + R() * .03, ph: R() * 7, sp: 1.5 + R() * 2.5, c: ['#8a4b14', '#b5651d', '#6e3a10', '#9a5a1a', '#c27a22', '#7a4012'][i % 6], s: .7 + R() * .8 }); }
   for (let i = 0; i < 3; i++) { S.eyes.push({ x: .06 + R() * .88, y: .52 + R() * .4, t: -R() * 14, life: 4 + R() * 3, blink: 1 + R() * 2, c: R() < .5 ? 0 : 1 }); }
@@ -4165,10 +4165,12 @@ function hwBatClick(ev) {                           // Klick auf eine Figur: get
   const S = HW.st, cv = HW.cv; if (!S || !cv || !HW_BUILT) { return; }
   const r = cv.getBoundingClientRect(), kx = HW.w / (r.width || HW.w), ky = HW.h / (r.height || HW.h), x = (ev.clientX - r.left) * kx, y = (ev.clientY - r.top) * ky; let best = null, bd = 1;
   S.hits.forEach(h => { const d = Math.hypot(x - h.x, (y - h.y) * (h.sq || 1)) / h.r; if (d < bd) { bd = d; best = h; } });
+  if (S.game.st === 2) { if (S.game.t > 1.2) { S.game.st = 0; } return; }
   if (best) { hwHit(best); }
 }
+function hwScores() { try { const a = JSON.parse(localStorage.getItem('nrgHwScores') || '[]'); return Array.isArray(a) ? a.filter(x => x && x.s > 0).slice(0, 10) : []; } catch (e) { return []; } }
 function hwBest() { try { return parseInt(localStorage.getItem('nrgHwBest') || '0', 10) || 0; } catch (e) { return 0; } }
-const HW_ROUND = 15;                                       // Sekunden je Jagd
+const HW_ROUND = 60;                                       // Sekunden je Jagd
 function hwHit(h) {                                        // Figur getroffen: Punkte, Funken, Anzeige; die erste Figur startet die Jagd
   const S = HW.st, G = S.game, u = HW.u; if (G.st !== 1) { G.st = 1; G.t = 0; G.score = 0; G.newBest = false; S.spider.hide = 0; S.swoop.next = Math.min(S.swoop.next, 2); S.ghost.next = Math.min(S.ghost.next, 3); S.vamp.next = Math.min(S.vamp.next, 4); S.pump.next = Math.min(S.pump.next, 6); }
   G.score += h.pts; h.kill();
@@ -4181,14 +4183,23 @@ function hwFx(g, S, dt, u, w, h) {                         // Funken, Punkte-Ein
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(22 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round';
   S.pops = S.pops.filter(p => { p.age += dt; if (p.age > 1.1) { return false; } const a = 1 - p.age / 1.1; g.globalAlpha = a; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(20,6,0,.8)'; g.fillStyle = '#ffd35a'; const y = p.y - p.age * 50 * u; g.strokeText(p.txt, p.x, y); g.fillText(p.txt, p.x, y); g.globalAlpha = 1; return true; });
   const G = S.game; S.age += dt;
-  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; if (G.score > G.best) { G.best = G.score; G.newBest = true; try { localStorage.setItem('nrgHwBest', String(G.best)); } catch (e) { } } } }
-  else if (G.st === 2) { G.t += dt; if (G.t > 7) { G.st = 0; } }
+  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
+      G.list = G.list.concat([e]).sort((a, b) => b.s - a.s).slice(0, 10); G.rank = G.score > 0 ? G.list.indexOf(e) : -1; try { localStorage.setItem('nrgHwBest', String(G.best)); localStorage.setItem('nrgHwScores', JSON.stringify(G.list)); } catch (x) { } } }
+  else if (G.st === 2) { G.t += dt; if (G.t > 40) { G.st = 0; } }
+  if (G.st === 1) { S.swoop.next = Math.min(S.swoop.next, 14); S.ghost.next = Math.min(S.ghost.next, 12); S.vamp.next = Math.min(S.vamp.next, 12); S.pump.next = Math.min(S.pump.next, 16); }
   const txt = (t2, x, y, sz, col) => { g.font = '800 ' + Math.round(sz * u) + 'px system-ui, sans-serif'; g.lineWidth = Math.max(3, sz * u * .18); g.strokeStyle = 'rgba(10,4,16,.85)'; g.fillStyle = col; g.strokeText(t2, x, y); g.fillText(t2, x, y); };
   if (G.st === 1) { const left = Math.max(0, HW_ROUND - G.t), bw = Math.min(w * .5, 260 * u), bx = w / 2 - bw / 2, by = 46 * u, hot = left < 5;
     txt('⏱ ' + Math.ceil(left) + ' s    ★ ' + G.score, w / 2, 24 * u, 22, hot ? '#ff6a5a' : '#ffd35a');
     g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(bx, by, bw, 5 * u); g.fillStyle = hot ? '#ff4a3a' : '#ffb13a'; g.fillRect(bx, by, bw * left / HW_ROUND, 5 * u); }
-  else if (G.st === 2) { txt('Zeit um!', w / 2, h * .36, 40, '#ff8a3a'); txt(G.score + ' Punkte', w / 2, h * .36 + 46 * u, 30, '#ffd35a'); txt(G.newBest ? 'Neuer Rekord!' : 'Rekord: ' + G.best, w / 2, h * .36 + 84 * u, 20, G.newBest ? '#8aff7a' : '#cfc8e8'); }
-  else if (S.age < 30) { g.globalAlpha = Math.min(1, S.age / 2, (30 - S.age) / 2) * .8; txt('Tippe eine Figur an – 15 Sekunden Jagd!', w / 2, 24 * u, 17, '#ffd9a0'); g.globalAlpha = 1; }
+  else if (G.st === 2) { const pw = Math.min(w * .8, 320 * u), ph = (150 + Math.min(8, G.list.length) * 26) * u, px0 = w / 2 - pw / 2, py0 = Math.max(10 * u, h * .5 - ph / 2);
+    g.fillStyle = 'rgba(12,6,20,.82)'; g.strokeStyle = 'rgba(255,170,60,.6)'; g.lineWidth = 2 * u; g.beginPath(); if (g.roundRect) { g.roundRect(px0, py0, pw, ph, 14 * u); } else { g.rect(px0, py0, pw, ph); } g.fill(); g.stroke();
+    txt('Zeit um!', w / 2, py0 + 26 * u, 28, '#ff8a3a'); txt(G.last + ' Punkte' + (G.newBest ? ' – Rekord!' : ''), w / 2, py0 + 62 * u, 22, G.newBest ? '#8aff7a' : '#ffd35a');
+    txt('Bestenliste', w / 2, py0 + 96 * u, 15, '#cfc8e8');
+    G.list.slice(0, 8).forEach((e, i) => { const y = py0 + (122 + i * 26) * u, me = i === G.rank; g.font = '700 ' + Math.round(17 * u) + 'px system-ui, sans-serif'; g.textAlign = 'left'; g.fillStyle = me ? '#8aff7a' : '#e8e2f6'; g.fillText((i + 1) + '.', px0 + 24 * u, y); g.textAlign = 'center'; g.fillText(String(e.s), w / 2, y); g.textAlign = 'right'; g.fillStyle = me ? '#8aff7a' : '#9c94b4'; g.fillText(e.d || '', px0 + pw - 24 * u, y); });
+    g.textAlign = 'center'; if (G.rank > 7) { txt('Dein Platz: ' + (G.rank + 1), w / 2, py0 + ph - 38 * u, 14, '#8aff7a'); }
+    g.globalAlpha = .7; txt('Antippen zum Schließen', w / 2, py0 + ph - 14 * u, 12, '#cfc8e8'); g.globalAlpha = 1; }
+  else if (S.age < 30) { g.globalAlpha = Math.min(1, S.age / 2, (30 - S.age) / 2) * .8; txt('Tippe eine Figur an – 1 Minute Jagd!', w / 2, 24 * u, 17, '#ffd9a0'); g.globalAlpha = 1; }
+  else if (G.best > 0) { g.globalAlpha = .8; txt('Letzte Runde: ' + G.last + '  ·  Rekord: ' + G.best, w / 2, 22 * u, 15, '#ffd9a0'); g.globalAlpha = 1; }
 }
 function hwLightning() {
   if (!HW.st) { return; }
