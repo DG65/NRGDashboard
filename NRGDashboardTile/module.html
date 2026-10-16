@@ -4070,13 +4070,11 @@ function hwDraw(t, dt) {
     g.restore();
     g.fillStyle = 'rgba(14,10,10,' + (.9 * mound).toFixed(2) + ')'; g.beginPath(); g.ellipse(vx, gy + 2 * u, 44 * u * mound, (7 + (T < 3 ? Math.sin(T * 30) * 1.5 : 0)) * u * mound, 0, 0, 7); g.fill(); } }
   // Nebel, hinten
-  // Nebel wabert: Streifen mit wanderndem Hoehenversatz, atmender Deckkraft und Dichteschwaden
-  const fog = (i, speed, alpha, scale) => { const tex = P.fog[i], fw = tex.width * scale, fh = h * (.3 - i * .06), off = (t * speed * u) % fw, SW = 10, dir = i === 1 ? -1 : 1, ph = i * 2.3;
-    const breath = .78 + .22 * Math.sin(t * .35 + ph);
-    for (let sx = 0; sx < w; sx += SW) { const tx = (((sx + off) % fw) + fw) % fw, srcW = Math.min(SW / scale, tex.width - tx / scale);
-      const dy = Math.sin(sx * .011 + t * .5 * dir + ph) * fh * .08 + Math.sin(sx * .027 - t * .31 + ph) * fh * .05 + Math.sin(t * .23 + ph) * fh * .04;
-      const dens = .72 + .28 * Math.sin(sx * .006 + t * .17 * dir + ph * 1.7) * Math.sin(sx * .0143 - t * .11 + ph);
-      g.globalAlpha = Math.max(0, alpha * breath * dens * (1 + flash * .5)); g.drawImage(tex, tx / scale, 0, Math.max(1, srcW), tex.height, sx, h - fh * .95 + dy, SW + 1, fh * (1 + .06 * Math.sin(t * .4 + ph + sx * .004))); }
+  // Nebel wabert: je Schicht zwei ueberlagerte, gegenlaeufige Schwaden mit langsam atmender Hoehe und Deckkraft (keine Streifen)
+  const fog = (i, speed, alpha, scale) => { const tex = P.fog[i], fw = tex.width * scale, fh = h * (.3 - i * .06), ph = i * 2.3, breath = .8 + .2 * Math.sin(t * .35 + ph);
+    for (let c = 0; c < 2; c++) { const sp = c ? -speed * .55 : speed, off = (((t * sp * u + c * fw * .37) % fw) + fw) % fw, dy = Math.sin(t * .27 + ph + c * 2.6) * fh * .07, hs = 1 + .1 * Math.sin(t * .21 + ph + c * 1.9), dens = .8 + .2 * Math.sin(t * .17 + c * 2.2 + ph);
+      g.globalAlpha = Math.max(0, alpha * .62 * breath * dens * (1 + flash * .5));
+      for (let x = -off; x < w; x += fw) { g.drawImage(tex, x, h - fh * .95 * hs + dy, fw, fh * hs); } }
     g.globalAlpha = 1; };
   fog(0, 7, .55, 1.4);
   // Augenpaare im Dunkeln

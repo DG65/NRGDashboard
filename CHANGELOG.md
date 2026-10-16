@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.7 (2026-10-16)
+
+- Halloween: der wabernde Nebel hat keine Streifenstruktur mehr; zwei weiche, gegenläufige Schwaden je Schicht.
+
 ## 0.9.170-beta.6 (2026-10-16)
 
 - Halloween: ab und zu steigt ein Vampir aus einem Grab, breitet den Umhang aus und versinkt wieder; der Geist hat keine Stangenarme mehr.
