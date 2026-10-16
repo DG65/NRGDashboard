@@ -174,7 +174,7 @@ class NRGDashboardTile extends IPSModule
         '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
         ],
         '0.9.170' => [
-        '🎃 Neu: Saison-Effekte zu Halloween - vom 24.10. bis 01.11. fliegen Fledermäuse über die Kachel, eine Spinne seilt sich ab, ein Geist schwebt vorbei, ein Mond leuchtet, Spinnweben hängen in den Ecken, ab und zu blitzt es und Nebel zieht auf. Im WebFront über den Doppelpfeil abschaltbar oder dauerhaft einschaltbar; auf Wunsch auch mit Gruselgeräuschen (aus, bis sie eingeschaltet werden - der Browser spielt Ton erst nach dem ersten Tipp auf die Kachel, bis dahin steht der Hinweis "Ton: antippen" in der Ecke). Der Hintergrund wird dunkel, der Nebel wabert, der Kürbis verwandelt sich ab und zu in ein Monster, eine angeklickte Fledermaus stürzt ab, ab und zu steigt ein Vampir aus einem Grab, und alle Figuren sind antippbar: die erste Figur startet eine Punktejagd von 1 Minute mit Countdown und Bestenliste. Bei "Bewegung reduzieren" im Betriebssystem stehen die Effekte still.',
+        '🎃 Neu: Saison-Effekte zu Halloween - vom 24.10. bis 01.11. fliegen Fledermäuse über die Kachel, eine Spinne seilt sich ab, ein Geist schwebt vorbei, ein Mond leuchtet, Spinnweben hängen in den Ecken, ab und zu blitzt es und Nebel zieht auf. Im WebFront über den Doppelpfeil abschaltbar oder dauerhaft einschaltbar; auf Wunsch auch mit Gruselgeräuschen (aus, bis sie eingeschaltet werden - der Browser spielt Ton erst nach dem ersten Tipp auf die Kachel, bis dahin steht der Hinweis "Ton: antippen" in der Ecke). Der Hintergrund wird dunkel, der Nebel wabert, der Kürbis verwandelt sich ab und zu in ein Monster, eine angeklickte Fledermaus stürzt ab, ab und zu steigt ein Vampir aus einem Grab, und alle Figuren sind antippbar: die erste Figur startet eine Punktejagd von 1 Minute mit Countdown, Kombo, Boss und Bestenliste; Regen und Gewitterwolken sorgen für Atmosphäre, und ein eigener Schalter legt den Nachthimmel-Hintergrund fest (mit den Effekten, nie, immer). Bei "Bewegung reduzieren" im Betriebssystem stehen die Effekte still.',
         ],
         '0.9.169' => [
         'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
@@ -401,12 +401,17 @@ class NRGDashboardTile extends IPSModule
             0 => 'Automatisch (Halloween 24.10. bis 01.11.)', 1 => 'Aus', 2 => 'Immer an (zum Ausprobieren)',
         ]);
         $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => 'Aus', 1 => 'Gruselgeräusche an'] );
+        $this->ensureEnumProfile('NRGDASH.SeasonalBg', [0 => 'Dunkel mit den Effekten', 1 => 'Immer Standard', 2 => 'Immer dunkel (Nachthimmel)']);
         $isNewSeasonal = @IPS_GetObjectIDByIdent('Seasonal', $this->InstanceID) === false;
         $this->RegisterVariableInteger('Seasonal', 'Saison-Effekte (Halloween)', 'NRGDASH.Seasonal', 209);
         $this->EnableAction('Seasonal');
         $isNewSeasonalSound = @IPS_GetObjectIDByIdent('SeasonalSound', $this->InstanceID) === false;
         $this->RegisterVariableInteger('SeasonalSound', 'Saison-Effekte: Gruselgeräusche', 'NRGDASH.SeasonalSound', 210);
         $this->EnableAction('SeasonalSound');
+        $isNewSeasonalBg = @IPS_GetObjectIDByIdent('SeasonalBg', $this->InstanceID) === false;
+        $this->RegisterVariableInteger('SeasonalBg', 'Saison-Effekte: Hintergrund', 'NRGDASH.SeasonalBg', 211);
+        $this->EnableAction('SeasonalBg');
+        if ($isNewSeasonalBg) { $this->SetValue('SeasonalBg', 0); }
         if ($isNewSeasonal) { $this->SetValue('Seasonal', 0); }
         if ($isNewSeasonalSound) { $this->SetValue('SeasonalSound', 0); }
         // Manuelle Konfiguration (Dietmar, 27.07.2026: volle Parität zu
@@ -584,6 +589,7 @@ class NRGDashboardTile extends IPSModule
         $this->SetValue('BlockedAnimStyle', 0);
         $this->SetValue('Seasonal', 0);
         $this->SetValue('SeasonalSound', 0);
+        $this->SetValue('SeasonalBg', 0);
         $this->Render();
     }
 
@@ -646,8 +652,8 @@ class NRGDashboardTile extends IPSModule
             $this->Render();
             return;
         }
-        if ($Ident === 'Seasonal' || $Ident === 'SeasonalSound') {
-            $this->SetValue($Ident, max(0, min($Ident === 'Seasonal' ? 2 : 1, (int) $Value)));
+        if ($Ident === 'Seasonal' || $Ident === 'SeasonalSound' || $Ident === 'SeasonalBg') {
+            $this->SetValue($Ident, max(0, min($Ident === 'SeasonalSound' ? 1 : 2, (int) $Value)));
             $this->Render();
             return;
         }
@@ -2040,6 +2046,7 @@ class NRGDashboardTile extends IPSModule
             // Saison-Effekte (Halloween): 0 automatisch nach Datum, 1 aus, 2 immer; Ton separat
             'seasonal'         => (int) $this->GetValue('Seasonal'),
             'seasonalSound'    => (int) $this->GetValue('SeasonalSound'),
+            'seasonalBg'       => (int) $this->GetValue('SeasonalBg'),
             'blockedAnimStyle' => (int) $this->GetValue('BlockedAnimStyle'),
             // Pfad des eigenen WebHooks - die Kachel oeffnet darueber bei
             // Klick auf einen Geraete-Knoten die bildschirmfuellende
