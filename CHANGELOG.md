@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.8 (2026-10-16)
+
+- Halloween-Jagd: Alle Figuren (Fledermäuse, Spinne, Geist, Krähe, Vampir, Kürbis, Augenpaare) sind antippbar und bringen Punkte (5 bis 60). Die erste getroffene Figur startet eine Jagd von 15 Sekunden mit sichtbarem Countdown und Punktestand; am Ende erscheinen Ergebnis und Rekord (im Browser gemerkt).
+
 ## 0.9.170-beta.7 (2026-10-16)
 
 - Halloween: der wabernde Nebel hat keine Streifenstruktur mehr; zwei weiche, gegenläufige Schwaden je Schicht.
