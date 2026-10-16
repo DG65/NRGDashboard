@@ -760,6 +760,7 @@
     radial-gradient(1px 1px at 47% 24%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 58% 14%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 69% 33%, rgba(235,240,255,.55), transparent),
     radial-gradient(1.4px 1.4px at 78% 8%, rgba(235,240,255,.75), transparent), radial-gradient(1px 1px at 88% 22%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 94% 38%, rgba(235,240,255,.6), transparent),
     radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent), var(--hw-sky, radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%)) !important; }
+  html.hw-night-nye { --hw-sky: radial-gradient(ellipse at 50% 30%, #1d1040 0%, #080515 74%); }
   html.hw-night-xmas { --hw-sky: radial-gradient(ellipse at 50% 30%, #12294d 0%, #060e1f 74%); }
   /* Hintergrund-Ebene der Saison-Szene: UNTER dem Diagramm (wie #ampelWash), damit Knoten mit Energiefluss nie verdeckt werden */
   #halloweenBack { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; display: none; }
@@ -3893,7 +3894,7 @@ function attachSwitchHandler(refs, item) {
 // Aktiv: Modus 2 (immer) oder Modus 0 (automatisch) vom 24.10. bis 01.11.; Modus 1 = aus.
 let HW_THEMES = {}, SEASONAL_BG = 0, HW_RAIN = null, SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
 function hwNight() {
-  const xm = HW_BUILT && HW.theme && HW.theme.id === 'xmas'; document.documentElement.classList.toggle('hw-night-xmas', xm);                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
+  const th = HW_BUILT && HW.theme ? HW.theme.id : ''; document.documentElement.classList.toggle('hw-night-xmas', th === 'xmas'); document.documentElement.classList.toggle('hw-night-nye', th === 'nye');                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
   const on = SEASONAL_BG === 2 || (SEASONAL_BG === 0 && HW_BUILT);
   document.documentElement.classList.toggle('hw-night', on);
 }
@@ -3901,9 +3902,11 @@ function hwThemeNow() {                                    // welches Saison-The
   if (SEASONAL_MODE === 1) { return null; }
   if (SEASONAL_MODE === 2) { return HW_THEMES.halloween; }
   if (SEASONAL_MODE === 3) { return HW_THEMES.xmas; }
+  if (SEASONAL_MODE === 4) { return HW_THEMES.nye; }
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
   if ((m === 10 && day >= 24) || (m === 11 && day === 1)) { return HW_THEMES.halloween; }
   if (m === 12 && day <= 26) { return HW_THEMES.xmas; }
+  if ((m === 12 && day >= 28) || (m === 1 && day === 1)) { return HW_THEMES.nye; }
   return null;
 }
 // ---- Halloween-Szene (Canvas, prozedural) -----------------------------------------
@@ -4461,6 +4464,120 @@ HW_THEMES.xmas = {
   onEnd(S) { S.giftEvery = 3.4; },
   pace(S, p) { const cap = 14 - 10 * p; S.sleigh.next = Math.min(S.sleigh.next, cap * 1.3); S.ginger.next = Math.min(S.ginger.next, cap * .8); S.shoot.next = Math.min(S.shoot.next, cap * .5); S.giftEvery = 2.8 - 1.9 * p; },
 };
+// ---- Jahreswechsel (Thema "nye"): Stadtsilhouette, Feuerwerk, Ballons, Korken, Gluecksschwein, Countdown
+const HW_NYE_COL = ['255,90,90', '255,210,90', '110,200,255', '170,255,140', '255,140,230', '255,255,255', '255,160,60'];
+function hwNyeBurst(S, x, y, u, kind, col) {
+  const R = Math.random, c = col || HW_NYE_COL[Math.floor(R() * HW_NYE_COL.length)], c2 = HW_NYE_COL[Math.floor(R() * HW_NYE_COL.length)];
+  if (S.fw.length > 1400) { return; }
+  const add = (n, sp, life, grav, cc, size, ring) => { for (let i = 0; i < n; i++) { const a = ring ? i / n * 6.283 : R() * 6.283, v = sp * (ring ? 1 : .8 + .2 * R()); S.fw.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: life * (.8 + .4 * R()), g: grav, c: cc, s: size }); } };
+  if (kind === 'ring') { add(72, 190 * u, 1.5, 1, c, 2.8 * u, true); add(30, 100 * u, 1.2, 1, c, 2.2 * u, true); }
+  else if (kind === 'willow') { add(90, 120 * u, 3.4, .6, '255,200,90', 2.4 * u, false); }
+  else if (kind === 'double') { add(100, 200 * u, 1.6, 1, c, 2.8 * u, false); add(54, 95 * u, 1.3, 1, c2, 2.4 * u, true); }
+  else { add(120, 175 * u, 1.6, 1, c, 2.8 * u, false); }
+  S.glows.push({ x, y, c, age: 0 });
+}
+function hwBalloonDraw(g, s, c, t, ph) {                       // Mitte des Ballons bei (0,0)
+  g.strokeStyle = 'rgba(230,230,240,.55)'; g.lineWidth = Math.max(1, s * .05); g.beginPath(); g.moveTo(0, s * 1.15); for (let i = 1; i <= 6; i++) { g.lineTo(Math.sin(t * 3 + ph + i) * s * .12, s * 1.15 + i * s * .28); } g.stroke();
+  const gr = g.createRadialGradient(-s * .3, -s * .4, s * .1, 0, 0, s * 1.2); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.25, c); gr.addColorStop(1, 'rgba(0,0,0,.45)'); g.fillStyle = gr; g.beginPath(); g.ellipse(0, 0, s, s * 1.15, 0, 0, 7); g.fill();
+  g.fillStyle = c; g.beginPath(); g.moveTo(0, s * 1.12); g.lineTo(-s * .12, s * 1.3); g.lineTo(s * .12, s * 1.3); g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.55)'; g.beginPath(); g.ellipse(-s * .38, -s * .45, s * .13, s * .24, .5, 0, 7); g.fill();
+}
+function hwPigDraw(g, k, t) {                                  // Gluecksschwein, Blick nach rechts, Mitte des Koerpers bei (0,0)
+  const run = t * 14; g.lineCap = 'round'; g.strokeStyle = '#ef86a2'; g.lineWidth = k * .26;
+  [-.62, -.34, .34, .62].forEach((x, i) => { const ph = run + i * 1.6; g.beginPath(); g.moveTo(k * x, k * .45); g.lineTo(k * x + Math.sin(ph) * k * .22, k * 1.05 - Math.max(0, Math.cos(ph)) * k * .1); g.stroke(); });
+  const bg = g.createRadialGradient(-k * .2, -k * .3, k * .1, 0, 0, k * 1.1); bg.addColorStop(0, '#ffc2d2'); bg.addColorStop(1, '#ee86a4'); g.fillStyle = bg; g.beginPath(); g.ellipse(0, 0, k, k * .7, 0, 0, 7); g.fill(); g.beginPath(); g.arc(k * 1.0, -k * .08, k * .5, 0, 7); g.fill();
+  g.fillStyle = '#ee86a4'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(k * (.85 + sd * .22), -k * .5); g.lineTo(k * (.9 + sd * .38), -k * .85); g.lineTo(k * (1.05 + sd * .1), -k * .55); g.closePath(); g.fill(); }
+  g.fillStyle = '#e0708f'; g.beginPath(); g.ellipse(k * 1.46, -k * .02, k * .2, k * .17, 0, 0, 7); g.fill(); g.fillStyle = '#7a2a44'; for (const dy of [-.06, .08]) { g.beginPath(); g.arc(k * 1.5, k * dy - k * .02, k * .035, 0, 7); g.fill(); }
+  g.fillStyle = '#2a1018'; g.beginPath(); g.arc(k * 1.16, -k * .22, k * .06, 0, 7); g.fill();
+  g.strokeStyle = '#ee86a4'; g.lineWidth = k * .08; g.beginPath(); g.arc(-k * 1.02, -k * .12, k * .14, 0, 4.7); g.stroke();
+  g.fillStyle = '#3aa05a'; for (let i = 0; i < 4; i++) { const a = i * 1.5708 + .4; g.beginPath(); g.arc(-k * .15 + Math.cos(a) * k * .1, -k * .8 + Math.sin(a) * k * .1, k * .09, 0, 7); g.fill(); }
+}
+function hwNyeBossDraw(g, k, t, hurt, hp) {                    // Wecker-Boss: Mitte bei (0,0)
+  const f = .8 + .2 * Math.sin(t * 9); let gr = g.createRadialGradient(0, 0, k * .4, 0, 0, k * 3); gr.addColorStop(0, 'rgba(255,190,70,' + (.4 * f).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,170,50,0)');
+  g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-k * 3, -k * 3, k * 6, k * 6); g.globalCompositeOperation = 'source-over';
+  const sh = Math.sin(t * 30) * k * .03; g.fillStyle = '#d9a42a'; for (const sd of [-1, 1]) { g.beginPath(); g.arc(sd * k * .78 + sh, -k * 1.0, k * .3, Math.PI, 0); g.fill(); g.fillRect(sd * k * .78 - k * .04, -k * 1.0, k * .08, k * .12); }
+  g.strokeStyle = '#5a3a14'; g.lineWidth = k * .1; g.lineCap = 'round'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .7, k * .85); g.lineTo(sd * k * .95, k * 1.25); g.stroke(); }
+  g.fillStyle = '#d9a42a'; g.beginPath(); g.arc(0, 0, k * 1.1, 0, 7); g.fill(); const fg = g.createRadialGradient(-k * .2, -k * .3, k * .1, 0, 0, k * .95); fg.addColorStop(0, '#fffdf0'); fg.addColorStop(1, '#efe2b8'); g.fillStyle = fg; g.beginPath(); g.arc(0, 0, k * .95, 0, 7); g.fill();
+  g.strokeStyle = '#4a3a1c'; g.lineWidth = k * .05; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; g.beginPath(); g.moveTo(Math.cos(a) * k * .82, Math.sin(a) * k * .82); g.lineTo(Math.cos(a) * k * .93, Math.sin(a) * k * .93); g.stroke(); }
+  g.lineWidth = k * .06; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(t * 3) * k * .6, Math.sin(t * 3) * k * .6); g.moveTo(0, 0); g.lineTo(Math.cos(t * .5) * k * .4, Math.sin(t * .5) * k * .4); g.stroke();
+  g.fillStyle = '#d62b2b'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .52, -k * .4); g.lineTo(sd * k * .12, -k * .22); g.lineTo(sd * k * .45, -k * .12); g.closePath(); g.fill(); }
+  g.strokeStyle = '#1b1b22'; g.lineWidth = k * .06; g.beginPath(); g.moveTo(-k * .35, k * .35); for (let i = 0; i < 7; i++) { g.lineTo(-k * .35 + (i + 1) * k * .1, k * (.35 + (i % 2 ? 0 : .12))); } g.stroke();
+  g.strokeStyle = 'rgba(120,70,20,.9)'; g.lineWidth = Math.max(1.2, k * .035); for (let i = 0; i < 5 - hp; i++) { const a = i * 1.5 + .5; g.beginPath(); g.moveTo(Math.cos(a) * k * .2, Math.sin(a) * k * .2); g.lineTo(Math.cos(a + .2) * k * .6, Math.sin(a + .2) * k * .55); g.lineTo(Math.cos(a - .1) * k * .93, Math.sin(a - .1) * k * .85); g.stroke(); }
+  if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.beginPath(); g.arc(0, 0, k * 1.1, 0, 7); g.fill(); }
+}
+function hwNyeBuild(w, h, u) {
+  const P = {}, R = hwRng(21); P.stars = []; for (let i = 0; i < 110; i++) { P.stars.push({ x: R() * w, y: R() * h * .6, r: (.4 + R() * 1.1) * Math.max(.8, u), ph: R() * 7 }); }
+  const sh = Math.round(h * .46), sc = hwMake(w, sh), g = sc.getContext('2d');
+  [{ col: '#241848', hmin: .2, hmax: .36, bw: [.04, .09], lit: .2 }, { col: '#150f30', hmin: .12, hmax: .3, bw: [.05, .1], lit: .4 }].forEach(L => {
+    let x = -10 * u; while (x < w) { const bw = w * (L.bw[0] + R() * (L.bw[1] - L.bw[0])), bh = h * (L.hmin + R() * (L.hmax - L.hmin)), y = sh - bh; g.fillStyle = L.col; g.fillRect(x, y, bw, bh + 2);
+      if (R() < .25) { g.fillRect(x + bw * .48, y - h * .04, 2 * u, h * .04); }
+      const ww = Math.max(2, 3 * u), step = 7 * u; for (let wy = y + 6 * u; wy < sh - 4 * u; wy += step) { for (let wx = x + 5 * u; wx < x + bw - 6 * u; wx += step) { if (R() < L.lit) { g.fillStyle = R() < .8 ? 'rgba(255,217,138,.85)' : 'rgba(150,210,255,.8)'; g.fillRect(wx, wy, ww, ww * 1.2); } } }
+      x += bw + R() * 8 * u; }
+  });
+  const sg = g.createLinearGradient(0, sh * .7, 0, sh); sg.addColorStop(0, 'rgba(255,170,80,0)'); sg.addColorStop(1, 'rgba(255,170,80,.28)'); g.fillStyle = sg; g.fillRect(0, sh * .7, w, sh * .3);
+  P.sky = sc; P.skyY = h - sh;
+  const mr = 22 * u, mc = hwMake(mr * 2.6, mr * 2.6), mg = mc.getContext('2d'); mg.fillStyle = '#f3efdc'; mg.beginPath(); mg.arc(mr * 1.3, mr * 1.3, mr, 0, 7); mg.fill(); mg.globalCompositeOperation = 'destination-out'; mg.beginPath(); mg.arc(mr * 1.6, mr * 1.1, mr * .9, 0, 7); mg.fill(); P.moon = mc;
+  const vc = hwMake(w, h), vg = vc.getContext('2d'), v = vg.createRadialGradient(w * .5, h * .46, Math.min(w, h) * .3, w * .5, h * .5, Math.max(w, h) * .72); v.addColorStop(0, 'rgba(6,3,16,0)'); v.addColorStop(1, 'rgba(6,3,16,.6)'); vg.fillStyle = v; vg.fillRect(0, 0, w, h); P.vig = vc;
+  return P;
+}
+function hwNyeInit(S) {
+  const R = Math.random; Object.assign(S, { fw: [], glows: [], rockets: [], rocketT: 2, rocketEvery: 4.5, balloons: [], balT: 3, balEvery: 4, cork: null, corkNext: 9 + R() * 8, pig: { t: -1, next: 12 + R() * 8, hide: 0 }, finale: 0, nyeLast: null, sndT: 0, boomT: 0, fwT: 0 });
+}
+function hwNyeDraw(g, t, dt, w, h, u, P, S, gb) {
+  const R = Math.random;
+  // --- Hintergrund: Leuchten der Explosionen, Sterne, Mondsichel, Skyline
+  S.glows = S.glows.filter(o => { o.age += dt; if (o.age > .9) { return false; } const a = .24 * (1 - o.age / .9), gr = gb.createRadialGradient(o.x, o.y, 0, o.x, o.y, 230 * u); gr.addColorStop(0, 'rgba(' + o.c + ',' + a.toFixed(3) + ')'); gr.addColorStop(1, 'rgba(' + o.c + ',0)'); gb.globalCompositeOperation = 'lighter'; gb.fillStyle = gr; gb.fillRect(o.x - 230 * u, o.y - 230 * u, 460 * u, 460 * u); gb.globalCompositeOperation = 'source-over'; return true; });
+  P.stars.forEach(s => { gb.fillStyle = 'rgba(235,242,255,' + (.35 + .65 * (.5 + .5 * Math.sin(t * 1.5 + s.ph))).toFixed(2) + ')'; gb.beginPath(); gb.arc(s.x, s.y, s.r, 0, 7); gb.fill(); });
+  gb.drawImage(P.moon, w * .08, h * .1); gb.drawImage(P.sky, 0, P.skyY); gb.drawImage(P.vig, 0, 0);
+  // --- Countdown und Finale
+  const now = new Date(), fake = SEASONAL_MODE === 4; let secs, label = '';
+  if (fake) { secs = 90 - (t % 90); label = 'Probelauf: '; } else if (now.getMonth() === 0 && now.getDate() === 1) { secs = -1; } else { secs = (new Date(now.getFullYear() + (now.getMonth() === 11 ? 1 : 0), 0, 1) - now) / 1000; }
+  if (S.nyeLast != null && ((S.nyeLast > 0 && S.nyeLast <= 5 && secs <= 0) || secs > S.nyeLast + 60)) { S.finale = 10; if (SEASONAL_SOUND) { hwPlay('finale'); } }
+  S.nyeLast = secs; const yr = fake ? now.getFullYear() + 1 : (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear());
+  S.sndT -= dt; S.boomT -= dt; S.rocketEvery = S.rocketEvery || 4.5;
+  // --- Raketen
+  S.rocketT -= dt; if (S.finale > 0) { S.finale -= dt; S.rocketT = Math.min(S.rocketT, .18); S.fwT -= dt; if (S.fwT <= 0) { S.fwT = .25; hwNyeBurst(S, w * (.1 + R() * .8), h * (.1 + R() * .4), u, ['sphere', 'ring', 'double', 'willow'][Math.floor(R() * 4)]); } }
+  if (S.rocketT <= 0) { S.rocketT = S.rocketEvery * (.6 + .8 * R()); const x = w * (.1 + .8 * R()); S.rockets.push({ x, x0: x, y: h, y0: h * .96, ay: h * (.14 + .36 * R()), p: 0, dur: 1.5 + .8 * R(), c: HW_NYE_COL[Math.floor(R() * HW_NYE_COL.length)], kind: ['sphere', 'ring', 'double', 'willow', 'sphere'][Math.floor(R() * 5)], sw: R() * 7, dead: false }); if (SEASONAL_SOUND && S.sndT <= 0) { hwPlay('whistle'); S.sndT = 1.6; } }
+  S.rockets = S.rockets.filter(rk => {
+    if (rk.dead) { return false; } rk.p += dt / rk.dur;
+    if (rk.p >= 1) { hwNyeBurst(S, rk.x, rk.ay, u, rk.kind, rk.kind === 'willow' ? null : rk.c); if (SEASONAL_SOUND && S.boomT <= 0) { hwPlay('boom'); S.boomT = .8; } return false; }
+    rk.x = rk.x0 + Math.sin(rk.p * 9 + rk.sw) * 10 * u; rk.y = rk.y0 + (rk.ay - rk.y0) * (1 - Math.pow(1 - rk.p, 2));
+    S.fw.push({ x: rk.x, y: rk.y + 4 * u, vx: (R() - .5) * 24 * u, vy: (30 + R() * 40) * u, age: 0, life: .45, g: .5, c: '255,190,90', s: 1.6 * u });
+    g.save(); g.globalCompositeOperation = 'lighter'; const hg = g.createRadialGradient(rk.x, rk.y, 0, rk.x, rk.y, 11 * u); hg.addColorStop(0, 'rgba(255,240,190,.9)'); hg.addColorStop(1, 'rgba(255,200,100,0)'); g.fillStyle = hg; g.fillRect(rk.x - 11 * u, rk.y - 11 * u, 22 * u, 22 * u); g.restore();
+    S.hits.push({ x: rk.x, y: rk.y, r: 30 * u, pts: 10 + Math.round(rk.p * 30), c: rk.c, snd: 'pop', kill: () => { rk.dead = true; hwNyeBurst(S, rk.x, rk.y, u, 'sphere', rk.c); } }); return true;
+  });
+  // --- Ballons
+  S.balT -= dt; if (S.balT <= 0) { S.balT = S.balEvery * (.7 + .6 * R()); S.balloons.push({ x: w * (.08 + .84 * R()), y: h + 40 * u, vy: (38 + R() * 30) * u, ph: R() * 7, s: (15 + R() * 8) * u, c: ['#ff4a5a', '#ffd24a', '#4aa8ff', '#5adf8a', '#e86bff', '#ff9a3a'][Math.floor(R() * 6)], dead: false }); }
+  S.balloons = S.balloons.filter(b => { if (b.dead) { return false; } b.y -= b.vy * dt; b.x += Math.sin(t * .9 + b.ph) * 14 * u * dt; if (b.y < -60 * u) { return false; } g.save(); g.translate(b.x, b.y); hwBalloonDraw(g, b.s, b.c, t, b.ph); g.restore();
+    S.hits.push({ x: b.x, y: b.y, r: b.s * 1.3, pts: 10, c: '255,255,255', snd: 'pop', kill: () => { b.dead = true; } }); return true; });
+  // --- Sektkorken
+  S.corkNext -= dt; if (S.corkNext <= 0 && !S.cork) { const left = R() < .5; S.cork = { x: left ? w * .06 : w * .94, y: h * .92, vx: (left ? 1 : -1) * (110 + R() * 90) * u, vy: -(430 + R() * 120) * u, rot: 0, vr: (R() - .5) * 14, age: 0 }; S.corkNext = 20 + R() * 15; if (SEASONAL_SOUND) { hwPlay('pop'); } }
+  const ck = S.cork; if (ck) { ck.age += dt; ck.vy += 520 * u * dt; ck.x += ck.vx * dt; ck.y += ck.vy * dt; ck.rot += ck.vr * dt;
+    if (ck.y > h * 1.05 || ck.age > 6) { S.cork = null; } else { if (ck.age < 1.4 && R() < .8) { S.fw.push({ x: ck.x, y: ck.y, vx: (R() - .5) * 50 * u, vy: (R() - .5) * 50 * u, age: 0, life: .6, g: .4, c: '255,250,235', s: 2 * u }); }
+      g.save(); g.translate(ck.x, ck.y); g.rotate(ck.rot); g.fillStyle = '#c9a06a'; g.fillRect(-5 * u, -8 * u, 10 * u, 16 * u); g.fillStyle = '#e2bd88'; g.fillRect(-5 * u, -8 * u, 10 * u, 3 * u); g.restore();
+      S.hits.push({ x: ck.x, y: ck.y, r: 26 * u, pts: 20, c: '255,245,210', snd: 'pop', kill: () => { S.cork = null; } }); } }
+  // --- Gluecksschwein
+  const PG = S.pig; PG.next -= dt; if (PG.t < 0 && PG.next <= 0) { PG.t = 0; }
+  if (PG.t >= 0) { PG.t += dt; const p = PG.t / 11; if (p >= 1) { PG.t = -1; PG.next = 22 + R() * 14; } else { const px = (1.1 - 1.3 * p) * w, py = h * .915 - Math.abs(Math.sin(p * 60)) * 6 * u; g.save(); g.translate(px, py); g.scale(-1, 1); hwPigDraw(g, 18 * u, t); g.restore();
+    S.hits.push({ x: px, y: py, r: 36 * u, pts: 25, c: '255,170,190', snd: 'pop', kill: () => { PG.t = -1; PG.next = 10 + R() * 8; } }); } }
+  // --- Feuerwerksfunken
+  g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; const drag = Math.exp(-1.1 * dt);
+  S.fw = S.fw.filter(q => { q.age += dt; if (q.age >= q.life) { return false; } q.vx *= drag; q.vy = q.vy * drag + 120 * u * q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; const a = Math.pow(1 - q.age / q.life, 1.5); g.strokeStyle = 'rgba(' + q.c + ',' + a.toFixed(2) + ')'; g.lineWidth = q.s; g.beginPath(); g.moveTo(q.x - q.vx * .07, q.y - q.vy * .07); g.lineTo(q.x, q.y); g.stroke(); return true; });
+  g.restore();
+  hwBossRun(g, S, t, dt, w, h, u, hwNyeBossDraw, 'boom', { bar: '#ffb13a', hit: '255,190,70', burst: '255,220,120' });
+  // --- Anzeige: Countdown rechts oben, Finale mittig
+  g.save(); g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(14 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round'; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(8,4,20,.85)'; g.fillStyle = '#ffd98a';
+  let txt; if (secs < 0) { txt = 'Frohes neues Jahr ' + now.getFullYear() + '!'; } else if (secs >= 86400) { txt = 'Noch ' + Math.ceil(secs / 86400) + ' Tage bis ' + yr; } else if (secs >= 3600) { txt = 'Noch ' + Math.floor(secs / 3600) + ' Std ' + Math.floor(secs % 3600 / 60) + ' Min bis ' + yr; } else { txt = label + ('0' + Math.floor(secs / 60)).slice(-2) + ':' + ('0' + Math.floor(secs % 60)).slice(-2) + ' bis ' + yr; }
+  g.strokeText(txt, w - 14 * u, 62 * u); g.fillText(txt, w - 14 * u, 62 * u);
+  if (S.finale > 0) { g.textAlign = 'center'; g.globalAlpha = Math.min(1, S.finale / 1.5); g.font = '800 ' + Math.round(38 * u) + 'px system-ui, sans-serif'; g.lineWidth = 8 * u; g.shadowColor = '#ffb13a'; g.shadowBlur = 22 * u; g.strokeText('Frohes neues Jahr ' + yr + '!', w / 2, h * .42); g.fillText('Frohes neues Jahr ' + yr + '!', w / 2, h * .42); }
+  g.restore();
+}
+HW_THEMES.nye = {
+  id: 'nye', keyBest: 'nrgNyBest', keyScores: 'nrgNyScores', zap: false, ambient: null, sounds: ['whistle', 'boom', 'crackle', 'pop'],
+  build: hwNyeBuild, init: hwNyeInit, draw: hwNyeDraw,
+  onStart(S) { S.rocketT = .3; S.balT = .5; S.corkNext = Math.min(S.corkNext, 2); S.pig.next = Math.min(S.pig.next, 2); },
+  onEnd(S) { S.rocketEvery = 4.5; S.balEvery = 4; },
+  pace(S, p) { S.rocketEvery = 3.2 - 2.4 * p; S.balEvery = 3.2 - 2.0 * p; S.corkNext = Math.min(S.corkNext, 14 - 9 * p); S.pig.next = Math.min(S.pig.next, 12 - 7 * p); },
+};
 HW_THEMES.halloween = {
   id: 'halloween', keyBest: 'nrgHwBest', keyScores: 'nrgHwScores', zap: true, ambient: { f: 3200, q: .45, g: .05 }, sounds: ['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'],
   build: hwBuildPre, init: hwHalloweenInit, draw: hwHalloweenDraw,
@@ -4573,6 +4690,19 @@ function hwPlay(kind) {
   } else if (kind === 'jingle') {               // kurze, bekannte Weihnachtsmelodie (gemeinfrei) im Glockenspiel-Klang, ruhiges Tempo
     const q = .27, seq = [[659.3, 1], [659.3, 1], [659.3, 2], [659.3, 1], [659.3, 1], [659.3, 2], [659.3, 1], [784, 1], [523.3, 1.5], [587.3, .5], [659.3, 4]]; let at = t;
     seq.forEach(([fr, len]) => { [[1, .15, 1.0], [2.76, .05, .35], [5.4, .02, .15]].forEach(([m, am, dec]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr * m; gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(am, at + .006); gg.gain.exponentialRampToValueAtTime(.0008, at + dec + len * q * .6); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + dec + len * q * .6 + .05); }); at += len * q; });
+  } else if (kind === 'whistle') {              // aufsteigendes Pfeifen der Rakete
+    const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(2600, t + .9); gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(.06, t + .15); gg.gain.linearRampToValueAtTime(.02, t + .9); gg.gain.linearRampToValueAtTime(0, t + 1); o.connect(gg); gg.connect(a.destination); o.start(t); o.stop(t + 1.05);
+  } else if (kind === 'boom') {                 // Knall: tiefer Schlag plus Rauschen, danach Knistern
+    const o = a.createOscillator(), og = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(38, t + .35); og.gain.setValueAtTime(.55, t); og.gain.exponentialRampToValueAtTime(.0008, t + .45); o.connect(og); og.connect(a.destination); o.start(t); o.stop(t + .5);
+    const n = hwNoise(a, .5), nf = a.createBiquadFilter(), ng = a.createGain(); nf.type = 'lowpass'; nf.frequency.value = 1800; ng.gain.setValueAtTime(.4, t); ng.gain.exponentialRampToValueAtTime(.0008, t + .45); n.connect(nf); nf.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + .5);
+    for (let i = 0; i < 7; i++) { const at = t + .25 + Math.random() * .7, c = hwNoise(a, .03), cg = a.createGain(); cg.gain.setValueAtTime(.12, at); cg.gain.exponentialRampToValueAtTime(.0008, at + .03); c.connect(cg); cg.connect(a.destination); c.start(at); c.stop(at + .03); }
+  } else if (kind === 'crackle') {              // Knistern wie fernes Feuerwerk
+    for (let i = 0; i < 16; i++) { const at = t + Math.random() * 1.1, c = hwNoise(a, .025), cg = a.createGain(); cg.gain.setValueAtTime(.07 + Math.random() * .08, at); cg.gain.exponentialRampToValueAtTime(.0008, at + .025); c.connect(cg); cg.connect(a.destination); c.start(at); c.stop(at + .025); }
+  } else if (kind === 'pop') {                  // Korken- oder Ballonknall
+    const o = a.createOscillator(), og = a.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(950, t); o.frequency.exponentialRampToValueAtTime(180, t + .1); og.gain.setValueAtTime(.3, t); og.gain.exponentialRampToValueAtTime(.0008, t + .12); o.connect(og); og.connect(a.destination); o.start(t); o.stop(t + .14);
+    const n = hwNoise(a, .06), ng = a.createGain(); ng.gain.setValueAtTime(.18, t); ng.gain.exponentialRampToValueAtTime(.0008, t + .05); n.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + .06);
+  } else if (kind === 'finale') {               // Mitternacht: Salve aus Knallen
+    for (let i = 0; i < 9; i++) { setTimeout(() => hwPlay('boom'), i * 420); }
   } else if (kind === 'bell') {                // dumpfer Glockenschlag
     [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
       gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);

@@ -395,7 +395,7 @@ class NRGDashboardTile extends IPSModule
         // Automatisch vom 24.10. bis 01.11., sonst aus - oder fest ein/aus. Geräusche separat und
         // standardmäßig AUS (Browser spielen Ton erst nach einem Klick, und nicht jeder will Ton).
         $this->ensureEnumProfile('NRGDASH.Seasonal', [
-            0 => 'Automatisch (nach Jahreszeit)', 1 => 'Aus', 2 => 'Immer an: Gruselzeit (zum Ausprobieren)', 3 => 'Immer an: Winterzeit (zum Ausprobieren)',
+            0 => 'Automatisch (nach Jahreszeit)', 1 => 'Aus', 2 => 'Immer an: Gruselzeit (zum Ausprobieren)', 3 => 'Immer an: Winterzeit (zum Ausprobieren)', 4 => 'Immer an: Feierzeit (zum Ausprobieren)',
         ]);
         $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => 'Aus', 1 => 'Gruselgeräusche an'] );
         $this->ensureEnumProfile('NRGDASH.SeasonalBg', [0 => 'Dunkel mit den Effekten', 1 => 'Immer Standard', 2 => 'Immer dunkel (Nachthimmel)']);
@@ -650,7 +650,7 @@ class NRGDashboardTile extends IPSModule
             return;
         }
         if ($Ident === 'Seasonal' || $Ident === 'SeasonalSound' || $Ident === 'SeasonalBg') {
-            $this->SetValue($Ident, max(0, min($Ident === 'SeasonalSound' ? 1 : ($Ident === 'Seasonal' ? 3 : 2), (int) $Value)));
+            $this->SetValue($Ident, max(0, min($Ident === 'SeasonalSound' ? 1 : ($Ident === 'Seasonal' ? 4 : 2), (int) $Value)));
             $this->Render();
             return;
         }
