@@ -764,6 +764,7 @@
     radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%) !important; }
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
+  #halloween.hunt { pointer-events: auto; touch-action: none; cursor: crosshair; }
   #halloween .hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #halloween .hw-sound { position: absolute; right: 2%; bottom: 7%; pointer-events: auto; cursor: pointer; font-size: 12px; padding: 4px 9px; border-radius: 12px;
     background: rgba(20,10,30,.78); color: #ffb35a; border: 1px solid rgba(255,150,50,.5); }
@@ -4048,7 +4049,7 @@ function hwFrame(now) {
   HW.raf = requestAnimationFrame(hwFrame);
   if (now - HW.last < 33) { return; }                       // ~30 Bilder/s
   const dt = Math.min(.1, (now - HW.last) / 1000); HW.last = now; const t = (now - HW.t0) / 1000;
-  try { hwDraw(t, dt); } catch (e) { if (!HW.errShown) { HW.errShown = true; console.error('Halloween-Szene:', e && e.stack || e); } if (HW.st && HW.st.game && HW.st.game.st !== 0) { HW.st.game.st = 0; } }
+  try { hwDraw(t, dt); } catch (e) { if (!HW.errShown) { HW.errShown = true; console.error('Halloween-Szene:', e && e.stack || e); } if (HW.st && HW.st.game && HW.st.game.st !== 0) { HW.st.game.st = 0; if (HW.cv && HW.cv.parentNode) { HW.cv.parentNode.classList.remove('hunt'); } } }
 }
 function hwDraw(t, dt) {
   const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P) { return; }
@@ -4243,7 +4244,7 @@ function hwFx(g, S, dt, u, w, h) {                         // Funken, Punkte-Ein
   g.globalCompositeOperation = 'lighter'; S.sparks = S.sparks.filter(p => { p.age += dt; if (p.age > p.life) { return false; } p.vy += 300 * u * dt; p.x += p.vx * dt; p.y += p.vy * dt; const a = 1 - p.age / p.life; g.fillStyle = 'rgba(' + p.c + ',' + a.toFixed(2) + ')'; g.beginPath(); g.arc(p.x, p.y, 2.4 * u * a + .6, 0, 7); g.fill(); return true; }); g.globalCompositeOperation = 'source-over';
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(22 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round';
   S.pops = S.pops.filter(p => { p.age += dt; if (p.age > 1.1) { return false; } const a = 1 - p.age / 1.1; g.globalAlpha = a; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(20,6,0,.8)'; g.fillStyle = '#ffd35a'; const y = p.y - p.age * 50 * u; g.strokeText(p.txt, p.x, y); g.fillText(p.txt, p.x, y); g.globalAlpha = 1; return true; });
-  const G = S.game; S.age += dt;
+  const G = S.game; S.age += dt; if (HW.cv && HW.cv.parentNode) { HW.cv.parentNode.classList.toggle('hunt', G.st !== 0); }   // waehrend Jagd und Ergebnis faengt die Ebene alle Beruehrungen ab
   if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; S.bats = S.bats.filter(b => !b.extra); S.boss = null; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
       G.list = G.list.concat([e]).sort((a, b) => b.s - a.s).slice(0, 10); G.rank = G.score > 0 ? G.list.indexOf(e) : -1; try { localStorage.setItem('nrgHwBest', String(G.best)); localStorage.setItem('nrgHwScores', JSON.stringify(G.list)); } catch (x) { } } }
   else if (G.st === 2) { G.t += dt; if (G.t > 40) { G.st = 0; } }
