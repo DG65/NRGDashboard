@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.18 (2026-10-16)
+
+- Saison-Töne: das synthetische „Ho ho ho“ ist durch eine kurze Glockenspiel-Melodie ersetzt (kommt, wenn der Schlitten erscheint); der Boss läutet statt zu brummen.
+
 ## 0.9.170-beta.17 (2026-10-16)
 
 - Saison-Töne: das tiefe „Ho ho ho“ war auf kleinen Lautsprechern kaum zu hören; es klingt jetzt heller (Vokalfilter), ist lauter und kommt früher.
