@@ -756,12 +756,11 @@
 
   /* Halloween-Effekte (16.10.2026): eine Canvas-Ebene ueber der Kachel, siehe hwDraw() in module.js-Teil;
      pointer-events: none, nur der kleine Ton-Hinweis ist anklickbar. */
-  html.hw-night, html.hw-night body { background:
-    radial-gradient(1.2px 1.2px at 8% 12%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 21% 31%, rgba(235,240,255,.55), transparent), radial-gradient(1.4px 1.4px at 34% 9%, rgba(235,240,255,.75), transparent),
+  html.hw-night, html.hw-night body { background: radial-gradient(1.2px 1.2px at 8% 12%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 21% 31%, rgba(235,240,255,.55), transparent), radial-gradient(1.4px 1.4px at 34% 9%, rgba(235,240,255,.75), transparent),
     radial-gradient(1px 1px at 47% 24%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 58% 14%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 69% 33%, rgba(235,240,255,.55), transparent),
     radial-gradient(1.4px 1.4px at 78% 8%, rgba(235,240,255,.75), transparent), radial-gradient(1px 1px at 88% 22%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 94% 38%, rgba(235,240,255,.6), transparent),
-    radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent),
-    radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%) !important; }
+    radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent), var(--hw-sky, radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%)) !important; }
+  html.hw-night-xmas { --hw-sky: radial-gradient(ellipse at 50% 30%, #12294d 0%, #060e1f 74%); }
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
   #halloween.hunt { pointer-events: auto; touch-action: none; cursor: crosshair; }
@@ -3887,16 +3886,20 @@ function attachSwitchHandler(refs, item) {
 
 // ---- Halloween-Effekte ---------------------------------------------------------
 // Aktiv: Modus 2 (immer) oder Modus 0 (automatisch) vom 24.10. bis 01.11.; Modus 1 = aus.
-let SEASONAL_BG = 0, HW_RAIN = null, SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
-function hwNight() {                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
+let HW_THEMES = {}, SEASONAL_BG = 0, HW_RAIN = null, SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
+function hwNight() {
+  const xm = HW_BUILT && HW.theme && HW.theme.id === 'xmas'; document.documentElement.classList.toggle('hw-night-xmas', xm);                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
   const on = SEASONAL_BG === 2 || (SEASONAL_BG === 0 && HW_BUILT);
   document.documentElement.classList.toggle('hw-night', on);
 }
-function halloweenActive() {
-  if (SEASONAL_MODE === 2) { return true; }
-  if (SEASONAL_MODE === 1) { return false; }
+function hwThemeNow() {                                    // welches Saison-Thema ist jetzt dran? 0 = nach Datum, 1 = aus, 2/3 = fest zum Ausprobieren
+  if (SEASONAL_MODE === 1) { return null; }
+  if (SEASONAL_MODE === 2) { return HW_THEMES.halloween; }
+  if (SEASONAL_MODE === 3) { return HW_THEMES.xmas; }
   const d = new Date(), m = d.getMonth() + 1, day = d.getDate();
-  return (m === 10 && day >= 24) || (m === 11 && day === 1);
+  if ((m === 10 && day >= 24) || (m === 11 && day === 1)) { return HW_THEMES.halloween; }
+  if (m === 12 && day <= 26) { return HW_THEMES.xmas; }
+  return null;
 }
 // ---- Halloween-Szene (Canvas, prozedural) -----------------------------------------
 // Eine einzige 2D-Zeichenflaeche ueber der Kachel (keine Bilddateien): Mond mit Kratern und ziehenden
@@ -3905,7 +3908,7 @@ function halloweenActive() {
 // Spinne mit Gelenkbeinen am Faden, Geist als wehender Schleier, Augenpaare mit Schlitzpupillen,
 // fallende Blaetter, Funken, Spinnweben mit Tau, Blitze mit Verzweigungen. ~30 Bilder/s, pausiert im
 // Hintergrund; bei "Bewegung reduzieren" nur ein Standbild.
-const HW = { cv: null, ctx: null, w: 0, h: 0, u: 1, raf: 0, last: 0, t0: 0, pre: null, st: null, bolt: null };
+const HW = { theme: null, cv: null, ctx: null, w: 0, h: 0, u: 1, raf: 0, last: 0, t0: 0, pre: null, st: null, bolt: null };
 function hwRng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 function hwMake(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
 function hwNoiseTex(w, h, seed, falloff) {                 // kachelbares Wertrauschen (fBm), vertikal ausblendend
@@ -4032,28 +4035,47 @@ function hwBolt(x0, y0, x1, y1, d, out, depth) {
   if (depth < 2 && Math.random() < .14) { hwBolt(mx, my, mx + (Math.random() - .3) * d * 2.2, my + d * 2.4 + Math.random() * d, d / 2, out, depth + 1); }
 }
 function hwInitState() {
-  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, hits: [], pops: [], sparks: [], age: 0, game: { combo: 0, lastT: -9, mult: 1, st: 0, t: 0, score: 0, last: 0, best: hwBest(), newBest: false, rank: -1, list: hwScores() }, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } };
+  const S = { hits: [], pops: [], sparks: [], age: 0, game: { combo: 0, lastT: -9, mult: 1, st: 0, t: 0, score: 0, last: 0, best: hwBest(), newBest: false, rank: -1, list: hwScores() } };
+  HW.theme.init(S); return S;
+}
+function hwHalloweenInit(S) {
+  const R = Math.random;
+  Object.assign(S, { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } });
   for (let i = 0; i < 7; i++) { S.bats.push({ x: R(), y: .08 + R() * .42, sp: .018 + R() * .022, ph: R() * 7, s: .55 + R() * .6, dir: R() < .5 ? 1 : -1, wob: R() * 7, fs: 9 + R() * 4 }); }
   for (let i = 0; i < 16; i++) { S.leaves.push({ x: R(), y: R(), vy: .03 + R() * .03, ph: R() * 7, sp: 1.5 + R() * 2.5, c: ['#8a4b14', '#b5651d', '#6e3a10', '#9a5a1a', '#c27a22', '#7a4012'][i % 6], s: .7 + R() * .8 }); }
   for (let i = 0; i < 3; i++) { S.eyes.push({ x: .06 + R() * .88, y: .52 + R() * .4, t: -R() * 14, life: 4 + R() * 3, blink: 1 + R() * 2, c: R() < .5 ? 0 : 1 }); }
-  return S;
 }
 function hwResize() {
   const el = document.getElementById('halloween'); if (!el || !HW.cv) { return; }
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5), w = Math.max(80, el.clientWidth), h = Math.max(80, el.clientHeight);
   HW.cv.width = Math.round(w * dpr); HW.cv.height = Math.round(h * dpr); HW.cv.style.width = '100%'; HW.cv.style.height = '100%';
-  HW.w = HW.cv.width; HW.h = HW.cv.height; HW.u = Math.min(HW.w, HW.h) / 600; HW.pre = hwBuildPre(HW.w, HW.h, HW.u);
+  HW.w = HW.cv.width; HW.h = HW.cv.height; HW.u = Math.min(HW.w, HW.h) / 600; HW.pre = HW.theme.build(HW.w, HW.h, HW.u);
 }
 function hwFrame(now) {
   if (!HW_BUILT) { return; }
   HW.raf = requestAnimationFrame(hwFrame);
   if (now - HW.last < 33) { return; }                       // ~30 Bilder/s
   const dt = Math.min(.1, (now - HW.last) / 1000); HW.last = now; const t = (now - HW.t0) / 1000;
-  try { hwDraw(t, dt); } catch (e) { if (!HW.errShown) { HW.errShown = true; console.error('Halloween-Szene:', e && e.stack || e); } if (HW.st && HW.st.game && HW.st.game.st !== 0) { HW.st.game.st = 0; if (HW.cv && HW.cv.parentNode) { HW.cv.parentNode.classList.remove('hunt'); } } }
+  try { hwDraw(t, dt); } catch (e) { if (!HW.errShown) { HW.errShown = true; console.error('Saison-Szene:', e && e.stack || e); } if (HW.st && HW.st.game && HW.st.game.st !== 0) { HW.st.game.st = 0; if (HW.cv && HW.cv.parentNode) { HW.cv.parentNode.classList.remove('hunt'); } } }
 }
 function hwDraw(t, dt) {
-  const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P) { return; }
-  const R = Math.random; g.clearRect(0, 0, w, h); S.hits = []; S.diff = S.game.st === 1 ? S.game.t / HW_ROUND * .9 : 0;
+  const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P || !HW.theme) { return; }
+  g.clearRect(0, 0, w, h); S.hits = []; S.diff = S.game.st === 1 ? S.game.t / HW_ROUND * .9 : 0;
+  HW.theme.draw(g, t, dt, w, h, u, P, S);
+  hwFx(g, S, dt, u, w, h);
+}
+// Boss der letzten Sekunden - gemeinsam fuer alle Themen (drawFn zeichnet die Figur mit Mitte bei 0,0)
+function hwBossRun(g, S, t, dt, w, h, u, drawFn, snd, col) {
+  const R = Math.random;
+  if (S.game.st === 1 && !S.boss && !S.bossDone && S.game.t > 44) { S.boss = { hp: 5, t: 0, flash: 0 }; S.bossDone = true; if (SEASONAL_SOUND) { hwPlay(snd); } }
+  const bs = S.boss; if (!bs) { return; }
+  bs.t += dt; bs.flash = Math.max(0, bs.flash - dt * 3); const bx = w * (.5 + .34 * Math.sin(bs.t * .9)), by = h * (.38 + .14 * Math.sin(bs.t * 1.3 + 1)), bk = 50 * u * (1 + .04 * Math.sin(bs.t * 6));
+  g.save(); g.translate(bx, by); drawFn(g, bk, t, bs.flash, bs.hp); g.restore();
+  g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u, 6 * u); g.fillStyle = col.bar; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u * bs.hp / 5, 6 * u);
+  S.hits.push({ x: bx, y: by, r: bk * 1.2, pts: bs.hp > 1 ? 20 : 200, c: col.hit, snd: snd, kill: () => { bs.hp--; bs.flash = 1; if (bs.hp <= 0) { S.boss = null; for (let i = 0; i < 50; i++) { const a = R() * 6.283, v = (80 + R() * 320) * u; S.sparks.push({ x: bx, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: .7 + R() * .8, c: col.burst }); } } } });
+}
+function hwHalloweenDraw(g, t, dt, w, h, u, P, S) {
+  const R = Math.random;
   // Blitz (Zeitplan siehe hwScheduleZap): Himmel hell, Mond gedimmt
   let flash = 0; if (S.bolt) { const age = (t - S.bolt.t0); if (age > 1.1) { S.bolt = null; } else { flash = [0, .9, .1, .7, .05, .35, 0][Math.min(6, Math.floor(age / .16))] * Math.max(0, 1 - age / 1.1) * 1.2; } }
   g.globalAlpha = .75 + .25 * Math.sin(t * .6); g.drawImage(P.stars, 0, 0); g.globalAlpha = 1;
@@ -4177,17 +4199,11 @@ function hwDraw(t, dt) {
   const nR = Math.min(240, Math.round(w * h / 8000)); if (!S.rain || S.rain.length !== nR) { S.rain = []; for (let i = 0; i < nR; i++) { S.rain.push({ x: R() * w, y: R() * h, v: (520 + R() * 380) * u, l: (9 + R() * 12) * u, k: R() }); } }
   const ri = .3 + .7 * (.5 + .5 * Math.sin(t * .045)); g.strokeStyle = 'rgba(185,200,228,' + (.2 + flash * .3).toFixed(2) + ')'; g.lineWidth = Math.max(.8, .9 * u); g.beginPath();
   S.rain.forEach(d => { d.y += d.v * dt; d.x -= d.v * .2 * dt; if (d.y > h || d.x < -20) { d.y = -d.l; d.x = R() * (w + .2 * h); } if (d.k < ri) { g.moveTo(d.x, d.y); g.lineTo(d.x + d.l * .2, d.y - d.l); } }); g.stroke();
-  // Boss-Kuerbis in den letzten Sekunden
-  if (S.game.st === 1 && !S.boss && !S.bossDone && S.game.t > 44) { S.boss = { hp: 5, t: 0, flash: 0 }; S.bossDone = true; if (SEASONAL_SOUND) { hwPlay('roar'); } }
-  const bs = S.boss; if (bs) { bs.t += dt; bs.flash = Math.max(0, bs.flash - dt * 3); const bx = w * (.5 + .34 * Math.sin(bs.t * .9)), by = h * (.38 + .14 * Math.sin(bs.t * 1.3 + 1)), bk = 50 * u * (1 + .04 * Math.sin(bs.t * 6));
-    g.save(); g.translate(bx, by); hwBossDraw(g, bk, t, bs.flash, bs.hp); g.restore();
-    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u, 6 * u); g.fillStyle = '#ff4a2a'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u * bs.hp / 5, 6 * u);
-    S.hits.push({ x: bx, y: by, r: bk * 1.2, pts: bs.hp > 1 ? 20 : 200, c: '255,80,30', snd: 'roar', kill: () => { bs.hp--; bs.flash = 1; if (bs.hp <= 0) { S.boss = null; for (let i = 0; i < 50; i++) { const a = R() * 6.283, v = (80 + R() * 320) * u; S.sparks.push({ x: bx, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: .7 + R() * .8, c: '255,140,40' }); } } } }); }
+  hwBossRun(g, S, t, dt, w, h, u, hwBossDraw, 'roar', { bar: '#ff4a2a', hit: '255,80,30', burst: '255,140,40' });
   // Flackern der Beleuchtung, gelegentlich kurzer Stromausfall
   const bl = S.black || (S.black = { t: -1, next: 18 + R() * 20 }); bl.next -= dt; if (bl.t < 0 && bl.next <= 0) { bl.t = 0; } 
   g.globalAlpha = Math.min(1, .9 + .1 * Math.sin(t * 23) * Math.sin(t * 5.1)); g.drawImage(P.vig, 0, 0); g.globalAlpha = 1;
   if (bl.t >= 0) { bl.t += dt; const ba = [.5, 0, .45, .05, .5][Math.floor(bl.t / .12)]; if (ba === undefined) { bl.t = -1; bl.next = 25 + R() * 35; } else { g.fillStyle = 'rgba(0,0,12,' + ba + ')'; g.fillRect(0, 0, w, h); } }
-  hwFx(g, S, dt, u, w, h);
 }
 function hwBatClick(ev) {                           // Klick auf eine Figur: getroffen
   const S = HW.st, cv = HW.cv; if (!S || !cv || !HW_BUILT) { return; }
@@ -4214,7 +4230,7 @@ function hwVampDraw(g, k, t, open, glow) {                    // Fuesse bei (0,0
   g.fillStyle = '#f2efe4'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * .03 * k - .008 * k, -.795 * k); g.lineTo(sd * .03 * k, -.76 * k - .02 * k * open); g.lineTo(sd * .03 * k + .008 * k, -.795 * k); g.fill(); }
   g.restore();
 }
-function hwScores() { try { const a = JSON.parse(localStorage.getItem('nrgHwScores') || '[]'); return Array.isArray(a) ? a.filter(x => x && x.s > 0).slice(0, 10) : []; } catch (e) { return []; } }
+function hwScores() { try { const a = JSON.parse(localStorage.getItem(HW.theme.keyScores) || '[]'); return Array.isArray(a) ? a.filter(x => x && x.s > 0).slice(0, 10) : []; } catch (e) { return []; } }
 function hwBossDraw(g, k, t, hurt, hp) {                     // Boss-Kuerbis: Mitte bei (0,0)
   const f = .8 + .2 * Math.sin(t * 13) * Math.sin(t * 5.1);
   let gr = g.createRadialGradient(0, 0, k * .3, 0, 0, k * 3.2); gr.addColorStop(0, 'rgba(255,60,20,' + (.5 * f).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,40,10,0)');
@@ -4230,10 +4246,10 @@ function hwBossDraw(g, k, t, hurt, hp) {                     // Boss-Kuerbis: Mi
   g.fillStyle = '#f0e8d0'; for (let i = 0; i < 8; i++) { const x = -k * .7 + i * k * .2, ly = k * (.3 + jaw * 4.2 * Math.sin((i + .5) / 8 * Math.PI)) ; g.beginPath(); g.moveTo(x - k * .07, k * .3); g.lineTo(x, k * .3 + k * .22 * (1 + (i % 2) * .5)); g.lineTo(x + k * .07, k * .3); g.fill(); g.beginPath(); g.moveTo(x - k * .06, ly); g.lineTo(x, ly - k * .18); g.lineTo(x + k * .06, ly); g.fill(); }
   if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.beginPath(); g.ellipse(0, 0, k * 1.15, k * .95, 0, 0, 7); g.fill(); }
 }
-function hwBest() { try { return parseInt(localStorage.getItem('nrgHwBest') || '0', 10) || 0; } catch (e) { return 0; } }
+function hwBest() { try { return parseInt(localStorage.getItem(HW.theme.keyBest) || '0', 10) || 0; } catch (e) { return 0; } }
 const HW_ROUND = 60;                                       // Sekunden je Jagd
 function hwHit(h) {                                        // Figur getroffen: Punkte, Funken, Anzeige; die erste Figur startet die Jagd
-  const S = HW.st, G = S.game, u = HW.u; if (G.st !== 1) { G.st = 1; G.t = 0; G.score = 0; G.newBest = false; S.spider.hide = 0; S.boss = null; S.bossDone = false; for (let i = 0; i < 3; i++) { S.bats.push({ extra: true, x: Math.random(), y: .08 + Math.random() * .42, sp: .02 + Math.random() * .025, ph: Math.random() * 7, s: .5 + Math.random() * .5, dir: Math.random() < .5 ? 1 : -1, wob: Math.random() * 7, fs: 9 + Math.random() * 4 }); } S.swoop.next = Math.min(S.swoop.next, 2); S.ghost.next = Math.min(S.ghost.next, 3); S.vamp.next = Math.min(S.vamp.next, 4); S.pump.next = Math.min(S.pump.next, 6); }
+  const S = HW.st, G = S.game, u = HW.u; if (G.st !== 1) { G.st = 1; G.t = 0; G.score = 0; G.newBest = false; S.boss = null; S.bossDone = false; HW.theme.onStart(S); }
   G.combo = (S.age - G.lastT < 1.6) ? G.combo + 1 : 1; G.lastT = S.age; G.mult = Math.min(4, 1 + Math.floor(G.combo / 2)); const pts = h.pts * G.mult;
   G.score += pts; h.kill();
   S.pops.push({ x: h.x, y: h.y, txt: '+' + pts + (G.mult > 1 ? ' ×' + G.mult : ''), age: 0 });
@@ -4245,10 +4261,10 @@ function hwFx(g, S, dt, u, w, h) {                         // Funken, Punkte-Ein
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(22 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round';
   S.pops = S.pops.filter(p => { p.age += dt; if (p.age > 1.1) { return false; } const a = 1 - p.age / 1.1; g.globalAlpha = a; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(20,6,0,.8)'; g.fillStyle = '#ffd35a'; const y = p.y - p.age * 50 * u; g.strokeText(p.txt, p.x, y); g.fillText(p.txt, p.x, y); g.globalAlpha = 1; return true; });
   const G = S.game; S.age += dt; if (HW.cv && HW.cv.parentNode) { HW.cv.parentNode.classList.toggle('hunt', G.st !== 0); }   // waehrend Jagd und Ergebnis faengt die Ebene alle Beruehrungen ab
-  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; S.bats = S.bats.filter(b => !b.extra); S.boss = null; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
-      G.list = G.list.concat([e]).sort((a, b) => b.s - a.s).slice(0, 10); G.rank = G.score > 0 ? G.list.indexOf(e) : -1; try { localStorage.setItem('nrgHwBest', String(G.best)); localStorage.setItem('nrgHwScores', JSON.stringify(G.list)); } catch (x) { } } }
+  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; HW.theme.onEnd(S); S.boss = null; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
+      G.list = G.list.concat([e]).sort((a, b) => b.s - a.s).slice(0, 10); G.rank = G.score > 0 ? G.list.indexOf(e) : -1; try { localStorage.setItem(HW.theme.keyBest, String(G.best)); localStorage.setItem(HW.theme.keyScores, JSON.stringify(G.list)); } catch (x) { } } }
   else if (G.st === 2) { G.t += dt; if (G.t > 40) { G.st = 0; } }
-  if (G.st === 1) { const cap = 14 - 10 * (G.t / HW_ROUND); S.swoop.next = Math.min(S.swoop.next, cap); S.ghost.next = Math.min(S.ghost.next, cap * .85); S.vamp.next = Math.min(S.vamp.next, cap * .85); S.pump.next = Math.min(S.pump.next, cap * 1.1); }
+  if (G.st === 1) { HW.theme.pace(S, G.t / HW_ROUND); }
   const txt = (t2, x, y, sz, col) => { g.font = '800 ' + Math.round(sz * u) + 'px system-ui, sans-serif'; g.lineWidth = Math.max(3, sz * u * .18); g.strokeStyle = 'rgba(10,4,16,.85)'; g.fillStyle = col; g.strokeText(t2, x, y); g.fillText(t2, x, y); };
   if (G.st === 1) { const left = Math.max(0, HW_ROUND - G.t), bw = Math.min(w * .5, 260 * u), bx = w / 2 - bw / 2, by = 46 * u, hot = left < 5;
     txt('⏱ ' + Math.ceil(left) + ' s    ★ ' + G.score, w / 2, 24 * u, 22, hot ? '#ff6a5a' : '#ffd35a');
@@ -4269,6 +4285,13 @@ function hwLightning() {
   const x = .1 + Math.random() * .8, segs = []; hwBolt(x, 0, x + (Math.random() - .5) * .25, .72 + Math.random() * .12, .22, segs, 0);
   HW.st.bolt = { segs: segs.map(s => [s[0], s[1], s[2], s[3], s[4]]), t0: (performance.now() - HW.t0) / 1000 };
 }
+HW_THEMES.halloween = {
+  id: 'halloween', keyBest: 'nrgHwBest', keyScores: 'nrgHwScores', zap: true, ambient: { f: 3200, q: .45, g: .05 }, sounds: ['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'],
+  build: hwBuildPre, init: hwHalloweenInit, draw: hwHalloweenDraw,
+  onStart(S) { S.spider.hide = 0; for (let i = 0; i < 3; i++) { S.bats.push({ extra: true, x: Math.random(), y: .08 + Math.random() * .42, sp: .02 + Math.random() * .025, ph: Math.random() * 7, s: .5 + Math.random() * .5, dir: Math.random() < .5 ? 1 : -1, wob: Math.random() * 7, fs: 9 + Math.random() * 4 }); } S.swoop.next = Math.min(S.swoop.next, 2); S.ghost.next = Math.min(S.ghost.next, 3); S.vamp.next = Math.min(S.vamp.next, 4); S.pump.next = Math.min(S.pump.next, 6); },
+  onEnd(S) { S.bats = S.bats.filter(b => !b.extra); },
+  pace(S, p) { const cap = 14 - 10 * p; S.swoop.next = Math.min(S.swoop.next, cap); S.ghost.next = Math.min(S.ghost.next, cap * .85); S.vamp.next = Math.min(S.vamp.next, cap * .85); S.pump.next = Math.min(S.pump.next, cap * 1.1); },
+};
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
   el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d'); el.classList.add('on'); HW_BUILT = true; hwNight();
@@ -4296,7 +4319,7 @@ function hwAudio() {
 }
 function hwRain(on) {                                      // leises Regenrauschen als Dauerschleife (nur mit Ton)
   const a = HW_AUDIO;
-  if (on && a && a.state === 'running') { if (!HW_RAIN) { const n = hwNoise(a, 2), f = a.createBiquadFilter(), gg = a.createGain(); n.loop = true; f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = .45; gg.gain.value = .05; n.connect(f); f.connect(gg); gg.connect(a.destination); n.start(); HW_RAIN = { n, gg }; } }
+  if (on && a && a.state === 'running' && HW.theme && HW.theme.ambient) { if (!HW_RAIN) { const n = hwNoise(a, 2), f = a.createBiquadFilter(), gg = a.createGain(); n.loop = true; f.type = 'bandpass'; f.frequency.value = HW.theme.ambient.f; f.Q.value = HW.theme.ambient.q; gg.gain.value = HW.theme.ambient.g; n.connect(f); f.connect(gg); gg.connect(a.destination); n.start(); HW_RAIN = { n, gg }; } }
   else if (HW_RAIN) { try { HW_RAIN.n.stop(); } catch (e) { } HW_RAIN = null; }
 }
 function hwUnlock() {
@@ -4375,21 +4398,22 @@ function hwScheduleSound(soon) {
   if (HW_SOUND_TIMER) { clearTimeout(HW_SOUND_TIMER); HW_SOUND_TIMER = null; }
   if (!HW_BUILT || !SEASONAL_SOUND) { return; }
   HW_SOUND_TIMER = setTimeout(() => {
-    hwPlay(['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'][Math.floor(Math.random() * 7)]);
+    hwPlay(HW.theme.sounds[Math.floor(Math.random() * HW.theme.sounds.length)]);
     hwScheduleSound(false);
   }, soon ? 8000 : 14000 + Math.random() * 26000);
 }
 // Blitz: kurzes Doppelflackern der ganzen Kachel, mit Grollen kurz danach (wenn Ton an und entsperrt).
 function hwScheduleZap() {
   if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
-  if (!HW_BUILT) { return; }
+  if (!HW_BUILT || !HW.theme.zap) { return; }
   HW_ZAP_TIMER = setTimeout(() => {
     hwLightning(); if (SEASONAL_SOUND) { setTimeout(() => hwPlay('rumble'), 600 + Math.random() * 1200); }
     hwScheduleZap();
   }, 30000 + Math.random() * 50000);
 }
 function applySeasonal() {
-  if (halloweenActive()) { buildHalloween(); } else { removeHalloween(); }
+  const th = hwThemeNow();
+  if (th) { if (HW_BUILT && HW.theme !== th) { removeHalloween(); } HW.theme = th; buildHalloween(); } else { removeHalloween(); }
   if (!SEASONAL_SOUND) { const h = document.querySelector('#halloween .hw-sound'); if (h) { h.remove(); } } else { hwSoundHint(); }
   hwScheduleSound(false);
   hwScheduleZap();
