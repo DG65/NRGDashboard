@@ -756,7 +756,12 @@
 
   /* Halloween-Effekte (16.10.2026): eine Canvas-Ebene ueber der Kachel, siehe hwDraw() in module.js-Teil;
      pointer-events: none, nur der kleine Ton-Hinweis ist anklickbar. */
-  html.hw-night, html.hw-night body { background: radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%) !important; }
+  html.hw-night, html.hw-night body { background:
+    radial-gradient(1.2px 1.2px at 8% 12%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 21% 31%, rgba(235,240,255,.55), transparent), radial-gradient(1.4px 1.4px at 34% 9%, rgba(235,240,255,.75), transparent),
+    radial-gradient(1px 1px at 47% 24%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 58% 14%, rgba(235,240,255,.7), transparent), radial-gradient(1px 1px at 69% 33%, rgba(235,240,255,.55), transparent),
+    radial-gradient(1.4px 1.4px at 78% 8%, rgba(235,240,255,.75), transparent), radial-gradient(1px 1px at 88% 22%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 94% 38%, rgba(235,240,255,.6), transparent),
+    radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent),
+    radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%) !important; }
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
   #halloween .hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -3881,7 +3886,11 @@ function attachSwitchHandler(refs, item) {
 
 // ---- Halloween-Effekte ---------------------------------------------------------
 // Aktiv: Modus 2 (immer) oder Modus 0 (automatisch) vom 24.10. bis 01.11.; Modus 1 = aus.
-let SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
+let SEASONAL_BG = 0, HW_RAIN = null, SEASONAL_MODE = 0, SEASONAL_SOUND = false, HW_BUILT = false, HW_SOUND_TIMER = null, HW_ZAP_TIMER = null, HW_AUDIO = null, HW_FIRST_SOUND = true;
+function hwNight() {                                       // dunkler Nachthimmel: 0 = mit den Effekten, 1 = nie, 2 = immer
+  const on = SEASONAL_BG === 2 || (SEASONAL_BG === 0 && HW_BUILT);
+  document.documentElement.classList.toggle('hw-night', on);
+}
 function halloweenActive() {
   if (SEASONAL_MODE === 2) { return true; }
   if (SEASONAL_MODE === 1) { return false; }
@@ -4022,7 +4031,7 @@ function hwBolt(x0, y0, x1, y1, d, out, depth) {
   if (depth < 2 && Math.random() < .14) { hwBolt(mx, my, mx + (Math.random() - .3) * d * 2.2, my + d * 2.4 + Math.random() * d, d / 2, out, depth + 1); }
 }
 function hwInitState() {
-  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, hits: [], pops: [], sparks: [], age: 0, game: { st: 0, t: 0, score: 0, last: 0, best: hwBest(), newBest: false, rank: -1, list: hwScores() }, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } };
+  const R = Math.random, S = { bats: [], leaves: [], embers: [], eyes: [], swoop: { t: -1, next: 12 + R() * 14 }, spider: { hide: 0, x: .14, phase: R() * 20 }, ghost: { t: -1, next: 10 + R() * 12, y: .6 }, bolt: null, flash: 0, wind: 0, hits: [], pops: [], sparks: [], age: 0, game: { combo: 0, lastT: -9, mult: 1, st: 0, t: 0, score: 0, last: 0, best: hwBest(), newBest: false, rank: -1, list: hwScores() }, crowOff: 0, vamp: { t: -1, next: 14 + R() * 12, x: .4 }, pump: { hide: 0, t: -1, next: 10 + R() * 12, zapped: false } };
   for (let i = 0; i < 7; i++) { S.bats.push({ x: R(), y: .08 + R() * .42, sp: .018 + R() * .022, ph: R() * 7, s: .55 + R() * .6, dir: R() < .5 ? 1 : -1, wob: R() * 7, fs: 9 + R() * 4 }); }
   for (let i = 0; i < 16; i++) { S.leaves.push({ x: R(), y: R(), vy: .03 + R() * .03, ph: R() * 7, sp: 1.5 + R() * 2.5, c: ['#8a4b14', '#b5651d', '#6e3a10', '#9a5a1a', '#c27a22', '#7a4012'][i % 6], s: .7 + R() * .8 }); }
   for (let i = 0; i < 3; i++) { S.eyes.push({ x: .06 + R() * .88, y: .52 + R() * .4, t: -R() * 14, life: 4 + R() * 3, blink: 1 + R() * 2, c: R() < .5 ? 0 : 1 }); }
@@ -4043,7 +4052,7 @@ function hwFrame(now) {
 }
 function hwDraw(t, dt) {
   const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P) { return; }
-  const R = Math.random; g.clearRect(0, 0, w, h); S.hits = [];
+  const R = Math.random; g.clearRect(0, 0, w, h); S.hits = []; S.diff = S.game.st === 1 ? S.game.t / HW_ROUND * .9 : 0;
   // Blitz (Zeitplan siehe hwScheduleZap): Himmel hell, Mond gedimmt
   let flash = 0; if (S.bolt) { const age = (t - S.bolt.t0); if (age > 1.1) { S.bolt = null; } else { flash = [0, .9, .1, .7, .05, .35, 0][Math.min(6, Math.floor(age / .16))] * Math.max(0, 1 - age / 1.1) * 1.2; } }
   g.globalAlpha = .75 + .25 * Math.sin(t * .6); g.drawImage(P.stars, 0, 0); g.globalAlpha = 1;
@@ -4054,6 +4063,11 @@ function hwDraw(t, dt) {
   for (let i = 0; i < 3; i++) { const cx = ((t * (5 + i * 2) * u + i * 220 * u) % (w + 300 * u)) - 150 * u, cy = my + (i - 1) * 16 * u, rx = (110 + i * 36) * u, ry = (13 + i * 5) * u;
     const cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx); cg.addColorStop(0, 'rgba(14,10,22,.55)'); cg.addColorStop(.6, 'rgba(14,10,22,.22)'); cg.addColorStop(1, 'rgba(14,10,22,0)');
     g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill(); g.restore(); }
+  // Gewitterwolken ziehen vor dem Mond vorbei und leuchten beim Blitz
+  for (let i = 0; i < 4; i++) { const cx = ((t * (4 + i * 1.7) * u + i * 340 * u) % (w + 600 * u)) - 300 * u, cy = h * (.06 + i * .035), rx = (170 + i * 30) * u, ry = (30 + i * 6) * u, cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    cg.addColorStop(0, 'rgba(12,9,22,' + (.55 - flash * .25).toFixed(2) + ')'); cg.addColorStop(.6, 'rgba(12,9,22,.22)'); cg.addColorStop(1, 'rgba(12,9,22,0)');
+    g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill();
+    if (flash > .1) { const lg = g.createRadialGradient(cx, cy, 0, cx, cy, rx); lg.addColorStop(0, 'rgba(150,165,220,' + (flash * .4).toFixed(2) + ')'); lg.addColorStop(1, 'rgba(150,165,220,0)'); g.fillStyle = lg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill(); } g.restore(); }
   // Baum (leichtes Schwanken) mit Kraehe
   const tw = P.tree.width, th = P.tree.height, tx = w - tw * .93, ty = h * .92 - th;
   g.save(); g.translate(tx + tw * .62, ty + th); g.rotate(Math.sin(t * .5) * .006); g.translate(-tw * .62, -th); g.drawImage(P.tree, 0, 0);
@@ -4093,7 +4107,7 @@ function hwDraw(t, dt) {
     if (b.dead) { const d = b.dead; d.vy += 900 * u * dt; d.y += d.vy * dt; d.x += d.vx * dt; d.rot += d.spin * dt; d.t += dt;
       if (d.y > h + 60 * u || d.t > 5) { b.dead = null; b.x = b.dir > 0 ? -.15 : 1.15; b.y = .08 + R() * .42; return; }
       g.save(); g.globalAlpha = Math.max(0, Math.min(1, (h + 40 * u - d.y) / (80 * u))); g.translate(d.x, d.y); g.rotate(d.rot); hwBatDraw(g, 30 * u * b.s, d.t * 3 + Math.sin(d.t * 30) * .3, .4, false); g.restore(); return; }
-    b.x += b.dir * b.sp * dt; if (b.x > 1.15) { b.x = -.15; b.dir = 1; b.y = .08 + R() * .42; } if (b.x < -.15) { b.x = 1.15; b.dir = -1; b.y = .08 + R() * .42; }
+    b.x += b.dir * b.sp * (1 + S.diff) * dt; if (b.x > 1.15) { b.x = -.15; b.dir = 1; b.y = .08 + R() * .42; } if (b.x < -.15) { b.x = 1.15; b.dir = -1; b.y = .08 + R() * .42; }
     const fl = t * b.fs + b.ph, by = b.y * h + Math.sin(t * .9 + b.wob) * 22 * u + Math.sin(fl * .5) * 3 * u, bank = Math.sin(t * .9 + b.wob + 1.2) * .22 * b.dir; b.sx = b.x * w; b.sy = by; S.hits.push({ x: b.sx, y: by, r: 44 * u * b.s, sq: 1.3, pts: 10, c: '200,60,60', kill: () => { b.dead = { x: b.sx, y: b.sy, vx: b.dir * 40 * u, vy: -80 * u, rot: 0, spin: b.dir * (4 + R() * 4), t: 0 }; } });
     g.save(); g.translate(b.x * w, by); hwBatDraw(g, 30 * u * b.s, fl, bank, false); g.restore(); });
   S.swoop.next -= dt; if (S.swoop.t < 0 && S.swoop.next <= 0) { S.swoop.t = 0; S.swoop.x0 = .25 + R() * .5; S.swoop.dx = (R() < .5 ? -1 : 1) * (.15 + R() * .2); }
@@ -4158,7 +4172,20 @@ function hwDraw(t, dt) {
   if (S.bolt && flash > .05) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(215,225,255,' + Math.min(1, flash).toFixed(3) + ')'; g.shadowColor = '#a9bdff'; g.shadowBlur = 14 * u; g.lineCap = 'round';
     S.bolt.segs.forEach(s => { g.lineWidth = (s[4] === 0 ? 3 : 1.6) * u; g.beginPath(); g.moveTo(s[0] * w, s[1] * h); g.lineTo(s[2] * w, s[3] * h); g.stroke(); }); g.restore();
     g.fillStyle = 'rgba(190,205,255,' + (flash * .28).toFixed(3) + ')'; g.fillRect(0, 0, w, h); }
-  g.drawImage(P.vig, 0, 0);
+  // Regen (Staerke schwankt langsam)
+  const nR = Math.min(240, Math.round(w * h / 8000)); if (!S.rain || S.rain.length !== nR) { S.rain = []; for (let i = 0; i < nR; i++) { S.rain.push({ x: R() * w, y: R() * h, v: (520 + R() * 380) * u, l: (9 + R() * 12) * u, k: R() }); } }
+  const ri = .3 + .7 * (.5 + .5 * Math.sin(t * .045)); g.strokeStyle = 'rgba(185,200,228,' + (.2 + flash * .3).toFixed(2) + ')'; g.lineWidth = Math.max(.8, .9 * u); g.beginPath();
+  S.rain.forEach(d => { d.y += d.v * dt; d.x -= d.v * .2 * dt; if (d.y > h || d.x < -20) { d.y = -d.l; d.x = R() * (w + .2 * h); } if (d.k < ri) { g.moveTo(d.x, d.y); g.lineTo(d.x + d.l * .2, d.y - d.l); } }); g.stroke();
+  // Boss-Kuerbis in den letzten Sekunden
+  if (S.game.st === 1 && !S.boss && !S.bossDone && S.game.t > 44) { S.boss = { hp: 5, t: 0, flash: 0 }; S.bossDone = true; if (SEASONAL_SOUND) { hwPlay('roar'); } }
+  const bs = S.boss; if (bs) { bs.t += dt; bs.flash = Math.max(0, bs.flash - dt * 3); const bx = w * (.5 + .34 * Math.sin(bs.t * .9)), by = h * (.38 + .14 * Math.sin(bs.t * 1.3 + 1)), bk = 50 * u * (1 + .04 * Math.sin(bs.t * 6));
+    g.save(); g.translate(bx, by); hwBossDraw(g, bk, t, bs.flash, bs.hp); g.restore();
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u, 6 * u); g.fillStyle = '#ff4a2a'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u * bs.hp / 5, 6 * u);
+    S.hits.push({ x: bx, y: by, r: bk * 1.2, pts: bs.hp > 1 ? 20 : 200, c: '255,80,30', snd: 'roar', kill: () => { bs.hp--; bs.flash = 1; if (bs.hp <= 0) { S.boss = null; for (let i = 0; i < 50; i++) { const a = R() * 6.283, v = (80 + R() * 320) * u; S.sparks.push({ x: bx, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: .7 + R() * .8, c: '255,140,40' }); } } } }); }
+  // Flackern der Beleuchtung, gelegentlich kurzer Stromausfall
+  const bl = S.black || (S.black = { t: -1, next: 18 + R() * 20 }); bl.next -= dt; if (bl.t < 0 && bl.next <= 0) { bl.t = 0; } 
+  g.globalAlpha = Math.min(1, .9 + .1 * Math.sin(t * 23) * Math.sin(t * 5.1)); g.drawImage(P.vig, 0, 0); g.globalAlpha = 1;
+  if (bl.t >= 0) { bl.t += dt; const ba = [.5, 0, .45, .05, .5][Math.floor(bl.t / .12)]; if (ba === undefined) { bl.t = -1; bl.next = 25 + R() * 35; } else { g.fillStyle = 'rgba(0,0,12,' + ba + ')'; g.fillRect(0, 0, w, h); } }
   hwFx(g, S, dt, u, w, h);
 }
 function hwBatClick(ev) {                           // Klick auf eine Figur: getroffen
@@ -4187,12 +4214,28 @@ function hwVampDraw(g, k, t, open, glow) {                    // Fuesse bei (0,0
   g.restore();
 }
 function hwScores() { try { const a = JSON.parse(localStorage.getItem('nrgHwScores') || '[]'); return Array.isArray(a) ? a.filter(x => x && x.s > 0).slice(0, 10) : []; } catch (e) { return []; } }
+function hwBossDraw(g, k, t, hurt, hp) {                     // Boss-Kuerbis: Mitte bei (0,0)
+  const f = .8 + .2 * Math.sin(t * 13) * Math.sin(t * 5.1);
+  let gr = g.createRadialGradient(0, 0, k * .3, 0, 0, k * 3.2); gr.addColorStop(0, 'rgba(255,60,20,' + (.5 * f).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,40,10,0)');
+  g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-k * 3.2, -k * 3.2, k * 6.4, k * 6.4); g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#240608'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .45, -k * .7); g.quadraticCurveTo(sd * k * .95, -k * 1.0, sd * k * .85, -k * 1.6); g.quadraticCurveTo(sd * k * .6, -k * 1.05, sd * k * .2, -k * .75); g.fill(); }
+  const body = g.createRadialGradient(-k * .3, -k * .3, k * .1, 0, 0, k * 1.2); body.addColorStop(0, '#e2562a'); body.addColorStop(.6, '#a02a12'); body.addColorStop(1, '#3a0a06');
+  g.fillStyle = body; g.beginPath(); g.ellipse(0, 0, k * 1.15, k * .95, 0, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(40,6,2,.65)'; g.lineWidth = Math.max(1.5, k * .05); for (const m of [-.7, -.35, 0, .35, .7]) { g.beginPath(); g.moveTo(m * k * .3, -k * .93); g.quadraticCurveTo(m * k * 1.25, 0, m * k * .3, k * .93); g.stroke(); }
+  g.strokeStyle = 'rgba(255,200,120,.8)'; g.lineWidth = Math.max(1.2, k * .035); for (let i = 0; i < 5 - hp; i++) { const a = i * 1.7 + .5; g.beginPath(); g.moveTo(Math.cos(a) * k * .3, Math.sin(a) * k * .3); g.lineTo(Math.cos(a + .15) * k * .65, Math.sin(a + .15) * k * .6); g.lineTo(Math.cos(a - .1) * k * .95, Math.sin(a - .1) * k * .8); g.stroke(); }
+  g.shadowColor = '#ff2a10'; g.shadowBlur = k * .5; g.fillStyle = '#ffd24a';
+  for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .75, -k * .38); g.lineTo(sd * k * .22, -k * .06); g.lineTo(sd * k * .6, k * .12); g.closePath(); g.fill(); }
+  const jaw = .12 + .1 * Math.sin(t * 4); g.shadowBlur = 0; g.fillStyle = '#12020a'; g.beginPath(); g.moveTo(-k * .78, k * .3); g.quadraticCurveTo(0, k * (.3 + jaw * 5), k * .78, k * .3); g.quadraticCurveTo(0, k * (.3 - jaw), -k * .78, k * .3); g.fill();
+  g.fillStyle = '#f0e8d0'; for (let i = 0; i < 8; i++) { const x = -k * .7 + i * k * .2, ly = k * (.3 + jaw * 4.2 * Math.sin((i + .5) / 8 * Math.PI)) ; g.beginPath(); g.moveTo(x - k * .07, k * .3); g.lineTo(x, k * .3 + k * .22 * (1 + (i % 2) * .5)); g.lineTo(x + k * .07, k * .3); g.fill(); g.beginPath(); g.moveTo(x - k * .06, ly); g.lineTo(x, ly - k * .18); g.lineTo(x + k * .06, ly); g.fill(); }
+  if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.beginPath(); g.ellipse(0, 0, k * 1.15, k * .95, 0, 0, 7); g.fill(); }
+}
 function hwBest() { try { return parseInt(localStorage.getItem('nrgHwBest') || '0', 10) || 0; } catch (e) { return 0; } }
 const HW_ROUND = 60;                                       // Sekunden je Jagd
 function hwHit(h) {                                        // Figur getroffen: Punkte, Funken, Anzeige; die erste Figur startet die Jagd
-  const S = HW.st, G = S.game, u = HW.u; if (G.st !== 1) { G.st = 1; G.t = 0; G.score = 0; G.newBest = false; S.spider.hide = 0; S.swoop.next = Math.min(S.swoop.next, 2); S.ghost.next = Math.min(S.ghost.next, 3); S.vamp.next = Math.min(S.vamp.next, 4); S.pump.next = Math.min(S.pump.next, 6); }
-  G.score += h.pts; h.kill();
-  S.pops.push({ x: h.x, y: h.y, txt: '+' + h.pts, age: 0 });
+  const S = HW.st, G = S.game, u = HW.u; if (G.st !== 1) { G.st = 1; G.t = 0; G.score = 0; G.newBest = false; S.spider.hide = 0; S.boss = null; S.bossDone = false; for (let i = 0; i < 3; i++) { S.bats.push({ extra: true, x: Math.random(), y: .08 + Math.random() * .42, sp: .02 + Math.random() * .025, ph: Math.random() * 7, s: .5 + Math.random() * .5, dir: Math.random() < .5 ? 1 : -1, wob: Math.random() * 7, fs: 9 + Math.random() * 4 }); } S.swoop.next = Math.min(S.swoop.next, 2); S.ghost.next = Math.min(S.ghost.next, 3); S.vamp.next = Math.min(S.vamp.next, 4); S.pump.next = Math.min(S.pump.next, 6); }
+  G.combo = (S.age - G.lastT < 1.6) ? G.combo + 1 : 1; G.lastT = S.age; G.mult = Math.min(4, 1 + Math.floor(G.combo / 2)); const pts = h.pts * G.mult;
+  G.score += pts; h.kill();
+  S.pops.push({ x: h.x, y: h.y, txt: '+' + pts + (G.mult > 1 ? ' ×' + G.mult : ''), age: 0 });
   for (let i = 0; i < 16; i++) { const a = Math.random() * 6.283, v = (60 + Math.random() * 160) * u; S.sparks.push({ x: h.x, y: h.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40 * u, age: 0, life: .5 + Math.random() * .5, c: h.c || '255,170,60' }); }
   if (SEASONAL_SOUND) { hwPlay(h.snd || 'squeak'); }
 }
@@ -4201,13 +4244,14 @@ function hwFx(g, S, dt, u, w, h) {                         // Funken, Punkte-Ein
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(22 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round';
   S.pops = S.pops.filter(p => { p.age += dt; if (p.age > 1.1) { return false; } const a = 1 - p.age / 1.1; g.globalAlpha = a; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(20,6,0,.8)'; g.fillStyle = '#ffd35a'; const y = p.y - p.age * 50 * u; g.strokeText(p.txt, p.x, y); g.fillText(p.txt, p.x, y); g.globalAlpha = 1; return true; });
   const G = S.game; S.age += dt;
-  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
+  if (G.st === 1) { G.t += dt; if (G.t >= HW_ROUND) { G.st = 2; G.t = 0; S.bats = S.bats.filter(b => !b.extra); S.boss = null; G.last = G.score; G.newBest = G.score > G.best; if (G.newBest) { G.best = G.score; } const d = new Date(), e = { s: G.score, d: ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' };
       G.list = G.list.concat([e]).sort((a, b) => b.s - a.s).slice(0, 10); G.rank = G.score > 0 ? G.list.indexOf(e) : -1; try { localStorage.setItem('nrgHwBest', String(G.best)); localStorage.setItem('nrgHwScores', JSON.stringify(G.list)); } catch (x) { } } }
   else if (G.st === 2) { G.t += dt; if (G.t > 40) { G.st = 0; } }
-  if (G.st === 1) { S.swoop.next = Math.min(S.swoop.next, 14); S.ghost.next = Math.min(S.ghost.next, 12); S.vamp.next = Math.min(S.vamp.next, 12); S.pump.next = Math.min(S.pump.next, 16); }
+  if (G.st === 1) { const cap = 14 - 10 * (G.t / HW_ROUND); S.swoop.next = Math.min(S.swoop.next, cap); S.ghost.next = Math.min(S.ghost.next, cap * .85); S.vamp.next = Math.min(S.vamp.next, cap * .85); S.pump.next = Math.min(S.pump.next, cap * 1.1); }
   const txt = (t2, x, y, sz, col) => { g.font = '800 ' + Math.round(sz * u) + 'px system-ui, sans-serif'; g.lineWidth = Math.max(3, sz * u * .18); g.strokeStyle = 'rgba(10,4,16,.85)'; g.fillStyle = col; g.strokeText(t2, x, y); g.fillText(t2, x, y); };
   if (G.st === 1) { const left = Math.max(0, HW_ROUND - G.t), bw = Math.min(w * .5, 260 * u), bx = w / 2 - bw / 2, by = 46 * u, hot = left < 5;
     txt('⏱ ' + Math.ceil(left) + ' s    ★ ' + G.score, w / 2, 24 * u, 22, hot ? '#ff6a5a' : '#ffd35a');
+    if (G.mult > 1 && S.age - G.lastT < 1.6) { txt('×' + G.mult + ' Kombo', w / 2, 68 * u, 19, '#ff9a3a'); g.fillStyle = '#ff9a3a'; g.fillRect(w / 2 - 40 * u, 82 * u, 80 * u * (1 - (S.age - G.lastT) / 1.6), 3 * u); }
     g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(bx, by, bw, 5 * u); g.fillStyle = hot ? '#ff4a3a' : '#ffb13a'; g.fillRect(bx, by, bw * left / HW_ROUND, 5 * u); }
   else if (G.st === 2) { const pw = Math.min(w * .8, 320 * u), ph = (150 + Math.min(8, G.list.length) * 26) * u, px0 = w / 2 - pw / 2, py0 = Math.max(10 * u, h * .5 - ph / 2);
     g.fillStyle = 'rgba(12,6,20,.82)'; g.strokeStyle = 'rgba(255,170,60,.6)'; g.lineWidth = 2 * u; g.beginPath(); if (g.roundRect) { g.roundRect(px0, py0, pw, ph, 14 * u); } else { g.rect(px0, py0, pw, ph); } g.fill(); g.stroke();
@@ -4226,7 +4270,7 @@ function hwLightning() {
 }
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
-  el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d'); el.classList.add('on'); HW_BUILT = true; document.documentElement.classList.add('hw-night');
+  el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d'); el.classList.add('on'); HW_BUILT = true; hwNight();
   hwResize(); HW.st = hwInitState(); HW.t0 = performance.now(); HW.last = 0;
   window.addEventListener('resize', hwResize);
   const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -4237,8 +4281,9 @@ function removeHalloween() {
   const el = document.getElementById('halloween'); if (!el) { return; }
   if (HW.raf) { cancelAnimationFrame(HW.raf); HW.raf = 0; }
   window.removeEventListener('resize', hwResize);
-  el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false; HW.st = null; HW.pre = null; document.documentElement.classList.remove('hw-night');
+  el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false; HW.st = null; HW.pre = null; hwNight();
   if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
+  hwRain(false);
 }
 // Gruselgeraeusche: rein synthetisch (Web Audio, keine Dateien). Browser/WebViews geben Ton erst
 // nach einer Bedienung frei -> solange der Ton noch nicht entsperrt ist, steht ein kleiner Hinweis
@@ -4248,11 +4293,17 @@ function hwAudio() {
   try { const C = window.AudioContext || window.webkitAudioContext; if (C) { HW_AUDIO = new C(); } } catch (e) { HW_AUDIO = null; }
   return HW_AUDIO;
 }
+function hwRain(on) {                                      // leises Regenrauschen als Dauerschleife (nur mit Ton)
+  const a = HW_AUDIO;
+  if (on && a && a.state === 'running') { if (!HW_RAIN) { const n = hwNoise(a, 2), f = a.createBiquadFilter(), gg = a.createGain(); n.loop = true; f.type = 'bandpass'; f.frequency.value = 3200; f.Q.value = .45; gg.gain.value = .05; n.connect(f); f.connect(gg); gg.connect(a.destination); n.start(); HW_RAIN = { n, gg }; } }
+  else if (HW_RAIN) { try { HW_RAIN.n.stop(); } catch (e) { } HW_RAIN = null; }
+}
 function hwUnlock() {
   if (!SEASONAL_SOUND || !HW_BUILT) { return; }
   const a = hwAudio(); if (!a) { return; }
   const done = () => {
     const h = document.querySelector('#halloween .hw-sound'); if (h) { h.remove(); }
+    hwRain(true);
     if (HW_FIRST_SOUND) { HW_FIRST_SOUND = false; hwPlay('wuuh'); hwScheduleSound(true); }
   };
   if (a.state === 'running') { done(); } else { a.resume().then(done).catch(() => {}); }
@@ -4305,6 +4356,11 @@ function hwPlay(kind) {
     o.connect(f); o2.connect(f); f.connect(g); env(0.5, 0.15, 2.0); [o, o2, l].forEach(x => { x.start(t); x.stop(t + 2.1); });
     const n = hwNoise(a, 1.6), nf = a.createBiquadFilter(), ng = a.createGain(); nf.type = 'bandpass'; nf.frequency.value = 500; nf.Q.value = .8; ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(.25, t + .2); ng.gain.exponentialRampToValueAtTime(.0008, t + 1.6);
     n.connect(nf); nf.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + 1.6);
+  } else if (kind === 'chain') {               // Kettenrasseln: kurze metallische Klicks
+    for (let i = 0; i < 9; i++) { const o = a.createOscillator(), gg = a.createGain(), f = a.createBiquadFilter(), at = t + i * .11 + Math.random() * .05; o.type = 'square'; o.frequency.value = 1800 + Math.random() * 2200; f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 3;
+      gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.09, at + .004); gg.gain.exponentialRampToValueAtTime(.0008, at + .07); o.connect(f); f.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .08); }
+  } else if (kind === 'steps') {               // schwere Schritte
+    for (let i = 0; i < 5; i++) { const o = a.createOscillator(), gg = a.createGain(), at = t + i * .6; o.type = 'sine'; o.frequency.setValueAtTime(85, at); o.frequency.exponentialRampToValueAtTime(38, at + .2); gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.3 - i * .04, at + .01); gg.gain.exponentialRampToValueAtTime(.0008, at + .25); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .3); }
   } else if (kind === 'bell') {                // dumpfer Glockenschlag
     [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
       gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);
@@ -4318,7 +4374,7 @@ function hwScheduleSound(soon) {
   if (HW_SOUND_TIMER) { clearTimeout(HW_SOUND_TIMER); HW_SOUND_TIMER = null; }
   if (!HW_BUILT || !SEASONAL_SOUND) { return; }
   HW_SOUND_TIMER = setTimeout(() => {
-    hwPlay(['wuuh', 'creak', 'squeak', 'bell', 'rumble'][Math.floor(Math.random() * 5)]);
+    hwPlay(['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'][Math.floor(Math.random() * 7)]);
     hwScheduleSound(false);
   }, soon ? 8000 : 14000 + Math.random() * 26000);
 }
@@ -4336,6 +4392,7 @@ function applySeasonal() {
   if (!SEASONAL_SOUND) { const h = document.querySelector('#halloween .hw-sound'); if (h) { h.remove(); } } else { hwSoundHint(); }
   hwScheduleSound(false);
   hwScheduleZap();
+  hwNight(); hwRain(SEASONAL_SOUND && HW_BUILT);
 }
 document.addEventListener('pointerdown', hwUnlock, { passive: true }); document.addEventListener('pointerdown', hwBatClick, { passive: true, capture: true }); window.addEventListener('mousedown', hwBatClick, { capture: true });
 
@@ -5329,6 +5386,7 @@ function handleMessage(raw) {
   BLOCKED_ANIM_STYLE = (d && d.blockedAnimStyle != null) ? d.blockedAnimStyle : 0;
   SEASONAL_MODE = (d && d.seasonal != null) ? d.seasonal : 0;
   SEASONAL_SOUND = !!(d && d.seasonalSound === 1);
+  SEASONAL_BG = d && (d.seasonalBg === 1 || d.seasonalBg === 2) ? d.seasonalBg : 0;
   applySeasonal();
   // Aufschachteln (03.09.2026): Ebene 1 merken (fuer Brotkrumen/Rueckweg);
   // steht der Nutzer gerade in einer tieferen Ebene, rendert renderLevelView()

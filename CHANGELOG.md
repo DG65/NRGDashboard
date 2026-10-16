@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.12 (2026-10-16)
+
+- Halloween-Jagd mit mehr Spielgefühl: Kombo (schnelle Treffer hintereinander bis ×4, mit Zeitbalken), steigende Schwierigkeit über die Minute (schnellere Fledermäuse, kürzere Pausen zwischen den Figuren, drei Extra-Fledermäuse) und ein Boss-Kürbis in den letzten 15 Sekunden (5 Treffer, Lebensbalken, 200 Punkte).
+- Mehr Atmosphäre: Regen mit wechselnder Stärke, Gewitterwolken, die beim Blitz aufleuchten, flackerndes Licht mit kurzem Stromausfall; mit Ton zusätzlich leises Regenrauschen, Kettenrasseln und Schritte.
+- Neuer Schalter „Saison-Effekte: Hintergrund“: Dunkel mit den Effekten (Standard) / Immer Standard / Immer dunkel (Nachthimmel mit Sternen, auch ohne Effekte).
+
 ## 0.9.170-beta.11 (2026-10-16)
 
 - Kachel: eine Nachricht, die kein gültiges JSON ist, löste einen unbehandelten Fehler in der Konsole aus; sie wird jetzt ignoriert und der Anfang des Textes als Warnung protokolliert.
