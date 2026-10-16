@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.11 (2026-10-16)
+
+- Kachel: eine Nachricht, die kein gültiges JSON ist, löste einen unbehandelten Fehler in der Konsole aus; sie wird jetzt ignoriert und der Anfang des Textes als Warnung protokolliert.
+
 ## 0.9.170-beta.10 (2026-10-16)
 
 - Halloween: Fehlerbehebung - beim Einbau der Jagd ging die Vampir-Zeichenfunktion verloren; sobald der Vampir erschien, brach die Szene ab (Nebel, Figuren, Countdown und Tabelle fehlten). Außerdem fängt die Szene Zeichenfehler jetzt ab, statt stehenzubleiben.

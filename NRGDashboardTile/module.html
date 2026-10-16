@@ -5144,7 +5144,9 @@ window.addEventListener('resize', function () {
 });
 
 function handleMessage(raw) {
-  const first = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  let first;
+  try { first = typeof raw === 'string' ? JSON.parse(raw) : raw; }
+  catch (e) { console.warn('NRGDashboard: Nachricht ist kein JSON, ignoriert. Anfang:', String(raw).slice(0, 120)); return; }
   // Antwort auf requestAction('quotasLoad', ...) - NICHT der volle Kachel-Payload,
   // nur die nachgeforderten Quoten fuer einen einzelnen Zeitraum (Muster: PVMonitor
   // dayPlanUpdate/yearCompareUpdate). Frueh abzweigen, bevor der Rest von
