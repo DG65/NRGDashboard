@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.13 (2026-10-16)
+
+- Halloween-Jagd: Während einer Jagd (und der Ergebnistabelle) fängt die Szene alle Berührungen ab - Knoten, Details und Bedienelemente der Kachel reagieren dann nicht mehr; der Mauszeiger wird zum Fadenkreuz.
+
 ## 0.9.170-beta.12 (2026-10-16)
 
 - Halloween-Jagd mit mehr Spielgefühl: Kombo (schnelle Treffer hintereinander bis ×4, mit Zeitbalken), steigende Schwierigkeit über die Minute (schnellere Fledermäuse, kürzere Pausen zwischen den Figuren, drei Extra-Fledermäuse) und ein Boss-Kürbis in den letzten 15 Sekunden (5 Treffer, Lebensbalken, 200 Punkte).
