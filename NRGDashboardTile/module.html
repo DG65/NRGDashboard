@@ -761,6 +761,10 @@
     radial-gradient(1.4px 1.4px at 78% 8%, rgba(235,240,255,.75), transparent), radial-gradient(1px 1px at 88% 22%, rgba(235,240,255,.5), transparent), radial-gradient(1.2px 1.2px at 94% 38%, rgba(235,240,255,.6), transparent),
     radial-gradient(1px 1px at 14% 44%, rgba(235,240,255,.45), transparent), radial-gradient(1.2px 1.2px at 41% 41%, rgba(235,240,255,.5), transparent), radial-gradient(1px 1px at 73% 47%, rgba(235,240,255,.45), transparent), var(--hw-sky, radial-gradient(ellipse at 50% 28%, #120e22 0%, #07060d 72%)) !important; }
   html.hw-night-xmas { --hw-sky: radial-gradient(ellipse at 50% 30%, #12294d 0%, #060e1f 74%); }
+  /* Hintergrund-Ebene der Saison-Szene: UNTER dem Diagramm (wie #ampelWash), damit Knoten mit Energiefluss nie verdeckt werden */
+  #halloweenBack { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; display: none; }
+  #halloweenBack.on { display: block; }
+  #halloweenBack .hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   #halloween { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; display: none; }
   #halloween.on { display: block; }
   #halloween.hunt { pointer-events: auto; touch-action: none; cursor: crosshair; }
@@ -938,6 +942,7 @@
   <div class="qFoot">Autarkiegrad: Anteil des Hausverbrauchs ohne Netzbezug. Eigenverbrauchsquote: Anteil der PV-Erzeugung, der nicht eingespeist wurde.</div>
 </div>
 <div id="ampelWash"></div>
+<div id="halloweenBack" aria-hidden="true"></div>
 <div id="emsDecision" onclick="toggleEmsDecisionPanel()"><span class="mode"></span><span class="reason"></span></div>
 <div id="emsDecisionPanel">
   <div class="emsPanelMode" id="emsPanelMode"></div>
@@ -4048,7 +4053,7 @@ function hwHalloweenInit(S) {
 function hwResize() {
   const el = document.getElementById('halloween'); if (!el || !HW.cv) { return; }
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5), w = Math.max(80, el.clientWidth), h = Math.max(80, el.clientHeight);
-  HW.cv.width = Math.round(w * dpr); HW.cv.height = Math.round(h * dpr); HW.cv.style.width = '100%'; HW.cv.style.height = '100%';
+  HW.cv.width = Math.round(w * dpr); HW.cv.height = Math.round(h * dpr); if (HW.cvB) { HW.cvB.width = HW.cv.width; HW.cvB.height = HW.cv.height; } HW.cv.style.width = '100%'; HW.cv.style.height = '100%';
   HW.w = HW.cv.width; HW.h = HW.cv.height; HW.u = Math.min(HW.w, HW.h) / 600; HW.pre = HW.theme.build(HW.w, HW.h, HW.u);
 }
 function hwFrame(now) {
@@ -4060,8 +4065,8 @@ function hwFrame(now) {
 }
 function hwDraw(t, dt) {
   const g = HW.ctx, w = HW.w, h = HW.h, u = HW.u, P = HW.pre, S = HW.st; if (!g || !P || !HW.theme) { return; }
-  g.clearRect(0, 0, w, h); S.hits = []; S.diff = S.game.st === 1 ? S.game.t / HW_ROUND * .9 : 0;
-  HW.theme.draw(g, t, dt, w, h, u, P, S);
+  g.clearRect(0, 0, w, h); const gb = HW.ctxB || g; if (HW.ctxB) { gb.clearRect(0, 0, w, h); } S.hits = []; S.diff = S.game.st === 1 ? S.game.t / HW_ROUND * .9 : 0;
+  HW.theme.draw(g, t, dt, w, h, u, P, S, gb);
   hwFx(g, S, dt, u, w, h);
 }
 // Boss der letzten Sekunden - gemeinsam fuer alle Themen (drawFn zeichnet die Figur mit Mitte bei 0,0)
@@ -4074,28 +4079,28 @@ function hwBossRun(g, S, t, dt, w, h, u, drawFn, snd, col) {
   g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u, 6 * u); g.fillStyle = col.bar; g.fillRect(bx - 40 * u, by - bk * 1.85, 80 * u * bs.hp / 5, 6 * u);
   S.hits.push({ x: bx, y: by, r: bk * 1.2, pts: bs.hp > 1 ? 20 : 200, c: col.hit, snd: snd, kill: () => { bs.hp--; bs.flash = 1; if (bs.hp <= 0) { S.boss = null; for (let i = 0; i < 50; i++) { const a = R() * 6.283, v = (80 + R() * 320) * u; S.sparks.push({ x: bx, y: by, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: .7 + R() * .8, c: col.burst }); } } } });
 }
-function hwHalloweenDraw(g, t, dt, w, h, u, P, S) {
+function hwHalloweenDraw(g, t, dt, w, h, u, P, S, gb) {
   const R = Math.random;
   // Blitz (Zeitplan siehe hwScheduleZap): Himmel hell, Mond gedimmt
   let flash = 0; if (S.bolt) { const age = (t - S.bolt.t0); if (age > 1.1) { S.bolt = null; } else { flash = [0, .9, .1, .7, .05, .35, 0][Math.min(6, Math.floor(age / .16))] * Math.max(0, 1 - age / 1.1) * 1.2; } }
-  g.globalAlpha = .75 + .25 * Math.sin(t * .6); g.drawImage(P.stars, 0, 0); g.globalAlpha = 1;
+  gb.globalAlpha = .75 + .25 * Math.sin(t * .6); gb.drawImage(P.stars, 0, 0); gb.globalAlpha = 1;
   // Mond mit Hof und ziehenden Wolken
   const mx = w * .86, my = h * .14, mr = P.moonR;
-  let gr = g.createRadialGradient(mx, my, mr * .6, mx, my, mr * 4.2); gr.addColorStop(0, 'rgba(255,235,170,.38)'); gr.addColorStop(.35, 'rgba(255,215,140,.1)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(mx - mr * 4.2, my - mr * 4.2, mr * 8.4, mr * 8.4);
-  g.globalAlpha = .93 - flash * .3; g.drawImage(P.moon, mx - mr, my - mr); g.globalAlpha = 1;
+  let gr = gb.createRadialGradient(mx, my, mr * .6, mx, my, mr * 4.2); gr.addColorStop(0, 'rgba(255,235,170,.38)'); gr.addColorStop(.35, 'rgba(255,215,140,.1)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); gb.fillStyle = gr; gb.fillRect(mx - mr * 4.2, my - mr * 4.2, mr * 8.4, mr * 8.4);
+  gb.globalAlpha = .93 - flash * .3; gb.drawImage(P.moon, mx - mr, my - mr); gb.globalAlpha = 1;
   for (let i = 0; i < 3; i++) { const cx = ((t * (5 + i * 2) * u + i * 220 * u) % (w + 300 * u)) - 150 * u, cy = my + (i - 1) * 16 * u, rx = (110 + i * 36) * u, ry = (13 + i * 5) * u;
-    const cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx); cg.addColorStop(0, 'rgba(14,10,22,.55)'); cg.addColorStop(.6, 'rgba(14,10,22,.22)'); cg.addColorStop(1, 'rgba(14,10,22,0)');
-    g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill(); g.restore(); }
+    const cg = gb.createRadialGradient(cx, cy, 0, cx, cy, rx); cg.addColorStop(0, 'rgba(14,10,22,.55)'); cg.addColorStop(.6, 'rgba(14,10,22,.22)'); cg.addColorStop(1, 'rgba(14,10,22,0)');
+    gb.save(); gb.translate(cx, cy); gb.scale(1, ry / rx); gb.translate(-cx, -cy); gb.fillStyle = cg; gb.beginPath(); gb.arc(cx, cy, rx, 0, 7); gb.fill(); gb.restore(); }
   // Gewitterwolken ziehen vor dem Mond vorbei und leuchten beim Blitz
-  for (let i = 0; i < 4; i++) { const cx = ((t * (4 + i * 1.7) * u + i * 340 * u) % (w + 600 * u)) - 300 * u, cy = h * (.06 + i * .035), rx = (170 + i * 30) * u, ry = (30 + i * 6) * u, cg = g.createRadialGradient(cx, cy, 0, cx, cy, rx);
+  for (let i = 0; i < 4; i++) { const cx = ((t * (4 + i * 1.7) * u + i * 340 * u) % (w + 600 * u)) - 300 * u, cy = h * (.06 + i * .035), rx = (170 + i * 30) * u, ry = (30 + i * 6) * u, cg = gb.createRadialGradient(cx, cy, 0, cx, cy, rx);
     cg.addColorStop(0, 'rgba(12,9,22,' + (.55 - flash * .25).toFixed(2) + ')'); cg.addColorStop(.6, 'rgba(12,9,22,.22)'); cg.addColorStop(1, 'rgba(12,9,22,0)');
-    g.save(); g.translate(cx, cy); g.scale(1, ry / rx); g.translate(-cx, -cy); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill();
-    if (flash > .1) { const lg = g.createRadialGradient(cx, cy, 0, cx, cy, rx); lg.addColorStop(0, 'rgba(150,165,220,' + (flash * .4).toFixed(2) + ')'); lg.addColorStop(1, 'rgba(150,165,220,0)'); g.fillStyle = lg; g.beginPath(); g.arc(cx, cy, rx, 0, 7); g.fill(); } g.restore(); }
+    gb.save(); gb.translate(cx, cy); gb.scale(1, ry / rx); gb.translate(-cx, -cy); gb.fillStyle = cg; gb.beginPath(); gb.arc(cx, cy, rx, 0, 7); gb.fill();
+    if (flash > .1) { const lg = gb.createRadialGradient(cx, cy, 0, cx, cy, rx); lg.addColorStop(0, 'rgba(150,165,220,' + (flash * .4).toFixed(2) + ')'); lg.addColorStop(1, 'rgba(150,165,220,0)'); gb.fillStyle = lg; gb.beginPath(); gb.arc(cx, cy, rx, 0, 7); gb.fill(); } gb.restore(); }
   // Baum (leichtes Schwanken) mit Kraehe
   const tw = P.tree.width, th = P.tree.height, tx = w - tw * .93, ty = h * .92 - th;
-  g.save(); g.translate(tx + tw * .62, ty + th); g.rotate(Math.sin(t * .5) * .006); g.translate(-tw * .62, -th); g.drawImage(P.tree, 0, 0);
-  g.translate(tw * .5, th * .3); if (S.crowOff <= t) { hwCrowDraw(g, 11 * u, t); S.hits.push({ x: tx + tw * .5 + (tw * .12), y: ty + th * .3, r: 20 * u, pts: 25, c: '120,110,160', kill: () => { S.crowOff = t + 20; } }); } g.restore();
-  g.drawImage(P.stones, w * .2, h * .93 - P.stones.height);
+  gb.save(); gb.translate(tx + tw * .62, ty + th); gb.rotate(Math.sin(t * .5) * .006); gb.translate(-tw * .62, -th); gb.drawImage(P.tree, 0, 0);
+  gb.translate(tw * .5, th * .3); if (S.crowOff <= t) { hwCrowDraw(gb, 11 * u, t); S.hits.push({ x: tx + tw * .5 + (tw * .12), y: ty + th * .3, r: 20 * u, pts: 25, c: '120,110,160', kill: () => { S.crowOff = t + 20; } }); } gb.restore();
+  gb.drawImage(P.stones, w * .2, h * .93 - P.stones.height);
   // Vampir steigt aus dem Grab, schwebt aufrecht, breitet den Umhang aus und versinkt wieder
   const V = S.vamp; V.next -= dt; if (V.t < 0 && V.next <= 0) { V.t = 0; V.x = .24 + R() * .36; if (SEASONAL_SOUND) { setTimeout(() => hwPlay('creak'), 300); setTimeout(() => hwPlay('wuuh'), 4300); } }
   if (V.t >= 0) { V.t += dt; const T = V.t; if (T > 12) { V.t = -1; V.next = 40 + R() * 40; } else {
@@ -4202,7 +4207,7 @@ function hwHalloweenDraw(g, t, dt, w, h, u, P, S) {
   hwBossRun(g, S, t, dt, w, h, u, hwBossDraw, 'roar', { bar: '#ff4a2a', hit: '255,80,30', burst: '255,140,40' });
   // Flackern der Beleuchtung, gelegentlich kurzer Stromausfall
   const bl = S.black || (S.black = { t: -1, next: 18 + R() * 20 }); bl.next -= dt; if (bl.t < 0 && bl.next <= 0) { bl.t = 0; } 
-  g.globalAlpha = Math.min(1, .9 + .1 * Math.sin(t * 23) * Math.sin(t * 5.1)); g.drawImage(P.vig, 0, 0); g.globalAlpha = 1;
+  gb.globalAlpha = Math.min(1, .9 + .1 * Math.sin(t * 23) * Math.sin(t * 5.1)); gb.drawImage(P.vig, 0, 0); gb.globalAlpha = 1;
   if (bl.t >= 0) { bl.t += dt; const ba = [.5, 0, .45, .05, .5][Math.floor(bl.t / .12)]; if (ba === undefined) { bl.t = -1; bl.next = 25 + R() * 35; } else { g.fillStyle = 'rgba(0,0,12,' + ba + ')'; g.fillRect(0, 0, w, h); } }
 }
 function hwBatClick(ev) {                           // Klick auf eine Figur: getroffen
@@ -4400,32 +4405,32 @@ function hwXmasLights(g, w, u, t) {                            // Lichterkette a
     g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = cols[i % 5]; g.globalAlpha = .3 * on; g.beginPath(); g.arc(x, y + 9 * u, 11 * u, 0, 7); g.fill(); g.restore();
     g.fillStyle = cols[i % 5]; g.globalAlpha = .45 + .55 * on; g.beginPath(); g.ellipse(x, y + 9 * u, 3.4 * u, 5 * u, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
 }
-function hwXmasDraw(g, t, dt, w, h, u, P, S) {
+function hwXmasDraw(g, t, dt, w, h, u, P, S, gb) {
   const R = Math.random;
   // Polarlicht: in kleiner Aufloesung gezeichnet und weich hochskaliert (keine Streifen)
   const ac = P.aurC || (P.aurC = hwMake(Math.ceil(w / 8), Math.ceil(h / 8))), ag = ac.getContext('2d'), aw = ac.width, ah = ac.height;
   if (!P.aur) { P.aur = ['80,255,170', '70,200,255', '190,110,255'].map(c => { const gr = ag.createLinearGradient(0, 0, 0, ah * .6); gr.addColorStop(0, 'rgba(' + c + ',0)'); gr.addColorStop(.25, 'rgba(' + c + ',1)'); gr.addColorStop(1, 'rgba(' + c + ',0)'); return gr; }); }
   ag.clearRect(0, 0, aw, ah); ag.globalCompositeOperation = 'lighter';
   for (let b = 0; b < 3; b++) { ag.fillStyle = P.aur[b]; for (let x = 0; x < aw; x++) { const X = x * 8, top = ah * (.08 + .05 * b) + Math.sin(X * .006 + t * (.16 + .05 * b) + b * 2) * ah * .045, len = ah * (.2 + .06 * Math.sin(X * .011 + t * .22 + b)); ag.globalAlpha = Math.max(0, .09 + .06 * Math.sin(X * .004 - t * .3 + b * 1.7)); ag.fillRect(x, top, 1, len); } }
-  g.save(); g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(ac, 0, 0, w, h); g.restore();
-  P.stars.forEach(s => { g.fillStyle = 'rgba(235,242,255,' + (.35 + .65 * (.5 + .5 * Math.sin(t * 1.5 + s.ph))).toFixed(2) + ')'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 7); g.fill(); });
-  const mx = w * .84, my = h * .16, mr = 34 * u; let gr = g.createRadialGradient(mx, my, mr * .7, mx, my, mr * 4); gr.addColorStop(0, 'rgba(230,238,255,.3)'); gr.addColorStop(1, 'rgba(230,238,255,0)'); g.fillStyle = gr; g.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
-  gr = g.createRadialGradient(mx - mr * .3, my - mr * .3, mr * .1, mx, my, mr); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#cfd9ee'); g.fillStyle = gr; g.beginPath(); g.arc(mx, my, mr, 0, 7); g.fill();
+  gb.save(); gb.globalCompositeOperation = 'lighter'; gb.imageSmoothingEnabled = true; gb.imageSmoothingQuality = 'high'; gb.drawImage(ac, 0, 0, w, h); gb.restore();
+  P.stars.forEach(s => { gb.fillStyle = 'rgba(235,242,255,' + (.35 + .65 * (.5 + .5 * Math.sin(t * 1.5 + s.ph))).toFixed(2) + ')'; gb.beginPath(); gb.arc(s.x, s.y, s.r, 0, 7); gb.fill(); });
+  const mx = w * .84, my = h * .16, mr = 34 * u; let gr = gb.createRadialGradient(mx, my, mr * .7, mx, my, mr * 4); gr.addColorStop(0, 'rgba(230,238,255,.3)'); gr.addColorStop(1, 'rgba(230,238,255,0)'); gb.fillStyle = gr; gb.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
+  gr = gb.createRadialGradient(mx - mr * .3, my - mr * .3, mr * .1, mx, my, mr); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#cfd9ee'); gb.fillStyle = gr; gb.beginPath(); gb.arc(mx, my, mr, 0, 7); gb.fill();
   // Schnee in drei Ebenen (Aktualisierung und Zeichnen je Ebene)
   const nF = Math.max(80, Math.min(330, Math.round(w * h / 5500)));
   if (!S.fl || S.fl.n !== nF) { S.fl = { n: nF, L: [0, 1, 2].map(li => { const a = [], cnt = Math.round(nF * [.5, .3, .2][li]); for (let i = 0; i < cnt; i++) { a.push({ x: R() * w, y: R() * h, r: (li === 0 ? .8 + R() * .6 : li === 1 ? 1.4 + R() * .8 : 2.4 + R() * 1.2) * u, v: (li === 0 ? 18 + R() * 12 : li === 1 ? 36 + R() * 20 : 60 + R() * 30) * u, ph: R() * 7 }); } return a; }) }; }
   const wind = Math.sin(t * .13) * 14 * u + 10 * u;
-  const flakes = (li, al) => { g.fillStyle = 'rgba(244,249,255,' + al + ')'; g.beginPath(); S.fl.L[li].forEach(f => { f.y += f.v * dt; f.x += (Math.sin(t * .7 + f.ph) * 9 * u + wind * (1 + li * .35)) * dt; if (f.y > h + 5) { f.y = -5; f.x = R() * w; } if (f.x > w + 5) { f.x = -5; } else if (f.x < -5) { f.x = w + 5; } g.moveTo(f.x + f.r, f.y); g.arc(f.x, f.y, f.r, 0, 7); }); g.fill(); };
-  flakes(0, .55);
+  const flakes = (li, al, c) => { c.fillStyle = 'rgba(244,249,255,' + al + ')'; c.beginPath(); S.fl.L[li].forEach(f => { f.y += f.v * dt; f.x += (Math.sin(t * .7 + f.ph) * 9 * u + wind * (1 + li * .35)) * dt; if (f.y > h + 5) { f.y = -5; f.x = R() * w; } if (f.x > w + 5) { f.x = -5; } else if (f.x < -5) { f.x = w + 5; } c.moveTo(f.x + f.r, f.y); c.arc(f.x, f.y, f.r, 0, 7); }); c.fill(); };
+  flakes(0, .55, gb);
   // Sternschnuppe
   const SH = S.shoot; SH.next -= dt; if (SH.t < 0 && SH.next <= 0) { SH.t = 0; SH.x0 = w * (.12 + R() * .5); SH.y0 = h * (.04 + R() * .18); }
   if (SH.t >= 0) { SH.t += dt; const p = SH.t / 2.2; if (p >= 1) { SH.t = -1; SH.next = 12 + R() * 14; } else { const x = SH.x0 + p * w * .45, y = SH.y0 + p * h * .3, a = Math.min(1, p * 6, (1 - p) * 3);
     const tg = g.createLinearGradient(x, y, x - w * .12, y - h * .08); tg.addColorStop(0, 'rgba(255,245,200,' + a.toFixed(2) + ')'); tg.addColorStop(1, 'rgba(255,245,200,0)'); g.strokeStyle = tg; g.lineWidth = 3 * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x - w * .12, y - h * .08); g.stroke();
     g.save(); g.globalAlpha = a; g.shadowColor = '#ffe27a'; g.shadowBlur = 12 * u; g.fillStyle = '#fff2b0'; g.beginPath(); for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5 + t * 2, rr = (i % 2 ? 4 : 9) * u; g.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); } g.closePath(); g.fill(); g.restore();
     S.hits.push({ x, y, r: 28 * u, pts: 25, c: '255,230,140', snd: 'sparkle', kill: () => { SH.t = -1; SH.next = 7 + R() * 6; } }); } }
-  g.drawImage(P.hillB, 0, h * .6);
-  hwXmasTreeDraw(g, P.treeL, w * .13, h * .83, t, u); hwXmasTreeDraw(g, P.treeR1, w * .93, h * .8, t, u); hwXmasTreeDraw(g, P.treeR2, w * .72, h * .78, t, u);
-  g.drawImage(P.hillF, 0, h * .72);
+  gb.drawImage(P.hillB, 0, h * .6);
+  hwXmasTreeDraw(gb, P.treeL, w * .13, h * .83, t, u); hwXmasTreeDraw(gb, P.treeR1, w * .93, h * .8, t, u); hwXmasTreeDraw(gb, P.treeR2, w * .72, h * .78, t, u);
+  gb.drawImage(P.hillF, 0, h * .72);
   // Schneemann
   const SM = S.snowman; if (SM.hide <= t) { const pop = Math.min(1, (t - SM.hide) / .7), sc = pop * (2 - pop); g.save(); g.translate(w * .8, h * .87); g.scale(sc, sc); hwSnowmanDraw(g, 22 * u, t); g.restore();
     if (pop >= 1) { S.hits.push({ x: w * .8, y: h * .87 - 42 * u, r: 44 * u, pts: 15, c: '230,240,255', snd: 'chime', kill: () => { SM.hide = t + 9; } }); } }
@@ -4444,10 +4449,10 @@ function hwXmasDraw(g, t, dt, w, h, u, P, S) {
     g.save(); g.translate(sx, sy); hwSleighDraw(g, 40 * u, t); g.restore();
     if (R() < dt * 25) { S.sparks.push({ x: sx - 30 * u, y: sy + 10 * u, vx: -(20 + R() * 40) * u, vy: (R() - .3) * 30 * u, age: 0, life: .6 + R() * .5, c: '255,230,150' }); }
     S.hits.push({ x: sx + 34 * u, y: sy, r: 72 * u, pts: 30, c: '255,215,90', snd: 'bells', kill: () => { SL.t = -1; SL.next = 14 + R() * 10; for (let i = 0; i < 4; i++) { hwXmasGift(S, sx + (i - 1.5) * 26 * u, sy, u, (i - 1.5) * 22 * u); } } }); } }
-  flakes(1, .75); flakes(2, .95);
+  flakes(1, .75, g); flakes(2, .95, g);
   hwBossRun(g, S, t, dt, w, h, u, hwXmasBossDraw, 'hoho', { bar: '#5ab4ff', hit: '120,190,255', burst: '200,230,255' });
   hwXmasLights(g, w, u, t);
-  g.drawImage(P.vig, 0, 0);
+  gb.drawImage(P.vig, 0, 0);
 }
 HW_THEMES.xmas = {
   id: 'xmas', keyBest: 'nrgXmBest', keyScores: 'nrgXmScores', zap: false, ambient: { f: 450, q: .5, g: .03 }, sounds: ['bells', 'chime', 'wind', 'sparkle'],
@@ -4465,7 +4470,8 @@ HW_THEMES.halloween = {
 };
 function buildHalloween() {
   const el = document.getElementById('halloween'); if (!el || HW_BUILT) { return; }
-  el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d'); el.classList.add('on'); HW_BUILT = true; hwNight();
+  el.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cv = el.firstChild; HW.ctx = HW.cv.getContext('2d');
+  const elB = document.getElementById('halloweenBack'); if (elB) { elB.innerHTML = '<canvas class="hw-canvas"></canvas>'; HW.cvB = elB.firstChild; HW.ctxB = HW.cvB.getContext('2d'); elB.classList.add('on'); } el.classList.add('on'); HW_BUILT = true; hwNight();
   hwResize(); HW.st = hwInitState(); HW.t0 = performance.now(); HW.last = 0;
   window.addEventListener('resize', hwResize);
   const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -4476,7 +4482,7 @@ function removeHalloween() {
   const el = document.getElementById('halloween'); if (!el) { return; }
   if (HW.raf) { cancelAnimationFrame(HW.raf); HW.raf = 0; }
   window.removeEventListener('resize', hwResize);
-  el.classList.remove('on'); el.innerHTML = ''; HW_BUILT = false; HW.st = null; HW.pre = null; hwNight();
+  el.classList.remove('on'); el.innerHTML = ''; const elB2 = document.getElementById('halloweenBack'); if (elB2) { elB2.classList.remove('on'); elB2.innerHTML = ''; } HW.cvB = null; HW.ctxB = null; HW_BUILT = false; HW.st = null; HW.pre = null; hwNight();
   if (HW_ZAP_TIMER) { clearTimeout(HW_ZAP_TIMER); HW_ZAP_TIMER = null; }
   hwRain(false);
 }
