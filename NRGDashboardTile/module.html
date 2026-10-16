@@ -4285,6 +4285,177 @@ function hwLightning() {
   const x = .1 + Math.random() * .8, segs = []; hwBolt(x, 0, x + (Math.random() - .5) * .25, .72 + Math.random() * .12, .22, segs, 0);
   HW.st.bolt = { segs: segs.map(s => [s[0], s[1], s[2], s[3], s[4]]), t0: (performance.now() - HW.t0) / 1000 };
 }
+// ---- Weihnachtszeit (Thema "xmas"): Polarlicht, Schnee, Tannen mit Lichtern, Schlitten, Geschenke, Schneemann
+function hwXmasTree(h, seed) {                                 // Tanne mit Schnee und Kugeln, vorgerendert; Lichter werden spaeter dynamisch gezeichnet
+  const R = hwRng(seed), tw = Math.round(h * .66), c = hwMake(tw, h), g = c.getContext('2d'), cx = tw / 2, lights = [], pal = ['#d62b2b', '#e8b923', '#3c7fe0', '#c04fd0', '#e8e8f0'];
+  g.fillStyle = '#3a2412'; g.fillRect(cx - tw * .04, h * .9, tw * .08, h * .1);
+  for (let i = 0; i < 5; i++) {
+    const y0 = h * (.07 + i * .165), y1 = y0 + h * .27, half = tw * (.2 + i * .06), gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, '#236b40'); gr.addColorStop(1, '#0c2c1a');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(cx, y0); g.lineTo(cx + half, y1);
+    for (let k = 1; k <= 6; k++) { const x = cx + half - k * half / 3; g.quadraticCurveTo(x + half / 6, y1 - h * .035, x, y1); }
+    g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(238,245,255,.92)'; g.lineWidth = Math.max(1.5, h * .013); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(cx, y0 + 1); g.lineTo(cx + half * .55, y0 + (y1 - y0) * .55); g.moveTo(cx, y0 + 1); g.lineTo(cx - half * .55, y0 + (y1 - y0) * .55); g.stroke();
+    for (let b = 0; b < 4; b++) { const f = .4 + R() * .55, y = y0 + (y1 - y0) * f, x = cx + (R() * 2 - 1) * half * f * .8, r = h * .014, col = pal[Math.floor(R() * pal.length)];
+      const bg = g.createRadialGradient(x - r * .3, y - r * .3, r * .1, x, y, r); bg.addColorStop(0, '#fff'); bg.addColorStop(.35, col); bg.addColorStop(1, 'rgba(0,0,0,.5)'); g.fillStyle = bg; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    for (let b = 0; b < 4; b++) { const f = .3 + R() * .65, y = y0 + (y1 - y0) * f, x = cx + (R() * 2 - 1) * half * f * .85; lights.push({ x, y, c: pal[(i + b) % 4] }); }
+  }
+  return { c, lights, tw, h, topY: h * .06, cx };
+}
+function hwXmasTreeDraw(g, T, x, y, t, u) {
+  const ox = x - T.tw / 2, oy = y - T.h; g.drawImage(T.c, ox, oy);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  T.lights.forEach((L, i) => { const a = .3 + .7 * Math.max(0, Math.sin(t * 2.4 + i * 1.3)); g.fillStyle = L.c; g.globalAlpha = a * .3; g.beginPath(); g.arc(ox + L.x, oy + L.y, 8 * u * (.7 + .3 * a), 0, 7); g.fill(); g.globalAlpha = a; g.beginPath(); g.arc(ox + L.x, oy + L.y, 2.2 * u, 0, 7); g.fill(); });
+  const sx = ox + T.cx, sy = oy + T.topY, sr = Math.max(5, T.h * .045), pulse = .8 + .2 * Math.sin(t * 2), gr = g.createRadialGradient(sx, sy, 0, sx, sy, sr * 3.2);
+  gr.addColorStop(0, 'rgba(255,225,120,' + (.55 * pulse).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,200,80,0)'); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(sx - sr * 3.2, sy - sr * 3.2, sr * 6.4, sr * 6.4);
+  g.restore();
+  g.fillStyle = '#ffd44a'; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? sr * .45 : sr; g.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } g.closePath(); g.fill();
+}
+function hwXmasHill(w, hh, amp, base, c0, c1, seed) {
+  const c = hwMake(w, hh), g = c.getContext('2d'), gr = g.createLinearGradient(0, base - amp, 0, hh); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; g.beginPath(); g.moveTo(0, hh);
+  for (let x = 0; x <= w; x += 8) { g.lineTo(x, base + Math.sin(x * .004 + seed) * amp + Math.sin(x * .011 + seed * 2) * amp * .4); }
+  g.lineTo(w, hh); g.closePath(); g.fill(); return c;
+}
+function hwXmasBuild(w, h, u) {
+  const P = {}, R = hwRng(11); P.stars = []; for (let i = 0; i < 120; i++) { P.stars.push({ x: R() * w, y: R() * h * .62, r: (.4 + R() * 1.1) * Math.max(.8, u), ph: R() * 7 }); }
+  P.hillB = hwXmasHill(w, Math.round(h * .4), h * .035, h * .14, '#27406c', '#14264a', 1); P.hillF = hwXmasHill(w, Math.round(h * .28), h * .03, h * .1, '#e3edf9', '#9fb6d8', 4);
+  P.treeL = hwXmasTree(Math.round(h * .5), 3); P.treeR1 = hwXmasTree(Math.round(h * .3), 5); P.treeR2 = hwXmasTree(Math.round(h * .22), 8);
+  const vc = hwMake(w, h), vg = vc.getContext('2d'), v = vg.createRadialGradient(w * .5, h * .46, Math.min(w, h) * .3, w * .5, h * .5, Math.max(w, h) * .72);
+  v.addColorStop(0, 'rgba(4,10,24,0)'); v.addColorStop(1, 'rgba(4,10,24,.6)'); vg.fillStyle = v; vg.fillRect(0, 0, w, h); P.vig = vc;
+  return P;
+}
+function hwXmasInit(S) {
+  const R = Math.random; S.fl = null; S.shoot = { t: -1, next: 5 + R() * 8 }; S.sleigh = { t: -1, next: 10 + R() * 10 }; S.ginger = { t: -1, next: 8 + R() * 8 }; S.snowman = { hide: 0 }; S.gifts = []; S.giftT = 1.5; S.giftEvery = 3.4;
+}
+function hwGiftDraw(g, s, c1, c2) {
+  g.fillStyle = c1; g.fillRect(-s / 2, -s / 2, s, s); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(-s / 2, s * .28, s, s * .22);
+  g.fillStyle = c1; g.fillRect(-s * .56, -s * .62, s * 1.12, s * .26); g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(-s * .56, -s * .62, s * 1.12, s * .07);
+  g.fillStyle = c2; g.fillRect(-s * .08, -s * .62, s * .16, s * 1.12); g.beginPath(); g.ellipse(-s * .2, -s * .72, s * .2, s * .12, -.5, 0, 7); g.ellipse(s * .2, -s * .72, s * .2, s * .12, .5, 0, 7); g.fill(); g.beginPath(); g.arc(0, -s * .66, s * .07, 0, 7); g.fill();
+}
+function hwXmasGift(S, x, y, u, vx) {
+  const R = Math.random, cl = [['#d62b2b', '#f4d24a'], ['#2f78d8', '#f2f2f2'], ['#2e9d4f', '#e84a4a'], ['#a34ad0', '#f4d24a'], ['#e8a02a', '#2f78d8']][Math.floor(R() * 5)];
+  S.gifts.push({ x, y, vy: (34 + R() * 20) * u, vx: vx || 0, ph: R() * 7, rot: 0, vr: (R() - .5) * 1.2, s: (16 + R() * 10) * u, c1: cl[0], c2: cl[1], land: 0, dead: false });
+}
+function hwSnowmanDraw(g, k, t) {                              // Fuesse bei (0,0), k = Radius der unteren Kugel
+  g.save(); g.rotate(Math.sin(t * 1.2) * .02);
+  const ball = (cx, cy, r) => { const gr = g.createRadialGradient(cx - r * .35, cy - r * .35, r * .1, cx, cy, r); gr.addColorStop(0, '#ffffff'); gr.addColorStop(.7, '#dce7f7'); gr.addColorStop(1, '#9db2d4'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); };
+  g.strokeStyle = '#4a2f18'; g.lineCap = 'round'; g.lineWidth = k * .09;
+  for (const sd of [-1, 1]) { const wv = Math.sin(t * 2.4 + sd) * .1; g.beginPath(); g.moveTo(sd * k * .6, -k * 2.3); g.lineTo(sd * k * 1.55, -k * (2.95 + wv)); g.moveTo(sd * k * 1.1, -k * (2.62 + wv * .5)); g.lineTo(sd * k * 1.4, -k * (3.15 + wv)); g.stroke(); }
+  ball(0, -k, k); ball(0, -k * 2.25, k * .72); ball(0, -k * 3.3, k * .52);
+  g.fillStyle = '#44484f'; for (const y of [-1.35, -1.0, -.65]) { g.beginPath(); g.arc(0, k * y, k * .07, 0, 7); g.fill(); }
+  g.fillStyle = '#c4262e'; g.beginPath(); g.ellipse(0, -k * 2.85, k * .5, k * .12, 0, 0, 7); g.fill(); g.beginPath(); g.moveTo(k * .3, -k * 2.85); g.quadraticCurveTo(k * (.7 + Math.sin(t * 3) * .1), -k * 2.6, k * .55, -k * 2.1); g.lineTo(k * .35, -k * 2.2); g.closePath(); g.fill();
+  g.fillStyle = '#222'; for (const sd of [-1, 1]) { g.beginPath(); g.arc(sd * k * .17, -k * 3.38, k * .06, 0, 7); g.fill(); }
+  g.fillStyle = '#f08a24'; g.beginPath(); g.moveTo(0, -k * 3.3); g.lineTo(k * .55, -k * 3.22); g.lineTo(0, -k * 3.17); g.fill();
+  g.fillStyle = '#222'; for (let i = -2; i <= 2; i++) { g.beginPath(); g.arc(i * k * .1, -k * (3.03 - (2 - Math.abs(i)) * .02), k * .03, 0, 7); g.fill(); }
+  g.fillStyle = '#17171d'; g.fillRect(-k * .33, -k * 4.2, k * .66, k * .55); g.beginPath(); g.ellipse(0, -k * 3.78, k * .58, k * .11, 0, 0, 7); g.fill(); g.fillStyle = '#c4262e'; g.fillRect(-k * .33, -k * 3.98, k * .66, k * .12);
+  g.restore();
+}
+function hwXmasBossDraw(g, k, t, hurt, hp) {                   // Eis-Schneemann: Mitte bei (0,0)
+  const f = .8 + .2 * Math.sin(t * 11); let gr = g.createRadialGradient(0, 0, k * .3, 0, 0, k * 3); gr.addColorStop(0, 'rgba(110,190,255,' + (.45 * f).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(90,170,255,0)');
+  g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-k * 3, -k * 3, k * 6, k * 6); g.globalCompositeOperation = 'source-over';
+  const ball = (cx, cy, r) => { const b = g.createRadialGradient(cx - r * .35, cy - r * .35, r * .1, cx, cy, r); b.addColorStop(0, '#ffffff'); b.addColorStop(.6, '#cfe3fa'); b.addColorStop(1, '#6f95c8'); g.fillStyle = b; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); };
+  g.strokeStyle = '#3a2412'; g.lineCap = 'round'; g.lineWidth = k * .12; for (const sd of [-1, 1]) { const w2 = Math.sin(t * 5 + sd) * .25; g.beginPath(); g.moveTo(sd * k * .8, k * .1); g.lineTo(sd * k * 1.8, -k * (.5 + w2)); g.moveTo(sd * k * 1.35, -k * (.2 + w2 * .5)); g.lineTo(sd * k * 1.75, -k * (.95 + w2)); g.stroke(); }
+  ball(0, k * .45, k * .95); ball(0, -k * .75, k * .68);
+  g.fillStyle = 'rgba(175,228,255,.95)'; for (let i = 0; i < 7; i++) { const x = -k * .54 + i * k * .18, hg = k * (.3 + (i % 2) * .25); g.beginPath(); g.moveTo(x - k * .08, -k * 1.33); g.lineTo(x, -k * 1.33 - hg); g.lineTo(x + k * .08, -k * 1.33); g.fill(); }
+  g.shadowColor = '#ff2a2a'; g.shadowBlur = k * .3; g.fillStyle = '#ff3b30'; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .42, -k * .98); g.lineTo(sd * k * .1, -k * .84); g.lineTo(sd * k * .36, -k * .66); g.closePath(); g.fill(); } g.shadowBlur = 0;
+  g.fillStyle = '#f08a24'; g.beginPath(); g.moveTo(0, -k * .74); g.lineTo(k * .8, -k * .55); g.lineTo(0, -k * .5); g.fill();
+  g.fillStyle = '#1b1b22'; g.beginPath(); g.moveTo(-k * .45, -k * .38); for (let i = 0; i < 8; i++) { g.lineTo(-k * .45 + i * k * .115 + k * .057, -k * (.2 - (i % 2) * .12)); g.lineTo(-k * .45 + (i + 1) * k * .115, -k * .38); } g.fill();
+  g.fillStyle = '#1b1b22'; for (const y of [.15, .5, .85]) { g.beginPath(); g.arc(0, k * y, k * .08, 0, 7); g.fill(); }
+  g.strokeStyle = 'rgba(120,190,255,.9)'; g.lineWidth = Math.max(1.2, k * .04); for (let i = 0; i < 5 - hp; i++) { const a = i * 1.5 + .4; g.beginPath(); g.moveTo(Math.cos(a) * k * .2, k * .45 + Math.sin(a) * k * .2); g.lineTo(Math.cos(a + .2) * k * .55, k * .45 + Math.sin(a + .2) * k * .5); g.lineTo(Math.cos(a - .1) * k * .85, k * .45 + Math.sin(a - .1) * k * .75); g.stroke(); }
+  if (hurt > 0) { g.fillStyle = 'rgba(255,255,255,' + (hurt * .6).toFixed(2) + ')'; g.beginPath(); g.arc(0, k * .45, k * .95, 0, 7); g.arc(0, -k * .75, k * .68, 0, 7); g.fill(); }
+}
+function hwSleighDraw(g, k, t) {                               // Schlitten mit Weihnachtsmann, zwei Rentiere davor; fliegt nach rechts
+  const gal = t * 9;
+  const deer = (x, y, lead) => {
+    g.save(); g.translate(x, y); g.strokeStyle = '#5a3a20'; g.lineWidth = k * .07; g.lineCap = 'round';
+    [-.28, -.16, .2, .3].forEach((lx, i) => { const ph = gal + i * 1.6; g.beginPath(); g.moveTo(k * lx, k * .18); g.lineTo(k * lx + Math.sin(ph) * k * .25, k * .6 - Math.max(0, Math.cos(ph)) * k * .12); g.stroke(); });
+    g.fillStyle = '#8a5a32'; g.beginPath(); g.ellipse(0, 0, k * .42, k * .2, 0, 0, 7); g.fill(); g.beginPath(); g.moveTo(k * .3, -k * .05); g.lineTo(k * .5, -k * .38); g.lineTo(k * .64, -k * .3); g.lineTo(k * .42, k * .08); g.closePath(); g.fill();
+    g.beginPath(); g.ellipse(k * .62, -k * .38, k * .14, k * .09, .3, 0, 7); g.fill(); g.beginPath(); g.arc(-k * .42, -k * .06, k * .06, 0, 7); g.fill();
+    g.strokeStyle = '#d9c7a0'; g.lineWidth = k * .04; g.beginPath(); g.moveTo(k * .55, -k * .46); g.lineTo(k * .5, -k * .8); g.moveTo(k * .52, -k * .62); g.lineTo(k * .66, -k * .74); g.moveTo(k * .62, -k * .45); g.lineTo(k * .62, -k * .82); g.moveTo(k * .6, -k * .64); g.lineTo(k * .76, -k * .74); g.stroke();
+    if (lead) { const nr = g.createRadialGradient(k * .74, -k * .36, 0, k * .74, -k * .36, k * .3); nr.addColorStop(0, 'rgba(255,60,50,.8)'); nr.addColorStop(1, 'rgba(255,60,50,0)'); g.globalCompositeOperation = 'lighter'; g.fillStyle = nr; g.fillRect(k * .4, -k * .7, k * .7, k * .7); g.globalCompositeOperation = 'source-over'; }
+    g.fillStyle = lead ? '#ff3b30' : '#2a1a10'; g.beginPath(); g.arc(k * .74, -k * .36, k * .05, 0, 7); g.fill(); g.restore();
+  };
+  g.strokeStyle = '#d9b44a'; g.lineWidth = k * .03; g.beginPath(); g.moveTo(k * .55, -k * .05); g.lineTo(k * 1.2, k * .0); g.moveTo(k * 1.3, k * .0); g.lineTo(k * 1.95, k * .0); g.stroke();
+  deer(k * 1.3, Math.sin(gal) * k * .03, false); deer(k * 2.0, Math.sin(gal + 1) * k * .03, true);
+  g.fillStyle = '#c4262e'; g.beginPath(); g.moveTo(-k * .55, -k * .1); g.quadraticCurveTo(-k * .6, k * .3, -k * .35, k * .34); g.lineTo(k * .4, k * .34); g.quadraticCurveTo(k * .72, k * .3, k * .74, -k * .22); g.quadraticCurveTo(k * .4, -k * .05, k * .1, -k * .1); g.closePath(); g.fill();
+  g.strokeStyle = '#d9b44a'; g.lineWidth = k * .05; g.beginPath(); g.moveTo(-k * .5, k * .46); g.lineTo(k * .6, k * .46); g.quadraticCurveTo(k * .86, k * .46, k * .84, k * .24); g.moveTo(-k * .3, k * .34); g.lineTo(-k * .3, k * .46); g.moveTo(k * .35, k * .34); g.lineTo(k * .35, k * .46); g.stroke();
+  g.fillStyle = '#8a5a32'; g.beginPath(); g.ellipse(-k * .38, -k * .17, k * .2, k * .17, 0, 0, 7); g.fill();
+  g.fillStyle = '#d62b2b'; g.beginPath(); g.ellipse(0, -k * .22, k * .17, k * .2, 0, 0, 7); g.fill(); g.fillStyle = '#f2c9a0'; g.beginPath(); g.arc(0, -k * .5, k * .09, 0, 7); g.fill();
+  g.fillStyle = '#fff'; g.beginPath(); g.ellipse(.0, -k * .43, k * .08, k * .07, 0, 0, 7); g.fill(); g.fillStyle = '#d62b2b'; g.beginPath(); g.moveTo(-k * .1, -k * .55); g.lineTo(-k * .02, -k * .8); g.lineTo(k * .1, -k * .54); g.closePath(); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(-k * .02, -k * .8, k * .04, 0, 7); g.fill();
+}
+function hwGingerDraw(g, k, t) {                               // Lebkuchenmann: Mitte der Brust bei (0,0)
+  const run = Math.sin(t * 12); g.lineCap = 'round'; g.strokeStyle = '#b8682c'; g.lineWidth = k * .42;
+  for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .4, -k * .1); g.lineTo(sd * k * .95, -k * (.45 - run * sd * .25)); g.stroke(); g.beginPath(); g.moveTo(sd * k * .22, k * .7); g.lineTo(sd * k * .5 + run * sd * k * .3, k * 1.35); g.stroke(); }
+  g.fillStyle = '#b8682c'; g.beginPath(); g.ellipse(0, k * .2, k * .5, k * .75, 0, 0, 7); g.fill(); g.beginPath(); g.arc(0, -k * .85, k * .5, 0, 7); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = k * .07; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(sd * k * .78, -k * (.38 - run * sd * .25)); g.lineTo(sd * k * 1.05, -k * (.52 - run * sd * .25)); g.moveTo(sd * k * .45 + run * sd * k * .3, k * 1.2); g.lineTo(sd * k * .6 + run * sd * k * .3, k * 1.38); g.stroke(); }
+  g.fillStyle = '#fff'; for (const sd of [-1, 1]) { g.beginPath(); g.arc(sd * k * .18, -k * .92, k * .08, 0, 7); g.fill(); } g.strokeStyle = '#fff'; g.lineWidth = k * .06; g.beginPath(); g.arc(0, -k * .8, k * .24, .25, Math.PI - .25); g.stroke();
+  ['#d62b2b', '#2e9d4f', '#2f78d8'].forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(0, -k * .02 + i * k * .34, k * .08, 0, 7); g.fill(); });
+}
+function hwXmasLights(g, w, u, t) {                            // Lichterkette am oberen Rand
+  const N = 4, sag = 20 * u, y0 = 6 * u, seg = w / N, yAt = x => { const s = (x % seg) / seg; return y0 + 4 * sag * s * (1 - s); };
+  g.strokeStyle = '#0f2a1a'; g.lineWidth = Math.max(1.5, 1.8 * u); g.beginPath(); for (let x = 0; x <= w; x += 6) { if (x === 0) { g.moveTo(x, yAt(x)); } else { g.lineTo(x, yAt(x)); } } g.stroke();
+  const cols = ['#ff4a4a', '#ffd24a', '#4adf7a', '#4a9cff', '#e86bff']; let i = 0;
+  for (let x = 20 * u; x < w; x += 40 * u, i++) { const y = yAt(x), on = .4 + .6 * Math.max(0, Math.sin(t * 2.6 - i * .9));
+    g.fillStyle = '#10301d'; g.fillRect(x - 1.5 * u, y, 3 * u, 4 * u);
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = cols[i % 5]; g.globalAlpha = .3 * on; g.beginPath(); g.arc(x, y + 9 * u, 11 * u, 0, 7); g.fill(); g.restore();
+    g.fillStyle = cols[i % 5]; g.globalAlpha = .45 + .55 * on; g.beginPath(); g.ellipse(x, y + 9 * u, 3.4 * u, 5 * u, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
+}
+function hwXmasDraw(g, t, dt, w, h, u, P, S) {
+  const R = Math.random;
+  // Polarlicht: in kleiner Aufloesung gezeichnet und weich hochskaliert (keine Streifen)
+  const ac = P.aurC || (P.aurC = hwMake(Math.ceil(w / 8), Math.ceil(h / 8))), ag = ac.getContext('2d'), aw = ac.width, ah = ac.height;
+  if (!P.aur) { P.aur = ['80,255,170', '70,200,255', '190,110,255'].map(c => { const gr = ag.createLinearGradient(0, 0, 0, ah * .6); gr.addColorStop(0, 'rgba(' + c + ',0)'); gr.addColorStop(.25, 'rgba(' + c + ',1)'); gr.addColorStop(1, 'rgba(' + c + ',0)'); return gr; }); }
+  ag.clearRect(0, 0, aw, ah); ag.globalCompositeOperation = 'lighter';
+  for (let b = 0; b < 3; b++) { ag.fillStyle = P.aur[b]; for (let x = 0; x < aw; x++) { const X = x * 8, top = ah * (.08 + .05 * b) + Math.sin(X * .006 + t * (.16 + .05 * b) + b * 2) * ah * .045, len = ah * (.2 + .06 * Math.sin(X * .011 + t * .22 + b)); ag.globalAlpha = Math.max(0, .09 + .06 * Math.sin(X * .004 - t * .3 + b * 1.7)); ag.fillRect(x, top, 1, len); } }
+  g.save(); g.globalCompositeOperation = 'lighter'; g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(ac, 0, 0, w, h); g.restore();
+  P.stars.forEach(s => { g.fillStyle = 'rgba(235,242,255,' + (.35 + .65 * (.5 + .5 * Math.sin(t * 1.5 + s.ph))).toFixed(2) + ')'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 7); g.fill(); });
+  const mx = w * .84, my = h * .16, mr = 34 * u; let gr = g.createRadialGradient(mx, my, mr * .7, mx, my, mr * 4); gr.addColorStop(0, 'rgba(230,238,255,.3)'); gr.addColorStop(1, 'rgba(230,238,255,0)'); g.fillStyle = gr; g.fillRect(mx - mr * 4, my - mr * 4, mr * 8, mr * 8);
+  gr = g.createRadialGradient(mx - mr * .3, my - mr * .3, mr * .1, mx, my, mr); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#cfd9ee'); g.fillStyle = gr; g.beginPath(); g.arc(mx, my, mr, 0, 7); g.fill();
+  // Schnee in drei Ebenen (Aktualisierung und Zeichnen je Ebene)
+  const nF = Math.max(80, Math.min(330, Math.round(w * h / 5500)));
+  if (!S.fl || S.fl.n !== nF) { S.fl = { n: nF, L: [0, 1, 2].map(li => { const a = [], cnt = Math.round(nF * [.5, .3, .2][li]); for (let i = 0; i < cnt; i++) { a.push({ x: R() * w, y: R() * h, r: (li === 0 ? .8 + R() * .6 : li === 1 ? 1.4 + R() * .8 : 2.4 + R() * 1.2) * u, v: (li === 0 ? 18 + R() * 12 : li === 1 ? 36 + R() * 20 : 60 + R() * 30) * u, ph: R() * 7 }); } return a; }) }; }
+  const wind = Math.sin(t * .13) * 14 * u + 10 * u;
+  const flakes = (li, al) => { g.fillStyle = 'rgba(244,249,255,' + al + ')'; g.beginPath(); S.fl.L[li].forEach(f => { f.y += f.v * dt; f.x += (Math.sin(t * .7 + f.ph) * 9 * u + wind * (1 + li * .35)) * dt; if (f.y > h + 5) { f.y = -5; f.x = R() * w; } if (f.x > w + 5) { f.x = -5; } else if (f.x < -5) { f.x = w + 5; } g.moveTo(f.x + f.r, f.y); g.arc(f.x, f.y, f.r, 0, 7); }); g.fill(); };
+  flakes(0, .55);
+  // Sternschnuppe
+  const SH = S.shoot; SH.next -= dt; if (SH.t < 0 && SH.next <= 0) { SH.t = 0; SH.x0 = w * (.12 + R() * .5); SH.y0 = h * (.04 + R() * .18); }
+  if (SH.t >= 0) { SH.t += dt; const p = SH.t / 2.2; if (p >= 1) { SH.t = -1; SH.next = 12 + R() * 14; } else { const x = SH.x0 + p * w * .45, y = SH.y0 + p * h * .3, a = Math.min(1, p * 6, (1 - p) * 3);
+    const tg = g.createLinearGradient(x, y, x - w * .12, y - h * .08); tg.addColorStop(0, 'rgba(255,245,200,' + a.toFixed(2) + ')'); tg.addColorStop(1, 'rgba(255,245,200,0)'); g.strokeStyle = tg; g.lineWidth = 3 * u; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x - w * .12, y - h * .08); g.stroke();
+    g.save(); g.globalAlpha = a; g.shadowColor = '#ffe27a'; g.shadowBlur = 12 * u; g.fillStyle = '#fff2b0'; g.beginPath(); for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5 + t * 2, rr = (i % 2 ? 4 : 9) * u; g.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); } g.closePath(); g.fill(); g.restore();
+    S.hits.push({ x, y, r: 28 * u, pts: 25, c: '255,230,140', snd: 'sparkle', kill: () => { SH.t = -1; SH.next = 7 + R() * 6; } }); } }
+  g.drawImage(P.hillB, 0, h * .6);
+  hwXmasTreeDraw(g, P.treeL, w * .13, h * .83, t, u); hwXmasTreeDraw(g, P.treeR1, w * .93, h * .8, t, u); hwXmasTreeDraw(g, P.treeR2, w * .72, h * .78, t, u);
+  g.drawImage(P.hillF, 0, h * .72);
+  // Schneemann
+  const SM = S.snowman; if (SM.hide <= t) { const pop = Math.min(1, (t - SM.hide) / .7), sc = pop * (2 - pop); g.save(); g.translate(w * .8, h * .87); g.scale(sc, sc); hwSnowmanDraw(g, 22 * u, t); g.restore();
+    if (pop >= 1) { S.hits.push({ x: w * .8, y: h * .87 - 42 * u, r: 44 * u, pts: 15, c: '230,240,255', snd: 'chime', kill: () => { SM.hide = t + 9; } }); } }
+  // Lebkuchenmann rennt ueber die Wiese
+  const GI = S.ginger; GI.next -= dt; if (GI.t < 0 && GI.next <= 0) { GI.t = 0; }
+  if (GI.t >= 0) { GI.t += dt; const p = GI.t / 10; if (p >= 1) { GI.t = -1; GI.next = 14 + R() * 14; } else { const gx = (-.1 + 1.2 * p) * w, gy = h * .9 - Math.abs(Math.sin(p * 40)) * 10 * u; g.save(); g.translate(gx, gy); hwGingerDraw(g, 14 * u, t); g.restore();
+    S.hits.push({ x: gx, y: gy, r: 34 * u, pts: 20, c: '184,104,44', snd: 'chime', kill: () => { GI.t = -1; GI.next = 8 + R() * 8; } }); } }
+  // Geschenke fallen langsam
+  S.giftT -= dt; if (S.giftT <= 0) { S.giftT = S.giftEvery * (.7 + R() * .6); hwXmasGift(S, w * (.08 + R() * .84), -20 * u, u, 0); }
+  S.gifts = S.gifts.filter(gf => { if (gf.dead) { return false; } if (gf.land > 0) { gf.land += dt; if (gf.land > 4) { return false; } } else { gf.y += gf.vy * dt; gf.x += (Math.sin(t * .8 + gf.ph) * 12 * u + gf.vx) * dt; gf.rot += gf.vr * dt; gf.vx *= .99; if (gf.y > h * .91) { gf.land = .01; gf.rot = 0; } }
+    g.save(); g.globalAlpha = gf.land > 3 ? Math.max(0, 4 - gf.land) : 1; g.translate(gf.x, gf.y); g.rotate(gf.rot); hwGiftDraw(g, gf.s, gf.c1, gf.c2); g.restore();
+    S.hits.push({ x: gf.x, y: gf.y, r: gf.s * 1.2, pts: 10, c: '255,210,100', snd: 'chime', kill: () => { gf.dead = true; } }); return true; });
+  // Schlitten mit Rentieren
+  const SL = S.sleigh; SL.next -= dt; if (SL.t < 0 && SL.next <= 0) { SL.t = 0; SL.y = h * (.14 + R() * .12); if (SEASONAL_SOUND) { hwPlay('bells'); setTimeout(() => hwPlay('hoho'), 2500); } }
+  if (SL.t >= 0) { SL.t += dt; const p = SL.t / 9; if (p >= 1) { SL.t = -1; SL.next = 35 + R() * 30; } else { const sx = (-.3 + 1.5 * p) * w, sy = SL.y + Math.sin(p * 11) * 12 * u + Math.sin(p * 4) * 10 * u;
+    g.save(); g.translate(sx, sy); hwSleighDraw(g, 40 * u, t); g.restore();
+    if (R() < dt * 25) { S.sparks.push({ x: sx - 30 * u, y: sy + 10 * u, vx: -(20 + R() * 40) * u, vy: (R() - .3) * 30 * u, age: 0, life: .6 + R() * .5, c: '255,230,150' }); }
+    S.hits.push({ x: sx + 34 * u, y: sy, r: 72 * u, pts: 30, c: '255,215,90', snd: 'bells', kill: () => { SL.t = -1; SL.next = 14 + R() * 10; for (let i = 0; i < 4; i++) { hwXmasGift(S, sx + (i - 1.5) * 26 * u, sy, u, (i - 1.5) * 22 * u); } } }); } }
+  flakes(1, .75); flakes(2, .95);
+  hwBossRun(g, S, t, dt, w, h, u, hwXmasBossDraw, 'hoho', { bar: '#5ab4ff', hit: '120,190,255', burst: '200,230,255' });
+  hwXmasLights(g, w, u, t);
+  g.drawImage(P.vig, 0, 0);
+}
+HW_THEMES.xmas = {
+  id: 'xmas', keyBest: 'nrgXmBest', keyScores: 'nrgXmScores', zap: false, ambient: { f: 450, q: .5, g: .03 }, sounds: ['bells', 'chime', 'wind', 'sparkle'],
+  build: hwXmasBuild, init: hwXmasInit, draw: hwXmasDraw,
+  onStart(S) { S.snowman.hide = 0; S.ginger.next = Math.min(S.ginger.next, 1.5); S.sleigh.next = Math.min(S.sleigh.next, 3); S.shoot.next = Math.min(S.shoot.next, 1); S.giftT = 0; },
+  onEnd(S) { S.giftEvery = 3.4; },
+  pace(S, p) { const cap = 14 - 10 * p; S.sleigh.next = Math.min(S.sleigh.next, cap * 1.3); S.ginger.next = Math.min(S.ginger.next, cap * .8); S.shoot.next = Math.min(S.shoot.next, cap * .5); S.giftEvery = 2.8 - 1.9 * p; },
+};
 HW_THEMES.halloween = {
   id: 'halloween', keyBest: 'nrgHwBest', keyScores: 'nrgHwScores', zap: true, ambient: { f: 3200, q: .45, g: .05 }, sounds: ['wuuh', 'creak', 'squeak', 'bell', 'rumble', 'chain', 'steps'],
   build: hwBuildPre, init: hwHalloweenInit, draw: hwHalloweenDraw,
@@ -4385,6 +4556,16 @@ function hwPlay(kind) {
       gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.09, at + .004); gg.gain.exponentialRampToValueAtTime(.0008, at + .07); o.connect(f); f.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .08); }
   } else if (kind === 'steps') {               // schwere Schritte
     for (let i = 0; i < 5; i++) { const o = a.createOscillator(), gg = a.createGain(), at = t + i * .6; o.type = 'sine'; o.frequency.setValueAtTime(85, at); o.frequency.exponentialRampToValueAtTime(38, at + .2); gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.3 - i * .04, at + .01); gg.gain.exponentialRampToValueAtTime(.0008, at + .25); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .3); }
+  } else if (kind === 'bells') {                // Schlittenglocken
+    for (let i = 0; i < 16; i++) { const at = t + i * .09 + Math.random() * .04, f0 = 2300 + Math.random() * 1300; for (const m of [1, 1.5]) { const o = a.createOscillator(), gg = a.createGain(); o.type = 'triangle'; o.frequency.value = f0 * m; gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.05, at + .003); gg.gain.exponentialRampToValueAtTime(.0008, at + .28); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .3); } }
+  } else if (kind === 'chime') {                // Glockenspiel: aufsteigende Pentatonik
+    const nt = [523.3, 587.3, 659.3, 784, 880, 1046.5], k0 = Math.floor(Math.random() * 3); for (let i = 0; i < 4; i++) { const at = t + i * .16, o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = nt[Math.min(5, k0 + i)]; gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.16, at + .006); gg.gain.exponentialRampToValueAtTime(.0008, at + 1.1); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + 1.2); }
+  } else if (kind === 'sparkle') {              // funkelnde hohe Toene
+    for (let i = 0; i < 9; i++) { const at = t + i * .06, o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = 3000 + Math.random() * 2600; gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.07, at + .004); gg.gain.exponentialRampToValueAtTime(.0008, at + .35); o.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .4); }
+  } else if (kind === 'wind') {                 // sanfter Windstoss
+    const n = hwNoise(a, 3), f = a.createBiquadFilter(), ng = a.createGain(); f.type = 'bandpass'; f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(700, t + 1.5); f.frequency.linearRampToValueAtTime(350, t + 3); f.Q.value = .8; ng.gain.setValueAtTime(0, t); ng.gain.linearRampToValueAtTime(.18, t + 1.2); ng.gain.linearRampToValueAtTime(0, t + 3); n.connect(f); f.connect(ng); ng.connect(a.destination); n.start(t); n.stop(t + 3);
+  } else if (kind === 'hoho') {                 // tiefes "Ho ho ho"
+    for (let i = 0; i < 3; i++) { const at = t + i * .5, o = a.createOscillator(), f = a.createBiquadFilter(), gg = a.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, at); o.frequency.linearRampToValueAtTime(95, at + .3); f.type = 'lowpass'; f.frequency.value = 520; gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(.25, at + .05); gg.gain.exponentialRampToValueAtTime(.0008, at + .38); o.connect(f); f.connect(gg); gg.connect(a.destination); o.start(at); o.stop(at + .4); }
   } else if (kind === 'bell') {                // dumpfer Glockenschlag
     [[196, 0.22], [293.7, 0.1], [415, 0.06]].forEach(([fr, pk]) => { const o = a.createOscillator(), gg = a.createGain(); o.type = 'sine'; o.frequency.value = fr;
       gg.gain.setValueAtTime(0, t); gg.gain.linearRampToValueAtTime(pk, t + 0.01); gg.gain.exponentialRampToValueAtTime(0.0006, t + 3.2);
