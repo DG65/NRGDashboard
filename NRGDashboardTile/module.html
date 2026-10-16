@@ -4154,8 +4154,8 @@ function hwDraw(t, dt) {
 }
 function hwBatClick(ev) {                           // Klick auf eine Fledermaus: getroffen, sie stuerzt tot ab
   const S = HW.st, cv = HW.cv; if (!S || !cv || !HW_BUILT) { return; }
-  const r = cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top; let best = null, bd = 1e9;
-  S.bats.forEach(b => { if (b.dead || b.sx === undefined) { return; } const rad = 34 * HW.u * b.s, d = Math.hypot(x - b.sx, (y - b.sy) * 1.3); if (d < rad && d < bd) { bd = d; best = b; } });
+  const r = cv.getBoundingClientRect(), kx = HW.w / (r.width || HW.w), ky = HW.h / (r.height || HW.h), x = (ev.clientX - r.left) * kx, y = (ev.clientY - r.top) * ky; let best = null, bd = 1e9;
+  S.bats.forEach(b => { if (b.dead || b.sx === undefined) { return; } const rad = 44 * HW.u * b.s, d = Math.hypot(x - b.sx, (y - b.sy) * 1.3); if (d < rad && d < bd) { bd = d; best = b; } });
   if (!best) { return; }
   best.dead = { x: best.sx, y: best.sy, vx: best.dir * 40 * HW.u, vy: -80 * HW.u, rot: 0, spin: best.dir * (4 + Math.random() * 4), t: 0 };
   if (SEASONAL_SOUND) { hwPlay('squeak'); }
@@ -4278,7 +4278,7 @@ function applySeasonal() {
   hwScheduleSound(false);
   hwScheduleZap();
 }
-document.addEventListener('pointerdown', hwUnlock, { passive: true }); document.addEventListener('pointerdown', hwBatClick, { passive: true });
+document.addEventListener('pointerdown', hwUnlock, { passive: true }); document.addEventListener('pointerdown', hwBatClick, { passive: true, capture: true }); window.addEventListener('mousedown', hwBatClick, { capture: true });
 
 const PRESS_MS = 500, PRESS_MOVE_PX = 8;
 
