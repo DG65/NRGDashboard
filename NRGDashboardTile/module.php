@@ -173,6 +173,9 @@ class NRGDashboardTile extends IPSModule
         '0.9.159' => [
         '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
         ],
+        '0.9.170' => [
+        '💶 Neu: die Detailseite des Netzknotens zeigt „Einspeise-Erlös heute“ und „… diesen Monat“ (eingespeiste kWh mal Einspeisevergütung). Dafür im Formular die Einspeisevergütung in ct/kWh eintragen; ohne Vergütung erscheint keine Zeile.',
+        ],
         '0.9.169' => [
         'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
         '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit. Ebenfalls neu: „Abfluss“ - der Knoten dreht sich beim Schrumpfen zur Mitte, als würde er in einen Wasserabfluss eingesaugt.',
@@ -6005,6 +6008,32 @@ class NRGDashboardTile extends IPSModule
             }
             if ($exportKWh !== null) {
                 $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+            }
+            // Einspeise-Erloes (Horst, 17.10.2026: "kann man sehen was man bisher durch
+            // Einspeisung erwirtschaftet hat? taeglich und monatlich") - eingespeiste kWh
+            // mal Einspeiseverguetung (EMS oder Formularfeld, siehe FeedInTariffCt()).
+            // Ohne Verguetung keine Zeile: kein Tarif wird stillschweigend angenommen.
+            $feedCt = $this->FeedInTariffCt();
+            if ($feedCt > 0) {
+                $feedHint = function (float $kwh) use ($feedCt): string {
+                    return number_format($kwh, 1, ',', '.') . ' kWh eingespeist zu ' . number_format($feedCt, 2, ',', '.') . ' ct/kWh (derzeit eingetragene Vergütung - nicht rückwirkend angepasst, falls sie sich geändert hat; negative Börsenpreis-Viertelstunden nach § 51 EEG sind nicht abgezogen).';
+                };
+                if ($exportKWh !== null) {
+                    $out[] = ['label' => 'Einspeise-Erlös ' . $dayWord, 'value' => number_format($exportKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($exportKWh)];
+                }
+                // Monat nur mit echtem Zaehler (Differenz zweier Zaehlerstaende, guenstig); ohne Zaehler
+                // waere eine Monatssumme ein schwerer Archivlauf ueber die Leistungsreihe.
+                if ($energyExportID > 0) {
+                    $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
+                    $monthEnd = min(strtotime('+1 month', $monthStart), time());
+                    $monthKWh = $this->PeriodEnergyCounter($energyExportID, $monthStart, $monthEnd);
+                    if ($monthKWh !== null) {
+                        $monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+                        $isThisMonth = date('Y-m', $dayStart) === date('Y-m');
+                        $monthLabel = $isThisMonth ? 'diesen Monat' : 'im ' . $monthNames[(int) date('n', $dayStart) - 1] . ' ' . date('Y', $dayStart);
+                        $out[] = ['label' => 'Einspeise-Erlös ' . $monthLabel, 'value' => number_format($monthKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($monthKWh)];
+                    }
+                }
             }
             // Weitere Netzzaehler, die collapseToSingleGrid() an diesen
             // Knoten gehaengt hat (11.09.2026) - der Abrechnungszaehler bleibt

@@ -1557,6 +1557,16 @@ gleiche IPSView-Fähigkeit.
   Einspeisung bei der Leistungsanzeige — Einspeisung wird nie mit dem
   Bezugspreis als scheinbare Kosten bewertet, und kein Tarif wird
   stillschweigend angenommen.
+- **Einspeise-Erlös (`NRGDashboardTile`):** die Detailseite des Netzknotens
+  zeigt „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ (bzw.
+  für den gewählten Monat) — eingespeiste kWh mal Einspeisevergütung. Die
+  Vergütung kommt aus demselben Feld wie die €/h-Anzeige am Netzknoten
+  (Formularfeld, oder das EMS, falls vorhanden); ohne Vergütung erscheint
+  keine Zeile. Die Monatssumme rechnet aus der Differenz zweier
+  Zählerstände des Einspeise-Zählers im Archiv (günstig); ohne echten Zähler
+  bleibt es bei der Tageszeile. Gerechnet wird mit der heute eingetragenen
+  Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht
+  abgezogen (der Hinweis unter der Zahl sagt das).
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein

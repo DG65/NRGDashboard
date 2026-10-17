@@ -119,6 +119,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Einspeise-Erlös, 17.10.2026): die Detailseite des Netzknotens zeigt zusätzlich „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ - eingespeiste kWh mal Einspeisevergütung (Formularfeld unten, ohne Vergütung erscheint keine Zeile). Die Monatssumme braucht einen echten Einspeise-Zähler im Archiv; gerechnet wird mit der heute eingetragenen Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht abgezogen."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Kosten je Ladesitzung, 13.09.2026): die Detailseite jeder Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren tatsächlichen Kosten - je Viertelstunde mit dem dort gültigen Bezugspreis gerechnet (aus dem EMS, sonst Tibber inkl. vergangener Tage, fester Preis aus dem Feld unten oder BDEW-Näherung), nur für den Anteil, der wirklich aus dem Netz kam. Eigenstrom steht getrennt daneben: Solarstrom mit 0 € plus entgangener Einspeisevergütung, Batteriestrom mit seinem Einstandspreis aus dem EMS (ohne EMS mit 0 € und gekennzeichnet). Funktioniert auch für eine Wallbox, die nur über einen Zähler eingebunden ist."
         },
         {
