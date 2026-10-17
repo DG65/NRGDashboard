@@ -1566,7 +1566,15 @@ gleiche IPSView-Fähigkeit.
   Zählerstände des Einspeise-Zählers im Archiv (günstig); ohne echten Zähler
   bleibt es bei der Tageszeile. Gerechnet wird mit der heute eingetragenen
   Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht
-  abgezogen (der Hinweis unter der Zahl sagt das).
+  abgezogen (der Hinweis unter der Zahl sagt das). Dazu „Einspeise-Erlös
+  dieses Jahr“ und „… letzte 12 Monate“ (beide nur, wenn der Einspeise-
+  Zähler lückenlos archiviert ist, sonst keine Zeile statt einer zu kleinen
+  Summe) sowie ein **empfohlener Abschlag** (ein Zwölftel der letzten 12
+  Monate, damit die Jahreszeiten schon enthalten sind). Trägst du im
+  Formular den **monatlichen Abschlag** deines Netzbetreibers ein, zeigt die
+  Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
+  der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
+  Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
