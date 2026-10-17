@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.23 (2026-10-17)
+
+- Netz-Detailseite: „Einspeise-Erlös dieses Jahr“, „… letzte 12 Monate“ und „Empfohlener Abschlag“ (ein Zwölftel des Erlöses der letzten 12 Monate). Neues Formularfeld „Monatlicher Abschlag“: damit zeigt die Kachel den Abgleich bis zum Vormonat und eine Hochrechnung der Jahresabrechnung („+x € mehr ausbezahlt“ oder „−x € zurückzuzahlen“). Jahres- und 12-Monats-Werte erscheinen nur bei lückenlos archiviertem Einspeise-Zähler.
+
 ## 0.9.170-beta.22 (2026-10-17)
 
 - Netz-Detailseite: neue Zeilen „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ (eingespeiste kWh mal Einspeisevergütung; Monat aus dem Einspeise-Zähler im Archiv). Anlass: Frage im Forum.

@@ -174,7 +174,7 @@ class NRGDashboardTile extends IPSModule
         '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
         ],
         '0.9.170' => [
-        '💶 Neu: die Detailseite des Netzknotens zeigt „Einspeise-Erlös heute“ und „… diesen Monat“ (eingespeiste kWh mal Einspeisevergütung). Dafür im Formular die Einspeisevergütung in ct/kWh eintragen; ohne Vergütung erscheint keine Zeile.',
+        '💶 Neu: die Detailseite des Netzknotens zeigt „Einspeise-Erlös heute“ und „… diesen Monat“ (eingespeiste kWh mal Einspeisevergütung). Dafür im Formular die Einspeisevergütung in ct/kWh eintragen; ohne Vergütung erscheint keine Zeile. Dazu: Jahres- und 12-Monats-Erlös, ein empfohlener monatlicher Abschlag und - mit dem neuen Formularfeld „Monatlicher Abschlag“ - der Abgleich mit dem tatsächlichen Erlös samt Hochrechnung der Jahresabrechnung.',
         ],
         '0.9.169' => [
         'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
@@ -465,6 +465,7 @@ class NRGDashboardTile extends IPSModule
         // bietet den Wert in keinem Vertrag an). 0 = keine Erloes-Anzeige -
         // bewusst kein Tarif als Vorgabe (keine eigene Anlage als Norm).
         $this->RegisterPropertyFloat('FeedInTariffCt', 0.0);
+        $this->RegisterPropertyFloat('FeedInAbschlagEUR', 0.0);
         // Fester Bezugspreis (brutto, ct/kWh) fuer die Ladesitzungs-Kosten
         // (13.09.2026) - 0 = automatisch (Tibber inkl. Archiv, sonst BDEW-
         // Naeherung). Ersatz, bis EMS einen Bezugstarif-Vertrag liefert.
@@ -6024,14 +6025,54 @@ class NRGDashboardTile extends IPSModule
                 // Monat nur mit echtem Zaehler (Differenz zweier Zaehlerstaende, guenstig); ohne Zaehler
                 // waere eine Monatssumme ein schwerer Archivlauf ueber die Leistungsreihe.
                 if ($energyExportID > 0) {
+                    $monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
                     $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
                     $monthEnd = min(strtotime('+1 month', $monthStart), time());
                     $monthKWh = $this->PeriodEnergyCounter($energyExportID, $monthStart, $monthEnd);
                     if ($monthKWh !== null) {
-                        $monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
                         $isThisMonth = date('Y-m', $dayStart) === date('Y-m');
                         $monthLabel = $isThisMonth ? 'diesen Monat' : 'im ' . $monthNames[(int) date('n', $dayStart) - 1] . ' ' . date('Y', $dayStart);
                         $out[] = ['label' => 'Einspeise-Erlös ' . $monthLabel, 'value' => number_format($monthKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($monthKWh)];
+                    }
+                    // Jahressicht und Abschlag-Abgleich (Dietmar, 17.10.2026: "Jahresverguetung, daraus eine
+                    // monatliche Abschlagsrechnung, und gegen den Abschlagsbetrag rechnen - was muss man
+                    // zurueckzahlen oder bekommt man mehr ausbezahlt"). Alles nur mit lueckenlosem Archiv:
+                    // PeriodEnergyCounterStrict() liefert null, wenn der Zaehler im Zeitraum nicht von Anfang an
+                    // archiviert ist, statt still eine Teilsumme zu zeigen.
+                    $yearStart = strtotime(date('Y-01-01 00:00:00', $dayStart));
+                    $yearKWh = $this->PeriodEnergyCounterStrict($energyExportID, $yearStart, min(strtotime('+1 year', $yearStart), time()));
+                    if ($yearKWh !== null) {
+                        $yearLabel = date('Y', $dayStart) === date('Y') ? 'dieses Jahr' : date('Y', $dayStart);
+                        $out[] = ['label' => 'Einspeise-Erlös ' . $yearLabel, 'value' => number_format($yearKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($yearKWh)];
+                    }
+                    if ($isToday) {
+                        $nowTs = time();
+                        $r12KWh = $this->PeriodEnergyCounterStrict($energyExportID, strtotime('-1 year', $nowTs), $nowTs);
+                        $r12Eur = $r12KWh !== null ? $r12KWh * $feedCt / 100 : null;
+                        if ($r12Eur !== null) {
+                            $out[] = ['label' => 'Einspeise-Erlös letzte 12 Monate', 'value' => number_format($r12Eur, 2, ',', '.') . ' €', 'hint' => $feedHint($r12KWh)];
+                            $out[] = ['label' => 'Empfohlener Abschlag', 'value' => number_format($r12Eur / 12, 2, ',', '.') . ' €/Monat', 'hint' => 'Ein Zwölftel des Erlöses der letzten 12 Monate - so hoch müsste der monatliche Abschlag sein, damit die Jahresabrechnung ausgeglichen ist (die Jahreszeiten sind darin schon enthalten).'];
+                        }
+                        $abschlag = $this->readFloatProperty('FeedInAbschlagEUR', 0.0);
+                        $fmtDiff = function (float $v): string {
+                            $a = number_format(abs($v), 2, ',', '.') . ' €';
+                            return ($v >= 0 ? '+' . $a . ' mehr ausbezahlt' : '−' . $a . ' zurückzuzahlen');
+                        };
+                        if ($abschlag > 0) {
+                            $doneMonths = (int) date('n', $nowTs) - 1;
+                            if ($doneMonths >= 1) {
+                                $curYearStart = strtotime(date('Y-01-01 00:00:00', $nowTs));
+                                $doneKWh = $this->PeriodEnergyCounterStrict($energyExportID, $curYearStart, strtotime(date('Y-m-01 00:00:00', $nowTs)));
+                                if ($doneKWh !== null) {
+                                    $earned = $doneKWh * $feedCt / 100;
+                                    $paid = $abschlag * $doneMonths;
+                                    $out[] = ['label' => 'Abschlag-Abgleich bis Ende ' . $monthNames[$doneMonths - 1], 'value' => $fmtDiff($earned - $paid), 'hint' => 'Erlös ' . number_format($earned, 2, ',', '.') . ' € gegenüber ' . $doneMonths . ' Abschlägen zu je ' . number_format($abschlag, 2, ',', '.') . ' € = ' . number_format($paid, 2, ',', '.') . ' € (abgeschlossene Monate dieses Jahres).'];
+                                }
+                            }
+                            if ($r12Eur !== null) {
+                                $out[] = ['label' => 'Jahresabrechnung (Hochrechnung)', 'value' => $fmtDiff($r12Eur - 12 * $abschlag), 'hint' => 'Erlös der letzten 12 Monate (' . number_format($r12Eur, 2, ',', '.') . ' €) gegenüber 12 Abschlägen zu je ' . number_format($abschlag, 2, ',', '.') . ' € (' . number_format(12 * $abschlag, 2, ',', '.') . ' €). Eine Schätzung - die tatsächliche Abrechnung hängt vom Verlauf bis zum Jahresende ab.'];
+                            }
+                        }
                     }
                 }
             }
@@ -6306,6 +6347,27 @@ class NRGDashboardTile extends IPSModule
         }
         $r = @AC_GetLoggedValues($aid, $vid, 0, $t, 1);
         return (is_array($r) && count($r) > 0) ? (float) $r[0]['Value'] : null;
+    }
+
+    /** Wie PeriodEnergyCounter(), aber OHNE Rueckfall: ist der Zaehler zu Beginn des Zeitraums nicht
+     *  archiviert (kein Wert bis $start), gibt es null statt einer stillen Teilsumme. Fuer Jahres- und
+     *  12-Monats-Summen, bei denen eine zu kurze Archivierung sonst eine zu kleine Zahl zeigen wuerde. */
+    private function PeriodEnergyCounterStrict(int $vid, int $start, int $end): ?float
+    {
+        if ($vid <= 0 || !IPS_VariableExists($vid)) {
+            return null;
+        }
+        $aid = $this->ArchiveID();
+        if ($aid <= 0 || !@AC_GetLoggingStatus($aid, $vid)) {
+            return null;
+        }
+        $startVal = $this->ArchiveValueAt($aid, $vid, $start);
+        $endVal = ($end >= time() - 5) ? (float) GetValue($vid) : $this->ArchiveValueAt($aid, $vid, $end);
+        if ($startVal === null || $endVal === null) {
+            return null;
+        }
+        $delta = $endVal - $startVal;
+        return ($delta >= 0) ? $delta : null;
     }
 
     private function PeriodEnergyCounter(int $vid, int $start, int $end): ?float

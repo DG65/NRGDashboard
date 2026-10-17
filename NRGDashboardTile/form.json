@@ -119,7 +119,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Einspeise-Erlös, 17.10.2026): die Detailseite des Netzknotens zeigt zusätzlich „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ - eingespeiste kWh mal Einspeisevergütung (Formularfeld unten, ohne Vergütung erscheint keine Zeile). Die Monatssumme braucht einen echten Einspeise-Zähler im Archiv; gerechnet wird mit der heute eingetragenen Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht abgezogen."
+          "caption": "✨ Feinheit (Einspeise-Erlös, 17.10.2026): die Detailseite des Netzknotens zeigt zusätzlich „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ - eingespeiste kWh mal Einspeisevergütung (Formularfeld unten, ohne Vergütung erscheint keine Zeile). Die Monatssumme braucht einen echten Einspeise-Zähler im Archiv; gerechnet wird mit der heute eingetragenen Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht abgezogen. Dazu Jahres- und 12-Monats-Erlös, ein empfohlener monatlicher Abschlag und - mit dem Formularfeld „Monatlicher Abschlag“ - der Abgleich samt Hochrechnung der Jahresabrechnung (mehr ausbezahlt oder zurückzuzahlen)."
         },
         {
           "type": "Label",
@@ -483,6 +483,14 @@
           "minimum": 0,
           "digits": 2,
           "suffix": " ct/kWh"
+        },
+        {
+          "type": "NumberSpinner",
+          "name": "FeedInAbschlagEUR",
+          "caption": "Monatlicher Abschlag, den der Netzbetreiber dir für die Einspeisung zahlt - für den Abgleich auf der Netz-Detailseite (Differenz zum tatsächlichen Erlös, Hochrechnung der Jahresabrechnung); 0 = kein Abgleich",
+          "minimum": 0,
+          "digits": 2,
+          "suffix": " €/Monat"
         },
         {
           "type": "NumberSpinner",
