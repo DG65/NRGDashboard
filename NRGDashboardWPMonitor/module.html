@@ -1618,17 +1618,23 @@
       set.appendChild(auEl('div', 'opsHint', f[2]));
       if (autoErrors[key]) { var er = auEl('div', 'opsHint', autoErrors[key]); er.style.color = '#ff8a80'; er.style.opacity = '1'; set.appendChild(er); }
     });
-    var coolOn = ('coolingEnabled' in autoDraft) ? !!autoDraft.coolingEnabled : !!cfg.coolingEnabled;
-    var cr = auEl('div', 'auField'); cr.appendChild(auEl('label', '', 'Kühlen erlauben'));
-    var cseg = auEl('div', 'opsSeg');
-    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
-      var b = auEl('button', (coolOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || autoSaving;
-      b.onclick = function () { if (p[0] === !!cfg.coolingEnabled) { delete autoDraft.coolingEnabled; } else { autoDraft.coolingEnabled = p[0]; } delete autoErrors.coolingEnabled; renderAuto(); };
-      cseg.appendChild(b);
-    });
-    cr.appendChild(cseg); set.appendChild(cr);
-    set.appendChild(auEl('div', 'opsHint', 'Kühlen nur mit Taupunkt-Schutz (Einstellungen dafür im HeishaMon-Formular).'));
-    if (autoErrors.coolingEnabled) { var ec = auEl('div', 'opsHint', autoErrors.coolingEnabled); ec.style.color = '#ff8a80'; ec.style.opacity = '1'; set.appendChild(ec); }
+    var hum = (a.sources && a.sources.humidity) ? a.sources.humidity : null;
+    var coolAvail = !(hum && hum.mode === 'none');
+    if (coolAvail) {
+      var coolOn = ('coolingEnabled' in autoDraft) ? !!autoDraft.coolingEnabled : !!cfg.coolingEnabled;
+      var cr = auEl('div', 'auField'); cr.appendChild(auEl('label', '', 'Kühlen erlauben'));
+      var cseg = auEl('div', 'opsSeg');
+      [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
+        var b = auEl('button', (coolOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || autoSaving;
+        b.onclick = function () { if (p[0] === !!cfg.coolingEnabled) { delete autoDraft.coolingEnabled; } else { autoDraft.coolingEnabled = p[0]; } delete autoErrors.coolingEnabled; renderAuto(); };
+        cseg.appendChild(b);
+      });
+      cr.appendChild(cseg); set.appendChild(cr);
+      set.appendChild(auEl('div', 'opsHint', 'Kühlen nur mit Taupunkt-Schutz (Feuchtequellen und Sicherheitsabstand im HeishaMon-Formular).'));
+      if (autoErrors.coolingEnabled) { var ec = auEl('div', 'opsHint', autoErrors.coolingEnabled); ec.style.color = '#ff8a80'; ec.style.opacity = '1'; set.appendChild(ec); }
+    } else {
+      set.appendChild(auEl('div', 'opsHint', 'Kühlen nicht verfügbar: Es wurde keine Feuchtequelle gefunden, ohne die der Taupunkt-Schutz nicht arbeiten kann (Quellen im HeishaMon-Formular wählen).'));
+    }
     if (autoErrors.configRevision) { var ev = auEl('div', 'opsHint', autoErrors.configRevision); ev.style.color = '#ffb74d'; ev.style.opacity = '1'; set.appendChild(ev); }
     var act = auEl('div', 'auActions');
     var sv = auEl('button', 'curveSave', 'Übernehmen'); sv.id = 'auSave'; sv.disabled = !feat || !autoDirty() || autoSaving;
@@ -1637,12 +1643,27 @@
     act.appendChild(sv); act.appendChild(rv); act.appendChild(auEl('span', 'opsStatus', autoStatus));
     set.appendChild(act);
     body.appendChild(set);
-    // 5) Raeume (nur Anzeige)
-    if (a.rooms && a.rooms.length) {
-      var rm = auEl('div', 'opsTile'); rm.appendChild(auEl('div', 'opsTitle', 'Überwachte Räume'));
-      a.rooms.forEach(function (r) { var line = auEl('div', 'opsTitle'); line.appendChild(document.createTextNode(r.label || ('Raum ' + r.id))); line.appendChild(auEl('span', 'opsState', auNum(r.valueC) + ' °C')); rm.appendChild(line); });
-      rm.appendChild(auEl('div', 'opsHint', 'Die Raumliste wird im HeishaMon-Formular gepflegt.'));
+    // 5) Raeume und Feuchte (nur Anzeige; Auswahl im HeishaMon-Formular)
+    var MODE_TXT = { own: 'eigene Auswahl', auto: 'automatisch gefunden', none: 'keine gefunden', off: 'aus' };
+    var src = a.sources || {}, rmode = src.rooms ? src.rooms.mode : null;
+    if ((a.rooms && a.rooms.length) || rmode) {
+      var rm = auEl('div', 'opsTile'); var rt = auEl('div', 'opsTitle'); rt.appendChild(document.createTextNode('Überwachte Räume'));
+      if (rmode) { rt.appendChild(auEl('span', 'opsState', MODE_TXT[rmode] || rmode)); }
+      rm.appendChild(rt);
+      (a.rooms || []).forEach(function (r) { var line = auEl('div', 'opsTitle'); line.appendChild(document.createTextNode(r.label || ('Raum ' + r.id))); line.appendChild(auEl('span', 'opsState', auNum(r.valueC) + ' °C')); rm.appendChild(line); });
+      if (rmode === 'none') { rm.appendChild(auEl('div', 'opsHint', 'Es wurden keine Raumtemperaturen gefunden - die Automatik rechnet dann nur mit der Außentemperatur.')); }
+      rm.appendChild(auEl('div', 'opsHint', 'Die Auswahl der Räume pflegt das HeishaMon-Formular (leer = automatisch).'));
       body.appendChild(rm);
+    }
+    if (hum) {
+      var hm = auEl('div', 'opsTile'); var ht = auEl('div', 'opsTitle'); ht.appendChild(document.createTextNode('Luftfeuchte (Taupunkt-Schutz)'));
+      ht.appendChild(auEl('span', 'opsState', MODE_TXT[hum.mode] || hum.mode)); hm.appendChild(ht);
+      if (hum.mode !== 'none') {
+        var hl = auEl('div', 'opsTitle'); hl.appendChild(document.createTextNode('Relative Feuchte / Taupunkt'));
+        hl.appendChild(auEl('span', 'opsState', auNum(hum.valueRH, 0) + ' % / ' + auNum(hum.dewPointC) + ' °C')); hm.appendChild(hl);
+      }
+      hm.appendChild(auEl('div', 'opsHint', 'Die Auswahl der Feuchtequellen pflegt das HeishaMon-Formular.'));
+      body.appendChild(hm);
     }
   }
   function handleAutomationMessage(d) {
