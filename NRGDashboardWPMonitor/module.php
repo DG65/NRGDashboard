@@ -119,6 +119,9 @@ class NRGDashboardWPMonitor extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.9.170' => [
+            'Neu: Reiter "Automatik" (nur bei HeishaMon ab 1.35.0) - die Heizungs-Automatik zeigt Zustand, Grund und Messwerte und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Das Einschalten fragt vorher nach, weil die Betriebsart dabei sofort wechseln kann.',
+        ],
         '0.2.8' => [
             'Neu: Seite "Bedienung" (nur bei HeishaMon) - Flüsterbetrieb, Leistungsbetrieb, Urlaub, Notbetrieb (mit Bestätigung und Warnpunkt am Reiter) und Warmwasser-Solltemperatur direkt in der Kachel. Die Wärmepumpe quittiert Befehle nicht - die Kachel wartet auf die Rückmeldung und zeigt ehrlich an, ob sie bestätigt wurde.',
             'Neu: senkrechter Regler rechts neben dem Heizkurven-Diagramm verschiebt die Heizkurve parallel (-5 bis +5 K), als gestrichelte Linie über der eingestellten Kurve. Nur im Verschiebe-Modus der Anlage, nicht bei Direktvorgabe der Vorlauftemperatur.',
@@ -690,6 +693,33 @@ class NRGDashboardWPMonitor extends IPSModule
         return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetOperations');
     }
 
+    /**
+     * Heizungs-Automatik (17.10.2026) - HeishaMon-Vertrag heatpump 1.15
+     * (HEISHA_GetHeatingAutomation/HEISHA_SetHeatingAutomation). Wie die
+     * Bedienfunktionen nur bei HeishaMon und defensiv per function_exists().
+     */
+    private function AutomationAvailable(): bool
+    {
+        return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetHeatingAutomation') && function_exists('HEISHA_SetHeatingAutomation');
+    }
+
+    private function BuildAutomation(): array
+    {
+        $id = $this->HeatingCurveInstanceID();
+        if ($id <= 0 || !function_exists('HEISHA_GetHeatingAutomation')) {
+            return [];
+        }
+        try {
+            $result = @HEISHA_GetHeatingAutomation($id);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        if (is_string($result)) {
+            $result = json_decode($result, true);
+        }
+        return is_array($result) ? $result : [];
+    }
+
     private function BuildOperations(): array
     {
         $id = $this->HeatingCurveInstanceID();
@@ -1004,6 +1034,45 @@ class NRGDashboardWPMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'automationLoad') {
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'automationUpdate', 'auto' => $this->BuildAutomation()]));
+            return;
+        }
+        if ($Ident === 'automationSave') {
+            // Nur die vereinbarten Felder weiterreichen (SUITE.md "Heizungs-Automatik"): Schwellen,
+            // Raum-Mindestwert und die beiden Schalter. featureEnabled und alles andere schreibt die
+            // Kachel nie. Pruefung, Grenzen und Teil-Update liegen im HeishaMon-Modul.
+            $req = json_decode((string) $Value, true);
+            $id = $this->HeatingCurveInstanceID();
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - HeishaMon-Funktion nicht verfügbar (HeishaMon zu alt?).']]];
+            if (is_array($req) && $id > 0 && function_exists('HEISHA_SetHeatingAutomation')) {
+                $payload = [];
+                foreach (['onBelowC', 'offAboveC', 'roomMinC'] as $k) {
+                    if (array_key_exists($k, $req) && is_numeric($req[$k])) {
+                        $payload[$k] = (float) $req[$k];
+                    }
+                }
+                foreach (['enabled', 'coolingEnabled'] as $k) {
+                    if (array_key_exists($k, $req)) {
+                        $payload[$k] = (bool) $req[$k];
+                    }
+                }
+                if (isset($req['configRevision']) && is_numeric($req['configRevision'])) {
+                    $payload['configRevision'] = (int) $req['configRevision'];
+                }
+                try {
+                    $r = @HEISHA_SetHeatingAutomation($id, json_encode($payload));
+                    if (is_string($r)) {
+                        $r = json_decode($r, true);
+                    }
+                    $result = is_array($r) ? $r : $result;
+                } catch (\Throwable $e) {
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                }
+            }
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'automationSaved', 'result' => $result, 'auto' => $this->BuildAutomation()]));
+            return;
+        }
         if ($Ident === 'operationsLoad') {
             $this->PushMessage(json_encode([
                 'ok'  => true,
@@ -1229,6 +1298,7 @@ class NRGDashboardWPMonitor extends IPSModule
             'hasOutsideTemp' => $outsideTempID > 0,
             'hasHeatingCurve' => $this->HeatingCurveAvailable(),
             'hasOperations'   => $this->OperationsAvailable(),
+            'hasAutomation'   => $this->AutomationAvailable(),
             'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:

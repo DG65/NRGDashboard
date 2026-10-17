@@ -1575,6 +1575,21 @@ gleiche IPSView-Fähigkeit.
   Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
+- **Heizungs-Automatik (`NRGDashboardWPMonitor`):** bei HeishaMon ab 1.35.0
+  (Vertrag `heatpump` 1.15, `HEISHA_GetHeatingAutomation`/
+  `HEISHA_SetHeatingAutomation`) erscheint der Reiter „Automatik“. Er zeigt
+  Zustand und Grund der Automatik, Außen-Mittelwerte, Raumwerte, letzte und
+  nächste Umschaltung und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen
+  und den Automatik-Schalter einstellen. Die Eingabefelder bauen sich aus
+  den Grenzen (`limits`), die das Modul mitliefert; Prüfung und
+  Teil-Update liegen dort, Fehler erscheinen am betroffenen Feld. Schutz
+  gegen gleichzeitiges Bearbeiten über `configRevision`. Das Einschalten
+  fragt vorher nach, weil die Betriebsart (Heizen/nur Warmwasser) beim
+  ersten Lauf sofort wechseln kann. „Funktion in dieser Anlage“
+  (`featureEnabled`) und „Automatik“ (`enabled`, Nutzerschalter) werden
+  bewusst unterschiedlich benannt; die Raumliste pflegt das
+  HeishaMon-Formular. Ohne die HeishaMon-Funktionen bleibt der Reiter
+  verborgen.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein

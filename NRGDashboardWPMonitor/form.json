@@ -27,6 +27,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Heizungs-Automatik, 17.10.2026): bei HeishaMon ab 1.35.0 erscheint der Reiter „Automatik“ - er zeigt Zustand, Grund, Außen- und Raumwerte sowie letzte und nächste Umschaltung und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Grenzen und Prüfung kommen vom Modul (Fehler erscheinen am betroffenen Feld); das Einschalten fragt vorher nach, weil die Betriebsart sofort wechseln kann. „Funktion in dieser Anlage“ (im HeishaMon-Formular freigeschaltet) und „Automatik“ (Ihr Schalter) sind zwei verschiedene Dinge. Die Raumliste bleibt im HeishaMon-Formular."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
         },
         {

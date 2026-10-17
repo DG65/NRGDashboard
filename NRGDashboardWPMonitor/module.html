@@ -246,6 +246,16 @@
   .opsRange { display: flex; align-items: center; gap: 10px; }
   .opsRange input { flex: 1 1 auto; accent-color: #ef9a3d; }
   .opsRange .val { font-size: 14px; font-weight: 700; min-width: 54px; text-align: right; }
+  #autoPanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
+  #autoBody { display: flex; flex-direction: column; gap: 10px; }
+  .auVals { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .auKpi { border: 1px solid rgba(127,135,145,.25); border-radius: 10px; padding: 8px 10px; text-align: center; background: rgba(127,135,145,.05); }
+  .auKpi .val { font-size: 16px; font-weight: 700; } .auKpi .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .3px; opacity: .65; margin-top: 2px; }
+  .auField { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .auField label { flex: 1 1 180px; font-size: 12px; font-weight: 600; }
+  .auField input[type=number] { width: 90px; font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.45); background: rgba(127,135,145,.10); color: inherit; }
+  .auUnit { font-size: 12px; opacity: .7; }
+  .auActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
   button.tab.tabAlert::after { content: " ●"; color: #ff5252; }
   #curveActions { display: flex; align-items: center; gap: 12px; font-size: 12px; padding-bottom: 6px; }
   button.curveSave { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(76,175,80,.55); background: rgba(76,175,80,.18); color: inherit; cursor: pointer; }
@@ -351,6 +361,7 @@
         <button class="tab active" data-tab="verlauf">Verlauf</button>
         <button class="tab" data-tab="heizkurven">Heizkurven</button>
         <button class="tab tabHidden" data-tab="bedienung">Bedienung</button>
+        <button class="tab tabHidden" data-tab="automatik">Automatik</button>
       </div>
     </div>
     <div id="chartcol">
@@ -392,6 +403,8 @@
     <div id="opsBanner">Notbetrieb aktiv - die Anlage heizt elektrisch mit dem Heizstab.</div>
     <div id="opsGrid"></div>
   </div>
+  <!-- Reiter "Automatik" (17.10.2026) - Heizungs-Automatik von HeishaMon (heatpump 1.15) -->
+  <div id="autoPanel"><div id="autoBody"></div></div>
     </div>
   </div>
   <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
@@ -1015,14 +1028,15 @@
   function updateTabStates() {
     if (!lastData) { return; }
     var today = (lastData.days || [])[0];
-    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve, bedienung: !!lastData.hasOperations };
-    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache, bedienung: !!opsCache };
+    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve, bedienung: !!lastData.hasOperations, automatik: !!lastData.hasAutomation };
+    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache, bedienung: !!opsCache, automatik: !!autoCache };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       var t = btn.getAttribute('data-tab');
       var hidden = !src[t];
       btn.classList.toggle('tabHidden', hidden);
       btn.classList.toggle('tabOk', !hidden && !!data[t]);
       btn.classList.toggle('tabWarn', !hidden && !data[t] && t === 'verlauf');
+      if (t === 'automatik') { btn.classList.toggle('tabAlert', !!(autoCache && autoCache.state === 'fault')); }
       if (t === 'bedienung') { btn.classList.toggle('tabAlert', !!(opsCache && opsCache.emergencyHeater && opsCache.emergencyHeater.value > 0)); }
     });
     if (!src[curTop]) { setTopTab('verlauf'); }
@@ -1043,9 +1057,11 @@
     document.getElementById('tabsWrap').style.top = (tab === 'verlauf') ? '' : '0px';
     document.getElementById('curvePanel').style.display = (tab === 'heizkurven') ? 'flex' : 'none';
     document.getElementById('opsPanel').style.display = (tab === 'bedienung') ? 'flex' : 'none';
+    document.getElementById('autoPanel').style.display = (tab === 'automatik') ? 'flex' : 'none';
     updateChartTitle();
     if (tab === 'heizkurven') { renderCurvePanel(); }
     else if (tab === 'bedienung') { renderOps(); }
+    else if (tab === 'automatik') { renderAuto(); }
     else { render(); }
   }
   Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
@@ -1476,6 +1492,183 @@
   // Alles Set-Befehle, alles rueckles-bar. HeishaMon quittiert nichts: die
   // Anzeige folgt bis zur Rueckmeldung dem gesendeten Stand (Kachel "wartet"),
   // dann Bestaetigung per Nachlesen alle 3 s, nach 30 s "nicht bestaetigt".
+  // ---- Reiter "Automatik" (17.10.2026) - Heizungs-Automatik von HeishaMon (heatpump 1.15,
+  // HEISHA_GetHeatingAutomation/HEISHA_SetHeatingAutomation). Bewertung, Grenzen und Pruefung liegen im
+  // Modul: dieser Reiter zeigt Zustand und Werte und baut die Eingabefelder aus limits{} - keine eigenen
+  // Zahlen. "Funktion in der Instanz" (featureEnabled) und "Automatik ein/aus" (enabled) sind verschiedene
+  // Dinge und tragen bewusst verschiedene Namen.
+  var autoCache = null, autoPending = false, autoDraft = {}, autoErrors = {}, autoStatus = '', autoConfirm = null, autoSaving = false, autoTimer = null;
+  var AUTO_FIELDS = [
+    ['onBelowC', 'Heizen einschalten unter', 'Außentemperatur-Mittel, ab dem die Automatik den Heizbetrieb einschaltet.'],
+    ['offAboveC', 'Heizen ausschalten über', 'Außentemperatur-Mittel, ab dem die Automatik den Heizbetrieb ausschaltet (muss über der Einschalt-Schwelle liegen, sonst lehnt das Modul ab).'],
+    ['roomMinC', 'Raum-Mindestwert', 'Fällt ein überwachter Raum darunter, bleibt oder geht die Heizung an.']
+  ];
+  function auNum(v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d === undefined ? 1 : d).replace('.', ',') : '–'; }
+  function auTime(ts) {
+    if (!ts) { return '–'; }
+    return new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+  function auAgo(ts) {
+    if (!ts) { return 'noch nie'; }
+    var m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60));
+    return m < 1 ? 'gerade eben' : (m < 90 ? 'vor ' + m + ' min' : 'vor ' + Math.round(m / 60) + ' h');
+  }
+  function autoDraftValue(key) { return (key in autoDraft) ? autoDraft[key] : (autoCache.config ? autoCache.config[key] : undefined); }
+  function autoDirty() { return Object.keys(autoDraft).length > 0; }
+  function autoLoad() { autoPending = true; requestAction('automationLoad', '{}'); }
+  function autoSend(payload) {
+    if (!autoCache) { return; }
+    payload.configRevision = autoCache.configRevision;
+    autoSaving = true; autoErrors = {}; autoStatus = 'Sende…'; autoConfirm = null;
+    requestAction('automationSave', JSON.stringify(payload));
+    renderAuto();
+  }
+  function autoPoll() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    autoTimer = setInterval(function () { if (curTop === 'automatik' && !autoSaving && !autoPending) { autoLoad(); } }, 30000);
+  }
+  function auEl(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
+  function auToggle(label, on, disabled, onClick, hint) {
+    var t = auEl('div', 'opsTile' + (on ? ' on' : ''));
+    var title = auEl('div', 'opsTitle'); title.appendChild(document.createTextNode(label));
+    var seg = auEl('div', 'opsSeg');
+    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
+      var b = auEl('button', (!!on === p[0]) ? 'active' : '', p[1]); b.disabled = !!disabled;
+      b.onclick = function () { if (!!on !== p[0]) { onClick(p[0]); } };
+      seg.appendChild(b);
+    });
+    t.appendChild(title); t.appendChild(seg);
+    if (hint) { t.appendChild(auEl('div', 'opsHint', hint)); }
+    return t;
+  }
+  function renderAuto() {
+    var body = document.getElementById('autoBody');
+    updateChartTitle();
+    if (!lastData || !lastData.hasAutomation) { body.innerHTML = '<div class="empty">Automatik nicht verfügbar.</div>'; return; }
+    if (!autoCache) {
+      if (!autoPending) { autoLoad(); }
+      body.innerHTML = '<div class="empty">Lade Heizungs-Automatik…</div>'; return;
+    }
+    var a = autoCache, cfg = a.config || {}, lim = a.limits || {}, feat = !!a.featureEnabled;
+    body.innerHTML = '';
+    // 1) Funktion in der Instanz + Automatik ein/aus
+    var head = auEl('div', 'opsTile');
+    head.appendChild(auEl('div', 'opsTitle', 'Heizungs-Automatik'));
+    head.appendChild(auEl('div', 'opsHint', 'Schaltet nur den Heizbetrieb ein oder aus (nie die ganze Wärmepumpe), anhand des Außentemperatur-Mittels. Frostschutz hat immer Vorrang.'));
+    var fi = auEl('div', 'opsHint', 'Funktion in dieser Anlage: ' + (feat ? 'freigeschaltet' : 'nicht freigeschaltet (im HeishaMon-Formular einschalten)'));
+    fi.style.opacity = '1'; fi.style.fontWeight = '700'; fi.style.color = feat ? '#81c784' : '#ffb74d';
+    head.appendChild(fi);
+    body.appendChild(head);
+    if (autoConfirm !== null) {
+      var q = auEl('div', 'opsTile danger');
+      q.appendChild(auEl('div', 'opsTitle', autoConfirm ? 'Automatik einschalten?' : 'Automatik ausschalten?'));
+      var qt = auEl('div', 'opsHint', autoConfirm
+        ? 'Beim ersten Lauf kann die Automatik die Betriebsart sofort ändern (z. B. von Heizen auf nur Warmwasser).'
+        : 'Beim Ausschalten wird eine von der Automatik abgeschaltete Heizung wieder eingeschaltet.');
+      qt.style.opacity = '1'; q.appendChild(qt);
+      var qr = auEl('div', 'opsSeg');
+      var yes = auEl('button', 'opsBtn warn', autoConfirm ? 'Ja, einschalten' : 'Ja, ausschalten');
+      var want = autoConfirm; yes.onclick = function () { autoSend({ enabled: want }); };
+      var no = auEl('button', 'opsBtn', 'Abbrechen'); no.onclick = function () { autoConfirm = null; renderAuto(); };
+      qr.appendChild(yes); qr.appendChild(no); q.appendChild(qr); body.appendChild(q);
+    } else {
+      body.appendChild(auToggle('Automatik', !!a.enabled, !feat || autoSaving, function (v) { autoConfirm = v; renderAuto(); }, feat ? 'Ihr Schalter für die Automatik (Standard: aus).' : 'Erst nach der Freischaltung der Funktion im HeishaMon-Formular bedienbar.'));
+    }
+    // 2) Zustand
+    var st = auEl('div', 'opsTile');
+    var stMap = { heating: ['Heizbetrieb', '#ef9a3d'], cooling: ['Kühlbetrieb', '#4fc3f7'], off: ['Heizung aus (Automatik)', '#90a4ae'], fault: ['Störung', '#ff5252'] };
+    var sm = stMap[a.state] || ['Automatik läuft nicht', '#90a4ae'];
+    var pill = auEl('div', 'opsTitle'); var sp = auEl('span', '', sm[0]); sp.style.color = sm[1]; sp.style.fontSize = '16px'; pill.appendChild(sp); st.appendChild(pill);
+    if (a.reason) { st.appendChild(auEl('div', 'opsHint', a.reason)); }
+    if (a.lastError) { var le = auEl('div', 'opsHint', 'Letzter Fehler: ' + a.lastError); le.style.color = '#ff8a80'; le.style.opacity = '1'; st.appendChild(le); }
+    body.appendChild(st);
+    // 3) Werte
+    var vals = auEl('div', 'auVals');
+    var nextTxt = (a.nextSwitchAllowedAt && a.nextSwitchAllowedAt * 1000 > Date.now()) ? 'frühestens ' + auTime(a.nextSwitchAllowedAt) : 'jederzeit';
+    [
+      ['Außen jetzt', auNum(a.outsideNowC) + ' °C'],
+      ['Außen-Mittel ' + (cfg.meanShortHours || '') + ' h', auNum(a.outsideMeanShortC) + ' °C'],
+      ['Außen-Mittel ' + (cfg.meanLongHours || '') + ' h', auNum(a.outsideMeanLongC) + ' °C'],
+      ['Raum-Mittel', auNum(a.roomMeanC) + ' °C'],
+      ['Kühlster Raum', auNum(a.roomMinC) + ' °C'],
+      ['Taupunkt', (a.dewPointC === null || a.dewPointC === undefined) ? '–' : auNum(a.dewPointC) + ' °C'],
+      ['Letzte Umschaltung', auTime(a.lastSwitchAt)],
+      ['Nächste Umschaltung', nextTxt],
+      ['Zuletzt geprüft', auAgo(a.evaluatedAt)]
+    ].forEach(function (p) { var k = auEl('div', 'auKpi'); k.appendChild(auEl('div', 'val', p[1])); k.appendChild(auEl('div', 'lbl', p[0])); vals.appendChild(k); });
+    body.appendChild(vals);
+    // 4) Einstellungen (Grenzen aus limits{})
+    var set = auEl('div', 'opsTile');
+    set.appendChild(auEl('div', 'opsTitle', 'Einstellungen'));
+    AUTO_FIELDS.forEach(function (f) {
+      var key = f[0], l = lim[key] || {}, cur = autoDraftValue(key);
+      if (cur === undefined || cur === null) { return; }
+      var row = auEl('div', 'auField');
+      row.appendChild(auEl('label', '', f[1]));
+      var inp = document.createElement('input'); inp.type = 'number'; inp.value = cur; inp.disabled = !feat || autoSaving;
+      if (typeof l.min === 'number') { inp.min = l.min; } if (typeof l.max === 'number') { inp.max = l.max; } if (typeof l.step === 'number') { inp.step = l.step; }
+      inp.oninput = function () {
+        var v = parseFloat(inp.value);
+        if (!isFinite(v) || v === cfg[key]) { delete autoDraft[key]; } else { autoDraft[key] = v; }
+        delete autoErrors[key]; var sv = document.getElementById('auSave'); if (sv) { sv.disabled = !autoDirty() || autoSaving; }
+      };
+      row.appendChild(inp);
+      row.appendChild(auEl('span', 'auUnit', l.unit || '°C'));
+      set.appendChild(row);
+      set.appendChild(auEl('div', 'opsHint', f[2]));
+      if (autoErrors[key]) { var er = auEl('div', 'opsHint', autoErrors[key]); er.style.color = '#ff8a80'; er.style.opacity = '1'; set.appendChild(er); }
+    });
+    var coolOn = ('coolingEnabled' in autoDraft) ? !!autoDraft.coolingEnabled : !!cfg.coolingEnabled;
+    var cr = auEl('div', 'auField'); cr.appendChild(auEl('label', '', 'Kühlen erlauben'));
+    var cseg = auEl('div', 'opsSeg');
+    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
+      var b = auEl('button', (coolOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || autoSaving;
+      b.onclick = function () { if (p[0] === !!cfg.coolingEnabled) { delete autoDraft.coolingEnabled; } else { autoDraft.coolingEnabled = p[0]; } delete autoErrors.coolingEnabled; renderAuto(); };
+      cseg.appendChild(b);
+    });
+    cr.appendChild(cseg); set.appendChild(cr);
+    set.appendChild(auEl('div', 'opsHint', 'Kühlen nur mit Taupunkt-Schutz (Einstellungen dafür im HeishaMon-Formular).'));
+    if (autoErrors.coolingEnabled) { var ec = auEl('div', 'opsHint', autoErrors.coolingEnabled); ec.style.color = '#ff8a80'; ec.style.opacity = '1'; set.appendChild(ec); }
+    if (autoErrors.configRevision) { var ev = auEl('div', 'opsHint', autoErrors.configRevision); ev.style.color = '#ffb74d'; ev.style.opacity = '1'; set.appendChild(ev); }
+    var act = auEl('div', 'auActions');
+    var sv = auEl('button', 'curveSave', 'Übernehmen'); sv.id = 'auSave'; sv.disabled = !feat || !autoDirty() || autoSaving;
+    sv.onclick = function () { autoSend(JSON.parse(JSON.stringify(autoDraft))); };
+    var rv = auEl('button', 'opsBtn', 'Verwerfen'); rv.disabled = !autoDirty() || autoSaving; rv.onclick = function () { autoDraft = {}; autoErrors = {}; autoStatus = ''; renderAuto(); };
+    act.appendChild(sv); act.appendChild(rv); act.appendChild(auEl('span', 'opsStatus', autoStatus));
+    set.appendChild(act);
+    body.appendChild(set);
+    // 5) Raeume (nur Anzeige)
+    if (a.rooms && a.rooms.length) {
+      var rm = auEl('div', 'opsTile'); rm.appendChild(auEl('div', 'opsTitle', 'Überwachte Räume'));
+      a.rooms.forEach(function (r) { var line = auEl('div', 'opsTitle'); line.appendChild(document.createTextNode(r.label || ('Raum ' + r.id))); line.appendChild(auEl('span', 'opsState', auNum(r.valueC) + ' °C')); rm.appendChild(line); });
+      rm.appendChild(auEl('div', 'opsHint', 'Die Raumliste wird im HeishaMon-Formular gepflegt.'));
+      body.appendChild(rm);
+    }
+  }
+  function handleAutomationMessage(d) {
+    if (d && d.ok && d.type === 'automationUpdate') {
+      autoCache = d.auto; autoPending = false; updateTabStates();
+      if (curTop === 'automatik' && !autoSaving) { renderAuto(); }
+      return true;
+    }
+    if (d && d.ok && d.type === 'automationSaved') {
+      autoSaving = false; autoPending = false;
+      if (d.auto) { autoCache = d.auto; }
+      var r = d.result || {};
+      autoErrors = {};
+      if (r.ok) { autoDraft = {}; autoStatus = 'Gespeichert. Die Automatik wertet beim nächsten Durchlauf aus (das ist noch kein Schaltvorgang).'; }
+      else {
+        var errs = r.errors || [];
+        errs.forEach(function (e) { autoErrors[e.field] = e.message; });
+        if (autoErrors.configRevision) { autoDraft = {}; autoStatus = 'Zwischenzeitlich geändert - aktuelle Werte geladen, bitte erneut prüfen.'; }
+        else { autoStatus = errs.length ? 'Nicht gespeichert - bitte die markierten Felder prüfen.' : 'Nicht gespeichert - HeishaMon hat abgelehnt.'; }
+      }
+      updateTabStates();
+      if (curTop === 'automatik') { renderAuto(); }
+      return true;
+    }
+    return false;
+  }
   var opsCache = null, opsPending = false, opsSent = {}, opsStatus = {}, opsSaving = {}, opsPollTimer = null, opsConfirmKey = null;
   var OPS_DEFS = [
     { key: 'quiet', title: 'Flüsterbetrieb', type: 'seg', labels: { 0: 'Aus', 1: 'Leise', 2: 'Leiser', 3: 'Am leisesten' },
@@ -1670,6 +1863,7 @@
     // - NICHT der volle Kachel-Payload, nur das nachgeforderte Heizkurven-
     // Ergebnis (18.09.2026, erster Schreibzugriff dieser Kachel ueberhaupt).
     // Gleiches Muster wie NRGDashboardPVMonitor::flowUpdate/dayPlanUpdate.
+    if (handleAutomationMessage(d)) { return; }
     if (d && d.ok && d.type === 'operationsUpdate') {
       opsCache = d.ops; opsPending = false;
       Object.keys(opsSent).forEach(function (key) {
@@ -1787,6 +1981,7 @@
     document.body.classList.toggle('light', !!d.lightTheme);
     updateTabStates();
     if (d.hasOperations && !opsPending) { opsPending = true; requestAction('operationsLoad', '{}'); }
+    if (d.hasAutomation) { if (!autoPending && !autoCache) { autoLoad(); } autoPoll(); }
     // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
     // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
     // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,
