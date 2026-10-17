@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.24 (2026-10-17)
+
+- WP-Monitor: neuer Reiter „Automatik“ für die Heizungs-Automatik von HeishaMon (Vertrag heatpump 1.15, nur mit HeishaMon ab 1.35.0): Zustand und Grund, Außen- und Raumwerte, letzte und nächste Umschaltung; einstellbar sind Ein- und Aus-Schwelle, Raum-Mindestwert, Kühlen und der Automatik-Schalter (mit Rückfrage). Grenzen und Prüfung kommen vom Modul, Fehler erscheinen je Feld, bei zwischenzeitlicher Änderung lädt der Reiter neu. Ohne die HeishaMon-Funktionen bleibt der Reiter verborgen.
+
 ## 0.9.170-beta.23 (2026-10-17)
 
 - Netz-Detailseite: „Einspeise-Erlös dieses Jahr“, „… letzte 12 Monate“ und „Empfohlener Abschlag“ (ein Zwölftel des Erlöses der letzten 12 Monate). Neues Formularfeld „Monatlicher Abschlag“: damit zeigt die Kachel den Abgleich bis zum Vormonat und eine Hochrechnung der Jahresabrechnung („+x € mehr ausbezahlt“ oder „−x € zurückzuzahlen“). Jahres- und 12-Monats-Werte erscheinen nur bei lückenlos archiviertem Einspeise-Zähler.
