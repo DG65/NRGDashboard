@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.22 (2026-10-17)
+
+- Netz-Detailseite: neue Zeilen „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ (eingespeiste kWh mal Einspeisevergütung; Monat aus dem Einspeise-Zähler im Archiv). Anlass: Frage im Forum.
+
 ## 0.9.170-beta.21 (2026-10-16)
 
 - Schalter „Saison-Effekte“: Namen neutral („Saison-Effekte“, „Saison-Effekte: Geräusche“, „Geräusche an“); bestehende Instanzen werden beim Update umbenannt.
