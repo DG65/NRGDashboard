@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.29 (2026-10-18)
+
+- Detailseite: „Energie heute“ und „Energie je Tag“ halten eine Leistungsvariable (W, kW) nicht mehr für einen Energiezähler, auch wenn sie im Archiv als „Zähler“ eingestellt ist (Forum: 56.900 kWh am Tag aus einer in W archivierten Variable). Wh-Zähler werden in kWh umgerechnet; die Einheit wird auch aus der Darstellung (Symcon 8+) gelesen, wenn kein Profil gesetzt ist. Ohne echten Zähler bleibt es bei der Näherung aus der Leistungsreihe.
+
 ## 0.9.170-beta.28 (2026-10-18)
 
 - WP-Monitor „Automatik“: neuer Zustand „Preis-Sperre (Heizbetrieb pausiert)“ (eigene Farbe, nicht als normales „aus“), Karte „Strompreis (Preis-Sperre)“ mit Preis jetzt, Schwelle, Median, Sperren heute, „gesperrt seit“ und Batterie-Deckung, sowie der Schalter „Preis-Sperre“ - nur wenn HeishaMon eine Preisquelle meldet (ab HeishaMon 1.36.0). Die übrigen Preis- und Batterie-Einstellungen bleiben im HeishaMon-Formular.

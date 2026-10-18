@@ -6773,8 +6773,12 @@ class NRGDashboardTile extends IPSModule
                 continue;
             }
             $vid = (int) $val;
+            // Leistungsvariablen sind KEINE Energiezaehler, auch wenn sie im Archiv als "Zaehler" eingestellt sind
+            // (Forum Horst, 18.10.2026: "Energie heute 55.282 kWh", Variable IEC_POWER in W, als Zaehler archiviert -
+            // die Tagessumme der Zaehler-Zuwaechse in W wurde als kWh angezeigt).
             if ($vid > 0 && IPS_VariableExists($vid) && AC_GetLoggingStatus($arch, $vid)
-                && (int) AC_GetAggregationType($arch, $vid) === 1) {
+                && (int) AC_GetAggregationType($arch, $vid) === 1
+                && $this->IsEnergyCounterVariable($vid, $field)) {
                 $counterID = $vid;
                 break;
             }
@@ -6788,8 +6792,15 @@ class NRGDashboardTile extends IPSModule
                     $bars[] = [date('Y-m-d', (int) $row['TimeStamp']), round((float) $row['Avg'], 2)];
                 }
             }
-            // Einheit vom Profil des Zaehlers uebernehmen (Anbieter-Hoheit).
+            // Einheit vom Profil des Zaehlers uebernehmen (Anbieter-Hoheit); Wh werden zu kWh umgerechnet.
             $unit = trim($this->VariableSuffix($counterID));
+            if (strcasecmp($unit, 'Wh') === 0) {
+                foreach ($bars as &$barRow) {
+                    $barRow[1] = round($barRow[1] / 1000, 3);
+                }
+                unset($barRow);
+                $unit = 'kWh';
+            }
             usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
             return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID)];
         }
@@ -6824,6 +6835,26 @@ class NRGDashboardTile extends IPSModule
         return ['bars' => [], 'unit' => '', 'approx' => false];
     }
 
+    /**
+     * Ist diese Variable plausibel ein Energiezaehler (kWh/Wh/MWh)? Nein bei Leistungseinheit (W, kW, MW, VA, kVA),
+     * nein bei Feldern namens ...Power...; ohne Einheit entscheidet der Variablenname ("Power", "Leistung", "Watt"
+     * sind keine Zaehler). Im Zweifel bleibt das bisherige Verhalten (Zaehler).
+     */
+    private function IsEnergyCounterVariable(int $vid, string $field): bool
+    {
+        if (preg_match('/power|leistung/i', $field)) {
+            return false;
+        }
+        $unit = strtolower(trim($this->VariableSuffix($vid)));
+        if (in_array($unit, ['wh', 'kwh', 'mwh'], true)) {
+            return true;
+        }
+        if (in_array($unit, ['w', 'kw', 'mw', 'va', 'kva', 'var', 'kvar'], true)) {
+            return false;
+        }
+        return !preg_match('/power|leistung|watt/i', (string) IPS_GetName($vid));
+    }
+
     /** Profil-Suffix einer Variablen (z.B. " kWh"), leer wenn keins. */
     private function VariableSuffix(int $vid): string
     {
@@ -6831,6 +6862,11 @@ class NRGDashboardTile extends IPSModule
         $profile = $v['VariableCustomProfile'] !== '' ? $v['VariableCustomProfile'] : $v['VariableProfile'];
         if ($profile !== '' && IPS_VariableProfileExists($profile)) {
             return (string) IPS_GetVariableProfile($profile)['Suffix'];
+        }
+        // Symcon 8+: Einheit steht ohne Profil in der Darstellung (SUFFIX).
+        $pres = $v['VariableCustomPresentation'] ?? null;
+        if (is_array($pres) && isset($pres['SUFFIX']) && is_string($pres['SUFFIX'])) {
+            return $pres['SUFFIX'];
         }
         return '';
     }
