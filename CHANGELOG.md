@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.26 (2026-10-18)
+
+- Prognose-Kachel (NRGDashboardForecast): neue Einstellung „Beschriftung“ (automatisch, hell, dunkel) für dunkle WebFront-Themes bei hellem Betriebssystem, gespiegelt von Prognoses Energiebilanz Build 145. Anlass: Forum.
+
 ## 0.9.170-beta.25 (2026-10-17)
 
 - WP-Monitor „Automatik“: Räume und Luftfeuchte werden mit ihrer Quelle angezeigt (automatisch gefunden, eigene Auswahl, keine gefunden); „Kühlen erlauben“ erscheint nur, wenn eine Feuchtequelle gefunden wurde.

@@ -101,6 +101,7 @@ class NRGDashboardForecast extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.2.9' => [
+            '🔤 Beschriftung lesbar machen (gespiegelt von Prognoses Energiebilanz, Hinweis aus dem Forum): neue Einstellung „Beschriftung“ im WebFront (Doppelpfeil) - automatisch (wie bisher, nach Betriebssystem/Browser), hell oder dunkel. Bei einem dunklen WebFront-Theme mit hellem Betriebssystem stellst du „Hell“ ein.',
             '📊 Neue Darstellung "Balken je Zeitscheibe" (gespiegelt von Prognoses Energiebilanz, Idee aus dem Forum): im WebFront über den Doppelpfeil unter "Darstellung" wählbar - je Viertelstunde ein Soll-Balken, gefüllt mit dem Ist-Wert, der Verbrauch als Linie. Die Standarddarstellung bleibt die Kurve.',
             '🩹 Gemessene Linie verschwindet nicht mehr, wenn das Stunden-Aggregat im Archiv defekt ist - sie wird dann ersatzweise aus den Rohwerten gebildet. Über den Ist-Feldern im Formular zeigt eine Zeile, ob die Variable archiviert ist, ob die Linie eingeschaltet ist und wie viele Messwerte heute ankommen.',
         ],
@@ -222,6 +223,8 @@ class NRGDashboardForecast extends IPSModule
             'MeasuredCacheSec' => ['Ist-Verlauf neu berechnen alle ... s (Archiv-Cache)', 'NRGDASHFC.CacheSec', 34, 120],
             // Darstellung (Forum Ghostraider #48, gespiegelt von Prognoses Energiebilanz Build 142): Kurve oder Balken je Slot (15 min)
             'ChartView'        => ['Darstellung (Kurve oder Balken je Zeitscheibe)', 'NRGDASHFC.View', 39, 0],
+            // Eigene Wahl der Schriftfarbe (Forum lungo #62, gespiegelt von Prognoses Energiebilanz Build 145)
+            'LabelTone'        => ['Beschriftung (Schriftfarbe: automatisch, hell oder dunkel)', 'NRGDASHFC.LabelTone', 43, 0],
             'ChartEngine'      => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
             'ColorPV'          => ['Farbe PV-Erzeugung', '~HexColor', 41, self::DEF_PV],
             'ColorLoad'        => ['Farbe Verbrauch', '~HexColor', 42, self::DEF_LOAD],
@@ -277,6 +280,11 @@ class NRGDashboardForecast extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHFC.View')) { IPS_CreateVariableProfile('NRGDASHFC.View', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileAssociation('NRGDASHFC.View', 0, 'Kurve (Linien mit Unsicherheitsband)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.View', 1, 'Balken je Zeitscheibe (15 min, Soll gefüllt mit Ist)', '', -1);
+
+        if (!IPS_VariableProfileExists('NRGDASHFC.LabelTone')) { IPS_CreateVariableProfile('NRGDASHFC.LabelTone', VARIABLETYPE_INTEGER); }
+        IPS_SetVariableProfileAssociation('NRGDASHFC.LabelTone', 0, 'Automatisch (nach Betriebssystem/Browser)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.LabelTone', 1, 'Hell (für dunkle Kacheln)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHFC.LabelTone', 2, 'Dunkel (für helle Kacheln)', '', -1);
 
         if (!IPS_VariableProfileExists('NRGDASHFC.CacheSec')) { IPS_CreateVariableProfile('NRGDASHFC.CacheSec', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileValues('NRGDASHFC.CacheSec', 15, 900, 5);
@@ -413,7 +421,7 @@ class NRGDashboardForecast extends IPSModule
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
                        'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
-        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
+        $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'LabelTone', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
         if (in_array($Ident, $boolIdents, true)) {
@@ -594,6 +602,7 @@ class NRGDashboardForecast extends IPSModule
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
             'view'       => ((int) $this->GetValue('ChartView') === 1) ? 'bars' : 'curve',
+            'labelTone'  => max(0, min(2, (int) $this->GetValue('LabelTone'))),
             'hookPath'   => '/hook/nrgdashforecast' . $this->InstanceID,
             'showTour'   => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
@@ -1306,6 +1315,7 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('PowerUnit', 2);
         $this->SetValue('MeasuredCacheSec', 120);
         $this->SetValue('ChartView', 0);
+        $this->SetValue('LabelTone', 0);
         $this->SetValue('ChartEngine', 0);
         $this->SetValue('ColorPV', self::DEF_PV);
         $this->SetValue('ColorLoad', self::DEF_LOAD);
