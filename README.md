@@ -1575,6 +1575,23 @@ gleiche IPSView-Fähigkeit.
   Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
+- **Wochen-Zeitplan (`NRGDashboardWPMonitor`):** bei HeishaMon ab 1.39.0
+  (Vertrag `heatpump` 1.16, `HEISHA_GetSchedule`/`HEISHA_SetSchedule`)
+  erscheint der Reiter „Zeitplan“, ein grafischer Wochen-Editor für ECO /
+  Normal / Komfort der Heizkurve (Zone 1 und 2, Heizen und Kühlen) und den
+  Flüsterbetrieb. Mo–So × 24 Stunden im 15-Minuten-Raster; Abschnitte werden
+  mit dem Pinsel gemalt (Finger oder Maus), außerhalb gilt der Standard des
+  Kanals, höchstens so viele Abschnitte je Tag, wie das Modul meldet.
+  „Tag kopieren“ auf Werktage, Wochenende oder alle Tage; Kanäle und der
+  ganze Plan lassen sich ein- und ausschalten (Rückfrage, weil der geplante
+  Wert beim Einschalten sofort gesendet wird; beim Ausschalten bleibt der
+  zuletzt gesetzte Wert stehen). Der Plan läuft im HeishaMon-Modul, die
+  Anlage kann keinen Plan aufnehmen. Status je Kanal (Plan wirkt, Befehl
+  gesendet, von Hand oder Platine geändert, Anlage übernimmt nicht, nicht
+  nutzbar, aus) mit Grund und nächster Schaltzeit; Fehler erscheinen am
+  betroffenen Abschnitt, der Schutz gegen gleichzeitiges Bearbeiten läuft
+  über die Revision. Ohne die HeishaMon-Funktionen bleibt der Reiter
+  verborgen.
 - **Schnelltasten ECO / Normal / Komfort und Flüsterbetrieb (`NRGDashboardWPMonitor`):**
   im Reiter „Heizkurven“ setzen drei Tasten die Verschiebung der Heizkurve
   mit einem Klick auf -5 / 0 / +5 K (bei HeishaMon ab 1.38.0 aus den

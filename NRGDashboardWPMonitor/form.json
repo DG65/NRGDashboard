@@ -27,6 +27,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Wochen-Zeitplan, 18.10.2026): bei HeishaMon ab 1.39.0 erscheint der Reiter „Zeitplan“ - ein grafischer Wochen-Editor (Mo–So × 24 Stunden, 15-Minuten-Raster) für ECO / Normal / Komfort der Heizkurve (Zone 1 und 2, Heizen und Kühlen) und den Flüsterbetrieb. Abschnitte malst du mit dem Finger oder der Maus, Tage lassen sich kopieren, jeder Kanal und der ganze Plan lassen sich ein- und ausschalten. Der Plan läuft im HeishaMon-Modul (die Anlage selbst kann keinen Plan aufnehmen): Beim Einschalten wird der geplante Wert sofort gesendet, beim Ausschalten bleibt der zuletzt gesetzte Wert stehen. Eine manuelle Änderung gilt bis zur nächsten Schaltzeit, Regeln auf der Platine können die Verschiebung überschreiben (Hinweis steht dabei). Die Anlage quittiert nichts: der Status je Kanal zeigt, ob der Wert übernommen wurde."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Schnelltasten, 18.10.2026): im Reiter „Heizkurven“ stellen drei Tasten ECO / Normal / Komfort die Verschiebung der Heizkurve mit einem Klick auf -5 / 0 / +5 K (nur im Verschiebe-Modus der Anlage, nicht im Direktmodus), daneben schaltet eine Leiste den Flüsterbetrieb auf Aus/1/2/3. Die Anlage quittiert nichts: die Kachel liest den Wert nach und meldet erst dann „bestätigt“. Regeln auf der Platine können die Verschiebung überschreiben, der Hinweis steht dabei."
         },
         {
