@@ -101,6 +101,7 @@ class NRGDashboardForecast extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.2.9' => [
+            '📏 Nachgezogen aus dem Forum (danke!): Der Hinweis zur Auflösung in der Balkenansicht lässt sich ausblenden („Hinweis zur Auflösung in der Balkenansicht anzeigen“), und die Anlagenleistung kann als gestrichelte Linie gezeigt werden („Anlagenleistung (Modul-kWp) als gestrichelte Linie zeigen“, Standard aus). Im Formular lässt sich unter „Anlagenleistung für die gestrichelte Linie“ ein eigener Wert in kW eintragen; bei 0 gilt die Summe der Modul-kWp aus deiner PV-Prognose.',
             '🔗 Klarere Verbindungszeilen (Rückfrage aus dem Forum, danke!): Steht in den Einstellungen eine nicht mehr vorhandene Instanz, ignoriert die Kachel sie und nimmt die automatische Erkennung - das steht jetzt als Hinweis dabei, die Zeile bleibt 🔗 (verbunden) und zeigt kein ⚠️.',
             '🔤 Beschriftung lesbar machen (gespiegelt von Prognoses Energiebilanz, Hinweis aus dem Forum): neue Einstellung „Beschriftung“ im WebFront (Doppelpfeil) - automatisch (wie bisher, nach Betriebssystem/Browser), hell oder dunkel. Bei einem dunklen WebFront-Theme mit hellem Betriebssystem stellst du „Hell“ ein.',
             '📊 Neue Darstellung "Balken je Zeitscheibe" (gespiegelt von Prognoses Energiebilanz, Idee aus dem Forum): im WebFront über den Doppelpfeil unter "Darstellung" wählbar - je Viertelstunde ein Soll-Balken, gefüllt mit dem Ist-Wert, der Verbrauch als Linie. Die Standarddarstellung bleibt die Kurve.',
@@ -157,6 +158,8 @@ class NRGDashboardForecast extends IPSModule
         // 1:1 wie Prognoses eigenes Energiebilanz-Formular: PVSource +
         // LoadSource statt einer zusammengefassten Energiebilanz-Instanz).
         $this->RegisterPropertyInteger('PVSource', 0);
+        // Eigener Wert fuer die gestrichelte Anlagenleistungs-Linie (kW, 0 = Summe kWp der PV-Prognose) - Forum Ghostraider #54
+        $this->RegisterPropertyFloat('MaxLineKw', 0.0);
         $this->RegisterPropertyInteger('LoadSource', 0);
         // Eigene Ist-Leistungsvariablen (Dietmar, 26.08.2026: "hinter dem
         // Doppelpfeil fehlen noch Einheit der Ist-Leistungsvariablen und
@@ -206,6 +209,10 @@ class NRGDashboardForecast extends IPSModule
             'ShowGrid'       => ['Gitter & Achsenbeschriftung anzeigen', 52, self::DEF_GRID],
             'ShowLegend'     => ['Legende anzeigen', 55, true],
             'ShowIstRow'     => ['"Ist"-Zeile im Tagesstreifen anzeigen', 56, true],
+            // Forum Ghostraider #52 (14.10.2026), gespiegelt von Prognoses Energiebilanz Build 143/144: Hinweis zur Auflösung
+            // in der Balkenansicht ausblendbar; Anlagenleistung (kWp der PV-Prognose oder eigener Wert) als gestrichelte Linie.
+            'ShowViewHint'   => ['Hinweis zur Auflösung in der Balkenansicht anzeigen', 57, true],
+            'ShowMaxLine'    => ['Anlagenleistung (Modul-kWp) als gestrichelte Linie zeigen', 58, false],
             'ColorBackgroundAuto' => ['Hintergrund automatisch (IPS-Theme/transparent)', 43, true],
         ];
         foreach ($bool as $ident => $spec) {
@@ -421,7 +428,7 @@ class NRGDashboardForecast extends IPSModule
     public function RequestAction($Ident, $Value)
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
-                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
+                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ShowViewHint', 'ShowMaxLine', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
         $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'LabelTone', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
@@ -599,6 +606,10 @@ class NRGDashboardForecast extends IPSModule
             'showGrid'   => (bool) $this->GetValue('ShowGrid'),
             'showLegend' => (bool) $this->GetValue('ShowLegend'),
             'showIstRow' => (bool) $this->GetValue('ShowIstRow'),
+            'showViewHint' => (bool) $this->GetValue('ShowViewHint'),
+            'showMaxLine'  => (bool) $this->GetValue('ShowMaxLine'),
+            'maxKwp'       => $this->GetValue('ShowMaxLine') ? $this->maxLineValue() : 0.0,
+            'maxManual'    => ((float) $this->ReadPropertyFloat('MaxLineKw') > 0),
             'yMaxManual' => max(0.0, (float) $this->GetValue('YMaxManual')),
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
@@ -1003,6 +1014,23 @@ class NRGDashboardForecast extends IPSModule
         return $out;
     }
 
+    /** Summe der Modulleistung (kWp) aus der aufgeloesten PV-Prognose-Instanz, 0 = unbekannt. */
+    private function pvMaxKwp(): float
+    {
+        $pv = $this->ResolveSource(self::SOURCE_PV, 'PVSource');
+        if ($pv <= 0 || !function_exists('PVF_GetGenerators')) { return 0.0; }
+        $g = @PVF_GetGenerators($pv);
+        if (is_string($g)) { $g = json_decode($g, true); }
+        return is_array($g) ? max(0.0, (float) ($g['totalKwp'] ?? 0)) : 0.0;
+    }
+
+    /** Wert der gestrichelten Linie: eigener Wert (kW) aus der Konfiguration, sonst die Summe der Modul-kWp. */
+    private function maxLineValue(): float
+    {
+        $manual = (float) $this->ReadPropertyFloat('MaxLineKw');
+        return ($manual > 0) ? $manual : $this->pvMaxKwp();
+    }
+
     private function getArchiveID(): int
     {
         $ids = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
@@ -1340,6 +1368,8 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('ShowGrid', self::DEF_GRID);
         $this->SetValue('ShowLegend', true);
         $this->SetValue('ShowIstRow', true);
+        $this->SetValue('ShowViewHint', true);
+        $this->SetValue('ShowMaxLine', false);
         $this->SetValue('YMaxManual', self::DEF_YMAX);
         $this->Render();
     }
