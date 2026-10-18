@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.33 (2026-10-18)
+
+- Prognose-Kachel (NRGDashboardForecast): nachgezogen von Prognoses Energiebilanz (Build 143/144): der Hinweis zur Auflösung in der Balkenansicht lässt sich ausblenden („Hinweis zur Auflösung in der Balkenansicht anzeigen“), und die Anlagenleistung (Summe der Modul-kWp aus der PV-Prognose oder ein eigener Wert im Formular „Anlagenleistung für die gestrichelte Linie“) kann als gestrichelte Linie in Balken- und Kurvenansicht gezeigt werden. Damit hat die Dashboard-Kachel den Stand von Prognose Build 147.
+
 ## 0.9.170-beta.32 (2026-10-18)
 
 - Prognose-Kachel (NRGDashboardForecast): Steht in den Einstellungen eine nicht mehr vorhandene Quell-Instanz, ignoriert die Kachel sie wie bisher (automatische Erkennung, Zeile 🔗); neu steht der Hinweis mit der Instanznummer dabei. Gespiegelt von Prognoses Energiebilanz Build 147. Anlass: Forum.

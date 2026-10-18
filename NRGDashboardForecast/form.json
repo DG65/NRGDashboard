@@ -68,6 +68,15 @@
       "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
     },
     {
+      "type": "NumberSpinner",
+      "name": "MaxLineKw",
+      "caption": "Anlagenleistung für die gestrichelte Linie (kW, 0 = Summe der Modul-kWp aus der PV-Prognose)",
+      "digits": 2,
+      "minimum": 0,
+      "maximum": 1000,
+      "suffix": " kW"
+    },
+    {
       "type": "SelectInstance",
       "name": "LoadSource",
       "caption": "Last-Prognose-Instanz (leer = automatisch, optional)",
