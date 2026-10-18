@@ -1052,7 +1052,7 @@ class NRGDashboardWPMonitor extends IPSModule
                         $payload[$k] = (float) $req[$k];
                     }
                 }
-                foreach (['enabled', 'coolingEnabled'] as $k) {
+                foreach (['enabled', 'coolingEnabled', 'priceBlockEnabled'] as $k) {
                     if (array_key_exists($k, $req)) {
                         $payload[$k] = (bool) $req[$k];
                     }

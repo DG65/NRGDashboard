@@ -1588,8 +1588,11 @@ gleiche IPSView-Fähigkeit.
   ersten Lauf sofort wechseln kann. „Funktion in dieser Anlage“
   (`featureEnabled`) und „Automatik“ (`enabled`, Nutzerschalter) werden
   bewusst unterschiedlich benannt; die Raumliste pflegt das
-  HeishaMon-Formular. Ohne die HeishaMon-Funktionen bleibt der Reiter
-  verborgen.
+  HeishaMon-Formular. Ab HeishaMon 1.36.0 kommt der Zustand „Preis-Sperre“
+  (Heizbetrieb wegen hohem Strompreis pausiert) mit eigener Karte (Preis
+  jetzt, Schwelle, Median, Sperren heute, Batterie deckt die Last) und dem
+  Schalter „Preis-Sperre“ dazu, nur wenn eine Preisquelle gefunden wurde.
+  Ohne die HeishaMon-Funktionen bleibt der Reiter verborgen.
 - **Simulation hydraulisch schlüssig (`NRGDashboardHeatSchema`):** im
   simulierten Warmwasserbetrieb stehen beide Heizkreise still — das
   Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein
