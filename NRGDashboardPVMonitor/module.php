@@ -1064,6 +1064,20 @@ class NRGDashboardPVMonitor extends IPSModule
                     $out[(string) $i] = $vid;
                 }
             }
+            // Vertrag als Rueckfall (InverterHub 1.2, mpptPowerIDs, Index 0 = Strang 1; 18.10.2026 mit der
+            // InverterHub-Sitzung: Solis liefert die MPPT-Leistung berechnet, ohne die festen Variablennamen).
+            if (count($out) === 0) {
+                $data = @IHUB_GetFunctions($ihub);
+                if (is_array($data) && !empty($data['mpptPowerIDs']) && is_array($data['mpptPowerIDs'])) {
+                    $n = 0;
+                    foreach (array_values($data['mpptPowerIDs']) as $vid) {
+                        $n++;
+                        if ((int) $vid > 0 && IPS_VariableExists((int) $vid)) {
+                            $out[(string) $n] = (int) $vid;
+                        }
+                    }
+                }
+            }
         }
         if (count($out) > 0) {
             return $out;
