@@ -27,6 +27,10 @@
         },
         {
           "type": "Label",
+          "caption": "✨ Feinheit (Schnelltasten, 18.10.2026): im Reiter „Heizkurven“ stellen drei Tasten ECO / Normal / Komfort die Verschiebung der Heizkurve mit einem Klick auf -5 / 0 / +5 K (nur im Verschiebe-Modus der Anlage, nicht im Direktmodus), daneben schaltet eine Leiste den Flüsterbetrieb auf Aus/1/2/3. Die Anlage quittiert nichts: die Kachel liest den Wert nach und meldet erst dann „bestätigt“. Regeln auf der Platine können die Verschiebung überschreiben, der Hinweis steht dabei."
+        },
+        {
+          "type": "Label",
           "caption": "✨ Feinheit (Heizungs-Automatik, 17.10.2026): bei HeishaMon ab 1.35.0 erscheint der Reiter „Automatik“ - er zeigt Zustand, Grund, Außen- und Raumwerte sowie letzte und nächste Umschaltung und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Grenzen und Prüfung kommen vom Modul (Fehler erscheinen am betroffenen Feld); das Einschalten fragt vorher nach, weil die Betriebsart sofort wechseln kann. „Funktion in dieser Anlage“ (im HeishaMon-Formular freigeschaltet) und „Automatik“ (Ihr Schalter) sind zwei verschiedene Dinge. Räume und Luftfeuchte zeigt der Reiter mit ihrer Quelle an (automatisch gefunden, eigene Auswahl oder keine gefunden); „Kühlen“ lässt sich nur einstellen, wenn eine Feuchtequelle gefunden wurde. Die Auswahl pflegt das HeishaMon-Formular."
         },
         {

@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.31 (2026-10-18)
+
+- WP-Monitor, Fehler behoben: Der senkrechte Verschiebe-Regler im Reiter „Heizkurven“ speicherte nie, weil die Kachel HeishaMon als Modus „shift“ statt „heat“ übergab (die Funktion lieferte dadurch immer „false“, die Kachel meldete „nicht bestätigt“). Jetzt wird der Heizmodus durchgereicht.
+- WP-Monitor: Schnelltasten **ECO / Normal / Komfort** (-5 / 0 / +5 K, bei HeishaMon ab 1.38.0 aus den Voreinstellungen der Anlage) neben dem Regler und eine Leiste **Flüsterbetrieb Aus/1/2/3** unter dem Diagramm. Die Tasten erscheinen nur im Verschiebe-Modus der Anlage, nicht im Direktmodus; der Hinweis auf Platinen-Regeln, die den Wert überschreiben können, bleibt sichtbar.
+
 ## 0.9.170-beta.30 (2026-10-18)
 
 - PV-Monitoring: der MPP-Tracker-Vergleich nimmt die MPPT-Leistungen jetzt auch aus dem InverterHub-Vertrag (`mpptPowerIDs`), wenn die Variablen nicht `mppt1_power` usw. heißen - damit funktioniert er auch mit Solis (dort ist die Leistung je MPPT aus Spannung × Strom berechnet, kein gemessener Wert).
