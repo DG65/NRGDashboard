@@ -226,6 +226,11 @@
   #curveShift { display: none; flex: 0 0 74px; flex-direction: column; align-items: center; font-size: 11px; }
   #curveShift .shEnd { opacity: .7; height: 16px; line-height: 16px; }
   #curveShift input[type=range] { -webkit-appearance: slider-vertical; appearance: slider-vertical; writing-mode: vertical-lr; direction: rtl; width: 26px; flex: 1 1 auto; margin: 4px 0; cursor: pointer; accent-color: #ef9a3d; }
+  #curveShiftPresets { display: none; align-items: center; gap: 4px; margin-left: auto; font-size: 12px; }
+  #curveShiftPresets button, #curveQuiet button { font: inherit; font-size: 11px; padding: 4px 6px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  #curveShiftPresets button.active, #curveQuiet button.active { background: rgba(127,135,145,.34); border-color: rgba(127,135,145,.65); font-weight: 700; }
+  #curveShiftPresets button:disabled, #curveQuiet button:disabled { opacity: .45; cursor: default; }
+  #curveQuiet { display: none; align-items: center; gap: 4px; margin-left: 10px; font-size: 12px; }
   #curveShiftVal { font-size: 13px; font-weight: 700; margin-top: 2px; }
   #curveShiftNote { opacity: .7; text-align: center; margin-top: 4px; line-height: 1.25; }
   #opsPanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
@@ -257,7 +262,7 @@
   .auUnit { font-size: 12px; opacity: .7; }
   .auActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
   button.tab.tabAlert::after { content: " ●"; color: #ff5252; }
-  #curveActions { display: flex; align-items: center; gap: 12px; font-size: 12px; padding-bottom: 6px; }
+  #curveActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; padding-bottom: 6px; }
   button.curveSave { font: inherit; font-size: 13px; font-weight: 700; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(76,175,80,.55); background: rgba(76,175,80,.18); color: inherit; cursor: pointer; }
   button.curveSave:hover:not(:disabled) { background: rgba(76,175,80,.28); }
   button.curveSave:disabled { opacity: .4; cursor: default; }
@@ -393,6 +398,8 @@
     <div id="curveActions">
       <button id="curveSaveBtn" class="curveSave" type="button" disabled>Übernehmen</button>
       <span id="curveStatus"></span>
+      <span id="curveShiftPresets"></span>
+      <span id="curveQuiet"></span>
     </div>
   </div>
   <!-- Seite "Bedienung" (18.09.2026) - Fluesterbetrieb, Leistungsbetrieb,
@@ -1215,7 +1222,38 @@
       requestAction('heatingCurveLoad', '{}');
     }, 3000);
   }
+  // Schnelltasten ECO / Normal / Komfort (HeishaMon 1.38.0: shift.heat.presets, sonst -5/0/+5) und
+  // Fluesterbetrieb-Leiste (GetOperations quiet) - beides nur Komfort fuer Werte, die schon einstellbar sind.
+  function curveShiftSend(val) {
+    var zone = curveZone;
+    curveShiftDraft = val;
+    curveShiftSent = { zone: zone, val: val, tries: 0 };
+    curveShiftSentDone = false;
+    curveStatusText = 'Sende Verschiebung…';
+    document.getElementById('curveStatus').textContent = curveStatusText;
+    requestAction('heatingCurveShiftSave', JSON.stringify({ zone: zone, mode: 'heat', shiftC: val }));
+    renderCurveShift();
+  }
+  function renderCurveQuiet() {
+    var box = document.getElementById('curveQuiet');
+    var o = opsCache && opsCache.quiet;
+    if (!lastData || !lastData.hasOperations || !o || o.value === null || o.value === undefined) { box.style.display = 'none'; return; }
+    box.style.display = 'inline-flex'; box.innerHTML = '';
+    box.appendChild(document.createTextNode('Flüsterbetrieb'));
+    var cur = opsDisplayValue('quiet'), def = OPS_DEFS[0], min = (typeof o.min === 'number') ? o.min : 0, max = (typeof o.max === 'number') ? o.max : 3;
+    var short = { 0: 'Aus', 1: '1', 2: '2', 3: '3' };
+    for (var i = min; i <= max; i++) {
+      (function (val) {
+        var b = document.createElement('button'); b.type = 'button'; b.textContent = short[val] !== undefined ? short[val] : String(val);
+        b.title = def.labels[val] !== undefined ? def.labels[val] : String(val);
+        b.className = (val === cur) ? 'active' : ''; b.disabled = !!opsSaving.quiet;
+        b.onclick = function () { if (val !== cur) { opsSend('quiet', val); renderCurveQuiet(); } };
+        box.appendChild(b);
+      })(i);
+    }
+  }
   function renderCurveShift() {
+    renderCurveQuiet();
     var box = document.getElementById('curveShift');
     var range = document.getElementById('curveShiftRange');
     var note = document.getElementById('curveShiftNote');
@@ -1224,7 +1262,7 @@
     if (!usable) {
       // Statt eines wirkungslosen Reglers ein ehrlicher Hinweis, WARUM es
       // ihn nicht gibt (nur wenn die Anlage ueberhaupt etwas dazu meldet).
-      box.style.display = 'none';
+      box.style.display = 'none'; document.getElementById('curveShiftPresets').style.display = 'none';
       return;
     }
     box.style.display = 'flex';
@@ -1234,9 +1272,20 @@
     range.style.height = Math.max(120, plotH - 44) + 'px';
     range.style.flex = '0 0 auto';
     var v = curveShiftValue();
+    if (typeof info.minC === 'number') { range.min = String(info.minC); document.getElementById('curveShiftMin').textContent = String(info.minC); }
+    if (typeof info.maxC === 'number') { range.max = String(info.maxC); document.getElementById('curveShiftMax').textContent = '+' + info.maxC; }
     range.value = String(v);
     range.disabled = !!curveShiftSent && !curveShiftSentDone;
     document.getElementById('curveShiftVal').textContent = (v > 0 ? '+' : '') + v + ' K';
+    var pbox = document.getElementById('curveShiftPresets'); pbox.innerHTML = ''; pbox.style.display = 'inline-flex'; pbox.appendChild(document.createTextNode('Verschiebung'));
+    var pre = (info && info.presets) ? info.presets : {};
+    [['ECO', 'eco', -5], ['Normal', 'normal', 0], ['Komfort', 'comfort', 5]].forEach(function (a) {
+      var pv = (typeof pre[a[1]] === 'number') ? pre[a[1]] : a[2];
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = a[0]; b.title = a[0] + ' (' + (pv > 0 ? '+' : '') + pv + ' K)';
+      b.className = (v === pv) ? 'active' : ''; b.disabled = !!curveShiftSent && !curveShiftSentDone;
+      b.onclick = function () { if (v !== pv) { curveShiftSend(pv); } };
+      pbox.appendChild(b);
+    });
     var txt = 'Kurve parallel verschieben';
     if (curveCache && curveCache.boardRulesActive) { txt += '. Regeln auf der Platine können den Wert überschreiben.'; }
     note.textContent = txt;
@@ -1461,12 +1510,7 @@
     };
     r.onchange = function () {
       if (curveShiftDraft === null) { return; }
-      var zone = curveZone;
-      curveShiftSent = { zone: zone, val: curveShiftDraft, tries: 0 };
-      curveShiftSentDone = false;
-      curveStatusText = 'Sende Verschiebung…';
-      document.getElementById('curveStatus').textContent = curveStatusText;
-      requestAction('heatingCurveShiftSave', JSON.stringify({ zone: zone, shiftC: curveShiftDraft }));
+      curveShiftSend(curveShiftDraft);
     };
   })();
 
@@ -1931,6 +1975,7 @@
       opsPoll();
       updateTabStates();
       if (curTop === 'bedienung') { renderOps(); }
+      if (curTop === 'heizkurven') { renderCurveQuiet(); }
       return;
     }
     if (d && d.ok && d.type === 'operationSaved') {
@@ -1938,6 +1983,7 @@
       if (d.saved) { opsStatus[d.name] = 'Gesendet - warte auf Rückmeldung der Wärmepumpe…'; opsPoll(); }
       else { delete opsSent[d.name]; opsStatus[d.name] = 'Nicht gesendet - HeishaMon lehnt ab (Wert außerhalb des Bereichs, MQTT-Gateway getrennt oder HeishaMon zu alt).'; }
       if (curTop === 'bedienung') { renderOps(); }
+      if (curTop === 'heizkurven') { renderCurveQuiet(); }
       return;
     }
     if (d && d.ok && d.type === 'heatingCurveShiftSaved') {

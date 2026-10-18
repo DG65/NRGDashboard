@@ -120,6 +120,7 @@ class NRGDashboardWPMonitor extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.9.170' => [
+            'Fix: der senkrechte Verschiebe-Regler im Reiter "Heizkurven" speicherte nie (die Kachel hat HeishaMon den falschen Modus übergeben) - jetzt funktioniert er. Neu daneben: Schnelltasten ECO / Normal / Komfort für die Verschiebung und eine Leiste für den Flüsterbetrieb (Aus/1/2/3).',
             'Neu: Reiter "Automatik" (nur bei HeishaMon ab 1.35.0) - die Heizungs-Automatik zeigt Zustand, Grund und Messwerte und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Das Einschalten fragt vorher nach, weil die Betriebsart dabei sofort wechseln kann.',
         ],
         '0.2.8' => [
@@ -1018,9 +1019,12 @@ class NRGDashboardWPMonitor extends IPSModule
             $ok = false;
             if (is_array($req) && $id > 0 && function_exists('HEISHA_SetHeatingCurveShift')) {
                 $zone = (string) ($req['zone'] ?? '');
-                if (in_array($zone, ['z1', 'z2'], true)) {
+                // Dritter Parameter ist der Heiz-/Kuehlmodus ('heat'|'cool'), NICHT der Reglermodus 'shift' (HeishaMon-Sitzung,
+                // 18.10.2026: mit 'shift' lieferte die Funktion immer false, der Regler speicherte nie).
+                $shiftMode = (string) ($req['mode'] ?? 'heat');
+                if (in_array($zone, ['z1', 'z2'], true) && in_array($shiftMode, ['heat', 'cool'], true)) {
                     try {
-                        $ok = (bool) @HEISHA_SetHeatingCurveShift($id, $zone, 'shift', (int) ($req['shiftC'] ?? 0));
+                        $ok = (bool) @HEISHA_SetHeatingCurveShift($id, $zone, $shiftMode, (int) ($req['shiftC'] ?? 0));
                     } catch (\Throwable $e) {
                         $ok = false;
                     }

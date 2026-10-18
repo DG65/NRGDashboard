@@ -1575,6 +1575,15 @@ gleiche IPSView-Fähigkeit.
   Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
+- **Schnelltasten ECO / Normal / Komfort und Flüsterbetrieb (`NRGDashboardWPMonitor`):**
+  im Reiter „Heizkurven“ setzen drei Tasten die Verschiebung der Heizkurve
+  mit einem Klick auf -5 / 0 / +5 K (bei HeishaMon ab 1.38.0 aus den
+  Voreinstellungen der Anlage, sonst diese Standardwerte), daneben eine
+  Leiste für den Flüsterbetrieb (Aus/1/2/3). Nur im Verschiebe-Modus der
+  Anlage; im Direktmodus (Vorlauf-Solltemperatur) bleiben die Tasten
+  verborgen. Die Anlage quittiert nichts, die Kachel liest nach, bis der
+  Wert stimmt. Der Hinweis auf Platinen-Regeln, die die Verschiebung
+  überschreiben, steht dabei.
 - **Heizungs-Automatik (`NRGDashboardWPMonitor`):** bei HeishaMon ab 1.35.0
   (Vertrag `heatpump` 1.15, `HEISHA_GetHeatingAutomation`/
   `HEISHA_SetHeatingAutomation`) erscheint der Reiter „Automatik“. Er zeigt
