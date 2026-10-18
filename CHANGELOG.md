@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.27 (2026-10-18)
+
+- Prognose-Kachel: im Dunkelmodus helleres Grau für Achsen und Nebentexte (Kontrast 8,2 statt 5,8 zu 1), der Hinweis zur Balkenansicht in der Haupttextfarbe; gespiegelt von Prognoses Energiebilanz Build 146. Anlass: Forum.
+
 ## 0.9.170-beta.26 (2026-10-18)
 
 - Prognose-Kachel (NRGDashboardForecast): neue Einstellung „Beschriftung“ (automatisch, hell, dunkel) für dunkle WebFront-Themes bei hellem Betriebssystem, gespiegelt von Prognoses Energiebilanz Build 145. Anlass: Forum.
