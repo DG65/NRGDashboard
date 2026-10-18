@@ -251,6 +251,21 @@
   .opsRange { display: flex; align-items: center; gap: 10px; }
   .opsRange input { flex: 1 1 auto; accent-color: #ef9a3d; }
   .opsRange .val { font-size: 14px; font-weight: 700; min-width: 54px; text-align: right; }
+  #schedPanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
+  #schedBody { display: flex; flex-direction: column; gap: 10px; }
+  .scPal { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+  .scPal button { font: inherit; font-size: 11px; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.12); color: inherit; cursor: pointer; }
+  .scPal button.active { background: rgba(127,135,145,.34); border-color: rgba(127,135,145,.65); font-weight: 700; }
+  .scGrid { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; user-select: none; -webkit-user-select: none; }
+  .scRow { display: flex; align-items: center; gap: 6px; }
+  .scLab { flex: 0 0 22px; font-size: 11px; font-weight: 700; opacity: .8; }
+  .scAxis { position: relative; flex: 1 1 auto; height: 14px; font-size: 10px; opacity: .65; }
+  .scAxis span { position: absolute; top: 0; transform: translateX(-30%); }
+  .scBar { position: relative; flex: 1 1 auto; height: 28px; border-radius: 6px; border: 1px solid rgba(127,135,145,.3); background: linear-gradient(to right, rgba(127,135,145,.30) 1px, transparent 1px) 0 0 / 4.1667% 100%, rgba(127,135,145,.08); touch-action: none; cursor: crosshair; overflow: hidden; }
+  .scBlk { position: absolute; top: 0; bottom: 0; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; pointer-events: none; border-left: 1px solid rgba(255,255,255,.25); }
+  .scNow { position: absolute; top: 0; bottom: 0; width: 2px; background: #ff5252; pointer-events: none; }
+  .scCopy { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; margin-top: 4px; }
+  .scCopy select { font: inherit; font-size: 12px; padding: 3px 6px; border-radius: 6px; border: 1px solid rgba(127,135,145,.4); background: rgba(127,135,145,.12); color: inherit; }
   #autoPanel { display: none; flex: 1 1 auto; min-height: 0; overflow-y: auto; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
   #autoBody { display: flex; flex-direction: column; gap: 10px; }
   .auVals { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
@@ -367,6 +382,7 @@
         <button class="tab" data-tab="heizkurven">Heizkurven</button>
         <button class="tab tabHidden" data-tab="bedienung">Bedienung</button>
         <button class="tab tabHidden" data-tab="automatik">Automatik</button>
+        <button class="tab tabHidden" data-tab="zeitplan">Zeitplan</button>
       </div>
     </div>
     <div id="chartcol">
@@ -412,6 +428,8 @@
   </div>
   <!-- Reiter "Automatik" (17.10.2026) - Heizungs-Automatik von HeishaMon (heatpump 1.15) -->
   <div id="autoPanel"><div id="autoBody"></div></div>
+  <!-- Reiter "Zeitplan" (18.10.2026) - Wochen-Editor fuer den HeishaMon-Zeitplan (heatpump 1.16) -->
+  <div id="schedPanel"><div id="schedBody"></div></div>
     </div>
   </div>
   <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
@@ -1035,14 +1053,15 @@
   function updateTabStates() {
     if (!lastData) { return; }
     var today = (lastData.days || [])[0];
-    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve, bedienung: !!lastData.hasOperations, automatik: !!lastData.hasAutomation };
-    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache, bedienung: !!opsCache, automatik: !!autoCache };
+    var src = { verlauf: true, heizkurven: !!lastData.hasHeatingCurve, bedienung: !!lastData.hasOperations, automatik: !!lastData.hasAutomation, zeitplan: !!lastData.hasSchedule };
+    var data = { verlauf: !!(today && today.hasData), heizkurven: !!curveCache, bedienung: !!opsCache, automatik: !!autoCache, zeitplan: !!schedCache };
     Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (btn) {
       var t = btn.getAttribute('data-tab');
       var hidden = !src[t];
       btn.classList.toggle('tabHidden', hidden);
       btn.classList.toggle('tabOk', !hidden && !!data[t]);
       btn.classList.toggle('tabWarn', !hidden && !data[t] && t === 'verlauf');
+      if (t === 'zeitplan') { btn.classList.toggle('tabAlert', !!(schedCache && schedCache.channels && SCHED_CH.some(function (c) { var x = schedCache.channels[c[0]]; return x && x.available && x.state === 'fault'; }))); }
       if (t === 'automatik') { btn.classList.toggle('tabAlert', !!(autoCache && autoCache.state === 'fault')); }
       if (t === 'bedienung') { btn.classList.toggle('tabAlert', !!(opsCache && opsCache.emergencyHeater && opsCache.emergencyHeater.value > 0)); }
     });
@@ -1065,10 +1084,12 @@
     document.getElementById('curvePanel').style.display = (tab === 'heizkurven') ? 'flex' : 'none';
     document.getElementById('opsPanel').style.display = (tab === 'bedienung') ? 'flex' : 'none';
     document.getElementById('autoPanel').style.display = (tab === 'automatik') ? 'flex' : 'none';
+    document.getElementById('schedPanel').style.display = (tab === 'zeitplan') ? 'flex' : 'none';
     updateChartTitle();
     if (tab === 'heizkurven') { renderCurvePanel(); }
     else if (tab === 'bedienung') { renderOps(); }
     else if (tab === 'automatik') { renderAuto(); }
+    else if (tab === 'zeitplan') { renderSched(); }
     else { render(); }
   }
   Array.prototype.forEach.call(document.querySelectorAll('button.tab'), function (b) {
@@ -1768,6 +1789,247 @@
     }
     return false;
   }
+  // ---- Reiter "Zeitplan" (18.10.2026) - Wochen-Zeitplan ECO/Normal/Komfort und Fluesterbetrieb (HeishaMon heatpump 1.16,
+  // HEISHA_GetSchedule/HEISHA_SetSchedule). Der Plan liegt im HeishaMon-Modul; dieser Reiter ist nur der Editor: Wochenraster
+  // Mo-So x 24 h im 15-Minuten-Raster, Abschnitte werden mit dem Pinsel gemalt. Grenzen, Werte und Beschriftungen kommen aus
+  // dem Vertrag. Intern halten wir je Kanal 7 x 96 Slots (null = Kanal-Standard) und bilden beim Speichern Abschnitte daraus.
+  var schedCache = null, schedPending = false, schedDraft = {}, schedPlanOn = null, schedErrors = [], schedStatus = '', schedSaving = false,
+      schedConfirm = false, schedTimer = null, schedChan = null, schedBrush = {}, schedSent = {}, schedPaint = null, schedCopyDay = 0;
+  var SCHED_CH = [['z1Heat', 'Zone 1 Heizen'], ['z1Cool', 'Zone 1 Kühlen'], ['z2Heat', 'Zone 2 Heizen'], ['z2Cool', 'Zone 2 Kühlen'], ['quiet', 'Flüsterbetrieb']];
+  var SCHED_DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  var SCHED_STATE = { ok: ['Plan wirkt', '#81c784'], pending: ['Befehl gesendet', '#ffb74d'], manual: ['Von Hand oder Platine geändert', '#ff9a3d'],
+    fault: ['Anlage übernimmt den Wert nicht', '#ff5252'], unavailable: ['nicht nutzbar', '#90a4ae'], off: ['aus', '#90a4ae'] };
+  function scCh(k) { return (schedCache && schedCache.channels) ? schedCache.channels[k] : null; }
+  function scAvail() { return SCHED_CH.filter(function (c) { var ch = scCh(c[0]); return ch && ch.available; }); }
+  function scHm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+  function scSlotsFrom(ch) {
+    var def = ch.default, slots = [];
+    for (var d = 0; d < 7; d++) { slots.push(new Array(96).fill(null)); }
+    (ch.segments || []).forEach(function (sg) {
+      var d = (sg.day | 0) - 1; if (d < 0 || d > 6) { return; }
+      for (var i = Math.floor(sg.from / 15); i < Math.ceil(sg.to / 15) && i < 96; i++) { slots[d][i] = (sg.value === def) ? null : sg.value; }
+    });
+    return slots;
+  }
+  function scSegsFrom(slots) {
+    var segs = [];
+    for (var d = 0; d < 7; d++) {
+      var i = 0;
+      while (i < 96) {
+        var v = slots[d][i];
+        if (v === null) { i++; continue; }
+        var j = i; while (j < 96 && slots[d][j] === v) { j++; }
+        segs.push({ day: d + 1, from: i * 15, to: j * 15, value: v }); i = j;
+      }
+    }
+    return segs;
+  }
+  function scDraft(k) {
+    // Unbearbeitete Entwuerfe immer frisch aus dem Vertrag (Poll/Speichern liefert neue Werte), bearbeitete bleiben stehen.
+    if (!schedDraft[k] || !schedDraft[k].touched) { var ch = scCh(k); schedDraft[k] = { enabled: !!ch.enabled, def: ch.default, slots: scSlotsFrom(ch), touched: false }; }
+    return schedDraft[k];
+  }
+  function scValText(ch, v) {
+    if (ch.kind === 'level') { return (ch.labels && ch.labels[v] !== undefined) ? ch.labels[v] : String(v); }
+    var p = ch.presets || {}, n = v === p.eco ? 'ECO' : (v === p.comfort ? 'Komfort' : (v === p.normal ? 'Normal' : null));
+    return (n ? n + ' ' : '') + '(' + (v > 0 ? '+' : '') + v + ' K)';
+  }
+  function scShort(ch, v) {
+    if (ch.kind === 'level') { return (ch.labels && ch.labels[v] !== undefined) ? ch.labels[v] : String(v); }
+    var p = ch.presets || {}; return v === p.eco ? 'ECO' : (v === p.comfort ? 'Komfort' : (v === p.normal ? 'Normal' : ((v > 0 ? '+' : '') + v)));
+  }
+  function scColor(ch, v) {
+    if (ch.kind === 'level') { return v > 0 ? 'rgba(60,190,175,' + (.35 + .6 * v / Math.max(1, ch.max)).toFixed(2) + ')' : 'rgba(127,135,145,.25)'; }
+    if (v < 0) { return 'rgba(79,150,230,' + (.35 + .6 * Math.min(1, v / Math.min(-1, ch.min || -5))).toFixed(2) + ')'; }
+    if (v > 0) { return 'rgba(239,154,61,' + (.35 + .6 * Math.min(1, v / Math.max(1, ch.max || 5))).toFixed(2) + ')'; }
+    return 'rgba(127,135,145,.25)';
+  }
+  function scTouched() { return schedPlanOn !== null || Object.keys(schedDraft).some(function (k) { return schedDraft[k].touched; }); }
+  function scLoad() { schedPending = true; requestAction('scheduleLoad', '{}'); }
+  function scPoll() {
+    if (schedTimer) { clearInterval(schedTimer); schedTimer = null; }
+    schedTimer = setInterval(function () { if (curTop === 'zeitplan' && !schedSaving && !schedPending && !schedPaint) { scLoad(); } }, 60000);
+  }
+  function scEl(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
+  function scBarDraw(bar, ch, def, slots, day, nowMin) {
+    bar.innerHTML = '';
+    var i = 0;
+    while (i < 96) {
+      var v = slots[i]; if (v === null) { i++; continue; }
+      var j = i; while (j < 96 && slots[j] === v) { j++; }
+      var b = scEl('div', 'scBlk'); b.style.left = (i / 96 * 100) + '%'; b.style.width = ((j - i) / 96 * 100) + '%'; b.style.background = scColor(ch, v);
+      if (j - i >= 7) { b.textContent = scShort(ch, v); }
+      b.title = SCHED_DAYS[day] + ' ' + scHm(i * 15) + '–' + scHm(j * 15) + ': ' + scValText(ch, v);
+      bar.appendChild(b); i = j;
+    }
+    if (nowMin !== null) { var n = scEl('div', 'scNow'); n.style.left = (nowMin / 1440 * 100) + '%'; bar.appendChild(n); }
+  }
+  function scApplyPaint(ch, dr) {
+    var p = schedPaint, lo = Math.min(p.start, p.cur), hi = Math.max(p.start, p.cur), bv = schedBrush[p.k];
+    dr.slots[p.day] = p.base.slice();
+    for (var i = lo; i <= hi; i++) { dr.slots[p.day][i] = (bv === dr.def) ? null : bv; }
+  }
+  function scRuns(slots) { var n = 0, i = 0; while (i < 96) { if (slots[i] === null) { i++; continue; } var j = i; while (j < 96 && slots[j] === slots[i]) { j++; } n++; i = j; } return n; }
+  function scSave(confirmed) {
+    if (!schedCache || schedSaving) { return; }
+    var payload = { revision: schedCache.revision, channels: {} }, sent = {}, turnsOn = false, msg = null;
+    if (schedPlanOn !== null) { payload.enabled = schedPlanOn; if (schedPlanOn && !schedCache.enabled) { turnsOn = true; } }
+    Object.keys(schedDraft).forEach(function (k) {
+      var dr = schedDraft[k], ch = scCh(k); if (!dr.touched || !ch) { return; }
+      var max = ch.maxSegmentsPerDay || 8;
+      for (var d = 0; d < 7; d++) { if (scRuns(dr.slots[d]) > max) { msg = SCHED_CH.filter(function (c) { return c[0] === k; })[0][1] + ': am ' + SCHED_DAYS[d] + ' sind höchstens ' + max + ' Abschnitte erlaubt - bitte zusammenfassen.'; } }
+      var segs = scSegsFrom(dr.slots); sent[k] = segs.map(function (s) { return { day: s.day, from: s.from, to: s.to }; });
+      payload.channels[k] = { enabled: dr.enabled, default: dr.def, segments: segs };
+      if (dr.enabled && !ch.enabled) { turnsOn = true; }
+    });
+    if (msg) { schedErrors = [{ text: msg }]; schedStatus = 'Nicht gesendet.'; renderSched(); return; }
+    if (turnsOn && !confirmed) { schedConfirm = true; renderSched(); return; }
+    schedConfirm = false; schedSent = sent; schedSaving = true; schedErrors = []; schedStatus = 'Sende…';
+    requestAction('scheduleSave', JSON.stringify(payload)); renderSched();
+  }
+  function renderSched() {
+    var body = document.getElementById('schedBody');
+    updateChartTitle();
+    if (!lastData || !lastData.hasSchedule) { body.innerHTML = '<div class="empty">Zeitplan nicht verfügbar.</div>'; return; }
+    if (!schedCache) { if (!schedPending) { scLoad(); } body.innerHTML = '<div class="empty">Lade Wochen-Zeitplan…</div>'; return; }
+    var a = schedCache, feat = !!a.featureEnabled, av = scAvail();
+    body.innerHTML = '';
+    // 1) Kopf: Plan ein/aus
+    var head = scEl('div', 'opsTile'); head.appendChild(scEl('div', 'opsTitle', 'Wochen-Zeitplan'));
+    head.appendChild(scEl('div', 'opsHint', 'Stellt zu festen Zeiten die Heizkurven-Verschiebung (ECO / Normal / Komfort) und den Flüsterbetrieb um. Der Plan läuft im HeishaMon-Modul; die Anlage selbst kann keinen Plan aufnehmen.'));
+    var fi = scEl('div', 'opsHint', 'Funktion in dieser Anlage: ' + (feat ? 'freigeschaltet' : 'nicht freigeschaltet (im HeishaMon-Formular einschalten)')); fi.style.opacity = '1'; fi.style.fontWeight = '700'; fi.style.color = feat ? '#81c784' : '#ffb74d'; head.appendChild(fi);
+    if (a.lastError) { var le = scEl('div', 'opsHint', 'Letzter Fehler: ' + a.lastError); le.style.color = '#ff8a80'; le.style.opacity = '1'; head.appendChild(le); }
+    var planOn = (schedPlanOn !== null) ? schedPlanOn : !!a.enabled;
+    var prow = scEl('div', 'opsSeg');
+    [[false, 'Plan aus'], [true, 'Plan ein']].forEach(function (p) {
+      var b = scEl('button', (planOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || schedSaving;
+      b.onclick = function () { schedPlanOn = (p[0] === !!a.enabled) ? null : p[0]; renderSched(); };
+      prow.appendChild(b);
+    });
+    head.appendChild(prow); body.appendChild(head);
+    if (schedConfirm) {
+      var q = scEl('div', 'opsTile danger'); q.appendChild(scEl('div', 'opsTitle', 'Plan einschalten?'));
+      var qt = scEl('div', 'opsHint', 'Beim Einschalten wird der geplante Wert für jetzt SOFORT an die Anlage gesendet. Beim Ausschalten bleibt der zuletzt gesetzte Wert in der Anlage stehen, es wird nichts zurückgestellt.'); qt.style.opacity = '1'; q.appendChild(qt);
+      var qr = scEl('div', 'opsSeg'); var yes = scEl('button', 'opsBtn warn', 'Ja, speichern und einschalten'); yes.onclick = function () { scSave(true); };
+      var no = scEl('button', 'opsBtn', 'Abbrechen'); no.onclick = function () { schedConfirm = false; renderSched(); }; qr.appendChild(yes); qr.appendChild(no); q.appendChild(qr); body.appendChild(q);
+    }
+    if (!av.length) { body.appendChild(scEl('div', 'empty', 'Keine planbaren Kanäle gefunden (Zone inaktiv oder Anlage im Direktmodus).')); return; }
+    if (!schedChan || !scCh(schedChan) || !scCh(schedChan).available) { schedChan = av[0][0]; }
+    // 2) Kanal-Auswahl
+    var tabs = scEl('div', 'opsSeg');
+    av.forEach(function (c) {
+      var ch = scCh(c[0]), st = SCHED_STATE[ch.state] || ['', '#90a4ae'], dr = schedDraft[c[0]];
+      var b = scEl('button', (schedChan === c[0]) ? 'active' : '', c[1] + ((dr && dr.touched) ? ' •' : '')); b.style.borderBottom = '3px solid ' + st[1]; b.title = st[0];
+      b.onclick = function () { schedChan = c[0]; renderSched(); }; tabs.appendChild(b);
+    });
+    body.appendChild(tabs);
+    // 3) Kanal
+    var k = schedChan, ch = scCh(k), dr = scDraft(k), def = dr.def;
+    if (schedBrush[k] === undefined || schedBrush[k] === null) { schedBrush[k] = (ch.kind === 'level') ? Math.max(ch.min, Math.min(ch.max, (def + 1))) : ((ch.presets && typeof ch.presets.eco === 'number') ? ch.presets.eco : ch.min); }
+    var cp = scEl('div', 'opsTile');
+    var st = SCHED_STATE[ch.state] || ['', '#90a4ae'];
+    var ttl = scEl('div', 'opsTitle'); ttl.appendChild(document.createTextNode(SCHED_CH.filter(function (c) { return c[0] === k; })[0][1]));
+    var chip = scEl('span', 'opsState', st[0]); chip.style.color = st[1]; chip.style.fontWeight = '700'; ttl.appendChild(chip); cp.appendChild(ttl);
+    var now = [];
+    if (ch.plannedNow !== null && ch.plannedNow !== undefined) { now.push('Plan jetzt: ' + scValText(ch, ch.plannedNow)); }
+    if (ch.actualNow !== null && ch.actualNow !== undefined) { now.push('Anlage meldet: ' + scValText(ch, ch.actualNow)); }
+    if (ch.nextChangeAt) { var nd = new Date(ch.nextChangeAt * 1000); now.push('nächste Änderung ' + nd.toLocaleString('de-DE', { weekday: 'short', hour: '2-digit', minute: '2-digit' })); }
+    if (now.length) { cp.appendChild(scEl('div', 'opsHint', now.join(' · '))); }
+    if (ch.reason) { cp.appendChild(scEl('div', 'opsHint', ch.reason)); }
+    if (k !== 'quiet' && a.boardRulesActive) { cp.appendChild(scEl('div', 'opsHint', 'Regeln auf der Platine können die Verschiebung überschreiben; der Plan gilt dann nicht dauerhaft.')); }
+    if (k === 'quiet' && a.unitQuietScheduleActive) { var uq = scEl('div', 'opsHint', 'Die Anlage hat eine eigene Flüster-Zeitschaltung aktiv - sie kann mit diesem Plan kollidieren.'); uq.style.color = '#ffb74d'; uq.style.opacity = '1'; cp.appendChild(uq); }
+    var crow = scEl('div', 'auField'); crow.appendChild(scEl('label', '', 'Kanal'));
+    var cseg = scEl('div', 'opsSeg');
+    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) { var b = scEl('button', (dr.enabled === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || schedSaving; b.onclick = function () { dr.enabled = p[0]; dr.touched = true; renderSched(); }; cseg.appendChild(b); });
+    crow.appendChild(cseg); cp.appendChild(crow);
+    // Pinsel
+    var pal = scEl('div', 'scPal'); pal.appendChild(scEl('span', 'opsHint', 'Pinsel: '));
+    for (var v = ch.min; v <= ch.max; v += (ch.step || 1)) {
+      (function (val) {
+        var b = scEl('button', (schedBrush[k] === val) ? 'active' : '', scShort(ch, val) + (val === def ? ' (Standard)' : '')); b.style.borderLeft = '10px solid ' + scColor(ch, val); b.title = scValText(ch, val);
+        b.onclick = function () { schedBrush[k] = val; renderSched(); }; pal.appendChild(b);
+      })(v);
+    }
+    cp.appendChild(pal);
+    cp.appendChild(scEl('div', 'opsHint', 'Im Wochenraster mit dem Finger oder der Maus ziehen: die gewählte Stufe wird auf die überstrichenen Viertelstunden gemalt. Der Standard (grau) gilt überall, wo nichts gemalt ist; den Standard-Pinsel nimmst du zum Löschen.'));
+    // Raster
+    var grid = scEl('div', 'scGrid'), ax = scEl('div', 'scAxis');
+    for (var h = 0; h < 24; h += 3) { var t = scEl('span', '', ('0' + h).slice(-2)); t.style.left = (h / 24 * 100) + '%'; ax.appendChild(t); }
+    var axr = scEl('div', 'scRow'); axr.appendChild(scEl('div', 'scLab', '')); axr.appendChild(ax); grid.appendChild(axr);
+    var nowD = new Date(), nowDay = (nowD.getDay() + 6) % 7, nowMin = nowD.getHours() * 60 + nowD.getMinutes();
+    for (var d = 0; d < 7; d++) {
+      (function (day) {
+        var row = scEl('div', 'scRow'); row.appendChild(scEl('div', 'scLab', SCHED_DAYS[day]));
+        var bar = scEl('div', 'scBar'); bar.setAttribute('data-day', String(day));
+        scBarDraw(bar, ch, def, dr.slots[day], day, day === nowDay ? nowMin : null);
+        var slotAt = function (ev) { var r = bar.getBoundingClientRect(); return Math.max(0, Math.min(95, Math.floor((ev.clientX - r.left) / r.width * 96))); };
+        bar.onpointerdown = function (ev) {
+          if (!feat || schedSaving) { return; }
+          ev.preventDefault(); try { bar.setPointerCapture(ev.pointerId); } catch (e) { }
+          var s0 = slotAt(ev); schedPaint = { k: k, day: day, start: s0, cur: s0, base: dr.slots[day].slice() };
+          scApplyPaint(ch, dr); scBarDraw(bar, ch, def, dr.slots[day], day, day === nowDay ? nowMin : null);
+        };
+        bar.onpointermove = function (ev) {
+          if (!schedPaint || schedPaint.day !== day) { return; }
+          var s1 = slotAt(ev); if (s1 === schedPaint.cur) { return; }
+          schedPaint.cur = s1; scApplyPaint(ch, dr); scBarDraw(bar, ch, def, dr.slots[day], day, day === nowDay ? nowMin : null);
+        };
+        var done = function () { if (!schedPaint) { return; } schedPaint = null; dr.touched = true; renderSched(); };
+        bar.onpointerup = done; bar.onpointercancel = done;
+        row.appendChild(bar); grid.appendChild(row);
+      })(d);
+    }
+    cp.appendChild(grid);
+    // Kopieren
+    var cpy = scEl('div', 'scCopy'); cpy.appendChild(document.createTextNode('Tag kopieren: '));
+    var sel = document.createElement('select'); SCHED_DAYS.forEach(function (n, i) { var o = document.createElement('option'); o.value = String(i); o.textContent = n; if (i === schedCopyDay) { o.selected = true; } sel.appendChild(o); });
+    sel.onchange = function () { schedCopyDay = parseInt(sel.value, 10); }; cpy.appendChild(sel);
+    var copyTo = function (days) { days.forEach(function (d2) { if (d2 !== schedCopyDay) { dr.slots[d2] = dr.slots[schedCopyDay].slice(); } }); dr.touched = true; renderSched(); };
+    [['auf Werktage', [0, 1, 2, 3, 4]], ['auf Wochenende', [5, 6]], ['auf alle Tage', [0, 1, 2, 3, 4, 5, 6]]].forEach(function (c) { var b = scEl('button', 'opsBtn', c[0]); b.disabled = !feat || schedSaving; b.onclick = function () { copyTo(c[1]); }; cpy.appendChild(b); });
+    var clr = scEl('button', 'opsBtn', 'Tag leeren'); clr.disabled = !feat || schedSaving; clr.onclick = function () { dr.slots[schedCopyDay] = new Array(96).fill(null); dr.touched = true; renderSched(); }; cpy.appendChild(clr);
+    cp.appendChild(cpy);
+    // Fehler
+    var mine = schedErrors.filter(function (e) { return !e.k || e.k === k; });
+    mine.forEach(function (e) { var er = scEl('div', 'opsHint', e.text); er.style.color = '#ff8a80'; er.style.opacity = '1'; cp.appendChild(er); });
+    // Aktionen
+    var act = scEl('div', 'auActions');
+    var sv = scEl('button', 'curveSave', 'Übernehmen'); sv.disabled = !feat || !scTouched() || schedSaving; sv.onclick = function () { scSave(false); };
+    var rv = scEl('button', 'opsBtn', 'Verwerfen'); rv.disabled = !scTouched() || schedSaving; rv.onclick = function () { schedDraft = {}; schedPlanOn = null; schedErrors = []; schedStatus = ''; renderSched(); };
+    act.appendChild(sv); act.appendChild(rv); act.appendChild(scEl('span', 'opsStatus', schedStatus)); cp.appendChild(act);
+    body.appendChild(cp);
+    var other = schedErrors.filter(function (e) { return e.k && e.k !== k; });
+    if (other.length) { var ot = scEl('div', 'opsHint', 'Weitere Fehler in: ' + other.map(function (e) { return e.k; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; }).join(', ')); ot.style.color = '#ff8a80'; ot.style.opacity = '1'; body.appendChild(ot); }
+  }
+  function handleScheduleMessage(d) {
+    if (d && d.ok && d.type === 'scheduleUpdate') {
+      schedCache = d.schedule; schedPending = false; updateTabStates();
+      if (curTop === 'zeitplan' && !schedSaving && !schedPaint) { renderSched(); }
+      return true;
+    }
+    if (d && d.ok && d.type === 'scheduleSaved') {
+      schedSaving = false; schedPending = false; if (d.schedule) { schedCache = d.schedule; }
+      var r = d.result || {}; schedErrors = [];
+      if (r.ok) {
+        Object.keys(schedSent).forEach(function (k) { delete schedDraft[k]; }); schedPlanOn = null;
+        schedStatus = 'Gespeichert. Der Plan wirkt ab der nächsten Schaltzeit (beim Einschalten sofort); die Anlage quittiert nichts, der Status des Kanals zeigt es.';
+      } else {
+        var errs = r.errors || [];
+        errs.forEach(function (e) {
+          var f = String(e.field || ''), m = /^channels\.(\w+)\.?(.*)$/.exec(f), text = e.message || 'Fehler';
+          if (f === 'revision') { schedErrors.push({ text: text }); return; }
+          if (!m) { schedErrors.push({ text: text }); return; }
+          var sm = /segments\[(\d+)\]/.exec(m[2]), pre = '';
+          if (sm && schedSent[m[1]] && schedSent[m[1]][+sm[1]]) { var sg = schedSent[m[1]][+sm[1]]; pre = SCHED_DAYS[sg.day - 1] + ' ' + scHm(sg.from) + '–' + scHm(sg.to) + ': '; }
+          schedErrors.push({ k: m[1], text: pre + text });
+        });
+        if (errs.some(function (e) { return e.field === 'revision'; })) { schedDraft = {}; schedPlanOn = null; schedStatus = 'Der Plan wurde zwischenzeitlich geändert - aktuelle Werte geladen, Änderungen verworfen. Bitte erneut eingeben.'; }
+        else { schedStatus = 'Nicht gespeichert - bitte die Hinweise prüfen.'; }
+      }
+      updateTabStates(); if (curTop === 'zeitplan') { renderSched(); }
+      return true;
+    }
+    return false;
+  }
   var opsCache = null, opsPending = false, opsSent = {}, opsStatus = {}, opsSaving = {}, opsPollTimer = null, opsConfirmKey = null;
   var OPS_DEFS = [
     { key: 'quiet', title: 'Flüsterbetrieb', type: 'seg', labels: { 0: 'Aus', 1: 'Leise', 2: 'Leiser', 3: 'Am leisesten' },
@@ -1963,6 +2225,7 @@
     // Ergebnis (18.09.2026, erster Schreibzugriff dieser Kachel ueberhaupt).
     // Gleiches Muster wie NRGDashboardPVMonitor::flowUpdate/dayPlanUpdate.
     if (handleAutomationMessage(d)) { return; }
+    if (handleScheduleMessage(d)) { return; }
     if (d && d.ok && d.type === 'operationsUpdate') {
       opsCache = d.ops; opsPending = false;
       Object.keys(opsSent).forEach(function (key) {
@@ -2083,6 +2346,7 @@
     updateTabStates();
     if (d.hasOperations && !opsPending) { opsPending = true; requestAction('operationsLoad', '{}'); }
     if (d.hasAutomation) { if (!autoPending && !autoCache) { autoLoad(); } autoPoll(); }
+    if (d.hasSchedule) { if (!schedPending && !schedCache) { scLoad(); } scPoll(); }
     // Erster Aufruf kommt aus einem <script>-Block direkt beim Laden der
     // Kachel, bevor das Layout sicher fertig ist - echarts.init() auf
     // einem noch 0x0 grossen Container liefert eine leere Zeichenflaeche,

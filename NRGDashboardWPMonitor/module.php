@@ -120,6 +120,7 @@ class NRGDashboardWPMonitor extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.9.170' => [
+            'Neu: Reiter "Zeitplan" (nur bei HeishaMon ab 1.39.0) - grafischer Wochen-Editor für ECO / Normal / Komfort der Heizkurve (Zone 1 und 2, Heizen und Kühlen) und den Flüsterbetrieb: Abschnitte im 15-Minuten-Raster mit dem Finger oder der Maus malen, Tage kopieren, Kanäle und den ganzen Plan ein- und ausschalten. Der Plan läuft im HeishaMon-Modul; das Einschalten fragt vorher nach, weil der geplante Wert sofort gesendet wird.',
             'Fix: der senkrechte Verschiebe-Regler im Reiter "Heizkurven" speicherte nie (die Kachel hat HeishaMon den falschen Modus übergeben) - jetzt funktioniert er. Neu daneben: Schnelltasten ECO / Normal / Komfort für die Verschiebung und eine Leiste für den Flüsterbetrieb (Aus/1/2/3).',
             'Neu: Reiter "Automatik" (nur bei HeishaMon ab 1.35.0) - die Heizungs-Automatik zeigt Zustand, Grund und Messwerte und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Das Einschalten fragt vorher nach, weil die Betriebsart dabei sofort wechseln kann.',
         ],
@@ -721,6 +722,32 @@ class NRGDashboardWPMonitor extends IPSModule
         return is_array($result) ? $result : [];
     }
 
+    /**
+     * Wochen-Zeitplan (18.10.2026) - HeishaMon-Vertrag heatpump 1.16 (HEISHA_GetSchedule/HEISHA_SetSchedule). Der Plan liegt
+     * im HeishaMon-Modul (die Anlage kann keinen Plan aufnehmen); dieser Reiter ist nur der Editor. Defensiv per function_exists().
+     */
+    private function ScheduleAvailable(): bool
+    {
+        return $this->HeatingCurveInstanceID() > 0 && function_exists('HEISHA_GetSchedule') && function_exists('HEISHA_SetSchedule');
+    }
+
+    private function BuildSchedule(): array
+    {
+        $id = $this->HeatingCurveInstanceID();
+        if ($id <= 0 || !function_exists('HEISHA_GetSchedule')) {
+            return [];
+        }
+        try {
+            $result = @HEISHA_GetSchedule($id);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        if (is_string($result)) {
+            $result = json_decode($result, true);
+        }
+        return is_array($result) ? $result : [];
+    }
+
     private function BuildOperations(): array
     {
         $id = $this->HeatingCurveInstanceID();
@@ -1077,6 +1104,62 @@ class NRGDashboardWPMonitor extends IPSModule
             $this->PushMessage(json_encode(['ok' => true, 'type' => 'automationSaved', 'result' => $result, 'auto' => $this->BuildAutomation()]));
             return;
         }
+        if ($Ident === 'scheduleLoad') {
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'scheduleUpdate', 'schedule' => $this->BuildSchedule()]));
+            return;
+        }
+        if ($Ident === 'scheduleSave') {
+            // Nur vereinbarte Felder (SUITE.md "Wochen-Zeitplan"): enabled, revision, je Kanal enabled/default/segments.
+            // featureEnabled schreibt die Kachel nie. Pruefung, Obergrenzen und alles-oder-nichts liegen im HeishaMon-Modul.
+            $req = json_decode((string) $Value, true);
+            $id = $this->HeatingCurveInstanceID();
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - HeishaMon-Funktion nicht verfügbar (HeishaMon zu alt?).']]];
+            if (is_array($req) && $id > 0 && function_exists('HEISHA_SetSchedule')) {
+                $payload = [];
+                if (array_key_exists('enabled', $req)) {
+                    $payload['enabled'] = (bool) $req['enabled'];
+                }
+                if (isset($req['revision']) && is_numeric($req['revision'])) {
+                    $payload['revision'] = (int) $req['revision'];
+                }
+                if (isset($req['channels']) && is_array($req['channels'])) {
+                    $payload['channels'] = [];
+                    foreach (['z1Heat', 'z1Cool', 'z2Heat', 'z2Cool', 'quiet'] as $k) {
+                        if (!isset($req['channels'][$k]) || !is_array($req['channels'][$k])) {
+                            continue;
+                        }
+                        $in = $req['channels'][$k];
+                        $ch = [];
+                        if (array_key_exists('enabled', $in)) {
+                            $ch['enabled'] = (bool) $in['enabled'];
+                        }
+                        if (isset($in['default']) && is_numeric($in['default'])) {
+                            $ch['default'] = (int) $in['default'];
+                        }
+                        if (isset($in['segments']) && is_array($in['segments'])) {
+                            $ch['segments'] = [];
+                            foreach ($in['segments'] as $seg) {
+                                if (is_array($seg)) {
+                                    $ch['segments'][] = ['day' => (int) ($seg['day'] ?? 0), 'from' => (int) ($seg['from'] ?? 0), 'to' => (int) ($seg['to'] ?? 0), 'value' => (int) ($seg['value'] ?? 0)];
+                                }
+                            }
+                        }
+                        $payload['channels'][$k] = $ch;
+                    }
+                }
+                try {
+                    $r = @HEISHA_SetSchedule($id, json_encode($payload));
+                    if (is_string($r)) {
+                        $r = json_decode($r, true);
+                    }
+                    $result = is_array($r) ? $r : $result;
+                } catch (\Throwable $e) {
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                }
+            }
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'scheduleSaved', 'result' => $result, 'schedule' => $this->BuildSchedule()]));
+            return;
+        }
         if ($Ident === 'operationsLoad') {
             $this->PushMessage(json_encode([
                 'ok'  => true,
@@ -1303,6 +1386,7 @@ class NRGDashboardWPMonitor extends IPSModule
             'hasHeatingCurve' => $this->HeatingCurveAvailable(),
             'hasOperations'   => $this->OperationsAvailable(),
             'hasAutomation'   => $this->AutomationAvailable(),
+            'hasSchedule'     => $this->ScheduleAvailable(),
             'bg'         => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'       => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             // Engine-Wahl 1:1 NRGDashboardPVMonitor (Dietmar, 18.08.2026:
