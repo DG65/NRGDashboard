@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.35 (2026-10-19)
+
+- WP-Monitor: Reiter „Zeitplan“ und „Automatik“ lassen unten Platz, damit der runde Hilfe-Knopf die letzte Zeile (z. B. „Tag kopieren“) nicht mehr verdeckt.
+
 ## 0.9.170-beta.34 (2026-10-18)
 
 - WP-Monitor: neuer Reiter „Zeitplan“ - grafischer Wochen-Editor für den HeishaMon-Zeitplan (Vertrag heatpump 1.16, nur bei HeishaMon ab 1.39.0): Mo–So × 24 Stunden im 15-Minuten-Raster, Abschnitte werden mit dem Pinsel gemalt (Finger oder Maus), je Kanal Zone 1/2 Heizen und Kühlen sowie Flüsterbetrieb, Kanal und Plan ein/aus (das Einschalten fragt nach, weil der geplante Wert sofort gesendet wird), „Tag kopieren“ auf Werktage, Wochenende oder alle Tage, Status je Kanal mit Grund, nächster Schaltzeit und Hinweis auf Platinen-Regeln. Fehler erscheinen am betroffenen Abschnitt; bei zwischenzeitlicher Änderung lädt der Reiter neu. Ohne die HeishaMon-Funktionen bleibt der Reiter verborgen.
