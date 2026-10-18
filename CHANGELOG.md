@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.32 (2026-10-18)
+
+- Prognose-Kachel (NRGDashboardForecast): Steht in den Einstellungen eine nicht mehr vorhandene Quell-Instanz, ignoriert die Kachel sie wie bisher (automatische Erkennung, Zeile 🔗); neu steht der Hinweis mit der Instanznummer dabei. Gespiegelt von Prognoses Energiebilanz Build 147. Anlass: Forum.
+
 ## 0.9.170-beta.31 (2026-10-18)
 
 - WP-Monitor, Fehler behoben: Der senkrechte Verschiebe-Regler im Reiter „Heizkurven“ speicherte nie, weil die Kachel HeishaMon als Modus „shift“ statt „heat“ übergab (die Funktion lieferte dadurch immer „false“, die Kachel meldete „nicht bestätigt“). Jetzt wird der Heizmodus durchgereicht.

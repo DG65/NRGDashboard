@@ -101,6 +101,7 @@ class NRGDashboardForecast extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.2.9' => [
+            '🔗 Klarere Verbindungszeilen (Rückfrage aus dem Forum, danke!): Steht in den Einstellungen eine nicht mehr vorhandene Instanz, ignoriert die Kachel sie und nimmt die automatische Erkennung - das steht jetzt als Hinweis dabei, die Zeile bleibt 🔗 (verbunden) und zeigt kein ⚠️.',
             '🔤 Beschriftung lesbar machen (gespiegelt von Prognoses Energiebilanz, Hinweis aus dem Forum): neue Einstellung „Beschriftung“ im WebFront (Doppelpfeil) - automatisch (wie bisher, nach Betriebssystem/Browser), hell oder dunkel. Bei einem dunklen WebFront-Theme mit hellem Betriebssystem stellst du „Hell“ ein.',
             '📊 Neue Darstellung "Balken je Zeitscheibe" (gespiegelt von Prognoses Energiebilanz, Idee aus dem Forum): im WebFront über den Doppelpfeil unter "Darstellung" wählbar - je Viertelstunde ein Soll-Balken, gefüllt mit dem Ist-Wert, der Verbrauch als Linie. Die Standarddarstellung bleibt die Kurve.',
             '🩹 Gemessene Linie verschwindet nicht mehr, wenn das Stunden-Aggregat im Archiv defekt ist - sie wird dann ersatzweise aus den Rohwerten gebildet. Über den Ist-Feldern im Formular zeigt eine Zeile, ob die Variable archiviert ist, ob die Linie eingeschaltet ist und wie viele Messwerte heute ankommen.',
@@ -1023,7 +1024,12 @@ class NRGDashboardForecast extends IPSModule
             return '⚠️ ' . $label . ': ' . count($ids) . ' Instanzen gefunden, mehrere davon aktiv und keine ausgewählt - es wird nicht geraten. Bitte unten eine Instanz wählen.';
         }
         $line = $this->autoFieldLine($elements, $field, $label, $explicit, $id, 'der Instanzsuche', $noneText);
-        return $line . ' (' . $this->formInstanceState($id) . ')' . ($this->formInstanceState($id) === 'aktiv' ? '' : ' ⚠️ nicht aktiv');
+        // Eine nicht mehr vorhandene gespeicherte Instanz ist kein Fehler, solange die Automatik die Quelle findet
+        // (Forum somm, 18.10.2026, gespiegelt von Prognoses Energiebilanz Build 147): 🔗 steht schon, hier nur der Hinweis.
+        $staleNote = ($cfg > 0 && $explicit === 0)
+            ? ' Hinweis: In den Einstellungen ist die nicht mehr vorhandene Instanz #' . $cfg . ' hinterlegt, sie wird ignoriert - es gilt die automatische Erkennung, das ist unschädlich.'
+            : '';
+        return $line . ' (' . $this->formInstanceState($id) . ')' . ($this->formInstanceState($id) === 'aktiv' ? '' : ' ⚠️ nicht aktiv') . $staleNote;
     }
 
     private function forecastSourceStatusLine(array &$elements): string
