@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.30 (2026-10-18)
+
+- PV-Monitoring: der MPP-Tracker-Vergleich nimmt die MPPT-Leistungen jetzt auch aus dem InverterHub-Vertrag (`mpptPowerIDs`), wenn die Variablen nicht `mppt1_power` usw. heißen - damit funktioniert er auch mit Solis (dort ist die Leistung je MPPT aus Spannung × Strom berechnet, kein gemessener Wert).
+
 ## 0.9.170-beta.29 (2026-10-18)
 
 - Detailseite: „Energie heute“ und „Energie je Tag“ halten eine Leistungsvariable (W, kW) nicht mehr für einen Energiezähler, auch wenn sie im Archiv als „Zähler“ eingestellt ist (Forum: 56.900 kWh am Tag aus einer in W archivierten Variable). Wh-Zähler werden in kWh umgerechnet; die Einheit wird auch aus der Darstellung (Symcon 8+) gelesen, wenn kein Profil gesetzt ist. Ohne echten Zähler bleibt es bei der Näherung aus der Leistungsreihe.
