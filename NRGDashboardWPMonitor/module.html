@@ -1576,12 +1576,31 @@
     }
     // 2) Zustand
     var st = auEl('div', 'opsTile');
-    var stMap = { heating: ['Heizbetrieb', '#ef9a3d'], cooling: ['Kühlbetrieb', '#4fc3f7'], off: ['Heizung aus (Automatik)', '#90a4ae'], fault: ['Störung', '#ff5252'] };
+    var stMap = { heating: ['Heizbetrieb', '#ef9a3d'], cooling: ['Kühlbetrieb', '#4fc3f7'], off: ['Heizung aus (Automatik)', '#90a4ae'], blocked: ['Preis-Sperre (Heizbetrieb pausiert)', '#ba68c8'], fault: ['Störung', '#ff5252'] };
     var sm = stMap[a.state] || ['Automatik läuft nicht', '#90a4ae'];
     var pill = auEl('div', 'opsTitle'); var sp = auEl('span', '', sm[0]); sp.style.color = sm[1]; sp.style.fontSize = '16px'; pill.appendChild(sp); st.appendChild(pill);
     if (a.reason) { st.appendChild(auEl('div', 'opsHint', a.reason)); }
     if (a.lastError) { var le = auEl('div', 'opsHint', 'Letzter Fehler: ' + a.lastError); le.style.color = '#ff8a80'; le.style.opacity = '1'; st.appendChild(le); }
     body.appendChild(st);
+    // 2b) Strompreis / Preis-Sperre (nur anzeigen, wenn HeishaMon eine Preisquelle meldet)
+    var pr = a.price || null;
+    if (pr && pr.source && pr.source !== 'none') {
+      var pc = auEl('div', 'opsTile' + (a.state === 'blocked' ? ' on' : ''));
+      var ptl = auEl('div', 'opsTitle'); ptl.appendChild(document.createTextNode('Strompreis (Preis-Sperre)'));
+      ptl.appendChild(auEl('span', 'opsState', pr.enabled ? 'aktiv' : 'aus')); pc.appendChild(ptl);
+      var yn = function (v) { return v === null || v === undefined ? '–' : (v ? 'ja' : 'nein'); };
+      [
+        ['Jetzt', auNum(pr.nowCtKwh) + ' ct/kWh'],
+        ['Schwelle (teuer ab)', auNum(pr.thresholdCtKwh) + ' ct/kWh'],
+        ['Median', auNum(pr.medianCtKwh) + ' ct/kWh'],
+        ['Gerade teuer', yn(pr.expensive)],
+        ['Sperren heute', (pr.blocksToday === null || pr.blocksToday === undefined) ? '–' : String(pr.blocksToday)],
+        ['Gesperrt seit', (a.state === 'blocked' && pr.blockedSince) ? auTime(pr.blockedSince) : '–'],
+        ['Batterie deckt die Last', yn(pr.batteryCoversLoad)]
+      ].forEach(function (p2) { var ln = auEl('div', 'opsTitle'); ln.appendChild(document.createTextNode(p2[0])); ln.appendChild(auEl('span', 'opsState', p2[1])); pc.appendChild(ln); });
+      pc.appendChild(auEl('div', 'opsHint', 'Preisquelle: ' + pr.source + '. Die Preis-Sperre pausiert den Heizbetrieb in teuren Stunden - nur solange die Raumtemperatur und (falls vorhanden) die Batterie das zulassen.'));
+      body.appendChild(pc);
+    }
     // 3) Werte
     var vals = auEl('div', 'auVals');
     var nextTxt = (a.nextSwitchAllowedAt && a.nextSwitchAllowedAt * 1000 > Date.now()) ? 'frühestens ' + auTime(a.nextSwitchAllowedAt) : 'jederzeit';
@@ -1634,6 +1653,21 @@
       if (autoErrors.coolingEnabled) { var ec = auEl('div', 'opsHint', autoErrors.coolingEnabled); ec.style.color = '#ff8a80'; ec.style.opacity = '1'; set.appendChild(ec); }
     } else {
       set.appendChild(auEl('div', 'opsHint', 'Kühlen nicht verfügbar: Es wurde keine Feuchtequelle gefunden, ohne die der Taupunkt-Schutz nicht arbeiten kann (Quellen im HeishaMon-Formular wählen).'));
+    }
+    if (pr && pr.source && pr.source !== 'none') {
+      var pbOn = ('priceBlockEnabled' in autoDraft) ? !!autoDraft.priceBlockEnabled : !!cfg.priceBlockEnabled;
+      var pbr = auEl('div', 'auField'); pbr.appendChild(auEl('label', '', 'Preis-Sperre'));
+      var pbs = auEl('div', 'opsSeg');
+      [[false, 'Aus'], [true, 'Ein']].forEach(function (p3) {
+        var b3 = auEl('button', (pbOn === p3[0]) ? 'active' : '', p3[1]); b3.disabled = !feat || autoSaving;
+        b3.onclick = function () { if (p3[0] === !!cfg.priceBlockEnabled) { delete autoDraft.priceBlockEnabled; } else { autoDraft.priceBlockEnabled = p3[0]; } delete autoErrors.priceBlockEnabled; renderAuto(); };
+        pbs.appendChild(b3);
+      });
+      pbr.appendChild(pbs); set.appendChild(pbr);
+      set.appendChild(auEl('div', 'opsHint', 'Heizbetrieb in teuren Stunden pausieren. Weitere Einstellungen dazu (Höchstdauer, Sperren pro Tag, Mindestabstand, Raum-Reserve, Batterie) stehen im HeishaMon-Formular.'));
+      if (autoErrors.priceBlockEnabled) { var epb = auEl('div', 'opsHint', autoErrors.priceBlockEnabled); epb.style.color = '#ff8a80'; epb.style.opacity = '1'; set.appendChild(epb); }
+    } else if (pr) {
+      set.appendChild(auEl('div', 'opsHint', 'Preis-Sperre nicht verfügbar: Es wurde keine Preisquelle gefunden (im HeishaMon-Formular wählen).'));
     }
     if (autoErrors.configRevision) { var ev = auEl('div', 'opsHint', autoErrors.configRevision); ev.style.color = '#ffb74d'; ev.style.opacity = '1'; set.appendChild(ev); }
     var act = auEl('div', 'auActions');

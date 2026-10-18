@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.28 (2026-10-18)
+
+- WP-Monitor „Automatik“: neuer Zustand „Preis-Sperre (Heizbetrieb pausiert)“ (eigene Farbe, nicht als normales „aus“), Karte „Strompreis (Preis-Sperre)“ mit Preis jetzt, Schwelle, Median, Sperren heute, „gesperrt seit“ und Batterie-Deckung, sowie der Schalter „Preis-Sperre“ - nur wenn HeishaMon eine Preisquelle meldet (ab HeishaMon 1.36.0). Die übrigen Preis- und Batterie-Einstellungen bleiben im HeishaMon-Formular.
+
 ## 0.9.170-beta.27 (2026-10-18)
 
 - Prognose-Kachel: im Dunkelmodus helleres Grau für Achsen und Nebentexte (Kontrast 8,2 statt 5,8 zu 1), der Hinweis zur Balkenansicht in der Haupttextfarbe; gespiegelt von Prognoses Energiebilanz Build 146. Anlass: Forum.
