@@ -1014,8 +1014,11 @@
       // erwartet fehlen"). Reihenfolge links nach rechts (Dietmars Wunsch,
       // 28.07.2026): PV erwartet, PV-Erzeugung, Einstrahlung.
       var solarSeries = [];
-      if (lastData.hasModel) {
-        solarSeries.push({ name: 'PV erwartet', color: '#e57373', map: (lastData.energy && lastData.energy.expected) || {} });
+      // Nur mit Daten (19.10.2026, Forum Horst): "PV erwartet" wird aus der archivierten Einstrahlung gerechnet - ohne
+      // Einstrahlungs-Variable bleibt die Reihe leer, die Legende versprach sie trotzdem.
+      var expMap = (lastData.energy && lastData.energy.expected) || {};
+      if (lastData.hasModel && (lastData.hasIrr || Object.keys(expMap).length > 0)) {
+        solarSeries.push({ name: 'PV erwartet', color: '#e57373', map: expMap });
       }
       solarSeries.push({ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} });
       if (lastData.hasIrr) {
