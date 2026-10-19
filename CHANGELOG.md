@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.38 (2026-10-19)
+
+- Energiefluss-Kachel: Die Mitte heißt „Haus“ (mit Haus-Symbol), sobald Solar und Netz vorhanden sind und es höchstens vier PV-Knoten gibt, auch ohne eigenen Hauslastzähler. Der Wert ist dann Solar − Netz + Batterie, also der Gesamtverbrauch, auch wenn die Last über den Backup-Ausgang eines Hybrid-Wechselrichters hängt; ein Hinweis am Knoten nennt ihn „berechnet“. „Saldo“ mit Delta-Symbol bleibt für Parks (mehr als vier PV-Knoten) und für Anlagen ohne Solar oder Netz.
+
 ## 0.9.170-beta.37 (2026-10-19)
 
 - Energiefluss-Kachel, Formular „Manuelle Datenpunkte“: unter Solar, Netz, Batterie steht jetzt der aktuelle Wert mit Vorzeichen und wie das Dashboard ihn deutet (Einspeisung/Bezug, Laden/Entladen, nach dem Invertieren). Dazu ein Hinweis, wenn die berechnete Hauslast (Solar − Netz + Batterie) trotz Erzeugung ≤ 0 ist. Rein anzeigend, liest den gespeicherten Stand.
