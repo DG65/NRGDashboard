@@ -3533,7 +3533,21 @@ function restoreCenterForLevel1() {
   // Differenz") - dann heisst die Mittelpille "Saldo" statt "Haus" und
   // traegt das Delta-Symbol statt des Haussymbols, siehe houseW-Berechnung
   // in handleMessage() (pv-grid+bat-Naeherung ohne echtes Geraet dahinter).
-  const hasHouse = LEVEL1_DEVICES.some(x => x.function === 'house');
+  const realHouse = LEVEL1_DEVICES.some(x => x.function === 'house');
+  // 19.10.2026 (Dietmar, Solis/GoodWe mit Backup-Versorgung): die Bilanz Solar - Netz + Batterie ist bei einem
+  // einzelnen Standort mit Solar UND Netz der Gesamtverbrauch des Hauses, egal ob die Last am Netzanschluss oder am
+  // Backup-Ausgang haengt. Deshalb "Haus" mit Haus-Symbol (Tooltip "berechnet"); "Saldo" nur ohne Solar/Netz oder bei
+  // einem Park (mehr als 4 PV-Knoten, Solarpark Hofweier 14.09.2026), wo die Differenz kein Hausverbrauch ist.
+  const siteOk = LEVEL1_DEVICES.some(x => x.function === 'pv') && LEVEL1_DEVICES.some(x => x.function === 'grid')
+    && LEVEL1_DEVICES.filter(x => x.function === 'pv').length <= 4;
+  const hasHouse = realHouse || siteOk;
+  if (centerG) {
+    let tt = centerG.querySelector(':scope > title');
+    if (!realHouse && siteOk) {
+      if (!tt) { tt = document.createElementNS('http://www.w3.org/2000/svg', 'title'); centerG.insertBefore(tt, centerG.firstChild); }
+      tt.textContent = 'Berechnet: Solar \u2212 Netz + Batterie (Gesamtverbrauch des Hauses, auch über den Backup-Ausgang)';
+    } else if (tt) { tt.remove(); }
+  }
   if (nm) {
     nm.textContent = hasHouse ? 'Haus' : 'Saldo';
     // Fund 10.09.2026 (Dietmar: "'Haus' brauchst Du nicht so zu ziehen") -
