@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.36 (2026-10-19)
+
+- WP-Monitor, Reiter „Zeitplan“: Schaltfläche „Plan jetzt wieder anwenden“ (mit Rückfrage) beendet Handänderungen und Störungen und sendet den geplanten Wert sofort neu; der Plan selbst bleibt unverändert. Der Kanal-Status zeigt zusätzlich „seit HH:MM“. Beides erscheint nur, wenn HeishaMon den Zeitstempel `stateSince` liefert (ab 1.39.2), sonst bleibt es verborgen.
+
 ## 0.9.170-beta.35 (2026-10-19)
 
 - WP-Monitor: Reiter „Zeitplan“ und „Automatik“ lassen unten Platz, damit der runde Hilfe-Knopf die letzte Zeile (z. B. „Tag kopieren“) nicht mehr verdeckt.

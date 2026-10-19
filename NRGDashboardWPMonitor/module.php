@@ -1116,6 +1116,11 @@ class NRGDashboardWPMonitor extends IPSModule
             $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - HeishaMon-Funktion nicht verfügbar (HeishaMon zu alt?).']]];
             if (is_array($req) && $id > 0 && function_exists('HEISHA_SetSchedule')) {
                 $payload = [];
+                if (($req['applyNow'] ?? null) === true) {
+                    // Eigene Aktion (heatpump 1.16, HeishaMon ab 1.39.2): Plan jetzt neu anwenden, Plan und revision bleiben
+                    $payload['applyNow'] = true;
+                    $req = [];
+                }
                 if (array_key_exists('enabled', $req)) {
                     $payload['enabled'] = (bool) $req['enabled'];
                 }

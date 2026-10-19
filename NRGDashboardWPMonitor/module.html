@@ -1794,7 +1794,7 @@
   // Mo-So x 24 h im 15-Minuten-Raster, Abschnitte werden mit dem Pinsel gemalt. Grenzen, Werte und Beschriftungen kommen aus
   // dem Vertrag. Intern halten wir je Kanal 7 x 96 Slots (null = Kanal-Standard) und bilden beim Speichern Abschnitte daraus.
   var schedCache = null, schedPending = false, schedDraft = {}, schedPlanOn = null, schedErrors = [], schedStatus = '', schedSaving = false,
-      schedConfirm = false, schedTimer = null, schedChan = null, schedBrush = {}, schedSent = {}, schedPaint = null, schedCopyDay = 0;
+      schedConfirm = false, schedTimer = null, schedChan = null, schedBrush = {}, schedSent = {}, schedPaint = null, schedCopyDay = 0, schedApplyAsk = false, schedApplyBusy = false;
   var SCHED_CH = [['z1Heat', 'Zone 1 Heizen'], ['z1Cool', 'Zone 1 Kühlen'], ['z2Heat', 'Zone 2 Heizen'], ['z2Cool', 'Zone 2 Kühlen'], ['quiet', 'Flüsterbetrieb']];
   var SCHED_DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   var SCHED_STATE = { ok: ['Plan wirkt', '#81c784'], pending: ['Befehl gesendet', '#ffb74d'], manual: ['Von Hand oder Platine geändert', '#ff9a3d'],
@@ -1887,6 +1887,15 @@
     schedConfirm = false; schedSent = sent; schedSaving = true; schedErrors = []; schedStatus = 'Sende…';
     requestAction('scheduleSave', JSON.stringify(payload)); renderSched();
   }
+  // Nur sichtbar, wenn HeishaMon den Zeitstempel stateSince liefert (ab 1.39.2) - ohne bleibt die Funktion verborgen.
+  function scNeedsApply() {
+    if (!schedCache || !schedCache.channels) { return false; }
+    return SCHED_CH.some(function (c) { var x = schedCache.channels[c[0]]; return x && x.available && x.enabled && (x.state === 'manual' || x.state === 'fault') && typeof x.stateSince !== 'undefined'; });
+  }
+  function scApplyNow() {
+    schedApplyAsk = false; schedApplyBusy = true; schedSent = {}; schedErrors = []; schedStatus = 'Der Plan wird jetzt neu angewendet…';
+    requestAction('scheduleSave', JSON.stringify({ applyNow: true })); renderSched();
+  }
   function renderSched() {
     var body = document.getElementById('schedBody');
     updateChartTitle();
@@ -1906,7 +1915,18 @@
       b.onclick = function () { schedPlanOn = (p[0] === !!a.enabled) ? null : p[0]; renderSched(); };
       prow.appendChild(b);
     });
-    head.appendChild(prow); body.appendChild(head);
+    head.appendChild(prow);
+    if (scNeedsApply()) {
+      var ab = scEl('button', 'opsBtn warn', 'Plan jetzt wieder anwenden'); ab.disabled = schedSaving || schedApplyBusy; ab.style.marginTop = '8px';
+      ab.onclick = function () { schedApplyAsk = true; renderSched(); }; head.appendChild(ab);
+    }
+    body.appendChild(head);
+    if (schedApplyAsk) {
+      var aq = scEl('div', 'opsTile danger'); aq.appendChild(scEl('div', 'opsTitle', 'Plan jetzt wieder anwenden?'));
+      var at = scEl('div', 'opsHint', 'Das beendet Handänderungen und Störungen und sendet den geplanten Wert SOFORT neu an die Anlage. Der Plan selbst bleibt unverändert.'); at.style.opacity = '1'; aq.appendChild(at);
+      var ar = scEl('div', 'opsSeg'); var ay = scEl('button', 'opsBtn warn', 'Ja, jetzt anwenden'); ay.onclick = scApplyNow;
+      var an = scEl('button', 'opsBtn', 'Abbrechen'); an.onclick = function () { schedApplyAsk = false; renderSched(); }; ar.appendChild(ay); ar.appendChild(an); aq.appendChild(ar); body.appendChild(aq);
+    }
     if (schedConfirm) {
       var q = scEl('div', 'opsTile danger'); q.appendChild(scEl('div', 'opsTitle', 'Plan einschalten?'));
       var qt = scEl('div', 'opsHint', 'Beim Einschalten wird der geplante Wert für jetzt SOFORT an die Anlage gesendet. Beim Ausschalten bleibt der zuletzt gesetzte Wert in der Anlage stehen, es wird nichts zurückgestellt.'); qt.style.opacity = '1'; q.appendChild(qt);
@@ -1930,6 +1950,7 @@
     var st = SCHED_STATE[ch.state] || ['', '#90a4ae'];
     var ttl = scEl('div', 'opsTitle'); ttl.appendChild(document.createTextNode(SCHED_CH.filter(function (c) { return c[0] === k; })[0][1]));
     var chip = scEl('span', 'opsState', st[0]); chip.style.color = st[1]; chip.style.fontWeight = '700'; ttl.appendChild(chip); cp.appendChild(ttl);
+    if (ch.stateSince && (ch.state === 'manual' || ch.state === 'fault' || ch.state === 'pending')) { var sd = new Date(ch.stateSince * 1000); chip.textContent += ' seit ' + sd.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); }
     var now = [];
     if (ch.plannedNow !== null && ch.plannedNow !== undefined) { now.push('Plan jetzt: ' + scValText(ch, ch.plannedNow)); }
     if (ch.actualNow !== null && ch.actualNow !== undefined) { now.push('Anlage meldet: ' + scValText(ch, ch.actualNow)); }
@@ -2004,6 +2025,13 @@
     if (d && d.ok && d.type === 'scheduleUpdate') {
       schedCache = d.schedule; schedPending = false; updateTabStates();
       if (curTop === 'zeitplan' && !schedSaving && !schedPaint) { renderSched(); }
+      return true;
+    }
+    if (d && d.ok && d.type === 'scheduleSaved' && schedApplyBusy) {
+      schedApplyBusy = false; schedPending = false; if (d.schedule) { schedCache = d.schedule; }
+      var ar2 = d.result || {};
+      schedStatus = ar2.ok ? 'Der geplante Wert wurde neu gesendet.' : 'Nicht angewendet: ' + ((ar2.errors && ar2.errors[0] && ar2.errors[0].message) || 'Fehler');
+      updateTabStates(); if (curTop === 'zeitplan') { renderSched(); }
       return true;
     }
     if (d && d.ok && d.type === 'scheduleSaved') {
