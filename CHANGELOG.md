@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.39 (2026-10-19)
+
+- Energiefluss-Kachel: liest das neue Feld `houseLoadID` aus `IHUB_GetFunctions` (InverterHub-Vertrag 1.4, bisher Solis: gemessener Gesamtverbrauch aus Netz- und Backup-Last). Ist es vorhanden, zeigt die Mitte diesen gemessenen Wert statt der Bilanz Solar − Netz + Batterie. Voraussetzung: die Archivierung ist in der InverterHub-Instanz eingeschaltet.
+
 ## 0.9.170-beta.38 (2026-10-19)
 
 - Energiefluss-Kachel: Die Mitte heißt „Haus“ (mit Haus-Symbol), sobald Solar und Netz vorhanden sind und es höchstens vier PV-Knoten gibt, auch ohne eigenen Hauslastzähler. Der Wert ist dann Solar − Netz + Batterie, also der Gesamtverbrauch, auch wenn die Last über den Backup-Ausgang eines Hybrid-Wechselrichters hängt; ein Hinweis am Knoten nennt ihn „berechnet“. „Saldo“ mit Delta-Symbol bleibt für Parks (mehr als vier PV-Knoten) und für Anlagen ohne Solar oder Netz.
