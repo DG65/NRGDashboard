@@ -243,15 +243,19 @@
       "items": [
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn kein NRG-Stack-Partnermodul (InverterHub, MeterHub, ChargerHub, HeishaMon) installiert ist oder ein Wert von dort fehlt. Ergänzt die automatische Suche, ersetzt sie nicht - beide wirken gleichzeitig. Vorzeichen-Konvention: Netz + = Einspeisung, Batterie + = Entladen - stimmt die Richtung nicht, den passenden Schalter setzen."
+          "caption": "Nur nötig, wenn kein NRG-Stack-Partnermodul (InverterHub, MeterHub, ChargerHub, HeishaMon) installiert ist oder ein Wert von dort fehlt. Ergänzt die automatische Suche, ersetzt sie nicht - beide wirken gleichzeitig. Unter jedem Feld steht der aktuelle Wert mit Vorzeichen und wie das Dashboard ihn deutet (nach dem Speichern aktualisiert). Stimmt die Richtung nicht, den passenden Schalter setzen."
         },
         { "type": "SelectVariable", "name": "ManualPvID", "caption": "Solar-Leistung" },
+        { "type": "Label", "name": "ManualPvLive", "caption": "" },
         { "type": "SelectVariable", "name": "ManualGridID", "caption": "Netz-/Zählerleistung (+ Einspeisung / − Bezug)" },
         { "type": "CheckBox", "name": "ManualGridInvert", "caption": "Netz-Leistung invertieren" },
+        { "type": "Label", "name": "ManualGridLive", "caption": "" },
         { "type": "SelectVariable", "name": "ManualBatID", "caption": "Batterie-Leistung (+ Entladen / − Laden)" },
         { "type": "CheckBox", "name": "ManualBatInvert", "caption": "Batterie-Leistung invertieren" },
+        { "type": "Label", "name": "ManualBatLive", "caption": "" },
         { "type": "SelectVariable", "name": "ManualSocID", "caption": "Batterie-Ladestand (SOC, %)" },
-        { "type": "SelectVariable", "name": "ManualHouseID", "caption": "Echter Hauslastzähler (optional, ersetzt die berechnete Näherung)" }
+        { "type": "SelectVariable", "name": "ManualHouseID", "caption": "Echter Hauslastzähler (optional, ersetzt die berechnete Näherung)" },
+        { "type": "Label", "name": "ManualHouseCheck", "caption": "" }
       ]
     },
     {
