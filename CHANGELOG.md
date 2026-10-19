@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.37 (2026-10-19)
+
+- Energiefluss-Kachel, Formular „Manuelle Datenpunkte“: unter Solar, Netz, Batterie steht jetzt der aktuelle Wert mit Vorzeichen und wie das Dashboard ihn deutet (Einspeisung/Bezug, Laden/Entladen, nach dem Invertieren). Dazu ein Hinweis, wenn die berechnete Hauslast (Solar − Netz + Batterie) trotz Erzeugung ≤ 0 ist. Rein anzeigend, liest den gespeicherten Stand.
+
 ## 0.9.170-beta.36 (2026-10-19)
 
 - WP-Monitor, Reiter „Zeitplan“: Schaltfläche „Plan jetzt wieder anwenden“ (mit Rückfrage) beendet Handänderungen und Störungen und sendet den geplanten Wert sofort neu; der Plan selbst bleibt unverändert. Der Kanal-Status zeigt zusätzlich „seit HH:MM“. Beides erscheint nur, wenn HeishaMon den Zeitstempel `stateSince` liefert (ab 1.39.2), sonst bleibt es verborgen.

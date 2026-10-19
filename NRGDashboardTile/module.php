@@ -759,6 +759,7 @@ class NRGDashboardTile extends IPSModule
         $this->setFormStatusLine($form['elements'], 'TessieStatus', $this->tessieStatusLine());
         $this->setFormStatusLine($form['elements'], 'HealthSourcesStatus', $this->healthSourcesStatusLines($form['elements']));
         $this->injectDeviceToggleValues($form);
+        $this->injectManualLiveValues($form['elements']);
         $this->injectDiscoveryResultLabel($form);
 
         $banner = $this->newsBanner();
@@ -784,6 +785,79 @@ class NRGDashboardTile extends IPSModule
         $form['elements'][] = $this->LicenseHint();
 
         return json_encode($form);
+    }
+
+    /**
+     * Rohwert-Zeilen unter den manuellen Datenpunkten (19.10.2026, Forum-Fund
+     * AKL): Einsteiger mit eigenen Variablen sehen den aktuellen Wert MIT
+     * Vorzeichen und wie das Dashboard ihn nach dem Invertieren deutet, plus
+     * eine Plausibilitaetspruefung der berechneten Hauslast (Solar - Netz +
+     * Batterie, dieselbe Rechnung wie die Kachel). Rein anzeigend; liest den
+     * gespeicherten Stand der Property-Auswahl.
+     */
+    private function injectManualLiveValues(array &$elements): void
+    {
+        $w = function (int $id): ?float {
+            return $id > 0 ? $this->resolveVariableValue($id) : null;
+        };
+        $fmt = function (float $v): string {
+            return ($v > 0 ? '+' : ($v < 0 ? '−' : '')) . $this->FmtWWithUnit(abs($v));
+        };
+        $pvId = $this->readIntProperty('ManualPvID', 0);
+        $gridId = $this->readIntProperty('ManualGridID', 0);
+        $batId = $this->readIntProperty('ManualBatID', 0);
+        $pv = $w($pvId);
+        $grid = $w($gridId);
+        $bat = $w($batId);
+        $gridInv = $this->readBoolProperty('ManualGridInvert');
+        $batInv = $this->readBoolProperty('ManualBatInvert');
+        $gridEff = ($grid !== null) ? ($gridInv ? -$grid : $grid) : null;
+        $batEff = ($bat !== null) ? ($batInv ? -$bat : $bat) : null;
+
+        $line = '';
+        if ($pvId > 0) {
+            $line = ($pv === null) ? 'Keinen Wert gelesen - Variable prüfen.' : 'Aktuell ' . $fmt($pv) . ' - Solar erwartet Erzeugung als positiven Wert.';
+            if ($pv !== null && $pv < 0) {
+                $line .= ' ⚠️ Negativ: Erzeugung wird meist positiv geliefert, Variable prüfen.';
+            }
+        }
+        $this->setFormStatusLine($elements, 'ManualPvLive', $line);
+
+        $line = '';
+        if ($gridId > 0) {
+            if ($grid === null) {
+                $line = 'Keinen Wert gelesen - Variable prüfen.';
+            } else {
+                $dir = ($gridEff > 0) ? 'Einspeisung' : (($gridEff < 0) ? 'Netzbezug' : 'weder Bezug noch Einspeisung');
+                $line = 'Aktuell ' . $fmt($grid) . ($gridInv ? ' → invertiert ' . $fmt($gridEff) : '') . ' = ' . $dir
+                    . '. Erwartet: + Einspeisung, − Bezug. Zählt deine Quelle Bezug als plus (z. B. viele Leseköpfe), Schalter „invertieren“ an.';
+            }
+        }
+        $this->setFormStatusLine($elements, 'ManualGridLive', $line);
+
+        $line = '';
+        if ($batId > 0) {
+            if ($bat === null) {
+                $line = 'Keinen Wert gelesen - Variable prüfen.';
+            } else {
+                $dir = ($batEff > 0) ? 'Entladen' : (($batEff < 0) ? 'Laden' : 'Ruhe');
+                $line = 'Aktuell ' . $fmt($bat) . ($batInv ? ' → invertiert ' . $fmt($batEff) : '') . ' = ' . $dir
+                    . '. Erwartet: + Entladen, − Laden. Vergleiche mit der Anzeige deines Speichers, Richtung ggf. mit „invertieren“ umdrehen.';
+            }
+        }
+        $this->setFormStatusLine($elements, 'ManualBatLive', $line);
+
+        $line = '';
+        if ($this->readIntProperty('ManualHouseID', 0) === 0 && $pv !== null && $gridEff !== null) {
+            $house = $pv - $gridEff + ($batEff ?? 0.0);
+            if ($house <= 0 && $pv > 50) {
+                $line = '⚠️ Berechnete Hauslast ' . $fmt($house) . ' (Solar ' . $fmt($pv) . ' − Netz ' . $fmt($gridEff)
+                    . ' + Batterie ' . $fmt($batEff ?? 0.0) . ') - bei laufender Erzeugung ist das unplausibel. Meist steht eine Richtung falsch (Netz oder Batterie), oder eine Variable liefert eine andere Größe. Zu den Rohwerten oben bitte Quelle und Vorzeichen prüfen.';
+            } else {
+                $line = 'Berechnete Hauslast aktuell ' . $fmt($house) . ' (Solar − Netz + Batterie).';
+            }
+        }
+        $this->setFormStatusLine($elements, 'ManualHouseCheck', $line);
     }
 
     private function injectVersionIntoDocPanel(array &$form): void
