@@ -4234,6 +4234,9 @@ class NRGDashboardTile extends IPSModule
                 'pv'      => ['Solar',    $data['pvPowerID']   ?? 0],
                 'battery' => ['Batterie', $data['batPowerID']  ?? 0],
                 'grid'    => ['Netz',     $data['gridPowerID'] ?? 0],
+                // InverterHub-Vertrag 1.4 (19.10.2026, Solis house_load_total = Netz- + Backup-Last): gemessener
+                // Gesamtverbrauch, hat Vorrang vor der Bilanz Solar - Netz + Batterie. 0/fehlend bei anderen Treibern.
+                'house'   => ['Haus',     $data['houseLoadID'] ?? 0],
             ];
             foreach ($map as $function => [$label, $powerID]) {
                 if (!$powerID) {
