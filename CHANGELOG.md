@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.40 (2026-10-19)
+
+- PV-Monitoring, Ansichten Woche/Monat/Jahr: „PV erwartet“ erscheint in der Legende nur noch, wenn die Reihe Daten hat (Einstrahlungs-Variable vorhanden oder Werte da). Vorher stand sie auch ohne Einstrahlungssensor in der Legende, obwohl sie leer blieb.
+- Energiefluss-Kachel, Formular „Manuelle Datenpunkte“: Der Hinweis „Hauslast ≤ 0 trotz Erzeugung“ nennt jetzt neutral zwei mögliche Ursachen: eine fehlende (nicht gemessene) Quelle oder eine nicht passende Richtung.
+
 ## 0.9.170-beta.39 (2026-10-19)
 
 - Energiefluss-Kachel: liest das neue Feld `houseLoadID` aus `IHUB_GetFunctions` (InverterHub-Vertrag 1.4, bisher Solis: gemessener Gesamtverbrauch aus Netz- und Backup-Last). Ist es vorhanden, zeigt die Mitte diesen gemessenen Wert statt der Bilanz Solar − Netz + Batterie. Voraussetzung: die Archivierung ist in der InverterHub-Instanz eingeschaltet.

@@ -852,7 +852,7 @@ class NRGDashboardTile extends IPSModule
             $house = $pv - $gridEff + ($batEff ?? 0.0);
             if ($house <= 0 && $pv > 50) {
                 $line = '⚠️ Berechnete Hauslast ' . $fmt($house) . ' (Solar ' . $fmt($pv) . ' − Netz ' . $fmt($gridEff)
-                    . ' + Batterie ' . $fmt($batEff ?? 0.0) . ') - bei laufender Erzeugung ist das unplausibel. Meist steht eine Richtung falsch (Netz oder Batterie), oder eine Variable liefert eine andere Größe. Zu den Rohwerten oben bitte Quelle und Vorzeichen prüfen.';
+                    . ' + Batterie ' . $fmt($batEff ?? 0.0) . ') - bei laufender Erzeugung ist das unplausibel. Möglich ist, dass eine Quelle fehlt (zum Beispiel ein nicht gemessener Wechselrichter oder Erzeuger, dessen Leistung in der Batterie steckt, aber nicht in der Solar-Summe) oder dass eine Richtung nicht zu den Rohwerten oben passt. Bitte Quellen und Vorzeichen prüfen.';
             } else {
                 $line = 'Berechnete Hauslast aktuell ' . $fmt($house) . ' (Solar − Netz + Batterie).';
             }
