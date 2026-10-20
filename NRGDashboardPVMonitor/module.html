@@ -4183,7 +4183,7 @@
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
           document.getElementById('ampelStrip').style.display = 'none';
-          el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
+          el.innerHTML = '<div class="empty">' + noPlanText(null) + '</div>';
           return;
         }
         // Tagesplan nicht ewig halten (Fund EMS, 10.10.2026: in einer ueber Mitternacht
@@ -4233,7 +4233,7 @@
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
           document.getElementById('ampelStrip').style.display = 'none';
-          el.innerHTML = '<div class="empty">Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)</div>';
+          el.innerHTML = '<div class="empty">' + noPlanText(dp) + '</div>';
           return;
         }
         var dpDay = dayPlanForSelectedDay(dp);
@@ -4719,6 +4719,12 @@
         render();
       };
     });
+    // Grund aus EMS_GetDayPlan 1.3 (reason), sonst der bisherige Pauschalsatz. Text wird escaped.
+    function noPlanText(dp) {
+      var r = (dp && dp.planReason) || (dayPlanCache && dayPlanCache.planReason) || '';
+      if (r) { return String(r).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+      return 'Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)';
+    }
     function sizeAmpelChart(containerId) {
       var el = document.getElementById(containerId);
       var inst = el && el._ampelChart;

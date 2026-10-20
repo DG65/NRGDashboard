@@ -2048,6 +2048,11 @@ class NRGDashboardPVMonitor extends IPSModule
             $plan = @EMS_GetDayPlan($emsId);
             if (is_array($plan) && isset($plan['slots']) && is_array($plan['slots'])) {
                 $out['hasEms'] = true;
+                // EMS_GetDayPlan Vertrag 1.3 (optional, EMS 0.75.6): ohne Plan nennt 'reason' den Grund im Klartext.
+                // Aeltere EMS-Versionen liefern das Feld nicht - dann bleibt der pauschale Satz im Frontend.
+                if (empty($plan['slots']) && isset($plan['reason']) && is_string($plan['reason']) && trim($plan['reason']) !== '') {
+                    $out['planReason'] = trim($plan['reason']);
+                }
                 // Selbstbeschreibender Umrechnungsfaktor statt einer hart codierten
                 // Annahme (Lehre aus zwei aufeinanderfolgenden Skalierungsfehlern,
                 // 20.08.2026 - einer bei uns, einer bei EMS selbst, beide unbemerkt

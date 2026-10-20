@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.41 (2026-10-20)
+
+- PV-Monitoring, Reiter „Tagesplan“: Ohne Plan zeigt der Reiter den Grund aus EMS_GetDayPlan (Vertrag 1.3, ab EMS 0.75.6: zum Beispiel Preisoptimierung oder Batteriespeicher im EMS ausgeschaltet) statt des pauschalen Satzes „EMS installieren/konfigurieren“. Ältere EMS-Versionen liefern den Grund nicht, dort bleibt der bisherige Text.
+
 ## 0.9.170-beta.40 (2026-10-19)
 
 - PV-Monitoring, Ansichten Woche/Monat/Jahr: „PV erwartet“ erscheint in der Legende nur noch, wenn die Reihe Daten hat (Einstrahlungs-Variable vorhanden oder Werte da). Vorher stand sie auch ohne Einstrahlungssensor in der Legende, obwohl sie leer blieb.
