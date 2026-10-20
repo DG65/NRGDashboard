@@ -258,22 +258,38 @@
   #scenarioInfoRow .scenItem { display: flex; align-items: center; gap: 5px; }
   #scenarioInfoRow .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
   #planKeyRow .legItem { cursor: default; }
-  /* Editor fuer manuelle Tagesplan-Eintraege (20.10.2026) - gleiche Rundung/Rahmen/Hintergruende wie Auswahlfelder und Kacheln dieses Moduls */
-  #manualPanel { margin-top: 10px; margin-bottom: 56px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127,135,145,.30); background: rgba(127,135,145,.07); font-size: 12px; text-align: left; }
-  #manualPanel .mpTitle { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
-  #manualPanel .mpHint { font-size: 11px; opacity: .7; margin-bottom: 8px; }
-  #manualPanel .mpRow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 0; border-top: 1px solid rgba(127,135,145,.20); }
-  #manualPanel .mpRow input.pick, #manualPanel .mpRow select.sel { font-size: 12px; padding: 3px 7px; }
-  #manualPanel .mpRow select.sel { padding-right: 24px; }
-  #manualPanel .mpTime { width: 56px; text-align: center; }
-  #manualPanel .mpPow { width: 76px; text-align: right; }
-  #manualPanel .mpLab { opacity: .65; font-size: 11px; }
-  #manualPanel .mpSt { flex: 1 0 100%; font-size: 11px; opacity: .8; }
+  /* Grafischer Editor fuer manuelle Tagesplan-Eintraege (20.10.2026): Streifen direkt unter der Zeitachse des Tagesplans, links/rechts
+     wie der Ampelstreifen an die Plotflaeche der Engine angepasst; Rundung, Rahmen und Hintergruende wie die Auswahlfelder dieses Moduls. */
+  #manualPanel { margin: 4px 0 6px; font-size: 12px; text-align: left; }
+  #manualPanel .mpHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 12px; margin: 2px 0 4px; }
+  #manualPanel .mpTitle { font-weight: 700; font-size: 13px; }
+  #manualPanel .mpHint { font-size: 11px; opacity: .7; }
+  #manualPanel .mpWrap { position: relative; height: 46px; margin: 2px 0 2px; user-select: none; -webkit-user-select: none; }
+  #manualPanel .mpTrack { position: absolute; top: 0; height: 30px; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.10); overflow: hidden; touch-action: none; cursor: crosshair; }
+  #manualPanel .mpTick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(127,135,145,.28); pointer-events: none; }
+  #manualPanel .mpPast { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(60,64,70,.55); pointer-events: none; }
+  #manualPanel .mpNow { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fb8c00; pointer-events: none; }
+  #manualPanel .mpAxis { position: absolute; top: 31px; height: 14px; font-size: 10px; opacity: .65; pointer-events: none; }
+  #manualPanel .mpAxis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  #manualPanel .mpBar { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; border: 1px solid rgba(255,255,255,.45); box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #111; overflow: hidden; white-space: nowrap; cursor: grab; }
+  #manualPanel .mpBar.sel { outline: 2px solid #fff; outline-offset: -2px; z-index: 2; }
+  #manualPanel .mpBar.bad { border: 2px solid #e53935; }
+  #manualPanel .mpBar.new { opacity: .6; pointer-events: none; }
+  #manualPanel .mpBar .mpH { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+  #manualPanel .mpBar .mpH.l { left: 0; } #manualPanel .mpBar .mpH.r { right: 0; }
+  #manualPanel .mpCard { margin: 6px 0; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(127,135,145,.30); background: rgba(127,135,145,.07); }
+  #manualPanel .mpRowC { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  #manualPanel .mpSt { font-size: 11px; opacity: .8; margin-top: 4px; }
   #manualPanel .mpSt.bad { color: #ef9a9a; opacity: 1; }
   #manualPanel .mpSt.warn { color: #ffcc80; opacity: 1; }
-  #manualPanel .mpErr { color: #ef9a9a; font-size: 11px; margin-top: 6px; }
-  #manualPanel .mpBtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  #manualPanel .mpLab { opacity: .65; font-size: 11px; }
+  #manualPanel input.pick { font-size: 12px; padding: 3px 7px; }
+  #manualPanel .mpPow { width: 76px; text-align: right; }
+  #manualPanel .mpErr { color: #ef9a9a; font-size: 11px; margin-top: 4px; }
+  #manualPanel .mpBtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
   #manualPanel button.qday.danger { border-color: rgba(229,115,115,.5); }
+  #manualPanel .mpAct { display: inline-flex; align-items: center; gap: 5px; }
+  #manualPanel .mpAct .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
   /* StromGedacht-Netzampel als Zusatzleiste im Tagesplan (21./22.08.2026,
      relayed ueber die StromGedacht-Sitzung) - eigene ECharts/Highcharts-
      Instanz mit demselben Zeitraster und denselben Grid-Raendern wie das
@@ -552,10 +568,10 @@
           <button data-unit="kw">Ø kW</button>
         </div>
         <div id="ampelStrip" class="ampelStrip" style="display:none"></div>
+        <div id="manualPanel" style="display:none"></div>
         <div id="legendRow"></div>
         <div id="spotCredit" style="display:none; font-size:10px; opacity:.6; text-align:center; margin-top:2px"></div>
         <div id="planKeyRow" style="display:none"></div>
-        <div id="manualPanel" style="display:none"></div>
         <div id="scenarioInfoRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
@@ -4810,64 +4826,194 @@
       }
       if (curTab === 'tagesplan') { renderManual(); }
     }
+    // ---- Grafischer Editor im Tagesplan: Streifen unter der Zeitachse, 15-Minuten-Raster ----
+    // Ziehen auf freier Flaeche legt einen Eintrag an, Anklicken waehlt ihn (Aktion/Leistung/"Jeden Tag"/Loeschen),
+    // Raender ziehen = verlaengern/verkuerzen, Ziehen in der Mitte = verschieben. Bearbeitet wird der angezeigte Tag
+    // (Heute/Morgen); heute sind vergangene Viertelstunden gesperrt. Gespeichert wird erst mit "Speichern".
+    var mpSel = -1, mpDrag = null;
+    function mpDayInfo() {
+      var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + tagesplanDay);
+      var e = new Date(d); e.setDate(e.getDate() + 1);
+      var str = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      return { start: d.getTime(), end: e.getTime(), date: d, str: str };
+    }
+    function mpMs(day, m) { return new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate(), 0, m, 0, 0).getTime(); }
+    function mpPct(day, m) { return ((mpMs(day, m) - day.start) / (day.end - day.start)) * 100; }
+    function mpParse(t, def) { if (t === '' || t === null || t === undefined) { return def; } var m = /^(\d{1,2}):(\d{2})$/.exec(String(t)); return m ? (+m[1]) * 60 + (+m[2]) : def; }
+    function mpFmt(m) { if (m >= 1440) { return '24:00'; } return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+    function mpMinFor(day) { if (tagesplanDay !== 0) { return 0; } var n = new Date(); return Math.floor((n.getHours() * 60 + n.getMinutes()) / 15) * 15; }
+    function mpVisible(e, day) { return e.date === '' || e.date === day.str; }
+    function mpMinutes(e) { return { a: mpParse(e.from, 0), b: mpParse(e.to, 1440) }; }
+    function mpDefaultAction(plan) { var d = null; (plan.actions || []).forEach(function (a) { if (a.value === 2) { d = a.value; } }); return d !== null ? d : ((plan.actions || [])[0] ? plan.actions[0].value : 0); }
+    function mpLimits(draft, day, skipIdx, ref) {
+      // Nachbarn auf demselben Tag: kein Ueberlappen (EMS lehnt es ab), auch nicht "Jeden Tag" gegen ein Datum
+      var lo = 0, hi = 1440;
+      draft.forEach(function (o, i) {
+        if (i === skipIdx || !mpVisible(o, day)) { return; }
+        var m = mpMinutes(o);
+        if (m.b <= ref) { lo = Math.max(lo, m.b); }
+        if (m.a >= ref) { hi = Math.min(hi, m.a); }
+      });
+      return { lo: lo, hi: hi };
+    }
+    function mpPointerMin(track, ev, day) {
+      var r = track.getBoundingClientRect();
+      var f = Math.max(0, Math.min(1, (ev.clientX - r.left) / Math.max(1, r.width)));
+      var ms = day.start + f * (day.end - day.start);
+      if (f >= 0.9999) { return 1440; }
+      var d = new Date(ms); return Math.floor((d.getHours() * 60 + d.getMinutes()) / 15) * 15;
+    }
+    function mpDrawBars(track, day, plan, draft) {
+      Array.prototype.forEach.call(track.querySelectorAll('.mpBar'), function (n) { n.parentNode.removeChild(n); });
+      var minM = mpMinFor(day);
+      draft.forEach(function (e, i) {
+        if (!mpVisible(e, day)) { return; }
+        var m = mpMinutes(e), act = planOpInfo(e.action);
+        var b = mpEl('div', 'mpBar' + (i === mpSel ? ' sel' : '') + (manualErrors.some(function (x) { return x.idx === i; }) ? ' bad' : ''));
+        b.style.left = mpPct(day, m.a) + '%'; b.style.width = (mpPct(day, m.b) - mpPct(day, m.a)) + '%'; b.style.background = act.color;
+        var lab = (e.date === '' ? '∞ ' : '') + act.name.replace(/ \(.*\)$/, '');
+        if (e.action === 2 && e.power > 0) { lab += ' ' + (e.power / 1000).toFixed(e.power >= 10000 ? 0 : 1).replace('.', ',') + ' kW'; }
+        b.textContent = lab;
+        b.title = (e.date === '' ? 'Jeden Tag ' : '') + mpFmt(m.a) + '–' + mpFmt(m.b) + ' ' + act.name + (e.srv && e.srv.text ? '\n' + e.srv.text : '');
+        var hl = mpEl('div', 'mpH l'), hr = mpEl('div', 'mpH r'); b.appendChild(hl); b.appendChild(hr);
+        var canEdit = m.b > minM;
+        b.onpointerdown = function (ev) {
+          ev.stopPropagation(); if (manualSaving) { return; }
+          mpSel = i;
+          var edge = ev.target === hl ? 'l' : (ev.target === hr ? 'r' : 'm');
+          if (!canEdit) { renderManual(); return; }
+          mpDrag = { type: edge, idx: i, startMin: mpPointerMin(track, ev, day), a: m.a, b: m.b, moved: false };
+          try { track.setPointerCapture(ev.pointerId); } catch (x) {}
+          ev.preventDefault();
+        };
+        track.appendChild(b);
+      });
+    }
     function renderManual() {
       var box = document.getElementById('manualPanel');
       if (!box) { return; }
+      if (mpDrag) { return; }   // waehrend des Ziehens nicht neu aufbauen
       if (curTab !== 'tagesplan' || !lastData || !lastData.hasManualPlan || tagesplanDay < 0) { box.style.display = 'none'; return; }
       box.style.display = '';
       if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', 'Lade manuelle Einträge…')); return; }
       box.innerHTML = '';
-      box.appendChild(mpEl('div', 'mpTitle', 'Manuelle Einträge'));
-      if (!manualCache.available) { box.appendChild(mpEl('div', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); return; }
-      var plan = manualCache.plan, draft = mpDraft(), idx;
-      box.appendChild(mpEl('div', 'mpHint', 'Beladen und Entladen von Hand für einen Zeitraum festlegen. Manuelle Einträge haben Vorrang vor der automatischen Planung, nicht vor § 14a und nicht vor Grid Rewards. Datum leer = jeden Tag, Ende leer = bis Mitternacht. Der Speicher wird dabei nicht ins Netz entladen.'));
-      if (!draft.length) { box.appendChild(mpEl('div', 'mpHint', 'Keine manuellen Einträge.')); }
-      draft.forEach(function (e, i) {
-        var row = mpEl('div', 'mpRow');
-        var dsel = mpEl('select', 'sel'); [['', 'Jeden Tag'], ['d', 'Am Datum']].forEach(function (o) { var op = mpEl('option', '', o[1]); op.value = o[0]; dsel.appendChild(op); });
-        dsel.value = e.date ? 'd' : '';
-        var din = mpEl('input', 'pick'); din.type = 'date'; din.value = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : mpToday(); din.style.display = e.date ? '' : 'none';
-        dsel.onchange = function () { e.date = dsel.value === 'd' ? din.value : ''; e.srv = null; renderManual(); };
-        din.onchange = function () { e.date = din.value; e.srv = null; renderManual(); };
-        var fin = mpEl('input', 'pick mpTime'); fin.type = 'text'; fin.value = e.from; fin.placeholder = '00:00'; fin.maxLength = 5;
-        var tin = mpEl('input', 'pick mpTime'); tin.type = 'text'; tin.value = e.to; tin.placeholder = '24:00'; tin.maxLength = 5;
-        fin.onchange = function () { e.from = fin.value.trim(); e.srv = null; renderManual(); };
-        tin.onchange = function () { e.to = tin.value.trim(); e.srv = null; renderManual(); };
-        var asel = mpEl('select', 'sel'); (plan.actions || []).forEach(function (a) { var op = mpEl('option', '', a.label || a.key); op.value = String(a.value); asel.appendChild(op); });
-        asel.value = String(e.action);
-        asel.onchange = function () { e.action = parseInt(asel.value, 10); e.srv = null; renderManual(); };
-        row.appendChild(dsel); row.appendChild(din);
-        row.appendChild(mpEl('span', 'mpLab', 'von')); row.appendChild(fin);
-        row.appendChild(mpEl('span', 'mpLab', 'bis')); row.appendChild(tin);
-        row.appendChild(asel);
+      var day = mpDayInfo();
+      var head = mpEl('div', 'mpHead'); head.appendChild(mpEl('span', 'mpTitle', 'Manuelle Einträge – ' + tagesplanLabel(tagesplanDay)));
+      box.appendChild(head);
+      if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); return; }
+      var plan = manualCache.plan, draft = mpDraft();
+      head.appendChild(mpEl('span', 'mpHint', 'Zeitraum im Streifen ziehen, dann die Aktion wählen. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'));
+      // Streifen
+      var geo = (lastData.engine === 'highcharts') ? [55, 110] : [46, 60];
+      var wrap = mpEl('div', 'mpWrap'), track = mpEl('div', 'mpTrack');
+      track.style.left = geo[0] + 'px'; track.style.right = geo[1] + 'px';
+      for (var h = 0; h <= 24; h += 3) {
+        var tk = mpEl('div', 'mpTick'); tk.style.left = mpPct(day, h * 60) + '%'; track.appendChild(tk);
+      }
+      var minM = mpMinFor(day);
+      if (tagesplanDay === 0) {
+        var past = mpEl('div', 'mpPast'); past.style.width = mpPct(day, minM) + '%'; track.appendChild(past);
+        var nowEl = mpEl('div', 'mpNow'); nowEl.style.left = ((Date.now() - day.start) / (day.end - day.start) * 100) + '%'; track.appendChild(nowEl);
+      }
+      var axis = mpEl('div', 'mpAxis'); axis.style.left = geo[0] + 'px'; axis.style.right = geo[1] + 'px';
+      for (var hh = 0; hh <= 24; hh += 3) { var sp = mpEl('span', '', ('0' + hh).slice(-2)); sp.style.left = mpPct(day, hh * 60) + '%'; axis.appendChild(sp); }
+      mpDrawBars(track, day, plan, draft);
+      wrap.appendChild(track); wrap.appendChild(axis); box.appendChild(wrap);
+
+      // Zeigerbedienung auf dem Streifen
+      var preview = null;
+      var drawPreview = function (a, b) {
+        if (!preview) { preview = mpEl('div', 'mpBar new'); preview.style.background = planOpInfo(mpDefaultAction(plan)).color; track.appendChild(preview); }
+        preview.style.left = mpPct(day, a) + '%'; preview.style.width = (mpPct(day, b) - mpPct(day, a)) + '%';
+      };
+      track.onpointerdown = function (ev) {
+        if (manualSaving) { return; }
+        var m = mpPointerMin(track, ev, day);
+        if (m >= 1440) { m = 1425; }
+        if (m < minM) { return; }
+        var inside = draft.some(function (o) { if (!mpVisible(o, day)) { return false; } var mm = mpMinutes(o); return m >= mm.a && m < mm.b; });
+        if (inside) { return; }
+        var lim = mpLimits(draft, day, -1, m);
+        mpDrag = { type: 'new', start: m, lo: Math.max(lim.lo, minM), hi: lim.hi, a: m, b: m + 15 };
+        drawPreview(mpDrag.a, mpDrag.b);
+        try { track.setPointerCapture(ev.pointerId); } catch (x) {}
+        ev.preventDefault();
+      };
+      track.onpointermove = function (ev) {
+        if (!mpDrag) { return; }
+        var cur = mpPointerMin(track, ev, day);
+        if (mpDrag.type === 'new') {
+          if (cur >= 1440) { cur = 1425; }
+          var a = Math.min(mpDrag.start, cur), b = Math.max(mpDrag.start, cur) + 15;
+          mpDrag.a = Math.max(mpDrag.lo, a); mpDrag.b = Math.min(mpDrag.hi, b);
+          if (mpDrag.b <= mpDrag.a) { mpDrag.b = mpDrag.a + 15; }
+          drawPreview(mpDrag.a, mpDrag.b);
+          return;
+        }
+        var e = draft[mpDrag.idx]; if (!e) { return; }
+        var lim = mpLimits(draft, day, mpDrag.idx, (mpDrag.a + mpDrag.b) / 2);
+        var lo = Math.max(lim.lo, minM), hi = lim.hi, na = mpDrag.a, nb = mpDrag.b, d = cur - mpDrag.startMin;
+        if (mpDrag.type === 'l') { na = Math.max(lo, Math.min(mpDrag.b - 15, mpDrag.a + d)); }
+        else if (mpDrag.type === 'r') { nb = Math.min(hi, Math.max(mpDrag.a + 15, mpDrag.b + d)); }
+        else { var len = mpDrag.b - mpDrag.a; na = Math.max(lo, Math.min(hi - len, mpDrag.a + d)); nb = na + len; }
+        if (na !== mpMinutes(e).a || nb !== mpMinutes(e).b) {
+          e.from = mpFmt(na); e.to = mpFmt(nb); e.srv = null; mpDrag.moved = true; mpDrawBars(track, day, plan, draft);
+        }
+      };
+      track.onpointerup = track.onpointercancel = function (ev) {
+        if (!mpDrag) { return; }
+        var dr = mpDrag; mpDrag = null;
+        try { track.releasePointerCapture(ev.pointerId); } catch (x) {}
+        if (dr.type === 'new') {
+          draft.push({ date: day.str, from: mpFmt(dr.a), to: mpFmt(dr.b), action: mpDefaultAction(plan), power: 0, srv: null });
+          manualDraft = draft; mpSel = draft.length - 1;
+        }
+        renderManual();
+      };
+
+      // Auswahl: Aktion, Leistung, Jeden Tag, Loeschen
+      var e = (mpSel >= 0 && mpSel < draft.length && mpVisible(draft[mpSel], day)) ? draft[mpSel] : null;
+      if (e) {
+        var card = mpEl('div', 'mpCard'), row = mpEl('div', 'mpRowC');
+        var mm = mpMinutes(e);
+        row.appendChild(mpEl('b', '', mpFmt(mm.a) + '–' + mpFmt(mm.b)));
+        (plan.actions || []).forEach(function (a) {
+          var info = planOpInfo(a.value);
+          var btn = mpEl('button', 'qday' + (e.action === a.value ? ' active' : '')); btn.disabled = manualSaving;
+          var sp2 = mpEl('span', 'mpAct'); var dot = mpEl('span', 'dot'); dot.style.background = info.color; sp2.appendChild(dot); sp2.appendChild(document.createTextNode(info.name.replace(/ \(.*\)$/, '')));
+          btn.appendChild(sp2); btn.title = a.label || '';
+          btn.onclick = function () { e.action = a.value; e.srv = null; renderManual(); };
+          row.appendChild(btn);
+        });
         var act = mpAction(plan, e.action);
         if (act && act.usesPower) {
           var pin = mpEl('input', 'pick mpPow'); pin.type = 'number'; pin.min = '0'; pin.step = '100'; pin.value = String(e.power || 0); pin.title = 'Leistung in W, 0 = so viel wie möglich';
           pin.onchange = function () { e.power = parseInt(pin.value, 10) || 0; e.srv = null; renderManual(); };
-          row.appendChild(pin); row.appendChild(mpEl('span', 'mpLab', 'W (0 = max.)'));
+          row.appendChild(pin); row.appendChild(mpEl('span', 'mpLab', 'W (0 = so viel wie möglich)'));
         }
+        var ev1 = mpEl('label', 'mpLab'); var cb = mpEl('input'); cb.type = 'checkbox'; cb.checked = (e.date === ''); cb.disabled = manualSaving;
+        cb.onchange = function () { e.date = cb.checked ? '' : day.str; e.srv = null; renderManual(); };
+        ev1.appendChild(cb); ev1.appendChild(document.createTextNode(' Jeden Tag')); row.appendChild(ev1);
         var del = mpEl('button', 'qday danger', 'Löschen'); del.disabled = manualSaving;
-        del.onclick = function () { draft.splice(i, 1); renderManual(); };
+        del.onclick = function () { draft.splice(mpSel, 1); mpSel = -1; renderManual(); };
         row.appendChild(del);
-        // Status: gespeicherte Eintraege zeigen den EMS-Text, geaenderte "noch nicht gespeichert"; Fehler mit Pfad
-        var errs = manualErrors.filter(function (x) { return x.idx === i; });
-        if (errs.length) { errs.forEach(function (x) { row.appendChild(mpEl('div', 'mpSt bad', x.text)); }); }
-        else if (e.srv) {
-          var cls = (!e.srv.ok || e.srv.state === 'invalid') ? 'mpSt bad' : ((e.srv.state === 'past') ? 'mpSt warn' : 'mpSt');
-          row.appendChild(mpEl('div', cls, e.srv.text || ''));
-        } else { row.appendChild(mpEl('div', 'mpSt', 'Noch nicht gespeichert.')); }
-        box.appendChild(row);
-      });
-      var gen = manualErrors.filter(function (x) { return x.idx < 0; });
-      gen.forEach(function (x) { box.appendChild(mpEl('div', 'mpErr', x.text)); });
+        var done = mpEl('button', 'qday', 'Fertig'); done.onclick = function () { mpSel = -1; renderManual(); }; row.appendChild(done);
+        card.appendChild(row);
+        var errs = manualErrors.filter(function (x) { return x.idx === mpSel; });
+        if (errs.length) { errs.forEach(function (x) { card.appendChild(mpEl('div', 'mpSt bad', x.text)); }); }
+        else if (e.srv) { card.appendChild(mpEl('div', (!e.srv.ok || e.srv.state === 'invalid') ? 'mpSt bad' : (e.srv.state === 'past' ? 'mpSt warn' : 'mpSt'), e.srv.text || '')); }
+        else { card.appendChild(mpEl('div', 'mpSt', 'Noch nicht gespeichert.')); }
+        box.appendChild(card);
+      }
+      // Eintraege an anderen Tagen bleiben unveraendert erhalten
+      var others = draft.filter(function (o) { return !mpVisible(o, day); }).length;
+      if (others) { box.appendChild(mpEl('div', 'mpHint', others + (others === 1 ? ' weiterer Eintrag liegt' : ' weitere Einträge liegen') + ' an anderen Tagen und bleibt unverändert.')); }
+      manualErrors.filter(function (x) { return x.idx < 0 || x.idx >= draft.length; }).forEach(function (x) { box.appendChild(mpEl('div', 'mpErr', x.text)); });
       var btns = mpEl('div', 'mpBtns');
-      var add = mpEl('button', 'qday', 'Eintrag hinzufügen'); add.disabled = manualSaving || draft.length >= (plan.maxEntries || 50);
-      add.onclick = function () { var first = (plan.actions || [])[0]; draft.push({ date: '', from: '', to: '', action: first ? first.value : 0, power: 0, srv: null }); manualDraft = draft; renderManual(); };
-      var save = mpEl('button', 'qday active', manualSaving ? 'Sende…' : 'Speichern'); save.disabled = manualSaving || !mpDirty();
-      save.onclick = mpSave;
+      var save = mpEl('button', 'qday active', manualSaving ? 'Sende…' : 'Speichern'); save.disabled = manualSaving || !mpDirty(); save.onclick = mpSave;
       var rev = mpEl('button', 'qday', 'Verwerfen'); rev.disabled = manualSaving || !mpDirty();
-      rev.onclick = function () { manualDraft = null; manualErrors = []; manualStatus = ''; renderManual(); };
-      btns.appendChild(add); btns.appendChild(save); btns.appendChild(rev);
+      rev.onclick = function () { manualDraft = null; manualErrors = []; manualStatus = ''; mpSel = -1; renderManual(); };
+      btns.appendChild(save); btns.appendChild(rev);
       if (manualStatus) { btns.appendChild(mpEl('span', 'mpLab', manualStatus)); }
       box.appendChild(btns);
     }
