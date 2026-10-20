@@ -1575,6 +1575,16 @@ gleiche IPSView-Fähigkeit.
   Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
+- **Manuelle Tagesplan-Einträge (`NRGDashboardPVMonitor`):** mit EMS ab 0.76.0
+  (Vertrag `manualplan` 1.0, `EMS_GetManualPlan`/`EMS_SetManualPlan`) steht im
+  Reiter „Tagesplan“ unter dem Diagramm ein Editor für Beladen und Entladen von
+  Hand: Datum (oder „Jeden Tag“), von/bis, Aktion (Automatik, Netz laden mit
+  Leistung, Akku halten). Je Eintrag eine Statuszeile aus dem EMS („liegt in der
+  Vergangenheit“ und Ähnliches), Fehler erscheinen mit ihrem Pfad am betroffenen
+  Eintrag. Speichern ersetzt die ganze Liste; ein zwischenzeitlich geänderter
+  Plan lädt neu. Manuelle Einträge haben Vorrang vor der automatischen Planung,
+  nicht vor § 14a und nicht vor Grid Rewards; Entladen ins Netz gibt es bewusst
+  nicht. Bei älterem EMS erscheint „EMS aktualisieren“.
 - **Wochen-Zeitplan (`NRGDashboardWPMonitor`):** bei HeishaMon ab 1.39.0
   (Vertrag `heatpump` 1.16, `HEISHA_GetSchedule`/`HEISHA_SetSchedule`)
   erscheint der Reiter „Zeitplan“, ein grafischer Wochen-Editor für ECO /
