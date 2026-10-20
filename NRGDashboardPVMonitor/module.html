@@ -4818,6 +4818,9 @@
           // Aktualisieren haengt am Speichern: sofort den Tagesplan holen (EMS hat ihn ggf. schon neu gerechnet) und nach einem
           // EMS-Zyklus (ca. 30 s) nochmals, bis der neue Eintrag im Plan steht.
           dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); }
+          // Aktualisieren hinter dem Speichern: sofort den Tagesplan neu holen (die Eintraege kamen mit der Antwort schon mit) und nach
+          // dem EMS-Zyklus (ca. 30 s), wenn der Plan neu gerechnet ist, noch einmal.
+          dayPlanLoadedAt = 0; requestAction('dayPlanLoad', '{}');
           setTimeout(function () { dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); } }, 35000);
         } else {
           var errs = r.errors || [];
