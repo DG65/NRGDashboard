@@ -258,25 +258,24 @@
   #scenarioInfoRow .scenItem { display: flex; align-items: center; gap: 5px; }
   #scenarioInfoRow .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
   #planKeyRow .legItem { cursor: default; }
-  /* Grafischer Editor fuer manuelle Tagesplan-Eintraege (20.10.2026): Streifen direkt unter der Zeitachse des Tagesplans, links/rechts
-     wie der Ampelstreifen an die Plotflaeche der Engine angepasst; Rundung, Rahmen und Hintergruende wie die Auswahlfelder dieses Moduls. */
+  /* Grafischer Editor fuer manuelle Tagesplan-Eintraege (20.10.2026): Ebene DIREKT UEBER der Plotflaeche des Tagesplans, damit Zeitraum und
+     Strompreisverlauf zusammen sichtbar sind. Aus (Standard) nur Anzeige, mit "Bearbeiten" nimmt die Ebene Ziehen/Anklicken entgegen und das
+     Diagramm selbst ruht (keine Tooltips). Rundung, Rahmen und Hintergruende wie die Auswahlfelder dieses Moduls. */
   #manualPanel { margin: 4px 0 6px; font-size: 12px; text-align: left; }
-  #manualPanel .mpHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 12px; margin: 2px 0 4px; }
+  #manualPanel .mpHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; margin: 2px 0 4px; }
   #manualPanel .mpTitle { font-weight: 700; font-size: 13px; }
   #manualPanel .mpHint { font-size: 11px; opacity: .7; }
-  #manualPanel .mpWrap { position: relative; height: 46px; margin: 2px 0 2px; user-select: none; -webkit-user-select: none; }
-  #manualPanel .mpTrack { position: absolute; top: 0; height: 30px; border-radius: 6px; border: 1px solid rgba(127,135,145,.35); background: rgba(127,135,145,.10); overflow: hidden; touch-action: none; cursor: crosshair; }
-  #manualPanel .mpTick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(127,135,145,.28); pointer-events: none; }
-  #manualPanel .mpPast { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(60,64,70,.55); pointer-events: none; }
-  #manualPanel .mpNow { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fb8c00; pointer-events: none; }
-  #manualPanel .mpAxis { position: absolute; top: 31px; height: 14px; font-size: 10px; opacity: .65; pointer-events: none; }
-  #manualPanel .mpAxis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
-  #manualPanel .mpBar { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; border: 1px solid rgba(255,255,255,.45); box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #111; overflow: hidden; white-space: nowrap; cursor: grab; }
-  #manualPanel .mpBar.sel { outline: 2px solid #fff; outline-offset: -2px; z-index: 2; }
-  #manualPanel .mpBar.bad { border: 2px solid #e53935; }
-  #manualPanel .mpBar.new { opacity: .6; pointer-events: none; }
-  #manualPanel .mpBar .mpH { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
-  #manualPanel .mpBar .mpH.l { left: 0; } #manualPanel .mpBar .mpH.r { right: 0; }
+  #mpOverlay { position: absolute; z-index: 6; pointer-events: none; touch-action: none; }
+  #mpOverlay.on { pointer-events: auto; cursor: crosshair; outline: 2px dashed rgba(255,255,255,.35); outline-offset: -1px; }
+  #mpOverlay .mpPast { position: absolute; top: 0; bottom: 0; left: 0; background: rgba(60,64,70,.5); pointer-events: none; }
+  #mpOverlay .mpBar { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border-radius: 4px; border: 2px solid transparent; color: #fff; font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #000, 0 0 2px #000; padding: 2px 6px; overflow: hidden; white-space: nowrap; pointer-events: none; }
+  #mpOverlay.on .mpBar { pointer-events: auto; cursor: grab; }
+  #mpOverlay .mpBar.sel { outline: 2px solid #fff; outline-offset: -3px; z-index: 2; }
+  #mpOverlay .mpBar.bad { border-color: #e53935 !important; }
+  #mpOverlay .mpBar.new { opacity: .6; pointer-events: none; }
+  #mpOverlay .mpBar .mpH { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; display: none; }
+  #mpOverlay.on .mpBar .mpH { display: block; }
+  #mpOverlay .mpBar .mpH.l { left: 0; } #mpOverlay .mpBar .mpH.r { right: 0; }
   #manualPanel .mpCard { margin: 6px 0; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(127,135,145,.30); background: rgba(127,135,145,.07); }
   #manualPanel .mpRowC { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
   #manualPanel .mpSt { font-size: 11px; opacity: .8; margin-top: 4px; }
@@ -288,6 +287,8 @@
   #manualPanel .mpErr { color: #ef9a9a; font-size: 11px; margin-top: 4px; }
   #manualPanel .mpBtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
   #manualPanel button.qday.danger { border-color: rgba(229,115,115,.5); }
+  #manualPanel .mpAct { display: inline-flex; align-items: center; gap: 5px; }
+  #manualPanel .mpAct .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
   #manualPanel .mpAct { display: inline-flex; align-items: center; gap: 5px; }
   #manualPanel .mpAct .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
   /* StromGedacht-Netzampel als Zusatzleiste im Tagesplan (21./22.08.2026,
@@ -4826,11 +4827,12 @@
       }
       if (curTab === 'tagesplan') { renderManual(); }
     }
-    // ---- Grafischer Editor im Tagesplan: Streifen unter der Zeitachse, 15-Minuten-Raster ----
-    // Ziehen auf freier Flaeche legt einen Eintrag an, Anklicken waehlt ihn (Aktion/Leistung/"Jeden Tag"/Loeschen),
-    // Raender ziehen = verlaengern/verkuerzen, Ziehen in der Mitte = verschieben. Bearbeitet wird der angezeigte Tag
+    // ---- Grafischer Editor im Tagesplan: Ebene ueber der Plotflaeche, 15-Minuten-Raster ----
+    // Die Ebene liegt exakt auf der Plotflaeche des Tagesplan-Diagramms (Strompreis, SOC und Plan-Baender bleiben sichtbar). Mit
+    // "Bearbeiten" nimmt sie Ziehen auf freier Flaeche (neuer Eintrag), Anklicken (waehlen: Aktion/Leistung/"Jeden Tag"/Loeschen),
+    // Raender ziehen (verlaengern/verkuerzen) und Ziehen in der Mitte (verschieben) entgegen. Bearbeitet wird der angezeigte Tag
     // (Heute/Morgen); heute sind vergangene Viertelstunden gesperrt. Gespeichert wird erst mit "Speichern".
-    var mpSel = -1, mpDrag = null;
+    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null;
     function mpDayInfo() {
       var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + tagesplanDay);
       var e = new Date(d); e.setDate(e.getDate() + 1);
@@ -4856,21 +4858,39 @@
       });
       return { lo: lo, hi: hi };
     }
-    function mpPointerMin(track, ev, day) {
-      var r = track.getBoundingClientRect();
+    function mpPointerMin(ov, ev, day) {
+      var r = ov.getBoundingClientRect();
       var f = Math.max(0, Math.min(1, (ev.clientX - r.left) / Math.max(1, r.width)));
-      var ms = day.start + f * (day.end - day.start);
       if (f >= 0.9999) { return 1440; }
-      var d = new Date(ms); return Math.floor((d.getHours() * 60 + d.getMinutes()) / 15) * 15;
+      var d = new Date(day.start + f * (day.end - day.start)); return Math.floor((d.getHours() * 60 + d.getMinutes()) / 15) * 15;
     }
-    function mpDrawBars(track, day, plan, draft) {
-      Array.prototype.forEach.call(track.querySelectorAll('.mpBar'), function (n) { n.parentNode.removeChild(n); });
+    // Plotflaeche des aktuellen Diagramms relativ zu #chartcol (Engine-abhaengig, nicht geraten: Highcharts liefert plotLeft/Top/Width/Height,
+    // bei ECharts stehen die Raender im Tagesplan-Diagramm fest: left 46, right 60, top 28, bottom 32).
+    function mpPlotRect() {
+      var c = document.getElementById('chart'); if (!c) { return null; }
+      var l = c.offsetLeft, t = c.offsetTop, w = c.clientWidth, h = c.clientHeight;
+      if (chart && chartEngine === 'highcharts' && chart.plotWidth > 0) { return { left: l + chart.plotLeft, top: t + chart.plotTop, width: chart.plotWidth, height: chart.plotHeight }; }
+      return { left: l + 46, top: t + 28, width: Math.max(0, w - 46 - 60), height: Math.max(0, h - 28 - 32) };
+    }
+    function mpOverlayEl() {
+      var ov = document.getElementById('mpOverlay');
+      if (!ov) { ov = document.createElement('div'); ov.id = 'mpOverlay'; document.getElementById('chartcol').appendChild(ov); }
+      return ov;
+    }
+    function mpHideOverlay() { var ov = document.getElementById('mpOverlay'); if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); } }
+    function mpPlaceOverlay() {
+      var ov = document.getElementById('mpOverlay'), r = mpPlotRect(); if (!ov || !r) { return; }
+      ov.style.left = r.left + 'px'; ov.style.top = r.top + 'px'; ov.style.width = r.width + 'px'; ov.style.height = r.height + 'px';
+    }
+    function mpDrawBars(ov, day, plan, draft) {
+      Array.prototype.forEach.call(ov.querySelectorAll('.mpBar'), function (n) { n.parentNode.removeChild(n); });
       var minM = mpMinFor(day);
       draft.forEach(function (e, i) {
         if (!mpVisible(e, day)) { return; }
         var m = mpMinutes(e), act = planOpInfo(e.action);
         var b = mpEl('div', 'mpBar' + (i === mpSel ? ' sel' : '') + (manualErrors.some(function (x) { return x.idx === i; }) ? ' bad' : ''));
-        b.style.left = mpPct(day, m.a) + '%'; b.style.width = (mpPct(day, m.b) - mpPct(day, m.a)) + '%'; b.style.background = act.color;
+        b.style.left = mpPct(day, m.a) + '%'; b.style.width = (mpPct(day, m.b) - mpPct(day, m.a)) + '%';
+        b.style.background = act.color + '55'; b.style.borderColor = act.color;
         var lab = (e.date === '' ? '∞ ' : '') + act.name.replace(/ \(.*\)$/, '');
         if (e.action === 2 && e.power > 0) { lab += ' ' + (e.power / 1000).toFixed(e.power >= 10000 ? 0 : 1).replace('.', ',') + ' kW'; }
         b.textContent = lab;
@@ -4878,57 +4898,55 @@
         var hl = mpEl('div', 'mpH l'), hr = mpEl('div', 'mpH r'); b.appendChild(hl); b.appendChild(hr);
         var canEdit = m.b > minM;
         b.onpointerdown = function (ev) {
-          ev.stopPropagation(); if (manualSaving) { return; }
+          ev.stopPropagation(); if (manualSaving || !mpEdit) { return; }
           mpSel = i;
           var edge = ev.target === hl ? 'l' : (ev.target === hr ? 'r' : 'm');
           if (!canEdit) { renderManual(); return; }
-          mpDrag = { type: edge, idx: i, startMin: mpPointerMin(track, ev, day), a: m.a, b: m.b, moved: false };
-          try { track.setPointerCapture(ev.pointerId); } catch (x) {}
+          mpDrag = { type: edge, idx: i, startMin: mpPointerMin(ov, ev, day), a: m.a, b: m.b, moved: false };
+          try { ov.setPointerCapture(ev.pointerId); } catch (x) {}
           ev.preventDefault();
         };
-        track.appendChild(b);
+        ov.appendChild(b);
       });
     }
     function renderManual() {
       var box = document.getElementById('manualPanel');
       if (!box) { return; }
       if (mpDrag) { return; }   // waehrend des Ziehens nicht neu aufbauen
-      if (curTab !== 'tagesplan' || !lastData || !lastData.hasManualPlan || tagesplanDay < 0) { box.style.display = 'none'; return; }
+      if (curTab !== 'tagesplan' || !lastData || !lastData.hasManualPlan || tagesplanDay < 0) { box.style.display = 'none'; mpHideOverlay(); return; }
       box.style.display = '';
-      if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', 'Lade manuelle Einträge…')); return; }
+      if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', 'Lade manuelle Einträge…')); mpHideOverlay(); return; }
       box.innerHTML = '';
       var day = mpDayInfo();
       var head = mpEl('div', 'mpHead'); head.appendChild(mpEl('span', 'mpTitle', 'Manuelle Einträge – ' + tagesplanLabel(tagesplanDay)));
       box.appendChild(head);
-      if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); return; }
+      if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); mpHideOverlay(); return; }
       var plan = manualCache.plan, draft = mpDraft();
-      head.appendChild(mpEl('span', 'mpHint', 'Zeitraum im Streifen ziehen, dann die Aktion wählen. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'));
-      // Streifen
-      var geo = (lastData.engine === 'highcharts') ? [55, 110] : [46, 60];
-      var wrap = mpEl('div', 'mpWrap'), track = mpEl('div', 'mpTrack');
-      track.style.left = geo[0] + 'px'; track.style.right = geo[1] + 'px';
-      for (var h = 0; h <= 24; h += 3) {
-        var tk = mpEl('div', 'mpTick'); tk.style.left = mpPct(day, h * 60) + '%'; track.appendChild(tk);
-      }
-      var minM = mpMinFor(day);
-      if (tagesplanDay === 0) {
-        var past = mpEl('div', 'mpPast'); past.style.width = mpPct(day, minM) + '%'; track.appendChild(past);
-        var nowEl = mpEl('div', 'mpNow'); nowEl.style.left = ((Date.now() - day.start) / (day.end - day.start) * 100) + '%'; track.appendChild(nowEl);
-      }
-      var axis = mpEl('div', 'mpAxis'); axis.style.left = geo[0] + 'px'; axis.style.right = geo[1] + 'px';
-      for (var hh = 0; hh <= 24; hh += 3) { var sp = mpEl('span', '', ('0' + hh).slice(-2)); sp.style.left = mpPct(day, hh * 60) + '%'; axis.appendChild(sp); }
-      mpDrawBars(track, day, plan, draft);
-      wrap.appendChild(track); wrap.appendChild(axis); box.appendChild(wrap);
+      var tog = mpEl('button', 'qday' + (mpEdit ? ' active' : ''), mpEdit ? 'Bearbeiten beenden' : 'Bearbeiten');
+      tog.onclick = function () { mpEdit = !mpEdit; if (!mpEdit) { mpSel = -1; } renderManual(); };
+      head.appendChild(tog);
+      head.appendChild(mpEl('span', 'mpHint', mpEdit
+        ? 'Zeitraum im Diagramm ziehen, dann die Aktion wählen. Ränder ziehen = verlängern/verkürzen, Balken ziehen = verschieben. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'
+        : 'Eingetragene Zeiträume liegen als Balken im Diagramm. „Bearbeiten“ schaltet das Ziehen im Diagramm frei.'));
 
-      // Zeigerbedienung auf dem Streifen
+      // Ebene auf der Plotflaeche
+      var ov = mpOverlayEl(); ov.innerHTML = ''; ov.classList.toggle('on', !!mpEdit); mpPlaceOverlay();
+      var minM = mpMinFor(day);
+      if (tagesplanDay === 0 && mpEdit) {
+        var past = mpEl('div', 'mpPast'); past.style.width = mpPct(day, minM) + '%'; ov.appendChild(past);
+      }
+      mpDrawBars(ov, day, plan, draft);
+      if (mpSyncTimer) { clearTimeout(mpSyncTimer); }
+      mpSyncTimer = setTimeout(mpPlaceOverlay, 400);   // Highcharts baut das Diagramm asynchron: Lage danach nochmals abgleichen
+
       var preview = null;
       var drawPreview = function (a, b) {
-        if (!preview) { preview = mpEl('div', 'mpBar new'); preview.style.background = planOpInfo(mpDefaultAction(plan)).color; track.appendChild(preview); }
+        if (!preview) { preview = mpEl('div', 'mpBar new'); preview.style.background = planOpInfo(mpDefaultAction(plan)).color + '55'; preview.style.borderColor = planOpInfo(mpDefaultAction(plan)).color; ov.appendChild(preview); }
         preview.style.left = mpPct(day, a) + '%'; preview.style.width = (mpPct(day, b) - mpPct(day, a)) + '%';
       };
-      track.onpointerdown = function (ev) {
-        if (manualSaving) { return; }
-        var m = mpPointerMin(track, ev, day);
+      ov.onpointerdown = function (ev) {
+        if (manualSaving || !mpEdit) { return; }
+        var m = mpPointerMin(ov, ev, day);
         if (m >= 1440) { m = 1425; }
         if (m < minM) { return; }
         var inside = draft.some(function (o) { if (!mpVisible(o, day)) { return false; } var mm = mpMinutes(o); return m >= mm.a && m < mm.b; });
@@ -4936,12 +4954,12 @@
         var lim = mpLimits(draft, day, -1, m);
         mpDrag = { type: 'new', start: m, lo: Math.max(lim.lo, minM), hi: lim.hi, a: m, b: m + 15 };
         drawPreview(mpDrag.a, mpDrag.b);
-        try { track.setPointerCapture(ev.pointerId); } catch (x) {}
+        try { ov.setPointerCapture(ev.pointerId); } catch (x) {}
         ev.preventDefault();
       };
-      track.onpointermove = function (ev) {
+      ov.onpointermove = function (ev) {
         if (!mpDrag) { return; }
-        var cur = mpPointerMin(track, ev, day);
+        var cur = mpPointerMin(ov, ev, day);
         if (mpDrag.type === 'new') {
           if (cur >= 1440) { cur = 1425; }
           var a = Math.min(mpDrag.start, cur), b = Math.max(mpDrag.start, cur) + 15;
@@ -4957,13 +4975,13 @@
         else if (mpDrag.type === 'r') { nb = Math.min(hi, Math.max(mpDrag.a + 15, mpDrag.b + d)); }
         else { var len = mpDrag.b - mpDrag.a; na = Math.max(lo, Math.min(hi - len, mpDrag.a + d)); nb = na + len; }
         if (na !== mpMinutes(e).a || nb !== mpMinutes(e).b) {
-          e.from = mpFmt(na); e.to = mpFmt(nb); e.srv = null; mpDrag.moved = true; mpDrawBars(track, day, plan, draft);
+          e.from = mpFmt(na); e.to = mpFmt(nb); e.srv = null; mpDrag.moved = true; mpDrawBars(ov, day, plan, draft);
         }
       };
-      track.onpointerup = track.onpointercancel = function (ev) {
+      ov.onpointerup = ov.onpointercancel = function (ev) {
         if (!mpDrag) { return; }
         var dr = mpDrag; mpDrag = null;
-        try { track.releasePointerCapture(ev.pointerId); } catch (x) {}
+        try { ov.releasePointerCapture(ev.pointerId); } catch (x) {}
         if (dr.type === 'new') {
           draft.push({ date: day.str, from: mpFmt(dr.a), to: mpFmt(dr.b), action: mpDefaultAction(plan), power: 0, srv: null });
           manualDraft = draft; mpSel = draft.length - 1;
@@ -4972,7 +4990,7 @@
       };
 
       // Auswahl: Aktion, Leistung, Jeden Tag, Loeschen
-      var e = (mpSel >= 0 && mpSel < draft.length && mpVisible(draft[mpSel], day)) ? draft[mpSel] : null;
+      var e = (mpEdit && mpSel >= 0 && mpSel < draft.length && mpVisible(draft[mpSel], day)) ? draft[mpSel] : null;
       if (e) {
         var card = mpEl('div', 'mpCard'), row = mpEl('div', 'mpRowC');
         var mm = mpMinutes(e);
@@ -5017,6 +5035,7 @@
       if (manualStatus) { btns.appendChild(mpEl('span', 'mpLab', manualStatus)); }
       box.appendChild(btns);
     }
+    window.addEventListener('resize', function () { setTimeout(mpPlaceOverlay, 80); });
     function sizeAmpelChart(containerId) {
       var el = document.getElementById(containerId);
       var inst = el && el._ampelChart;

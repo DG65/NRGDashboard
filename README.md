@@ -1576,12 +1576,14 @@ gleiche IPSView-Fähigkeit.
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
 - **Manuelle Tagesplan-Einträge (`NRGDashboardPVMonitor`):** mit EMS ab 0.76.0
-  (Vertrag `manualplan` 1.0, `EMS_GetManualPlan`/`EMS_SetManualPlan`) steht im
-  Reiter „Tagesplan“ direkt unter der Zeitachse ein grafischer Streifen für
-  Beladen und Entladen von Hand, bedient wie der Wochen-Zeitplan der
-  Wärmepumpe: einen Zeitraum im Streifen ziehen (15-Minuten-Raster), dann die
+  (Vertrag `manualplan` 1.0, `EMS_GetManualPlan`/`EMS_SetManualPlan`) gibt es im
+  Reiter „Tagesplan“ einen grafischen Editor für Beladen und Entladen von
+  Hand direkt auf dem Diagramm, damit Zeitraum und Strompreisverlauf zusammen
+  sichtbar sind, bedient wie der Wochen-Zeitplan der Wärmepumpe: „Bearbeiten“
+  einschalten, einen Zeitraum im Diagramm ziehen (15-Minuten-Raster), dann die
   Aktion wählen (Automatik, Netz laden mit Leistung, Akku halten). Bestehende
-  Einträge erscheinen als farbige Balken in den Farben der Planaktionen; Balken
+  Einträge liegen als farbige Balken in den Farben der Planaktionen über dem
+  Diagramm; Balken
   anklicken zum Ändern oder Löschen, Ränder ziehen zum Verlängern oder
   Verkürzen, in der Mitte ziehen zum Verschieben. Bearbeitet wird der gerade
   angezeigte Tag (Heute/Morgen), „Jeden Tag“ ist ein Schalter im Eintrag;
