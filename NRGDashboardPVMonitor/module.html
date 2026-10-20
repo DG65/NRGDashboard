@@ -4797,7 +4797,7 @@
       manualSaving = true; manualErrors = []; manualStatus = 'Sende…';
       if (manualSaveTimer) { clearTimeout(manualSaveTimer); }
       manualSaveTimer = setTimeout(function () {
-        if (manualSaving) { manualSaving = false; manualStatus = 'Keine Antwort - der Editor funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser).'; renderManual(); }
+        if (manualSaving) { manualSaving = false; mpExitAfterSave = false; manualStatus = 'Keine Antwort - der Editor funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser).'; renderManual(); }
       }, 15000);
       requestAction('manualPlanSave', JSON.stringify({ revision: plan.revision, entries: entries }));
       renderManual();
@@ -4809,8 +4809,10 @@
         manualSaving = false; if (manualSaveTimer) { clearTimeout(manualSaveTimer); manualSaveTimer = null; }
         var r = d.result || {};
         manualErrors = [];
+        var exitWanted = mpExitAfterSave; mpExitAfterSave = false;
         if (r.ok) {
           manualDraft = null;
+          if (exitWanted) { mpEdit = false; mpSel = -1; }
           manualStatus = 'Gespeichert. Der Plan rechnet sich innerhalb von etwa 30 Sekunden neu.';
           setTimeout(function () { dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); } }, 35000);
         } else {
@@ -4832,7 +4834,7 @@
     // "Bearbeiten" nimmt sie Ziehen auf freier Flaeche (neuer Eintrag), Anklicken (waehlen: Aktion/Leistung/"Jeden Tag"/Loeschen),
     // Raender ziehen (verlaengern/verkuerzen) und Ziehen in der Mitte (verschieben) entgegen. Bearbeitet wird der angezeigte Tag
     // (Heute/Morgen); heute sind vergangene Viertelstunden gesperrt. Gespeichert wird erst mit "Speichern".
-    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null;
+    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null, mpExitAfterSave = false;
     function mpDayInfo() {
       var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + tagesplanDay);
       var e = new Date(d); e.setDate(e.getDate() + 1);
@@ -4922,8 +4924,15 @@
       box.appendChild(head);
       if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); mpHideOverlay(); return; }
       var plan = manualCache.plan, draft = mpDraft();
-      var tog = mpEl('button', 'qday' + (mpEdit ? ' active' : ''), mpEdit ? 'Bearbeiten beenden' : 'Bearbeiten');
-      tog.onclick = function () { mpEdit = !mpEdit; if (!mpEdit) { mpSel = -1; } renderManual(); };
+      // Mit ungespeicherten Aenderungen speichert der Knopf und beendet das Bearbeiten in einem Zug (bei Fehlern bleibt es offen)
+      var togDirty = mpEdit && mpDirty();
+      var tog = mpEl('button', 'qday' + (mpEdit ? ' active' : ''), !mpEdit ? 'Bearbeiten' : (togDirty ? 'Speichern und beenden' : 'Bearbeiten beenden'));
+      tog.disabled = manualSaving;
+      tog.onclick = function () {
+        if (!mpEdit) { mpEdit = true; renderManual(); return; }
+        if (mpDirty()) { mpExitAfterSave = true; mpSave(); return; }
+        mpEdit = false; mpSel = -1; renderManual();
+      };
       head.appendChild(tog);
       head.appendChild(mpEl('span', 'mpHint', mpEdit
         ? 'Zeitraum im Diagramm ziehen, dann die Aktion wählen. Ränder ziehen = verlängern/verkürzen, Balken ziehen = verschieben. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'
