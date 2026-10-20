@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.43 (2026-10-20)
+
+- PV-Monitoring, Reiter „Tagesplan“: Die manuellen Einträge werden jetzt grafisch bearbeitet statt in einer Liste. Ein Streifen direkt unter der Zeitachse zeigt die Einträge des angezeigten Tags (Heute/Morgen) als farbige Balken in den Farben der Planaktionen. Zeitraum ziehen legt einen Eintrag an (15-Minuten-Raster), Balken anklicken wählt ihn (Aktion, Leistung bei „Netz laden“, Schalter „Jeden Tag“, Löschen), Ränder ziehen verlängert oder verkürzt, in der Mitte ziehen verschiebt. Überlappungen werden schon beim Ziehen verhindert, vergangene Viertelstunden heute sind gesperrt. Statuszeile und Fehler des EMS stehen am Eintrag, Speichern ersetzt die ganze Liste wie bisher.
+
 ## 0.9.170-beta.42 (2026-10-20)
 
 - PV-Monitoring, Reiter „Tagesplan“: Editor für manuelle Einträge (EMS ab 0.76.0, Vertrag manualplan 1.0). Einträge anlegen, ändern und löschen: Datum oder „Jeden Tag“, von/bis, Aktion (Automatik, Netz laden mit Leistung, Akku halten). Statuszeile je Eintrag aus dem EMS, Fehler mit Pfad am Eintrag, Speichern mit der zuletzt gelesenen Revision (bei Änderung dazwischen lädt der Editor neu). Nur bei vorhandenen EMS-Funktionen; bei älterem EMS Hinweis „EMS aktualisieren“. Funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser), weil dort nur lesende Anfragen erlaubt sind.
