@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.44 (2026-10-20)
+
+- PV-Monitoring, Reiter „Tagesplan“: Die manuellen Einträge werden direkt auf dem Diagramm bearbeitet statt in einem Streifen darunter. Eine Ebene liegt exakt über der Plotfläche, sodass Strompreis, SOC und Plan-Bänder beim Bearbeiten sichtbar bleiben. „Bearbeiten“ schaltet das Ziehen frei und lässt das Diagramm ruhen (keine Tooltips); ohne den Schalter sind die Einträge nur als Balken zu sehen. Raster, Farben, Auswahl (Aktion, Leistung, „Jeden Tag“, Löschen), Überlappungsschutz und Speichern wie in beta.43.
+
 ## 0.9.170-beta.43 (2026-10-20)
 
 - PV-Monitoring, Reiter „Tagesplan“: Die manuellen Einträge werden jetzt grafisch bearbeitet statt in einer Liste. Ein Streifen direkt unter der Zeitachse zeigt die Einträge des angezeigten Tags (Heute/Morgen) als farbige Balken in den Farben der Planaktionen. Zeitraum ziehen legt einen Eintrag an (15-Minuten-Raster), Balken anklicken wählt ihn (Aktion, Leistung bei „Netz laden“, Schalter „Jeden Tag“, Löschen), Ränder ziehen verlängert oder verkürzt, in der Mitte ziehen verschiebt. Überlappungen werden schon beim Ziehen verhindert, vergangene Viertelstunden heute sind gesperrt. Statuszeile und Fehler des EMS stehen am Eintrag, Speichern ersetzt die ganze Liste wie bisher.
