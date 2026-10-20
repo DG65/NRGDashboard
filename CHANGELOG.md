@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.46 (2026-10-20)
+
+- PV-Monitoring, Tagesplan: Knopf „Sofort aktualisieren“ neben „Bearbeiten“. Er holt den Tagesplan und, wenn nichts Ungespeichertes vorliegt, auch die manuellen Einträge sofort neu vom EMS (statt auf den Fünf-Minuten-Takt zu warten). Das EMS rechnet den Plan nach dem Speichern in einem Zyklus (ca. 30 Sekunden) neu, der Knopf holt nur den jeweils aktuellen Stand und stößt keine Neuberechnung an.
+- Tagesplan-Editor: „Speichern und beenden“ (und „Speichern“) holt nach dem Speichern den Tagesplan sofort neu und nach etwa 35 Sekunden noch einmal, damit der neue Eintrag im Plan erscheint, ohne dass „Sofort aktualisieren“ gedrückt werden muss.
+
 ## 0.9.170-beta.45 (2026-10-20)
 
 - PV-Monitoring, Tagesplan-Editor: Mit ungespeicherten Änderungen heißt der Schalter „Speichern und beenden“ und erledigt beides in einem Zug. Bei einem Fehler des EMS bleibt das Bearbeiten offen, die Hinweise stehen am Eintrag.

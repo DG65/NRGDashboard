@@ -4537,6 +4537,7 @@
         return;
       }
       if (d.type === 'dayPlanUpdate') {
+        if (manualRefreshing) { manualRefreshing = false; if (mpRefreshTimer) { clearTimeout(mpRefreshTimer); mpRefreshTimer = null; } }
         dayPlanCache = d.dayPlan;
         dayPlanLoadedAt = Date.now();
         dayPlanPending = false;
@@ -4813,7 +4814,10 @@
         if (r.ok) {
           manualDraft = null;
           if (exitWanted) { mpEdit = false; mpSel = -1; }
-          manualStatus = 'Gespeichert. Der Plan rechnet sich innerhalb von etwa 30 Sekunden neu.';
+          manualStatus = 'Gespeichert. Der Plan wird neu geladen und rechnet sich innerhalb von etwa 30 Sekunden neu.';
+          // Aktualisieren haengt am Speichern: sofort den Tagesplan holen (EMS hat ihn ggf. schon neu gerechnet) und nach einem
+          // EMS-Zyklus (ca. 30 s) nochmals, bis der neue Eintrag im Plan steht.
+          dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); }
           setTimeout(function () { dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); } }, 35000);
         } else {
           var errs = r.errors || [];
@@ -4834,7 +4838,7 @@
     // "Bearbeiten" nimmt sie Ziehen auf freier Flaeche (neuer Eintrag), Anklicken (waehlen: Aktion/Leistung/"Jeden Tag"/Loeschen),
     // Raender ziehen (verlaengern/verkuerzen) und Ziehen in der Mitte (verschieben) entgegen. Bearbeitet wird der angezeigte Tag
     // (Heute/Morgen); heute sind vergangene Viertelstunden gesperrt. Gespeichert wird erst mit "Speichern".
-    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null, mpExitAfterSave = false;
+    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null, mpExitAfterSave = false, manualRefreshing = false, mpRefreshTimer = null;
     function mpDayInfo() {
       var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + tagesplanDay);
       var e = new Date(d); e.setDate(e.getDate() + 1);
@@ -4934,6 +4938,19 @@
         mpEdit = false; mpSel = -1; renderManual();
       };
       head.appendChild(tog);
+      // Sofort aktualisieren: Tagesplan und (ohne ungespeicherte Aenderungen) die Eintraege neu vom EMS holen. Das EMS rechnet den Plan
+      // in einem Zyklus (ca. 30 s) neu - der Knopf holt den jeweils aktuellen Stand, er stoesst keine Neuberechnung an.
+      var refr = mpEl('button', 'qday', manualRefreshing ? 'Aktualisiere…' : 'Sofort aktualisieren');
+      refr.disabled = manualRefreshing || manualSaving;
+      refr.onclick = function () {
+        manualRefreshing = true; manualStatus = '';
+        dayPlanLoadedAt = 0; requestAction('dayPlanLoad', '{}');
+        if (!mpDirty()) { mpLoad(); }
+        if (mpRefreshTimer) { clearTimeout(mpRefreshTimer); }
+        mpRefreshTimer = setTimeout(function () { if (manualRefreshing) { manualRefreshing = false; renderManual(); } }, 10000);
+        renderManual();
+      };
+      head.appendChild(refr);
       head.appendChild(mpEl('span', 'mpHint', mpEdit
         ? 'Zeitraum im Diagramm ziehen, dann die Aktion wählen. Ränder ziehen = verlängern/verkürzen, Balken ziehen = verschieben. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'
         : 'Eingetragene Zeiträume liegen als Balken im Diagramm. „Bearbeiten“ schaltet das Ziehen im Diagramm frei.'));
