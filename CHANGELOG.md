@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.45 (2026-10-20)
+
+- PV-Monitoring, Tagesplan-Editor: Mit ungespeicherten Änderungen heißt der Schalter „Speichern und beenden“ und erledigt beides in einem Zug. Bei einem Fehler des EMS bleibt das Bearbeiten offen, die Hinweise stehen am Eintrag.
+
 ## 0.9.170-beta.44 (2026-10-20)
 
 - PV-Monitoring, Reiter „Tagesplan“: Die manuellen Einträge werden direkt auf dem Diagramm bearbeitet statt in einem Streifen darunter. Eine Ebene liegt exakt über der Plotfläche, sodass Strompreis, SOC und Plan-Bänder beim Bearbeiten sichtbar bleiben. „Bearbeiten“ schaltet das Ziehen frei und lässt das Diagramm ruhen (keine Tooltips); ohne den Schalter sind die Einträge nur als Balken zu sehen. Raster, Farben, Auswahl (Aktion, Leistung, „Jeden Tag“, Löschen), Überlappungsschutz und Speichern wie in beta.43.
