@@ -258,6 +258,22 @@
   #scenarioInfoRow .scenItem { display: flex; align-items: center; gap: 5px; }
   #scenarioInfoRow .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
   #planKeyRow .legItem { cursor: default; }
+  /* Editor fuer manuelle Tagesplan-Eintraege (20.10.2026) - gleiche Rundung/Rahmen/Hintergruende wie Auswahlfelder und Kacheln dieses Moduls */
+  #manualPanel { margin-top: 10px; margin-bottom: 56px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(127,135,145,.30); background: rgba(127,135,145,.07); font-size: 12px; text-align: left; }
+  #manualPanel .mpTitle { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  #manualPanel .mpHint { font-size: 11px; opacity: .7; margin-bottom: 8px; }
+  #manualPanel .mpRow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 0; border-top: 1px solid rgba(127,135,145,.20); }
+  #manualPanel .mpRow input.pick, #manualPanel .mpRow select.sel { font-size: 12px; padding: 3px 7px; }
+  #manualPanel .mpRow select.sel { padding-right: 24px; }
+  #manualPanel .mpTime { width: 56px; text-align: center; }
+  #manualPanel .mpPow { width: 76px; text-align: right; }
+  #manualPanel .mpLab { opacity: .65; font-size: 11px; }
+  #manualPanel .mpSt { flex: 1 0 100%; font-size: 11px; opacity: .8; }
+  #manualPanel .mpSt.bad { color: #ef9a9a; opacity: 1; }
+  #manualPanel .mpSt.warn { color: #ffcc80; opacity: 1; }
+  #manualPanel .mpErr { color: #ef9a9a; font-size: 11px; margin-top: 6px; }
+  #manualPanel .mpBtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  #manualPanel button.qday.danger { border-color: rgba(229,115,115,.5); }
   /* StromGedacht-Netzampel als Zusatzleiste im Tagesplan (21./22.08.2026,
      relayed ueber die StromGedacht-Sitzung) - eigene ECharts/Highcharts-
      Instanz mit demselben Zeitraster und denselben Grid-Raendern wie das
@@ -539,6 +555,7 @@
         <div id="legendRow"></div>
         <div id="spotCredit" style="display:none; font-size:10px; opacity:.6; text-align:center; margin-top:2px"></div>
         <div id="planKeyRow" style="display:none"></div>
+        <div id="manualPanel" style="display:none"></div>
         <div id="scenarioInfoRow" style="display:none"></div>
         <div id="balancePanel" style="display:none"></div>
         <div id="yearComparePanel" style="display:none"></div>
@@ -4175,6 +4192,7 @@
         return;
       }
       document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
+      renderManual();
       if (curTab !== 'scenarios') { document.getElementById('scenarioInfoRow').style.display = 'none'; }
       if (curTab !== 'tagesplan') { document.getElementById('ampelStrip').style.display = 'none'; }
       if (curTab === 'tagesplan') {
@@ -4497,6 +4515,10 @@
         if (curTab === 'tagesplan' && tagesplanDay === d.offset) { render(); }
         return;
       }
+      if (d.type === 'manualPlanUpdate' || d.type === 'manualPlanSaved') {
+        handleManualMessage(d);
+        return;
+      }
       if (d.type === 'dayPlanUpdate') {
         dayPlanCache = d.dayPlan;
         dayPlanLoadedAt = Date.now();
@@ -4724,6 +4746,130 @@
       var r = (dp && dp.planReason) || (dayPlanCache && dayPlanCache.planReason) || '';
       if (r) { return String(r).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
       return 'Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)';
+    }
+    // ---- Editor fuer manuelle Tagesplan-Eintraege (EMS 0.76.0, EMS_GetManualPlan/EMS_SetManualPlan, Vertrag manualplan 1.0) ----
+    // Der Plan liegt im EMS; dieser Editor ersetzt beim Speichern die ganze Liste mit der zuletzt gelesenen Revision.
+    // Zeiten HH:MM (Ende bis 24:00, leer = bis Mitternacht), Datum leer = jeden Tag. Bewusst ohne Entladen ins Netz.
+    var manualCache = null, manualPending = false, manualDraft = null, manualErrors = [], manualStatus = '', manualSaving = false, manualSaveTimer = null;
+    function mpEl(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text !== undefined) { e.textContent = text; } return e; }
+    function mpLoad() { manualPending = true; requestAction('manualPlanLoad', '{}'); }
+    function mpDraftFrom(plan) {
+      return (plan.entries || []).map(function (e) {
+        return { date: e.date || '', from: e.from || '', to: e.to || '', action: e.action, power: e.power || 0, srv: { text: e.text, ok: e.ok, state: e.state } };
+      });
+    }
+    function mpDraft() {
+      if (!manualDraft && manualCache && manualCache.available) { manualDraft = mpDraftFrom(manualCache.plan); }
+      return manualDraft || [];
+    }
+    function mpAction(plan, v) { var r = null; (plan.actions || []).forEach(function (a) { if (a.value === v) { r = a; } }); return r; }
+    function mpToday() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    function mpDirty() {
+      if (!manualCache || !manualCache.available || !manualDraft) { return false; }
+      var base = manualCache.plan.entries || [];
+      if (base.length !== manualDraft.length) { return true; }
+      return manualDraft.some(function (e) { return !e.srv; });
+    }
+    function mpSave() {
+      if (!manualCache || !manualCache.available || manualSaving) { return; }
+      var plan = manualCache.plan;
+      var entries = mpDraft().map(function (e) {
+        var a = mpAction(plan, e.action);
+        return { date: e.date, from: e.from, to: e.to, action: e.action, power: (a && a.usesPower) ? (parseInt(e.power, 10) || 0) : 0 };
+      });
+      manualSaving = true; manualErrors = []; manualStatus = 'Sende…';
+      if (manualSaveTimer) { clearTimeout(manualSaveTimer); }
+      manualSaveTimer = setTimeout(function () {
+        if (manualSaving) { manualSaving = false; manualStatus = 'Keine Antwort - der Editor funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser).'; renderManual(); }
+      }, 15000);
+      requestAction('manualPlanSave', JSON.stringify({ revision: plan.revision, entries: entries }));
+      renderManual();
+    }
+    function handleManualMessage(d) {
+      manualPending = false;
+      if (d.manual) { manualCache = d.manual; }
+      if (d.type === 'manualPlanSaved') {
+        manualSaving = false; if (manualSaveTimer) { clearTimeout(manualSaveTimer); manualSaveTimer = null; }
+        var r = d.result || {};
+        manualErrors = [];
+        if (r.ok) {
+          manualDraft = null;
+          manualStatus = 'Gespeichert. Der Plan rechnet sich innerhalb von etwa 30 Sekunden neu.';
+          setTimeout(function () { dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); } }, 35000);
+        } else {
+          var errs = r.errors || [];
+          var rev = false;
+          errs.forEach(function (e) {
+            var f = String(e.field || ''), m = /^entries\[(\d+)\]/.exec(f), text = e.message || 'Fehler';
+            if (f === 'revision') { rev = true; }
+            manualErrors.push({ idx: m ? +m[1] : -1, text: text, field: f });
+          });
+          if (rev) { manualDraft = null; manualErrors = []; manualStatus = 'Der Plan wurde zwischenzeitlich geändert - aktuelle Einträge geladen, Änderungen verworfen. Bitte erneut eingeben.'; }
+          else { manualStatus = 'Nicht gespeichert - bitte die Hinweise an den Einträgen prüfen.'; }
+        }
+      }
+      if (curTab === 'tagesplan') { renderManual(); }
+    }
+    function renderManual() {
+      var box = document.getElementById('manualPanel');
+      if (!box) { return; }
+      if (curTab !== 'tagesplan' || !lastData || !lastData.hasManualPlan || tagesplanDay < 0) { box.style.display = 'none'; return; }
+      box.style.display = '';
+      if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', 'Lade manuelle Einträge…')); return; }
+      box.innerHTML = '';
+      box.appendChild(mpEl('div', 'mpTitle', 'Manuelle Einträge'));
+      if (!manualCache.available) { box.appendChild(mpEl('div', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); return; }
+      var plan = manualCache.plan, draft = mpDraft(), idx;
+      box.appendChild(mpEl('div', 'mpHint', 'Beladen und Entladen von Hand für einen Zeitraum festlegen. Manuelle Einträge haben Vorrang vor der automatischen Planung, nicht vor § 14a und nicht vor Grid Rewards. Datum leer = jeden Tag, Ende leer = bis Mitternacht. Der Speicher wird dabei nicht ins Netz entladen.'));
+      if (!draft.length) { box.appendChild(mpEl('div', 'mpHint', 'Keine manuellen Einträge.')); }
+      draft.forEach(function (e, i) {
+        var row = mpEl('div', 'mpRow');
+        var dsel = mpEl('select', 'sel'); [['', 'Jeden Tag'], ['d', 'Am Datum']].forEach(function (o) { var op = mpEl('option', '', o[1]); op.value = o[0]; dsel.appendChild(op); });
+        dsel.value = e.date ? 'd' : '';
+        var din = mpEl('input', 'pick'); din.type = 'date'; din.value = /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : mpToday(); din.style.display = e.date ? '' : 'none';
+        dsel.onchange = function () { e.date = dsel.value === 'd' ? din.value : ''; e.srv = null; renderManual(); };
+        din.onchange = function () { e.date = din.value; e.srv = null; renderManual(); };
+        var fin = mpEl('input', 'pick mpTime'); fin.type = 'text'; fin.value = e.from; fin.placeholder = '00:00'; fin.maxLength = 5;
+        var tin = mpEl('input', 'pick mpTime'); tin.type = 'text'; tin.value = e.to; tin.placeholder = '24:00'; tin.maxLength = 5;
+        fin.onchange = function () { e.from = fin.value.trim(); e.srv = null; renderManual(); };
+        tin.onchange = function () { e.to = tin.value.trim(); e.srv = null; renderManual(); };
+        var asel = mpEl('select', 'sel'); (plan.actions || []).forEach(function (a) { var op = mpEl('option', '', a.label || a.key); op.value = String(a.value); asel.appendChild(op); });
+        asel.value = String(e.action);
+        asel.onchange = function () { e.action = parseInt(asel.value, 10); e.srv = null; renderManual(); };
+        row.appendChild(dsel); row.appendChild(din);
+        row.appendChild(mpEl('span', 'mpLab', 'von')); row.appendChild(fin);
+        row.appendChild(mpEl('span', 'mpLab', 'bis')); row.appendChild(tin);
+        row.appendChild(asel);
+        var act = mpAction(plan, e.action);
+        if (act && act.usesPower) {
+          var pin = mpEl('input', 'pick mpPow'); pin.type = 'number'; pin.min = '0'; pin.step = '100'; pin.value = String(e.power || 0); pin.title = 'Leistung in W, 0 = so viel wie möglich';
+          pin.onchange = function () { e.power = parseInt(pin.value, 10) || 0; e.srv = null; renderManual(); };
+          row.appendChild(pin); row.appendChild(mpEl('span', 'mpLab', 'W (0 = max.)'));
+        }
+        var del = mpEl('button', 'qday danger', 'Löschen'); del.disabled = manualSaving;
+        del.onclick = function () { draft.splice(i, 1); renderManual(); };
+        row.appendChild(del);
+        // Status: gespeicherte Eintraege zeigen den EMS-Text, geaenderte "noch nicht gespeichert"; Fehler mit Pfad
+        var errs = manualErrors.filter(function (x) { return x.idx === i; });
+        if (errs.length) { errs.forEach(function (x) { row.appendChild(mpEl('div', 'mpSt bad', x.text)); }); }
+        else if (e.srv) {
+          var cls = (!e.srv.ok || e.srv.state === 'invalid') ? 'mpSt bad' : ((e.srv.state === 'past') ? 'mpSt warn' : 'mpSt');
+          row.appendChild(mpEl('div', cls, e.srv.text || ''));
+        } else { row.appendChild(mpEl('div', 'mpSt', 'Noch nicht gespeichert.')); }
+        box.appendChild(row);
+      });
+      var gen = manualErrors.filter(function (x) { return x.idx < 0; });
+      gen.forEach(function (x) { box.appendChild(mpEl('div', 'mpErr', x.text)); });
+      var btns = mpEl('div', 'mpBtns');
+      var add = mpEl('button', 'qday', 'Eintrag hinzufügen'); add.disabled = manualSaving || draft.length >= (plan.maxEntries || 50);
+      add.onclick = function () { var first = (plan.actions || [])[0]; draft.push({ date: '', from: '', to: '', action: first ? first.value : 0, power: 0, srv: null }); manualDraft = draft; renderManual(); };
+      var save = mpEl('button', 'qday active', manualSaving ? 'Sende…' : 'Speichern'); save.disabled = manualSaving || !mpDirty();
+      save.onclick = mpSave;
+      var rev = mpEl('button', 'qday', 'Verwerfen'); rev.disabled = manualSaving || !mpDirty();
+      rev.onclick = function () { manualDraft = null; manualErrors = []; manualStatus = ''; renderManual(); };
+      btns.appendChild(add); btns.appendChild(save); btns.appendChild(rev);
+      if (manualStatus) { btns.appendChild(mpEl('span', 'mpLab', manualStatus)); }
+      box.appendChild(btns);
     }
     function sizeAmpelChart(containerId) {
       var el = document.getElementById(containerId);

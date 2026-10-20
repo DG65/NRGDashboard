@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.42 (2026-10-20)
+
+- PV-Monitoring, Reiter „Tagesplan“: Editor für manuelle Einträge (EMS ab 0.76.0, Vertrag manualplan 1.0). Einträge anlegen, ändern und löschen: Datum oder „Jeden Tag“, von/bis, Aktion (Automatik, Netz laden mit Leistung, Akku halten). Statuszeile je Eintrag aus dem EMS, Fehler mit Pfad am Eintrag, Speichern mit der zuletzt gelesenen Revision (bei Änderung dazwischen lädt der Editor neu). Nur bei vorhandenen EMS-Funktionen; bei älterem EMS Hinweis „EMS aktualisieren“. Funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser), weil dort nur lesende Anfragen erlaubt sind.
+
 ## 0.9.170-beta.41 (2026-10-20)
 
 - PV-Monitoring, Reiter „Tagesplan“: Ohne Plan zeigt der Reiter den Grund aus EMS_GetDayPlan (Vertrag 1.3, ab EMS 0.75.6: zum Beispiel Preisoptimierung oder Batteriespeicher im EMS ausgeschaltet) statt des pauschalen Satzes „EMS installieren/konfigurieren“. Ältere EMS-Versionen liefern den Grund nicht, dort bleibt der bisherige Text.

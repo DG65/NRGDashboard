@@ -2039,6 +2039,62 @@ class NRGDashboardPVMonitor extends IPSModule
         return $out;
     }
 
+    /**
+     * Manuelle Tagesplan-Eintraege (EMS 0.76.0, Vertrag manualplan 1.0): EMS_GetManualPlan() liefert
+     * contractVersion, now, revision, maxEntries, actions[], entries[]. Ist die Funktion in der installierten
+     * EMS-Version nicht vorhanden, bleibt 'available' false und das Frontend nennt den Grund.
+     */
+    private function BuildManualPlan(): array
+    {
+        $emsId = $this->EmsInstanceID();
+        if ($emsId <= 0) {
+            return ['available' => false, 'hint' => 'EMS nicht gefunden.'];
+        }
+        if (!function_exists('EMS_GetManualPlan') || !function_exists('EMS_SetManualPlan')) {
+            return ['available' => false, 'hint' => 'EMS aktualisieren - die installierte Version kennt die manuellen Einträge noch nicht (ab EMS 0.76.0).'];
+        }
+        try {
+            $r = @EMS_GetManualPlan($emsId);
+            if (is_string($r)) {
+                $r = json_decode($r, true);
+            }
+        } catch (\Throwable $e) {
+            return ['available' => false, 'hint' => 'EMS aktualisieren - die installierte Version kennt die manuellen Einträge noch nicht (ab EMS 0.76.0).'];
+        }
+        if (!is_array($r) || !isset($r['entries']) || !is_array($r['entries'])) {
+            return ['available' => false, 'hint' => 'EMS liefert keine manuellen Einträge (Antwort unvollständig).'];
+        }
+        $actions = [];
+        foreach ((array) ($r['actions'] ?? []) as $a) {
+            if (is_array($a) && isset($a['value'])) {
+                $actions[] = ['value' => (int) $a['value'], 'key' => (string) ($a['key'] ?? ''), 'label' => (string) ($a['label'] ?? ''), 'usesPower' => !empty($a['usesPower'])];
+            }
+        }
+        $entries = [];
+        foreach ($r['entries'] as $e) {
+            if (!is_array($e)) {
+                continue;
+            }
+            $entries[] = [
+                'id'     => $e['id'] ?? null,
+                'date'   => (string) ($e['date'] ?? ''),
+                'from'   => (string) ($e['from'] ?? ''),
+                'to'     => (string) ($e['to'] ?? ''),
+                'action' => (int) ($e['action'] ?? 0),
+                'power'  => (int) ($e['power'] ?? 0),
+                'state'  => (string) ($e['state'] ?? ''),
+                'ok'     => !isset($e['ok']) || (bool) $e['ok'],
+                'text'   => (string) ($e['text'] ?? ''),
+            ];
+        }
+        return ['available' => true, 'plan' => [
+            'revision'   => (string) ($r['revision'] ?? ''),
+            'maxEntries' => (int) ($r['maxEntries'] ?? 50),
+            'actions'    => $actions,
+            'entries'    => $entries,
+        ]];
+    }
+
     private function BuildDayPlan(): array
     {
         $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => []];
@@ -3226,6 +3282,47 @@ class NRGDashboardPVMonitor extends IPSModule
             ]));
             return;
         }
+        if ($Ident === 'manualPlanLoad') {
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'manualPlanUpdate', 'manual' => $this->BuildManualPlan()]));
+            return;
+        }
+        if ($Ident === 'manualPlanSave') {
+            // Nur vereinbarte Felder (EMS manualplan 1.0): revision + entries[{date,from,to,action,power}]. Der Plan wird
+            // vollstaendig ersetzt; Pruefung, Ueberschneidungen und alles-oder-nichts liegen im EMS. Nur ueber requestAction,
+            // nie ueber den offenen WebHook (siehe $allowed in ProcessHookData()).
+            $req = json_decode((string) $Value, true);
+            $emsId = $this->EmsInstanceID();
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - EMS-Funktion nicht verfügbar (EMS zu alt?).']]];
+            if (is_array($req) && $emsId > 0 && function_exists('EMS_SetManualPlan') && isset($req['entries']) && is_array($req['entries'])) {
+                $payload = ['entries' => []];
+                if (isset($req['revision']) && is_scalar($req['revision'])) {
+                    $payload['revision'] = (string) $req['revision'];
+                }
+                foreach ($req['entries'] as $e) {
+                    if (!is_array($e)) {
+                        continue;
+                    }
+                    $payload['entries'][] = [
+                        'date'   => (string) ($e['date'] ?? ''),
+                        'from'   => (string) ($e['from'] ?? ''),
+                        'to'     => (string) ($e['to'] ?? ''),
+                        'action' => (int) ($e['action'] ?? 0),
+                        'power'  => (int) ($e['power'] ?? 0),
+                    ];
+                }
+                try {
+                    $r = @EMS_SetManualPlan($emsId, json_encode($payload));
+                    if (is_string($r)) {
+                        $r = json_decode($r, true);
+                    }
+                    $result = is_array($r) ? $r : $result;
+                } catch (\Throwable $e) {
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                }
+            }
+            $this->PushMessage(json_encode(['ok' => true, 'type' => 'manualPlanSaved', 'result' => $result, 'manual' => $this->BuildManualPlan()]));
+            return;
+        }
         if ($Ident === 'dayPlanHistory') {
             $req = json_decode((string) $Value, true);
             $offset = max(-14, min(-1, (int) ($req['offset'] ?? -1)));
@@ -3799,6 +3896,8 @@ class NRGDashboardPVMonitor extends IPSModule
             // Hinweis, dass es ihn gibt).
             'hasScenarios' => $this->ScenarioCompareAvailable(),
             'hasStromGedacht' => $this->StromGedachtInstanceID() > 0,
+            // Editor fuer manuelle Tagesplan-Eintraege (EMS 0.76.0, Vertrag manualplan 1.0)
+            'hasManualPlan' => $this->EmsInstanceID() > 0,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
