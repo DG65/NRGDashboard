@@ -470,6 +470,9 @@ class NRGDashboardTile extends IPSModule
         // (13.09.2026) - 0 = automatisch (Tibber inkl. Archiv, sonst BDEW-
         // Naeherung). Ersatz, bis EMS einen Bezugstarif-Vertrag liefert.
         $this->RegisterPropertyFloat('PurchasePriceCt', 0.0);
+        // Eigene Bezugspreise mit Gueltig-ab-Datum (21.10.2026, Forum Horst: Festpreis 12 ct unter dem BDEW-Preis): Liste
+        // [{ValidFrom: 'JJJJ-MM-TT', PriceCt}], gilt vor EMS, Tibber und BDEW. Leer = bisheriges Verhalten.
+        $this->RegisterPropertyString('PurchasePriceList', '[]');
         // Ersatz-Strompreis fuer Kosten-Kennzahlen OHNE Tibber-Instanz
         // (Dietmar, 28.08.2026: "Quartalsweise den Haushalts-Durchschnitts-
         // preis bei BDEW anfragen und in eine DB eintragen ... das sollte
@@ -3876,7 +3879,83 @@ class NRGDashboardTile extends IPSModule
         return $slots;
     }
 
+    /**
+     * Eigene Bezugspreise (brutto, ct/kWh) aus dem Formular, aufsteigend nach Gueltig-ab: [[ts, ct], ...]. Die Liste PurchasePriceList
+     * hat Vorrang; ist sie leer, gilt der aeltere Einzelwert PurchasePriceCt (>0) ab jeher. Leer = kein eigener Preis konfiguriert.
+     */
+    private function OwnPurchasePrices(): array
+    {
+        $out = [];
+        $rows = json_decode($this->ReadPropertyString('PurchasePriceList'), true);
+        foreach ((is_array($rows) ? $rows : []) as $r) {
+            $ct = (float) str_replace(',', '.', (string) ($r['PriceCt'] ?? 0));
+            $d = trim((string) ($r['ValidFrom'] ?? ''));
+            $ts = ($d !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) ? (int) strtotime($d . ' 00:00:00') : (($d === '') ? 0 : -1);
+            if ($ct > 0 && $ts >= 0) {
+                $out[] = [$ts, $ct];
+            }
+        }
+        if (!$out) {
+            $legacy = $this->readFloatProperty('PurchasePriceCt', 0.0);
+            if ($legacy > 0) {
+                $out[] = [0, $legacy];
+            }
+        }
+        usort($out, static function ($a, $b) { return $a[0] <=> $b[0]; });
+        return $out;
+    }
+
+    /** Eigener Preis zum Zeitpunkt $ts (ct/kWh) oder null, wenn davor kein Eintrag gilt. */
+    private function OwnPurchasePriceAt(array $own, int $ts): ?float
+    {
+        $v = null;
+        foreach ($own as [$from, $ct]) {
+            if ($ts >= $from) {
+                $v = $ct;
+            }
+        }
+        return $v;
+    }
+
     private function RealPriceSlotsForRange(int $from, int $to): array
+    {
+        // Eigener Bezugspreis hat Vorrang (Reihenfolge: eigenes Feld > EMS-Verlauf (nur Ladesitzungen) > Tibber > BDEW). Fuer Zeitraeume vor
+        // dem ersten Gueltig-ab-Datum greift die uebrige Kette.
+        $own = $this->OwnPurchasePrices();
+        if (!$own) {
+            return $this->ExternalPriceSlotsForRange($from, $to);
+        }
+        $slots = [];
+        $firstFrom = $own[0][0];
+        if ($from < $firstFrom) {
+            foreach ($this->ExternalPriceSlotsForRange($from, min($to, $firstFrom)) as $s) {
+                $slots[] = $s;
+            }
+        }
+        $bounds = [max($from, $firstFrom)];
+        foreach ($own as [$f, $ct]) {
+            if ($f > $from && $f < $to) {
+                $bounds[] = $f;
+            }
+        }
+        $bounds[] = $to;
+        $bounds = array_values(array_unique($bounds));
+        sort($bounds);
+        for ($i = 0; $i + 1 < count($bounds); $i++) {
+            $a = $bounds[$i];
+            $b = $bounds[$i + 1];
+            if ($b <= $a || $a < $firstFrom) {
+                continue;
+            }
+            $ct = $this->OwnPurchasePriceAt($own, $a);
+            if ($ct !== null) {
+                $slots[] = ['start' => $a, 'end' => $b, 'price' => $ct, 'own' => true];
+            }
+        }
+        return $slots;
+    }
+
+    private function ExternalPriceSlotsForRange(int $from, int $to): array
     {
         $slots = [];
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
@@ -5775,6 +5854,19 @@ class NRGDashboardTile extends IPSModule
         // Tibber inkl. Archiv, Festpreis mit Aenderungshistorie, eigene
         // Preisvariable. priceCt null = unbekannt (-> Kosten unvollstaendig).
         // Nur ohne EMS bzw. bei tarifart 'keiner' greift unser Ersatzweg.
+        $own = $this->OwnPurchasePrices();
+        if ($own) {
+            $first = $own[0][1];
+            $last = $own[count($own) - 1][1];
+            $txt = 'eigener Bezugspreis ' . number_format($last, 2, ',', '.') . ' ct/kWh' . (count($own) > 1 ? ' (mit Preisänderungen ab Datum)' : '');
+            return [
+                function (int $ts) use ($own): ?array {
+                    $p = $this->OwnPurchasePriceAt($own, $ts);
+                    return $p === null ? null : [$p, 'fest'];
+                },
+                $txt,
+            ];
+        }
         if (function_exists('EMS_GetPurchasePriceHistory')) {
             $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
             if ($ems > 0) {
@@ -5992,12 +6084,14 @@ class NRGDashboardTile extends IPSModule
         // zeigen.
         $priceSlots = $this->PriceSlotsForDay($dayStart, $dayEnd);
         $priceApprox = count($priceSlots) > 0 && !empty($priceSlots[0]['approx']);
-        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : '';
+        $priceOwn = count($priceSlots) > 0 && !empty($priceSlots[0]['own']);
+        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : ($priceOwn ? ' (eigener Tarif)' : '');
         if (count($priceSlots) > 0) {
             $nowPrice = $this->PriceAt($priceSlots, time());
             if ($nowPrice !== null && in_array($fn, ['grid', 'battery', 'wallbox', 'heatpump'], true)) {
                 $label = $priceApprox ? 'Strompreis' : 'Strompreis gerade jetzt';
-                $hint = $priceApprox ? ('Bundesweiter BDEW-Haushaltsdurchschnitt, vor ' . $priceSlots[0]['ageDays'] . ' Tagen abgerufen - keine echte Momentanquelle (z.B. Tibber) konfiguriert.') : null;
+                $hint = $priceApprox ? ('Bundesweiter BDEW-Haushaltsdurchschnitt, vor ' . $priceSlots[0]['ageDays'] . ' Tagen abgerufen - nicht dein Tarif; im Formular unter "Eigener Bezugspreis" kannst du deinen Preis eintragen.')
+                    : ($priceOwn ? 'Eigener Bezugspreis aus dem Formular (brutto), gilt vor BDEW und Tibber.' : null);
                 $item = ['label' => $label . $priceSuffix, 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
                 if ($hint !== null) {
                     $item['hint'] = $hint;

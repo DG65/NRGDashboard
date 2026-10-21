@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.48 (2026-10-21)
+
+- Energiefluss-Kachel, Formular „Strompreis“: neue Liste „Eigener Bezugspreis“ (Gültig ab + ct/kWh brutto). Der eigene Preis gilt vor EMS, Tibber und dem BDEW-Haushaltsdurchschnitt; bei einer Preisänderung bleibt der alte Preis für vergangene Zeiträume erhalten. Die Kostenanzeige nennt die Quelle („eigener Tarif“ bzw. „BDEW-Durchschnitt, nicht dein Tarif“). Leere Liste = bisheriges Verhalten; der ältere Einzelwert für die Ladesitzungen gilt weiter, wenn die Liste leer ist. Ein einziger Arbeitspreis, kein Tag-/Nachttarif.
+
 ## 0.9.170-beta.47 (2026-10-20)
 
 - PV-Monitoring, Tagesplan-Editor: „Speichern und beenden“ aktualisiert den Tagesplan jetzt gleich mit. Nach erfolgreichem Speichern wird der Plan sofort neu geholt und nach etwa 35 Sekunden noch einmal, wenn das EMS ihn neu gerechnet hat.
