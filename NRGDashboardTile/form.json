@@ -506,6 +506,34 @@
         },
         {
           "type": "Label",
+          "caption": "Eigener Bezugspreis (brutto, ct/kWh) mit Gültig-ab-Datum: Hast du einen Festpreis oder einen Tarif, der vom BDEW-Durchschnitt abweicht, trage ihn hier ein. Bei einer Preisänderung eine neue Zeile mit dem Datum, ab dem der neue Preis gilt, so behalten vergangene Zeiträume ihren alten Preis. Gilt vor EMS, Tibber und BDEW; leer = bisheriges Verhalten. Es wird ein einziger Arbeitspreis angenommen (kein Tag-/Nachttarif)."
+        },
+        {
+          "type": "List",
+          "name": "PurchasePriceList",
+          "caption": "Eigener Bezugspreis",
+          "rowCount": 4,
+          "add": true,
+          "delete": true,
+          "columns": [
+            {
+              "caption": "Gültig ab (JJJJ-MM-TT)",
+              "name": "ValidFrom",
+              "width": "200px",
+              "add": "",
+              "edit": { "type": "ValidationTextBox", "validate": "^$|^\\d{4}-\\d{2}-\\d{2}$" }
+            },
+            {
+              "caption": "Preis (ct/kWh, brutto)",
+              "name": "PriceCt",
+              "width": "200px",
+              "add": 0,
+              "edit": { "type": "NumberSpinner", "digits": 2, "minimum": 0, "suffix": " ct/kWh" }
+            }
+          ]
+        },
+        {
+          "type": "Label",
           "caption": "Ohne Tibber Grid Rewards-Instanz greift automatisch der bundesweite BDEW-Haushaltsstrompreis als grober Richtwert (vierteljährlich selbstständig von bdew.de abgerufen, keine weitere Einrichtung nötig) - nur ganz ohne beide Quellen fehlen die Kosten-/Strompreis-Kennzahlen auf den Detailseiten."
         }
       ]

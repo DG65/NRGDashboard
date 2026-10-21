@@ -1575,6 +1575,15 @@ gleiche IPSView-Fähigkeit.
   Kachel zusätzlich den Abgleich bis Ende des Vormonats und eine Hochrechnung
   der Jahresabrechnung: „+x € mehr ausbezahlt“ (Erlös höher als die
   Abschläge) oder „−x € zurückzuzahlen“. Eine Schätzung, keine Abrechnung.
+- **Eigener Bezugspreis (`NRGDashboardTile`):** Wer einen Festpreis oder einen
+  Tarif hat, der vom BDEW-Durchschnitt abweicht, trägt ihn im Formular unter
+  „Eigener Bezugspreis“ als Liste ein: Gültig-ab-Datum und Preis in ct/kWh
+  (brutto). Bei einer Preisänderung kommt eine neue Zeile mit dem neuen Datum,
+  so behalten vergangene Zeiträume ihren alten Preis. Der eigene Preis gilt vor
+  EMS, Tibber und BDEW, leer bleibt das bisherige Verhalten. In der
+  Kostenanzeige steht, welche Quelle gilt („eigener Tarif“ bzw. „BDEW-Durchschnitt,
+  nicht dein Tarif“). Angenommen wird ein einziger Arbeitspreis, kein Tag-/
+  Nachttarif.
 - **Manuelle Tagesplan-Einträge (`NRGDashboardPVMonitor`):** mit EMS ab 0.76.0
   (Vertrag `manualplan` 1.0, `EMS_GetManualPlan`/`EMS_SetManualPlan`) gibt es im
   Reiter „Tagesplan“ einen grafischen Editor für Beladen und Entladen von
