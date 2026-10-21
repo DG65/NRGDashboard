@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.49 (2026-10-21)
+
+- Preise und Kosten der Detailseiten: Der Bezugspreis-Verlauf des EMS (`EMS_GetPurchasePriceHistory`, Vertrag purchaseprice 1.x) wird jetzt auch dort bevorzugt, nicht nur bei den Ladesitzungen. Reihenfolge überall: eigener Preis aus dem Formular, dann EMS (je Viertelstunde; ist ein Slot unbekannt, greift für ihn Tibber bzw. BDEW), dann Tibber, dann BDEW. Die Anzeige nennt die EMS-Quelle („EMS-Festpreis“, „angenommen“, „Tibber über EMS“, „EMS-Preisvariable“). Das EMS wird in Stücken von höchstens 31 Tagen abgefragt, nur für die letzten 400 Tage, und die Antworten werden zwischengespeichert (vergangene Zeiträume 1 Tag, heute und Zukunft 10 Minuten).
+
 ## 0.9.170-beta.48 (2026-10-21)
 
 - Energiefluss-Kachel, Formular „Strompreis“: neue Liste „Eigener Bezugspreis“ (Gültig ab + ct/kWh brutto). Der eigene Preis gilt vor EMS, Tibber und dem BDEW-Haushaltsdurchschnitt; bei einer Preisänderung bleibt der alte Preis für vergangene Zeiträume erhalten. Die Kostenanzeige nennt die Quelle („eigener Tarif“ bzw. „BDEW-Durchschnitt, nicht dein Tarif“). Leere Liste = bisheriges Verhalten; der ältere Einzelwert für die Ladesitzungen gilt weiter, wenn die Liste leer ist. Ein einziger Arbeitspreis, kein Tag-/Nachttarif.
