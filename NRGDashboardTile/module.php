@@ -3955,7 +3955,124 @@ class NRGDashboardTile extends IPSModule
         return $slots;
     }
 
+    /**
+     * Bezugspreis-Verlauf aus dem EMS (EMS_GetPurchasePriceHistory, Vertrag purchaseprice 1.x), je Viertelstunde:
+     * [{start, end, price (ct/kWh brutto), ems: true, src}]. Nur Slots mit bekanntem Preis (priceCt null -> naechste Quelle der Kette,
+     * je Slot). Ohne EMS-Instanz (Modul-GUID), ohne Funktion oder bei tarifart 'keiner' leer. Hoechstens 62 Tage je Abruf; die
+     * Stuecke werden im Instanz-Puffer zwischengespeichert (vergangene Zeitraeume lange, heute/Zukunft 10 Minuten), damit ein
+     * Neuzeichnen nicht jedes Mal das EMS fragt. Rueckblick begrenzt auf 400 Tage - aeltere Zeitraeume nutzen die uebrige Kette.
+     */
+    private function EmsPriceSlotsForRange(int $from, int $to): array
+    {
+        if (!function_exists('EMS_GetPurchasePriceHistory') || $to <= $from) {
+            return [];
+        }
+        $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+        if ($ems <= 0) {
+            return [];
+        }
+        $now = time();
+        $from = max($from, $now - 400 * 86400);
+        if ($to <= $from) {
+            return [];
+        }
+        $cache = json_decode((string) $this->GetBuffer('EmsPriceCache'), true);
+        $cache = is_array($cache) ? $cache : [];
+        $out = [];
+        $changed = false;
+        $chunkSec = 31 * 86400;   // je Abruf deutlich unter dem EMS-Limit von 62 Tagen
+        for ($a = $from; $a < $to; $a += $chunkSec) {
+            $b = min($to, $a + $chunkSec);
+            // Schluessel auf Tagesgrenzen gerundet, damit Neuzeichnen denselben Eintrag trifft
+            $ka = (int) strtotime(date('Y-m-d', $a) . ' 00:00:00');
+            $kb = min($to, (int) strtotime('+1 day', (int) strtotime(date('Y-m-d', $b - 1) . ' 00:00:00')));
+            $key = $ka . '-' . $kb;
+            $ttl = ($kb < $now - 86400) ? 86400 : 600;
+            if (!isset($cache[$key]) || ($now - (int) ($cache[$key]['t'] ?? 0)) > $ttl) {
+                try {
+                    $h = @EMS_GetPurchasePriceHistory($ems, $ka, $kb);
+                } catch (\Throwable $e) {
+                    $h = null;
+                }
+                if (is_string($h)) {
+                    $h = json_decode($h, true);
+                }
+                $rows = [];
+                if (is_array($h) && strpos((string) ($h['contractVersion'] ?? '1'), '1') === 0
+                    && ($h['tarifart'] ?? 'keiner') !== 'keiner' && !empty($h['slots']) && is_array($h['slots'])) {
+                    foreach ($h['slots'] as $sl) {
+                        if (is_array($sl) && isset($sl['start'], $sl['end']) && ($sl['priceCt'] ?? null) !== null) {
+                            $rows[] = [(int) $sl['start'], (int) $sl['end'], round((float) $sl['priceCt'], 3), (string) ($sl['quelle'] ?? '')];
+                        }
+                    }
+                }
+                $cache[$key] = ['t' => $now, 'r' => $rows];
+                $changed = true;
+            }
+            foreach ($cache[$key]['r'] as [$s0, $e0, $pc, $q]) {
+                if ($e0 > $from && $s0 < $to) {
+                    $out[$s0] = ['start' => $s0, 'end' => $e0, 'price' => $pc, 'ems' => true, 'src' => $q];
+                }
+            }
+        }
+        if ($changed) {
+            // nur die juengsten 6 Stuecke behalten (Puffergroesse)
+            uasort($cache, static function ($x, $y) { return ($y['t'] ?? 0) <=> ($x['t'] ?? 0); });
+            $this->SetBuffer('EmsPriceCache', json_encode(array_slice($cache, 0, 6, true)));
+        }
+        ksort($out);
+        return array_values($out);
+    }
+
+    /** Teile der Slots, die NICHT von den (nach Start sortierten) Fremd-Slots $cover ueberdeckt sind. */
+    private function PriceSlotsMinusCover(array $slots, array $cover): array
+    {
+        $out = [];
+        foreach ($slots as $s) {
+            $segs = [[(int) $s['start'], (int) $s['end']]];
+            foreach ($cover as $c) {
+                $next = [];
+                foreach ($segs as [$a, $b]) {
+                    if ($c['end'] <= $a || $c['start'] >= $b) {
+                        $next[] = [$a, $b];
+                        continue;
+                    }
+                    if ($c['start'] > $a) {
+                        $next[] = [$a, (int) $c['start']];
+                    }
+                    if ($c['end'] < $b) {
+                        $next[] = [(int) $c['end'], $b];
+                    }
+                }
+                $segs = $next;
+                if (!$segs) {
+                    break;
+                }
+            }
+            foreach ($segs as [$a, $b]) {
+                $piece = $s;
+                $piece['start'] = $a;
+                $piece['end'] = $b;
+                $out[] = $piece;
+            }
+        }
+        return $out;
+    }
+
     private function ExternalPriceSlotsForRange(int $from, int $to): array
+    {
+        // Reihenfolge: (eigenes Feld, siehe RealPriceSlotsForRange) > EMS-Verlauf > Tibber > BDEW, je Slot
+        $emsSlots = $this->EmsPriceSlotsForRange($from, $to);
+        if ($emsSlots) {
+            $rest = $this->PriceSlotsMinusCover($this->TibberBdewSlotsForRange($from, $to), $emsSlots);
+            $all = array_merge($emsSlots, $rest);
+            usort($all, static function ($a, $b) { return $a['start'] <=> $b['start']; });
+            return $all;
+        }
+        return $this->TibberBdewSlotsForRange($from, $to);
+    }
+
+    private function TibberBdewSlotsForRange(int $from, int $to): array
     {
         $slots = [];
         $id = function_exists('TIBBERGR_GetPriceCurve') ? $this->TibberInstanceID() : 0;
@@ -6085,13 +6202,17 @@ class NRGDashboardTile extends IPSModule
         $priceSlots = $this->PriceSlotsForDay($dayStart, $dayEnd);
         $priceApprox = count($priceSlots) > 0 && !empty($priceSlots[0]['approx']);
         $priceOwn = count($priceSlots) > 0 && !empty($priceSlots[0]['own']);
-        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : ($priceOwn ? ' (eigener Tarif)' : '');
+        $priceEms = count($priceSlots) > 0 && !empty($priceSlots[0]['ems']);
+        $emsSrc = $priceEms ? (string) ($priceSlots[0]['src'] ?? '') : '';
+        $emsName = ['fest' => 'EMS-Festpreis', 'fest-angenommen' => 'EMS-Festpreis (angenommen)', 'tibber' => 'Tibber über EMS', 'tibber-archiv' => 'Tibber-Archiv über EMS', 'variable' => 'EMS-Preisvariable'][$emsSrc] ?? 'EMS';
+        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : ($priceOwn ? ' (eigener Tarif)' : ($priceEms ? ' (' . $emsName . ')' : ''));
         if (count($priceSlots) > 0) {
             $nowPrice = $this->PriceAt($priceSlots, time());
             if ($nowPrice !== null && in_array($fn, ['grid', 'battery', 'wallbox', 'heatpump'], true)) {
                 $label = $priceApprox ? 'Strompreis' : 'Strompreis gerade jetzt';
                 $hint = $priceApprox ? ('Bundesweiter BDEW-Haushaltsdurchschnitt, vor ' . $priceSlots[0]['ageDays'] . ' Tagen abgerufen - nicht dein Tarif; im Formular unter "Eigener Bezugspreis" kannst du deinen Preis eintragen.')
-                    : ($priceOwn ? 'Eigener Bezugspreis aus dem Formular (brutto), gilt vor BDEW und Tibber.' : null);
+                    : ($priceOwn ? 'Eigener Bezugspreis aus dem Formular (brutto), gilt vor EMS, Tibber und BDEW.'
+                        : ($priceEms ? 'Bezugspreis aus dem EMS (brutto, je Viertelstunde): ' . $emsName . ($emsSrc === 'fest-angenommen' ? ' - angenommen, weil kein Preisverlauf hinterlegt ist; im EMS-Bereich „Anlage“ eintragen.' : '.') : null));
                 $item = ['label' => $label . $priceSuffix, 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
                 if ($hint !== null) {
                     $item['hint'] = $hint;

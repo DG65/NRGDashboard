@@ -1579,8 +1579,10 @@ gleiche IPSView-Fähigkeit.
   Tarif hat, der vom BDEW-Durchschnitt abweicht, trägt ihn im Formular unter
   „Eigener Bezugspreis“ als Liste ein: Gültig-ab-Datum und Preis in ct/kWh
   (brutto). Bei einer Preisänderung kommt eine neue Zeile mit dem neuen Datum,
-  so behalten vergangene Zeiträume ihren alten Preis. Der eigene Preis gilt vor
-  EMS, Tibber und BDEW, leer bleibt das bisherige Verhalten. In der
+  so behalten vergangene Zeiträume ihren alten Preis. Reihenfolge der
+  Preisquellen: eigener Preis, dann der Bezugspreis-Verlauf des EMS (je
+  Viertelstunde; ist ein Slot dort unbekannt, greift für ihn die nächste Quelle),
+  dann Tibber, dann BDEW. Leer bleibt das bisherige Verhalten. In der
   Kostenanzeige steht, welche Quelle gilt („eigener Tarif“ bzw. „BDEW-Durchschnitt,
   nicht dein Tarif“). Angenommen wird ein einziger Arbeitspreis, kein Tag-/
   Nachttarif.
