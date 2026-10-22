@@ -3629,6 +3629,8 @@ function memberToDevice(m) {
     detailKey: m.detailKey || m.key,
     value: (m.value === undefined) ? null : m.value,
     soc: (m.soc === undefined) ? null : m.soc,
+    sub: m.sub || '',
+    vehicleRangeKm: m.vehicleRangeKm || null,
     measured: true,
     factor: (typeof m.factor === 'number') ? m.factor : 100,
     hasMembers: !!m.hasMembers,

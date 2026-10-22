@@ -497,6 +497,9 @@ class NRGDashboardTile extends IPSModule
         // Geräte fallen beim Anwenden einfach raus (siehe applyCustomOrder()
         // in module.html) - kein Abgleich/keine Migration hier nötig.
         $this->RegisterAttributeString('NodeOrder', '[]');
+        // Wallboxen, die beim Aufschachteln als Mitglied einer Gruppe ausgeblendet wurden (22.10.2026): Ihre Stecker-/Fahrzeugdaten
+        // brauchen wir weiter fuer die Fahrzeug-Zuordnung der Mitglieder auf Ebene 2 (siehe AbsorbedVehicleMap()).
+        $this->RegisterAttributeString('AbsorbedWallboxes', '[]');
         $this->RegisterTimer('NRGDASH_BdewCheck', 0, 'NRGDASH_CheckBdewPrice($_IPS[\'TARGET\']);');
         // Ein-/Ausblenden bereits automatisch gefundener Geraete (Dietmar,
         // 27.07.2026: "man könnte auch durchaus eine Liste anbieten und
@@ -1476,6 +1479,7 @@ class NRGDashboardTile extends IPSModule
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
+        $this->WriteAttributeString('AbsorbedWallboxes', json_encode($this->absorbedWallboxes));
         $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
         $this->WriteAttributeInteger('LastDiscoveryTs', time());
         $this->SetStatus(102);
@@ -4985,8 +4989,12 @@ class NRGDashboardTile extends IPSModule
      * iterativ aufgeloest; ein Zyklus ohne unbeanspruchte Spitze (Fehl-
      * konfiguration) blendet nichts aus, statt alles verschwinden zu lassen.
      */
+    /** Beim Aufschachteln ausgeblendete Wallboxen (nur waehrend der Discovery gefuellt, dann im Attribut AbsorbedWallboxes). */
+    private array $absorbedWallboxes = [];
+
     private function hideRootsContainedInGroups(array $devices): array
     {
+        $this->absorbedWallboxes = [];
         $devices = array_values($devices);
         $core = ['pv', 'battery', 'grid', 'house'];
         // powerID -> Index der beanspruchenden Wurzel (nur positive Mitglieder)
@@ -5048,6 +5056,14 @@ class NRGDashboardTile extends IPSModule
         if (count($hidden) === 0) {
             return $devices;
         }
+        $absorbed = [];
+        foreach ($hidden as $i => $parent) {
+            if ($this->normalizeDeviceCategory((string) ($devices[$i]['function'] ?? '')) === 'wallbox'
+                && (int) ($devices[$i]['plugStateID'] ?? 0) > 0 && (int) ($devices[$i]['powerID'] ?? 0) > 0) {
+                $absorbed[] = $devices[$i];
+            }
+        }
+        $this->absorbedWallboxes = $absorbed;
         foreach ($hidden as $i => $parent) {
             $this->SendDebug('Aufschachteln', sprintf(
                 'Ebene 1: "%s" ausgeblendet - positives Mitglied von "%s", dort eine Ebene tiefer erreichbar',
@@ -5318,6 +5334,35 @@ class NRGDashboardTile extends IPSModule
      * jeder Tiefe) - fuer den ?members=-Hook. Liefert die Kachel-Normalform
      * inkl. aufgeloestem Momentanwert ('value') und SOC.
      */
+    /**
+     * Fahrzeug-Zuordnung fuer Wallboxen, die als Mitglied einer Gruppe (z. B. MeterHub "Ladestation" mit WB 1/WB 2) auf Ebene 1 ausgeblendet sind:
+     * AssignVehicles() laeuft ueber diese ausgeblendeten Wallboxen (sie tragen den Stecker-Zustand), das Ergebnis wird je Leistungsvariable
+     * geliefert, damit MembersForKey() es dem sichtbaren Mitglied auf Ebene 2 mitgibt. [powerID => [name, soc, rangeKm]]
+     */
+    private function AbsorbedVehicleMap(): array
+    {
+        $rows = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+        if (!is_array($rows) || count($rows) === 0) {
+            return [];
+        }
+        $vehicles = $this->AllVehicles();
+        if (count($vehicles) === 0) {
+            return [];
+        }
+        $rows = array_values($rows);
+        $out = [];
+        foreach ($this->AssignVehicles($rows, $vehicles) as $idx => $a) {
+            $v = $vehicles[$a['v']] ?? null;
+            $pid = (int) ($rows[$idx]['powerID'] ?? 0);
+            if ($v === null || $pid <= 0 || !IPS_VariableExists((int) $v['socID'])) {
+                continue;
+            }
+            $out[$pid] = ['name' => (string) $v['name'], 'soc' => round((float) GetValue((int) $v['socID'])), 'rangeKm' => $v['rangeKm'] ?? null];
+            $this->PublishVehicleNameToChargerHub($rows[$idx], (string) $v['name'], (bool) $a['correlated']);
+        }
+        return $out;
+    }
+
     private function MembersForKey(string $key): array
     {
         $parent = $this->FindDeviceByKey($key);
@@ -5352,6 +5397,21 @@ class NRGDashboardTile extends IPSModule
             $m['detailKey'] = $m['key'];
         }
         unset($m);
+        // Zugeordnetes Fahrzeug der ausgeblendeten ChargerHub-Wallbox auf das sichtbare Mitglied uebertragen (gleiche Leistungsvariable)
+        $veh = $this->AbsorbedVehicleMap();
+        if ($veh) {
+            foreach ($list as &$m) {
+                $pid = (int) ($m['powerID'] ?? 0);
+                if ($pid > 0 && isset($veh[$pid])) {
+                    $m['sub'] = $veh[$pid]['name'];
+                    $m['soc'] = $veh[$pid]['soc'];
+                    if (!empty($veh[$pid]['rangeKm'])) {
+                        $m['vehicleRangeKm'] = $veh[$pid]['rangeKm'];
+                    }
+                }
+            }
+            unset($m);
+        }
         return $list;
     }
 
