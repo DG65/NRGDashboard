@@ -2968,6 +2968,11 @@ class NRGDashboardTile extends IPSModule
             return $out;
         }
         foreach (@IPS_GetInstanceListByModuleID(NRGDASH_GUID_TESSIE) as $id) {
+            // Deaktivierte Instanzen zaehlen nicht (22.10.2026: zwei doppelte "Schneeflocke"/"Kohlekasten"-Instanzen standen beide auf
+            // "verbunden" und machten die Fahrzeug-Zuordnung mehrdeutig; ein deaktivierte Instanz liefert trotzdem noch einen Zustand).
+            if ((int) (@IPS_GetInstance((int) $id)['InstanceStatus'] ?? 102) === 104 || !empty(@IPS_GetObject((int) $id)['ObjectIsDisabled'])) {
+                continue;
+            }
             $raw = @TESSIE_GetVehicleState((int) $id);
             $state = is_string($raw) ? json_decode($raw, true) : $raw;
             if (!is_array($state) || (int) ($state['socID'] ?? 0) <= 0) {
