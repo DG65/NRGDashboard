@@ -851,7 +851,16 @@ class NRGDashboardTile extends IPSModule
         $this->setFormStatusLine($elements, 'ManualBatLive', $line);
 
         $line = '';
-        if ($this->readIntProperty('ManualHouseID', 0) === 0 && $pv !== null && $gridEff !== null) {
+        $houseId = $this->readIntProperty('ManualHouseID', 0);
+        if ($houseId > 0) {
+            // Ein echter Hauslastzaehler ersetzt die Berechnung - auch eine nicht mehr vorhandene Variable (zeigt Haus dann dauerhaft 0 W)
+            if (!@IPS_VariableExists($houseId)) {
+                $line = '⚠️ Als Hauslastzähler ist die Variable #' . $houseId . ' eingetragen, sie existiert nicht mehr. Dadurch zeigt „Haus“ dauerhaft 0 W. Feld leeren (Kreuz neben der Auswahl) oder eine vorhandene Variable wählen.';
+            } else {
+                $hv = $this->resolveVariableValue($houseId);
+                $line = 'Hauslast kommt vom eingetragenen Zähler #' . $houseId . ' (' . @IPS_GetName($houseId) . '), aktuell ' . ($hv === null ? 'kein Wert' : $fmt($hv)) . ' - die Berechnung Solar − Netz + Batterie wird dann nicht verwendet.';
+            }
+        } elseif ($pv !== null && $gridEff !== null) {
             $house = $pv - $gridEff + ($batEff ?? 0.0);
             if ($house <= 0 && $pv > 50) {
                 $line = '⚠️ Berechnete Hauslast ' . $fmt($house) . ' (Solar ' . $fmt($pv) . ' − Netz ' . $fmt($gridEff)
