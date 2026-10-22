@@ -853,9 +853,9 @@ class NRGDashboardTile extends IPSModule
         $line = '';
         $houseId = $this->readIntProperty('ManualHouseID', 0);
         if ($houseId > 0) {
-            // Ein echter Hauslastzaehler ersetzt die Berechnung - auch eine nicht mehr vorhandene Variable (zeigt Haus dann dauerhaft 0 W)
+            // Ein echter Hauslastzaehler ersetzt die Berechnung; eine ungueltige ID wird ignoriert (siehe discoverManualCore())
             if (!@IPS_VariableExists($houseId)) {
-                $line = '⚠️ Als Hauslastzähler ist die Variable #' . $houseId . ' eingetragen, sie existiert nicht mehr. Dadurch zeigt „Haus“ dauerhaft 0 W. Feld leeren (Kreuz neben der Auswahl) oder eine vorhandene Variable wählen.';
+                $line = '⚠️ Als Hauslastzähler ist die Variable #' . $houseId . ' eingetragen, sie ist ungültig oder existiert nicht mehr und wird ignoriert; die Hauslast wird berechnet. Feld leeren (Kreuz neben der Auswahl) oder eine vorhandene Variable wählen.';
             } else {
                 $hv = $this->resolveVariableValue($houseId);
                 $line = 'Hauslast kommt vom eingetragenen Zähler #' . $houseId . ' (' . @IPS_GetName($houseId) . '), aktuell ' . ($hv === null ? 'kein Wert' : $fmt($hv)) . ' - die Berechnung Solar − Netz + Batterie wird dann nicht verwendet.';
@@ -4630,7 +4630,8 @@ class NRGDashboardTile extends IPSModule
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
         $house = $this->readIntProperty('ManualHouseID', 0);
-        if ($house > 0) {
+        // Nur eine echte Variable zaehlt (22.10.2026, Forum AKL: eine ungueltige ID 1 liess "Haus" dauerhaft auf 0 W stehen und ersetzte die Berechnung)
+        if ($house > 0 && @IPS_VariableExists($house)) {
             $results[] = $this->normalizeEntry([
                 'function' => 'house', 'label' => 'Haus', 'powerID' => $house, 'measured' => true,
             ], 'manual', 0);
