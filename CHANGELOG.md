@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.51 (2026-10-22)
+
+- Energiefluss-Kachel: Ein eingetragener „Echter Hauslastzähler“, dessen Variable ungültig ist oder nicht mehr existiert (Forum: ID 1), wird ignoriert. Vorher zeigte „Haus“ dauerhaft 0 W, weil der ungültige Eintrag die berechnete Hauslast ersetzte. Die Warnzeile im Formular nennt das jetzt entsprechend.
+
 ## 0.9.170-beta.50 (2026-10-22)
 
 - Energiefluss-Kachel, Formular „Manuelle Datenpunkte“: Ist ein „Echter Hauslastzähler“ eingetragen, nennt die Zeile darunter seine Variable und den aktuellen Wert und weist darauf hin, dass die Berechnung Solar − Netz + Batterie dann nicht verwendet wird. Existiert die eingetragene Variable nicht mehr, steht dort eine Warnung (die Mitte zeigt sonst dauerhaft 0 W).
