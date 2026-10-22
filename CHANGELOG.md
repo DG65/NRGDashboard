@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.52 (2026-10-22)
+
+- Energiefluss-Kachel: Fahrzeug-Zuordnung auch bei Wallboxen in einer Gruppe. Sind ChargerHub-Wallboxen auf Ebene 1 ausgeblendet, weil dieselben Leistungsvariablen als Mitglieder einer MeterHub-Gruppe („Ladestation“ mit WB 1/WB 2) vorkommen, ging die Zuordnung des Fahrzeugs verloren: Die Mitglieder auf Ebene 2 zeigten weder Fahrzeugname noch Ladestand. Die ausgeblendeten Wallboxen werden jetzt für die Zuordnung weiter ausgewertet, das erkannte Fahrzeug (Name, Ladestand) erscheint am sichtbaren Mitglied. Wirkt nach dem nächsten „Geräte jetzt suchen“.
+
 ## 0.9.170-beta.51 (2026-10-22)
 
 - Energiefluss-Kachel: Ein eingetragener „Echter Hauslastzähler“, dessen Variable ungültig ist oder nicht mehr existiert (Forum: ID 1), wird ignoriert. Vorher zeigte „Haus“ dauerhaft 0 W, weil der ungültige Eintrag die berechnete Hauslast ersetzte. Die Warnzeile im Formular nennt das jetzt entsprechend.
