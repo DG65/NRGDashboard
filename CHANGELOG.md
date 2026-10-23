@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.55 (2026-10-23)
+
+- Prognose-Kachel (NRGDashboardForecast): Die Profile (Auswahllisten wie „Darstellung“) werden jetzt auch bei „Änderungen übernehmen“ aktualisiert, nicht nur beim Anlegen einer neuen Instanz. Dadurch erscheint „Tagesbalken“ bei bestehenden Instanzen nach einem Bibliotheks-Update und „Übernehmen“, ohne dass eine neue Instanz angelegt werden muss (Forum hfichtinger #99).
+
 ## 0.9.170-beta.54 (2026-10-23)
 
 - Prognose-Kachel (NRGDashboardForecast), gespiegelt von Prognose Build 155: neue Darstellung „Tagesbalken (kWh je Tag)“ als dritte Auswahl bei „Darstellung“. Ein Balken je Tag mit der Tagesenergie, PV und Verbrauch nebeneinander; heute und gestern zeigen zusätzlich den Ist-Wert bisher als vollen Balken im hellen Soll-Balken. Reines HTML/CSS ohne Diagramm-Bibliothek (Forum hfichtinger #94).
