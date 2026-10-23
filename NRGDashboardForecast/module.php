@@ -336,6 +336,9 @@ class NRGDashboardForecast extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Profile auch hier (idempotent): neue Zuordnungen in geteilten Profilen (z. B. NRGDASHFC.View 2 "Tagesbalken") kommen sonst erst bei
+        // einer NEUEN Instanz an, ein Bibliotheks-Update plus "Übernehmen" bei bestehenden Instanzen reichte nicht (Forum hfichtinger #99).
+        $this->ensureProfiles();
         $this->SetVisualizationType(1);
         $this->WriteAttributeString('MeasuredCache', ''); // Cache bei Konfig-Aenderung verwerfen
 
