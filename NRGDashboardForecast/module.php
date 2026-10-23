@@ -230,7 +230,7 @@ class NRGDashboardForecast extends IPSModule
             'PowerUnit'        => ['Einheit der Ist-Leistungsvariablen', 'NRGDASHFC.PowerUnit', 30, 2],
             'MeasuredCacheSec' => ['Ist-Verlauf neu berechnen alle ... s (Archiv-Cache)', 'NRGDASHFC.CacheSec', 34, 120],
             // Darstellung (Forum Ghostraider #48, gespiegelt von Prognoses Energiebilanz Build 142): Kurve oder Balken je Slot (15 min)
-            'ChartView'        => ['Darstellung (Kurve oder Balken je Zeitscheibe)', 'NRGDASHFC.View', 39, 0],
+            'ChartView'        => ['Darstellung (Kurve, Balken je Zeitscheibe oder Tagesbalken)', 'NRGDASHFC.View', 39, 0],
             // Eigene Wahl der Schriftfarbe (Forum lungo #62, gespiegelt von Prognoses Energiebilanz Build 145)
             'LabelTone'        => ['Beschriftung (Schriftfarbe: automatisch, hell oder dunkel)', 'NRGDASHFC.LabelTone', 43, 0],
             'ChartEngine'      => ['Diagramm-Engine', 'NRGDASHFC.Engine', 40, 0],
@@ -288,6 +288,8 @@ class NRGDashboardForecast extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHFC.View')) { IPS_CreateVariableProfile('NRGDASHFC.View', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileAssociation('NRGDASHFC.View', 0, 'Kurve (Linien mit Unsicherheitsband)', '', -1);
         IPS_SetVariableProfileAssociation('NRGDASHFC.View', 1, 'Balken je Zeitscheibe (15 min, Soll gefüllt mit Ist)', '', -1);
+        // Prognose Build 155 (Forum hfichtinger #94): ein Balken je Tag mit der Tagesenergie zur schnellen Einschätzung
+        IPS_SetVariableProfileAssociation('NRGDASHFC.View', 2, 'Tagesbalken (kWh je Tag)', '', -1);
 
         if (!IPS_VariableProfileExists('NRGDASHFC.LabelTone')) { IPS_CreateVariableProfile('NRGDASHFC.LabelTone', VARIABLETYPE_INTEGER); }
         IPS_SetVariableProfileAssociation('NRGDASHFC.LabelTone', 0, 'Automatisch (nach Betriebssystem/Browser)', '', -1);
@@ -613,7 +615,7 @@ class NRGDashboardForecast extends IPSModule
             'yMaxManual' => max(0.0, (float) $this->GetValue('YMaxManual')),
             'font'       => $this->FontStack((int) $this->GetValue('FontFamily')),
             'engine'     => ((int) $this->GetValue('ChartEngine') === 1) ? 'highcharts' : 'echarts',
-            'view'       => ((int) $this->GetValue('ChartView') === 1) ? 'bars' : 'curve',
+            'view'       => ['curve', 'bars', 'days'][max(0, min(2, (int) $this->GetValue('ChartView')))],
             'labelTone'  => max(0, min(2, (int) $this->GetValue('LabelTone'))),
             'hookPath'   => '/hook/nrgdashforecast' . $this->InstanceID,
             'showTour'   => !(bool) $this->ReadAttributeBoolean('TourSeen'),

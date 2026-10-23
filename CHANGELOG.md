@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.54 (2026-10-23)
+
+- Prognose-Kachel (NRGDashboardForecast), gespiegelt von Prognose Build 155: neue Darstellung „Tagesbalken (kWh je Tag)“ als dritte Auswahl bei „Darstellung“. Ein Balken je Tag mit der Tagesenergie, PV und Verbrauch nebeneinander; heute und gestern zeigen zusätzlich den Ist-Wert bisher als vollen Balken im hellen Soll-Balken. Reines HTML/CSS ohne Diagramm-Bibliothek (Forum hfichtinger #94).
+
 ## 0.9.170-beta.53 (2026-10-22)
 
 - Energiefluss-Kachel, Fahrzeug-Zuordnung: Deaktivierte Tessie-Instanzen werden nicht mehr als Fahrzeug erkannt. Bisher zählte eine deaktivierte Instanz weiter mit und konnte die Zuordnung mehrdeutig machen (zwei Fahrzeuge mit gleichem Namen, beide „verbunden“).
