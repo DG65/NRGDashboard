@@ -210,6 +210,8 @@ class NRGDashboardPVMonitor extends IPSModule
         $this->RegisterPropertyInteger('PvPowerUnit', 0);
         $this->RegisterPropertyInteger('BatPowerUnit', 0);
         $this->RegisterPropertyInteger('GridPowerUnit', 0);
+        // Netzleistung umkehren (24.10.2026, Forum power1625: bei ihm ist Einspeisung "-" und Bezug "+")
+        $this->RegisterPropertyBoolean('GridPowerInvert', false);
         $this->RegisterPropertyInteger('MpptPowerUnit', 0);
         $this->RegisterPropertyInteger('IrradianceID', 0);
         $this->RegisterPropertyInteger('TemperatureID', 0);
@@ -1040,12 +1042,18 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($vid <= 0) {
             return 1;
         }
+        $sign = 1;
         foreach ($this->MeterHubAssignments() as $a) {
             if (($a['function'] ?? '') === 'grid' && (int) ($a['powerID'] ?? 0) === $vid) {
-                return -1;
+                $sign = -1;
+                break;
             }
         }
-        return 1;
+        // Manueller Schalter "Netzleistung umkehren" (Formular) - gilt fuer die im Formular gewaehlte bzw. automatisch gefundene Netz-Variable
+        if ($this->ReadPropertyBoolean('GridPowerInvert') && $vid === $this->GridPowerID()) {
+            $sign = -$sign;
+        }
+        return $sign;
     }
 
     /**
