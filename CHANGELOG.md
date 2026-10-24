@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.57 (2026-10-24)
+
+- PV-Monitoring, Formular „Datenquelle“ (Forum power1625): Die Feldbeschriftungen der Variablen-Auswahl sind kurz („PV-Leistung“, „Batterie-Leistung“, „Netzleistung“ …), die Erklärungen stehen als eigene, umbrechende Zeilen darunter (optional oder automatisch, Vorzeichen, Einheit). Vorher kürzte die Konsole lange Beschriftungen mit „…“, die Hinweise waren nicht lesbar.
+- Neu: Auswahl „Einheit“ für PV-, Batterie-, Netz- und MPPT-Variablen: Automatisch (Suffix kW/MW aus dem Variablenprofil, wie in beta.56), Watt oder Kilowatt. Für Variablen in kW ohne Profil-Suffix; gilt auch für automatisch gefundene Variablen der jeweiligen Rolle.
+
 ## 0.9.170-beta.56 (2026-10-24)
 
 - PV-Monitoring: Einheitenerkennung für Leistungsvariablen (Forum power1625). Eine Batterie-, PV-, Netz- oder Strang-Variable, deren Profil oder Darstellung die Einheit „kW“ (oder „MW“) trägt, wird jetzt mit dem passenden Faktor in Watt umgerechnet. Bisher las der Monitor jeden Archivwert als Watt: Eine Batterie-Variable in kW zeigte im Batterie-Reiter ±0,004 kW und im Tooltip 0,00. Gilt für Tagesverlauf, Energie-Ansichten (Woche/Monat/Jahr), Bilanz, Netzbezug-Balken und Monatsspitzenwert. Variablen in W, Prozent, W/m² oder °C bleiben unverändert; ohne Einheit im Profil wird wie bisher Watt angenommen.

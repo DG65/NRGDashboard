@@ -73,18 +73,49 @@
         {
           "type": "SelectVariable",
           "name": "PvPowerID",
-          "caption": "PV-Leistung (optional - sonst automatisch über InverterHub)"
+          "caption": "PV-Leistung"
+        },
+        {
+          "type": "Select",
+          "name": "PvPowerUnit",
+          "caption": "Einheit PV-Leistung",
+          "options": [
+            {
+              "caption": "Automatisch (aus dem Variablenprofil)",
+              "value": 0
+            },
+            {
+              "caption": "Watt",
+              "value": 1
+            },
+            {
+              "caption": "Kilowatt",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "PV-Leistung: optional, sonst automatisch über InverterHub. Erwartet wird die Erzeugung als positiver Wert in W. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
         },
         {
           "type": "SelectVariable",
           "name": "IrradianceID",
-          "caption": "Einstrahlungs-Variable (W/m², optional)"
+          "caption": "Einstrahlungs-Variable (W/m²)"
+        },
+        {
+          "type": "Label",
+          "caption": "Einstrahlung: optional. Ohne sie fehlt die gestrichelte Linie „PV erwartet“ im Monitoring."
         },
         {
           "type": "SelectInstance",
           "name": "PvfInstance",
-          "caption": "PV-Prognose-Instanz für Erwartungswerte (optional, sonst automatisch bei genau einer Instanz)",
+          "caption": "PV-Prognose-Instanz",
           "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
+        },
+        {
+          "type": "Label",
+          "caption": "PV-Prognose: optional, sonst automatisch bei genau einer Instanz."
         },
         {
           "type": "Label",
@@ -93,15 +124,23 @@
         {
           "type": "SelectVariable",
           "name": "TemperatureID",
-          "caption": "Außentemperatur (°C, optional - verbessert „PV erwartet“)"
+          "caption": "Außentemperatur (°C)"
+        },
+        {
+          "type": "Label",
+          "caption": "Außentemperatur: optional, verbessert „PV erwartet“."
         },
         {
           "type": "NumberSpinner",
           "name": "TempCoeff",
-          "caption": "Temperaturkoeffizient der Module (%/K, Herstellerangabe - Vorgabe -0,40 passt für die meisten Siliziummodule)",
+          "caption": "Temperaturkoeffizient (%/K)",
           "digits": 2,
           "minimum": -1,
           "maximum": 0
+        },
+        {
+          "type": "Label",
+          "caption": "Temperaturkoeffizient der Module nach Herstellerangabe, die Vorgabe -0,40 passt für die meisten Siliziummodule."
         },
         {
           "type": "Label",
@@ -110,8 +149,12 @@
         {
           "type": "CheckBox",
           "name": "IrradianceHorizontal",
-          "caption": "Einstrahlungssensor horizontal montiert (üblich bei Wetterstationen, z. B. Ecowitt)",
+          "caption": "Einstrahlungssensor horizontal montiert",
           "value": true
+        },
+        {
+          "type": "Label",
+          "caption": "Üblich bei Wetterstationen, zum Beispiel Ecowitt."
         },
         {
           "type": "Label",
@@ -120,31 +163,124 @@
         {
           "type": "SelectVariable",
           "name": "BatPowerID",
-          "caption": "Batterie-Leistung (optional - sonst automatisch über InverterHub)"
+          "caption": "Batterie-Leistung"
+        },
+        {
+          "type": "Select",
+          "name": "BatPowerUnit",
+          "caption": "Einheit Batterie-Leistung",
+          "options": [
+            {
+              "caption": "Automatisch (aus dem Variablenprofil)",
+              "value": 0
+            },
+            {
+              "caption": "Watt",
+              "value": 1
+            },
+            {
+              "caption": "Kilowatt",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "Batterie-Leistung: optional, sonst automatisch über InverterHub. Vorzeichen: + = Entladen, − = Laden (liefert die Variable es umgekehrt, bitte die Quelle prüfen). Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
         },
         {
           "type": "SelectVariable",
           "name": "SocID",
-          "caption": "Batterie-Ladestand SOC (optional - sonst automatisch über InverterHub)"
+          "caption": "Batterie-Ladestand (SOC, %)"
+        },
+        {
+          "type": "Label",
+          "caption": "Ladestand: optional, sonst automatisch über InverterHub."
         },
         {
           "type": "SelectVariable",
           "name": "GridPowerID",
-          "caption": "Netzleistung, „+“ = Einspeisung (optional - sonst automatisch über InverterHub) - zeigt den Netzbezug als Balken im Strompreis-Reiter"
+          "caption": "Netzleistung"
+        },
+        {
+          "type": "Select",
+          "name": "GridPowerUnit",
+          "caption": "Einheit Netzleistung",
+          "options": [
+            {
+              "caption": "Automatisch (aus dem Variablenprofil)",
+              "value": 0
+            },
+            {
+              "caption": "Watt",
+              "value": 1
+            },
+            {
+              "caption": "Kilowatt",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "Netzleistung: optional, sonst automatisch über InverterHub. Vorzeichen: + = Einspeisung, − = Bezug. Zeigt den Netzbezug als Balken im Strompreis-Reiter. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
         },
         {
           "type": "Label",
           "caption": "MPPT-Stränge werden automatisch gefunden, sofern genau eine InverterHubMonitor-Instanz installiert ist (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert) - ohne InverterHubMonitor bitte die Variablen unten manuell wählen (nicht jeder Wechselrichter hat 4 Stränge, ungenutzte Felder leer lassen)."
         },
-        { "type": "SelectVariable", "name": "Mppt1ID", "caption": "MPPT-Strang 1 (optional, nur falls kein InverterHubMonitor installiert)" },
-        { "type": "SelectVariable", "name": "Mppt2ID", "caption": "MPPT-Strang 2 (optional)" },
-        { "type": "SelectVariable", "name": "Mppt3ID", "caption": "MPPT-Strang 3 (optional)" },
-        { "type": "SelectVariable", "name": "Mppt4ID", "caption": "MPPT-Strang 4 (optional)" },
+        {
+          "type": "SelectVariable",
+          "name": "Mppt1ID",
+          "caption": "MPPT-Strang 1"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "Mppt2ID",
+          "caption": "MPPT-Strang 2"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "Mppt3ID",
+          "caption": "MPPT-Strang 3"
+        },
+        {
+          "type": "SelectVariable",
+          "name": "Mppt4ID",
+          "caption": "MPPT-Strang 4"
+        },
+        {
+          "type": "Select",
+          "name": "MpptPowerUnit",
+          "caption": "Einheit MPPT-Stränge",
+          "options": [
+            {
+              "caption": "Automatisch (aus dem Variablenprofil)",
+              "value": 0
+            },
+            {
+              "caption": "Watt",
+              "value": 1
+            },
+            {
+              "caption": "Kilowatt",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "Label",
+          "caption": "MPPT-Stränge: Die Einheit gilt für alle vier Variablen. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
+        },
         {
           "type": "SelectInstance",
           "name": "TibberInstance",
-          "caption": "Tibber Grid Rewards-Instanz für den Strompreis-Reiter (optional, sonst automatisch bei genau einer Instanz)",
+          "caption": "Tibber Grid Rewards-Instanz",
           "moduleID": "{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}"
+        },
+        {
+          "type": "Label",
+          "caption": "Tibber: optional für den Strompreis-Reiter, sonst automatisch bei genau einer Instanz."
         },
         {
           "type": "Label",
@@ -162,8 +298,14 @@
           "name": "Engine",
           "caption": "Chart-Engine",
           "options": [
-            { "caption": "ECharts (eingebettet, empfohlen)", "value": "echarts" },
-            { "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)", "value": "highcharts" }
+            {
+              "caption": "ECharts (eingebettet, empfohlen)",
+              "value": "echarts"
+            },
+            {
+              "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)",
+              "value": "highcharts"
+            }
           ]
         },
         {

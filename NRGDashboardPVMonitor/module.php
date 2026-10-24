@@ -72,6 +72,26 @@ class NRGDashboardPVMonitor extends IPSModule
         return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
     }
 
+    /** Manuell gewaehlte Einheit (0 automatisch, 1 Watt, 2 Kilowatt) fuer die Variable, falls sie die PV-, Batterie-, Netz- oder MPPT-Variable ist. */
+    private function PowerUnitOverride(int $vid): int
+    {
+        if ($vid <= 0) {
+            return 0;
+        }
+        $roles = [['PvPowerUnit', 'PvPowerID'], ['BatPowerUnit', 'BatPowerID'], ['GridPowerUnit', 'GridPowerID']];
+        foreach ($roles as [$unitProp, $role]) {
+            $u = $this->readIntProperty($unitProp, 0);
+            if ($u > 0 && $this->$role() === $vid) {
+                return $u;
+            }
+        }
+        $u = $this->readIntProperty('MpptPowerUnit', 0);
+        if ($u > 0 && in_array($vid, array_map('intval', array_values($this->MpptPowerIDs())), true)) {
+            return $u;
+        }
+        return 0;
+    }
+
     /** Zwischenspeicher fuer PowerUnitFactor() (je Anfrage). */
     private array $powerFactorCache = [];
 
@@ -86,6 +106,14 @@ class NRGDashboardPVMonitor extends IPSModule
             return $this->powerFactorCache[$vid];
         }
         $f = 1.0;
+        // Manuelle Einheit hat Vorrang (Formular "Einheit ..."): gilt fuer die jeweils verwendete Variable der Rolle (auch automatisch gefundene)
+        $override = $this->PowerUnitOverride($vid);
+        if ($override === 1) {
+            return $this->powerFactorCache[$vid] = 1.0;
+        }
+        if ($override === 2) {
+            return $this->powerFactorCache[$vid] = 1000.0;
+        }
         if ($vid > 0 && IPS_VariableExists($vid)) {
             $v = IPS_GetVariable($vid);
             $suffix = '';
@@ -178,6 +206,11 @@ class NRGDashboardPVMonitor extends IPSModule
         parent::Create();
 
         $this->RegisterPropertyInteger('PvPowerID', 0);
+        // Einheit der Leistungsvariablen (24.10.2026): 0 = Automatisch (Profil-Suffix kW/MW), 1 = Watt, 2 = Kilowatt
+        $this->RegisterPropertyInteger('PvPowerUnit', 0);
+        $this->RegisterPropertyInteger('BatPowerUnit', 0);
+        $this->RegisterPropertyInteger('GridPowerUnit', 0);
+        $this->RegisterPropertyInteger('MpptPowerUnit', 0);
         $this->RegisterPropertyInteger('IrradianceID', 0);
         $this->RegisterPropertyInteger('TemperatureID', 0);
         $this->RegisterPropertyFloat('TempCoeff', -0.40);
