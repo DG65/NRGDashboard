@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.56 (2026-10-24)
+
+- PV-Monitoring: Einheitenerkennung für Leistungsvariablen (Forum power1625). Eine Batterie-, PV-, Netz- oder Strang-Variable, deren Profil oder Darstellung die Einheit „kW“ (oder „MW“) trägt, wird jetzt mit dem passenden Faktor in Watt umgerechnet. Bisher las der Monitor jeden Archivwert als Watt: Eine Batterie-Variable in kW zeigte im Batterie-Reiter ±0,004 kW und im Tooltip 0,00. Gilt für Tagesverlauf, Energie-Ansichten (Woche/Monat/Jahr), Bilanz, Netzbezug-Balken und Monatsspitzenwert. Variablen in W, Prozent, W/m² oder °C bleiben unverändert; ohne Einheit im Profil wird wie bisher Watt angenommen.
+
 ## 0.9.170-beta.55 (2026-10-23)
 
 - Prognose-Kachel (NRGDashboardForecast): Die Profile (Auswahllisten wie „Darstellung“) werden jetzt auch bei „Änderungen übernehmen“ aktualisiert, nicht nur beim Anlegen einer neuen Instanz. Dadurch erscheint „Tagesbalken“ bei bestehenden Instanzen nach einem Bibliotheks-Update und „Übernehmen“, ohne dass eine neue Instanz angelegt werden muss (Forum hfichtinger #99).
