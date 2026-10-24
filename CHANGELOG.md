@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.58 (2026-10-24)
+
+- PV-Monitoring, Formular „Datenquelle“ (Forum power1625): Neuer Haken „Netzleistung umkehren“ für Netz-Variablen, die Bezug als Plus und Einspeisung als Minus liefern (erwartet wird + Einspeisung / − Bezug). Wirkt auf den Netzbezug-Balken im Strompreis-Reiter, die Bilanz und den Monatsspitzenwert.
+
 ## 0.9.170-beta.57 (2026-10-24)
 
 - PV-Monitoring, Formular „Datenquelle“ (Forum power1625): Die Feldbeschriftungen der Variablen-Auswahl sind kurz („PV-Leistung“, „Batterie-Leistung“, „Netzleistung“ …), die Erklärungen stehen als eigene, umbrechende Zeilen darunter (optional oder automatisch, Vorzeichen, Einheit). Vorher kürzte die Konsole lange Beschriftungen mit „…“, die Hinweise waren nicht lesbar.

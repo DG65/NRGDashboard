@@ -222,6 +222,15 @@
           ]
         },
         {
+          "type": "CheckBox",
+          "name": "GridPowerInvert",
+          "caption": "Netzleistung umkehren"
+        },
+        {
+          "type": "Label",
+          "caption": "Erwartet wird + = Einspeisung, − = Bezug. Liefert deine Netz-Variable es umgekehrt (Bezug +, Einspeisung −), hier den Haken setzen."
+        },
+        {
           "type": "Label",
           "caption": "Netzleistung: optional, sonst automatisch über InverterHub. Vorzeichen: + = Einspeisung, − = Bezug. Zeigt den Netzbezug als Balken im Strompreis-Reiter. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
         },
