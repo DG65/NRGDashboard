@@ -65,11 +65,47 @@ class NRGDashboardPVMonitor extends IPSModule
      * UNVERDUENNT, auch bei grober Aggregation (Monat/Jahr) - das ist die
      * richtige Pruefstelle, nicht 'Avg'.
      */
-    private function RowHasImplausiblePower(array $row): bool
+    private function RowHasImplausiblePower(array $row, float $factor = 1.0): bool
     {
-        $max = isset($row['Max']) ? abs((float) $row['Max']) : 0.0;
-        $min = isset($row['Min']) ? abs((float) $row['Min']) : 0.0;
+        $max = isset($row['Max']) ? abs((float) $row['Max']) * $factor : 0.0;
+        $min = isset($row['Min']) ? abs((float) $row['Min']) * $factor : 0.0;
         return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
+    }
+
+    /** Zwischenspeicher fuer PowerUnitFactor() (je Anfrage). */
+    private array $powerFactorCache = [];
+
+    /**
+     * Faktor von der Einheit der Variablen nach Watt (24.10.2026, Forum power1625: eine Batterie-Variable in kW wurde als Watt gelesen und
+     * zeigte ±0,004 kW): der Profil-/Darstellungs-Suffix "kW" ergibt 1000, "MW" 1000000, alles andere 1 (W, %, W/m², °C usw. bleiben
+     * unveraendert). Bewusst nur ein genau passender Suffix, kein Raten ueber den Namen.
+     */
+    private function PowerUnitFactor(int $vid): float
+    {
+        if (isset($this->powerFactorCache[$vid])) {
+            return $this->powerFactorCache[$vid];
+        }
+        $f = 1.0;
+        if ($vid > 0 && IPS_VariableExists($vid)) {
+            $v = IPS_GetVariable($vid);
+            $suffix = '';
+            $profile = ($v['VariableCustomProfile'] ?? '') !== '' ? $v['VariableCustomProfile'] : ($v['VariableProfile'] ?? '');
+            if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+                $suffix = (string) IPS_GetVariableProfile($profile)['Suffix'];
+            } else {
+                $pres = $v['VariableCustomPresentation'] ?? null;
+                if (is_array($pres) && isset($pres['SUFFIX']) && is_string($pres['SUFFIX'])) {
+                    $suffix = $pres['SUFFIX'];
+                }
+            }
+            $t = strtolower(trim($suffix));
+            if ($t === 'kw') {
+                $f = 1000.0;
+            } elseif ($t === 'mw') {
+                $f = 1000000.0;
+            }
+        }
+        return $this->powerFactorCache[$vid] = $f;
     }
 
     private const DEF_BACKGROUND = -1;
@@ -1473,11 +1509,12 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $data = $this->DayAggregatesResilient($aid, $vid, $start, $end);
         $out = [];
+        $pf = $this->PowerUnitFactor($vid);
         foreach ($data as $row) {
             if (!isset($row['Avg'])) {
                 continue;
             }
-            if ($this->RowHasImplausiblePower($row)) {
+            if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
                     sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
@@ -1485,7 +1522,7 @@ class NRGDashboardPVMonitor extends IPSModule
                 );
                 continue;
             }
-            $kwh = ((float) $row['Avg']) * 24.0 / 1000.0;
+            $kwh = ((float) $row['Avg']) * $pf * 24.0 / 1000.0;
             if (!is_finite($kwh) || $kwh < 0) {
                 continue;
             }
@@ -2633,6 +2670,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $level = $long ? self::AGG_HOUR : self::AGG_5MIN;
         $hours = $long ? 1.0 : 5.0 / 60.0;
         $kwh = 0.0;
+        $pf = $this->PowerUnitFactor($vid);
         for ($from = $start; $from < $end; $from = $to) {
             $to = min($end, $long ? strtotime('+1 month', strtotime(date('Y-m-01', $from))) : strtotime('+1 day', strtotime('today', $from)));
             $data = @AC_GetAggregatedValues($aid, $vid, $level, $from, $to, 0);
@@ -2644,11 +2682,11 @@ class NRGDashboardPVMonitor extends IPSModule
                 continue;
             }
             foreach ($data as $row) {
-                $avg = (float) $row['Avg'];
-                if ($this->RowHasImplausiblePower($row)) {
+                $avg = (float) $row['Avg'] * $pf;
+                if ($this->RowHasImplausiblePower($row, $pf)) {
                     $this->SendDebug(
                         __FUNCTION__,
-                        sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                        sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
                         0
                     );
                     continue;
@@ -2962,9 +3000,10 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         usort($data, function ($a, $b) { return (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']; });
         $pts = [];
+        $pf = $this->PowerUnitFactor($vid);
         foreach ($data as $row) {
-            $w = (float) $row['Avg'];
-            if ($this->RowHasImplausiblePower($row)) {
+            $w = (float) $row['Avg'] * $pf;
+            if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
                     sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
@@ -3002,10 +3041,11 @@ class NRGDashboardPVMonitor extends IPSModule
             return [];
         }
         $buckets = [];
+        $pf = $this->PowerUnitFactor($vid);
         foreach ($data as $row) {
             $ts = (int) $row['TimeStamp'];
             $bucketStart = $ts - ($ts % 900);
-            $drawW = max(0.0, -$sign * (float) $row['Avg']);
+            $drawW = max(0.0, -$sign * (float) $row['Avg'] * $pf);
             $kwh = $drawW * (5.0 / 60.0) / 1000.0;
             $buckets[$bucketStart] = ($buckets[$bucketStart] ?? 0.0) + $kwh;
         }
@@ -3070,12 +3110,13 @@ class NRGDashboardPVMonitor extends IPSModule
         // besten Slot bestimmen und aufhoeren, sobald die naechste Obergrenze
         // den bisher besten Slot nicht mehr uebertreffen kann.
         $cands = [];
+        $pf = $this->PowerUnitFactor($vid);
         foreach ($dailyRows as $row) {
             $extreme = ($sign > 0) ? ($row['Min'] ?? null) : ($row['Max'] ?? null);
             if ($extreme === null) {
                 continue;
             }
-            $upper = max(0.0, -$sign * (float) $extreme);
+            $upper = max(0.0, -$sign * (float) $extreme * $pf);
             if ($upper > 0.0) {
                 $cands[] = [$upper, (int) $row['TimeStamp']];
             }
@@ -3135,12 +3176,13 @@ class NRGDashboardPVMonitor extends IPSModule
             return [];
         }
         $out = [];
+        $pf = $this->PowerUnitFactor($vid);
         foreach ($data as $row) {
-            $avg = (float) $row['Avg'];
-            if ($this->RowHasImplausiblePower($row)) {
+            $avg = (float) $row['Avg'] * $pf;
+            if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
                     0
                 );
                 continue;
