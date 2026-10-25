@@ -1767,6 +1767,82 @@ class NRGDashboardTile extends IPSModule
             echo json_encode(['ok' => true]);
             return;
         }
+        // Wallbox-Cockpit, Bedienung (25.10.2026): Ladeart/Ladeziel/Frist/Befehl der EMS-Wallbox ueber die EMS-Variablen EMS_WBn_*. Die
+        // Wallbox wird SERVERSEITIG aus Seite (key) und Leistungsvariable bestimmt und nur bei eindeutiger Zuordnung bedient; Werte werden
+        // geprueft (Auswahllisten, Bereiche), schnelle Wiederholungen je Variable abgewiesen (jede Aenderung laedt die EMS-Instanz neu).
+        if (isset($_GET['emsWbAction'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $fail = function (int $code, string $msg): void {
+                http_response_code($code);
+                echo json_encode(['ok' => false, 'error' => $msg]);
+            };
+            if ($this->readBoolProperty('DemoMode', false)) {
+                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                return;
+            }
+            $field = (string) $_GET['emsWbAction'];
+            $key = (string) ($_GET['key'] ?? '');
+            $pid = (int) ($_GET['powerId'] ?? 0);
+            $d = $this->FindDeviceByKey($key);
+            if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
+                || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
+                $fail(403, 'Ungültige Wallbox.');
+                return;
+            }
+            $ec = $this->EmsWallboxControls($pid);
+            if ($ec === null || !isset($ec[2][$field])) {
+                $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen oder ist nicht bedienbar.');
+                return;
+            }
+            [$emsInst, $n, $vars] = $ec;
+            $vid = $vars[$field];
+            $raw = (string) ($_GET['value'] ?? '');
+            if ($field === 'mode' || $field === 'command') {
+                $allowed = array_map(static function ($o) { return (int) $o[0]; }, $this->VariableOptions($vid));
+                if ($field === 'command') {
+                    $allowed = array_values(array_diff($allowed, [0]));
+                }
+                $val = (int) $raw;
+                if (!ctype_digit(ltrim($raw, '-')) || !in_array($val, $allowed, true)) {
+                    $fail(400, 'Ungültiger Wert.');
+                    return;
+                }
+            } elseif ($field === 'kwh') {
+                $pres = @IPS_GetVariablePresentation($vid);
+                $val = (float) str_replace(',', '.', $raw);
+                if (!is_numeric(str_replace(',', '.', $raw)) || $val < (float) ($pres['MIN'] ?? 0) || $val > (float) ($pres['MAX'] ?? 100)) {
+                    $fail(400, 'Ladeziel außerhalb des erlaubten Bereichs.');
+                    return;
+                }
+            } else {
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $raw)) {
+                    $fail(400, 'Frist bitte als HH:MM angeben.');
+                    return;
+                }
+                $val = $raw;
+            }
+            $bufKey = 'EmsWbLast_' . $vid;
+            if (time() - (int) $this->GetBuffer($bufKey) < 5) {
+                $fail(429, 'Bitte einen Moment warten – das EMS lädt nach jeder Änderung neu.');
+                return;
+            }
+            $this->SetBuffer($bufKey, (string) time());
+            $target = $this->resolveActionTarget($vid);
+            if ($target === null) {
+                $fail(400, 'Variable nicht bedienbar (kein Ident ermittelbar).');
+                return;
+            }
+            $err = $this->runPartnerCall(function () use ($target, $val) {
+                IPS_RequestAction($target[0], $target[1], $val);
+            });
+            if ($err !== null) {
+                $fail(500, 'Aktion am EMS fehlgeschlagen: ' . $err);
+                return;
+            }
+            $this->LogMessage(sprintf('Wallbox-Bedienung über die Detailseite: EMS_WB%d %s = %s', $n, $field, (string) $val), KL_MESSAGE);
+            echo json_encode(['ok' => true]);
+            return;
+        }
         // Aufschachteln (03.09.2026): Mitglieder eines Sammelknotens fuer die
         // naechste Ebene - Schluessel ist ein Top-Level-Geraet ODER selbst
         // schon ein Mitglied (<Key>'>'<Index>...), beliebig tief.
@@ -5984,7 +6060,27 @@ class NRGDashboardTile extends IPSModule
                     $err = $val($eid);
                 }
                 $ow = (string) ($e['controlOwner'] ?? '');
+                $ctl = null;
+                if (!$this->readBoolProperty('DemoMode', false) && ($ec = $this->EmsWallboxControls((int) ($e['powerID'] ?? 0))) !== null) {
+                    [, , $ev] = $ec;
+                    $ctl = [];
+                    if (isset($ev['mode'])) {
+                        $ctl['mode'] = ['value' => (int) GetValue($ev['mode']), 'options' => $this->VariableOptions($ev['mode'])];
+                    }
+                    if (isset($ev['kwh'])) {
+                        $pres = @IPS_GetVariablePresentation($ev['kwh']);
+                        $ctl['kwh'] = ['value' => (float) GetValue($ev['kwh']), 'min' => (float) ($pres['MIN'] ?? 0), 'max' => (float) ($pres['MAX'] ?? 100), 'step' => (float) ($pres['STEP_SIZE'] ?? 0.5)];
+                    }
+                    if (isset($ev['time'])) {
+                        $ctl['time'] = ['value' => (string) GetValue($ev['time'])];
+                    }
+                    if (isset($ev['command'])) {
+                        $ctl['command'] = ['options' => array_values(array_filter($this->VariableOptions($ev['command']), static function ($o) { return (int) $o[0] !== 0; }))];
+                    }
+                }
                 $out[] = [
+                    'powerID'  => (int) ($e['powerID'] ?? 0),
+                    'ctl'      => $ctl,
                     'label'    => (string) ($e['label'] ?? 'Wallbox'),
                     'owner'    => $ow !== '' ? ($owners[$ow] ?? $ow) : null,
                     'reason'   => isset($e['controlReason']) ? (string) $e['controlReason'] : null,
@@ -5997,6 +6093,91 @@ class NRGDashboardTile extends IPSModule
             }
         }
         return count($out) > 0 ? $out : null;
+    }
+
+    /**
+     * EMS-Bedienvariablen einer Wallbox (EMS ab 0.85.0, je aktiver Wallbox n: EMS_WBn_ChargeMode/TargetKwh/TargetTime/Command, bedienbar per
+     * RequestAction). Welche EMS-Wallbox n zur ChargerHub-Wallbox mit dieser Leistungsvariable gehoert, sagt das EMS nicht oeffentlich; die
+     * Zuordnung laeuft deshalb ueber den Plantext: das EMS schreibt ihn je Wallbox n per CHUB_SetPlanInfo an den Ladepunkt, bei uns muss
+     * planInfoID-Text genau EINER EMS_WBn_Plan-Variable entsprechen. Ist das nicht eindeutig (zwei gleiche Texte, kein EMS, kein Text), gibt es
+     * keine Bedienung - lieber nichts als die falsche Wallbox. Rueckgabe [emsInstance, n, [feld => variablenID]] oder null.
+     */
+    private function EmsWallboxControls(int $powerID): ?array
+    {
+        if ($powerID <= 0 || !function_exists('CHUB_GetFunctions')) {
+            return null;
+        }
+        $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+        if ($ems <= 0) {
+            return null;
+        }
+        $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+        $plan = null;
+        foreach (array_merge($this->GetDevices(), is_array($abs) ? $abs : []) as $c) {
+            if ((int) ($c['powerID'] ?? 0) !== $powerID || ($c['source'] ?? '') !== 'chargerhub' || (int) ($c['instanceID'] ?? 0) <= 0) {
+                continue;
+            }
+            try {
+                $entries = @CHUB_GetFunctions((int) $c['instanceID']);
+            } catch (\Throwable $e) {
+                return null;
+            }
+            foreach ((is_array($entries) ? $entries : []) as $e) {
+                if ((int) ($e['powerID'] ?? 0) === $powerID) {
+                    $pid = (int) ($e['planInfoID'] ?? 0);
+                    $plan = ($pid > 0 && IPS_VariableExists($pid)) ? trim((string) GetValue($pid)) : null;
+                }
+            }
+            break;
+        }
+        if ($plan === null || $plan === '') {
+            return null;
+        }
+        $matches = [];
+        for ($n = 1; $n <= 8; $n++) {
+            $vid = @IPS_GetObjectIDByIdent('EMS_WB' . $n . '_Plan', $ems);
+            if ($vid && IPS_VariableExists($vid) && trim((string) GetValue($vid)) === $plan) {
+                $matches[] = $n;
+            }
+        }
+        if (count($matches) !== 1) {
+            return null;
+        }
+        $n = $matches[0];
+        $vars = [];
+        foreach (['mode' => 'ChargeMode', 'kwh' => 'TargetKwh', 'time' => 'TargetTime', 'command' => 'Command'] as $field => $ident) {
+            $vid = @IPS_GetObjectIDByIdent('EMS_WB' . $n . '_' . $ident, $ems);
+            if ($vid && IPS_VariableExists($vid) && (IPS_GetVariable($vid)['VariableAction'] ?? 0) > 0) {
+                $vars[$field] = (int) $vid;
+            }
+        }
+        return count($vars) > 0 ? [$ems, $n, $vars] : null;
+    }
+
+    /** Auswahlliste einer Variable (Darstellung "Aufzaehlung" oder Profil): [[wert, beschriftung], ...]. */
+    private function VariableOptions(int $vid): array
+    {
+        $out = [];
+        try {
+            $pres = @IPS_GetVariablePresentation($vid);
+            $opts = is_array($pres) && isset($pres['OPTIONS']) ? json_decode((string) $pres['OPTIONS'], true) : null;
+            foreach ((is_array($opts) ? $opts : []) as $o) {
+                if (isset($o['Value'])) {
+                    $out[] = [$o['Value'], (string) ($o['Caption'] ?? $o['Value'])];
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+        if (!$out) {
+            $v = IPS_GetVariable($vid);
+            $profile = ($v['VariableCustomProfile'] ?? '') !== '' ? $v['VariableCustomProfile'] : ($v['VariableProfile'] ?? '');
+            if ($profile !== '' && IPS_VariableProfileExists($profile)) {
+                foreach (IPS_GetVariableProfile($profile)['Associations'] as $a) {
+                    $out[] = [$a['Value'], (string) $a['Name']];
+                }
+            }
+        }
+        return $out;
     }
 
     private function SessionCounterMap(): array

@@ -410,6 +410,72 @@ function renderSessions(p) {
   document.getElementById('sessNote').textContent = notes.join(' ');
 }
 
+// Bedienung der EMS-Wallbox (Ladeart, Ladeziel, Frist, Befehle) - nur wenn das Backend die Wallbox eindeutig einer EMS-Wallbox zuordnen konnte.
+const EMS_LOCK = {};   // Variable -> Sperre bis (ms), gegen Mehrfachklicks (jede Aenderung laedt die EMS-Instanz neu)
+function wbControlsHtml(w) {
+  const c = w.ctl;
+  if (!c) return '';
+  const id = 'wb' + w.powerID;
+  const sel = 'style="font:inherit;font-size:13px;padding:3px 6px"';
+  let h = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(127,135,145,.25);display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center">';
+  if (c.mode && c.mode.options && c.mode.options.length) {
+    h += '<label style="font-size:13px">Ladeart <select ' + sel + ' data-wb="' + w.powerID + '" data-f="mode">' +
+      c.mode.options.map(o => '<option value="' + esc(String(o[0])) + '"' + (Number(o[0]) === Number(c.mode.value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select></label>';
+  }
+  if (c.kwh) {
+    h += '<label style="font-size:13px">Ladeziel <input type="number" ' + sel + ' style="width:80px" min="' + c.kwh.min + '" max="' + c.kwh.max + '" step="' + c.kwh.step + '" value="' + c.kwh.value + '" data-wb="' + w.powerID + '" data-f="kwh-in"> kWh (0 = aus)</label>' +
+      '<button class="ctlBtn" data-wb="' + w.powerID + '" data-f="kwh">Setzen</button>';
+  }
+  if (c.time) {
+    h += '<label style="font-size:13px">Frist <input type="time" ' + sel + ' value="' + esc(c.time.value) + '" data-wb="' + w.powerID + '" data-f="time-in"></label>' +
+      '<button class="ctlBtn" data-wb="' + w.powerID + '" data-f="time">Setzen</button>';
+  }
+  if (c.command && c.command.options) {
+    c.command.options.forEach(o => { h += '<button class="ctlBtn" data-wb="' + w.powerID + '" data-f="command" data-v="' + esc(String(o[0])) + '">' + esc(o[1]) + '</button>'; });
+  }
+  h += '<span class="wbCtlStatus" data-wb="' + w.powerID + '" style="font-size:12px;opacity:.8"></span></div>';
+  return h;
+}
+function emsWbSend(powerId, field, value, confirmText) {
+  const lockKey = powerId + ':' + field;
+  if (EMS_LOCK[lockKey] && Date.now() < EMS_LOCK[lockKey]) return;
+  if (confirmText && !window.confirm(confirmText)) { loadDay(''); return; }
+  EMS_LOCK[lockKey] = Date.now() + 6000;
+  const st = document.querySelector('.wbCtlStatus[data-wb="' + powerId + '"]');
+  if (st) st.textContent = 'Wird gesendet …';
+  const u = new URL(window.location.href);
+  u.search = '';
+  u.searchParams.set('emsWbAction', field);
+  u.searchParams.set('key', lastPayload.key);
+  u.searchParams.set('powerId', String(powerId));
+  u.searchParams.set('value', String(value));
+  fetch(u.toString()).then(r => r.json()).then(res => {
+    if (st) st.textContent = (res && res.ok) ? 'Gesendet. Das EMS rechnet neu, der Plan erscheint in einigen Sekunden.' : ((res && res.error) || 'Fehlgeschlagen.');
+    if (res && res.ok) setTimeout(() => loadDay(''), 2500); else EMS_LOCK[lockKey] = 0;
+  }).catch(() => { if (st) st.textContent = 'Keine Verbindung.'; EMS_LOCK[lockKey] = 0; });
+}
+document.addEventListener('change', ev => {
+  const t = ev.target;
+  if (t && t.matches && t.matches('select[data-f="mode"]')) {
+    const txt = t.options[t.selectedIndex].text;
+    emsWbSend(Number(t.dataset.wb), 'mode', t.value, 'Ladeart auf „' + txt + '“ ändern? Das EMS übernimmt die Einstellung und lädt neu.');
+  }
+});
+document.addEventListener('click', ev => {
+  const b = ev.target && ev.target.closest ? ev.target.closest('button[data-wb]') : null;
+  if (!b) return;
+  const pid = Number(b.dataset.wb), f = b.dataset.f;
+  if (f === 'kwh') {
+    const v = document.querySelector('input[data-wb="' + pid + '"][data-f="kwh-in"]').value;
+    emsWbSend(pid, 'kwh', v, 'Ladeziel auf ' + v + ' kWh setzen?');
+  } else if (f === 'time') {
+    const v = document.querySelector('input[data-wb="' + pid + '"][data-f="time-in"]').value;
+    emsWbSend(pid, 'time', v, 'Frist auf ' + v + ' Uhr setzen?');
+  } else if (f === 'command') {
+    emsWbSend(pid, 'command', b.dataset.v, '„' + b.textContent + '“ ausführen?');
+  }
+});
+
 // Regelung und Plan je Wallbox (ChargerHub 1.9-1.12): wer regelt, warum, seit wann; der Plantext (vom EMS); Lade-Zustand; Fehler.
 function renderWbInfo(p) {
   const wrap = document.getElementById('wbInfoWrap');
@@ -429,6 +495,7 @@ function renderWbInfo(p) {
     if (w.error) rows.push(['Fehler', w.error]);
     h += rows.map(r => '<div style="font-size:13px;margin-top:4px"><span style="opacity:.65">' + esc(r[0]) + ':</span> ' + esc(r[1]) + '</div>').join('');
     if (!rows.length) h += '<div style="font-size:13px;opacity:.7">Keine Angaben vom Ladepunkt.</div>';
+    h += wbControlsHtml(w);
     h += '</div>';
   });
   document.getElementById('wbInfoT').innerHTML = h;
