@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.62 (2026-10-25)
+
+- Ladesitzungen, Abgleich mit dem Sitzungszähler der Wallbox: Verglichen wird jetzt der Zuwachs des Zählers im Zeitraum der Sitzung statt seines höchsten Standes. Der Sitzungszähler der go-e zählt ab dem Anstecken, ein früherer Ladeblock derselben Anstecksitzung steht schon darauf. Eine Sitzung mit 0,60 kWh berechnet und einem Zählerstand von 2,36 auf 2,97 kWh (Zuwachs 0,61) galt deshalb fälschlich als „unsicher“. Springt der Zähler im Zeitraum zurück (neue Anstecksitzung), beginnt ein neues Segment (Hinweis aus der ChargerHub-Sitzung).
+
 ## 0.9.170-beta.61 (2026-10-25)
 
 - Energiefluss-Kachel, Ladesitzungen: Die aus der Ladeleistung berechnete Energie je Sitzung wird mit dem eigenen Sitzungszähler der Wallbox verglichen (ChargerHub-Vertrag 1.10, `sessionEnergyID`; höchster Zählerstand im Zeitraum, Summe über alle Wallboxen der Gruppe). Weichen beide um mehr als 1 kWh und mehr als 25 % ab, zeigt die Tabelle ein ⚠️ mit dem Zählerwert und einen Hinweis „Werte unsicher“. Gerechnet wird weiter mit der berechneten Energie. Ohne Zähler, ohne Archivierung des Zählers oder bei einer Wallbox ohne Zähler in der Gruppe findet keine Prüfung statt.

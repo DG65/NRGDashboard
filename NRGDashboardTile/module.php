@@ -5954,8 +5954,8 @@ class NRGDashboardTile extends IPSModule
 
     /**
      * Plausibilisiert die berechnete Sitzungsenergie gegen den eigenen Sitzungszaehler der Wallbox(en) (ChargerHub-Fund 24.10.2026: ein Fehlwert
-     * der Leistung ergab 288 kWh in 5 h bei einem Zaehler von 13,89 kWh). Je Sitzung: hoechster Zaehlerstand im Zeitraum (der Zaehler waechst
-     * waehrend der Sitzung und springt erst danach zurueck), Summe ueber alle Wallboxen mit Zaehler. Weichen beide um mehr als 1 kWh UND mehr
+     * der Leistung ergab 288 kWh in 5 h bei einem Zaehler von 13,89 kWh). Je Sitzung: Zuwachs des Zaehlers im Zeitraum (Stand am Ende minus Stand
+     * davor, Rueckspruenge als neues Segment), Summe ueber alle Wallboxen mit Zaehler. Weichen beide um mehr als 1 kWh UND mehr
      * als 25 % ab, steht 'counterKwh' dabei und 'suspect' = true - gerechnet wird weiter mit unserer Energie, die Anzeige warnt. Ohne Zaehler,
      * ohne Archivierung oder bei nicht allen Wallboxen mit Zaehler: keine Pruefung (kein Fehlalarm).
      */
@@ -5982,12 +5982,20 @@ class NRGDashboardTile extends IPSModule
         foreach ($list as $i => $x) {
             $sum = 0.0;
             foreach ($cids as $cid) {
+                // ZUWACHS des Zaehlers im Zeitraum, nicht sein hoechster Stand: der go-e-Sitzungszaehler zaehlt ab dem ANSTECKEN, ein frueherer
+                // Ladeblock derselben Anstecksitzung steht schon darauf (ChargerHub-Fund: 2,36 kWh vor dem Block, 2,97 danach = 0,61 kWh).
+                // Ausgangsstand = letzter Wert VOR dem Zeitraum (ohne: 0). Springt der Zaehler nach unten (neue Anstecksitzung), beginnt ein
+                // neues Segment: dessen Stand zaehlt als Zuwachs ab 0.
+                $before = @AC_GetLoggedValues($arch, $cid, 0, (int) $x['start'], 1);
+                $prev = (is_array($before) && count($before) > 0) ? (float) $before[0]['Value'] : 0.0;
                 $rows = @AC_GetLoggedValues($arch, $cid, (int) $x['start'], (int) $x['end'] + 300, 0);
-                $max = 0.0;
-                foreach ((is_array($rows) ? $rows : []) as $r) {
-                    $max = max($max, (float) $r['Value']);
+                $rows = is_array($rows) ? $rows : [];
+                usort($rows, static function ($a, $b) { return (int) $a['TimeStamp'] <=> (int) $b['TimeStamp']; });
+                foreach ($rows as $r) {
+                    $v = (float) $r['Value'];
+                    $sum += ($v >= $prev) ? ($v - $prev) : $v;
+                    $prev = $v;
                 }
-                $sum += $max;
             }
             if ($sum <= 0.0) {
                 continue;   // kein Zaehlerwert in diesem Zeitraum
