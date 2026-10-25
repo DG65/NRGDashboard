@@ -5921,12 +5921,12 @@ class NRGDashboardTile extends IPSModule
      * Batterieladen wurde voll als Netzstrom gerechnet. DST-Regel: Tages-
      * grenzen ueber strtotime('+1 day').
      */
-    private function RangeSeries(int $vid, int $from, int $to): array
+    private function RangeSeries(int $vid, int $from, int $to, float $maxW = 0.0): array
     {
         $out = [];
         for ($d = $from; $d < $to; $d = $next) {
             $next = min($to, strtotime('+1 day', strtotime('today', $d)));
-            foreach ($this->DaySeries($vid, $d, $next) as $p) {
+            foreach ($this->DaySeries($vid, $d, $next, $maxW) as $p) {
                 $out[] = $p;
             }
         }
@@ -5939,7 +5939,7 @@ class NRGDashboardTile extends IPSModule
         $to = min(time(), strtotime('+1 day', $dayStart));
         $sum = [];
         foreach ($wbPowerIDs as $pid) {
-            foreach ($this->RangeSeries((int) $pid, $from, $to) as [$ms, $w]) {
+            foreach ($this->RangeSeries((int) $pid, $from, $to, self::WALLBOX_MAX_W) as [$ms, $w]) {
                 $sum[(int) $ms] = ($sum[(int) $ms] ?? 0.0) + max(0.0, (float) $w);
             }
         }
@@ -7084,7 +7084,10 @@ class NRGDashboardTile extends IPSModule
         ];
     }
 
-    private function DaySeries(int $vid, int $from, int $to): array
+    /** Obergrenze fuer eine einzelne Wallbox in den Ladesitzungen (W): alles darueber ist ein Messfehler, nicht Leistung (Forum/Paul 24.10.2026: 42,9 MW). */
+    private const WALLBOX_MAX_W = 1_000_000.0;
+
+    private function DaySeries(int $vid, int $from, int $to, float $maxW = 0.0): array
     {
         $arch = $this->ArchiveID();
         if ($arch <= 0 || $vid <= 0 || !IPS_VariableExists($vid) || !AC_GetLoggingStatus($arch, $vid)) {
@@ -7101,7 +7104,9 @@ class NRGDashboardTile extends IPSModule
         $out = [];
         foreach ($agg as $row) {
             $w = (float) $row['Avg'];
-            if ($this->RowHasImplausiblePower($row)) {
+            // Strengere, aufrufspezifische Grenze ($maxW > 0): prueft Max/Min des 5-Minuten-Satzes (nicht nur den verduennten Mittelwert)
+            $tooHigh = $maxW > 0.0 && max(abs((float) ($row['Max'] ?? 0)), abs((float) ($row['Min'] ?? 0))) > $maxW;
+            if ($tooHigh || $this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
                     sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),

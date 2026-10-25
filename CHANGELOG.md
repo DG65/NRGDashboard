@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.60 (2026-10-25)
+
+- Energiefluss-Kachel, Ladesitzungen (Fund bei einer Anlage mit go-e, ChargerHub-Meldung): Ein einzelner unplausibler Archivwert der Wallbox-Leistung (dort 42.949.672 W, ein als vorzeichenlose Zahl gelesener Messoffset) wurde in die Sitzung integriert und ergab „288 kWh in 5 Stunden“. Die Wallbox-Leistung in den Ladesitzungen wird jetzt zusätzlich auf 1 MW je Wallbox begrenzt und prüft dabei auch Max/Min des 5-Minuten-Satzes. Werte darüber werden verworfen. Ältere Fehlwerte im Archiv bleiben dort stehen, werden aber nicht mehr mitgerechnet.
+
 ## 0.9.170-beta.59 (2026-10-25)
 
 - PV-Monitoring, Tagesplan-Editor (Fund bei einer Anlage mit EMS 0.87.0): Vergangene Einträge (Datum vor heute oder vom EMS als „vergangen“ gemeldet) werden beim Speichern nicht mehr mitgeschickt. Ältere EMS-Stände lehnten sonst die ganze Liste ab, ein neuer Eintrag ließ sich dadurch nicht speichern („Nicht gespeichert“). Nach dem Speichern steht ein Hinweis („1 vergangener Eintrag wurde entfernt“), auch aus dem neuen EMS-Feld `removed` (ab EMS 0.89.1, tolerant gelesen).
