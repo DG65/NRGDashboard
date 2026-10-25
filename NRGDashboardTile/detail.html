@@ -446,7 +446,7 @@ function wbControlsHtml(w) {
   const pid = w.powerID;
   let h = '<div class="wbCtl">';
   if (w.managedBy && w.managedBy.options && w.managedBy.options.length) {
-    h += '<div class="wbRow"><span class="wbLab">Regler</span><div class="wbBody"><span class="pill">' + esc(w.owner || '–') + '</span>' +
+    h += '<div class="wbRow"><span class="wbLab">Regler</span><div class="wbBody"><span class="pill" title="' + esc(w.reason || '') + '">' + esc((w.owner || '–') + ((w.owner === 'EMS' && String(w.managedBy.value) === 'none') ? ' (kein anderer Regler)' : '')) + '</span>' +
       '<select data-wb="' + pid + '" data-f="managedBy" style="font:inherit;font-size:13px;padding:5px 8px;background:#2b2f34;color:#e8eaed;border:1px solid #555b63;border-radius:9px">' +
       w.managedBy.options.map(o => '<option value="' + esc(String(o[0])) + '"' + (String(o[0]) === String(w.managedBy.value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
       '</select></div></div>';

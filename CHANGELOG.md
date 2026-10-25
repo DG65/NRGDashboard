@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.66 (2026-10-25)
+
+- Wallbox-Cockpit, Zeile „Regler“: Steht die Steuerhoheit des ChargerHub auf „Niemand“ und regelt das EMS, heißt die Kennzeichnung jetzt „EMS (kein anderer Regler)“ statt nur „EMS“, damit sie nicht wie ein Widerspruch zur vorgewählten Auswahl „Niemand“ wirkt. Der Grund der Regelung steht beim Daraufzeigen.
+
 ## 0.9.170-beta.65 (2026-10-25)
 
 - Wallbox-Cockpit, Bedienung neu gestaltet: Die Ladeart ist eine Schaltleiste (statt Auswahlliste), das Ladeziel hat Plus/Minus, Schnellwerte (aus, 10, 20, 30, 50 kWh) und einen „Übernehmen“-Knopf, der erst aktiv wird, wenn sich der Wert ändert; die Frist hat Schnellwerte (06:00, 07:00, 08:00); „Jetzt 1 Stunde laden“ ist hervorgehoben. Rückfragen nur noch dort, wo sie sinnvoll sind (Ladeart „Aus“, „Jetzt 1 Stunde laden“, Steuerhoheit). Steht der Regler nicht auf EMS, weist ein Hinweis darauf hin, dass die Einstellungen für das EMS gelten.
