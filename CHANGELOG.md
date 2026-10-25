@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.59 (2026-10-25)
+
+- PV-Monitoring, Tagesplan-Editor (Fund bei einer Anlage mit EMS 0.87.0): Vergangene Einträge (Datum vor heute oder vom EMS als „vergangen“ gemeldet) werden beim Speichern nicht mehr mitgeschickt. Ältere EMS-Stände lehnten sonst die ganze Liste ab, ein neuer Eintrag ließ sich dadurch nicht speichern („Nicht gespeichert“). Nach dem Speichern steht ein Hinweis („1 vergangener Eintrag wurde entfernt“), auch aus dem neuen EMS-Feld `removed` (ab EMS 0.89.1, tolerant gelesen).
+- Der doppelte Speichern-Knopf ist weg: Gespeichert wird mit „Speichern und beenden“ oben, unten bleibt nur „Verwerfen“.
+
 ## 0.9.170-beta.58 (2026-10-24)
 
 - PV-Monitoring, Formular „Datenquelle“ (Forum power1625): Neuer Haken „Netzleistung umkehren“ für Netz-Variablen, die Bezug als Plus und Einspeisung als Minus liefern (erwartet wird + Einspeisung / − Bezug). Wirkt auf den Netzbezug-Balken im Strompreis-Reiter, die Bilanz und den Monatsspitzenwert.

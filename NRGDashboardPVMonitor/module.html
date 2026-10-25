@@ -4791,10 +4791,19 @@
     function mpSave() {
       if (!manualCache || !manualCache.available || manualSaving) { return; }
       var plan = manualCache.plan;
-      var entries = mpDraft().map(function (e) {
+      // Vergangene Einträge (Datum vor heute oder vom EMS als "past" gemeldet) werden nicht mitgeschickt: ältere EMS-Stände lehnen sonst die
+      // ganze Liste ab (Pauls Anlage, EMS 0.87.0), neuere entfernen sie ohnehin still. Das Weglassen löscht sie dort ebenfalls.
+      var td = new Date(), todayStr = td.getFullYear() + '-' + ('0' + (td.getMonth() + 1)).slice(-2) + '-' + ('0' + td.getDate()).slice(-2);
+      var droppedPast = 0;
+      var entries = mpDraft().filter(function (e) {
+        var past = (e.date !== '' && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.date < todayStr) || (e.srv && e.srv.state === 'past');
+        if (past) { droppedPast++; }
+        return !past;
+      }).map(function (e) {
         var a = mpAction(plan, e.action);
         return { date: e.date, from: e.from, to: e.to, action: e.action, power: (a && a.usesPower) ? (parseInt(e.power, 10) || 0) : 0 };
       });
+      mpDroppedPast = droppedPast;
       manualSaving = true; manualErrors = []; manualStatus = 'Sende…';
       if (manualSaveTimer) { clearTimeout(manualSaveTimer); }
       manualSaveTimer = setTimeout(function () {
@@ -4815,11 +4824,11 @@
           manualDraft = null;
           if (exitWanted) { mpEdit = false; mpSel = -1; }
           manualStatus = 'Gespeichert. Der Plan wird neu geladen und rechnet sich innerhalb von etwa 30 Sekunden neu.';
+          // Hinweis (kein Fehler): vergangene Einträge, die wir weggelassen oder das EMS entfernt hat (EMS ab 0.89.1: Feld removed)
+          var rm = (r.removed && r.removed.length) ? r.removed.length : 0, gone = Math.max(rm, mpDroppedPast);
+          if (gone > 0) { manualStatus += ' ' + gone + (gone === 1 ? ' vergangener Eintrag wurde entfernt.' : ' vergangene Einträge wurden entfernt.'); }
           // Aktualisieren haengt am Speichern: sofort den Tagesplan holen (EMS hat ihn ggf. schon neu gerechnet) und nach einem
           // EMS-Zyklus (ca. 30 s) nochmals, bis der neue Eintrag im Plan steht.
-          dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); }
-          // Aktualisieren hinter dem Speichern: sofort den Tagesplan neu holen (die Eintraege kamen mit der Antwort schon mit) und nach
-          // dem EMS-Zyklus (ca. 30 s), wenn der Plan neu gerechnet ist, noch einmal.
           dayPlanLoadedAt = 0; requestAction('dayPlanLoad', '{}');
           setTimeout(function () { dayPlanLoadedAt = 0; if (curTab === 'tagesplan') { requestAction('dayPlanLoad', '{}'); } }, 35000);
         } else {
@@ -4841,7 +4850,7 @@
     // "Bearbeiten" nimmt sie Ziehen auf freier Flaeche (neuer Eintrag), Anklicken (waehlen: Aktion/Leistung/"Jeden Tag"/Loeschen),
     // Raender ziehen (verlaengern/verkuerzen) und Ziehen in der Mitte (verschieben) entgegen. Bearbeitet wird der angezeigte Tag
     // (Heute/Morgen); heute sind vergangene Viertelstunden gesperrt. Gespeichert wird erst mit "Speichern".
-    var mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null, mpExitAfterSave = false, manualRefreshing = false, mpRefreshTimer = null;
+    var mpDroppedPast = 0, mpSel = -1, mpDrag = null, mpEdit = false, mpSyncTimer = null, mpExitAfterSave = false, manualRefreshing = false, mpRefreshTimer = null;
     function mpDayInfo() {
       var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + tagesplanDay);
       var e = new Date(d); e.setDate(e.getDate() + 1);
@@ -5057,10 +5066,10 @@
       if (others) { box.appendChild(mpEl('div', 'mpHint', others + (others === 1 ? ' weiterer Eintrag liegt' : ' weitere Einträge liegen') + ' an anderen Tagen und bleibt unverändert.')); }
       manualErrors.filter(function (x) { return x.idx < 0 || x.idx >= draft.length; }).forEach(function (x) { box.appendChild(mpEl('div', 'mpErr', x.text)); });
       var btns = mpEl('div', 'mpBtns');
-      var save = mpEl('button', 'qday active', manualSaving ? 'Sende…' : 'Speichern'); save.disabled = manualSaving || !mpDirty(); save.onclick = mpSave;
+      // Gespeichert wird mit dem Knopf oben ("Speichern und beenden"); hier nur Verwerfen
       var rev = mpEl('button', 'qday', 'Verwerfen'); rev.disabled = manualSaving || !mpDirty();
       rev.onclick = function () { manualDraft = null; manualErrors = []; manualStatus = ''; mpSel = -1; renderManual(); };
-      btns.appendChild(save); btns.appendChild(rev);
+      btns.appendChild(rev);
       if (manualStatus) { btns.appendChild(mpEl('span', 'mpLab', manualStatus)); }
       box.appendChild(btns);
     }
