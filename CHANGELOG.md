@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.68 (2026-10-25)
+
+- **Korrektur Wochen-Frist:** Die EMS-Funktionen werden mit der Instanz-ID aufgerufen (die generierten Funktionen erwarten sie als ersten Parameter); in beta.67 fehlte sie, die Wochen-Frist wäre nicht erschienen.
+
 ## 0.9.170-beta.67 (2026-10-25)
 
 - **Wallbox-Detailseite: Wochen-Frist.** Je Wochentag (Montag bis Sonntag) eine Uhrzeit für die Frist und ein optionales Ladeziel; leere Zeit = keine Frist an dem Tag, Ladeziel 0 = einheitliches Ladeziel. Dazu „Montag übernehmen für alle Tage / Werktage / Wochenende“. Gespeichert wird gebündelt über `EMS_SetWeekTargets` (EMS ab 0.92.0), mit Revisionsprüfung und Fehlermeldungen je Feld. Der Block erscheint nur, wenn das EMS die Funktion anbietet und die Wallbox eindeutig einer EMS-Wallbox zugeordnet ist.

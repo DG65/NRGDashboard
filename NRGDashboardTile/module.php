@@ -1872,6 +1872,7 @@ class NRGDashboardTile extends IPSModule
                 $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen.');
                 return;
             }
+            $emsInst = (int) $ec[0];
             $n = (int) $ec[1];
             $in = json_decode((string) ($_GET['days'] ?? ''), true);
             if (!is_array($in) || count($in) < 1 || count($in) > 7) {
@@ -1901,8 +1902,8 @@ class NRGDashboardTile extends IPSModule
                 $payload['revision'] = $rev;
             }
             $res = null;
-            $err = $this->runPartnerCall(function () use ($n, $payload, &$res) {
-                $res = EMS_SetWeekTargets($n, json_encode($payload));
+            $err = $this->runPartnerCall(function () use ($emsInst, $n, $payload, &$res) {
+                $res = EMS_SetWeekTargets($emsInst, $n, json_encode($payload));
             });
             if (is_string($res)) {
                 $res = json_decode($res, true);
@@ -6339,7 +6340,7 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         try {
-            $r = @EMS_GetWeekTargets($n);
+            $r = @EMS_GetWeekTargets($ems, $n);
         } catch (\Throwable $e) {
             return null;
         }
