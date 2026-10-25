@@ -494,8 +494,11 @@ function emsWbSend(powerId, field, value, confirmText) {
   u.searchParams.set('powerId', String(powerId));
   u.searchParams.set('value', String(value));
   fetch(u.toString()).then(r => r.json()).then(res => {
-    if (st) st.textContent = (res && res.ok) ? 'Gesendet. Das EMS rechnet neu, der Plan erscheint in einigen Sekunden.' : ((res && res.error) || 'Fehlgeschlagen.');
-    if (res && res.ok) setTimeout(() => loadDay(''), 2500); else EMS_LOCK[lockKey] = 0;
+    const mb = (field === 'managedBy');
+    if (st) st.textContent = (res && res.ok)
+      ? (mb ? 'Umgestellt. Die Anzeige von Regler und Plan aktualisiert sich beim nächsten Lesezyklus der Wallbox, das kann einen Moment dauern.' : 'Gesendet. Das EMS rechnet neu, der Plan erscheint in einigen Sekunden.')
+      : ((res && res.error) || 'Fehlgeschlagen.');
+    if (res && res.ok) { setTimeout(() => loadDay(''), mb ? 8000 : 2500); } else EMS_LOCK[lockKey] = 0;
   }).catch(() => { if (st) st.textContent = 'Keine Verbindung.'; EMS_LOCK[lockKey] = 0; });
 }
 function wbInput(pid, f) { return document.querySelector('input[data-wb="' + pid + '"][data-f="' + f + '"]'); }
