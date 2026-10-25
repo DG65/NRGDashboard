@@ -382,7 +382,7 @@ function renderSessions(p) {
   let h = '<table><tr><th>Sitzung</th><th>Energie</th><th>aus dem Netz</th><th>Kosten</th><th>Ø Netzpreis</th><th>Eigenstrom</th>' + (lost ? '<th>entgangene Vergütung</th>' : '') + '</tr>';
   s.list.forEach(x => {
     h += '<tr><th>' + esc(dt(x.start) + '–' + hm(x.end)) + (x.ongoing ? ' <span style="opacity:.7">(läuft)</span>' : '') + '</th>' +
-      '<td>' + kwh(x.kwh) + '</td><td>' + kwh(x.gridKwh) + '</td>' +
+      '<td>' + kwh(x.kwh) + (x.suspect ? ' <span title="Der Zähler der Wallbox meldet ' + esc(kwh(x.counterKwh)) + ' - die berechnete Energie weicht stark ab (Messfehler im Archiv?)">⚠️</span>' : '') + '</td><td>' + kwh(x.gridKwh) + '</td>' +
       '<td>' + eur(x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0)) + (x.priceGap ? ' <span title="Für einen Teil der Sitzung lag kein Preis vor">*</span>' : '') + '</td>' +
       '<td>' + (x.avgCt === null ? '–' : x.avgCt.toFixed(1).replace('.', ',') + ' ct/kWh') + '</td>' +
       '<td>' + kwh(x.ownKwh) + (x.batteryKwh > 0.005
@@ -399,6 +399,7 @@ function renderSessions(p) {
   if (lost) notes.push('„Entgangene Vergütung“: was der direkt genutzte Solarstrom bei Einspeisung gebracht hätte.');
   if (batPriced && s.batterySettled === false) notes.push('Der Einstandspreis der Batterie ist noch nicht eingeschwungen (der Anfangsbestand zählt als Solarstrom, bis die Batterie einmal durchgeladen ist) – der Batterieanteil ist bis dahin eher zu günstig bewertet.');
   if (s.list.some(x => x.batteryUnpriced)) notes.push('🔋 Für einen Teil des Batteriestroms liegt kein Einstandspreis vor (z. B. vor der Einführung im EMS) – dieser Anteil zählt mit 0 €, obwohl er nach einer Netzladung nicht gratis ist.');
+  if (s.list.some(x => x.suspect)) notes.push('⚠️ Werte unsicher: Bei mindestens einer Sitzung weicht die aus der Ladeleistung berechnete Energie stark vom Zähler der Wallbox ab (Zählerwert im Hinweis des Symbols). Kosten und Anteile dieser Sitzung stützen sich auf die berechnete Energie.');
   if (s.list.some(x => x.gridMissing)) notes.push('Für einen Teil einer Sitzung fehlten Netzdaten – dieser Anteil ist vorsichtshalber komplett als Netzbezug gerechnet.');
   document.getElementById('sessNote').textContent = notes.join(' ');
 }

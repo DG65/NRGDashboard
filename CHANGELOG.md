@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.61 (2026-10-25)
+
+- Energiefluss-Kachel, Ladesitzungen: Die aus der Ladeleistung berechnete Energie je Sitzung wird mit dem eigenen Sitzungszähler der Wallbox verglichen (ChargerHub-Vertrag 1.10, `sessionEnergyID`; höchster Zählerstand im Zeitraum, Summe über alle Wallboxen der Gruppe). Weichen beide um mehr als 1 kWh und mehr als 25 % ab, zeigt die Tabelle ein ⚠️ mit dem Zählerwert und einen Hinweis „Werte unsicher“. Gerechnet wird weiter mit der berechneten Energie. Ohne Zähler, ohne Archivierung des Zählers oder bei einer Wallbox ohne Zähler in der Gruppe findet keine Prüfung statt.
+
 ## 0.9.170-beta.60 (2026-10-25)
 
 - Energiefluss-Kachel, Ladesitzungen (Fund bei einer Anlage mit go-e, ChargerHub-Meldung): Ein einzelner unplausibler Archivwert der Wallbox-Leistung (dort 42.949.672 W, ein als vorzeichenlose Zahl gelesener Messoffset) wurde in die Sitzung integriert und ergab „288 kWh in 5 Stunden“. Die Wallbox-Leistung in den Ladesitzungen wird jetzt zusätzlich auf 1 MW je Wallbox begrenzt und prüft dabei auch Max/Min des 5-Minuten-Satzes. Werte darüber werden verworfen. Ältere Fehlwerte im Archiv bleiben dort stehen, werden aber nicht mehr mitgerechnet.

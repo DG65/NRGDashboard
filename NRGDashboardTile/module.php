@@ -5933,6 +5933,72 @@ class NRGDashboardTile extends IPSModule
         return $out;
     }
 
+    /**
+     * Sitzungszaehler der Wallboxen (sessionEnergyID, ChargerHub-Vertrag 1.10: Energie der laufenden Sitzung in kWh, springt je Sitzung zurueck):
+     * [powerID => sessionEnergyID]. Quelle sind alle Geraete mit beiden Feldern, auch die beim Aufschachteln ausgeblendeten ChargerHub-Wallboxen.
+     */
+    private function SessionCounterMap(): array
+    {
+        $map = [];
+        $rows = $this->GetDevices();
+        $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+        foreach (array_merge(is_array($rows) ? $rows : [], is_array($abs) ? $abs : []) as $d) {
+            $pid = (int) ($d['powerID'] ?? 0);
+            $cid = (int) ($d['sessionEnergyID'] ?? 0);
+            if ($pid > 0 && $cid > 0 && IPS_VariableExists($cid)) {
+                $map[$pid] = $cid;
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * Plausibilisiert die berechnete Sitzungsenergie gegen den eigenen Sitzungszaehler der Wallbox(en) (ChargerHub-Fund 24.10.2026: ein Fehlwert
+     * der Leistung ergab 288 kWh in 5 h bei einem Zaehler von 13,89 kWh). Je Sitzung: hoechster Zaehlerstand im Zeitraum (der Zaehler waechst
+     * waehrend der Sitzung und springt erst danach zurueck), Summe ueber alle Wallboxen mit Zaehler. Weichen beide um mehr als 1 kWh UND mehr
+     * als 25 % ab, steht 'counterKwh' dabei und 'suspect' = true - gerechnet wird weiter mit unserer Energie, die Anzeige warnt. Ohne Zaehler,
+     * ohne Archivierung oder bei nicht allen Wallboxen mit Zaehler: keine Pruefung (kein Fehlalarm).
+     */
+    private function CheckSessionsAgainstCounter(array $list, array $wbPowerIDs): array
+    {
+        $arch = $this->ArchiveID();
+        $map = $this->SessionCounterMap();
+        if ($arch <= 0 || count($list) === 0) {
+            return $list;
+        }
+        $cids = [];
+        foreach ($wbPowerIDs as $pid) {
+            if (!isset($map[(int) $pid])) {
+                return $list;   // eine Wallbox ohne Zaehler: Summe waere unvollstaendig
+            }
+            $cids[(int) $map[(int) $pid]] = true;
+        }
+        $cids = array_keys($cids);
+        foreach ($cids as $cid) {
+            if (!@AC_GetLoggingStatus($arch, $cid)) {
+                return $list;
+            }
+        }
+        foreach ($list as $i => $x) {
+            $sum = 0.0;
+            foreach ($cids as $cid) {
+                $rows = @AC_GetLoggedValues($arch, $cid, (int) $x['start'], (int) $x['end'] + 300, 0);
+                $max = 0.0;
+                foreach ((is_array($rows) ? $rows : []) as $r) {
+                    $max = max($max, (float) $r['Value']);
+                }
+                $sum += $max;
+            }
+            if ($sum <= 0.0) {
+                continue;   // kein Zaehlerwert in diesem Zeitraum
+            }
+            $list[$i]['counterKwh'] = round($sum, 2);
+            $dev = abs((float) $x['kwh'] - $sum);
+            $list[$i]['suspect'] = ($dev > 1.0 && $dev > 0.25 * $sum);
+        }
+        return $list;
+    }
+
     private function ChargingSessions(array $wbPowerIDs, int $dayStart): array
     {
         $from = strtotime('-6 day', $dayStart);
@@ -6025,8 +6091,10 @@ class NRGDashboardTile extends IPSModule
                 }
             }
         }
+        $list = self::computeSessions($wb, $grid, $pv, $bat, $priceAt, $this->FeedInTariffCt(), time(), $batCostAt);
+        $list = $this->CheckSessionsAgainstCounter($list, $wbPowerIDs);
         return [
-            'list' => self::computeSessions($wb, $grid, $pv, $bat, $priceAt, $this->FeedInTariffCt(), time(), $batCostAt),
+            'list' => $list,
             'priceSourceText' => $sourceText,
             'batterySettled' => $batterySettled,
         ];
