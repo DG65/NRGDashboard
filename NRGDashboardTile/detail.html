@@ -460,7 +460,8 @@ function wbControlsHtml(w) {
   }
   const off = !!(c && c.emsControls === false);
   if (off) {
-    h += '<div class="wbNote">Das EMS regelt diese Wallbox nicht (der Regler ist ein anderer oder keiner). Die Einstellungen unten sind gesperrt, weil sie keine Wirkung hätten. Stelle zuerst oben den Regler auf EMS.</div>';
+    const why = c.emsMode === 'smart' ? 'Tibber Smart Charging steuert diese Wallbox, Einstellungen des EMS wirken nicht.' : (c.emsMode === 'observe' ? 'EMS beobachtet diese Wallbox nur.' : 'Das EMS regelt diese Wallbox nicht.');
+    h += '<div class="wbNote">' + why + ' Die Einstellungen unten sind gesperrt, weil sie keine Wirkung hätten.</div>';
   }
   if (c && !off && w.owner && w.owner !== 'EMS') {
     h += '<div class="wbNote">Diese Wallbox wird gerade nicht vom EMS geregelt (Regler: ' + esc(w.owner) + '). Die Einstellungen unten gelten für das EMS.</div>';

@@ -6217,7 +6217,7 @@ class NRGDashboardTile extends IPSModule
                 $ctl = null;
                 if (!$this->readBoolProperty('DemoMode', false) && ($ec = $this->EmsWallboxControls((int) ($e['powerID'] ?? 0))) !== null) {
                     [, $emsN, $ev] = $ec;
-                    $ctl = ['emsControls' => (bool) ($ec[3] ?? true)];
+                    $ctl = ['emsControls' => (bool) ($ec[3] ?? true), 'emsMode' => (string) ($ec[4] ?? '')];
                     $wk = $this->EmsWeekTargets((int) $emsN);
                     if ($wk !== null) {
                         $ctl['week'] = $wk;
@@ -6310,6 +6310,27 @@ class NRGDashboardTile extends IPSModule
                         $hit[] = $w;
                     }
                 }
+                if (count($hit) !== 1) {
+                    // Rueckgriff ueber die Instanz: gleich instanceID oder controlInstanceID; eine im EMS gewaehlte configuredInstanceID geht vor
+                    $hit = [];
+                    $abs0 = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+                    $mine = [];
+                    foreach (array_merge($this->GetDevices(), is_array($abs0) ? $abs0 : []) as $c) {
+                        if ((int) ($c['powerID'] ?? 0) === $powerID && (int) ($c['instanceID'] ?? 0) > 0) {
+                            $mine[] = (int) $c['instanceID'];
+                        }
+                    }
+                    foreach ($r['wallboxes'] as $w) {
+                        if (!is_array($w)) {
+                            continue;
+                        }
+                        $cfg = (int) ($w['configuredInstanceID'] ?? 0);
+                        $ids = $cfg > 0 ? [$cfg] : [(int) ($w['instanceID'] ?? 0), (int) ($w['controlInstanceID'] ?? 0)];
+                        if (array_intersect($mine, $ids) !== []) {
+                            $hit[] = $w;
+                        }
+                    }
+                }
                 if (count($hit) === 1) {
                     $w = $hit[0];
                     $vars = [];
@@ -6319,7 +6340,7 @@ class NRGDashboardTile extends IPSModule
                             $vars[$field] = $vid;
                         }
                     }
-                    return (int) ($w['n'] ?? 0) > 0 && count($vars) > 0 ? [$ems, (int) $w['n'], $vars, !empty($w['emsControls'])] : null;
+                    return (int) ($w['n'] ?? 0) > 0 && count($vars) > 0 ? [$ems, (int) $w['n'], $vars, !empty($w['emsControls']), (string) ($w['mode'] ?? '')] : null;
                 }
             }
         }
