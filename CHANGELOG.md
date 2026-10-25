@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.69 (2026-10-25)
+
+- **Wallbox ↔ EMS verbindlich zugeordnet.** Die Zuordnung kommt jetzt aus `EMS_GetWallboxes()` (EMS ab 0.91.0): Leistungsvariable, Bedienvariablen und die Auskunft, ob das EMS die Wallbox wirklich regelt (`emsControls`). Der Plantext-Vergleich bleibt nur als Rückfall für ältere EMS-Versionen. Regelt das EMS die Wallbox nicht (z. B. Regler Tibber), sind Ladeart, Ladeziel, Frist, Wochen-Frist und Aktionen ausgegraut und mit Hinweis versehen; der Server weist solche Schreibaktionen ebenfalls ab. Die Reglerauswahl bleibt bedienbar.
+
 ## 0.9.170-beta.68 (2026-10-25)
 
 - **Korrektur Wochen-Frist:** Die EMS-Funktionen werden mit der Instanz-ID aufgerufen (die generierten Funktionen erwarten sie als ersten Parameter); in beta.67 fehlte sie, die Wochen-Frist wäre nicht erschienen.

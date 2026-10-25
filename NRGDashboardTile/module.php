@@ -1794,6 +1794,10 @@ class NRGDashboardTile extends IPSModule
                 $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen oder ist nicht bedienbar.');
                 return;
             }
+            if (empty($ec[3])) {
+                $fail(409, 'Diese Wallbox wird nicht vom EMS geregelt, die Einstellungen hätten keine Wirkung.');
+                return;
+            }
             [$emsInst, $n, $vars] = $ec;
             $vid = $vars[$field];
             $raw = (string) ($_GET['value'] ?? '');
@@ -1873,6 +1877,10 @@ class NRGDashboardTile extends IPSModule
                 return;
             }
             $emsInst = (int) $ec[0];
+            if (empty($ec[3])) {
+                $fail(409, 'Diese Wallbox wird nicht vom EMS geregelt, die Einstellungen hätten keine Wirkung.');
+                return;
+            }
             $n = (int) $ec[1];
             $in = json_decode((string) ($_GET['days'] ?? ''), true);
             if (!is_array($in) || count($in) < 1 || count($in) > 7) {
@@ -6209,7 +6217,7 @@ class NRGDashboardTile extends IPSModule
                 $ctl = null;
                 if (!$this->readBoolProperty('DemoMode', false) && ($ec = $this->EmsWallboxControls((int) ($e['powerID'] ?? 0))) !== null) {
                     [, $emsN, $ev] = $ec;
-                    $ctl = [];
+                    $ctl = ['emsControls' => (bool) ($ec[3] ?? true)];
                     $wk = $this->EmsWeekTargets((int) $emsN);
                     if ($wk !== null) {
                         $ctl['week'] = $wk;
@@ -6283,6 +6291,38 @@ class NRGDashboardTile extends IPSModule
         if ($ems <= 0) {
             return null;
         }
+        // Verbindliche Zuordnung (EMS ab 0.91.0, EMS_GetWallboxes): das EMS nennt je Wallbox n die Leistungsvariable, die Bedienvariablen und
+        // ob es sie wirklich regelt (emsControls). Nur wenn die Funktion fehlt oder keine eindeutige Zeile liefert, gilt der Plantext-Rueckfall.
+        if (function_exists('EMS_GetWallboxes')) {
+            $r = null;
+            try {
+                $r = @EMS_GetWallboxes($ems);
+            } catch (\Throwable $e) {
+                $r = null;
+            }
+            if (is_string($r)) {
+                $r = json_decode($r, true);
+            }
+            if (is_array($r) && is_array($r['wallboxes'] ?? null)) {
+                $hit = [];
+                foreach ($r['wallboxes'] as $w) {
+                    if (is_array($w) && (int) ($w['powerID'] ?? 0) === $powerID) {
+                        $hit[] = $w;
+                    }
+                }
+                if (count($hit) === 1) {
+                    $w = $hit[0];
+                    $vars = [];
+                    foreach (['mode' => 'chargeMode', 'kwh' => 'targetKwh', 'time' => 'targetTime', 'command' => 'command'] as $field => $k) {
+                        $vid = (int) (($w['variables'] ?? [])[$k] ?? 0);
+                        if ($vid > 0 && IPS_VariableExists($vid) && (IPS_GetVariable($vid)['VariableAction'] ?? 0) > 0) {
+                            $vars[$field] = $vid;
+                        }
+                    }
+                    return (int) ($w['n'] ?? 0) > 0 && count($vars) > 0 ? [$ems, (int) $w['n'], $vars, !empty($w['emsControls'])] : null;
+                }
+            }
+        }
         $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
         $plan = null;
         foreach (array_merge($this->GetDevices(), is_array($abs) ? $abs : []) as $c) {
@@ -6323,7 +6363,7 @@ class NRGDashboardTile extends IPSModule
                 $vars[$field] = (int) $vid;
             }
         }
-        return count($vars) > 0 ? [$ems, $n, $vars] : null;
+        return count($vars) > 0 ? [$ems, $n, $vars, true] : null;
     }
 
     /**
