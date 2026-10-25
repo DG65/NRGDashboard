@@ -1843,6 +1843,82 @@ class NRGDashboardTile extends IPSModule
             echo json_encode(['ok' => true]);
             return;
         }
+        // Wochen-Frist speichern (EMS ab 0.92.0, EMS_SetWeekTargets): Wallbox serverseitig wie bei emsWbAction bestimmt (nur eindeutige Zuordnung), Tage
+        // geprueft (1..7, HH:MM oder leer, Ladeziel 0..200), EIN gebuendelter Aufruf (jedes gueltige Set laedt die EMS-Instanz neu), Ratenschutz 5 s.
+        if (isset($_GET['emsWeekSave'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $fail = function (int $code, string $msg, array $errors = []): void {
+                http_response_code($code);
+                echo json_encode(['ok' => false, 'error' => $msg, 'errors' => $errors]);
+            };
+            if ($this->readBoolProperty('DemoMode', false)) {
+                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                return;
+            }
+            if (!function_exists('EMS_SetWeekTargets')) {
+                $fail(400, 'Das EMS bietet die Wochen-Frist nicht an.');
+                return;
+            }
+            $key = (string) ($_GET['key'] ?? '');
+            $pid = (int) ($_GET['powerId'] ?? 0);
+            $d = $this->FindDeviceByKey($key);
+            if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
+                || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
+                $fail(403, 'Ungültige Wallbox.');
+                return;
+            }
+            $ec = $this->EmsWallboxControls($pid);
+            if ($ec === null) {
+                $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen.');
+                return;
+            }
+            $n = (int) $ec[1];
+            $in = json_decode((string) ($_GET['days'] ?? ''), true);
+            if (!is_array($in) || count($in) < 1 || count($in) > 7) {
+                $fail(400, 'Ungültige Tage.');
+                return;
+            }
+            $days = [];
+            foreach ($in as $row) {
+                $day = (int) ($row['day'] ?? 0);
+                $time = (string) ($row['time'] ?? '');
+                $kwh = (float) ($row['kwh'] ?? 0);
+                if ($day < 1 || $day > 7 || ($time !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) || $kwh < 0 || $kwh > 200) {
+                    $fail(400, 'Ungültige Frist oder ungültiges Ladeziel.');
+                    return;
+                }
+                $days[] = ['day' => $day, 'time' => $time, 'kwh' => round($kwh, 1)];
+            }
+            $bufKey = 'EmsWeekLast_' . $n;
+            if (time() - (int) $this->GetBuffer($bufKey) < 5) {
+                $fail(429, 'Bitte einen Moment warten – das EMS lädt nach jeder Änderung neu.');
+                return;
+            }
+            $this->SetBuffer($bufKey, (string) time());
+            $payload = ['days' => $days];
+            $rev = (string) ($_GET['revision'] ?? '');
+            if ($rev !== '') {
+                $payload['revision'] = $rev;
+            }
+            $res = null;
+            $err = $this->runPartnerCall(function () use ($n, $payload, &$res) {
+                $res = EMS_SetWeekTargets($n, json_encode($payload));
+            });
+            if (is_string($res)) {
+                $res = json_decode($res, true);
+            }
+            if ($err !== null) {
+                $fail(500, 'Aktion am EMS fehlgeschlagen: ' . $err);
+                return;
+            }
+            if (!is_array($res) || empty($res['ok'])) {
+                $fail(422, 'Nicht gespeichert.', is_array($res['errors'] ?? null) ? $res['errors'] : []);
+                return;
+            }
+            $this->LogMessage(sprintf('Wochen-Frist über die Detailseite gespeichert: EMS-Wallbox %d (%d Tage)', $n, count($days)), KL_MESSAGE);
+            echo json_encode(['ok' => true]);
+            return;
+        }
         // Steuerhoheit einer ChargerHub-Wallbox umstellen (25.10.2026): nur ueber die oeffentlichen ChargerHub-Funktionen (kein IPS_SetProperty
         // auf fremden Instanzen), Wert gegen CHUB_GetManagedByOptions geprueft, Ratenschutz, Vorfuehrmodus gesperrt, im Systemprotokoll.
         if (isset($_GET['wbManagedBy'])) {
@@ -6131,8 +6207,12 @@ class NRGDashboardTile extends IPSModule
                 $ow = (string) ($e['controlOwner'] ?? '');
                 $ctl = null;
                 if (!$this->readBoolProperty('DemoMode', false) && ($ec = $this->EmsWallboxControls((int) ($e['powerID'] ?? 0))) !== null) {
-                    [, , $ev] = $ec;
+                    [, $emsN, $ev] = $ec;
                     $ctl = [];
+                    $wk = $this->EmsWeekTargets((int) $emsN);
+                    if ($wk !== null) {
+                        $ctl['week'] = $wk;
+                    }
                     if (isset($ev['mode'])) {
                         $ctl['mode'] = ['value' => (int) GetValue($ev['mode']), 'options' => $this->VariableOptions($ev['mode'])];
                     }
@@ -6243,6 +6323,43 @@ class NRGDashboardTile extends IPSModule
             }
         }
         return count($vars) > 0 ? [$ems, $n, $vars] : null;
+    }
+
+    /**
+     * Wochen-Frist je EMS-Wallbox (EMS ab 0.92.0, Vertrag EMS_GetWeekTargets 1.0): je Wochentag (1 = Montag .. 7 = Sonntag) eine Uhrzeit oder
+     * leer (= keine Frist) und ein optionales Ladeziel (0 = einheitliches Ladeziel). null, wenn die Funktion fehlt oder keine gueltige Antwort kommt.
+     */
+    private function EmsWeekTargets(int $n): ?array
+    {
+        if ($n < 1 || $n > 2 || !function_exists('EMS_GetWeekTargets')) {
+            return null;
+        }
+        $ems = $this->pickSingleActiveInstance(@IPS_GetInstanceListByModuleID(NRGDASH_GUID_EMS));
+        if ($ems <= 0) {
+            return null;
+        }
+        try {
+            $r = @EMS_GetWeekTargets($n);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        if (is_string($r)) {
+            $r = json_decode($r, true);
+        }
+        if (!is_array($r) || isset($r['ok']) && $r['ok'] === false || empty($r['days']) || !is_array($r['days'])) {
+            return null;
+        }
+        $days = [];
+        foreach ($r['days'] as $d) {
+            if (is_array($d) && isset($d['day'])) {
+                $days[] = ['day' => (int) $d['day'], 'label' => (string) ($d['label'] ?? ''), 'time' => (string) ($d['time'] ?? ''), 'kwh' => (float) ($d['kwh'] ?? 0)];
+            }
+        }
+        if (count($days) !== 7) {
+            return null;
+        }
+        return ['revision' => (string) ($r['revision'] ?? ''), 'active' => !empty($r['active']), 'days' => $days,
+                'targetKwh' => (float) ($r['targetKwh'] ?? 0), 'targetTime' => (string) ($r['targetTime'] ?? '')];
     }
 
     /** Auswahlliste einer Variable (Darstellung "Aufzaehlung" oder Profil): [[wert, beschriftung], ...]. */

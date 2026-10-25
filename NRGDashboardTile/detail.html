@@ -116,6 +116,12 @@
   .wbAct.primary { background: #3a5a3f; border-color: #4a7a52; font-weight: 600; }
   .wbAct:hover { filter: brightness(1.15); }
   .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #3a4a5f; color: #cfe0ff; }
+  .wkTbl { border-collapse: collapse; }
+  .wkTbl td { padding: 2px 8px 2px 0; font-size: 13px; }
+  .wkTbl input.tm { width: 92px; }
+  .wkTbl input.kw { width: 68px; background: #2b2f34; color: #e8eaed; border: 1px solid #555b63; border-radius: 9px; padding: 6px; font: inherit; font-size: 13px; text-align: center; }
+  .wkTbl input.bad { border-color: #e57373; }
+  .wkErr { font-size: 12px; color: #ef9a9a; }
   .wbNote { font-size: 12px; color: #c9b27a; grid-column: 1 / -1; }
   .wbCtlStatus { font-size: 12px; color: #9aa0a6; min-height: 16px; }
   .hl-card .hl-hint { font-size: 10.5px; color: #7a8189; margin-top: 4px; line-height: 1.4; max-width: 26ch; }
@@ -473,6 +479,22 @@ function wbControlsHtml(w) {
       EMS_QUICK_TIME.map(v => '<button class="chip" data-wb="' + pid + '" data-f="time-q" data-v="' + v + '">' + v + '</button>').join('') +
       '<button class="wbApply" data-wb="' + pid + '" data-f="time" disabled>Übernehmen</button></div></div>';
   }
+  if (c && c.week) {
+    const wk = c.week, one = (wk.targetKwh > 0 ? wk.targetKwh + ' kWh' : 'kein Ladeziel');
+    h += '<div class="wbRow"><span class="wbLab">Wochen-Frist</span><div class="wbBody" style="display:block">' +
+      '<div style="font-size:12px;color:#9aa0a6;margin-bottom:4px">' + (wk.active ? 'Aktiv: ab dem nächsten Anstecken gilt die nächste Frist ab jetzt.' : 'Noch keine Frist eingetragen – es gilt die einheitliche Frist oben.') + ' Leere Zeit = keine Frist an dem Tag. Ladeziel 0 = einheitliches Ladeziel (' + esc(one) + ').</div>' +
+      '<table class="wkTbl" data-wb="' + pid + '" data-rev="' + esc(wk.revision) + '">' +
+      wk.days.map((d, i) => '<tr><td>' + esc(d.label || ('Tag ' + d.day)) + '</td>' +
+        '<td><input type="time" class="tm" data-wk="' + pid + '" data-i="' + i + '" data-f="wk-time" value="' + esc(d.time) + '" data-orig="' + esc(d.time) + '"></td>' +
+        '<td><input type="number" class="kw" min="0" max="200" step="0.5" data-wk="' + pid + '" data-i="' + i + '" data-f="wk-kwh" value="' + d.kwh + '" data-orig="' + d.kwh + '"> kWh</td></tr>').join('') +
+      '</table>' +
+      '<div class="wbBody" style="margin-top:6px"><span style="font-size:12px;color:#9aa0a6">Montag übernehmen für:</span>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="all">alle Tage</button>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="work">Werktage</button>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="weekend">Wochenende</button>' +
+      '<button class="wbApply" data-wb="' + pid + '" data-f="wk-save" disabled>Wochen-Frist speichern</button></div>' +
+      '<div class="wkErr" data-wkerr="' + pid + '"></div></div></div>';
+  }
   if (c && c.command && c.command.options && c.command.options.length) {
     h += '<div class="wbRow"><span class="wbLab">Aktionen</span><div class="wbBody">' +
       c.command.options.map(o => '<button class="wbAct' + (Number(o[0]) === 1 ? ' primary' : '') + '" data-wb="' + pid + '" data-f="command" data-v="' + esc(String(o[0])) + '">' + (Number(o[0]) === 1 ? '⚡ ' : '') + esc(o[1]) + '</button>').join('') + '</div></div>';
@@ -506,6 +528,50 @@ function wbMarkDirty(pid, f) {
   const inp = wbInput(pid, f + '-in'), btn = document.querySelector('button[data-wb="' + pid + '"][data-f="' + f + '"]');
   if (inp && btn) btn.disabled = (String(inp.value) === String(inp.dataset.orig));
 }
+function wkInputs(pid) { return Array.from(document.querySelectorAll('input[data-wk="' + pid + '"]')); }
+function wkMarkDirty(pid) {
+  const dirty = wkInputs(pid).some(i => String(i.value) !== String(i.dataset.orig));
+  const b = document.querySelector('button[data-wb="' + pid + '"][data-f="wk-save"]');
+  if (b) b.disabled = !dirty;
+}
+function wkSave(pid) {
+  const lockKey = pid + ':week';
+  if (EMS_LOCK[lockKey] && Date.now() < EMS_LOCK[lockKey]) return;
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const t = document.querySelector('input[data-wk="' + pid + '"][data-i="' + i + '"][data-f="wk-time"]');
+    const k = document.querySelector('input[data-wk="' + pid + '"][data-i="' + i + '"][data-f="wk-kwh"]');
+    days.push({ day: i + 1, time: t ? t.value : '', kwh: k ? Number(k.value) || 0 : 0 });
+  }
+  const tbl = document.querySelector('table.wkTbl[data-wb="' + pid + '"]');
+  const errEl = document.querySelector('.wkErr[data-wkerr="' + pid + '"]'), st = document.querySelector('.wbCtlStatus[data-wb="' + pid + '"]');
+  if (!window.confirm('Wochen-Frist speichern? Sie gilt ab dem nächsten Anstecken, das EMS lädt dafür neu.')) return;
+  EMS_LOCK[lockKey] = Date.now() + 6000;
+  if (errEl) errEl.textContent = '';
+  wkInputs(pid).forEach(i => i.classList.remove('bad'));
+  if (st) st.textContent = 'Wird gesendet …';
+  const u = new URL(window.location.href); u.search = '';
+  u.searchParams.set('emsWeekSave', '1'); u.searchParams.set('key', lastPayload.key); u.searchParams.set('powerId', String(pid));
+  u.searchParams.set('days', JSON.stringify(days)); if (tbl && tbl.dataset.rev) u.searchParams.set('revision', tbl.dataset.rev);
+  fetch(u.toString()).then(r => r.json()).then(res => {
+    if (res && res.ok) {
+      if (st) st.textContent = 'Wochen-Frist gespeichert. Das EMS lädt neu, der Plan aktualisiert sich in einigen Sekunden.';
+      setTimeout(() => loadDay(''), 2500);
+    } else {
+      EMS_LOCK[lockKey] = 0;
+      const errs = (res && res.errors) || [];
+      errs.forEach(e => { const m = /^days\[(\d+)\]\.(time|kwh)/.exec(String(e.field || '')); if (m) { const inp = document.querySelector('input[data-wk="' + pid + '"][data-i="' + m[1] + '"][data-f="wk-' + m[2] + '"]'); if (inp) inp.classList.add('bad'); } });
+      const rev = errs.some(e => String(e.field) === 'revision');
+      if (errEl) errEl.textContent = rev ? 'Die Wochen-Frist wurde zwischenzeitlich geändert – bitte neu laden und erneut eingeben.' : (errs.length ? errs.map(e => e.message).join(' ') : ((res && res.error) || 'Nicht gespeichert.'));
+      if (st) st.textContent = '';
+      if (rev) setTimeout(() => loadDay(''), 800);
+    }
+  }).catch(() => { EMS_LOCK[lockKey] = 0; if (st) st.textContent = 'Keine Verbindung.'; });
+}
+document.addEventListener('input', ev => {
+  const t = ev.target;
+  if (t && t.dataset && t.dataset.wk) wkMarkDirty(Number(t.dataset.wk));
+});
 document.addEventListener('input', ev => {
   const t = ev.target;
   if (t && t.dataset && (t.dataset.f === 'kwh-in' || t.dataset.f === 'time-in')) wbMarkDirty(Number(t.dataset.wb), t.dataset.f.replace('-in', ''));
@@ -521,6 +587,18 @@ document.addEventListener('click', ev => {
   const b = ev.target && ev.target.closest ? ev.target.closest('button[data-wb]') : null;
   if (!b) return;
   const pid = Number(b.dataset.wb), f = b.dataset.f;
+  if (f === 'wk-copy') {
+    const pidW = pid, rows = [0, 1, 2, 3, 4, 5, 6];
+    const src = { t: document.querySelector('input[data-wk="' + pidW + '"][data-i="0"][data-f="wk-time"]'), k: document.querySelector('input[data-wk="' + pidW + '"][data-i="0"][data-f="wk-kwh"]') };
+    const target = b.dataset.v === 'all' ? rows.slice(1) : (b.dataset.v === 'work' ? [1, 2, 3, 4] : [5, 6]);
+    target.forEach(i => {
+      const t = document.querySelector('input[data-wk="' + pidW + '"][data-i="' + i + '"][data-f="wk-time"]');
+      const k = document.querySelector('input[data-wk="' + pidW + '"][data-i="' + i + '"][data-f="wk-kwh"]');
+      if (t && src.t) t.value = src.t.value; if (k && src.k) k.value = src.k.value;
+    });
+    wkMarkDirty(pidW); return;
+  }
+  if (f === 'wk-save') { wkSave(pid); return; }
   if (f === 'mode') {
     const v = b.dataset.v, aus = (b.textContent.trim().toLowerCase() === 'aus');
     emsWbSend(pid, 'mode', v, aus ? 'Ladeart auf „Aus“ stellen? Das EMS lädt diese Wallbox dann nicht mehr.' : null);
