@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.65 (2026-10-25)
+
+- Wallbox-Cockpit, Bedienung neu gestaltet: Die Ladeart ist eine Schaltleiste (statt Auswahlliste), das Ladeziel hat Plus/Minus, Schnellwerte (aus, 10, 20, 30, 50 kWh) und einen „Übernehmen“-Knopf, der erst aktiv wird, wenn sich der Wert ändert; die Frist hat Schnellwerte (06:00, 07:00, 08:00); „Jetzt 1 Stunde laden“ ist hervorgehoben. Rückfragen nur noch dort, wo sie sinnvoll sind (Ladeart „Aus“, „Jetzt 1 Stunde laden“, Steuerhoheit). Steht der Regler nicht auf EMS, weist ein Hinweis darauf hin, dass die Einstellungen für das EMS gelten.
+- Neu, vorbereitet: Auswahl der Steuerhoheit je Wallbox (Regler). Erscheint nur, wenn der ChargerHub die Funktionen `CHUB_GetManagedByOptions` und `CHUB_SetManagedBy` anbietet (angefragt, noch nicht vorhanden). Die Kachel setzt nie selbst Properties fremder Instanzen.
+
 ## 0.9.170-beta.64 (2026-10-25)
 
 - Wallbox-Detailseite, Abschnitt „Regelung & Plan“: Bedienung der EMS-Wallbox (ab EMS 0.85.0). Ladeart (Auswahl aus der EMS-Variable), Ladeziel in kWh, Frist und die Befehle „Jetzt 1 Stunde laden“, „Übersteuerung beenden“, „Ladeziel löschen“. Jede Änderung wird vorher bestätigt und läuft über die EMS-Variablen `EMS_WBn_*`. Die Kachel ordnet die Wallbox serverseitig dem EMS-Wallbox-Eintrag zu (über den Plantext, der nur genau einer `EMS_WBn_Plan` entsprechen darf); ist die Zuordnung nicht eindeutig oder fehlt das EMS, erscheint keine Bedienung. Werte werden geprüft (Auswahllisten, Bereich 0 bis 100 kWh, HH:MM), schnelle Wiederholungen je Variable abgewiesen (5 s), im Vorführmodus gesperrt. Jede Bedienung steht im Systemprotokoll.

@@ -1843,6 +1843,75 @@ class NRGDashboardTile extends IPSModule
             echo json_encode(['ok' => true]);
             return;
         }
+        // Steuerhoheit einer ChargerHub-Wallbox umstellen (25.10.2026): nur ueber die oeffentlichen ChargerHub-Funktionen (kein IPS_SetProperty
+        // auf fremden Instanzen), Wert gegen CHUB_GetManagedByOptions geprueft, Ratenschutz, Vorfuehrmodus gesperrt, im Systemprotokoll.
+        if (isset($_GET['wbManagedBy'])) {
+            header('Content-Type: application/json; charset=utf-8');
+            $fail = function (int $code, string $msg): void {
+                http_response_code($code);
+                echo json_encode(['ok' => false, 'error' => $msg]);
+            };
+            if ($this->readBoolProperty('DemoMode', false)) {
+                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                return;
+            }
+            if (!function_exists('CHUB_GetManagedByOptions') || !function_exists('CHUB_SetManagedBy')) {
+                $fail(400, 'Diese ChargerHub-Version bietet die Umstellung nicht an.');
+                return;
+            }
+            $key = (string) ($_GET['key'] ?? '');
+            $pid = (int) ($_GET['powerId'] ?? 0);
+            $d = $this->FindDeviceByKey($key);
+            if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
+                || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
+                $fail(403, 'Ungültige Wallbox.');
+                return;
+            }
+            $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+            $iid = 0;
+            foreach (array_merge($this->GetDevices(), is_array($abs) ? $abs : []) as $c) {
+                if ((int) ($c['powerID'] ?? 0) === $pid && ($c['source'] ?? '') === 'chargerhub' && (int) ($c['instanceID'] ?? 0) > 0) {
+                    $iid = (int) $c['instanceID'];
+                    break;
+                }
+            }
+            $value = (string) ($_GET['value'] ?? '');
+            $allowed = [];
+            if ($iid > 0) {
+                try {
+                    foreach ((array) @CHUB_GetManagedByOptions($iid) as $o) {
+                        if (is_array($o) && isset($o['value'])) {
+                            $allowed[] = (string) $o['value'];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
+            }
+            if ($iid <= 0 || !in_array($value, $allowed, true)) {
+                $fail(400, 'Ungültiger Wert oder keine ChargerHub-Wallbox.');
+                return;
+            }
+            $bufKey = 'ManagedByLast_' . $iid;
+            if (time() - (int) $this->GetBuffer($bufKey) < 5) {
+                $fail(429, 'Bitte einen Moment warten.');
+                return;
+            }
+            $this->SetBuffer($bufKey, (string) time());
+            $res = null;
+            $err = $this->runPartnerCall(function () use ($iid, $value, &$res) {
+                $res = CHUB_SetManagedBy($iid, $value);
+            });
+            if ($err === null && is_array($res) && empty($res['ok'])) {
+                $err = (string) ($res['error'] ?? 'abgelehnt');
+            }
+            if ($err !== null) {
+                $fail(500, 'Umstellung fehlgeschlagen: ' . $err);
+                return;
+            }
+            $this->LogMessage(sprintf('Wallbox-Steuerhoheit über die Detailseite umgestellt: ChargerHub #%d -> %s', $iid, $value), KL_MESSAGE);
+            echo json_encode(['ok' => true]);
+            return;
+        }
         // Aufschachteln (03.09.2026): Mitglieder eines Sammelknotens fuer die
         // naechste Ebene - Schluessel ist ein Top-Level-Geraet ODER selbst
         // schon ein Mitglied (<Key>'>'<Index>...), beliebig tief.
@@ -6078,8 +6147,30 @@ class NRGDashboardTile extends IPSModule
                         $ctl['command'] = ['options' => array_values(array_filter($this->VariableOptions($ev['command']), static function ($o) { return (int) $o[0] !== 0; }))];
                     }
                 }
+                // Steuerhoheit umstellen (ChargerHub-Funktionen CHUB_GetManagedByOptions/CHUB_SetManagedBy - erscheint nur, wenn beide existieren)
+                $mb = null;
+                if (!$this->readBoolProperty('DemoMode', false) && function_exists('CHUB_GetManagedByOptions') && function_exists('CHUB_SetManagedBy')) {
+                    try {
+                        $mo = @CHUB_GetManagedByOptions((int) $iid);
+                    } catch (\Throwable $x) {
+                        $mo = null;
+                    }
+                    if (is_array($mo) && count($mo) > 0) {
+                        $opts = [];
+                        foreach ($mo as $o) {
+                            if (is_array($o) && isset($o['value'])) {
+                                $opts[] = [(string) $o['value'], (string) ($o['label'] ?? $o['value'])];
+                            }
+                        }
+                        $cur = (string) ($e['managedBy'] ?? '');
+                        if (count($opts) > 0) {
+                            $mb = ['value' => $cur, 'options' => $opts];
+                        }
+                    }
+                }
                 $out[] = [
                     'powerID'  => (int) ($e['powerID'] ?? 0),
+                    'managedBy' => $mb,
                     'ctl'      => $ctl,
                     'label'    => (string) ($e['label'] ?? 'Wallbox'),
                     'owner'    => $ow !== '' ? ($owners[$ow] ?? $ow) : null,
