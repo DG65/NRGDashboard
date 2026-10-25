@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.9.170-beta.63 (2026-10-25)
+
+- Wallbox-Detailseite: Neuer Abschnitt „Regelung & Plan“ (reine Anzeige, ChargerHub-Vertrag 1.9–1.12). Je Wallbox: wer sie gerade regelt (EMS, PV-Überschuss, go-e-Regler, Tibber, § 14a, Direktvermarkter), seit wann und warum; der Plantext („was als Nächstes passiert“, vom EMS befüllt); Lade-Zustand und Ladestatus; ein Fehlercode, falls einer ansteht. Gilt auch für ChargerHub-Wallboxen, die als Mitglied einer Gruppe auf Ebene 1 ausgeblendet sind. Ohne ChargerHub-Wallbox oder ältere Vertragsstände erscheint der Abschnitt nicht oder nur mit den vorhandenen Feldern.
+
 ## 0.9.170-beta.62 (2026-10-25)
 
 - Ladesitzungen, Abgleich mit dem Sitzungszähler der Wallbox: Verglichen wird jetzt der Zuwachs des Zählers im Zeitraum der Sitzung statt seines höchsten Standes. Der Sitzungszähler der go-e zählt ab dem Anstecken, ein früherer Ladeblock derselben Anstecksitzung steht schon darauf. Eine Sitzung mit 0,60 kWh berechnet und einem Zählerstand von 2,36 auf 2,97 kWh (Zuwachs 0,61) galt deshalb fälschlich als „unsicher“. Springt der Zähler im Zeitraum zurück (neue Anstecksitzung), beginnt ein neues Segment (Hinweis aus der ChargerHub-Sitzung).

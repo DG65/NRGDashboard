@@ -154,6 +154,12 @@
   <div id="curSessNote" class="note"></div>
 </div>
 
+<!-- Regelung und Plan je Wallbox (25.10.2026, ChargerHub-Vertrag 1.9-1.12): reine Anzeige -->
+<div id="wbInfoWrap" style="display:none">
+  <h2>Regelung &amp; Plan</h2>
+  <div id="wbInfoT"></div>
+</div>
+
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
 <div id="sessWrap" style="display:none">
@@ -404,6 +410,30 @@ function renderSessions(p) {
   document.getElementById('sessNote').textContent = notes.join(' ');
 }
 
+// Regelung und Plan je Wallbox (ChargerHub 1.9-1.12): wer regelt, warum, seit wann; der Plantext (vom EMS); Lade-Zustand; Fehler.
+function renderWbInfo(p) {
+  const wrap = document.getElementById('wbInfoWrap');
+  const list = p.wbInfo;
+  if (!list || !list.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const two = n => ('0' + n).slice(-2);
+  const sinceTxt = ts => { const d = new Date(ts * 1000), n = new Date(); const t = two(d.getHours()) + ':' + two(d.getMinutes()); return d.toDateString() === n.toDateString() ? t : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '. ' + t; };
+  let h = '';
+  list.forEach(w => {
+    h += '<div class="hl-card" style="margin-bottom:8px"><div class="hl-label">' + esc(w.label) + '</div>';
+    const rows = [];
+    if (w.owner) rows.push(['Regelung', w.owner + (w.since ? ' (seit ' + sinceTxt(w.since) + ')' : '') + (w.reason ? ' – ' + w.reason : '')]);
+    if (w.plan) rows.push(['Plan', w.plan]);
+    const zus = [w.charging, w.state].filter(Boolean).join(' · ');
+    if (zus) rows.push(['Zustand', zus]);
+    if (w.error) rows.push(['Fehler', w.error]);
+    h += rows.map(r => '<div style="font-size:13px;margin-top:4px"><span style="opacity:.65">' + esc(r[0]) + ':</span> ' + esc(r[1]) + '</div>').join('');
+    if (!rows.length) h += '<div style="font-size:13px;opacity:.7">Keine Angaben vom Ladepunkt.</div>';
+    h += '</div>';
+  });
+  document.getElementById('wbInfoT').innerHTML = h;
+}
+
 // Aktuelle/letzte Ladesitzung als Kartenreihe (05.10.2026). Alle Werte kommen
 // aus der bereits berechneten Sitzungsliste (ChargingSessions()), die Zeiten
 // sind deshalb aus der Ladeleistung abgeleitet, nicht aus dem Steckerstatus
@@ -508,6 +538,7 @@ function handleDetail(p) {
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
   renderHighlights(p);
+  renderWbInfo(p);
   renderCurrentSession(p);
   renderSessions(p);
   renderControl(p);

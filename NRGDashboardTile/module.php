@@ -5613,6 +5613,9 @@ class NRGDashboardTile extends IPSModule
             // siehe ChargingSessions().
             'sessions'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
                 ? $this->ChargingSessions($this->SessionPowerIDs($key, $d, $powerID), $dayStart) : null,
+            // Regelung und Plan je Wallbox (ChargerHub-Vertrag 1.9-1.12, 25.10.2026) - reine Anzeige, null ohne ChargerHub-Wallbox in diesem Knoten.
+            'wbInfo'    => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
+                ? $this->WallboxStatusInfo($key, $d, $powerID) : null,
             // Stecker-Zeiten und Ladezeit aus dem Vertrag (ChargerHub CHUB 1.7,
             // 05.10.2026) - null, wenn der Anbieter die Felder nicht liefert.
             'plugInfo'  => ($this->normalizeDeviceCategory($d['function'] ?? '') === 'wallbox')
@@ -5937,6 +5940,65 @@ class NRGDashboardTile extends IPSModule
      * Sitzungszaehler der Wallboxen (sessionEnergyID, ChargerHub-Vertrag 1.10: Energie der laufenden Sitzung in kWh, springt je Sitzung zurueck):
      * [powerID => sessionEnergyID]. Quelle sind alle Geraete mit beiden Feldern, auch die beim Aufschachteln ausgeblendeten ChargerHub-Wallboxen.
      */
+    /**
+     * Regelung und Plan je Wallbox fuer die Detailseite (ChargerHub CHUB_GetFunctions 1.9-1.12): controlOwner/Source/Reason/Since (wer regelt,
+     * warum, seit wann), planInfoID (Plantext, vom EMS befuellt), chargingStateID ("Laedt"), stateID (Ladestatus), errorCodeID. Gelesen wird frisch
+     * aus dem Vertrag (nicht aus dem Geraete-Cache), Zuordnung ueber die Leistungsvariable wie bei der Fahrzeug-Zuordnung - auch fuer die beim
+     * Aufschachteln ausgeblendeten ChargerHub-Wallboxen. Reine Anzeige. Rueckgabe: Liste je Wallbox oder null.
+     */
+    private function WallboxStatusInfo(string $key, array $d, int $powerID): ?array
+    {
+        if (!function_exists('CHUB_GetFunctions')) {
+            return null;
+        }
+        $scope = array_flip(array_map('intval', $this->SessionPowerIDs($key, $d, $powerID)));
+        $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
+        $cand = array_merge($this->GetDevices(), is_array($abs) ? $abs : []);
+        $inst = [];
+        foreach ($cand as $c) {
+            $pid = (int) ($c['powerID'] ?? 0);
+            $iid = (int) ($c['instanceID'] ?? 0);
+            if ($pid > 0 && isset($scope[$pid]) && $iid > 0 && ($c['source'] ?? '') === 'chargerhub') {
+                $inst[$iid] = true;
+            }
+        }
+        $owners = ['none' => 'Keine Regelung', 'ems' => 'EMS', 'surplus' => 'PV-Überschuss', 'goe-controller' => 'go-e-Regler', 'tibber' => 'Tibber',
+                   'p14a' => '§ 14a', 'marketer' => 'Direktvermarkter', 'other' => 'Sonstiges'];
+        $val = static function (int $id): ?string {
+            return ($id > 0 && IPS_VariableExists($id)) ? trim((string) GetValueFormatted($id)) : null;
+        };
+        $out = [];
+        foreach (array_keys($inst) as $iid) {
+            try {
+                $entries = @CHUB_GetFunctions((int) $iid);
+            } catch (\Throwable $e) {
+                continue;
+            }
+            foreach ((is_array($entries) ? $entries : []) as $e) {
+                if (!is_array($e) || !isset($scope[(int) ($e['powerID'] ?? 0)])) {
+                    continue;
+                }
+                $err = null;
+                $eid = (int) ($e['errorCodeID'] ?? 0);
+                if ($eid > 0 && IPS_VariableExists($eid) && (float) GetValue($eid) != 0.0) {
+                    $err = $val($eid);
+                }
+                $ow = (string) ($e['controlOwner'] ?? '');
+                $out[] = [
+                    'label'    => (string) ($e['label'] ?? 'Wallbox'),
+                    'owner'    => $ow !== '' ? ($owners[$ow] ?? $ow) : null,
+                    'reason'   => isset($e['controlReason']) ? (string) $e['controlReason'] : null,
+                    'since'    => isset($e['controlSince']) ? (int) $e['controlSince'] : null,
+                    'plan'     => $val((int) ($e['planInfoID'] ?? 0)),
+                    'charging' => $val((int) ($e['chargingStateID'] ?? 0)),
+                    'state'    => $val((int) ($e['stateID'] ?? 0)),
+                    'error'    => $err,
+                ];
+            }
+        }
+        return count($out) > 0 ? $out : null;
+    }
+
     private function SessionCounterMap(): array
     {
         $map = [];
