@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.0 (2026-10-27)
+
+- **Stable-Veröffentlichung.** Gleicher Funktionsstand wie `0.9.170-beta.69`; die Beta-Reihe endet hier, `main` und `beta` sind identisch. Migrationsvergleich gegen den bisherigen `main`-Stand: kein Bruch.
+
 ## 0.9.170-beta.69 (2026-10-25)
 
 - **Wallbox ↔ EMS verbindlich zugeordnet.** Die Zuordnung kommt jetzt aus `EMS_GetWallboxes()` (EMS ab 0.91.0): Leistungsvariable, Bedienvariablen und die Auskunft, ob das EMS die Wallbox wirklich regelt (`emsControls`). Der Plantext-Vergleich bleibt nur als Rückfall für ältere EMS-Versionen. Regelt das EMS die Wallbox nicht (z. B. Regler Tibber), sind Ladeart, Ladeziel, Frist, Wochen-Frist und Aktionen ausgegraut und mit Hinweis versehen; der Server weist solche Schreibaktionen ebenfalls ab. Die Reglerauswahl bleibt bedienbar. Der Hinweis nennt den Grund nach EMS-Modus (Tibber Smart Charging bzw. nur beobachtet). Ohne Treffer über die Leistungsvariable greift die Zuordnung über Instanz-ID/`controlInstanceID` (eine im EMS gewählte `configuredInstanceID` geht vor).
