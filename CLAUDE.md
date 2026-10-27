@@ -113,8 +113,9 @@ Tooltip-Formatter jeder Highcharts-Instanz.
 
 ## Branch-Modell
 
-Arbeitsbranch `ems-integration` (verbundweit identisch), Merge nach
-`beta`/`main` erst nach Bewährung. Nutzersichtbares deutsch.
+Seit 0.10.0 (27.10.2026) gilt `main` == `beta` als Stable; den Branch
+`ems-integration` gibt es nicht mehr. Arbeit läuft auf `beta`, Freigabe nach
+`main` per Fast-Forward. Nutzersichtbares deutsch.
 
 ## Verbund-Manifest SUITE.md — Bezugsquelle (geändert 31.08.2026)
 
