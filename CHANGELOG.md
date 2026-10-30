@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.1 (2026-10-30)
+
+- **Store-Review: Logging nur auf Wunsch des Benutzers.** Die Detailseite der Kachel schaltete beim Öffnen des Leistungsdiagramms die Archivierung der zugrunde liegenden Variable selbst ein. Das Logging liegt aber in der Hoheit des Benutzers und darf nicht über die Visualisierung ausgelöst werden. Die Detailseite liest den Archivstatus jetzt nur noch und verweist bei fehlenden Archivdaten auf das Formular. Dort gibt es neu den Knopf „Archivierung der Geräteleistungen aktivieren“: Er schaltet auf ausdrückliche Anweisung des Benutzers die Archivierung der Leistungsvariablen aller gefundenen Geräte ein (mit Auflistung und Logeintrag). Betroffen war nur die Kachel; die übrigen Module schalten kein Logging ein.
+
 ## 0.10.0 (2026-10-27)
 
 - **Stable-Veröffentlichung.** Gleicher Funktionsstand wie `0.9.170-beta.69`; die Beta-Reihe endet hier, `main` und `beta` sind identisch. Migrationsvergleich gegen den bisherigen `main`-Stand: kein Bruch.

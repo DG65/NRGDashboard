@@ -143,7 +143,7 @@ class NRGDashboardTile extends IPSModule
         'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
         'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
         'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
-        'Das Leistungsdiagramm der Geräte-Detailseite aktiviert die Archivierung der zugrunde liegenden Variable jetzt selbst, statt nur "keine Archivdaten" zu melden - ab dem ersten Aufruf sammelt sich der Verlauf automatisch.',
+        'Das Leistungsdiagramm der Geräte-Detailseite meldet fehlende Archivdaten und verweist auf den Formular-Knopf zum Einschalten der Archivierung (die Visualisierung schaltet das Logging fremder Variablen nicht selbst ein).',
         'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
         'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',
         'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
@@ -5812,7 +5812,7 @@ class NRGDashboardTile extends IPSModule
         // Wallbox, deren primaere powerID nicht mehr aktualisiert wurde).
         $powerNow = $this->resolvePowerValue($d);
         $powerID = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
-        $archivingJustEnabled = $this->EnsureArchiving($powerID);
+        $archivingActive = $this->ArchivingActive($powerID);
         $powerSeries = $this->DaySeries($powerID, $dayStart, $dayEnd);
         // Archivreihe in Kachel-Konvention (+ = Einspeisung) - Netzbezug/
         // Einspeisung/Kosten der Detailseite haengen am Vorzeichen.
@@ -5833,7 +5833,7 @@ class NRGDashboardTile extends IPSModule
             'dayLabel'  => date('d.m.Y', $dayStart),
             'isToday'   => $isToday,
             'power'     => $powerSeries,
-            'archivingJustEnabled' => $archivingJustEnabled,
+            'archivingActive' => $archivingActive,
             'energy'    => $energy,
             // "Für mich"-Kennzahlen (Dietmar, 28.08.2026: "was einen als
             // Hausbesitzer interessieren könnte ... auch mit Blick auf
@@ -7369,26 +7369,43 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
-     * Aktiviert die Archivierung fuer eine Variable, falls noch nicht aktiv
-     * - Dietmar 31.08.2026: "wenn Du schon eine Auswertung anbietest, dann
-     * solltest Du auch alle betreffenden Datenpunkte archivieren", statt nur
-     * "keine Archivdaten" anzuzeigen und es dabei zu belassen. Wirkt nur
-     * lazy beim tatsaechlichen Aufruf der Leistungsgrafik (nicht pauschal
-     * fuer jedes discovered Geraet), damit nicht ungefragt Dutzende fremde
-     * Variablen archiviert werden, die nie jemand ansieht. Rueckgabe true,
-     * wenn die Archivierung GERADE erst aktiviert wurde (fuer die Detail-
-     * seite: dann liegen naturgemaess noch keine historischen Daten vor,
-     * das ist kein Fehler mehr, sondern nur eine Frage der Zeit).
+     * Wird die Variable bereits archiviert? Nur lesend: die Visualisierung schaltet die Archivierung fremder Variablen nie selbst ein
+     * (Store-Review 30.10.2026: das Logging liegt in der Hoheit des Benutzers). Einschalten geht nur ausdruecklich ueber den Knopf im
+     * Formular (EnableArchiving()).
      */
-    private function EnsureArchiving(int $vid): bool
+    private function ArchivingActive(int $vid): bool
     {
         $arch = $this->ArchiveID();
-        if ($arch <= 0 || $vid <= 0 || !IPS_VariableExists($vid) || AC_GetLoggingStatus($arch, $vid)) {
-            return false;
+        return $arch > 0 && $vid > 0 && IPS_VariableExists($vid) && (bool) AC_GetLoggingStatus($arch, $vid);
+    }
+
+    /**
+     * Knopf im Formular ("Archivierung der Geräteleistungen aktivieren"): schaltet auf ausdrueckliche Anweisung des Benutzers die Archivierung
+     * der Leistungsvariablen aller gefundenen Geraete ein, soweit sie noch nicht archiviert werden. Rueckgabe: Klartext fuer das Meldungsfenster.
+     */
+    public function EnableArchiving(): string
+    {
+        $arch = $this->ArchiveID();
+        if ($arch <= 0) {
+            return 'Es gibt keine Archiv-Instanz, die Archivierung lässt sich nicht einschalten.';
         }
-        AC_SetLoggingStatus($arch, $vid, true);
+        $todo = [];
+        foreach ($this->GetDevices() as $d) {
+            foreach ([(int) ($d['powerID'] ?? 0), (int) ($d['fallbackPowerID'] ?? 0)] as $vid) {
+                if ($vid > 0 && IPS_VariableExists($vid) && !AC_GetLoggingStatus($arch, $vid)) {
+                    $todo[$vid] = trim((string) ($d['label'] ?? '')) !== '' ? (string) $d['label'] : IPS_GetName($vid);
+                }
+            }
+        }
+        if (count($todo) === 0) {
+            return 'Alle Leistungsvariablen der gefundenen Geräte werden bereits archiviert.';
+        }
+        foreach (array_keys($todo) as $vid) {
+            AC_SetLoggingStatus($arch, $vid, true);
+        }
         IPS_ApplyChanges($arch);
-        return true;
+        $this->LogMessage(sprintf('Archivierung auf Wunsch des Benutzers für %d Leistungsvariablen eingeschaltet', count($todo)), KL_MESSAGE);
+        return sprintf("Die Archivierung wurde für %d Leistungsvariable(n) eingeschaltet:\n- %s\nDie Diagramme füllen sich ab jetzt mit der Zeit.", count($todo), implode("\n- ", array_values($todo)));
     }
 
     /**

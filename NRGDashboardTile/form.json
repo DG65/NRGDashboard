@@ -164,6 +164,15 @@
       "onClick": "NRGDASH_Discover($id);"
     },
     {
+      "type": "Button",
+      "caption": "Archivierung der Geräteleistungen aktivieren",
+      "onClick": "echo NRGDASH_EnableArchiving($id);"
+    },
+    {
+      "type": "Label",
+      "caption": "Die Diagramme der Detailseiten brauchen archivierte Leistungsvariablen. Das Archiv schaltest nur du ein: mit diesem Knopf für alle gefundenen Geräte auf einmal, oder einzeln in der Archiv-Instanz. Die Kachel selbst schaltet nie etwas ein."
+    },
+    {
       "type": "Label",
       "name": "DiscoveryResult",
       "caption": ""
