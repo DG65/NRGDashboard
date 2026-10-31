@@ -157,6 +157,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.16' => [
+            'Bilanz (Tagesansicht): Der Ladestand der Batterie wird als Linie mit eigener Prozentachse rechts im unteren Panel eingeblendet, per Legende ein- und ausschaltbar.'
+        ],
         '0.10.15' => [
             'Bilanz: Netzeinspeisung aus der Batterie ist jetzt eine eigene Größe (Rosa/Magenta) und zählt weder zum Verbrauch noch zum Ertrag. Bisher stand sie fälschlich im Ertrag, die zugehörige Entladung im Verbrauch.'
         ],
@@ -3014,7 +3017,7 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($capKwh < 0.0) { $capKwh = 0.0; }
         }
 
-        $socID = is_array($data) ? (int) ($data['socID'] ?? 0) : 0;
+        $socID = $this->SocID();
         $aid = $this->ArchiveID();
         $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
         $batPts = ($aid > 0) ? $this->DaySeries($aid, $batPowerID, $start, $end) : [];
@@ -3060,7 +3063,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $E = max(0.0, (float) ($state['E'] ?? 0));
         $s = min(1.0, max(0.0, (float) ($state['s'] ?? 1)));
         $tot = array_fill_keys(self::BALANCE_KEYS, 0.0);
-        $curve = array_fill_keys(['netzbezug', 'batterieentladungPv', 'batterieentladungNetz', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzeinspeisungBatterie', 'netzladung'], []);
+        $curve = array_fill_keys(['netzbezug', 'batterieentladungPv', 'batterieentladungNetz', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzeinspeisungBatterie', 'netzladung', 'soc'], []);
         $dtH = 5.0 / 60.0;
         if ($capKwh > 0 && $lastSoc !== null) {
             $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
@@ -3121,6 +3124,8 @@ class NRGDashboardPVMonitor extends IPSModule
                 $curve['batterieladung'][] = [$ts, round($batChPv / 1000.0, 3)];
                 $curve['netzeinspeisung'][] = [$ts, round($gridExpPv / 1000.0, 3)];
                 $curve['netzeinspeisungBatterie'][] = [$ts, round($batToGrid / 1000.0, 3)];
+                // Ladestand der Batterie in % (letzter bekannter Wert, nur bei Aenderung archiviert), null solange unbekannt
+                $curve['soc'][] = [$ts, $lastSoc === null ? null : round($lastSoc, 1)];
                 $curve['netzladung'][] = [$ts, round($netzladung / 1000.0, 3)];
             }
         }

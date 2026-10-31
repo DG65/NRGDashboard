@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.7 (2026-10-31)
+
+- **Bilanz, Tagesansicht: Ladestand der Batterie (SOC) als Linie (Dietmars Idee).** Eine durchgezogene Linie in der Farbe der Beschriftung im unteren Panel mit eigener Prozentachse rechts (0 bis 100 %), dazu ein Legendeneintrag „Batterie-Ladestand (SOC)“ zum Ein- und Ausblenden und die Zeile „Ladestand“ im Hover-Schild des unteren Panels. Die Quelle ist dieselbe wie bisher für die Herkunftsrechnung (Variable „Batterie-Ladestand“ im Formular, sonst automatisch über den InverterHub). Gibt es keinen Ladestand, erscheint nichts. Nur in der Tagesansicht.
+
 ## 0.10.6 (2026-10-31)
 
 - **Bilanz: Netzeinspeisung aus der Batterie (Dietmar: „wir haben dann und wann auch Netzeinspeisung aus der Batterie“).** Was ins Netz geht, soweit die PV es nicht deckt, kommt aus der Batterie und ist jetzt eine eigene Größe „Netzeinspeisung (Batterie)“ in Rosa/Magenta (rot-dominant: Batterie ins Netz; Violett ist blau-dominant: Netz über die Batterie). Sie zählt weder zum Verbrauch noch zum Ertrag, der Ertrag besteht nur noch aus PV-Strom. Bisher wurde sie doppelt falsch gezählt: als „Netzeinspeisung“ im Ertrag und die zugehörige Entladung als Verbrauch. Beispiel 24.10.2026 (Rohdaten, Batterie speist von 23:30 bis 23:55 mit 5 bis 8 kW bei PV = 0 ein, etwa 22 kWh): Verbrauch 47,9 → 25,8 kWh, Ertrag 39,5 → 17,4 kWh, Netzeinspeisung aus PV 24,0 → 1,9 kWh. Die Tabelle zeigt bei Bedarf die Zeile „Netzeinspeisung (Batterie)“ samt Hinweis. Die Herkunft (PV/Netz) der Entladung gilt anteilig für den Teil ins Haus. Gespeicherte Tageswerte älterer Rechenstände (Cache-Version 2) werden verworfen und vom Timer neu berechnet.

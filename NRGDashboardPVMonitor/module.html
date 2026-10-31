@@ -732,6 +732,14 @@
     // steuert, wie stark Richtung Weiss aufgehellt wird.
     // Farbe einer Serie je Panel: die Netzladung erscheint auch im Verbrauch-Panel (zeitrichtiger Netzbezug), dort blasser, weil sie nicht zum Verbrauch zaehlt
     function balPanelColor(s, panel) { return (panel === 'v' && s.colorV) ? s.colorV : s.color; }
+    // Ladestand der Batterie (31.10.2026, Dietmar): Linie mit eigener Prozentachse rechts im unteren Panel der Tagesansicht
+    var SOC_NAME = 'Batterie-Ladestand (SOC)';
+    function balanceHasSoc(curve) { return !!(curve && curve.soc && curve.soc.some(function (p) { return p[1] !== null && p[1] !== undefined; })); }
+    function balanceLegendList(curve) {
+      var l = BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; });
+      if (balanceHasSoc(curve)) { l.push({ name: SOC_NAME, color: themeLabelColor() }); }
+      return l;
+    }
     function balanceLighten(hex, amt) {
       var c = hex.replace('#', '');
       var r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
@@ -3192,7 +3200,7 @@
 
     function renderBalanceDayHighcharts(el, curve, totals) {
       if (chart && chartEngine !== 'highcharts') { destroyChart(); }
-      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+      renderLegend('balance', balanceLegendList(curve));
 
       function seriesFor(panel, yIdx, xIdx) {
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
@@ -3216,6 +3224,10 @@
       // duennen Linien in der Bilanz muessen entfernt werden") - die
       // gestapelte Flaeche zeigt ihre Summe ohnehin als obere Kontur.
       var series = seriesFor('v', 0, 0).concat(seriesFor('e', 1, 1));
+      var showSoc = balanceHasSoc(curve) && isVisible(SOC_NAME);
+      if (showSoc) {
+        series.push({ name: SOC_NAME, type: 'line', yAxis: 2, xAxis: 1, data: curve.soc, color: themeLabelColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false });
+      }
 
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
@@ -3278,7 +3290,9 @@
         // gegenueber der Array-Reihenfolge um, ECharts nicht.
         yAxis: [
           { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 8 }, reversedStacks: false },
-          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 12 }, reversedStacks: false }
+          { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 12 }, reversedStacks: false },
+          // Ladestand-Achse rechts im unteren Panel (0 bis 100 %), ohne eigene Gitterlinien
+          { title: { text: null }, opposite: true, min: 0, max: 100, tickInterval: 25, top: '53.5%', height: '46.5%', gridLineWidth: 0, visible: showSoc, labels: { format: '{value} %', x: 6, style: { color: themeLabelColor() } } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -3460,6 +3474,12 @@
         if (balanceIsZero(v)) { return; }
         lines.push('<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kW</b></div>');
       });
+      if (panelKey === 'e' && balanceHasSoc(curve) && isVisible(SOC_NAME)) {
+        var sp = (curve.soc || [])[idx];
+        if (sp && sp[1] !== null && sp[1] !== undefined) {
+          lines.push('<div><span style="color:' + themeLabelColor() + '">●</span> Ladestand: <b>' + Number(sp[1]).toFixed(0) + ' %</b></div>');
+        }
+      }
       if (!lines.length) { return ''; }
       var head = '';
       if (ts !== null) {
@@ -3581,7 +3601,8 @@
       if (chart && chartEngine !== 'echarts') { destroyChart(); }
       if (!chart) { el.innerHTML = ''; chart = echarts.init(el, null, { renderer: 'canvas', devicePixelRatio: window.devicePixelRatio || 2 }); chartEngine = 'echarts'; }
 
-      renderLegend('balance', BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; }));
+      renderLegend('balance', balanceLegendList(curve));
+      var showSoc = balanceHasSoc(curve) && isVisible(SOC_NAME);
 
       function seriesFor(panel, stackName) {
         return BALANCE_SERIES.filter(function (s) { return s.panel === panel || s.panel === 'both'; })
@@ -3656,8 +3677,13 @@
         yAxis: [
           { gridIndex: 0, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } },
           { gridIndex: 1, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
-        ],
-        series: seriesFor('v', 'v').concat(seriesFor('e', 'e'))
+        ].concat(showSoc ? [
+          // Ladestand-Achse rechts im unteren Panel (0 bis 100 %), ohne eigene Gitterlinien
+          { gridIndex: 1, type: 'value', min: 0, max: 100, interval: 25, position: 'right', axisLabel: { formatter: '{value} %', color: themeLabelColor() }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
+        ] : []),
+        series: seriesFor('v', 'v').concat(seriesFor('e', 'e')).concat(showSoc ? [
+          { name: SOC_NAME, type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 }
+        ] : [])
       }, true);
 
       chart.__balCurve = curve;
