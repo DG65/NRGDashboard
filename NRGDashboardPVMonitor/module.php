@@ -158,7 +158,7 @@ class NRGDashboardPVMonitor extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.10.16' => [
-            'Bilanz (Tagesansicht): Der Ladestand der Batterie wird als Linie mit eigener Prozentachse rechts im unteren Panel eingeblendet, per Legende ein- und ausschaltbar.'
+            'Bilanz (Tagesansicht): Der Ladestand der Batterie wird als Linie mit eigener Prozentachse rechts in beiden Panels eingeblendet, per Legende ein- und ausschaltbar.'
         ],
         '0.10.15' => [
             'Bilanz: Netzeinspeisung aus der Batterie ist jetzt eine eigene Größe (Rosa/Magenta) und zählt weder zum Verbrauch noch zum Ertrag. Bisher stand sie fälschlich im Ertrag, die zugehörige Entladung im Verbrauch.'

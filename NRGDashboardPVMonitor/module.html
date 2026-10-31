@@ -3226,7 +3226,9 @@
       var series = seriesFor('v', 0, 0).concat(seriesFor('e', 1, 1));
       var showSoc = balanceHasSoc(curve) && isVisible(SOC_NAME);
       if (showSoc) {
+        // je Panel eine Linie mit eigener Prozentachse (unten Achse 2, oben Achse 3)
         series.push({ name: SOC_NAME, type: 'line', yAxis: 2, xAxis: 1, data: curve.soc, color: themeLabelColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false });
+        series.push({ name: SOC_NAME, type: 'line', yAxis: 3, xAxis: 0, data: curve.soc, color: themeLabelColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false, showInLegend: false });
       }
 
       chart = Highcharts.chart(el, {
@@ -3292,7 +3294,8 @@
           { title: { text: null }, tickInterval: 1, top: '4%', height: '40%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 8 }, reversedStacks: false },
           { title: { text: null }, tickInterval: 1, top: '53.5%', height: '46.5%', gridLineWidth: 1, gridLineColor: GRID_COLOR, labels: { x: 12 }, reversedStacks: false },
           // Ladestand-Achse rechts im unteren Panel (0 bis 100 %), ohne eigene Gitterlinien
-          { title: { text: null }, opposite: true, min: 0, max: 100, tickInterval: 25, top: '53.5%', height: '46.5%', gridLineWidth: 0, visible: showSoc, labels: { format: '{value} %', x: 6, style: { color: themeLabelColor() } } }
+          { title: { text: null }, opposite: true, min: 0, max: 100, tickInterval: 25, top: '53.5%', height: '46.5%', gridLineWidth: 0, visible: showSoc, labels: { format: '{value} %', x: 6, style: { color: themeLabelColor() } } },
+          { title: { text: null }, opposite: true, min: 0, max: 100, tickInterval: 25, top: '4%', height: '40%', gridLineWidth: 0, visible: showSoc, labels: { format: '{value} %', x: 6, style: { color: themeLabelColor() } } }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -3474,7 +3477,7 @@
         if (balanceIsZero(v)) { return; }
         lines.push('<div><span style="color:' + s.color + '">●</span> ' + s.name + ': <b>' + Number(v).toFixed(2) + ' kW</b></div>');
       });
-      if (panelKey === 'e' && balanceHasSoc(curve) && isVisible(SOC_NAME)) {
+      if ((panelKey === 'e' || panelKey === 'v') && balanceHasSoc(curve) && isVisible(SOC_NAME)) {
         var sp = (curve.soc || [])[idx];
         if (sp && sp[1] !== null && sp[1] !== undefined) {
           lines.push('<div><span style="color:' + themeLabelColor() + '">●</span> Ladestand: <b>' + Number(sp[1]).toFixed(0) + ' %</b></div>');
@@ -3679,10 +3682,12 @@
           { gridIndex: 1, type: 'value', interval: 1, name: 'kW', nameLocation: 'middle', nameGap: 28, nameTextStyle: { color: themeLabelColor(), fontSize: 12, fontWeight: 600 }, splitLine: { lineStyle: { color: GRID_COLOR } } }
         ].concat(showSoc ? [
           // Ladestand-Achse rechts im unteren Panel (0 bis 100 %), ohne eigene Gitterlinien
-          { gridIndex: 1, type: 'value', min: 0, max: 100, interval: 25, position: 'right', axisLabel: { formatter: '{value} %', color: themeLabelColor() }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
+          { gridIndex: 1, type: 'value', min: 0, max: 100, interval: 25, position: 'right', axisLabel: { formatter: '{value} %', color: themeLabelColor() }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } },
+          { gridIndex: 0, type: 'value', min: 0, max: 100, interval: 25, position: 'right', axisLabel: { formatter: '{value} %', color: themeLabelColor() }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
         ] : []),
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e')).concat(showSoc ? [
-          { name: SOC_NAME, type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 }
+          { name: SOC_NAME, type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 },
+          { name: SOC_NAME, type: 'line', xAxisIndex: 0, yAxisIndex: 3, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 }
         ] : [])
       }, true);
 

@@ -12,7 +12,7 @@ inklusive.*
 
 ## 0.10.7 (2026-10-31)
 
-- **Bilanz, Tagesansicht: Ladestand der Batterie (SOC) als Linie (Dietmars Idee).** Eine durchgezogene Linie in der Farbe der Beschriftung im unteren Panel mit eigener Prozentachse rechts (0 bis 100 %), dazu ein Legendeneintrag „Batterie-Ladestand (SOC)“ zum Ein- und Ausblenden und die Zeile „Ladestand“ im Hover-Schild des unteren Panels. Die Quelle ist dieselbe wie bisher für die Herkunftsrechnung (Variable „Batterie-Ladestand“ im Formular, sonst automatisch über den InverterHub). Gibt es keinen Ladestand, erscheint nichts. Nur in der Tagesansicht.
+- **Bilanz, Tagesansicht: Ladestand der Batterie (SOC) als Linie (Dietmars Idee, in beiden Panels).** Je Panel eine durchgezogene Linie in der Farbe der Beschriftung mit eigener Prozentachse rechts (0 bis 100 %), dazu ein Legendeneintrag „Batterie-Ladestand (SOC)“ zum Ein- und Ausblenden und die Zeile „Ladestand“ in beiden Hover-Schildern. Die Quelle ist dieselbe wie bisher für die Herkunftsrechnung (Variable „Batterie-Ladestand“ im Formular, sonst automatisch über den InverterHub). Gibt es keinen Ladestand, erscheint nichts. Nur in der Tagesansicht.
 
 ## 0.10.6 (2026-10-31)
 
