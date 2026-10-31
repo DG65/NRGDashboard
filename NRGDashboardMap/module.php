@@ -16,10 +16,15 @@ declare(strict_types=1);
  * MeterHub-Instanzen geloest hat.
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/FormLayout.php';
 
 class NRGDashboardMap extends IPSModule
 {
     use NRGDashFormStatus;
+    use NRGDashFormLayout;
+
+    /** Wählbare Fachpanels für „Formular: Aufbau“: Beginn der Panel-Caption => stabiler Schlüssel (SUITE.md 3a). */
+    private const FORM_LAYOUT_PANELS = ['Datenquelle' => 'source', 'Details je Kategorie' => 'details', 'Darstellung' => 'style'];
 
     private const IHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const MHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
@@ -45,6 +50,9 @@ class NRGDashboardMap extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.7.6' => [
+            '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
+        ],
         '0.7.5' => [
             'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
             '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
@@ -102,6 +110,8 @@ class NRGDashboardMap extends IPSModule
 
         $this->RegisterPropertyInteger('InverterInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
+        // Wählbarer Formular-Aufbau (SUITE.md 3a): Liste {Key, Panel, Opened, Closed, Hidden, Pos}, leer = Standard
+        $this->RegisterPropertyString('FormLayout', '[]');
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
 
         $this->RegisterAttributeString('SeenNews', '');
@@ -306,6 +316,9 @@ class NRGDashboardMap extends IPSModule
         $this->setFormStatusLine($form['elements'], 'InverterStatus', $this->inverterStatusLine($form['elements']));
         $this->injectDiscoveryResultLabel($form);
 
+        // Fachpanels nach der Auswahl in „Formular: Aufbau“ ordnen (SUITE.md 3a); Zweck, Neu und Doku bleiben oben, Forum und Lizenz unten
+        $form['elements'] = $this->formLayoutApply($form['elements'], self::FORM_LAYOUT_PANELS);
+
         $banner = $this->newsBanner();
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
@@ -329,6 +342,17 @@ class NRGDashboardMap extends IPSModule
         $form['elements'][] = $this->LicenseHint();
 
         return json_encode($form);
+    }
+
+    /** Knopf „Auf Standard zurücksetzen“ im Panel „Formular: Aufbau“ (setzt nur die Liste im offenen Formular; gespeichert wird per „Übernehmen“). */
+    public function ResetFormLayout(): string
+    {
+        return $this->formLayoutReset(__DIR__ . '/form.json', self::FORM_LAYOUT_PANELS);
+    }
+
+    private function formLayoutResetFunction(): string
+    {
+        return 'NRGDASHMAP_ResetFormLayout';
     }
 
     private function injectVersionIntoDocPanel(array &$form): void

@@ -710,17 +710,18 @@
     // angeordnet, siehe row()-Aufrufe in renderBilanzPanel) - NICHT fuer
     // die Chart-Stapelreihenfolge, das war ein Missverstaendnis meinerseits
     // und wieder auf die urspruengliche Reihenfolge zurueckgesetzt.
-    // Farbregel (31.10.2026, Dietmar: Farben besser unterscheidbar, mit Bezug zu Herkunft und Verwendung): der FARBTON zeigt die HERKUNFT -
-    // Gelb bis Orange = Sonne (PV), Blau/Türkis = Netz -, die Fläche zeigt die VERWENDUNG: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
-    // Strom, der den Umweg über die Batterie nimmt, behält den Farbton seiner Herkunft, beim Laden und beim Entladen gleich.
+    // Farbregel (31.10.2026, Dietmar: mehr Farben aus dem ganzen Spektrum, mit Bezug zu Herkunft und Verwendung): die drei Stationen sind Grundfarben des
+    // Farbkreises - Sonne = Gelb, Netz = Blau, Batterie = Rot -, jeder Weg des Stroms ist die Mischfarbe seiner Stationen: Sonne direkt ins Haus = Gelb,
+    // Netz ins Haus = Blau, Sonne ins Netz (Einspeisung) = Gelb + Blau = Grün, Sonne über die Batterie = Gelb + Rot = Orange, Netz über die Batterie = Blau + Rot = Violett.
+    // Laden und Entladen über die Batterie behalten die Farbe ihrer Herkunft. Die Fläche zeigt die Verwendung: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
     var BALANCE_SERIES = [
-      { key: 'netzbezug',             name: 'Netzbezug',              color: '#2E7CD6', panel: 'v' },
-      { key: 'batterieentladungNetz', name: 'Batterieentladung (Netz)', color: '#14A3A3', panel: 'v' },
-      { key: 'batterieentladungPv',   name: 'Batterieentladung (PV)',   color: '#E8710A', panel: 'v' },
-      { key: 'direktverbrauch',       name: 'Direktverbrauch',        color: '#F5B301', panel: 'both' },
-      { key: 'batterieladung',        name: 'Batterieladung (PV)',    color: '#E8710A', panel: 'e' },
-      { key: 'netzladung',            name: 'Batterieladung (Netz)',  color: '#14A3A3', colorV: '#7ACFCF', panel: 'both' },
-      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',        color: '#FFE680', panel: 'e' }
+      { key: 'netzbezug',             name: 'Netzbezug',                color: '#2E86DE', panel: 'v' },
+      { key: 'batterieentladungNetz', name: 'Batterieentladung (Netz)', color: '#9B51E0', panel: 'v' },
+      { key: 'batterieentladungPv',   name: 'Batterieentladung (PV)',   color: '#F26B1D', panel: 'v' },
+      { key: 'direktverbrauch',       name: 'Direktverbrauch',          color: '#F7C600', panel: 'both' },
+      { key: 'batterieladung',        name: 'Batterieladung (PV)',      color: '#F26B1D', panel: 'e' },
+      { key: 'netzladung',            name: 'Batterieladung (Netz)',    color: '#9B51E0', colorV: '#CDAEF0', panel: 'both' },
+      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',          color: '#34B36B', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
     // 31.07.2026: "Koennte man die Chartflaechen etwas plastischer

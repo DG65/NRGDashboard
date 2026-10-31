@@ -43,10 +43,15 @@ define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
 define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/FormLayout.php';
 
 class NRGDashboardTile extends IPSModule
 {
     use NRGDashFormStatus;
+    use NRGDashFormLayout;
+
+    /** Wählbare Fachpanels für „Formular: Aufbau“: Beginn der Panel-Caption => stabiler Schlüssel (SUITE.md 3a). */
+    private const FORM_LAYOUT_PANELS = ['Automatisch gefundene Geräte' => 'devices', 'Manuelle Datenpunkte' => 'manual', 'Weitere Verbraucher' => 'consumers', 'Fahrzeuge' => 'vehicles', 'Gesundheit / Diagnose' => 'health', 'Darstellung' => 'style'];
 
     // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
     // Verteilung -> Verbraucher), siehe Phase 2. functionCategory() ordnet
@@ -86,6 +91,9 @@ class NRGDashboardTile extends IPSModule
     // Version zuzuordnen - neue Eintraege ab jetzt bekommen ihre EIGENE
     // Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.5' => [
+            '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
+        ],
         '0.9.33' => [
         'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
         '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
@@ -256,6 +264,8 @@ class NRGDashboardTile extends IPSModule
         // sandboxed HTML-SDK-Tile keinen anderen Rueckkanal in die Instanz.
         $this->RegisterAttributeBoolean('TourSeen', false);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
+        // Wählbarer Formular-Aufbau (SUITE.md 3a): Liste {Key, Panel, Opened, Closed, Hidden, Pos}, leer = Standard
+        $this->RegisterPropertyString('FormLayout', '[]');
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
 
         // Anzeige-Feinheiten "hinter dem Doppelpfeil" (28.08.2026, Dietmar:
@@ -768,6 +778,9 @@ class NRGDashboardTile extends IPSModule
         $this->injectManualLiveValues($form['elements']);
         $this->injectDiscoveryResultLabel($form);
 
+        // Fachpanels nach der Auswahl in „Formular: Aufbau“ ordnen (SUITE.md 3a); Zweck, Neu und Doku bleiben oben, Forum und Lizenz unten
+        $form['elements'] = $this->formLayoutApply($form['elements'], self::FORM_LAYOUT_PANELS);
+
         $banner = $this->newsBanner();
         if ($banner !== null) {
             array_unshift($form['elements'], $banner);
@@ -873,6 +886,17 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $this->setFormStatusLine($elements, 'ManualHouseCheck', $line);
+    }
+
+    /** Knopf „Auf Standard zurücksetzen“ im Panel „Formular: Aufbau“ (setzt nur die Liste im offenen Formular; gespeichert wird per „Übernehmen“). */
+    public function ResetFormLayout(): string
+    {
+        return $this->formLayoutReset(__DIR__ . '/form.json', self::FORM_LAYOUT_PANELS);
+    }
+
+    private function formLayoutResetFunction(): string
+    {
+        return 'NRGDASH_ResetFormLayout';
     }
 
     private function injectVersionIntoDocPanel(array &$form): void
