@@ -710,13 +710,17 @@
     // angeordnet, siehe row()-Aufrufe in renderBilanzPanel) - NICHT fuer
     // die Chart-Stapelreihenfolge, das war ein Missverstaendnis meinerseits
     // und wieder auf die urspruengliche Reihenfolge zurueckgesetzt.
+    // Farbregel (31.10.2026, Dietmar: Farben besser unterscheidbar, mit Bezug zu Herkunft und Verwendung): der FARBTON zeigt die HERKUNFT -
+    // Gelb bis Orange = Sonne (PV), Blau/Türkis = Netz -, die Fläche zeigt die VERWENDUNG: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
+    // Strom, der den Umweg über die Batterie nimmt, behält den Farbton seiner Herkunft, beim Laden und beim Entladen gleich.
     var BALANCE_SERIES = [
-      { key: 'netzbezug',         name: 'Netzbezug',         color: '#FF2600', panel: 'v' },
-      { key: 'batterieentladung', name: 'Batterieentladung', color: '#FF9300', panel: 'v' },
-      { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#4F8F00', panel: 'both' },
-      { key: 'batterieladung',    name: 'Batterieladung (PV)',   color: '#945200', panel: 'e' },
-      { key: 'netzladung',        name: 'Batterieladung (Netz)', color: '#8E2330', colorV: '#C9606F', panel: 'both' },
-      { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' }
+      { key: 'netzbezug',             name: 'Netzbezug',              color: '#2E7CD6', panel: 'v' },
+      { key: 'batterieentladungNetz', name: 'Batterieentladung (Netz)', color: '#14A3A3', panel: 'v' },
+      { key: 'batterieentladungPv',   name: 'Batterieentladung (PV)',   color: '#E8710A', panel: 'v' },
+      { key: 'direktverbrauch',       name: 'Direktverbrauch',        color: '#F5B301', panel: 'both' },
+      { key: 'batterieladung',        name: 'Batterieladung (PV)',    color: '#E8710A', panel: 'e' },
+      { key: 'netzladung',            name: 'Batterieladung (Netz)',  color: '#14A3A3', colorV: '#7ACFCF', panel: 'both' },
+      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',        color: '#FFE680', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
     // 31.07.2026: "Koennte man die Chartflaechen etwas plastischer
@@ -3414,7 +3418,7 @@
       chart.__balMode = 'bars';
       balanceWireHoverHighcharts(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, approxDays: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, approxDays: 0 };
       bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
       var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
       renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
@@ -3725,7 +3729,7 @@
       chart.__balMode = 'bars';
       balanceWireHover(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, approxDays: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, approxDays: 0 };
       bars.forEach(function (b) {
         Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); });
       });
@@ -3771,6 +3775,7 @@
       // Chart) statt hier ein zweites Mal hart zu kodieren.
       var col = {};
       BALANCE_SERIES.forEach(function (s) { col[s.key] = s.color; });
+      col.batterieentladung = col.batterieentladungPv;
       // Summen-Icons dreifarbig, exakt nach Dietmars Vorgabe (31.07.2026):
       // Tagesverbrauch = Netzbezug+Batterieentladung+Direktverbrauch,
       // Tagesertrag = Batterieladung+Netzeinspeisung+Direktverbrauch.

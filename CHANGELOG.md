@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.4 (2026-10-31)
+
+- **Bilanz: Farben nach Herkunft und Verwendung.** Der Farbton zeigt die Herkunft: Gelb bis Orange = Sonne (PV), Blau und Türkis = Netz. Die Fläche zeigt die Verwendung: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin der Strom geht. Strom über die Batterie behält den Farbton seiner Herkunft, beim Laden wie beim Entladen (Orange = PV, Türkis = Netz). Neu: Direktverbrauch Gold, Netzeinspeisung Hellgelb, Netzbezug Blau.
+- **Batterieentladung nach Herkunft geteilt:** In der Verbrauch-Grafik steht die Entladung jetzt als „Batterieentladung (PV)“ und „Batterieentladung (Netz)“, passend zur Ladung unten. Die Tabelle zeigt weiter die Summe, die Aufteilung steht im Hinweis darunter. Ältere Cache-Einträge ohne diesen Wert werden aus Gesamt minus Netzanteil ergänzt.
+
 ## 0.10.3 (2026-10-31)
 
 - **Bilanz: Mischverhältnis der Batterie am echten Ladestand verankert.** Die Autarkie rechnete den Batterieinhalt nur aus den Energieflüssen mit; der unbekannte Anfang und die Verluste ließen ihn davonlaufen (Dietmars Nacht vom 31.10.: Batterie stand schon bei etwa 67 %, der Topf kam aber auf rund 8 kWh, der Netzanteil der Entladung war zu hoch). Jetzt wird der Inhalt in jedem Schritt aus dem Ladestand (SOC) und der Kapazität gesetzt, der Herkunftsanteil bleibt. Liefert der InverterHub keine Kapazität, wird sie aus zusammenhängenden Lade- und Entladeabschnitten geschätzt (geflossene Energie geteilt durch die Änderung des Ladestands) und zwischengespeichert (Attribut `BalanceCapKwh`). Der Ladestand am Zeitraumbeginn kommt aus dem Archiv (er wird nur bei Änderung archiviert).

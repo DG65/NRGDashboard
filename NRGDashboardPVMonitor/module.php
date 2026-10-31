@@ -2832,7 +2832,7 @@ class NRGDashboardPVMonitor extends IPSModule
      * verbrauch kommt bewusst in beiden vor, wie im Vorbild - er ist
      * sowohl Verbrauchs- als auch Erzeugungsanteil).
      */
-    private const BALANCE_KEYS = ['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung', 'batterieentladungNetz'];
+    private const BALANCE_KEYS = ['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung', 'batterieentladungNetz', 'batterieentladungPv'];
     private const BALANCE_CACHE_MAX_DAYS = 800;
 
     private function BalanceTotals(int $start, int $end): array
@@ -2848,7 +2848,8 @@ class NRGDashboardPVMonitor extends IPSModule
             $key = date('Y-m-d', $d);
             if ($from === $d && $to === $dEnd && $dEnd <= $now) {
                 if (isset($cache[$key]['t'])) {
-                    foreach (self::BALANCE_KEYS as $k) { $sum[$k] += (float) ($cache[$key]['t'][$k] ?? 0); }
+                    $ct = $this->BalanceWithPvDischarge($cache[$key]['t']);
+                    foreach (self::BALANCE_KEYS as $k) { $sum[$k] += (float) ($ct[$k] ?? 0); }
                 } else {
                     $todo[$d] = $dEnd;
                 }
@@ -2894,9 +2895,19 @@ class NRGDashboardPVMonitor extends IPSModule
         $c = $this->FlowComponents($start, $end);
         $sum['netzbezug'] += $c['gridImp'];
         $sum['batterieentladung'] += $c['batDis'];
+        $sum['batterieentladungPv'] += $c['batDis'];
         $sum['direktverbrauch'] += $c['pvToLoad'];
         $sum['batterieladung'] += $c['batCh'];
         $sum['netzeinspeisung'] += $c['gridExp'];
+    }
+
+    /** Aeltere Cache-Eintraege kennen den PV-Anteil der Entladung nicht: Gesamt minus Netzanteil. */
+    private function BalanceWithPvDischarge(array $t): array
+    {
+        if (!isset($t['batterieentladungPv'])) {
+            $t['batterieentladungPv'] = max(0.0, (float) ($t['batterieentladung'] ?? 0) - (float) ($t['batterieentladungNetz'] ?? 0));
+        }
+        return $t;
     }
 
     private function BalanceCache(): array
@@ -2940,7 +2951,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $key = date('Y-m-d', $dayStart);
         $cache = $this->BalanceCache();
         if (isset($cache[$key]['t'])) {
-            return ['t' => $cache[$key]['t'] + array_fill_keys(self::BALANCE_KEYS, 0.0), 'E' => (float) ($cache[$key]['E'] ?? 0), 's' => (float) ($cache[$key]['s'] ?? 1)];
+            return ['t' => $this->BalanceWithPvDischarge($cache[$key]['t']) + array_fill_keys(self::BALANCE_KEYS, 0.0), 'E' => (float) ($cache[$key]['E'] ?? 0), 's' => (float) ($cache[$key]['s'] ?? 1)];
         }
         $sim = $this->BalanceSimulate($dayStart, $dayEnd, $this->BalanceDayStartState($dayStart, $depth), false);
         $t = array_map(function ($v) { return round($v, 3); }, $sim['tot']);
@@ -3041,7 +3052,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $E = max(0.0, (float) ($state['E'] ?? 0));
         $s = min(1.0, max(0.0, (float) ($state['s'] ?? 1)));
         $tot = array_fill_keys(self::BALANCE_KEYS, 0.0);
-        $curve = array_fill_keys(['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung'], []);
+        $curve = array_fill_keys(['netzbezug', 'batterieentladungPv', 'batterieentladungNetz', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung'], []);
         $dtH = 5.0 / 60.0;
         if ($capKwh > 0 && $lastSoc !== null) {
             $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
@@ -3087,9 +3098,11 @@ class NRGDashboardPVMonitor extends IPSModule
             $tot['netzeinspeisung'] += $gridExp * $dtH / 1000.0;
             $tot['netzladung'] += $eChGrid;
             $tot['batterieentladungNetz'] += $disGrid;
+            $tot['batterieentladungPv'] += $eDis - $disGrid;
             if ($withCurve) {
                 $curve['netzbezug'][] = [$ts, round($netzbezug / 1000.0, 3)];
-                $curve['batterieentladung'][] = [$ts, round($batDis / 1000.0, 3)];
+                $curve['batterieentladungPv'][] = [$ts, round(($eDis - $disGrid) / $dtH, 3)];
+                $curve['batterieentladungNetz'][] = [$ts, round($disGrid / $dtH, 3)];
                 $curve['direktverbrauch'][] = [$ts, round($pvToLoad / 1000.0, 3)];
                 $curve['batterieladung'][] = [$ts, round($batChPv / 1000.0, 3)];
                 $curve['netzeinspeisung'][] = [$ts, round($gridExp / 1000.0, 3)];
