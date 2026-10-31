@@ -266,6 +266,8 @@ class NRGDashboardPVMonitor extends IPSModule
         // Tagesbilanz mit Herkunftstrennung (31.10.2026): je abgeschlossenem Tag die aufgeteilten Summen und der Batterie-Mischzustand am
         // Tagesende, Format {"2026-10-30": {"t": {...}, "E": kWh, "s": PV-Anteil 0..1}}. Nur Cache, jederzeit neu berechenbar.
         $this->RegisterAttributeString('BalanceDayCache', '{}');
+        // zuletzt aus Ladestand und Energiefluss geschaetzte Batteriekapazitaet (kWh), falls der InverterHub keine liefert
+        $this->RegisterAttributeString('BalanceCapKwh', '0');
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
         // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
@@ -2993,21 +2995,57 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($capKwh < 0.0) { $capKwh = 0.0; }
         }
 
+        $socID = is_array($data) ? (int) ($data['socID'] ?? 0) : 0;
         $aid = $this->ArchiveID();
         $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
         $batPts = ($aid > 0) ? $this->DaySeries($aid, $batPowerID, $start, $end) : [];
         $gridPts = ($aid > 0) ? $this->DaySeries($aid, $gridPowerID, $start, $end) : [];
+        $socPts = ($aid > 0 && $socID > 0) ? $this->DaySeries($aid, $socID, $start, $end) : [];
         $byTs = [];
         foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
         foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
         foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1] * $gridSign; }
+        foreach ($socPts as $p) { $byTs[$p[0]]['soc'] = $p[1]; }
         ksort($byTs);
+        // Ladestand am Beginn (nur bei Aenderung archiviert, daher letzter Wert VOR dem Zeitraum) und Kapazitaet: ohne Angabe vom InverterHub aus
+        // zusammenhaengenden Lade-/Entladeabschnitten schaetzen (geflossene Energie / Aenderung des Ladestands), sonst den zuletzt gueltigen Wert nehmen.
+        $lastSoc = ($aid > 0 && $socID > 0) ? $this->ArchiveValueAt($aid, $socID, $start) : null;
+        if ($capKwh <= 0 && $lastSoc !== null) {
+            $sumE = 0.0; $sumD = 0.0; $cur = $lastSoc; $runE = 0.0; $runSign = 0; $runS = $cur;
+            $closeRun = function () use (&$sumE, &$sumD, &$cur, &$runE, &$runSign, &$runS) {
+                if ($runSign !== 0 && $runS !== null && $cur !== null) {
+                    $dS = abs($cur - $runS) / 100.0;
+                    if (abs($runE) >= 1.0 && $dS >= 0.03) { $sumE += abs($runE); $sumD += $dS; }
+                }
+            };
+            foreach ($byTs as $ts => $v) {
+                if (isset($v['soc'])) { $cur = (float) $v['soc']; }
+                $b = (float) ($v['bat'] ?? 0);
+                $sg = $b < -100.0 ? -1 : ($b > 100.0 ? 1 : 0);
+                if ($sg !== $runSign) { $closeRun(); $runSign = $sg; $runE = 0.0; $runS = $cur; }
+                $runE += (-$b) * (5.0 / 60.0) / 1000.0;
+            }
+            $closeRun();
+            if ($sumD > 0) {
+                $est = $sumE / $sumD;
+                if ($est >= 2.0 && $est <= 500.0) {
+                    $capKwh = round($est, 1);
+                    $this->WriteAttributeString('BalanceCapKwh', (string) $capKwh);
+                }
+            }
+            if ($capKwh <= 0) {
+                $capKwh = max(0.0, (float) $this->ReadAttributeString('BalanceCapKwh'));
+            }
+        }
 
         $E = max(0.0, (float) ($state['E'] ?? 0));
         $s = min(1.0, max(0.0, (float) ($state['s'] ?? 1)));
         $tot = array_fill_keys(self::BALANCE_KEYS, 0.0);
         $curve = array_fill_keys(['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung'], []);
         $dtH = 5.0 / 60.0;
+        if ($capKwh > 0 && $lastSoc !== null) {
+            $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
+        }
         foreach ($byTs as $ts => $v) {
             $pv = max(0.0, (float) ($v['pv'] ?? 0));
             $bat = (float) ($v['bat'] ?? 0);
@@ -3036,6 +3074,11 @@ class NRGDashboardPVMonitor extends IPSModule
                 $newE = $E + $eChPv + $eChGrid;
                 $s = ($E * $s + $eChPv) / $newE;
                 $E = $capKwh > 0 ? min($newE, $capKwh) : $newE;
+            }
+            // Inhalt am echten Ladestand verankern (Herkunftsanteil s bleibt): ohne das laeuft der Topf durch Verluste und unbekannten Anfang davon
+            if (isset($v['soc'])) { $lastSoc = (float) $v['soc']; }
+            if ($capKwh > 0 && $lastSoc !== null) {
+                $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
             }
             $tot['netzbezug'] += $netzbezug * $dtH / 1000.0;
             $tot['batterieentladung'] += $eDis;
