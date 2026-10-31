@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.8 (2026-10-31)
+
+- **PV-Monitoring, Bilanz: Farben selbst wählen (Dietmars Idee).** Im Formular, Panel „Darstellung“: ein **Farbschema** („Farbkreis“ = Standard seit 0.10.4/0.10.5, „Klassisch“ = die ursprünglichen Farben bis 0.10.3 mit ergänzenden Tönen für später dazugekommene Posten, „Farbenblind-freundlich“ = Palette nach Okabe und Ito, auch bei Rot-Grün-Schwäche unterscheidbar), darüber **Einzelfarben zum Überschreiben** (Netzbezug, Direktverbrauch, Netzeinspeisung, Batterie aus PV, Batterie aus Netz, Netzeinspeisung aus der Batterie, Ladestand-Linie; „Systemstandard“ = Farbe des Schemas) und der Knopf „↩️ Farben der Bilanz zurücksetzen“ (ohne Selbstpersistenz, gilt nach „Übernehmen“). Laden und Entladen über die Batterie teilen sich je Herkunft eine Farbe; die blassere Variante der Netzladung im oberen Panel wird daraus abgeleitet. Legende, Tabelle und alle Bilanz-Grafiken (Tag bis Gesamt) übernehmen die Farben. Nur die Bilanz, die anderen Reiter sind unverändert.
+
 ## 0.10.7 (2026-10-31)
 
 - **Bilanz, Tagesansicht: Ladestand der Batterie (SOC) als Linie (Dietmars Idee, in beiden Panels).** Je Panel eine durchgezogene Linie in der Farbe der Beschriftung mit eigener Prozentachse rechts (0 bis 100 %), dazu ein Legendeneintrag „Batterie-Ladestand (SOC)“ zum Ein- und Ausblenden und die Zeile „Ladestand“ in beiden Hover-Schildern. Die Quelle ist dieselbe wie bisher für die Herkunftsrechnung (Variable „Batterie-Ladestand“ im Formular, sonst automatisch über den InverterHub). Gibt es keinen Ladestand, erscheint nichts. Nur in der Tagesansicht.

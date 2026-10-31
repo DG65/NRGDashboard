@@ -323,6 +323,69 @@
           "caption": "Hintergrundfarbe (-1 = Systemstandard)"
         },
         {
+          "type": "Label",
+          "caption": "Farben der Bilanz: Der Farbton zeigt die Herkunft des Stroms (Farbkreis: Sonne = Gelb, Netz = Blau, Batterie = Rot, die Wege sind Mischfarben), die Fläche die Verwendung. Wähle ein Farbschema und überschreibe bei Bedarf einzelne Farben; „Systemstandard“ (-1) heißt: Farbe des Schemas. Laden und Entladen über die Batterie teilen sich je Herkunft eine Farbe."
+        },
+        {
+          "type": "Select",
+          "name": "BalanceColorScheme",
+          "caption": "Farbschema der Bilanz",
+          "options": [
+            {
+              "caption": "Farbkreis (Standard)",
+              "value": 0
+            },
+            {
+              "caption": "Klassisch (die ursprünglichen Farben)",
+              "value": 1
+            },
+            {
+              "caption": "Farbenblind-freundlich (Okabe-Ito)",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalNetzbezug",
+          "caption": "Netzbezug (Netz ins Haus)"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalDirekt",
+          "caption": "Direktverbrauch (Sonne ins Haus)"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalEinspeisung",
+          "caption": "Netzeinspeisung (Sonne ins Netz)"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalBatPv",
+          "caption": "Batterie aus PV (Laden und Entladen)"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalBatNetz",
+          "caption": "Batterie aus Netz (Laden und Entladen)"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalEinspBat",
+          "caption": "Netzeinspeisung aus der Batterie"
+        },
+        {
+          "type": "SelectColor",
+          "name": "ColorBalSoc",
+          "caption": "Ladestand-Linie (Systemstandard = Beschriftungsfarbe)"
+        },
+        {
+          "type": "Button",
+          "caption": "↩️ Farben der Bilanz zurücksetzen",
+          "onClick": "echo NRGDASHPVMON_ResetBalanceColors($id);"
+        },
+        {
           "type": "ValidationTextBox",
           "name": "FontFamily",
           "caption": "Schriftart (leer/„system“ = Systemschrift)"

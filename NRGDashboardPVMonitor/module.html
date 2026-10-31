@@ -720,7 +720,7 @@
       { key: 'batterieentladungPv',   name: 'Batterieentladung (PV)',   color: '#F26B1D', panel: 'v' },
       { key: 'direktverbrauch',       name: 'Direktverbrauch',          color: '#F7C600', panel: 'both' },
       { key: 'batterieladung',        name: 'Batterieladung (PV)',      color: '#F26B1D', panel: 'e' },
-      { key: 'netzladung',            name: 'Batterieladung (Netz)',    color: '#9B51E0', colorV: '#CDAEF0', panel: 'both' },
+      { key: 'netzladung',            name: 'Batterieladung (Netz)',    color: '#9B51E0', panel: 'both' },
       { key: 'netzeinspeisung',       name: 'Netzeinspeisung',          color: '#34B36B', panel: 'e' },
       { key: 'netzeinspeisungBatterie', name: 'Netzeinspeisung (Batterie)', color: '#E0457B', panel: 'e' }
     ];
@@ -731,13 +731,26 @@
     // unten, wie ein leicht glaenzendes Glas/Kunststoff-Band. amt=0..1
     // steuert, wie stark Richtung Weiss aufgehellt wird.
     // Farbe einer Serie je Panel: die Netzladung erscheint auch im Verbrauch-Panel (zeitrichtiger Netzbezug), dort blasser, weil sie nicht zum Verbrauch zaehlt
-    function balPanelColor(s, panel) { return (panel === 'v' && s.colorV) ? s.colorV : s.color; }
+    function balPanelColor(s, panel) { return (panel === 'v' && s.key === 'netzladung') ? balanceLightenHex(s.color, 0.55) : s.color; }
     // Ladestand der Batterie (31.10.2026, Dietmar): Linie mit eigener Prozentachse rechts im unteren Panel der Tagesansicht
     var SOC_NAME = 'Batterie-Ladestand (SOC)';
+    var BALANCE_SOC_COLOR = '';
+    // Farben der Bilanz aus dem Formular (Farbschema und Einzelfarben, vom Modul je Serie aufgeloest); ohne Angabe bleiben die eingebauten Farben
+    function balanceApplyColors(bc) {
+      if (!bc) { return; }
+      BALANCE_SERIES.forEach(function (s) { if (bc[s.key]) { s.color = bc[s.key]; } });
+      BALANCE_SOC_COLOR = bc.soc || '';
+    }
+    function balanceSocColor() { return BALANCE_SOC_COLOR || themeLabelColor(); }
+    function balanceLightenHex(hex, amt) {
+      var c = String(hex).replace('#', '');
+      var ch = [0, 2, 4].map(function (i) { var v = parseInt(c.substr(i, 2), 16); return Math.min(255, Math.round(v + (255 - v) * amt)); });
+      return '#' + ch.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+    }
     function balanceHasSoc(curve) { return !!(curve && curve.soc && curve.soc.some(function (p) { return p[1] !== null && p[1] !== undefined; })); }
     function balanceLegendList(curve) {
       var l = BALANCE_SERIES.map(function (s) { return { name: s.name, color: s.color }; });
-      if (balanceHasSoc(curve)) { l.push({ name: SOC_NAME, color: themeLabelColor() }); }
+      if (balanceHasSoc(curve)) { l.push({ name: SOC_NAME, color: balanceSocColor() }); }
       return l;
     }
     function balanceLighten(hex, amt) {
@@ -3227,8 +3240,8 @@
       var showSoc = balanceHasSoc(curve) && isVisible(SOC_NAME);
       if (showSoc) {
         // je Panel eine Linie mit eigener Prozentachse (unten Achse 2, oben Achse 3)
-        series.push({ name: SOC_NAME, type: 'line', yAxis: 2, xAxis: 1, data: curve.soc, color: themeLabelColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false });
-        series.push({ name: SOC_NAME, type: 'line', yAxis: 3, xAxis: 0, data: curve.soc, color: themeLabelColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false, showInLegend: false });
+        series.push({ name: SOC_NAME, type: 'line', yAxis: 2, xAxis: 1, data: curve.soc, color: balanceSocColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false });
+        series.push({ name: SOC_NAME, type: 'line', yAxis: 3, xAxis: 0, data: curve.soc, color: balanceSocColor(), lineWidth: 2, marker: { enabled: false }, enableMouseTracking: false, zIndex: 10, connectNulls: false, showInLegend: false });
       }
 
       chart = Highcharts.chart(el, {
@@ -3480,7 +3493,7 @@
       if ((panelKey === 'e' || panelKey === 'v') && balanceHasSoc(curve) && isVisible(SOC_NAME)) {
         var sp = (curve.soc || [])[idx];
         if (sp && sp[1] !== null && sp[1] !== undefined) {
-          lines.push('<div><span style="color:' + themeLabelColor() + '">●</span> Ladestand: <b>' + Number(sp[1]).toFixed(0) + ' %</b></div>');
+          lines.push('<div><span style="color:' + balanceSocColor() + '">●</span> Ladestand: <b>' + Number(sp[1]).toFixed(0) + ' %</b></div>');
         }
       }
       if (!lines.length) { return ''; }
@@ -3686,8 +3699,8 @@
           { gridIndex: 0, type: 'value', min: 0, max: 100, interval: 25, position: 'right', axisLabel: { formatter: '{value} %', color: themeLabelColor() }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { show: false } }
         ] : []),
         series: seriesFor('v', 'v').concat(seriesFor('e', 'e')).concat(showSoc ? [
-          { name: SOC_NAME, type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 },
-          { name: SOC_NAME, type: 'line', xAxisIndex: 0, yAxisIndex: 3, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: themeLabelColor() }, itemStyle: { color: themeLabelColor() }, z: 10 }
+          { name: SOC_NAME, type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: balanceSocColor() }, itemStyle: { color: balanceSocColor() }, z: 10 },
+          { name: SOC_NAME, type: 'line', xAxisIndex: 0, yAxisIndex: 3, data: curve.soc, symbol: 'none', connectNulls: false, lineStyle: { width: 2, color: balanceSocColor() }, itemStyle: { color: balanceSocColor() }, z: 10 }
         ] : [])
       }, true);
 
@@ -4624,6 +4637,7 @@
         return;
       }
       lastData = d;
+      balanceApplyColors(d.balanceColors);
       if (d.hookPath) { HOOK_PATH = d.hookPath; }
       if (d.showTour) { showTourOverlay(); }
       visKey = 'nrgdashmon_vis_' + (d.uid || 'x');

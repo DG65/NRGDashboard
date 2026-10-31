@@ -137,6 +137,28 @@ class NRGDashboardPVMonitor extends IPSModule
     }
 
     private const DEF_BACKGROUND = -1;
+
+    /**
+     * Farbschemata der Bilanz je Serie (Schluessel wie BALANCE_SERIES in module.html); "soc" leer = Beschriftungsfarbe des Themes.
+     * 0 Farbkreis: Sonne Gelb, Netz Blau, Batterie Rot, Wege als Mischfarben. 1 Klassisch: die urspruenglichen Farben (bis 0.10.3), fuer spaeter dazugekommene
+     * Posten ergaenzende Toene. 2 Farbenblind-freundlich: Palette nach Okabe und Ito, unterscheidbar auch bei Rot-Gruen-Schwaeche.
+     */
+    private const BALANCE_PALETTES = [
+        0 => ['netzbezug' => '#2E86DE', 'batterieentladungNetz' => '#9B51E0', 'batterieentladungPv' => '#F26B1D', 'direktverbrauch' => '#F7C600', 'batterieladung' => '#F26B1D', 'netzladung' => '#9B51E0', 'netzeinspeisung' => '#34B36B', 'netzeinspeisungBatterie' => '#E0457B', 'soc' => ''],
+        1 => ['netzbezug' => '#FF2600', 'batterieentladungNetz' => '#B36B00', 'batterieentladungPv' => '#FF9300', 'direktverbrauch' => '#4F8F00', 'batterieladung' => '#945200', 'netzladung' => '#8E2330', 'netzeinspeisung' => '#FFFB00', 'netzeinspeisungBatterie' => '#FF5FA2', 'soc' => ''],
+        2 => ['netzbezug' => '#0072B2', 'batterieentladungNetz' => '#56B4E9', 'batterieentladungPv' => '#E69F00', 'direktverbrauch' => '#F0E442', 'batterieladung' => '#E69F00', 'netzladung' => '#56B4E9', 'netzeinspeisung' => '#009E73', 'netzeinspeisungBatterie' => '#CC79A7', 'soc' => ''],
+    ];
+
+    /** Einzelfarben im Formular: Property => Serien, die diese Farbe bekommen (Laden und Entladen einer Herkunft teilen sich eine). */
+    private const BALANCE_COLOR_GROUPS = [
+        'ColorBalNetzbezug'  => ['netzbezug'],
+        'ColorBalDirekt'     => ['direktverbrauch'],
+        'ColorBalEinspeisung' => ['netzeinspeisung'],
+        'ColorBalBatPv'      => ['batterieladung', 'batterieentladungPv'],
+        'ColorBalBatNetz'    => ['netzladung', 'batterieentladungNetz'],
+        'ColorBalEinspBat'   => ['netzeinspeisungBatterie'],
+        'ColorBalSoc'        => ['soc'],
+    ];
     private const DEF_FONT       = 'system';
     private const DEF_ENGINE     = 'echarts';
 
@@ -157,6 +179,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.17' => [
+            '🎨 Neu: Farben der Bilanz selbst wählen (Formular, Darstellung): Farbschema „Farbkreis“, „Klassisch“ (die ursprünglichen Farben) oder „Farbenblind-freundlich“, dazu Einzelfarben zum Überschreiben und ein Knopf zum Zurücksetzen.'
+        ],
         '0.10.16' => [
             'Bilanz (Tagesansicht): Der Ladestand der Batterie wird als Linie mit eigener Prozentachse rechts in beiden Panels eingeblendet, per Legende ein- und ausschaltbar.'
         ],
@@ -241,6 +266,11 @@ class NRGDashboardPVMonitor extends IPSModule
         $this->RegisterPropertyInteger('Mppt4ID', 0);
         $this->RegisterPropertyInteger('TibberInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
+        // Farben der Bilanz (31.10.2026, Dietmar): Farbschema (0 Farbkreis, 1 Klassisch, 2 Farbenblind-freundlich) und Einzelfarben zum Ueberschreiben (-1 = Farbe des Schemas)
+        $this->RegisterPropertyInteger('BalanceColorScheme', 0);
+        foreach (array_keys(self::BALANCE_COLOR_GROUPS) as $colorProp) {
+            $this->RegisterPropertyInteger($colorProp, -1);
+        }
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
         // Manuelle Angabe statt automatischer Erkennung (Dietmar,
@@ -3877,6 +3907,32 @@ class NRGDashboardPVMonitor extends IPSModule
         return ['ok' => true, 'granularity' => $granularity, 'bars' => $bars];
     }
 
+    /** Farben der Bilanz je Serie: Schema, darueber die Einzelfarben aus dem Formular (-1 = Schema). */
+    private function BalanceColors(): array
+    {
+        $scheme = $this->readIntProperty('BalanceColorScheme', 0);
+        $colors = self::BALANCE_PALETTES[isset(self::BALANCE_PALETTES[$scheme]) ? $scheme : 0];
+        foreach (self::BALANCE_COLOR_GROUPS as $prop => $series) {
+            $v = $this->readIntProperty($prop, -1);
+            if ($v >= 0) {
+                foreach ($series as $k) {
+                    $colors[$k] = sprintf('#%06X', $v & 0xFFFFFF);
+                }
+            }
+        }
+        return $colors;
+    }
+
+    /** Knopf "Farben der Bilanz zuruecksetzen": setzt die Felder im offenen Formular auf Standard (gilt nach "Uebernehmen"), keine Selbstpersistenz. */
+    public function ResetBalanceColors(): string
+    {
+        $this->UpdateFormField('BalanceColorScheme', 'value', 0);
+        foreach (array_keys(self::BALANCE_COLOR_GROUPS) as $prop) {
+            $this->UpdateFormField($prop, 'value', -1);
+        }
+        return 'ℹ️ Farben der Bilanz auf Standard gesetzt. Zum Speichern unten „Übernehmen“ klicken.';
+    }
+
     private function ColorOrEmpty(int $v): string
     {
         if ($v < 0) {
@@ -4233,6 +4289,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'hasManualPlan' => $this->EmsInstanceID() > 0,
             'engine'   => ($this->readStringProperty('Engine', self::DEF_ENGINE) === 'highcharts') ? 'highcharts' : 'echarts',
             'bg'       => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
+            'balanceColors' => $this->BalanceColors(),
             'font'     => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
             // Einfuehrungs-Tour (29.08.2026) - Rueckkanal fuer die
             // Bestaetigung per WebHook, siehe ProcessHookData()/dismissTour()
