@@ -713,7 +713,7 @@
     // Farbregel (31.10.2026, Dietmar: mehr Farben aus dem ganzen Spektrum, mit Bezug zu Herkunft und Verwendung): die drei Stationen sind Grundfarben des
     // Farbkreises - Sonne = Gelb, Netz = Blau, Batterie = Rot -, jeder Weg des Stroms ist die Mischfarbe seiner Stationen: Sonne direkt ins Haus = Gelb,
     // Netz ins Haus = Blau, Sonne ins Netz (Einspeisung) = Gelb + Blau = Grün, Sonne über die Batterie = Gelb + Rot = Orange, Netz über die Batterie = Blau + Rot = Violett.
-    // Laden und Entladen über die Batterie behalten die Farbe ihrer Herkunft. Die Fläche zeigt die Verwendung: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
+    // Netz über die Batterie ist blau-dominant (Violett), Batterie ins Netz rot-dominant (Rosa/Magenta). Laden und Entladen über die Batterie behalten die Farbe ihrer Herkunft. Die Fläche zeigt die Verwendung: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
     var BALANCE_SERIES = [
       { key: 'netzbezug',             name: 'Netzbezug',                color: '#2E86DE', panel: 'v' },
       { key: 'batterieentladungNetz', name: 'Batterieentladung (Netz)', color: '#9B51E0', panel: 'v' },
@@ -721,7 +721,8 @@
       { key: 'direktverbrauch',       name: 'Direktverbrauch',          color: '#F7C600', panel: 'both' },
       { key: 'batterieladung',        name: 'Batterieladung (PV)',      color: '#F26B1D', panel: 'e' },
       { key: 'netzladung',            name: 'Batterieladung (Netz)',    color: '#9B51E0', colorV: '#CDAEF0', panel: 'both' },
-      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',          color: '#34B36B', panel: 'e' }
+      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',          color: '#34B36B', panel: 'e' },
+      { key: 'netzeinspeisungBatterie', name: 'Netzeinspeisung (Batterie)', color: '#E0457B', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
     // 31.07.2026: "Koennte man die Chartflaechen etwas plastischer
@@ -3419,7 +3420,7 @@
       chart.__balMode = 'bars';
       balanceWireHoverHighcharts(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, approxDays: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, netzeinspeisungBatterie: 0, approxDays: 0 };
       bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
       var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
       renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
@@ -3730,7 +3731,7 @@
       chart.__balMode = 'bars';
       balanceWireHover(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, approxDays: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, netzeinspeisungBatterie: 0, approxDays: 0 };
       bars.forEach(function (b) {
         Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); });
       });
@@ -3793,9 +3794,12 @@
         + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung (PV)', col.batterieladung, kwh(totals.batterieladung || 0))
         + pairRow('Batterieentladung', col.batterieentladung, kwh(totals.batterieentladung || 0), 'Netzeinspeisung', col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
         + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), 'Batterieladung (Netz)', col.netzladung, kwh(totals.netzladung || 0))
+        + ((totals.netzeinspeisungBatterie || 0) > 0 ? pairRow(null, null, null, 'Netzeinspeisung (Batterie)', col.netzeinspeisungBatterie, kwh(totals.netzeinspeisungBatterie || 0)) : '')
         + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
         + ((totals.netzladung || 0) > 0 || (totals.batterieentladungNetz || 0) > 0
             ? '<div class="balNote">Netzbezug insgesamt ' + kwh((totals.netzbezug || 0) + (totals.netzladung || 0)) + ': ' + kwh(totals.netzbezug || 0) + ' für das Haus und ' + kwh(totals.netzladung || 0) + ' für die Batterieladung (zählt weder zum Verbrauch noch zum Ertrag). Von der Batterieentladung stammen ' + kwh(totals.batterieentladungNetz || 0) + ' aus Netzladung (zählt nicht als autark).</div>' : '')
+        + ((totals.netzeinspeisungBatterie || 0) > 0
+            ? '<div class="balNote">Die Netzeinspeisung aus der Batterie (' + kwh(totals.netzeinspeisungBatterie || 0) + ') zählt weder zum Verbrauch noch zum Ertrag.</div>' : '')
         + ((totals.approxDays || 0) > 0
             ? '<div class="balNote">Für ' + totals.approxDays + ' Tage ist die Herkunft der Batterieladung noch nicht aufgeteilt, sie wird im Hintergrund nachberechnet.</div>' : '')
         + '</div>'

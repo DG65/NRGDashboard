@@ -157,6 +157,9 @@ class NRGDashboardPVMonitor extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.15' => [
+            'Bilanz: Netzeinspeisung aus der Batterie ist jetzt eine eigene Größe (Rosa/Magenta) und zählt weder zum Verbrauch noch zum Ertrag. Bisher stand sie fälschlich im Ertrag, die zugehörige Entladung im Verbrauch.'
+        ],
         '0.10.14' => [
             'Bilanz: Die Netzladung der Batterie zählt jetzt weder zum Verbrauch noch zum Ertrag, sondern steht als eigene Zeile „Batterieladung (Netz)“ unter der Batterieladung aus PV. Der Tagesertrag besteht nur noch aus PV-Strom.',
             'Autarkiequote rechnet mit dem Mischverhältnis der Batterie: Strom, der aus dem Netz in die Batterie geladen wurde, zählt bei der Entladung nicht als autark.',
@@ -2832,8 +2835,9 @@ class NRGDashboardPVMonitor extends IPSModule
      * verbrauch kommt bewusst in beiden vor, wie im Vorbild - er ist
      * sowohl Verbrauchs- als auch Erzeugungsanteil).
      */
-    private const BALANCE_KEYS = ['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung', 'batterieentladungNetz', 'batterieentladungPv'];
+    private const BALANCE_KEYS = ['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung', 'batterieentladungNetz', 'batterieentladungPv', 'netzeinspeisungBatterie'];
     private const BALANCE_CACHE_MAX_DAYS = 800;
+    private const BALANCE_CACHE_VERSION = 2;
 
     private function BalanceTotals(int $start, int $end): array
     {
@@ -2913,7 +2917,11 @@ class NRGDashboardPVMonitor extends IPSModule
     private function BalanceCache(): array
     {
         $c = json_decode((string) $this->ReadAttributeString('BalanceDayCache'), true);
-        return is_array($c) ? $c : [];
+        if (!is_array($c)) {
+            return [];
+        }
+        // Eintraege aelterer Rechenstaende (ohne Batterie-Einspeisung) werden verworfen und vom Timer neu berechnet
+        return array_filter($c, function ($e) { return is_array($e) && (int) ($e['v'] ?? 0) === self::BALANCE_CACHE_VERSION; });
     }
 
     private function BalanceCacheStore(string $key, array $entry): void
@@ -2955,7 +2963,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $sim = $this->BalanceSimulate($dayStart, $dayEnd, $this->BalanceDayStartState($dayStart, $depth), false);
         $t = array_map(function ($v) { return round($v, 3); }, $sim['tot']);
-        $r = ['t' => $t, 'E' => round($sim['state']['E'], 3), 's' => round($sim['state']['s'], 4)];
+        $r = ['t' => $t, 'E' => round($sim['state']['E'], 3), 's' => round($sim['state']['s'], 4), 'v' => self::BALANCE_CACHE_VERSION];
         if ($dayEnd <= time()) {
             $this->BalanceCacheStore($key, $r);
         }
@@ -3052,7 +3060,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $E = max(0.0, (float) ($state['E'] ?? 0));
         $s = min(1.0, max(0.0, (float) ($state['s'] ?? 1)));
         $tot = array_fill_keys(self::BALANCE_KEYS, 0.0);
-        $curve = array_fill_keys(['netzbezug', 'batterieentladungPv', 'batterieentladungNetz', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung'], []);
+        $curve = array_fill_keys(['netzbezug', 'batterieentladungPv', 'batterieentladungNetz', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzeinspeisungBatterie', 'netzladung'], []);
         $dtH = 5.0 / 60.0;
         if ($capKwh > 0 && $lastSoc !== null) {
             $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
@@ -3069,7 +3077,11 @@ class NRGDashboardPVMonitor extends IPSModule
             $batChPv = min($batCh, max(0.0, $pv - $gridExp));
             $netzladung = min(max(0.0, $batCh - $batChPv), $gridImp);
             $batChPv = $batCh - $netzladung;
-            $pvToLoad = max(0.0, $pv - $gridExp - $batChPv);
+            // Was ueber die PV hinaus ins Netz geht, kommt aus der Batterie (Dietmar 31.10.2026: Netzeinspeisung aus der Batterie); es zaehlt weder zum Verbrauch noch zum Ertrag
+            $batToGrid = min($batDis, max(0.0, $gridExp - $pv));
+            $gridExpPv = $gridExp - $batToGrid;
+            $houseShare = $batDis > 0 ? ($batDis - $batToGrid) / $batDis : 0.0;
+            $pvToLoad = max(0.0, $pv - $gridExpPv - $batChPv);
             $netzbezug = $gridImp - $netzladung;
             // Mischtopf der Batterie (kWh): erst Entladung, dann Ladung
             $eDis = $batDis * $dtH / 1000.0;
@@ -3092,20 +3104,23 @@ class NRGDashboardPVMonitor extends IPSModule
                 $E = max(0.0, min($capKwh, $lastSoc / 100.0 * $capKwh));
             }
             $tot['netzbezug'] += $netzbezug * $dtH / 1000.0;
-            $tot['batterieentladung'] += $eDis;
+            // Entladung fuers Haus = Gesamtentladung ohne den Teil, der ins Netz geht; die Herkunft (PV/Netz) gilt anteilig fuer beide Teile
+            $tot['batterieentladung'] += $eDis * $houseShare;
             $tot['direktverbrauch'] += $pvToLoad * $dtH / 1000.0;
             $tot['batterieladung'] += $eChPv;
-            $tot['netzeinspeisung'] += $gridExp * $dtH / 1000.0;
+            $tot['netzeinspeisung'] += $gridExpPv * $dtH / 1000.0;
+            $tot['netzeinspeisungBatterie'] += $batToGrid * $dtH / 1000.0;
             $tot['netzladung'] += $eChGrid;
-            $tot['batterieentladungNetz'] += $disGrid;
-            $tot['batterieentladungPv'] += $eDis - $disGrid;
+            $tot['batterieentladungNetz'] += $disGrid * $houseShare;
+            $tot['batterieentladungPv'] += ($eDis - $disGrid) * $houseShare;
             if ($withCurve) {
                 $curve['netzbezug'][] = [$ts, round($netzbezug / 1000.0, 3)];
-                $curve['batterieentladungPv'][] = [$ts, round(($eDis - $disGrid) / $dtH, 3)];
-                $curve['batterieentladungNetz'][] = [$ts, round($disGrid / $dtH, 3)];
+                $curve['batterieentladungPv'][] = [$ts, round(($eDis - $disGrid) * $houseShare / $dtH, 3)];
+                $curve['batterieentladungNetz'][] = [$ts, round($disGrid * $houseShare / $dtH, 3)];
                 $curve['direktverbrauch'][] = [$ts, round($pvToLoad / 1000.0, 3)];
                 $curve['batterieladung'][] = [$ts, round($batChPv / 1000.0, 3)];
-                $curve['netzeinspeisung'][] = [$ts, round($gridExp / 1000.0, 3)];
+                $curve['netzeinspeisung'][] = [$ts, round($gridExpPv / 1000.0, 3)];
+                $curve['netzeinspeisungBatterie'][] = [$ts, round($batToGrid / 1000.0, 3)];
                 $curve['netzladung'][] = [$ts, round($netzladung / 1000.0, 3)];
             }
         }

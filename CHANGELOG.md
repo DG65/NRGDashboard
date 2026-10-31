@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.6 (2026-10-31)
+
+- **Bilanz: Netzeinspeisung aus der Batterie (Dietmar: „wir haben dann und wann auch Netzeinspeisung aus der Batterie“).** Was ins Netz geht, soweit die PV es nicht deckt, kommt aus der Batterie und ist jetzt eine eigene Größe „Netzeinspeisung (Batterie)“ in Rosa/Magenta (rot-dominant: Batterie ins Netz; Violett ist blau-dominant: Netz über die Batterie). Sie zählt weder zum Verbrauch noch zum Ertrag, der Ertrag besteht nur noch aus PV-Strom. Bisher wurde sie doppelt falsch gezählt: als „Netzeinspeisung“ im Ertrag und die zugehörige Entladung als Verbrauch. Beispiel 24.10.2026 (Rohdaten, Batterie speist von 23:30 bis 23:55 mit 5 bis 8 kW bei PV = 0 ein, etwa 22 kWh): Verbrauch 47,9 → 25,8 kWh, Ertrag 39,5 → 17,4 kWh, Netzeinspeisung aus PV 24,0 → 1,9 kWh. Die Tabelle zeigt bei Bedarf die Zeile „Netzeinspeisung (Batterie)“ samt Hinweis. Die Herkunft (PV/Netz) der Entladung gilt anteilig für den Teil ins Haus. Gespeicherte Tageswerte älterer Rechenstände (Cache-Version 2) werden verworfen und vom Timer neu berechnet.
+
 ## 0.10.5 (2026-10-31)
 
 - **Bilanz: Farben nach dem Farbkreis (Dietmar: mehr Farben aus dem ganzen Spektrum, mit Bezug).** Die drei Stationen sind Grundfarben (Sonne = Gelb, Netz = Blau, Batterie = Rot), jeder Weg des Stroms ist die Mischfarbe seiner Stationen: Direktverbrauch Gelb, Netzbezug Blau, Netzeinspeisung (Sonne ins Netz) Grün, Batterie aus PV Orange (Gelb + Rot), Batterie aus Netz Violett (Blau + Rot). Lade- und Entladeseite derselben Herkunft haben dieselbe Farbe. Ersetzt die Töne aus 0.10.4, in denen Gold, Orange und Hellgelb sowie Blau und Türkis zu nah beieinander lagen.
