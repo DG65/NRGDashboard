@@ -157,6 +157,11 @@ class NRGDashboardPVMonitor extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.14' => [
+            'Bilanz: Die Netzladung der Batterie zählt jetzt weder zum Verbrauch noch zum Ertrag, sondern steht als eigene Zeile „Batterieladung (Netz)“ unter der Batterieladung aus PV. Der Tagesertrag besteht nur noch aus PV-Strom.',
+            'Autarkiequote rechnet mit dem Mischverhältnis der Batterie: Strom, der aus dem Netz in die Batterie geladen wurde, zählt bei der Entladung nicht als autark.',
+            'Fix: Die Netzkurve der Bilanz kommt vom echtzeitfähigen Netzzähler (z. B. PAC2200) statt vom verzögert archivierenden Abrechnungszähler, dessen Viertelstundenwerte die Kurve um ein Intervall nach hinten verschoben hatten.'
+        ],
         '0.10.13' => [
             'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
             '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
@@ -258,6 +263,9 @@ class NRGDashboardPVMonitor extends IPSModule
         // Hinweis im UI, dass es ihn ueberhaupt gibt.
         $this->RegisterPropertyBoolean('DevScenarioCompare', false);
 
+        // Tagesbilanz mit Herkunftstrennung (31.10.2026): je abgeschlossenem Tag die aufgeteilten Summen und der Batterie-Mischzustand am
+        // Tagesende, Format {"2026-10-30": {"t": {...}, "E": kWh, "s": PV-Anteil 0..1}}. Nur Cache, jederzeit neu berechenbar.
+        $this->RegisterAttributeString('BalanceDayCache', '{}');
         $this->RegisterAttributeString('ReviewHintDismissed', '0');
         $this->RegisterAttributeString('SeenNews', '');
         // "Wozu dieses Modul?" (SUITE.md "Einheitliche Formular-Optik" Punkt 0,
@@ -310,6 +318,7 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         $this->RegisterTimer('Refresh', 0, 'NRGDASHPVMON_Render($_IPS[\'TARGET\']);');
+        $this->RegisterTimer('BalanceBackfill', 0, 'NRGDASHPVMON_BalanceBackfill($_IPS[\'TARGET\']);');
         $this->SetVisualizationType(1);
     }
 
@@ -324,6 +333,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // damit eine offene Kachel nicht bis zum ersten Timer-Tick auf einem
         // veralteten Stand bleibt (siehe NRGDashboardTile, gleiche Lehre).
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
+        $this->SetTimerInterval('BalanceBackfill', 2 * 60 * 1000);
         // Standalone-Webseite fuer IPSView/Browser (WebView/Popup) - Muster
         // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
         // ... auch so vorbereiten, dass man sie in IPSView einbinden kann").
@@ -2820,16 +2830,250 @@ class NRGDashboardPVMonitor extends IPSModule
      * verbrauch kommt bewusst in beiden vor, wie im Vorbild - er ist
      * sowohl Verbrauchs- als auch Erzeugungsanteil).
      */
+    private const BALANCE_KEYS = ['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung', 'batterieentladungNetz'];
+    private const BALANCE_CACHE_MAX_DAYS = 800;
+
     private function BalanceTotals(int $start, int $end): array
     {
+        $sum = array_fill_keys(self::BALANCE_KEYS, 0.0);
+        $cache = $this->BalanceCache();
+        $now = time();
+        $todo = [];       // abgeschlossene, noch nicht aufgeteilte Tage (Beginn => Ende)
+        for ($d = (int) strtotime('midnight', $start); $d < $end; $d = (int) strtotime('+1 day', $d)) {
+            $dEnd = (int) strtotime('+1 day', $d);
+            $from = max($start, $d);
+            $to = min($end, $dEnd);
+            $key = date('Y-m-d', $d);
+            if ($from === $d && $to === $dEnd && $dEnd <= $now) {
+                if (isset($cache[$key]['t'])) {
+                    foreach (self::BALANCE_KEYS as $k) { $sum[$k] += (float) ($cache[$key]['t'][$k] ?? 0); }
+                } else {
+                    $todo[$d] = $dEnd;
+                }
+            } else {
+                // angebrochener Tag (heute) oder Teilzeitraum: direkt simulieren, nicht zwischenspeichern
+                $sim = $this->BalanceSimulate($from, $to, $this->BalanceDayStartState($d, 3), false);
+                foreach (self::BALANCE_KEYS as $k) { $sum[$k] += (float) $sim['tot'][$k]; }
+            }
+        }
+        // Neueste fehlende Tage zuerst aufteilen, solange das Zeitbudget reicht; der Rest wird als zusammenhaengende Strecke ueber die
+        // Zaehlerstaende gerechnet (ohne Herkunftstrennung) und der Timer BalanceBackfill holt ihn spaeter nach.
+        krsort($todo);
+        $budgetEnd = microtime(true) + 6.0;
+        $approx = [];
+        foreach ($todo as $d => $dEnd) {
+            if (microtime(true) < $budgetEnd) {
+                $r = $this->BalanceDayCompute($d, 3);
+                foreach (self::BALANCE_KEYS as $k) { $sum[$k] += (float) $r['t'][$k]; }
+            } else {
+                $approx[$d] = $dEnd;
+            }
+        }
+        ksort($approx);
+        $approxDays = count($approx);
+        $runStart = null; $runEnd = null;
+        foreach ($approx as $d => $dEnd) {
+            if ($runStart !== null && $d === $runEnd) {
+                $runEnd = $dEnd;
+                continue;
+            }
+            if ($runStart !== null) { $this->BalanceAddFlow($sum, $runStart, $runEnd); }
+            $runStart = $d; $runEnd = $dEnd;
+        }
+        if ($runStart !== null) { $this->BalanceAddFlow($sum, $runStart, $runEnd); }
+        $out = array_map(function ($v) { return round($v, 3); }, $sum);
+        $out['approxDays'] = $approxDays;
+        return $out;
+    }
+
+    /** Altes Rechenverfahren (Zaehlerstaende, ohne Herkunftstrennung) fuer noch nicht aufgeteilte Tage. */
+    private function BalanceAddFlow(array &$sum, int $start, int $end): void
+    {
         $c = $this->FlowComponents($start, $end);
-        return [
-            'netzbezug'         => round($c['gridImp'], 3),
-            'batterieentladung' => round($c['batDis'], 3),
-            'direktverbrauch'   => round($c['pvToLoad'], 3),
-            'batterieladung'    => round($c['batCh'], 3),
-            'netzeinspeisung'   => round($c['gridExp'], 3),
-        ];
+        $sum['netzbezug'] += $c['gridImp'];
+        $sum['batterieentladung'] += $c['batDis'];
+        $sum['direktverbrauch'] += $c['pvToLoad'];
+        $sum['batterieladung'] += $c['batCh'];
+        $sum['netzeinspeisung'] += $c['gridExp'];
+    }
+
+    private function BalanceCache(): array
+    {
+        $c = json_decode((string) $this->ReadAttributeString('BalanceDayCache'), true);
+        return is_array($c) ? $c : [];
+    }
+
+    private function BalanceCacheStore(string $key, array $entry): void
+    {
+        $c = $this->BalanceCache();
+        $c[$key] = $entry;
+        if (count($c) > self::BALANCE_CACHE_MAX_DAYS) {
+            ksort($c);
+            $c = array_slice($c, count($c) - self::BALANCE_CACHE_MAX_DAYS, null, true);
+        }
+        $this->WriteAttributeString('BalanceDayCache', json_encode($c));
+    }
+
+    /** Mischzustand der Batterie zu Beginn des Tages: Ende des Vortags aus dem Cache, sonst bis zu $depth Tage zurueck nachgerechnet. */
+    private function BalanceDayStartState(int $dayStart, int $depth): array
+    {
+        $prev = (int) strtotime('-1 day', $dayStart);
+        $cache = $this->BalanceCache();
+        $key = date('Y-m-d', $prev);
+        if (isset($cache[$key]['E'], $cache[$key]['s'])) {
+            return ['E' => (float) $cache[$key]['E'], 's' => (float) $cache[$key]['s']];
+        }
+        if ($depth > 0 && $dayStart > time() - 400 * 86400) {
+            $r = $this->BalanceDayCompute($prev, $depth - 1);
+            return ['E' => (float) $r['E'], 's' => (float) $r['s']];
+        }
+        // unbekannter Ausgangszustand: Batterie leer, Entladung darueber hinaus gilt als aus PV (wohlwollend, schwingt sich in 1 bis 2 Tagen ein)
+        return ['E' => 0.0, 's' => 1.0];
+    }
+
+    /** Einen abgeschlossenen Tag simulieren (und zwischenspeichern). Rueckgabe ['t' => Summen, 'E' =>, 's' =>]. */
+    private function BalanceDayCompute(int $dayStart, int $depth): array
+    {
+        $dayEnd = (int) strtotime('+1 day', $dayStart);
+        $key = date('Y-m-d', $dayStart);
+        $cache = $this->BalanceCache();
+        if (isset($cache[$key]['t'])) {
+            return ['t' => $cache[$key]['t'] + array_fill_keys(self::BALANCE_KEYS, 0.0), 'E' => (float) ($cache[$key]['E'] ?? 0), 's' => (float) ($cache[$key]['s'] ?? 1)];
+        }
+        $sim = $this->BalanceSimulate($dayStart, $dayEnd, $this->BalanceDayStartState($dayStart, $depth), false);
+        $t = array_map(function ($v) { return round($v, 3); }, $sim['tot']);
+        $r = ['t' => $t, 'E' => round($sim['state']['E'], 3), 's' => round($sim['state']['s'], 4)];
+        if ($dayEnd <= time()) {
+            $this->BalanceCacheStore($key, $r);
+        }
+        return $r;
+    }
+
+    /** Timer: fehlende abgeschlossene Tage der letzten 400 Tage nachberechnen (neueste zuerst, wenige je Tick). */
+    public function BalanceBackfill(): void
+    {
+        if (IPS_GetKernelRunlevel() !== KR_READY) {
+            return;
+        }
+        $cache = $this->BalanceCache();
+        $today = (int) strtotime('midnight');
+        $done = 0;
+        for ($k = 1; $k <= 400 && $done < 3; $k++) {
+            $d = (int) strtotime('-' . $k . ' day', $today);
+            if (isset($cache[date('Y-m-d', $d)]['t'])) {
+                continue;
+            }
+            $this->BalanceDayCompute($d, 3);
+            $done++;
+        }
+    }
+
+    /**
+     * Bilanz mit Herkunftstrennung in 5-Minuten-Schritten (31.10.2026, Dietmar: Netzladung darf weder Verbrauch noch Ertrag sein, die Autarkie
+     * rechnet mit dem Mischverhältnis der Batterie). Je Schritt: PV deckt zuerst Einspeisung und Batterieladung, der Rest den Verbrauch; was die Batterie
+     * darüber hinaus lädt, kommt aus dem Netz (Netzladung, höchstens der Netzbezug). Die Batterie ist ein Mischtopf mit PV-Anteil s: Ladung mischt ihn, Entladung
+     * nimmt den Anteil s aus PV und den Rest aus Netzladung. Das Netz kommt vom echtzeitfähigen Zähler (nicht vom verzögert archivierenden Abrechnungszähler,
+     * dessen Viertelstundenwerte am Intervallende gestempelt sind und die Kurve um ein Intervall verschieben).
+     * Rueckgabe: ['curve' => Serien [ts, kW], 'tot' => kWh je BALANCE_KEYS, 'state' => ['E' =>, 's' =>]].
+     */
+    private function BalanceSimulate(int $start, int $end, array $state, bool $withCurve): array
+    {
+        $ihub = $this->singleInverterHubID();
+        $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
+        $pvPowerID = $this->PvPowerID();
+        $batPowerID = $this->BatPowerID();
+        $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
+        $gridPowerID = $this->BalanceGridPowerID($this->MeterHubAssignments(), $ihubGridPowerID);
+        $gridSign = $this->GridPowerSign($gridPowerID);
+        $capKwh = 0.0;
+        $capID = is_array($data) ? (int) ($data['batteryCapacityID'] ?? 0) : 0;
+        if ($capID > 0 && IPS_VariableExists($capID)) {
+            $capKwh = (float) GetValue($capID);
+            if ($capKwh > 1000.0) { $capKwh /= 1000.0; }   // Wh statt kWh
+            if ($capKwh < 0.0) { $capKwh = 0.0; }
+        }
+
+        $aid = $this->ArchiveID();
+        $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
+        $batPts = ($aid > 0) ? $this->DaySeries($aid, $batPowerID, $start, $end) : [];
+        $gridPts = ($aid > 0) ? $this->DaySeries($aid, $gridPowerID, $start, $end) : [];
+        $byTs = [];
+        foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
+        foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
+        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1] * $gridSign; }
+        ksort($byTs);
+
+        $E = max(0.0, (float) ($state['E'] ?? 0));
+        $s = min(1.0, max(0.0, (float) ($state['s'] ?? 1)));
+        $tot = array_fill_keys(self::BALANCE_KEYS, 0.0);
+        $curve = array_fill_keys(['netzbezug', 'batterieentladung', 'direktverbrauch', 'batterieladung', 'netzeinspeisung', 'netzladung'], []);
+        $dtH = 5.0 / 60.0;
+        foreach ($byTs as $ts => $v) {
+            $pv = max(0.0, (float) ($v['pv'] ?? 0));
+            $bat = (float) ($v['bat'] ?? 0);
+            $grid = (float) ($v['grid'] ?? 0);
+            $batCh = max(0.0, -$bat);
+            $batDis = max(0.0, $bat);
+            $gridImp = max(0.0, -$grid);
+            $gridExp = max(0.0, $grid);
+            // Was die PV nach der Einspeisung noch hat, lädt zuerst die Batterie; der Rest der Ladung ist Netzladung
+            $batChPv = min($batCh, max(0.0, $pv - $gridExp));
+            $netzladung = min(max(0.0, $batCh - $batChPv), $gridImp);
+            $batChPv = $batCh - $netzladung;
+            $pvToLoad = max(0.0, $pv - $gridExp - $batChPv);
+            $netzbezug = $gridImp - $netzladung;
+            // Mischtopf der Batterie (kWh): erst Entladung, dann Ladung
+            $eDis = $batDis * $dtH / 1000.0;
+            $disGrid = 0.0;
+            if ($eDis > 0) {
+                $fromPool = min($eDis, $E);
+                $disGrid = $fromPool * (1.0 - $s);
+                $E -= $fromPool;
+            }
+            $eChPv = $batChPv * $dtH / 1000.0;
+            $eChGrid = $netzladung * $dtH / 1000.0;
+            if ($eChPv + $eChGrid > 0) {
+                $newE = $E + $eChPv + $eChGrid;
+                $s = ($E * $s + $eChPv) / $newE;
+                $E = $capKwh > 0 ? min($newE, $capKwh) : $newE;
+            }
+            $tot['netzbezug'] += $netzbezug * $dtH / 1000.0;
+            $tot['batterieentladung'] += $eDis;
+            $tot['direktverbrauch'] += $pvToLoad * $dtH / 1000.0;
+            $tot['batterieladung'] += $eChPv;
+            $tot['netzeinspeisung'] += $gridExp * $dtH / 1000.0;
+            $tot['netzladung'] += $eChGrid;
+            $tot['batterieentladungNetz'] += $disGrid;
+            if ($withCurve) {
+                $curve['netzbezug'][] = [$ts, round($netzbezug / 1000.0, 3)];
+                $curve['batterieentladung'][] = [$ts, round($batDis / 1000.0, 3)];
+                $curve['direktverbrauch'][] = [$ts, round($pvToLoad / 1000.0, 3)];
+                $curve['batterieladung'][] = [$ts, round($batChPv / 1000.0, 3)];
+                $curve['netzeinspeisung'][] = [$ts, round($gridExp / 1000.0, 3)];
+                $curve['netzladung'][] = [$ts, round($netzladung / 1000.0, 3)];
+            }
+        }
+        return ['curve' => $curve, 'tot' => $tot, 'state' => ['E' => $E, 's' => $s]];
+    }
+
+    /** Netz-Leistungsvariable fuer die Bilanzkurve: bevorzugt der echtzeitfaehige Netzzaehler, sonst die bisherige Wahl. */
+    private function BalanceGridPowerID(array $assignments, int $ihubGridPowerID): int
+    {
+        $best = null;
+        foreach ($assignments as $a) {
+            if (($a['function'] ?? '') !== 'grid' || (int) ($a['powerID'] ?? 0) <= 0 || ($a['latency'] ?? '') === 'delayed') {
+                continue;
+            }
+            if ($best === null || ($a['authority'] ?? '') === 'billing') {
+                $best = $a;
+            }
+        }
+        if ($best !== null) {
+            return (int) $best['powerID'];
+        }
+        $gridA = $this->BestAssignment($assignments, 'grid');
+        $pid = (int) ($gridA['powerID'] ?? 0);
+        return $pid > 0 ? $pid : $ihubGridPowerID;
     }
 
     private function EnergyFlow(int $start, int $end): ?array
@@ -3497,9 +3741,9 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         if ($granularity === 'day') {
-            $curve = $this->DayBalanceCurve($start, $end);
-            $totals = $this->BalanceTotals($start, $end);
-            return ['ok' => true, 'granularity' => 'day', 'curve' => $curve, 'totals' => $totals];
+            $sim = $this->BalanceSimulate($start, $end, $this->BalanceDayStartState($start, 3), true);
+            $totals = array_map(function ($v) { return round($v, 3); }, $sim['tot']);
+            return ['ok' => true, 'granularity' => 'day', 'curve' => $sim['curve'], 'totals' => $totals];
         }
 
         // Balken-Granularitaet der FEINSTEN Bucket-Einheit passend zur
@@ -3555,76 +3799,6 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
         return ['ok' => true, 'granularity' => $granularity, 'bars' => $bars];
-    }
-
-    /**
-     * 5-Minuten-Kurven der fuenf Bilanz-Groessen fuer GENAU EINEN Tag
-     * (Flaechendiagramm "Tag"-Ansicht) - leitet pro Zeitstempel-Bucket
-     * dieselbe Aufteilung ab wie FlowComponents()/BalanceTotals() fuer
-     * einen ganzen Zeitraum, hier aber punktweise statt aufsummiert.
-     */
-    private function DayBalanceCurve(int $start, int $end): array
-    {
-        $ihub = $this->singleInverterHubID();
-        $data = ($ihub > 0 && function_exists('IHUB_GetFunctions')) ? @IHUB_GetFunctions($ihub) : null;
-        // PvPowerID()/BatPowerID() statt direkt IHUB_GetFunctions() (Fund
-        // somm, 17.09.2026): eine manuell gewaehlte PV-/Batterie-Variable
-        // (z. B. SolarEdges "PV-Erzeugung (berechnet)", die die PV+Batterie-
-        // Vermischung des rohen "PV Gesamtleistung"-Registers auflöst) wurde
-        // hier bisher ignoriert - die Bilanz griff immer auf die rohe
-        // InverterHub-Variable zurueck, auch wenn explizit eine andere im
-        // Formular gewaehlt war. Nachts zeigte "Erzeugung"/"Direktverbrauch"
-        // dadurch Phantomwerte aus dem PV+Batterie-Rohsignal.
-        $pvPowerID = $this->PvPowerID();
-        $batPowerID = $this->BatPowerID();
-        $ihubGridPowerID = is_array($data) ? (int) ($data['gridPowerID'] ?? 0) : 0;
-
-        $assignments = $this->MeterHubAssignments();
-        $gridA = $this->BestAssignment($assignments, 'grid');
-        $gridPowerID = $gridA['powerID'] ?? 0;
-        $gridPowerID = ($gridPowerID > 0) ? (int) $gridPowerID : $ihubGridPowerID;
-        // GridPowerSign() kanonisiert MeterHub-Netzleistung ("+ = Bezug")
-        // auf unsere "+ = Einspeisung"-Konvention - ohne diese Korrektur
-        // waren Netzbezug/Netzeinspeisung hier vertauscht, sobald ein
-        // MeterHub-Netzzaehler getaggt ist (Fund der MeterHub-Sitzung,
-        // 23.08.2026, identischer Fehler wie in GridPowerID()).
-        $gridSign = $this->GridPowerSign($gridPowerID);
-
-        $aid = $this->ArchiveID();
-        $pvPts = ($aid > 0) ? $this->DaySeries($aid, $pvPowerID, $start, $end) : [];
-        $batPts = ($aid > 0) ? $this->DaySeries($aid, $batPowerID, $start, $end) : [];
-        $gridPts = ($aid > 0) ? $this->DaySeries($aid, $gridPowerID, $start, $end) : [];
-
-        $byTs = [];
-        foreach ($pvPts as $p) { $byTs[$p[0]]['pv'] = $p[1]; }
-        foreach ($batPts as $p) { $byTs[$p[0]]['bat'] = $p[1]; }
-        foreach ($gridPts as $p) { $byTs[$p[0]]['grid'] = $p[1] * $gridSign; }
-        ksort($byTs);
-
-        $netzbezug = []; $batterieentladung = []; $direktverbrauch = [];
-        $batterieladung = []; $netzeinspeisung = [];
-        foreach ($byTs as $ts => $v) {
-            $pv = max(0.0, (float) ($v['pv'] ?? 0));
-            $bat = (float) ($v['bat'] ?? 0);
-            $grid = (float) ($v['grid'] ?? 0);
-            $batCh = max(0.0, -$bat);
-            $batDis = max(0.0, $bat);
-            $gridImp = max(0.0, -$grid);
-            $gridExp = max(0.0, $grid);
-            $pvToLoad = max(0.0, $pv - $gridExp - $batCh);
-            $netzbezug[] = [$ts, round($gridImp / 1000.0, 3)];
-            $batterieentladung[] = [$ts, round($batDis / 1000.0, 3)];
-            $direktverbrauch[] = [$ts, round($pvToLoad / 1000.0, 3)];
-            $batterieladung[] = [$ts, round($batCh / 1000.0, 3)];
-            $netzeinspeisung[] = [$ts, round($gridExp / 1000.0, 3)];
-        }
-        return [
-            'netzbezug' => $netzbezug,
-            'batterieentladung' => $batterieentladung,
-            'direktverbrauch' => $direktverbrauch,
-            'batterieladung' => $batterieladung,
-            'netzeinspeisung' => $netzeinspeisung,
-        ];
     }
 
     private function ColorOrEmpty(int $v): string

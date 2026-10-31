@@ -363,6 +363,7 @@
      Label die feste Breite doch sprengt. */
   .balBody { display: grid; grid-template-columns: 120px 50px 70px 45px 120px 50px 70px; justify-content: center; align-items: center; padding: 4px 2px 8px; }
   .balRow { display: contents; }
+  .balNote { grid-column: 1 / -1; font-size: 11px; opacity: .75; text-align: center; padding: 2px 8px 0; }
   .balRow > * { padding: 3px 0; border-bottom: 1px solid transparent; }
   .balRow.total > * { border-bottom: none; font-weight: 700; }
   .lblwrap { display: flex; align-items: center; gap: 7px; opacity: .85; }
@@ -713,7 +714,8 @@
       { key: 'netzbezug',         name: 'Netzbezug',         color: '#FF2600', panel: 'v' },
       { key: 'batterieentladung', name: 'Batterieentladung', color: '#FF9300', panel: 'v' },
       { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#4F8F00', panel: 'both' },
-      { key: 'batterieladung',    name: 'Batterieladung',    color: '#945200', panel: 'e' },
+      { key: 'batterieladung',    name: 'Batterieladung (PV)',   color: '#945200', panel: 'e' },
+      { key: 'netzladung',        name: 'Batterieladung (Netz)', color: '#8E2330', panel: 'e' },
       { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
@@ -3410,7 +3412,7 @@
       chart.__balMode = 'bars';
       balanceWireHoverHighcharts(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, approxDays: 0 };
       bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
       var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
       renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
@@ -3721,7 +3723,7 @@
       chart.__balMode = 'bars';
       balanceWireHover(el, chart);
 
-      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0 };
+      var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, approxDays: 0 };
       bars.forEach(function (b) {
         Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); });
       });
@@ -3736,7 +3738,9 @@
       var quote = verbrauch > 0 ? Math.round((totals.direktverbrauch || 0) / verbrauch * 100) : 0;
       // Autarkiequote: Anteil des Verbrauchs, der OHNE Netzbezug gedeckt
       // wurde (Direktverbrauch + Batterieentladung), Dietmar 31.07.2026.
-      var autarkie = verbrauch > 0 ? Math.round(((totals.direktverbrauch || 0) + (totals.batterieentladung || 0)) / verbrauch * 100) : 0;
+      // Seit 31.10.2026 mit Herkunft: Entladung aus Netzladung (batterieentladungNetz) zaehlt nicht als autark, Dietmar.
+      var entladungPv = Math.max(0, (totals.batterieentladung || 0) - (totals.batterieentladungNetz || 0));
+      var autarkie = verbrauch > 0 ? Math.round(((totals.direktverbrauch || 0) + entladungPv) / verbrauch * 100) : 0;
       function kwh(val) { return val.toFixed(2).replace('.', ',') + ' kWh'; }
       // Eine Grid-Zeile bildet IMMER beide Seiten zugleich ab (Dietmar,
       // 31.07.2026: "ich wuensche mir hier mehr Praezision" - zwei
@@ -3778,10 +3782,14 @@
         + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
         + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
         + pairRow(verbrauchLabel, gradV, kwh(verbrauch), ertragLabel, gradE, kwh(ertrag), 'total')
-        + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung', col.batterieladung, kwh(totals.batterieladung || 0))
+        + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung (PV)', col.batterieladung, kwh(totals.batterieladung || 0))
         + pairRow('Batterieentladung', col.batterieentladung, kwh(totals.batterieentladung || 0), 'Netzeinspeisung', col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
-        + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), null, null, null)
+        + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), 'Batterieladung (Netz)', col.netzladung, kwh(totals.netzladung || 0))
         + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
+        + ((totals.netzladung || 0) > 0 || (totals.batterieentladungNetz || 0) > 0
+            ? '<div class="balNote">Die Netzladung der Batterie zählt weder zum Verbrauch noch zum Ertrag. Von der Batterieentladung stammen ' + kwh(totals.batterieentladungNetz || 0) + ' aus Netzladung (zählt nicht als autark).</div>' : '')
+        + ((totals.approxDays || 0) > 0
+            ? '<div class="balNote">Für ' + totals.approxDays + ' Tage ist die Herkunft der Batterieladung noch nicht aufgeteilt, sie wird im Hintergrund nachberechnet.</div>' : '')
         + '</div>'
         + '</div>';
       var head = document.getElementById('balHeadToggle');

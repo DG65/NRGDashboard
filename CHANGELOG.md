@@ -10,6 +10,14 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.2 (2026-10-31)
+
+- **PV-Monitoring, Bilanz mit Herkunftstrennung (Dietmars Befund 31.10.: „Tagesertrag 6,02 kWh“ bei fast keiner PV, Autarkie 19 %, Netzbezug 15 Minuten nach der Batterieladung).**
+  - Die **Netzladung der Batterie** (was die Batterie über den PV-Überschuss hinaus lädt, höchstens der Netzbezug) ist eine eigene Größe „Batterieladung (Netz)“ und zählt weder zum Verbrauch noch zum Ertrag. Der Ertrag besteht nur noch aus Direktverbrauch, Batterieladung aus PV und Einspeisung.
+  - **Autarkiequote mit Mischverhältnis:** Die Batterie wird als Mischtopf geführt (PV-Anteil s, Ladung mischt, Entladung nimmt den Anteil s aus PV und den Rest aus Netzladung). Entladung aus Netzladung zählt nicht als autark. Der Ausgangszustand ist unbekannt (Batterie leer, Rest gilt als PV); er schwingt sich nach ein bis zwei Tagen ein. Abgeschlossene Tage werden zwischengespeichert (Attribut `BalanceDayCache`), fehlende Tage rechnet ein Timer im Hintergrund nach, bis dahin zeigt die Bilanz einen Hinweis und rechnet diese Tage nach dem alten Verfahren ohne Herkunftstrennung.
+  - **Zeitversatz behoben:** Die Netzkurve der Bilanz kommt vom echtzeitfähigen Netzzähler (`latency` ≠ `delayed`, z. B. PAC2200) und nicht mehr vom verzögert archivierenden Abrechnungszähler (Inexogy). Dessen Viertelstundenwerte sind am Intervallende gestempelt (der Wert von 03:45 gilt für 03:30 bis 03:45) und verschoben die Kurve um ein Intervall. Gibt es keinen echtzeitfähigen Netzzähler, bleibt die bisherige Wahl.
+  - Die Tagessummen der Bilanz sind jetzt die Summe der 5-Minuten-Werte statt Zählerstandsdifferenzen (nötig für die Herkunftstrennung); leichte Abweichungen zum Zählerstand sind möglich.
+
 ## 0.10.1 (2026-10-30)
 
 - **Store-Review: Logging nur auf Wunsch des Benutzers.** Die Detailseite der Kachel schaltete beim Öffnen des Leistungsdiagramms die Archivierung der zugrunde liegenden Variable selbst ein. Das Logging liegt aber in der Hoheit des Benutzers und darf nicht über die Visualisierung ausgelöst werden. Die Detailseite liest den Archivstatus jetzt nur noch und verweist bei fehlenden Archivdaten auf das Formular. Dort gibt es neu den Knopf „Archivierung der Geräteleistungen aktivieren“: Er schaltet auf ausdrückliche Anweisung des Benutzers die Archivierung der Leistungsvariablen aller gefundenen Geräte ein (mit Auflistung und Logeintrag). Betroffen war nur die Kachel; die übrigen Module schalten kein Logging ein.
