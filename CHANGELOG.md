@@ -14,6 +14,8 @@ inklusive.*
 
 - **Bilanz: Mischverhältnis der Batterie am echten Ladestand verankert.** Die Autarkie rechnete den Batterieinhalt nur aus den Energieflüssen mit; der unbekannte Anfang und die Verluste ließen ihn davonlaufen (Dietmars Nacht vom 31.10.: Batterie stand schon bei etwa 67 %, der Topf kam aber auf rund 8 kWh, der Netzanteil der Entladung war zu hoch). Jetzt wird der Inhalt in jedem Schritt aus dem Ladestand (SOC) und der Kapazität gesetzt, der Herkunftsanteil bleibt. Liefert der InverterHub keine Kapazität, wird sie aus zusammenhängenden Lade- und Entladeabschnitten geschätzt (geflossene Energie geteilt durch die Änderung des Ladestands) und zwischengespeichert (Attribut `BalanceCapKwh`). Der Ladestand am Zeitraumbeginn kommt aus dem Archiv (er wird nur bei Änderung archiviert).
 
+- **Bilanz: Netzbezug für die Batterieladung sichtbar.** Die Netzladung erscheint zeitrichtig auch in der Verbrauch-Grafik (blasser, damit klar ist, dass sie nicht zum Verbrauch zählt), und unter der Tabelle steht der gesamte Netzbezug mit der Aufteilung in Haus und Batterieladung.
+
 ## 0.10.2 (2026-10-31)
 
 - **PV-Monitoring, Bilanz mit Herkunftstrennung (Dietmars Befund 31.10.: „Tagesertrag 6,02 kWh“ bei fast keiner PV, Autarkie 19 %, Netzbezug 15 Minuten nach der Batterieladung).**

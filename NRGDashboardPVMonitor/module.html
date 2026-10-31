@@ -715,7 +715,7 @@
       { key: 'batterieentladung', name: 'Batterieentladung', color: '#FF9300', panel: 'v' },
       { key: 'direktverbrauch',   name: 'Direktverbrauch',   color: '#4F8F00', panel: 'both' },
       { key: 'batterieladung',    name: 'Batterieladung (PV)',   color: '#945200', panel: 'e' },
-      { key: 'netzladung',        name: 'Batterieladung (Netz)', color: '#8E2330', panel: 'e' },
+      { key: 'netzladung',        name: 'Batterieladung (Netz)', color: '#8E2330', colorV: '#C9606F', panel: 'both' },
       { key: 'netzeinspeisung',   name: 'Netzeinspeisung',   color: '#FFFB00', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
@@ -724,6 +724,8 @@
     // vertikaler Verlauf von einem aufgehellten Ton oben zur Grundfarbe
     // unten, wie ein leicht glaenzendes Glas/Kunststoff-Band. amt=0..1
     // steuert, wie stark Richtung Weiss aufgehellt wird.
+    // Farbe einer Serie je Panel: die Netzladung erscheint auch im Verbrauch-Panel (zeitrichtiger Netzbezug), dort blasser, weil sie nicht zum Verbrauch zaehlt
+    function balPanelColor(s, panel) { return (panel === 'v' && s.colorV) ? s.colorV : s.color; }
     function balanceLighten(hex, amt) {
       var c = hex.replace('#', '');
       var r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
@@ -3199,8 +3201,8 @@
               // erkennbare Grenze mehr. Ein neutrales Grau statt der
               // eigenen (oft ebenfalls hellen) Serienfarbe gibt auf Hell
               // UND Dunkel einen sichtbaren, aber dezenten Rand.
-              name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: s.color, yAxis: yIdx, xAxis: xIdx, lineWidth: 1, lineColor: 'rgba(120,120,120,.5)', marker: { enabled: false }, fillOpacity: 0.55,
-              fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(s.color) }
+              name: s.name, type: 'area', stacking: 'normal', data: curve[s.key] || [], color: balPanelColor(s, panel), yAxis: yIdx, xAxis: xIdx, lineWidth: 1, lineColor: 'rgba(120,120,120,.5)', marker: { enabled: false }, fillOpacity: 0.55,
+              fillColor: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(balPanelColor(s, panel)) }
             };
           });
       }
@@ -3350,7 +3352,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'column', stacking: 'normal', data: bars.map(function (b) { return b[s.key] || 0; }), yAxis: yIdx, xAxis: xIdx,
-              color: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(s.color) }
+              color: { linearGradient: { x1: 0, y1: 0, x2: 0, y2: 1 }, stops: balanceGlossyStops(balPanelColor(s, panel)) }
             };
           });
       }
@@ -3585,7 +3587,7 @@
               // 31.07.2026: "Abgrenzung Gelb zu Weiss" ging im Hellmodus
               // ohne Rand nahtlos in den weissen Hintergrund ueber).
               name: s.name, type: 'line', stack: stackName,
-              areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(s.color).map(function (p) { return { offset: p[0], color: p[1] }; })) },
+              areaStyle: { opacity: .55, color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(balPanelColor(s, panel)).map(function (p) { return { offset: p[0], color: p[1] }; })) },
               lineStyle: { width: 1, color: 'rgba(120,120,120,.5)' }, symbol: 'none',
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: curve[s.key] || []
@@ -3673,7 +3675,7 @@
           .map(function (s) {
             return {
               name: s.name, type: 'bar', stack: stackName,
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(s.color).map(function (p) { return { offset: p[0], color: p[1] }; })),
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, balanceGlossyStops(balPanelColor(s, panel)).map(function (p) { return { offset: p[0], color: p[1] }; })),
               xAxisIndex: (panel === 'v') ? 0 : 1, yAxisIndex: (panel === 'v') ? 0 : 1,
               data: bars.map(function (b) { return b[s.key] || 0; })
             };
@@ -3787,7 +3789,7 @@
         + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), 'Batterieladung (Netz)', col.netzladung, kwh(totals.netzladung || 0))
         + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
         + ((totals.netzladung || 0) > 0 || (totals.batterieentladungNetz || 0) > 0
-            ? '<div class="balNote">Die Netzladung der Batterie zählt weder zum Verbrauch noch zum Ertrag. Von der Batterieentladung stammen ' + kwh(totals.batterieentladungNetz || 0) + ' aus Netzladung (zählt nicht als autark).</div>' : '')
+            ? '<div class="balNote">Netzbezug insgesamt ' + kwh((totals.netzbezug || 0) + (totals.netzladung || 0)) + ': ' + kwh(totals.netzbezug || 0) + ' für das Haus und ' + kwh(totals.netzladung || 0) + ' für die Batterieladung (zählt weder zum Verbrauch noch zum Ertrag). Von der Batterieentladung stammen ' + kwh(totals.batterieentladungNetz || 0) + ' aus Netzladung (zählt nicht als autark).</div>' : '')
         + ((totals.approxDays || 0) > 0
             ? '<div class="balNote">Für ' + totals.approxDays + ' Tage ist die Herkunft der Batterieladung noch nicht aufgeteilt, sie wird im Hintergrund nachberechnet.</div>' : '')
         + '</div>'
