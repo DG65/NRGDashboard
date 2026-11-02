@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.9 (2026-11-02)
+
+- **Prognose-Kachel: gemessene Linien wahlweise durchgezogen (Forum Horst, 02.11.2026).** Neue Einstellung „Gemessene Linien durchgezogen statt gestrichelt“ (Standard aus = gestrichelt, wie bisher und wie im Prognose-Modul). Die Regel dahinter: Der Diagrammtitel bestimmt die maßgebliche Linie, und die ist durchgezogen. Heißt das Diagramm „Prognose“, ist die Prognose die durchgezogene Linie und das IST die gestrichelte Referenz; im PV-Monitor ist die Erzeugung die maßgebliche Linie und deshalb durchgezogen, die „PV erwartet“ gestrichelt. Wer das IST auch in der Prognose-Kachel durchgezogen haben möchte, schaltet es hier um; ohne eigene Farbe für die gemessene Linie wird sie dann etwas dunkler als die Prognosekurve gezeichnet, damit beide unterscheidbar bleiben. Gilt für beide Chart-Engines, auch der Zurücksetzen-Knopf der Kachel setzt es auf Standard.
+
 ## 0.10.8 (2026-10-31)
 
 - **PV-Monitoring, Bilanz: Farben selbst wählen (Dietmars Idee).** Im Formular, Panel „Darstellung“: ein **Farbschema** („Farbkreis“ = Standard seit 0.10.4/0.10.5, „Klassisch“ = die ursprünglichen Farben bis 0.10.3 mit ergänzenden Tönen für später dazugekommene Posten, „Farbenblind-freundlich“ = Palette nach Okabe und Ito, auch bei Rot-Grün-Schwäche unterscheidbar), darüber **Einzelfarben zum Überschreiben** (Netzbezug, Direktverbrauch, Netzeinspeisung, Batterie aus PV, Batterie aus Netz, Netzeinspeisung aus der Batterie, Ladestand-Linie; „Systemstandard“ = Farbe des Schemas) und der Knopf „↩️ Farben der Bilanz zurücksetzen“ (ohne Selbstpersistenz, gilt nach „Übernehmen“). Laden und Entladen über die Batterie teilen sich je Herkunft eine Farbe; die blassere Variante der Netzladung im oberen Panel wird daraus abgeleitet. Legende, Tabelle und alle Bilanz-Grafiken (Tag bis Gesamt) übernehmen die Farben. Nur die Bilanz, die anderen Reiter sind unverändert.

@@ -100,6 +100,9 @@ class NRGDashboardForecast extends IPSModule
     // nachtraeglich (und unzuverlaessig) pro Zeile einer Version zuzuordnen -
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.2.10' => [
+            '〰️ Neu (Forum, danke!): Die gemessenen Linien lassen sich durchgezogen statt gestrichelt zeigen (Einstellung „Gemessene Linien durchgezogen statt gestrichelt“). Standard bleibt gestrichelt: In dieser Kachel ist die Prognose die maßgebliche, durchgezogene Linie. Ohne eigene Farbe wird die durchgezogene Ist-Linie etwas dunkler als die Prognosekurve gezeichnet.'
+        ],
         '0.2.9' => [
             '📏 Nachgezogen aus dem Forum (danke!): Der Hinweis zur Auflösung in der Balkenansicht lässt sich ausblenden („Hinweis zur Auflösung in der Balkenansicht anzeigen“), und die Anlagenleistung kann als gestrichelte Linie gezeigt werden („Anlagenleistung (Modul-kWp) als gestrichelte Linie zeigen“, Standard aus). Im Formular lässt sich unter „Anlagenleistung für die gestrichelte Linie“ ein eigener Wert in kW eintragen; bei 0 gilt die Summe der Modul-kWp aus deiner PV-Prognose.',
             '🔗 Klarere Verbindungszeilen (Rückfrage aus dem Forum, danke!): Steht in den Einstellungen eine nicht mehr vorhandene Instanz, ignoriert die Kachel sie und nimmt die automatische Erkennung - das steht jetzt als Hinweis dabei, die Zeile bleibt 🔗 (verbunden) und zeigt kein ⚠️.',
@@ -203,6 +206,8 @@ class NRGDashboardForecast extends IPSModule
             // Aus = Farbe der Prognosekurve (bisheriges Verhalten, keine Aenderung fuer bestehende Instanzen).
             'ActualOwnPV'        => ['Eigene Farbe für die gemessene PV-Linie', 35, false],
             'ActualOwnLoad'      => ['Eigene Farbe für die gemessene Verbrauchs-Linie', 36, false],
+            // Forum Horst (02.11.2026): gemessene Linien durchgezogen statt gestrichelt. Standard aus = gestrichelt, wie im Prognose-Modul (die Prognose ist hier die massgebliche, durchgezogene Linie)
+            'ActualSolid'        => ['Gemessene Linien durchgezogen statt gestrichelt', 37, false],
             'ShowYesterday'  => ['Gestern mit anzeigen', 33, false],
             'Smooth'         => ['Kurven glaetten (gegen kantige Linien)', 49, self::DEF_SMOOTH],
             'ShowBand'       => ['Unsicherheitsband (P10-P90) anzeigen', 50, self::DEF_BAND],
@@ -433,7 +438,7 @@ class NRGDashboardForecast extends IPSModule
     public function RequestAction($Ident, $Value)
     {
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
-                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ShowViewHint', 'ShowMaxLine', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad'];
+                       'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ShowViewHint', 'ShowMaxLine', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad', 'ActualSolid'];
         $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'LabelTone', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
         $floatIdents = ['FontScale', 'LineWidth', 'BandOpacity', 'YMaxManual'];
 
@@ -601,6 +606,7 @@ class NRGDashboardForecast extends IPSModule
             'pvColor'    => sprintf('#%06x', (int) $this->GetValue('ColorPV')),
             'loadColor'  => sprintf('#%06x', (int) $this->GetValue('ColorLoad')),
             'actualPvColor'   => $this->GetValue('ActualOwnPV') ? sprintf('#%06x', (int) $this->GetValue('ColorActualPV')) : '',
+            'actualSolid'     => (bool) $this->GetValue('ActualSolid'),
             'actualLoadColor' => $this->GetValue('ActualOwnLoad') ? sprintf('#%06x', (int) $this->GetValue('ColorActualLoad')) : '',
             'bg'         => $this->GetValue('ColorBackgroundAuto') ? '' : sprintf('#%06x', (int) $this->GetValue('ColorBackground')),
             'scale'      => $this->FontScaleValue(),
@@ -1362,6 +1368,7 @@ class NRGDashboardForecast extends IPSModule
         $this->SetValue('ColorActualLoad', self::DEF_LOAD);
         $this->SetValue('ActualOwnPV', false);
         $this->SetValue('ActualOwnLoad', false);
+        $this->SetValue('ActualSolid', false);
         $this->SetValue('ColorBackgroundAuto', true);
         $this->SetValue('ColorBackground', 0xFFFFFF);
         $this->SetValue('FontFamily', 0);

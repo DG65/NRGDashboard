@@ -289,6 +289,14 @@
         });
 
         function pad(x) { return (x < 10 ? '0' : '') + x; }
+        // dunklere Variante einer #rrggbb-Farbe (amt 0..1 Richtung Schwarz); andere Schreibweisen bleiben unveraendert
+        function darkenHex(hex, amt) {
+            var m = /^#([0-9a-f]{6})$/i.exec(String(hex));
+            if (!m) { return hex; }
+            var n = parseInt(m[1], 16), f = 1 - amt;
+            var r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
+            return '#' + [r, g, b].map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');
+        }
         function kw(w) { return (w / 1000).toFixed(2); }
         function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
@@ -422,7 +430,10 @@
                 SEP: dark ? 'rgba(159,176,192,.34)' : 'rgba(92,107,122,.30)',
                 days: data.days, nDays: data.days.length,
                 pvC: data.pvColor || '#e0a020', loC: data.loadColor || '#2bb3c0',
-                pvMC: data.actualPvColor || data.pvColor || '#e0a020', loMC: data.actualLoadColor || data.loadColor || '#2bb3c0',
+                actualSolid: !!data.actualSolid,
+                // durchgezogene gemessene Linie ohne eigene Farbe: etwas dunkler als die Prognosekurve, sonst liegen beide unsichtbar uebereinander
+                pvMC: data.actualPvColor || (data.actualSolid ? darkenHex(data.pvColor || '#e0a020', 0.35) : (data.pvColor || '#e0a020')),
+                loMC: data.actualLoadColor || (data.actualSolid ? darkenHex(data.loadColor || '#2bb3c0', 0.35) : (data.loadColor || '#2bb3c0')),
                 plotLeft: pm.left, plotRight: pm.right, plotTop: pm.top, plotBottom: pm.bottom,
                 scale: scale, lw: data.lineWidth || 2, smooth: (data.smooth !== false),
                 showBand: (data.showBand !== false), bandOp: (data.bandOp != null ? data.bandOp : 0.16),
@@ -569,8 +580,8 @@
                 if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'Verbrauch-Band', data: D.loBand, color: loC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'load', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
             }
             if (D.pvMVis && D.bars) { series.push({ id: 'pvm', type: 'column', name: 'PV gemessen', data: D.pvMeas, color: D.pvMC, pointRange: D.stH, pointPadding: 0.2, groupPadding: 0, borderWidth: 0, grouping: false, showInLegend: false, zIndex: 2 }); }
-            else if (D.pvMVis) { series.push({ type: stype, name: 'PV gemessen', data: D.pvMeas, color: D.pvMC, dashStyle: 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
-            if (D.loMVis) { series.push({ id: D.bars ? 'lom' : undefined, type: stype, name: 'Verbrauch gemessen', data: D.loMeas, color: D.loMC, dashStyle: 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: !!D.bars, showInLegend: false, zIndex: 3 }); }
+            else if (D.pvMVis) { series.push({ type: stype, name: 'PV gemessen', data: D.pvMeas, color: D.pvMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
+            if (D.loMVis) { series.push({ id: D.bars ? 'lom' : undefined, type: stype, name: 'Verbrauch gemessen', data: D.loMeas, color: D.loMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: !!D.bars, showInLegend: false, zIndex: 3 }); }
             var nowPts = [];
             if (D.nowX != null) {
                 if (pvVis && D.actualPV != null) { nowPts.push({ x: D.nowX, y: D.actualPV / 1000, color: (D.pvMeas.length > 1 ? D.pvMC : pvC) }); }
@@ -858,8 +869,8 @@
                 }
             }
 
-            if (D.pvMVis && !D.bars) { series.push({ type: 'line', data: D.pvMeas, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvMC, width: Math.max(1, D.lw - 0.5), type: 'dashed' }, silent: true, animation: false, z: 3 }); }
-            if (D.loMVis) { series.push({ name: D.bars ? 'Verbrauch Ist' : undefined, type: 'line', data: D.loMeas, symbol: 'none', smooth: D.smooth && !D.bars, lineStyle: { color: D.loMC, width: Math.max(1, D.lw - 0.5), type: 'dashed' }, silent: true, animation: false, z: 3 }); }
+            if (D.pvMVis && !D.bars) { series.push({ type: 'line', data: D.pvMeas, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvMC, width: Math.max(1, D.lw - 0.5), type: D.actualSolid ? 'solid' : 'dashed' }, silent: true, animation: false, z: 3 }); }
+            if (D.loMVis) { series.push({ name: D.bars ? 'Verbrauch Ist' : undefined, type: 'line', data: D.loMeas, symbol: 'none', smooth: D.smooth && !D.bars, lineStyle: { color: D.loMC, width: Math.max(1, D.lw - 0.5), type: D.actualSolid ? 'solid' : 'dashed' }, silent: true, animation: false, z: 3 }); }
 
             var markData = [];
             for (var di = 1; di < D.nDays; di++) { markData.push({ xAxis: di * 24, lineStyle: { color: D.SEP, type: 'solid', width: 1 } }); }
