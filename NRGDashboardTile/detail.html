@@ -639,6 +639,7 @@ function renderWbInfo(p) {
     h += '<div class="hl-card" style="margin-bottom:8px"><div class="hl-label">' + esc(w.label) + '</div>';
     const rows = [];
     if (w.owner) rows.push(['Regelung', w.owner + (w.since ? ' (seit ' + sinceTxt(w.since) + ')' : '') + (w.reason ? ' – ' + w.reason : '')]);
+    if (w.gridReward && w.gridReward.text) rows.push(['⚡ Grid Rewards', w.gridReward.text]);
     if (w.plan) rows.push(['Plan', w.plan]);
     const zus = [w.charging, w.state].filter(Boolean).join(' · ');
     if (zus) rows.push(['Zustand', zus]);

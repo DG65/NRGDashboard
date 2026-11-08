@@ -91,6 +91,9 @@ class NRGDashboardTile extends IPSModule
     // Version zuzuordnen - neue Eintraege ab jetzt bekommen ihre EIGENE
     // Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
+        '0.10.6' => [
+            '⚡ Neu (Forum-Wunsch, danke!): Sind Tibber Grid Rewards an der Wallbox am Werk, zeigt der Wallbox-Knoten im Energiefluss einen kleinen grünen Blitz-Kreis oben links, auf der Detailseite steht unter „Regelung“ die Zeile „Grid Rewards“ mit Fahrzeug, Grund und Beginn. Voraussetzung: ein Tibber-Grid-Rewards-Modul. Die Zuordnung ist vorsichtig: zuerst Wallboxen, deren Regler Tibber ist, sonst die eine gerade ladende; bei mehreren Kandidaten gibt es keinen Hinweis.'
+        ],
         '0.10.5' => [
             '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
         ],
@@ -2323,6 +2326,17 @@ class NRGDashboardTile extends IPSModule
                     $devices[$wbIdx]['vehicleRangeKm'] = $v['rangeKm'];
                 }
                 $this->PublishVehicleNameToChargerHub($devices[$wbIdx], $v['name'], $a['correlated']);
+            }
+        }
+
+        // Grid-Rewards-Hinweis am Wallbox-Knoten (Dietmar, 08.11.2026)
+        $gridRewards = $this->GridRewardWallboxes($devices);
+        if (count($gridRewards) > 0) {
+            foreach ($devices as $i => $dd) {
+                $gpid = (int) (!empty($dd['usingFallback']) ? ($dd['fallbackPowerID'] ?? 0) : ($dd['powerID'] ?? 0));
+                if ($gpid > 0 && isset($gridRewards[$gpid])) {
+                    $devices[$i]['gridReward'] = $gridRewards[$gpid];
+                }
             }
         }
 
@@ -6195,6 +6209,84 @@ class NRGDashboardTile extends IPSModule
      * [powerID => sessionEnergyID]. Quelle sind alle Geraete mit beiden Feldern, auch die beim Aufschachteln ausgeblendeten ChargerHub-Wallboxen.
      */
     /**
+     * Grid Rewards am Werk (Dietmar, 08.11.2026: "im Energiefluss fuer die Wallbox einen Hinweis geben, wenn Grid Rewards am Werk sind"):
+     * TIBBERGR_GetActiveControls() (Vertrag 1.0) nennt die Fahrzeuge, die Tibber GERADE steuert (Grid Reward aktiv). Tibber kennt aber nur das Fahrzeug,
+     * nicht unsere Wallbox - die Zuordnung ist deshalb bewusst vorsichtig: zuerst die Wallboxen, deren Regler laut ChargerHub (controlOwner) Tibber ist,
+     * sonst die EINE gerade ladende Wallbox; bei mehreren Kandidaten gibt es keinen Hinweis (lieber nichts als die falsche Wallbox).
+     * Rueckgabe: Leistungsvariable der Wallbox => ['since' => Unix, 'text' => Klartext]. Reine Anzeige, ohne Tibber-Modul leer.
+     */
+    private function GridRewardWallboxes(array $devices): array
+    {
+        if (!function_exists('TIBBERGR_GetActiveControls') || $this->readBoolProperty('DemoIsolated', false)) {
+            return [];
+        }
+        $tid = $this->TibberInstanceID();
+        if ($tid <= 0) {
+            return [];
+        }
+        try {
+            $ctl = @TIBBERGR_GetActiveControls($tid);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        $active = [];
+        foreach ((is_array($ctl) ? $ctl : []) as $c) {
+            if (is_array($c) && ($c['type'] ?? '') === 'vehicle' && !empty($c['valid'])) {
+                $active[] = $c;
+            }
+        }
+        if (count($active) === 0) {
+            return [];
+        }
+        $tibberOwned = [];
+        $charging = [];
+        foreach ($devices as $d) {
+            if (!is_array($d) || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox') {
+                continue;
+            }
+            $pid = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
+            if ($pid <= 0) {
+                continue;
+            }
+            $owner = '';
+            if (($d['source'] ?? '') === 'chargerhub' && (int) ($d['instanceID'] ?? 0) > 0 && function_exists('CHUB_GetFunctions')) {
+                try {
+                    $es = @CHUB_GetFunctions((int) $d['instanceID']);
+                } catch (\Throwable $e) {
+                    $es = [];
+                }
+                foreach ((is_array($es) ? $es : []) as $e) {
+                    if (is_array($e) && (int) ($e['powerID'] ?? 0) === $pid) {
+                        $owner = (string) ($e['controlOwner'] ?? '');
+                        break;
+                    }
+                }
+            }
+            if ($owner === 'tibber') {
+                $tibberOwned[] = $pid;
+            }
+            $tmp = $d;
+            if ((float) $this->resolvePowerValue($tmp) >= 100.0) {
+                $charging[] = $pid;
+            }
+        }
+        $targets = count($tibberOwned) > 0 ? $tibberOwned : (count($charging) === 1 ? $charging : []);
+        if (count($targets) === 0) {
+            return [];
+        }
+        $since = min(array_map(static function ($c) { return (int) ($c['since'] ?? time()); }, $active));
+        $text = implode(' · ', array_map(static function ($c) {
+            $n = trim((string) ($c['name'] ?? ''));
+            return ($n !== '' ? $n . ': ' : '') . (string) ($c['reason'] ?? 'Grid Reward aktiv');
+        }, $active));
+        $out = [];
+        foreach ($targets as $pid) {
+            $out[$pid] = ['since' => $since, 'text' => $text];
+        }
+        return $out;
+    }
+
+    /**
      * Regelung und Plan je Wallbox fuer die Detailseite (ChargerHub CHUB_GetFunctions 1.9-1.12): controlOwner/Source/Reason/Since (wer regelt,
      * warum, seit wann), planInfoID (Plantext, vom EMS befuellt), chargingStateID ("Laedt"), stateID (Ladestatus), errorCodeID. Gelesen wird frisch
      * aus dem Vertrag (nicht aus dem Geraete-Cache), Zuordnung ueber die Leistungsvariable wie bei der Fahrzeug-Zuordnung - auch fuer die beim
@@ -6221,6 +6313,7 @@ class NRGDashboardTile extends IPSModule
         $val = static function (int $id): ?string {
             return ($id > 0 && IPS_VariableExists($id)) ? trim((string) GetValueFormatted($id)) : null;
         };
+        $grMap = $this->GridRewardWallboxes($cand);
         $out = [];
         foreach (array_keys($inst) as $iid) {
             try {
@@ -6293,6 +6386,7 @@ class NRGDashboardTile extends IPSModule
                     'charging' => $val((int) ($e['chargingStateID'] ?? 0)),
                     'state'    => $val((int) ($e['stateID'] ?? 0)),
                     'error'    => $err,
+                    'gridReward' => $grMap[(int) ($e['powerID'] ?? 0)] ?? null,
                 ];
             }
         }

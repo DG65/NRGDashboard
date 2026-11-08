@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.10 (2026-11-08)
+
+- **Energiefluss: Hinweis, wenn Grid Rewards an der Wallbox am Werk sind.** Der Wallbox-Knoten zeigt dann einen kleinen grünen Blitz-Kreis oben links (gegenüber dem Warndreieck), und auf der Detailseite steht im Abschnitt „Regelung“ die Zeile „⚡ Grid Rewards“ mit Fahrzeug, Grund und Beginn (z. B. „Schneeflocke: Grid Reward aktiv (excess) seit 15:44“). Quelle ist `TIBBERGR_GetActiveControls()` (Vertrag 1.0/2.0, nur Fahrzeuge mit `valid`); ohne Tibber-Grid-Rewards-Modul passiert nichts. Tibber kennt nur das Fahrzeug, nicht die Wallbox, deshalb ist die Zuordnung bewusst vorsichtig: zuerst die Wallboxen, deren Regler laut ChargerHub (`controlOwner`) Tibber ist, sonst die eine gerade ladende Wallbox (ab 100 W); bei mehreren Kandidaten gibt es keinen Hinweis (lieber nichts als die falsche Wallbox). Reine Anzeige. Prüfstand `tests/gridreward.test.php`.
+
 ## 0.10.9 (2026-11-02)
 
 - **Prognose-Kachel: gemessene Linien wahlweise durchgezogen (Forum Horst, 02.11.2026).** Neue Einstellung „Gemessene Linien durchgezogen statt gestrichelt“ (Standard aus = gestrichelt, wie bisher und wie im Prognose-Modul). Die Regel dahinter: Der Diagrammtitel bestimmt die maßgebliche Linie, und die ist durchgezogen. Heißt das Diagramm „Prognose“, ist die Prognose die durchgezogene Linie und das IST die gestrichelte Referenz; im PV-Monitor ist die Erzeugung die maßgebliche Linie und deshalb durchgezogen, die „PV erwartet“ gestrichelt. Wer das IST auch in der Prognose-Kachel durchgezogen haben möchte, schaltet es hier um; ohne eigene Farbe für die gemessene Linie wird sie dann etwas dunkler als die Prognosekurve gezeichnet, damit beide unterscheidbar bleiben. Gilt für beide Chart-Engines, auch der Zurücksetzen-Knopf der Kachel setzt es auf Standard.

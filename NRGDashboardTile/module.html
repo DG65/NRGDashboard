@@ -546,6 +546,10 @@
   .node.aggregate { cursor: pointer; }
   .node.subtracted .node-ring { stroke-dasharray: 5 4; opacity: .85; }
   .node-minus { pointer-events: none; }
+  /* Grid-Rewards-Hinweis (08.11.2026): kleiner gruener Blitz-Kreis oben links am Wallbox-Knoten - Gegenstueck zum Warndreieck oben rechts */
+  .node-gr { pointer-events: none; }
+  .node-gr-bg { fill: #1f9d63; stroke: rgba(255,255,255,.6); stroke-width: 1.2; }
+  .node-gr-bolt { fill: #fff; stroke: none; }
   .node-minus-bg { fill: #7a2e2a; stroke: rgba(255,255,255,.5); stroke-width: 1.2; }
   .node-minus-txt { fill: #fff; font-size: 12px; font-weight: 900; text-anchor: middle; stroke: none; }
 
@@ -2264,6 +2268,8 @@ function buildItems(devices) {
         peakTodayW: (d.peakTodayW !== undefined && d.peakTodayW !== null) ? d.peakTodayW : null,
         // Aufschachteln (03.09.2026): Sammelknoten-Kennung + abgezogene
         // Mitglieder (negativer Faktor) - siehe attachMembers() im Backend.
+        // Grid Rewards am Werk (08.11.2026): Klartext oder leer, siehe GridRewardWallboxes() im Backend
+        gridReward: (d.gridReward && d.gridReward.text) ? String(d.gridReward.text) : '',
         hasMembers: !!d.hasMembers,
         memberCount: d.memberCount || 0,
         factor: (typeof d.factor === 'number') ? d.factor : 100,
@@ -2493,6 +2499,12 @@ function createOuterNode(item, pt, layout) {
   minusG.appendChild(minusTxt);
   minusG.style.display = 'none';
   visual.appendChild(minusG);
+  // Grid-Rewards-Hinweis (08.11.2026): gruener Kreis mit Blitz oben links, nur sichtbar, wenn updateOuterNode() ihn einblendet.
+  const grG = el('g', { class: 'node-gr', transform: 'translate(' + (-warnOff).toFixed(1) + ',' + (-warnOff).toFixed(1) + ')' });
+  grG.appendChild(el('circle', { r: 9, class: 'node-gr-bg' }));
+  grG.appendChild(el('polygon', { points: '1.5,-6 -4,1 -0.5,1 -1.5,6 4,-1.5 0.5,-1.5', class: 'node-gr-bolt' }));
+  grG.style.display = 'none';
+  visual.appendChild(grG);
   g.appendChild(visual);
 
   const pressCirc = 2 * Math.PI * (DESIGN_R + 3);
@@ -2520,7 +2532,7 @@ function createOuterNode(item, pt, layout) {
   g.appendChild(switchG);
 
   return { g, visual, glow, liquid, warn, ghostRing, forecastRing, priceSpark, iconG, valText, labelText, subText, cx, cy, baseScale: layout.outerR / DESIGN_R,
-           countG, countTxt, minusG, pressRing, pressCirc, fxLayer, switchG };
+           countG, countTxt, minusG, grG, pressRing, pressCirc, fxLayer, switchG };
 }
 
 function jagPath(p1, p2, amp, seg, seed) {
@@ -3095,6 +3107,8 @@ function updateOuterNode(refs, item) {
     refs.countG.style.display = 'none';
   }
   refs.minusG.style.display = (typeof item.factor === 'number' && item.factor < 0 && !hidden) ? '' : 'none';
+  // Grid Rewards am Werk (08.11.2026): Blitz-Kreis oben links
+  refs.grG.style.display = (item.gridReward && !hidden) ? '' : 'none';
 
   // Schaltgruppen (03.09.2026): switchable = einzeln schaltbar (switchOn
   // bestimmt die Farbe), sonst switchState (nur Gruppen: 0 aus/1 teilweise/
