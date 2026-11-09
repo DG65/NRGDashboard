@@ -64,6 +64,8 @@ class NRGDashboardWPMonitor extends IPSModule
         // veroeffentlicht und an echter Hardware bestaetigt (Forum-Thread
         // WPHub #4-#17). Gleicher heatpump-Vertrag, contractVersion 1.15.
         '{D077685F-50BF-4678-A42A-0A33CDEF8C89}' => 'WPBSBL_GetFunctions',
+        // WPEEBUSHub (09.11.2026): Waermepumpe ueber EEBUS, heatpump-Vertrag.
+        '{731C4932-48B3-4360-BFED-1CA034978BCB}' => 'WPEEB_GetFunctions',
     ];
     private const ARCHIVE_GUID = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const AGG_5MIN     = 5;
@@ -170,6 +172,9 @@ class NRGDashboardWPMonitor extends IPSModule
         parent::Create();
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
+        // Standalone-Webseite (Hook) abschaltbar (09.11.2026, Forum doctee #232):
+        // Standard an, damit bestehende Installationen unveraendert laufen.
+        $this->RegisterPropertyBoolean('StandaloneEnabled', true);
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
         $this->RegisterPropertyString('Engine', self::DEF_ENGINE);
         $this->RegisterPropertyBoolean('LightTheme', false);
@@ -221,7 +226,7 @@ class NRGDashboardWPMonitor extends IPSModule
         // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
         // ... auch so vorbereiten, dass man sie in IPSView einbinden kann").
         if (IPS_GetKernelRunlevel() === KR_READY) {
-            $this->RegisterHook('/hook/nrgdashwpmonitor' . $this->InstanceID);
+            $this->SyncHook('/hook/nrgdashwpmonitor' . $this->InstanceID);
         } else {
             $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         }
@@ -233,6 +238,41 @@ class NRGDashboardWPMonitor extends IPSModule
         if ($Message === IPS_KERNELMESSAGE && isset($Data[0]) && $Data[0] === KR_READY) {
             $this->ApplyChanges();
         }
+    }
+
+    /** Hook je nach Einstellung "Standalone-Webseite" registrieren oder entfernen. */
+    private function SyncHook(string $WebHook): void
+    {
+        if ($this->ReadPropertyBoolean('StandaloneEnabled')) {
+            $this->RegisterHook($WebHook);
+        } else {
+            $this->UnregisterHook($WebHook);
+        }
+    }
+
+    /** Eigenen Eintrag aus dem WebHook-Control entfernen (nur wenn er auf diese Instanz zeigt). */
+    private function UnregisterHook(string $WebHook): void
+    {
+        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
+        if (count($ids) === 0) {
+            return;
+        }
+        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
+        if (!is_array($hooks)) {
+            return;
+        }
+        $kept = [];
+        foreach ($hooks as $hook) {
+            if (($hook['Hook'] ?? '') === $WebHook && (int) ($hook['TargetID'] ?? 0) === $this->InstanceID) {
+                continue;
+            }
+            $kept[] = $hook;
+        }
+        if (count($kept) === count($hooks)) {
+            return;
+        }
+        IPS_SetProperty($ids[0], 'Hooks', json_encode($kept));
+        IPS_ApplyChanges($ids[0]);
     }
 
     /** WebHook beim WebHook-Control registrieren (Standard-Muster, 1:1 aus Prognoses Energiebilanz). */
@@ -271,7 +311,7 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
         // module.html per fetch() aufgerufen, siehe Create()/dismissTour().
-        if (isset($_GET['dismissTour'])) {
+        if (isset($_GET['dismissTour']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $this->WriteAttributeBoolean('TourSeen', true);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['ok' => true]);
@@ -619,9 +659,9 @@ class NRGDashboardWPMonitor extends IPSModule
                 if (!is_array($data)) {
                     continue;
                 }
-                $list = (isset($data['Type']) || isset($data['type'])) ? [$data] : $data;
+                $list = (isset($data['Type']) || isset($data['type']) || isset($data['function'])) ? [$data] : $data;
                 foreach ($list as $e) {
-                    if (!is_array($e) || (($e['Type'] ?? $e['type'] ?? '') !== 'heatpump')) {
+                    if (!is_array($e) || (($e['Type'] ?? $e['type'] ?? $e['function'] ?? '') !== 'heatpump')) {
                         continue;
                     }
                     $e['_instanceID'] = (int) $id;
@@ -1023,6 +1063,12 @@ class NRGDashboardWPMonitor extends IPSModule
 
     public function RequestAction($Ident, $Value)
     {
+        // Einfuehrungs-Tour bestaetigt: die Kachel meldet das ueber requestAction()
+        // zurueck, nicht ueber den offenen WebHook (der kann abgeschaltet sein).
+        if ($Ident === 'dismissTour') {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            return;
+        }
         if ($Ident === 'TabAnimation') {
             $this->SetValue('TabAnimation', (int) $Value);
             $this->Render();
@@ -1377,7 +1423,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
             // (localStorage im Frontend) - Muster NRGDashboardPVMonitor.
             'uid'        => (string) $this->InstanceID,
-            'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? IPS_GetName((int) $unit['_instanceID'])),
+            'label'      => (string) ($unit['Caption'] ?? $unit['caption'] ?? $unit['label'] ?? IPS_GetName((int) $unit['_instanceID'])),
             // Veraltete Messung (lastSeenAt, heatpump-Vertrag 1.13) - leer = aktuell
             'staleText'  => $staleText,
             // Wie NRGDashboardPVMonitor: Symcon bietet einer Kachel keinen

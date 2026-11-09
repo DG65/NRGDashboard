@@ -92,6 +92,9 @@ class NRGDashboardTopology extends IPSModule
         $this->RegisterPropertyInteger('EmsInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         // Wählbarer Formular-Aufbau (SUITE.md 3a): Liste {Key, Panel, Opened, Closed, Hidden, Pos}, leer = Standard
+        // Standalone-Webseite (Hook) abschaltbar (09.11.2026, Forum doctee #232):
+        // Standard an, damit bestehende Installationen unveraendert laufen.
+        $this->RegisterPropertyBoolean('StandaloneEnabled', true);
         $this->RegisterPropertyString('FormLayout', '[]');
         $this->RegisterPropertyString('FontFamily', self::DEF_FONT);
 
@@ -130,7 +133,7 @@ class NRGDashboardTopology extends IPSModule
         // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
         // ... auch so vorbereiten, dass man sie in IPSView einbinden kann").
         if (IPS_GetKernelRunlevel() === KR_READY) {
-            $this->RegisterHook('/hook/nrgdashtopology' . $this->InstanceID);
+            $this->SyncHook('/hook/nrgdashtopology' . $this->InstanceID);
         } else {
             $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         }
@@ -141,6 +144,52 @@ class NRGDashboardTopology extends IPSModule
     {
         if ($Message === IPS_KERNELMESSAGE && isset($Data[0]) && $Data[0] === KR_READY) {
             $this->ApplyChanges();
+        }
+    }
+
+    /** Hook je nach Einstellung "Standalone-Webseite" registrieren oder entfernen. */
+    private function SyncHook(string $WebHook): void
+    {
+        if ($this->ReadPropertyBoolean('StandaloneEnabled')) {
+            $this->RegisterHook($WebHook);
+        } else {
+            $this->UnregisterHook($WebHook);
+        }
+    }
+
+    /** Eigenen Eintrag aus dem WebHook-Control entfernen (nur wenn er auf diese Instanz zeigt). */
+    private function UnregisterHook(string $WebHook): void
+    {
+        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
+        if (count($ids) === 0) {
+            return;
+        }
+        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
+        if (!is_array($hooks)) {
+            return;
+        }
+        $kept = [];
+        foreach ($hooks as $hook) {
+            if (($hook['Hook'] ?? '') === $WebHook && (int) ($hook['TargetID'] ?? 0) === $this->InstanceID) {
+                continue;
+            }
+            $kept[] = $hook;
+        }
+        if (count($kept) === count($hooks)) {
+            return;
+        }
+        IPS_SetProperty($ids[0], 'Hooks', json_encode($kept));
+        IPS_ApplyChanges($ids[0]);
+    }
+
+    /**
+     * Einfuehrungs-Tour bestaetigt: die Kachel meldet das ueber requestAction()
+     * zurueck, nicht ueber den offenen WebHook (der kann abgeschaltet sein).
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        if ($Ident === 'dismissTour') {
+            $this->WriteAttributeBoolean('TourSeen', true);
         }
     }
 
@@ -180,7 +229,7 @@ class NRGDashboardTopology extends IPSModule
     {
         // Einfuehrungs-Tour bestaetigt (29.08.2026) - vom Tour-Overlay in
         // module.html per fetch() aufgerufen, siehe Create().
-        if (isset($_GET['dismissTour'])) {
+        if (isset($_GET['dismissTour']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $this->WriteAttributeBoolean('TourSeen', true);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['ok' => true]);

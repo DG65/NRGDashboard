@@ -18,6 +18,15 @@
           "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
         },
         {
+          "type": "CheckBox",
+          "name": "StandaloneEnabled",
+          "caption": "Standalone-Webseite für Browser und IPSView aktivieren"
+        },
+        {
+          "type": "Label",
+          "caption": "Nur nötig, wenn die Kachel als eigene Webseite (Browser, IPSView) laufen soll. Wer nur die Kachel im WebFront nutzt, kann das abschalten: Dann ist kein WebHook registriert und der Zugriff von außen entfällt. Beim Abschalten wird der vorhandene Eintrag entfernt."
+        },
+        {
           "type": "Label",
           "caption": "✨ Feinheiten — Reiterleiste: Reiter ohne Datenquelle werden automatisch ausgeblendet; Reiter mit Quelle aber ohne aktuelle Daten färben sich leicht rot (zeigt, was gerade schief läuft), versorgte leicht grün. Die Leiste schwebt als Panel über dem Diagramm (Pfeil-Knopf öffnet, Reiterwahl schließt, Zustand wird je Gerät gemerkt) — mit vier wählbaren Animationen hinter dem Doppelpfeil, darunter ein physikalisch simuliertes Einsaugen ins schwarze Loch."
         },

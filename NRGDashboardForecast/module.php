@@ -160,6 +160,9 @@ class NRGDashboardForecast extends IPSModule
         // Doppelpfeil-Variable kann das nicht abbilden (Dashboard-Muster,
         // 1:1 wie Prognoses eigenes Energiebilanz-Formular: PVSource +
         // LoadSource statt einer zusammengefassten Energiebilanz-Instanz).
+        // Standalone-Webseite (Hook) abschaltbar (09.11.2026, Forum doctee #232):
+        // Standard an, damit bestehende Installationen unveraendert laufen.
+        $this->RegisterPropertyBoolean('StandaloneEnabled', true);
         $this->RegisterPropertyInteger('PVSource', 0);
         // Eigener Wert fuer die gestrichelte Anlagenleistungs-Linie (kW, 0 = Summe kWp der PV-Prognose) - Forum Ghostraider #54
         $this->RegisterPropertyFloat('MaxLineKw', 0.0);
@@ -351,7 +354,7 @@ class NRGDashboardForecast extends IPSModule
         // Prognoses Energiebilanz-Modul (Dietmar, 27.08.2026: "alle Kacheln
         // ... auch so vorbereiten, dass man sie in IPSView einbinden kann").
         if (IPS_GetKernelRunlevel() === KR_READY) {
-            $this->RegisterHook('/hook/nrgdashforecast' . $this->InstanceID);
+            $this->SyncHook('/hook/nrgdashforecast' . $this->InstanceID);
         } else {
             $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         }
@@ -403,6 +406,41 @@ class NRGDashboardForecast extends IPSModule
         }
     }
 
+    /** Hook je nach Einstellung "Standalone-Webseite" registrieren oder entfernen. */
+    private function SyncHook(string $WebHook): void
+    {
+        if ($this->ReadPropertyBoolean('StandaloneEnabled')) {
+            $this->RegisterHook($WebHook);
+        } else {
+            $this->UnregisterHook($WebHook);
+        }
+    }
+
+    /** Eigenen Eintrag aus dem WebHook-Control entfernen (nur wenn er auf diese Instanz zeigt). */
+    private function UnregisterHook(string $WebHook): void
+    {
+        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
+        if (count($ids) === 0) {
+            return;
+        }
+        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
+        if (!is_array($hooks)) {
+            return;
+        }
+        $kept = [];
+        foreach ($hooks as $hook) {
+            if (($hook['Hook'] ?? '') === $WebHook && (int) ($hook['TargetID'] ?? 0) === $this->InstanceID) {
+                continue;
+            }
+            $kept[] = $hook;
+        }
+        if (count($kept) === count($hooks)) {
+            return;
+        }
+        IPS_SetProperty($ids[0], 'Hooks', json_encode($kept));
+        IPS_ApplyChanges($ids[0]);
+    }
+
     /** WebHook beim WebHook-Control registrieren (Standard-Muster, 1:1 aus Prognoses Energiebilanz). */
     private function RegisterHook(string $WebHook): void
     {
@@ -437,6 +475,12 @@ class NRGDashboardForecast extends IPSModule
      */
     public function RequestAction($Ident, $Value)
     {
+        // Einfuehrungs-Tour bestaetigt: die Kachel meldet das ueber requestAction()
+        // zurueck, nicht ueber den offenen WebHook (der kann abgeschaltet sein).
+        if ($Ident === 'dismissTour') {
+            $this->WriteAttributeBoolean('TourSeen', true);
+            return;
+        }
         $boolIdents = ['ShowPV', 'ShowLoad', 'ShowActualPV', 'ShowActualLoad', 'ShowYesterday',
                        'Smooth', 'ShowBand', 'ShowGrid', 'ShowLegend', 'ShowIstRow', 'ShowViewHint', 'ShowMaxLine', 'ColorBackgroundAuto', 'ActualOwnPV', 'ActualOwnLoad', 'ActualSolid'];
         $intIdents  = ['Days', 'PowerUnit', 'MeasuredCacheSec', 'ChartView', 'LabelTone', 'ChartEngine', 'ColorPV', 'ColorLoad', 'ColorActualPV', 'ColorActualLoad', 'ColorBackground', 'FontFamily'];
@@ -571,7 +615,7 @@ class NRGDashboardForecast extends IPSModule
     {
         // Einfuehrungs-Tour bestaetigt (28.08.2026) - vom Tour-Overlay in
         // module.html per fetch() aufgerufen, siehe Create().
-        if (isset($_GET['dismissTour'])) {
+        if (isset($_GET['dismissTour']) && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $this->WriteAttributeBoolean('TourSeen', true);
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['ok' => true]);

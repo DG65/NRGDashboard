@@ -31,6 +31,8 @@ define('NRGDASH_GUID_WPMODBUSHUB',    '{E878B4D4-8E98-4E89-AE21-8636262EBC55}');
 define('NRGDASH_GUID_WPMODBUSGW',     '{70FBAC61-A1C0-47B7-8B56-BE047F7C0C6B}');
 define('NRGDASH_GUID_SAMSUNGEHS',     '{D2B2A1E8-2F94-426C-8761-505A2F226977}');
 define('NRGDASH_GUID_WPBSBLAN',       '{D077685F-50BF-4678-A42A-0A33CDEF8C89}');
+define('NRGDASH_GUID_WPEEBUSHUB',     '{731C4932-48B3-4360-BFED-1CA034978BCB}');
+define('NRGDASH_GUID_CHARGEREEBUSHUB', '{45A53474-81B3-4A59-BDD9-B0C3CCBFE6BF}');
 define('NRGDASH_GUID_TESSIE',         '{3F1F7E31-8BA0-4B8F-9B62-47DAD7A0B6C9}');
 define('NRGDASH_GUID_TIBBERGRIDREWARD', '{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}');
 define('NRGDASH_GUID_EMS',            '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}');
@@ -1384,8 +1386,24 @@ class NRGDashboardTile extends IPSModule
             NRGDASH_GUID_WPMODBUSGW  => ['WPMBGW_GetFunctions', 'WPModbusGateway'],
             NRGDASH_GUID_SAMSUNGEHS  => ['SAMEHS_GetFunctions', 'SamsungEhs'],
             NRGDASH_GUID_WPBSBLAN    => ['WPBSBL_GetFunctions', 'WPBsbLan'],
+            // WPEEBUSHub (09.11.2026, EMS-Meldung): Waermepumpe ueber EEBUS,
+            // heatpump-Vertrag 1.17 mit function/label-Listenfeldern.
+            NRGDASH_GUID_WPEEBUSHUB  => ['WPEEB_GetFunctions', 'WPEEBUSHub'],
         ] as $guid => [$fn, $label]) {
             $found = $this->discoverListContract($guid, $fn, 'heatpump');
+            // Dieselbe Waermepumpe nie doppelt: WPHub & Co. koennen eine
+            // HeishaMon-Anlage nur durchreichen (managedBy), deren powerID
+            // schon ueber HeishaMon im Energiefluss steht.
+            $have = [];
+            foreach ($devices as $dv) {
+                if (($dv['function'] ?? '') === 'heatpump' && (int) ($dv['powerID'] ?? 0) > 0) {
+                    $have[(int) $dv['powerID']] = true;
+                }
+            }
+            $found = array_values(array_filter($found, static function ($e) use ($have) {
+                $pid = (int) ($e['powerID'] ?? 0);
+                return !($pid > 0 && isset($have[$pid]));
+            }));
             $this->checkSourceCoverage($label, $guid, count($found));
             $devices = array_merge($devices, $found);
         }
@@ -1401,6 +1419,13 @@ class NRGDashboardTile extends IPSModule
         $ocppHub = $this->discoverListContract(NRGDASH_GUID_OCPPHUB, 'OHUB_GetFunctions', 'ocpphub');
         $this->checkSourceCoverage('OCPPHub', NRGDASH_GUID_OCPPHUB, count($ocppHub));
         $devices = array_merge($devices, $ocppHub);
+
+        // ChargerEEBUSHub (09.11.2026, EMS-Meldung): Wallbox ueber EEBUS,
+        // charger-Vertrag 1.12, feldgleich CHUB/OHUB. Eigene Quelle, weil die
+        // CHUB-spezifischen Aufrufe (controlOwner) nur fuer 'chargerhub' gelten.
+        $eebusCharger = $this->discoverListContract(NRGDASH_GUID_CHARGEREEBUSHUB, 'CHEEB_GetFunctions', 'eebuscharger');
+        $this->checkSourceCoverage('ChargerEEBUSHub', NRGDASH_GUID_CHARGEREEBUSHUB, count($eebusCharger));
+        $devices = array_merge($devices, $eebusCharger);
 
         // IHUBTILE_GetConsumers NUR noch fuer Eintraege, die durch KEINE der
         // permanenten Quellen oben abgedeckt sind (z.B. eine manuell in der
@@ -5057,6 +5082,12 @@ class NRGDashboardTile extends IPSModule
                 $entries = $entries['assignments'];
             }
             foreach ($entries as $entry) {
+                // Basisform (Type/Caption/PowerID/EnergyID/Measured) ohne
+                // function, z. B. WPHub, WPBsbLan: Basisfelder uebersetzen,
+                // statt vom Quellmodul eine Zweitform zu verlangen.
+                if (is_array($entry) && !isset($entry['function']) && isset($entry['Type'])) {
+                    $entry = $this->translateBaseEntry($entry, $id);
+                }
                 if (!is_array($entry) || !isset($entry['function'])) {
                     continue;
                 }
@@ -5072,6 +5103,21 @@ class NRGDashboardTile extends IPSModule
             }
         }
         return $results;
+    }
+
+    /**
+     * Uebersetzt die Basisform eines Eintrags (Type/Caption/PowerID/
+     * EnergyID/Measured) in function/label/powerID/energyImportID/measured;
+     * alle uebrigen Felder bleiben erhalten.
+     */
+    private function translateBaseEntry(array $e, int $instanceID): array
+    {
+        $e['function']       = (string) $e['Type'];
+        $e['label']          = $e['Caption'] ?? IPS_GetName($instanceID);
+        $e['powerID']        = $e['powerID'] ?? ($e['PowerID'] ?? 0);
+        $e['energyImportID'] = $e['energyImportID'] ?? ($e['EnergyID'] ?? 0);
+        $e['measured']       = $e['measured'] ?? ($e['Measured'] ?? true);
+        return $e;
     }
 
     /**

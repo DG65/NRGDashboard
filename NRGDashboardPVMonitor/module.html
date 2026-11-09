@@ -5224,8 +5224,10 @@
 
     function dismissTour() {
       document.getElementById('tourOverlay').classList.remove('show');
-      if (HOOK_PATH) {
-        fetch(HOOK_PATH + '?dismissTour=1').catch(function () {});
+      if (typeof requestAction === 'function') {
+        requestAction('dismissTour', '1');
+      } else if (HOOK_PATH) {
+        fetch(HOOK_PATH + '?dismissTour=1', { method: 'POST' }).catch(function () {});
       }
     }
 
