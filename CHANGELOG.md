@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.10.12 (2026-11-09)
+
+- **Fehler behoben: falscher Hinweis „WPHub liefert keine auswertbaren Geräte“.** Seit 0.10.11 wird eine von WPHub nur durchgereichte HeishaMon-Wärmepumpe nicht mehr doppelt gezeigt, die Abdeckungsprüfung zählte aber erst nach diesem Filter und meldete dann im Log alle fünf Minuten einen Fehlfund. Gezählt wird jetzt vor dem Filter. Nur das Log ist betroffen, die Anzeige war richtig.
+
 ## 0.10.11 (2026-11-09)
 
 - **EEBUS-Module werden automatisch gefunden (Meldung EMS, 09.11.2026).** Wärmepumpen über **WPEEBUSHub** (`WPEEB_GetFunctions`) erscheinen im Energiefluss, im WP-Monitor und im Heizungsschema, Wallboxen über **ChargerEEBUSHub** (`CHEEB_GetFunctions`) im Energiefluss als eigene Quelle. Ohne die Module passiert nichts.

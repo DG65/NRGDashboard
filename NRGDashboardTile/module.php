@@ -1391,6 +1391,9 @@ class NRGDashboardTile extends IPSModule
             NRGDASH_GUID_WPEEBUSHUB  => ['WPEEB_GetFunctions', 'WPEEBUSHub'],
         ] as $guid => [$fn, $label]) {
             $found = $this->discoverListContract($guid, $fn, 'heatpump');
+            // Abdeckung VOR dem Doppelungsfilter pruefen: eine durchgereichte,
+            // schon ueber HeishaMon bekannte Waermepumpe ist kein Fehlfund.
+            $this->checkSourceCoverage($label, $guid, count($found));
             // Dieselbe Waermepumpe nie doppelt: WPHub & Co. koennen eine
             // HeishaMon-Anlage nur durchreichen (managedBy), deren powerID
             // schon ueber HeishaMon im Energiefluss steht.
@@ -1404,7 +1407,6 @@ class NRGDashboardTile extends IPSModule
                 $pid = (int) ($e['powerID'] ?? 0);
                 return !($pid > 0 && isset($have[$pid]));
             }));
-            $this->checkSourceCoverage($label, $guid, count($found));
             $devices = array_merge($devices, $found);
         }
 
