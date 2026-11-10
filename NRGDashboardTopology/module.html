@@ -103,7 +103,7 @@
 </style>
 </head>
 <body>
-  <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+  <button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
   <div class="wrap" id="wrap">
     <svg id="svg" viewBox="0 0 700 700" preserveAspectRatio="xMidYMid meet">
       <defs>
@@ -135,14 +135,24 @@
       <div class="tour-title" id="tourTitle"></div>
       <div class="tour-text" id="tourText"></div>
       <div class="tour-nav">
-        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
       </div>
     </div>
   </div>
 
+  <!--NRGDASH_TEXTS-->
   <script>
+    // Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+    // Fehlt die Tabelle (z. B. beim Oeffnen der Datei ohne PHP), erscheint der englische Quelltext.
+    function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+    // sprintf light: ersetzt %s und %d der Reihe nach
+    function fmt(s) {
+      var a = Array.prototype.slice.call(arguments, 1), i = 0;
+      return s.replace(/%[sd]/g, function () { return a[i++]; });
+    }
+
     // Knoten-/Kreisgroessen bleiben FEST (immer gleich lesbar, unabhaengig
     // von der Partneranzahl) - skaliert wird stattdessen der ABSTAND
     // zwischen den Knoten (Ringradien + Canvas/viewBox), siehe
@@ -179,7 +189,7 @@
     var MODULE_DISPLAY = {
       goodweet: 'GoodWe ET', inverterhub: 'InverterHub', meterhub: 'MeterHub',
       chargerhub: 'ChargerHub', heishamon: 'HeishaMon', tessie: 'Tessie',
-      tibber: 'Tibber Grid Rewards', PVF: 'PV-Prognose'
+      tibber: 'Tibber Grid Rewards', PVF: tr('PV forecast')
     };
 
     var gradientCache = {};
@@ -193,12 +203,12 @@
     var TOUR_SHOWN_LOCAL = false;
     var TOUR_STEP = 0;
     var TOUR_STEPS = [
-      { title: 'Rechnet vorher aus, wie sie am besten hinpasst', text: 'Bevor diese Karte zeichnet, probiert sie automatisch alle Drehwinkel durch und wählt den, der die Kachelfläche am besten ausfüllt - jedes installierte Partnermodul erscheint dabei automatisch als eigener Knoten, ohne manuelle Verknüpfung.' },
-      { title: 'Frosted-Glass-Optik', text: 'Beschriftungen und Flächen nutzen einen weichen Glas-Look (angelehnt an aktuelle Betriebssystem-Designsprachen) statt flacher Kästen - und leben in derselben Koordinatenwelt wie die Knoten, skalieren also automatisch mit, ohne eigene Pixel-Umrechnung.' },
-      { title: 'Knoten bleiben immer gleich groß', text: 'Anders als man erwarten würde, schrumpfen die Knoten nicht mit steigender Modulanzahl - stattdessen wächst der Abstand zwischen ihnen. Die Karte bleibt dadurch bei 3 wie bei 15 Partnern gleich gut lesbar.' },
-      { title: 'Lesbare Beschriftungen, egal wie lang', text: 'Kurze Namen wie „WB 1" bleiben kompakt, lange wie „InverterHub WR1 (GoodWe)" weiten die Beschriftung automatisch auf oder brechen zweizeilig um - statt wie sonst üblich einfach abgeschnitten zu werden.' },
-      { title: 'Sektor-Einfärbung', text: 'Jede Modul-Kategorie bekommt eine dezente, transparente Tortenstück-Fläche im Hintergrund - die Gruppierung bleibt so auch ohne Verbindungslinien sofort erkennbar.' },
-      { title: 'Details per Hover', text: 'Fahren Sie mit der Maus über einen Knoten, um weitere Informationen dazu einzublenden.' }
+      { title: tr('Computes the best fit first'), text: tr('Before this map is drawn, it automatically tries all rotation angles and picks the one that fills the tile area best - every installed partner module appears as its own node, without any manual linking.') },
+      { title: tr('Frosted-glass look'), text: tr('Labels and areas use a soft glass look (inspired by current operating system design languages) instead of flat boxes - and they live in the same coordinate space as the nodes, so they scale along automatically, without any pixel conversion of their own.') },
+      { title: tr('Nodes always stay the same size'), text: tr('Unlike what you might expect, the nodes do not shrink as the number of modules grows - the spacing between them grows instead. The map stays equally readable with 3 as with 15 partners.') },
+      { title: tr('Readable labels, however long'), text: tr('Short names like “WB 1” stay compact, long ones like “InverterHub WR1 (GoodWe)” widen the label automatically or wrap onto two lines - instead of simply being cut off, as is usual elsewhere.') },
+      { title: tr('Sector tinting'), text: tr('Each module category gets a subtle, transparent pie-slice area in the background - the grouping stays recognizable at a glance even without connecting lines.') },
+      { title: tr('Details on hover'), text: tr('Move the mouse over a node to show more information about it.') }
     ];
 
     function renderTour() {
@@ -240,6 +250,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+      // feste Texte der Seite (im HTML englisch) in die Sprache der Oberflaeche bringen
+      document.getElementById('tourRestartBtn').title = tr('Show introduction tour');
+      document.getElementById('tourPrev').textContent = tr('Back');
+      document.getElementById('tourNext').textContent = tr('Next');
+      document.getElementById('tourDone').textContent = tr('✓ Understood, do not show again');
       document.getElementById('tourPrev').addEventListener('click', function () {
         if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
       });
@@ -401,7 +416,7 @@
       return 'healthy';
     }
 
-    var STATUS_TEXT = { healthy: 'gesund', unhealthy: 'gestört', missing: 'gelöscht', noresponse: 'ohne Antwort' };
+    var STATUS_TEXT = { healthy: tr('healthy'), unhealthy: tr('disrupted'), missing: tr('deleted'), noresponse: tr('no response') };
 
     /**
      * Zweistufiges Radial-Layout (Muster: geclusterte Radial-Layouts, z.B.
@@ -534,7 +549,7 @@
       // Zentrum (EMS)
       var centerCircle = svgEl('circle', { cx: CX, cy: CY, r: CENTER_R, fill: 'url(#gCenter)', stroke: 'rgba(255,255,255,.25)', 'stroke-width': 2, class: 'node-face' });
       nodesG.appendChild(centerCircle);
-      attachTooltip(centerCircle, 'EMS', d.emsLabel || 'Verbund-Koordinator');
+      attachTooltip(centerCircle, 'EMS', d.emsLabel || tr('Federation coordinator'));
       addLabelFO(labelsG, CX, CY, 90, 34, 'EMS');
 
       groups.forEach(function (grp, i) {
@@ -561,10 +576,10 @@
         nodesG.appendChild(svgEl('circle', { cx: hx, cy: dotY, r: 5, fill: hubColor }));
 
         var hubLabelText = isCluster ? (MODULE_DISPLAY[grp.module] || grp.module) : grp.members[0].label;
-        addLabelFO(labelsG, hx, hy, 130, isCluster ? 44 : 34, hubLabelText, false, isCluster ? (grp.members.length + ' Instanzen') : null);
+        addLabelFO(labelsG, hx, hy, 130, isCluster ? 44 : 34, hubLabelText, false, isCluster ? fmt(tr('%d instances'), grp.members.length) : null);
         attachTooltip(hubCircle, hubLabelText, isCluster
-          ? (grp.members.length + ' Instanzen · Status ' + STATUS_TEXT[hubStatus])
-          : ('Status: ' + STATUS_TEXT[hubStatus]));
+          ? fmt(tr('%d instances · status %s'), grp.members.length, STATUS_TEXT[hubStatus])
+          : fmt(tr('Status: %s'), STATUS_TEXT[hubStatus]));
 
         if (isCluster) {
           grp.members.forEach(function (member, j) {
@@ -585,7 +600,7 @@
             nodesG.appendChild(svgEl('circle', { cx: mx, cy: mDotY, r: 4, fill: mColor }));
 
             addLabelFO(labelsG, mx, my, 100, 26, member.label, true);
-            attachTooltip(mCircle, member.label, 'Status: ' + STATUS_TEXT[member.status]);
+            attachTooltip(mCircle, member.label, fmt(tr('Status: %s'), STATUS_TEXT[member.status]));
           });
         }
       });
@@ -606,7 +621,7 @@
         svg.style.display = 'none';
         status.style.display = 'none';
         empty.style.display = 'flex';
-        empty.textContent = (d && d.error) || 'Keine Daten verfügbar.';
+        empty.textContent = (d && d.error) || tr('No data available.');
         return;
       }
       empty.style.display = 'none';
@@ -617,7 +632,7 @@
       var dot = document.getElementById('dot');
       var allHealthy = d.total > 0 && d.healthy === d.total;
       dot.style.background = allHealthy ? '#4caf50' : (d.healthy > 0 ? '#c9a227' : '#e53935');
-      document.getElementById('summaryText').textContent = d.summary || (d.healthy + '/' + d.total + ' Partnerinstanzen gesund');
+      document.getElementById('summaryText').textContent = d.summary || fmt(tr('%d/%d partner instances healthy'), d.healthy, d.total);
     }
   </script>
 </body>

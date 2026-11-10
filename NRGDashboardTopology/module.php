@@ -18,14 +18,53 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/FormLayout.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardTopology extends IPSModule
 {
     use NRGDashFormStatus;
     use NRGDashFormLayout;
 
-    /** Wählbare Fachpanels für „Formular: Aufbau“: Beginn der Panel-Caption => stabiler Schlüssel (SUITE.md 3a). */
-    private const FORM_LAYOUT_PANELS = ['Datenquelle' => 'source', 'Details je Partner' => 'details', 'Darstellung' => 'style'];
+    /**
+     * Wählbare Fachpanels für „Formular: Aufbau“: Panel-name aus form.json => stabiler Schlüssel (SUITE.md 3a).
+     * Gefunden werden die Panels über ihren Namen, nie über die (übersetzte) Caption; die Schlüssel stehen so in der Property FormLayout.
+     */
+    private const FORM_LAYOUT_PANELS = ['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'];
+
+    /**
+     * Texte der Kachel (module.html): englische Quelltexte, die dort mit tr('...') benutzt werden. PHP liefert die
+     * Übersetzungen als Tabelle (window.NRGDASH_TEXTS), siehe NRGDASH_Text::kachelHtml(); der Prüfstand
+     * .tools/locale-pruefen.php vergleicht diese Liste mit module.html und locale.json.
+     */
+    private const TILE_TEXTS = [
+        'Show introduction tour',
+        'Back',
+        'Next',
+        '✓ Understood, do not show again',
+        'Computes the best fit first',
+        'Before this map is drawn, it automatically tries all rotation angles and picks the one that fills the tile area best - every installed partner module appears as its own node, without any manual linking.',
+        'Frosted-glass look',
+        'Labels and areas use a soft glass look (inspired by current operating system design languages) instead of flat boxes - and they live in the same coordinate space as the nodes, so they scale along automatically, without any pixel conversion of their own.',
+        'Nodes always stay the same size',
+        'Unlike what you might expect, the nodes do not shrink as the number of modules grows - the spacing between them grows instead. The map stays equally readable with 3 as with 15 partners.',
+        'Readable labels, however long',
+        'Short names like “WB 1” stay compact, long ones like “InverterHub WR1 (GoodWe)” widen the label automatically or wrap onto two lines - instead of simply being cut off, as is usual elsewhere.',
+        'Sector tinting',
+        'Each module category gets a subtle, transparent pie-slice area in the background - the grouping stays recognizable at a glance even without connecting lines.',
+        'Details on hover',
+        'Move the mouse over a node to show more information about it.',
+        'healthy',
+        'disrupted',
+        'deleted',
+        'no response',
+        'Status: %s',
+        '%d instances',
+        '%d instances · status %s',
+        'Federation coordinator',
+        'PV forecast',
+        'No data available.',
+        '%d/%d partner instances healthy',
+    ];
 
     private const EMS_GUID = '{31C61A7B-28C4-4F97-9651-1A64B3469E3C}';
 
@@ -46,15 +85,15 @@ class NRGDashboardTopology extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.6.6' => [
-            '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
+            '🪟 New: “Form: layout” at the very bottom of the form - choose for each section whether it is expanded, collapsed or hidden when opened, and at which position it appears (applies after “Apply changes” the next time the form is opened; hidden sections keep working).'
         ],
         '0.6.5' => [
-            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-            'Neu: Verbund-Gesundheit als Stern-Topologie um die EMS-Instanz - Partnermodule farbig nach Verbindungsstatus.',
+            'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+            '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+            '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+            '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what this tile does and what it is good for - meant for first contact, can be dismissed once.',
+            'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+            'New: federation health as a star topology around the EMS instance - partner modules colored by connection status.',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -73,14 +112,14 @@ class NRGDashboardTopology extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
     }
@@ -88,6 +127,7 @@ class NRGDashboardTopology extends IPSModule
     public function Create()
     {
         parent::Create();
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('EmsInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
@@ -122,6 +162,7 @@ class NRGDashboardTopology extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         // Verbindungsstatus kann sich haeufiger aendern als Energiewerte -
         // 60s-Takt statt der 5-Minuten der anderen beiden Module, plus ein
@@ -243,7 +284,7 @@ class NRGDashboardTopology extends IPSModule
             return;
         }
         header('Content-Type: text/html; charset=utf-8');
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>handleMessage(' . json_encode($payload) . ');'
                . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
@@ -335,14 +376,14 @@ class NRGDashboardTopology extends IPSModule
         // EMS 0.16.0: reiner Anzeige-Eintrag (kein Steuer-/Situations-
         // Vertrag, nicht Teil von PartnerCache/Discover()) - Casing 'PVF'
         // exakt wie von EMS_GetFederationHealth() geliefert.
-        'PVF'         => 'PV-Prognose',
+        'PVF'         => 'PV forecast',
     ];
 
     public function GetVisualizationTile()
     {
         $payload = $this->buildPayload();
         $this->updateInstanceStatus($payload);
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>handleMessage(' . json_encode($payload) . ');</script>';
         return $html;
     }
@@ -368,7 +409,7 @@ class NRGDashboardTopology extends IPSModule
     private function updateDiscoveryResultLabel(array $payload): void
     {
         if (!($payload['ok'] ?? false)) {
-            $this->UpdateFormField('DiscoveryResult', 'caption', '⚠️ ' . ($payload['error'] ?? 'Keine Verbindungsdaten verfügbar.'));
+            $this->UpdateFormField('DiscoveryResult', 'caption', '⚠️ ' . ($payload['error'] ?? NRGDASH_Text::t('No connection data available.')));
             return;
         }
         $names = array_map(static fn (array $n) => $n['label'], $payload['nodes'] ?? []);
@@ -382,18 +423,22 @@ class NRGDashboardTopology extends IPSModule
     {
         $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
-            return 'ℹ️ Noch nicht gesucht — Kachel öffnen oder Formular übernehmen.';
+            return NRGDASH_Text::t('ℹ️ Not searched yet — open the tile or apply the form.');
         }
         $names = json_decode((string) $this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
         $count = count($names);
         $icon = $count > 0 ? '✅' : '⚠️';
-        return sprintf('%s %d Partner gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+        // Einzahl/Mehrzahl als zwei vollständige Sätze (deutsch gleich)
+        if ($count === 1) {
+            return NRGDASH_Text::t('%s %d partner found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
+        }
+        return NRGDASH_Text::t('%s %d partners found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
     }
 
     private function formatPartnerNames(array $names, string $emsLabel): string
     {
         if (empty($names)) {
-            return sprintf('EMS-Instanz „%s“ gefunden, aber keine Partnermodule gemeldet.', $emsLabel);
+            return NRGDASH_Text::t('EMS instance “%s” found, but no partner modules reported.', $emsLabel);
         }
         return implode(', ', $names);
     }
@@ -406,7 +451,7 @@ class NRGDashboardTopology extends IPSModule
             }
             if (($el['name'] ?? '') === 'DiscoveryDetails') {
                 $names = json_decode((string) $this->ReadAttributeString('PartnerNamesCache'), true) ?: [];
-                $el['caption'] = empty($names) ? 'Noch keine Details - erst suchen.' : implode(', ', $names);
+                $el['caption'] = empty($names) ? NRGDASH_Text::t('No details yet - search first.') : implode(', ', $names);
             }
         }
         unset($el);
@@ -426,7 +471,7 @@ class NRGDashboardTopology extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     /**
@@ -441,32 +486,37 @@ class NRGDashboardTopology extends IPSModule
         $ids = @IPS_GetInstanceListByModuleID(self::EMS_GUID);
         $ids = is_array($ids) ? $ids : [];
         if (count($ids) === 0) {
-            return 'ℹ️ Keine EMS-Instanz gefunden - die Topologie zeigt die übrigen installierten NRG-Stack-Module ohne EMS als Mittelpunkt.';
+            return NRGDASH_Text::t('ℹ️ No EMS instance found - the topology shows the other installed NRG-Stack modules without EMS as the center.');
         }
         $cfg = $this->readIntProperty('EmsInstance', 0);
         $explicit = $cfg > 0 && IPS_InstanceExists($cfg) && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::EMS_GUID;
         $id = $this->EmsInstanceID();
         $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
         if (!$explicit && count($ids) > 1) {
-            return '⚠️ ' . count($ids) . ' EMS-Instanzen gefunden, keine ausgewählt - verwendet wird ' . $head . ' (bevorzugt eine gesunde). Bitte unten gezielt auswählen, z. B. bei Test- und Produktiv-EMS nebeneinander.';
+            return NRGDASH_Text::t('⚠️ %d EMS instances found, none selected - %s is used (a healthy one is preferred). Please choose one below, e.g. when running test and production EMS side by side.', count($ids), $head);
         }
-        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
-        if ($this->formInstanceState($id) !== 'aktiv') {
-            return '⚠️ EMS ' . $head . ' ' . $how . ', ist aber nicht aktiv - die Topologie zeigt den Zustand der Module, der Mittelpunkt liefert keine Live-Werte.';
+        // Logik nie am Anzeigetext: aktiv oder nicht, sagt formInstanceActive()
+        if (!$this->formInstanceActive($id)) {
+            return $explicit
+                ? NRGDASH_Text::t('⚠️ EMS %s selected, but it is not active - the topology shows the state of the modules, the center delivers no live values.', $head)
+                : NRGDASH_Text::t('⚠️ EMS %s detected automatically, but it is not active - the topology shows the state of the modules, the center delivers no live values.', $head);
         }
         if (!$explicit) {
             $this->hideFormField($elements, 'EmsInstance');
         }
-        return ($explicit ? '✏️' : '🔗') . ' EMS: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . ' - Mittelpunkt der Topologie, Gesundheit und Verbindungen aller Module werden von dort gruppiert.';
+        return $explicit
+            ? NRGDASH_Text::t('✏️ EMS: %s (own entry) - center of the topology, the health and connections of all modules are grouped from there.', $head)
+            : NRGDASH_Text::t('🔗 EMS: %s (detected automatically) - center of the topology, the health and connections of all modules are grouped from there.', $head);
     }
 
     public function GetConfigurationForm()
     {
-        $raw = str_replace('%%HOOK%%', '/hook/nrgdashtopology' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
-        $form = json_decode($raw, true);
+        $form = json_decode((string) file_get_contents(__DIR__ . '/form.json'), true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }
+        // Das Label mit dem Hook-Pfad enthält einen eingesetzten Wert: die Konsole fände den Text so nicht mehr, deshalb selbst übersetzen.
+        $this->setFormCaption($form['elements'], 'HookInfo', NRGDASH_Text::t('IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.', '/hook/nrgdashtopology' . $this->InstanceID));
 
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'EmsStatus', $this->emsStatusLine($form['elements']));
@@ -487,11 +537,11 @@ class NRGDashboardTopology extends IPSModule
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is in beta — feedback, bug reports and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHTOPO_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -515,10 +565,11 @@ class NRGDashboardTopology extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            ? NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
             : 'ℹ️ NRG-Stack Dashboard';
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            // Panel über den Namen finden, nie über die (übersetzte) Caption
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -537,12 +588,12 @@ class NRGDashboardTopology extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Zeigt den Gesundheitszustand aller installierten NRG-Stack-Module auf einen Blick, radial um das EMS gruppiert - je Instanz oder Modul-Cluster eine Statusfarbe.'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: sofort erkennen, ob irgendein Partnermodul nicht antwortet oder fehlt, statt jede Instanz einzeln durchzuklicken.'],
-                ['type' => 'Label', 'caption' => 'Der Status kommt vom EMS (bei genau einer installierten Instanz automatisch erkannt). NRGDashboardTile/Map zeigen ergänzend den eigentlichen Energiefluss statt nur den Gesundheitszustand.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'Shows the health of all installed NRG-Stack modules at a glance, grouped radially around EMS - one status color per instance or module cluster.'],
+                ['type' => 'Label', 'caption' => 'The benefit: see immediately whether any partner module is not responding or missing, instead of clicking through every instance one by one.'],
+                ['type' => 'Label', 'caption' => 'The status comes from EMS (detected automatically when exactly one instance is installed). NRGDashboardTile/Map additionally show the actual energy flow instead of just the health.'],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHTOPO_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -597,19 +648,20 @@ class NRGDashboardTopology extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => NRGDASH_Text::t('🆕 New since the version you last saw — please take a quick look and check your settings if needed:')]];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                // Zeilen stehen englisch in NEWS_VERSIONS; die Aufzählungspunkt-Marke ist kein Text
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHTOPO_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHTOPO_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -650,7 +702,7 @@ class NRGDashboardTopology extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -725,7 +777,7 @@ class NRGDashboardTopology extends IPSModule
         if ($emsID <= 0 || !function_exists('EMS_GetFederationHealth')) {
             return [
                 'ok'    => false,
-                'error' => 'Keine EMS-Instanz gefunden - bitte im Formular auswählen oder EMS installieren.',
+                'error' => NRGDASH_Text::t('No EMS instance found - please choose one in the form or install EMS.'),
             ];
         }
 
@@ -733,7 +785,7 @@ class NRGDashboardTopology extends IPSModule
         if (!is_array($health) || !isset($health['entries']) || !is_array($health['entries'])) {
             return [
                 'ok'    => false,
-                'error' => 'EMS_GetFederationHealth() lieferte keine auswertbaren Daten.',
+                'error' => NRGDASH_Text::t('EMS_GetFederationHealth() returned no usable data.'),
             ];
         }
 
@@ -744,7 +796,7 @@ class NRGDashboardTopology extends IPSModule
             $healthy = (bool) ($entry['healthy'] ?? false);
             $nodes[] = [
                 'key'    => $module . '_' . (int) ($entry['instanceID'] ?? 0),
-                'label'  => (string) ($entry['label'] ?? (self::MODULE_LABELS[$module] ?? $module)),
+                'label'  => (string) ($entry['label'] ?? NRGDASH_Text::t(self::MODULE_LABELS[$module] ?? $module)),
                 'module' => $module,
                 'status' => $status === 0 ? 'missing' : ($healthy ? 'healthy' : 'unhealthy'),
             ];
@@ -759,7 +811,7 @@ class NRGDashboardTopology extends IPSModule
             $module = (string) ($m['module'] ?? '');
             $nodes[] = [
                 'key'    => $module . '_' . (int) ($m['instanceID'] ?? 0) . '_noresponse',
-                'label'  => (string) ($m['label'] ?? (self::MODULE_LABELS[$module] ?? $module)),
+                'label'  => (string) ($m['label'] ?? NRGDASH_Text::t(self::MODULE_LABELS[$module] ?? $module)),
                 'module' => $module,
                 'status' => 'noresponse',
             ];
