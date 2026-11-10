@@ -5,6 +5,27 @@ declare(strict_types=1);
 // Prüfstand für libs/FormLayout.php ("Formular: Aufbau", SUITE.md 3a). Aufruf: php tests/formlayout.test.php
 require_once __DIR__ . '/../libs/FormLayout.php';
 
+// Die Texte der Traits stehen englisch im Code (Zweisprachigkeit). Der Prüfstand läuft weiter auf Deutsch: der Übersetzer
+// kommt aus der gebauten locale.json, und was die Symcon-Konsole selbst übersetzen würde (feste Beschriftungen), übersetzt konsole().
+$deTabelle = json_decode((string) file_get_contents(__DIR__ . '/../NRGDashboardTopology/locale.json'), true)['translations']['de'];
+NRGDASH_Text::setzen(fn (string $t): string => $deTabelle[$t] ?? $t);
+function konsole($n)
+{
+    global $deTabelle;
+    if (!is_array($n)) {
+        return $n;
+    }
+    $o = [];
+    foreach ($n as $k => $v) {
+        if ($k !== 'values' && is_string($v) && in_array($k, ['caption', 'label', 'suffix', 'prefix'], true)) {
+            $o[$k] = $deTabelle[$v] ?? $v;
+        } else {
+            $o[$k] = is_array($v) && $k !== 'values' ? konsole($v) : $v;
+        }
+    }
+    return $o;
+}
+
 final class LayoutStub
 {
     use NRGDashFormLayout;
@@ -15,7 +36,7 @@ final class LayoutStub
     public function ReadPropertyString(string $n): string { return $this->prop; }
     public function UpdateFormField(string $f, string $k, $v): void { $this->updated[] = [$f, $k, $v]; }
     private function formLayoutResetFunction(): string { return 'TEST_ResetFormLayout'; }
-    public function apply(array $el, array $panels): array { return $this->formLayoutApply($el, $panels); }
+    public function apply(array $el, array $panels): array { return konsole($this->formLayoutApply($el, $panels)); }
     public function reset(string $path, array $panels): string { return $this->formLayoutReset($path, $panels); }
 }
 
@@ -98,6 +119,22 @@ $t->prop = '[]';
 check('Formular ohne Fachpanel bleibt unverändert', $t->apply([['type' => 'Label', 'caption' => 'x']], $panels) === [['type' => 'Label', 'caption' => 'x']]);
 check('Neues Panel ohne Eintrag erscheint am Standardplatz', count(array_filter($t->apply($els, ['Alpha' => 'a', 'Beta' => 'b', 'Gamma' => 'c', 'Delta' => 'd']), fn ($e) => ($e['type'] ?? '') === 'ExpansionPanel')) === 5);
 
+echo "Panel-Namen statt Caption\n";
+$named = [
+    ['type' => 'ExpansionPanel', 'name' => 'PanelDoc', 'caption' => 'Docs', 'items' => []],
+    ['type' => 'ExpansionPanel', 'name' => 'PanelA', 'caption' => 'Beta (translated differently)', 'expanded' => true, 'items' => []],
+    ['type' => 'Button', 'caption' => 'After A'],
+    ['type' => 'ExpansionPanel', 'name' => 'PanelB', 'caption' => 'Alpha', 'expanded' => false, 'items' => []],
+];
+$t = new LayoutStub();
+$t->prop = json_encode([['Key' => 'b', 'Pos' => 1, 'Opened' => true], ['Key' => 'a', 'Pos' => 2]]);
+$out = $t->apply($named, ['PanelA' => 'a', 'PanelB' => 'b']);
+check('Reihenfolge nach Position über name: PanelB, dann PanelA mit Folgeelement', array_map(fn ($e) => $e['name'] ?? $e['caption'], array_slice($out, 0, 4)) === ['PanelDoc', 'PanelB', 'PanelA', 'After A']);
+check('name-Panel ohne Doku-Panel im Schlüsselsatz bleibt Kopf (Doc fest oben)', $out[0]['name'] === 'PanelDoc');
+check('Aufklappen gilt für das per name gefundene Panel', $out[1]['expanded'] === true);
+$mixed = $t->apply($named, ['PanelA' => 'a', 'Alpha' => 'b']);
+check('gemischt: Panel ohne Namensfund fällt auf Caption-Anfang zurück', count(array_filter($mixed, fn ($e) => ($e['type'] ?? '') === 'ExpansionPanel')) === 4);
+
 echo "Reset\n";
 $tmp = tempnam(sys_get_temp_dir(), 'fl');
 file_put_contents($tmp, json_encode(['elements' => $els]));
@@ -111,7 +148,8 @@ check('Reset gibt Klartext mit Übernehmen-Hinweis', str_contains($msg, 'Überne
 echo "Echte Formulare der Module\n";
 $expect = [
     'Map' => [['Datenquelle' => 'source', 'Details je Kategorie' => 'details', 'Darstellung' => 'style'], ['source', 'details', 'style']],
-    'Topology' => [['Datenquelle' => 'source', 'Details je Partner' => 'details', 'Darstellung' => 'style'], ['source', 'details', 'style']],
+    // Topology findet seine Panels über name (Prüfstand läuft mit der englischen form.json + Konsolen-Übersetzung)
+    'Topology' => [['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'], ['source', 'details', 'style']],
     'Tile' => [['Automatisch gefundene Geräte' => 'devices', 'Manuelle Datenpunkte' => 'manual', 'Weitere Verbraucher' => 'consumers', 'Fahrzeuge' => 'vehicles', 'Gesundheit / Diagnose' => 'health', 'Darstellung' => 'style'], ['devices', 'manual', 'consumers', 'vehicles', 'health', 'style']],
 ];
 foreach ($expect as $mod => [$map, $keys]) {

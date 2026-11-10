@@ -2,11 +2,15 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/NRGDASH_Text.php';
+
 /**
  * Live berechnete Verbindungs-Statuszeilen fuers Konfigurationsformular
  * (SUITE.md, "Verbund-Verbindungen im Formular sichtbar machen", 21.09.2026).
  * Vier Zustaende: ✅ verbunden (mit Instanz und uebernommenen Werten), ⚠️ verbunden/
  * mehrdeutig/nichts Brauchbares, ℹ️ nicht gefunden (und was dann gilt).
+ * Texte englisch im Code, deutsche Fassung in libs/locale.json (NRGDASH_Text). Logik nie am angezeigten Text:
+ * ob eine Instanz aktiv ist, sagt formInstanceActive(), nicht der Vergleich mit formInstanceState().
  */
 trait NRGDashFormStatus
 {
@@ -45,22 +49,51 @@ trait NRGDashFormStatus
         return false;
     }
 
-    /** "#1234 „Name“" - fuer die Statuszeilen. */
+    /**
+     * Setzt nur die Beschriftung des Elements mit dem Namen $name (rekursiv), ohne die Statusfarbe von setFormStatusLine().
+     * Gedacht fuer feste Formulartexte mit eingesetztem Wert, die die Konsole so nicht mehr selbst uebersetzen kann.
+     */
+    private function setFormCaption(array &$items, string $name, string $caption): bool
+    {
+        foreach ($items as &$el) {
+            if (!is_array($el)) {
+                continue;
+            }
+            if (($el['name'] ?? null) === $name) {
+                $el['caption'] = $caption;
+                return true;
+            }
+            foreach (['items', 'elements'] as $key) {
+                if (isset($el[$key]) && is_array($el[$key]) && $this->setFormCaption($el[$key], $name, $caption)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** "#1234 „Name“" - fuer die Statuszeilen (die Anfuehrungszeichen der Sprache stehen in der Vorlage). */
     private function formInstanceLabel(int $id): string
     {
         if ($id <= 0 || !@IPS_InstanceExists($id)) {
             return '#' . $id;
         }
-        return '#' . $id . ' „' . IPS_GetName($id) . '“';
+        return NRGDASH_Text::t('#%d “%s”', $id, IPS_GetName($id));
     }
 
-    /** Instanzstatus als kurzer Text (102 = aktiv). */
+    /** true, wenn die Instanz existiert und aktiv ist (Status 102). Fuer Vergleiche; nie den Anzeigetext vergleichen. */
+    private function formInstanceActive(int $id): bool
+    {
+        return $id > 0 && @IPS_InstanceExists($id) && ((int) (IPS_GetInstance($id)['InstanceStatus'] ?? 0)) === 102;
+    }
+
+    /** Instanzstatus als kurzer Text (102 = aktiv), nur zur Anzeige. */
     private function formInstanceState(int $id): string
     {
         if ($id <= 0 || !@IPS_InstanceExists($id)) {
-            return 'unbekannt';
+            return NRGDASH_Text::t('unknown');
         }
-        return ((int) (IPS_GetInstance($id)['InstanceStatus'] ?? 0)) === 102 ? 'aktiv' : 'nicht aktiv';
+        return $this->formInstanceActive($id) ? NRGDASH_Text::t('active') : NRGDASH_Text::t('not active');
     }
 
     /**
@@ -95,14 +128,14 @@ trait NRGDashFormStatus
      */
     private function autoFieldLine(array &$elements, string $field, string $label, int $explicit, int $resolved, string $source, string $noneText, bool $isInstance = true): string
     {
-        $what = $isInstance ? $this->formInstanceLabel($resolved) : ('#' . $resolved . ' „' . (@IPS_ObjectExists($resolved) ? IPS_GetName($resolved) : '?') . '“');
+        $what = $isInstance ? $this->formInstanceLabel($resolved) : NRGDASH_Text::t('#%d “%s”', $resolved, @IPS_ObjectExists($resolved) ? IPS_GetName($resolved) : '?');
         if ($explicit > 0) {
-            return '✏️ ' . $label . ': ' . $what . ' (eigene Angabe)';
+            return NRGDASH_Text::t('✏️ %s: %s (own entry)', $label, $what);
         }
         if ($resolved > 0) {
             $this->hideFormField($elements, $field);
-            return '🔗 ' . $label . ': ' . $what . ' (automatisch von ' . $source . ')';
+            return NRGDASH_Text::t('🔗 %s: %s (detected automatically from %s)', $label, $what, $source);
         }
-        return 'ℹ️ ' . $label . ': ' . $noneText;
+        return NRGDASH_Text::t('ℹ️ %s: %s', $label, $noneText);
     }
 }
