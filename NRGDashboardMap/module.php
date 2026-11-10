@@ -16,6 +16,7 @@ declare(strict_types=1);
  * MeterHub-Instanzen geloest hat.
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 require_once __DIR__ . '/../libs/FormLayout.php';
 
 class NRGDashboardMap extends IPSModule
@@ -107,6 +108,8 @@ class NRGDashboardMap extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('InverterInstance', 0);
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
@@ -141,6 +144,8 @@ class NRGDashboardMap extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetTimerInterval('NRGDASHMAP_Discover', 10 * 60 * 1000);
         $this->Discover();
     }

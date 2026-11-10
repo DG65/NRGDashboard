@@ -17,6 +17,7 @@ declare(strict_types=1);
  * live verifizieren zu können (Verbund-Arbeitsweise dieser Sitzung).
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardPVMonitor extends IPSModule
 {
@@ -240,6 +241,8 @@ class NRGDashboardPVMonitor extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('PvPowerID', 0);
         // Einheit der Leistungsvariablen (24.10.2026): 0 = Automatisch (Profil-Suffix kW/MW), 1 = Watt, 2 = Kilowatt
@@ -366,6 +369,8 @@ class NRGDashboardPVMonitor extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         $this->SetStatus(102);
         // Archivbasierte Kachel (kein VM_UPDATE-Ereignis wie beim Energiefluss-

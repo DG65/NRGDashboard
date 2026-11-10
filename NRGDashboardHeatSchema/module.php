@@ -29,6 +29,7 @@ declare(strict_types=1);
  * einer Nullanzeige.
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardHeatSchema extends IPSModule
 {
@@ -180,6 +181,8 @@ class NRGDashboardHeatSchema extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterAttributeString('SeenNews', '');
         $this->RegisterAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, false);
@@ -477,6 +480,8 @@ class NRGDashboardHeatSchema extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
         // Standalone-Webseite fuer IPSView/Browser (WebView/Popup) - Muster

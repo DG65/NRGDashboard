@@ -36,6 +36,7 @@ declare(strict_types=1);
  * bewusst noch nicht gebaut - naechster Ausbauschritt.
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardWPMonitor extends IPSModule
 {
@@ -170,6 +171,8 @@ class NRGDashboardWPMonitor extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
         // Standalone-Webseite (Hook) abschaltbar (09.11.2026, Forum doctee #232):
@@ -220,6 +223,8 @@ class NRGDashboardWPMonitor extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
         // Standalone-Webseite fuer IPSView/Browser (WebView/Popup) - Muster

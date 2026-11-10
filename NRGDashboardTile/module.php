@@ -45,6 +45,7 @@ define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
 define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 require_once __DIR__ . '/../libs/FormLayout.php';
 
 class NRGDashboardTile extends IPSModule
@@ -229,6 +230,8 @@ class NRGDashboardTile extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterAttributeString('DeviceCache', '[]');
         $this->RegisterAttributeString('DiagnosticsCache', '[]');
@@ -561,6 +564,8 @@ class NRGDashboardTile extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetTimerInterval('NRGDASH_Refresh', 5 * 60 * 1000);
         // Taeglich pruefen, ob ein neuer BDEW-Quartalswert faellig ist (die
         // Pruefung selbst ist billig, der eigentliche HTTP-Abruf laeuft nur

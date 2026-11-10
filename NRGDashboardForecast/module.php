@@ -34,6 +34,7 @@ declare(strict_types=1);
  * ueber eigene ActualPV/ActualLoad-Variablen komplett selbst.
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardForecast extends IPSModule
 {
@@ -154,6 +155,8 @@ class NRGDashboardForecast extends IPSModule
     public function Create()
     {
         parent::Create();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         // Reine Verdrahtung (Quell-/Variablenauswahl) bleibt Property - nur
         // die Konsole bietet SelectInstance/SelectVariable, eine
@@ -344,6 +347,8 @@ class NRGDashboardForecast extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
+        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         // Profile auch hier (idempotent): neue Zuordnungen in geteilten Profilen (z. B. NRGDASHFC.View 2 "Tagesbalken") kommen sonst erst bei
         // einer NEUEN Instanz an, ein Bibliotheks-Update plus "Übernehmen" bei bestehenden Instanzen reichte nicht (Forum hfichtinger #99).
         $this->ensureProfiles();
@@ -1112,7 +1117,7 @@ class NRGDashboardForecast extends IPSModule
         $staleNote = ($cfg > 0 && $explicit === 0)
             ? ' Hinweis: In den Einstellungen ist die nicht mehr vorhandene Instanz #' . $cfg . ' hinterlegt, sie wird ignoriert - es gilt die automatische Erkennung, das ist unschädlich.'
             : '';
-        return $line . ' (' . $this->formInstanceState($id) . ')' . ($this->formInstanceState($id) === 'aktiv' ? '' : ' ⚠️ nicht aktiv') . $staleNote;
+        return $line . ' (' . $this->formInstanceState($id) . ')' . ($this->formInstanceActive($id) ? '' : ' ⚠️ nicht aktiv') . $staleNote;
     }
 
     private function forecastSourceStatusLine(array &$elements): string
