@@ -62,7 +62,7 @@
         },
         {
           "type": "Label",
-          "caption": "✨ Detail (spot price, 13.09.2026): if the module “NRG-Stack Börsenpreis” is installed, the “Electricity price” tab additionally shows the day-ahead spot price - even without Tibber; today/tomorrow directly from the source, past days from the archive of the spot price module (from 0.2.0). Negative quarter-hours (for which newer installations get no feed-in tariff under § 51 EEG) are shaded red, hourly values are marked as such in the tooltip. The spot price is net, without taxes and grid fees, and is therefore never used for costs."
+          "caption": "✨ Detail (spot price, 13.09.2026): if the NRG-Stack spot price module is installed, the “Electricity price” tab additionally shows the day-ahead spot price - even without Tibber; today/tomorrow directly from the source, past days from the archive of the spot price module (from 0.2.0). Negative quarter-hours (for which newer installations get no feed-in tariff under § 51 EEG) are shaded red, hourly values are marked as such in the tooltip. The spot price is net, without taxes and grid fees, and is therefore never used for costs."
         },
         {
           "type": "Button",
