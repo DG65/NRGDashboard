@@ -2179,9 +2179,8 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     /**
      * Trockenlauf / "nur beobachtend" aus EMS_GetCurrentDecision() (Vertrag 1.1:
-     * dryRun, observeOnly, observeReason). Aelteres EMS ohne diese Felder: Rueckfall
-     * auf den Statustext-Praefix "Trockenlauf" / "Nur beobachtend" - entfaellt, sobald
-     * alle EMS-Instanzen 1.1 liefern.
+     * dryRun, observeOnly, observeReason). Die Logik haengt nur an diesen Feldern; der fruehere
+     * Textrueckfall ueber den Statustext ist entfernt (EMS liefert ueberall Vertrag 1.1).
      */
     private function BuildDecisionFlags(int $emsId): array
     {
@@ -2193,18 +2192,9 @@ class NRGDashboardPVMonitor extends IPSModule
         if (!is_array($d)) {
             return $out;
         }
-        if (array_key_exists('dryRun', $d) || array_key_exists('observeOnly', $d)) {
-            $out['dryRun'] = (bool) ($d['dryRun'] ?? false);
-            $out['observeOnly'] = (bool) ($d['observeOnly'] ?? false);
-            $out['observeReason'] = (string) ($d['observeReason'] ?? '');
-            return $out;
-        }
-        $text = (string) ($d['reason'] ?? $d['status'] ?? '');
-        $out['dryRun'] = stripos($text, 'Trockenlauf') === 0;
-        if (stripos($text, 'Nur beobachtend') === 0) {
-            $out['observeOnly'] = true;
-            $out['observeReason'] = $text;
-        }
+        $out['dryRun'] = (bool) ($d['dryRun'] ?? false);
+        $out['observeOnly'] = (bool) ($d['observeOnly'] ?? false);
+        $out['observeReason'] = (string) ($d['observeReason'] ?? '');
         return $out;
     }
 
