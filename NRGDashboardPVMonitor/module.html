@@ -5046,7 +5046,7 @@
       head.appendChild(tog);
       // Sofort aktualisieren: Tagesplan und (ohne ungespeicherte Aenderungen) die Eintraege neu vom EMS holen. Das EMS rechnet den Plan
       // in einem Zyklus (ca. 30 s) neu - der Knopf holt den jeweils aktuellen Stand, er stoesst keine Neuberechnung an.
-      var refr = mpEl('button', 'qday', manualRefreshing ? tr('Refreshing…') : tr('Refresh now'));
+      var refr = mpEl('button', 'qday', manualRefreshing ? tr('Refreshing…') : tr('Refresh immediately'));
       refr.disabled = manualRefreshing || manualSaving;
       refr.onclick = function () {
         manualRefreshing = true; manualStatus = '';

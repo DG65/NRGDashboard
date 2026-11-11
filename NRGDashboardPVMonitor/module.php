@@ -369,7 +369,7 @@ class NRGDashboardPVMonitor extends IPSModule
         'Save and finish',
         'Finish editing',
         'Refreshing…',
-        'Refresh now',
+        'Refresh immediately',
         'Drag a time range in the chart, then choose the action. Drag the edges = lengthen/shorten, drag the bar = move. Takes precedence over the automatic planning, but not over § 14a and Grid Rewards; no discharging into the grid.',
         'Entered time ranges appear as bars in the chart. “Edit” enables dragging in the chart.',
         'Power in W, 0 = as much as possible',
