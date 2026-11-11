@@ -195,3 +195,23 @@ if (is_file($root . '/libs/NRGDASH_Text.php')) {
     preg_match('/window\.NRGDASH_TEXTS = (\{.*?\});<\/script>/s', $html, $mm);
     echo "=== Kachel-Texttabelle\n" . ($mm[1] ?? 'FEHLT') . "\n";
 }
+
+// Stolperstein 24: Zahl der echten Translate()-Anfragen bei vielen t()-Aufrufen (nur mit drittem Argument "messen")
+if (($argv[3] ?? '') === 'messen' && class_exists('NRGDASH_Text')) {
+    $GLOBALS['W'] = ['ems' => $ems1];
+    $m = new NRGDashboardPVMonitor();
+    $m->Create();
+    $m->ApplyChanges();
+    NRGDASH_Text::$anfragen = 0;
+    for ($i = 0; $i < 50; $i++) {
+        $m->GetConfigurationForm();
+        $m->GetVisualizationTile();
+        $m->ResetTour();
+    }
+    $erst = NRGDASH_Text::$anfragen;
+    for ($i = 0; $i < 50; $i++) {
+        $m->GetConfigurationForm();
+        $m->GetVisualizationTile();
+    }
+    echo "MESSUNG Translate()-Anfragen: nach 50 Durchlaeufen $erst, nach weiteren 50 Durchlaeufen " . NRGDASH_Text::$anfragen . "\n";
+}
