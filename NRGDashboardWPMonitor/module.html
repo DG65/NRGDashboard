@@ -356,33 +356,33 @@
 </style>
 </head>
 <body>
-<button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
 <div class="wrap">
   <div id="bar">
     <select id="type" class="sel">
-      <option value="day">Tag (Verlauf)</option>
-      <option value="week">Woche (Energie)</option>
-      <option value="month">Monat (Energie)</option>
-      <option value="year">Jahr (Energie)</option>
-      <option value="all">Gesamt (Energie)</option>
-      <option value="custom">Benutzerdefiniert</option>
+      <option value="day">Day (history)</option>
+      <option value="week">Week (energy)</option>
+      <option value="month">Month (energy)</option>
+      <option value="year">Year (energy)</option>
+      <option value="all">Total (energy)</option>
+      <option value="custom">Custom</option>
     </select>
-    <button id="prev" class="nav" title="Zurück">&#9664;</button>
+    <button id="prev" class="nav" title="Back">&#9664;</button>
     <span id="periodLabel" class="pick" style="display:none; cursor:default;"></span>
     <input id="pick" class="pick" type="date">
     <input id="pickTo" class="pick" type="date" style="display:none">
-    <button id="next" class="nav" title="Vor">&#9654;</button>
+    <button id="next" class="nav" title="Forward">&#9654;</button>
     <span id="quick"></span>
   </div>
   <div id="body">
     <div id="tabsWrap" data-anim="spring">
-      <button id="tabsToggle" title="Reiterleiste ein-/ausblenden">&#9664;</button>
+      <button id="tabsToggle" title="Show/hide tab bar">&#9664;</button>
       <div id="tabs">
-        <button class="tab active" data-tab="verlauf">Verlauf</button>
-        <button class="tab" data-tab="heizkurven">Heizkurven</button>
-        <button class="tab tabHidden" data-tab="bedienung">Bedienung</button>
-        <button class="tab tabHidden" data-tab="automatik">Automatik</button>
-        <button class="tab tabHidden" data-tab="zeitplan">Zeitplan</button>
+        <button class="tab active" data-tab="verlauf">History</button>
+        <button class="tab" data-tab="heizkurven">Heating curves</button>
+        <button class="tab tabHidden" data-tab="bedienung">Controls</button>
+        <button class="tab tabHidden" data-tab="automatik">Automation</button>
+        <button class="tab tabHidden" data-tab="zeitplan">Schedule</button>
       </div>
     </div>
     <div id="chartcol">
@@ -412,7 +412,7 @@
       </div>
     </div>
     <div id="curveActions">
-      <button id="curveSaveBtn" class="curveSave" type="button" disabled>Übernehmen</button>
+      <button id="curveSaveBtn" class="curveSave" type="button" disabled>Apply</button>
       <span id="curveStatus"></span>
       <span id="curveShiftPresets"></span>
       <span id="curveQuiet"></span>
@@ -423,7 +423,7 @@
        (HEISHA_GetOperations/HEISHA_SetOperation). Kacheln nur fuer Werte,
        die die Anlage tatsaechlich meldet. -->
   <div id="opsPanel">
-    <div id="opsBanner">Notbetrieb aktiv - die Anlage heizt elektrisch mit dem Heizstab.</div>
+    <div id="opsBanner">Emergency mode active - the unit is heating electrically with the heating element.</div>
     <div id="opsGrid"></div>
   </div>
   <!-- Reiter "Automatik" (17.10.2026) - Heizungs-Automatik von HeishaMon (heatpump 1.15) -->
@@ -442,14 +442,47 @@
       <div class="tour-title" id="tourTitle"></div>
       <div class="tour-text" id="tourText"></div>
       <div class="tour-nav">
-        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
       </div>
     </div>
   </div>
 </div>
+<!--NRGDASH_TEXTS-->
 <script>
+  // Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+  // Fehlt die Tabelle (z. B. beim Oeffnen der Datei ohne PHP), erscheint der englische Quelltext.
+  function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+  // sprintf light: ersetzt %s und %d der Reihe nach, %1$s/%2$s ... nach Nummer (Datums-/Wortstellung je Sprache)
+  function fmt(s) {
+    var a = Array.prototype.slice.call(arguments, 1), i = 0;
+    return s.replace(/%(?:(\d+)\$)?[sd]/g, function (m, n) { return n ? a[+n - 1] : a[i++]; });
+  }
+  // Sprache fuer Datum und Uhrzeit (toLocaleString): englisch en-GB, deutsch de-DE
+  var LOCALE = tr('en-GB');
+  // feste Texte der Seite (im HTML englisch) in die Sprache der Oberflaeche bringen
+  document.getElementById('tourRestartBtn').title = tr('Show introduction tour');
+  document.querySelector('#type option[value="day"]').textContent = tr('Day (history)');
+  document.querySelector('#type option[value="week"]').textContent = tr('Week (energy)');
+  document.querySelector('#type option[value="month"]').textContent = tr('Month (energy)');
+  document.querySelector('#type option[value="year"]').textContent = tr('Year (energy)');
+  document.querySelector('#type option[value="all"]').textContent = tr('Total (energy)');
+  document.querySelector('#type option[value="custom"]').textContent = tr('Custom');
+  document.getElementById('prev').title = tr('Back');
+  document.getElementById('next').title = tr('Forward');
+  document.getElementById('tabsToggle').title = tr('Show/hide tab bar');
+  document.querySelector('button.tab[data-tab="verlauf"]').textContent = tr('History');
+  document.querySelector('button.tab[data-tab="heizkurven"]').textContent = tr('Heating curves');
+  document.querySelector('button.tab[data-tab="bedienung"]').textContent = tr('Controls');
+  document.querySelector('button.tab[data-tab="automatik"]').textContent = tr('Automation');
+  document.querySelector('button.tab[data-tab="zeitplan"]').textContent = tr('Schedule');
+  document.getElementById('curveSaveBtn').textContent = tr('Apply');
+  document.getElementById('opsBanner').textContent = tr('Emergency mode active - the unit is heating electrically with the heating element.');
+  document.getElementById('tourPrev').textContent = tr('Back');
+  document.getElementById('tourNext').textContent = tr('Next');
+  document.getElementById('tourDone').textContent = tr('✓ Understood, do not show again');
+
   var lastData = null, chart = null, chartEngine = null, idx = 0;
   var curView = 'day';
   var viewRef = new Date();
@@ -530,11 +563,11 @@
 
   function renderKpi(kpi) {
     var rows = [
-      ['copCurrent', 'COP aktuell', ''],
-      ['dailyAz', 'Tages-AZ', ''],
-      ['operationsHours', 'Betriebsstd.', 'h'],
-      ['compressorStarts', 'Starts', ''],
-      ['avgRuntimeMin', 'Ø Laufzeit', 'min']
+      ['copCurrent', tr('Current COP'), ''],
+      ['dailyAz', tr('Daily SPF'), ''],
+      ['operationsHours', tr('Op. hours'), 'h'],
+      ['compressorStarts', tr('Starts'), ''],
+      ['avgRuntimeMin', tr('Ø runtime'), 'min']
     ];
     var el = document.getElementById('kpiRow');
     el.innerHTML = '';
@@ -546,7 +579,7 @@
       box.className = 'kpi';
       var val = document.createElement('div');
       val.className = 'val';
-      val.textContent = (typeof v === 'number' ? v.toLocaleString('de-DE') : v) + (r[2] ? ' ' + r[2] : '');
+      val.textContent = (typeof v === 'number' ? v.toLocaleString(LOCALE) : v) + (r[2] ? ' ' + r[2] : '');
       var lbl = document.createElement('div');
       lbl.className = 'lbl'; lbl.textContent = r[1];
       box.appendChild(val); box.appendChild(lbl);
@@ -557,13 +590,13 @@
     // der sichtbaren Balken der aktuellen Energie-Ansicht.
     var kwh = currentKwhTotals();
     if (kwh) {
-      [['electric', 'kWh Strom'], ['thermal', 'kWh Wärme']].forEach(function (r) {
+      [['electric', tr('kWh electricity')], ['thermal', tr('kWh heat')]].forEach(function (r) {
         var v = kwh[r[0]];
         if (v === null || v === undefined) { return; }
         var box = document.createElement('div');
         box.className = 'kpi';
         var val = document.createElement('div');
-        val.className = 'val'; val.textContent = v.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+        val.className = 'val'; val.textContent = v.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
         var lbl = document.createElement('div');
         lbl.className = 'lbl'; lbl.textContent = r[1];
         box.appendChild(val); box.appendChild(lbl);
@@ -581,7 +614,7 @@
     var rows = buildEnergyRows();
     var sum = { electric: null, thermal: null };
     rows.series.forEach(function (s) {
-      var key = (s.name === 'El. Energie') ? 'electric' : (s.name === 'Therm. Energie' ? 'thermal' : null);
+      var key = s.key || null; // stabiler Schluessel, nie der (uebersetzte) Anzeigename
       if (!key) { return; }
       var total = 0, any = false;
       s.data.forEach(function (v) { if (v !== null && v !== undefined) { total += v; any = true; } });
@@ -634,11 +667,11 @@
 
   function daySeriesFor(d) {
     var series = [];
-    if (lastData.hasElectric) { series.push({ name: 'El. Leistung', data: seriesOrEmpty(d.electricPower), axis: 0, color: '#E8823C' }); }
-    if (lastData.hasThermal) { series.push({ name: 'Therm. Leistung', data: seriesOrEmpty(d.thermalPower), axis: 0, color: '#E0503C' }); }
+    if (lastData.hasElectric) { series.push({ name: tr('El. power'), data: seriesOrEmpty(d.electricPower), axis: 0, color: '#E8823C' }); }
+    if (lastData.hasThermal) { series.push({ name: tr('Therm. power'), data: seriesOrEmpty(d.thermalPower), axis: 0, color: '#E0503C' }); }
     if (lastData.hasFlowTemps) {
-      series.push({ name: 'Vorlauf', data: seriesOrEmpty(d.mainOutletTemp), axis: 1, color: '#e0503c', dashed: true });
-      series.push({ name: 'Rücklauf', data: seriesOrEmpty(d.mainInletTemp), axis: 1, color: '#4a90d9', dashed: true });
+      series.push({ name: tr('Flow'), data: seriesOrEmpty(d.mainOutletTemp), axis: 1, color: '#e0503c', dashed: true });
+      series.push({ name: tr('Return'), data: seriesOrEmpty(d.mainInletTemp), axis: 1, color: '#4a90d9', dashed: true });
     }
     // smooth (23.09.2026, Dietmar: "waere als Bezier oder als schoen
     // geschwungene Linie wesentlich huebscher") - nur die Aussentemperatur,
@@ -668,9 +701,9 @@
       // spuerbar staerker ab, OHNE das Mittelungsfenster selbst (~1h) zu
       // vergroessern.
       var smoothed1h = movingAverage(movingAverage(extended, 12), 12);
-      series.push({ name: 'Außentemp.', data: movingAverage(extended, 12).filter(inDay), axis: 1, color: '#5FCB6B', dotted: true, smooth: true });
-      series.push({ name: 'Außentemp. Ø1h', data: smoothed1h.filter(inDay), axis: 1, color: '#3FA5C4', smooth: true });
-      series.push({ name: 'Außentemp. Ø24h', data: movingAverage(extended, 288).filter(inDay), axis: 1, color: '#B15FCB', smooth: true });
+      series.push({ name: tr('Outdoor temp.'), data: movingAverage(extended, 12).filter(inDay), axis: 1, color: '#5FCB6B', dotted: true, smooth: true });
+      series.push({ name: tr('Outdoor temp. Ø1h'), data: smoothed1h.filter(inDay), axis: 1, color: '#3FA5C4', smooth: true });
+      series.push({ name: tr('Outdoor temp. Ø24h'), data: movingAverage(extended, 288).filter(inDay), axis: 1, color: '#B15FCB', smooth: true });
     }
     return series;
   }
@@ -723,7 +756,7 @@
         formatter: function (params) {
           return params.map(function (p, i) {
             var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
-            var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString('de-DE') + '</div>' : '';
+            var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString(LOCALE) + '</div>' : '';
             return head + '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
           }).join('');
         }
@@ -768,7 +801,7 @@
           // JS-Datum statt Highcharts-API.
           var dt = new Date(this.x);
           var p2 = function (n) { return ('0' + n).slice(-2); };
-          var lines = ['<b>' + p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes()) + '</b>'];
+          var lines = ['<b>' + fmt(tr('%1$s/%2$s/%3$s %4$s:%5$s'), p2(dt.getDate()), p2(dt.getMonth() + 1), dt.getFullYear(), p2(dt.getHours()), p2(dt.getMinutes())) + '</b>'];
           this.points.forEach(function (p) {
             lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
           });
@@ -792,10 +825,10 @@
   // NRGDashboardPVMonitor::buildEnergyRows()/energySeriesFor(): EIN
   // Archivdurchlauf pro Serie liefert alle Ansichten, hier wird nur noch
   // clientseitig gruppiert.
-  var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-  var MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-  var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  var WEEKDAY_NAMES_FULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+  var MONTH_NAMES = [tr('Jan'), tr('Feb'), tr('Mar'), tr('Apr'), tr('May'), tr('Jun'), tr('Jul'), tr('Aug'), tr('Sep'), tr('Oct'), tr('Nov'), tr('Dec')];
+  var MONTH_NAMES_FULL = [tr('January'), tr('February'), tr('March'), tr('April'), tr('May'), tr('June'), tr('July'), tr('August'), tr('September'), tr('October'), tr('November'), tr('December')];
+  var WEEKDAY_NAMES = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
+  var WEEKDAY_NAMES_FULL = [tr('Monday'), tr('Tuesday'), tr('Wednesday'), tr('Thursday'), tr('Friday'), tr('Saturday'), tr('Sunday')];
 
   function startOfWeek(date) {
     var r = new Date(date);
@@ -821,8 +854,8 @@
 
   function energySeriesFor() {
     var series = [];
-    if (lastData.hasElectric) { series.push({ name: 'El. Energie', color: '#E8823C', map: (lastData.energy && lastData.energy.electric) || {} }); }
-    if (lastData.hasThermal) { series.push({ name: 'Therm. Energie', color: '#E0503C', map: (lastData.energy && lastData.energy.thermal) || {} }); }
+    if (lastData.hasElectric) { series.push({ key: 'electric', name: tr('El. energy'), color: '#E8823C', map: (lastData.energy && lastData.energy.electric) || {} }); }
+    if (lastData.hasThermal) { series.push({ key: 'thermal', name: tr('Therm. energy'), color: '#E0503C', map: (lastData.energy && lastData.energy.thermal) || {} }); }
     return series;
   }
 
@@ -833,8 +866,8 @@
       var ws = startOfWeek(viewRef);
       for (var i = 0; i < 7; i++) {
         var dt = new Date(ws); dt.setDate(ws.getDate() + i);
-        categories.push(WEEKDAY_NAMES[i] + ' ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2));
-        fullLabels.push(WEEKDAY_NAMES_FULL[i] + ', ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear());
+        categories.push(fmt(tr('%1$s %2$s/%3$s'), WEEKDAY_NAMES[i], ('0' + dt.getDate()).slice(-2), ('0' + (dt.getMonth() + 1)).slice(-2)));
+        fullLabels.push(fmt(tr('%1$s, %2$s/%3$s/%4$s'), WEEKDAY_NAMES_FULL[i], ('0' + dt.getDate()).slice(-2), ('0' + (dt.getMonth() + 1)).slice(-2), dt.getFullYear()));
         dateLists.push([fmtDate(dt)]);
       }
     } else if (curView === 'month') {
@@ -842,7 +875,7 @@
       var last = new Date(y, m + 1, 0).getDate();
       for (var day = 1; day <= last; day++) {
         categories.push(String(day));
-        fullLabels.push(day + '. ' + MONTH_NAMES_FULL[m] + ' ' + y);
+        fullLabels.push(fmt(tr('%1$s %2$s %3$s'), day, MONTH_NAMES_FULL[m], y));
         dateLists.push([fmtDate(new Date(y, m, day))]);
       }
     } else if (curView === 'year') {
@@ -871,8 +904,8 @@
     } else if (curView === 'custom' && customFrom && customTo) {
       var from = new Date(customFrom + 'T00:00:00'), to = new Date(customTo + 'T00:00:00');
       for (var cd = new Date(from); cd <= to; cd.setDate(cd.getDate() + 1)) {
-        categories.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2));
-        fullLabels.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2) + '.' + cd.getFullYear());
+        categories.push(fmt(tr('%1$s/%2$s'), ('0' + cd.getDate()).slice(-2), ('0' + (cd.getMonth() + 1)).slice(-2)));
+        fullLabels.push(fmt(tr('%1$s/%2$s/%3$s'), ('0' + cd.getDate()).slice(-2), ('0' + (cd.getMonth() + 1)).slice(-2), cd.getFullYear()));
         dateLists.push([fmtDate(cd)]);
       }
     }
@@ -882,7 +915,7 @@
         dl.forEach(function (ds) { if (s.map[ds] !== undefined) { sum += s.map[ds]; any = true; } });
         return any ? Math.round(sum * 100) / 100 : null;
       });
-      return { name: s.name, color: s.color, data: data };
+      return { key: s.key, name: s.name, color: s.color, data: data };
     });
     return { categories: categories, fullLabels: fullLabels, series: series };
   }
@@ -960,7 +993,7 @@
       document.getElementById('next').disabled = (idx <= 0);
       var d = days[idx];
       if (d) { pick.value = d.id; }
-      var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
+      var labels = [[tr('Day before yesterday'), 2], [tr('Yesterday'), 1], [tr('Today'), 0]];
       labels.forEach(function (l) {
         // setDate() statt Date.now() - l[1]*86400000: rechnet ueber
         // Kalendertage (DST-sicher), eine feste Millisekundenzahl kann
@@ -1006,7 +1039,7 @@
     document.getElementById('prev').disabled = false;
     document.getElementById('next').disabled = false;
     if (curView === 'week') {
-      periodLabel.textContent = 'KW ' + isoWeekNumber(viewRef) + ', ' + viewRef.getFullYear();
+      periodLabel.textContent = fmt(tr('Week %s, %s'), isoWeekNumber(viewRef), viewRef.getFullYear());
     } else if (curView === 'month') {
       periodLabel.textContent = MONTH_NAMES_FULL[viewRef.getMonth()] + ' ' + viewRef.getFullYear();
     } else if (curView === 'year') {
@@ -1044,8 +1077,8 @@
     var active = document.querySelector('button.tab.active');
     var t = active ? active.textContent : '';
     if (curTop === 'heizkurven') {
-      var zn = (curveZone === 'z2') ? 'Heizkreis 2' : 'Heizkreis 1';
-      var mn = (curveMode === 'cool') ? 'Kühlen' : 'Heizen';
+      var zn = (curveZone === 'z2') ? tr('Heating circuit 2') : tr('Heating circuit 1');
+      var mn = (curveMode === 'cool') ? tr('Cooling') : tr('Heating');
       t += ' - ' + zn + ' (' + mn + ')';
     }
     el.textContent = t;
@@ -1186,11 +1219,11 @@
       row.appendChild(g);
     }
     if (zones.length > 1) {
-      group(zones, function (z) { return z === curveZone; }, function (z) { return z === 'z1' ? 'Heizkreis 1' : 'Heizkreis 2'; },
+      group(zones, function (z) { return z === curveZone; }, function (z) { return z === 'z1' ? tr('Heating circuit 1') : tr('Heating circuit 2'); },
         function (z) { curveZone = z; curveDraft = null; curveStatusText = ''; updateChartTitle(); renderCurvePanel(); });
     }
     if (modes.length > 1) {
-      group(modes, function (m) { return m === curveMode; }, function (m) { return m === 'heat' ? 'Heizen' : 'Kühlen'; },
+      group(modes, function (m) { return m === curveMode; }, function (m) { return m === 'heat' ? tr('Heating') : tr('Cooling'); },
         function (m) { curveMode = m; curveDraft = null; curveStatusText = ''; updateChartTitle(); renderCurvePanel(); });
     }
   }
@@ -1250,7 +1283,7 @@
     curveShiftDraft = val;
     curveShiftSent = { zone: zone, val: val, tries: 0 };
     curveShiftSentDone = false;
-    curveStatusText = 'Sende Verschiebung…';
+    curveStatusText = tr('Sending shift…');
     document.getElementById('curveStatus').textContent = curveStatusText;
     requestAction('heatingCurveShiftSave', JSON.stringify({ zone: zone, mode: 'heat', shiftC: val }));
     renderCurveShift();
@@ -1260,9 +1293,9 @@
     var o = opsCache && opsCache.quiet;
     if (!lastData || !lastData.hasOperations || !o || o.value === null || o.value === undefined) { box.style.display = 'none'; return; }
     box.style.display = 'inline-flex'; box.innerHTML = '';
-    box.appendChild(document.createTextNode('Flüsterbetrieb'));
+    box.appendChild(document.createTextNode(tr('Quiet mode')));
     var cur = opsDisplayValue('quiet'), def = OPS_DEFS[0], min = (typeof o.min === 'number') ? o.min : 0, max = (typeof o.max === 'number') ? o.max : 3;
-    var short = { 0: 'Aus', 1: '1', 2: '2', 3: '3' };
+    var short = { 0: tr('Off'), 1: '1', 2: '2', 3: '3' };
     for (var i = min; i <= max; i++) {
       (function (val) {
         var b = document.createElement('button'); b.type = 'button'; b.textContent = short[val] !== undefined ? short[val] : String(val);
@@ -1298,17 +1331,17 @@
     range.value = String(v);
     range.disabled = !!curveShiftSent && !curveShiftSentDone;
     document.getElementById('curveShiftVal').textContent = (v > 0 ? '+' : '') + v + ' K';
-    var pbox = document.getElementById('curveShiftPresets'); pbox.innerHTML = ''; pbox.style.display = 'inline-flex'; pbox.appendChild(document.createTextNode('Verschiebung'));
+    var pbox = document.getElementById('curveShiftPresets'); pbox.innerHTML = ''; pbox.style.display = 'inline-flex'; pbox.appendChild(document.createTextNode(tr('Shift')));
     var pre = (info && info.presets) ? info.presets : {};
-    [['ECO', 'eco', -5], ['Normal', 'normal', 0], ['Komfort', 'comfort', 5]].forEach(function (a) {
+    [[tr('ECO'), 'eco', -5], [tr('Normal'), 'normal', 0], [tr('Comfort'), 'comfort', 5]].forEach(function (a) {
       var pv = (typeof pre[a[1]] === 'number') ? pre[a[1]] : a[2];
       var b = document.createElement('button'); b.type = 'button'; b.textContent = a[0]; b.title = a[0] + ' (' + (pv > 0 ? '+' : '') + pv + ' K)';
       b.className = (v === pv) ? 'active' : ''; b.disabled = !!curveShiftSent && !curveShiftSentDone;
       b.onclick = function () { if (v !== pv) { curveShiftSend(pv); } };
       pbox.appendChild(b);
     });
-    var txt = 'Kurve parallel verschieben';
-    if (curveCache && curveCache.boardRulesActive) { txt += '. Regeln auf der Platine können den Wert überschreiben.'; }
+    var txt = tr('Shift the curve in parallel');
+    if (curveCache && curveCache.boardRulesActive) { txt = tr('Shift the curve in parallel. Board rules can override the value.'); }
     note.textContent = txt;
   }
   var curveShiftSentDone = true;
@@ -1379,10 +1412,10 @@
     }
     // Achsentitel.
     var tx = curveSvgEl('text', { x: (plotL + plotR) / 2, y: CURVE_H - 6, fill: axisColor, 'font-size': 12, 'font-weight': 600, 'text-anchor': 'middle', opacity: .85 });
-    tx.textContent = 'Außentemperatur';
+    tx.textContent = tr('Outdoor temperature');
     svg.appendChild(tx);
     var ty = curveSvgEl('text', { x: 16, y: (plotT + plotB) / 2, fill: axisColor, 'font-size': 12, 'font-weight': 600, 'text-anchor': 'middle', opacity: .85, transform: 'rotate(-90 16 ' + ((plotT + plotB) / 2) + ')' });
-    ty.textContent = 'Vorlauftemperatur';
+    ty.textContent = tr('Flow temperature');
     svg.appendChild(ty);
 
     // Kurve: Punkte nach Aussentemperatur sortiert (links = warm), Linie bis
@@ -1416,7 +1449,7 @@
       var s1 = { x: p1.x, y: p1.y + dy }, s2 = { x: p2.x, y: p2.y + dy };
       svg.appendChild(curveSvgEl('line', { x1: s1.x, y1: s1.y, x2: s2.x, y2: s2.y, stroke: '#ffd54f', 'stroke-width': 2.5, 'stroke-dasharray': '8 5' }));
       var sl = curveSvgEl('text', { x: (s1.x + s2.x) / 2, y: (s1.y + s2.y) / 2 - 8, fill: '#ffd54f', 'font-size': 12, 'font-weight': 700, 'text-anchor': 'middle' });
-      sl.textContent = 'mit Verschiebung ' + (shiftV > 0 ? '+' : '') + shiftV + ' K';
+      sl.textContent = fmt(tr('with shift %s'), (shiftV > 0 ? '+' : '') + shiftV + ' K');
       svg.appendChild(sl);
     }
     // Ziehbare Punkte mit Wertepille.
@@ -1495,7 +1528,7 @@
     if (!lastData || !lastData.hasHeatingCurve) {
       document.getElementById('curveSubTabs').innerHTML = '';
       svg.innerHTML = '';
-      statusEl.textContent = 'Heizkurven-Bearbeitung nicht verfügbar.';
+      statusEl.textContent = tr('Heating curve editing is not available.');
       document.getElementById('curveSaveBtn').disabled = true;
       return;
     }
@@ -1503,7 +1536,7 @@
       if (!curvePending) { curvePending = true; requestAction('heatingCurveLoad', '{}'); }
       document.getElementById('curveSubTabs').innerHTML = '';
       svg.innerHTML = '';
-      statusEl.textContent = 'Lade Heizkurve…';
+      statusEl.textContent = tr('Loading heating curve…');
       document.getElementById('curveSaveBtn').disabled = true;
       return;
     }
@@ -1511,7 +1544,7 @@
     updateChartTitle();
     if (!curveAvailableCombos().length) {
       svg.innerHTML = '';
-      statusEl.textContent = 'Keine Heizkurve gefunden.';
+      statusEl.textContent = tr('No heating curve found.');
       document.getElementById('curveSaveBtn').disabled = true;
       return;
     }
@@ -1538,7 +1571,7 @@
   document.getElementById('curveSaveBtn').onclick = function () {
     if (!curveDraft || curveSaving) { return; }
     curveSaving = true;
-    curveStatusText = 'Speichere…';
+    curveStatusText = tr('Saving…');
     updateCurveSaveBtn();
     document.getElementById('curveStatus').textContent = curveStatusText;
     curveLastReq = { zone: curveZone, mode: curveMode, vals: {
@@ -1564,19 +1597,21 @@
   // Dinge und tragen bewusst verschiedene Namen.
   var autoCache = null, autoPending = false, autoDraft = {}, autoErrors = {}, autoStatus = '', autoConfirm = null, autoSaving = false, autoTimer = null;
   var AUTO_FIELDS = [
-    ['onBelowC', 'Heizen einschalten unter', 'Außentemperatur-Mittel, ab dem die Automatik den Heizbetrieb einschaltet.'],
-    ['offAboveC', 'Heizen ausschalten über', 'Außentemperatur-Mittel, ab dem die Automatik den Heizbetrieb ausschaltet (muss über der Einschalt-Schwelle liegen, sonst lehnt das Modul ab).'],
-    ['roomMinC', 'Raum-Mindestwert', 'Fällt ein überwachter Raum darunter, bleibt oder geht die Heizung an.']
+    ['onBelowC', tr('Heating on below'), tr('Outdoor temperature mean from which the automation switches heating on.')],
+    ['offAboveC', tr('Heating off above'), tr('Outdoor temperature mean from which the automation switches heating off (must be above the switch-on threshold, otherwise the module rejects it).')],
+    ['roomMinC', tr('Minimum room value'), tr('If a monitored room falls below this, heating stays on or switches on.')]
   ];
-  function auNum(v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d === undefined ? 1 : d).replace('.', ',') : '–'; }
+  // Dezimalzeichen der Sprache (deutsch Komma, englisch Punkt) aus der Locale, nicht aus einem Text
+  var DEC = (1.1).toLocaleString(LOCALE).charAt(1);
+  function auNum(v, d) { return (typeof v === 'number' && isFinite(v)) ? v.toFixed(d === undefined ? 1 : d).replace('.', DEC) : '–'; }
   function auTime(ts) {
     if (!ts) { return '–'; }
-    return new Date(ts * 1000).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return new Date(ts * 1000).toLocaleString(LOCALE, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
   function auAgo(ts) {
-    if (!ts) { return 'noch nie'; }
+    if (!ts) { return tr('never'); }
     var m = Math.max(0, Math.round((Date.now() / 1000 - ts) / 60));
-    return m < 1 ? 'gerade eben' : (m < 90 ? 'vor ' + m + ' min' : 'vor ' + Math.round(m / 60) + ' h');
+    return m < 1 ? tr('just now') : (m < 90 ? fmt(tr('%s min ago'), m) : fmt(tr('%s h ago'), Math.round(m / 60)));
   }
   function autoDraftValue(key) { return (key in autoDraft) ? autoDraft[key] : (autoCache.config ? autoCache.config[key] : undefined); }
   function autoDirty() { return Object.keys(autoDraft).length > 0; }
@@ -1584,7 +1619,7 @@
   function autoSend(payload) {
     if (!autoCache) { return; }
     payload.configRevision = autoCache.configRevision;
-    autoSaving = true; autoErrors = {}; autoStatus = 'Sende…'; autoConfirm = null;
+    autoSaving = true; autoErrors = {}; autoStatus = tr('Sending…'); autoConfirm = null;
     requestAction('automationSave', JSON.stringify(payload));
     renderAuto();
   }
@@ -1597,7 +1632,7 @@
     var t = auEl('div', 'opsTile' + (on ? ' on' : ''));
     var title = auEl('div', 'opsTitle'); title.appendChild(document.createTextNode(label));
     var seg = auEl('div', 'opsSeg');
-    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
+    [[false, tr('Off')], [true, tr('On')]].forEach(function (p) {
       var b = auEl('button', (!!on === p[0]) ? 'active' : '', p[1]); b.disabled = !!disabled;
       b.onclick = function () { if (!!on !== p[0]) { onClick(p[0]); } };
       seg.appendChild(b);
@@ -1609,81 +1644,81 @@
   function renderAuto() {
     var body = document.getElementById('autoBody');
     updateChartTitle();
-    if (!lastData || !lastData.hasAutomation) { body.innerHTML = '<div class="empty">Automatik nicht verfügbar.</div>'; return; }
+    if (!lastData || !lastData.hasAutomation) { body.innerHTML = '<div class="empty">' + tr('Automation not available.') + '</div>'; return; }
     if (!autoCache) {
       if (!autoPending) { autoLoad(); }
-      body.innerHTML = '<div class="empty">Lade Heizungs-Automatik…</div>'; return;
+      body.innerHTML = '<div class="empty">' + tr('Loading heating automation…') + '</div>'; return;
     }
     var a = autoCache, cfg = a.config || {}, lim = a.limits || {}, feat = !!a.featureEnabled;
     body.innerHTML = '';
     // 1) Funktion in der Instanz + Automatik ein/aus
     var head = auEl('div', 'opsTile');
-    head.appendChild(auEl('div', 'opsTitle', 'Heizungs-Automatik'));
-    head.appendChild(auEl('div', 'opsHint', 'Schaltet nur den Heizbetrieb ein oder aus (nie die ganze Wärmepumpe), anhand des Außentemperatur-Mittels. Frostschutz hat immer Vorrang.'));
-    var fi = auEl('div', 'opsHint', 'Funktion in dieser Anlage: ' + (feat ? 'freigeschaltet' : 'nicht freigeschaltet (im HeishaMon-Formular einschalten)'));
+    head.appendChild(auEl('div', 'opsTitle', tr('Heating automation')));
+    head.appendChild(auEl('div', 'opsHint', tr('Only switches heating on or off (never the whole heat pump), based on the outdoor temperature mean. Frost protection always takes priority.')));
+    var fi = auEl('div', 'opsHint', (feat ? tr('Feature in this installation: enabled') : tr('Feature in this installation: not enabled (switch it on in the HeishaMon form)')));
     fi.style.opacity = '1'; fi.style.fontWeight = '700'; fi.style.color = feat ? '#81c784' : '#ffb74d';
     head.appendChild(fi);
     body.appendChild(head);
     if (autoConfirm !== null) {
       var q = auEl('div', 'opsTile danger');
-      q.appendChild(auEl('div', 'opsTitle', autoConfirm ? 'Automatik einschalten?' : 'Automatik ausschalten?'));
+      q.appendChild(auEl('div', 'opsTitle', autoConfirm ? tr('Switch automation on?') : tr('Switch automation off?')));
       var qt = auEl('div', 'opsHint', autoConfirm
-        ? 'Beim ersten Lauf kann die Automatik die Betriebsart sofort ändern (z. B. von Heizen auf nur Warmwasser).'
-        : 'Beim Ausschalten wird eine von der Automatik abgeschaltete Heizung wieder eingeschaltet.');
+        ? tr('On the first run the automation can change the operating mode immediately (e.g. from heating to hot water only).')
+        : tr('When switched off, heating that the automation had turned off is switched back on.'));
       qt.style.opacity = '1'; q.appendChild(qt);
       var qr = auEl('div', 'opsSeg');
-      var yes = auEl('button', 'opsBtn warn', autoConfirm ? 'Ja, einschalten' : 'Ja, ausschalten');
+      var yes = auEl('button', 'opsBtn warn', autoConfirm ? tr('Yes, switch on') : tr('Yes, switch off'));
       var want = autoConfirm; yes.onclick = function () { autoSend({ enabled: want }); };
-      var no = auEl('button', 'opsBtn', 'Abbrechen'); no.onclick = function () { autoConfirm = null; renderAuto(); };
+      var no = auEl('button', 'opsBtn', tr('Cancel')); no.onclick = function () { autoConfirm = null; renderAuto(); };
       qr.appendChild(yes); qr.appendChild(no); q.appendChild(qr); body.appendChild(q);
     } else {
-      body.appendChild(auToggle('Automatik', !!a.enabled, !feat || autoSaving, function (v) { autoConfirm = v; renderAuto(); }, feat ? 'Ihr Schalter für die Automatik (Standard: aus).' : 'Erst nach der Freischaltung der Funktion im HeishaMon-Formular bedienbar.'));
+      body.appendChild(auToggle(tr('Automation'), !!a.enabled, !feat || autoSaving, function (v) { autoConfirm = v; renderAuto(); }, feat ? tr('Your switch for the automation (default: off).') : tr('Can only be operated after the feature has been enabled in the HeishaMon form.')));
     }
     // 2) Zustand
     var st = auEl('div', 'opsTile');
-    var stMap = { heating: ['Heizbetrieb', '#ef9a3d'], cooling: ['Kühlbetrieb', '#4fc3f7'], off: ['Heizung aus (Automatik)', '#90a4ae'], blocked: ['Preis-Sperre (Heizbetrieb pausiert)', '#ba68c8'], fault: ['Störung', '#ff5252'] };
-    var sm = stMap[a.state] || ['Automatik läuft nicht', '#90a4ae'];
+    var stMap = { heating: [tr('Heating mode'), '#ef9a3d'], cooling: [tr('Cooling mode'), '#4fc3f7'], off: [tr('Heating off (automation)'), '#90a4ae'], blocked: [tr('Price block (heating paused)'), '#ba68c8'], fault: [tr('Fault'), '#ff5252'] };
+    var sm = stMap[a.state] || [tr('Automation not running'), '#90a4ae'];
     var pill = auEl('div', 'opsTitle'); var sp = auEl('span', '', sm[0]); sp.style.color = sm[1]; sp.style.fontSize = '16px'; pill.appendChild(sp); st.appendChild(pill);
     if (a.reason) { st.appendChild(auEl('div', 'opsHint', a.reason)); }
-    if (a.lastError) { var le = auEl('div', 'opsHint', 'Letzter Fehler: ' + a.lastError); le.style.color = '#ff8a80'; le.style.opacity = '1'; st.appendChild(le); }
+    if (a.lastError) { var le = auEl('div', 'opsHint', fmt(tr('Last error: %s'), a.lastError)); le.style.color = '#ff8a80'; le.style.opacity = '1'; st.appendChild(le); }
     body.appendChild(st);
     // 2b) Strompreis / Preis-Sperre (nur anzeigen, wenn HeishaMon eine Preisquelle meldet)
     var pr = a.price || null;
     if (pr && pr.source && pr.source !== 'none') {
       var pc = auEl('div', 'opsTile' + (a.state === 'blocked' ? ' on' : ''));
-      var ptl = auEl('div', 'opsTitle'); ptl.appendChild(document.createTextNode('Strompreis (Preis-Sperre)'));
-      ptl.appendChild(auEl('span', 'opsState', pr.enabled ? 'aktiv' : 'aus')); pc.appendChild(ptl);
-      var yn = function (v) { return v === null || v === undefined ? '–' : (v ? 'ja' : 'nein'); };
+      var ptl = auEl('div', 'opsTitle'); ptl.appendChild(document.createTextNode(tr('Electricity price (price block)')));
+      ptl.appendChild(auEl('span', 'opsState', pr.enabled ? tr('active') : tr('off'))); pc.appendChild(ptl);
+      var yn = function (v) { return v === null || v === undefined ? '–' : (v ? tr('yes') : tr('no')); };
       [
-        ['Jetzt', auNum(pr.nowCtKwh) + ' ct/kWh'],
-        ['Schwelle (teuer ab)', auNum(pr.thresholdCtKwh) + ' ct/kWh'],
-        ['Median', auNum(pr.medianCtKwh) + ' ct/kWh'],
-        ['Gerade teuer', yn(pr.expensive)],
-        ['Sperren heute', (pr.blocksToday === null || pr.blocksToday === undefined) ? '–' : String(pr.blocksToday)],
-        ['Gesperrt seit', (a.state === 'blocked' && pr.blockedSince) ? auTime(pr.blockedSince) : '–'],
-        ['Batterie deckt die Last', yn(pr.batteryCoversLoad)]
+        [tr('Now'), auNum(pr.nowCtKwh) + ' ct/kWh'],
+        [tr('Threshold (expensive from)'), auNum(pr.thresholdCtKwh) + ' ct/kWh'],
+        [tr('Median'), auNum(pr.medianCtKwh) + ' ct/kWh'],
+        [tr('Currently expensive'), yn(pr.expensive)],
+        [tr('Blocks today'), (pr.blocksToday === null || pr.blocksToday === undefined) ? '–' : String(pr.blocksToday)],
+        [tr('Blocked since'), (a.state === 'blocked' && pr.blockedSince) ? auTime(pr.blockedSince) : '–'],
+        [tr('Battery covers the load'), yn(pr.batteryCoversLoad)]
       ].forEach(function (p2) { var ln = auEl('div', 'opsTitle'); ln.appendChild(document.createTextNode(p2[0])); ln.appendChild(auEl('span', 'opsState', p2[1])); pc.appendChild(ln); });
-      pc.appendChild(auEl('div', 'opsHint', 'Preisquelle: ' + pr.source + '. Die Preis-Sperre pausiert den Heizbetrieb in teuren Stunden - nur solange die Raumtemperatur und (falls vorhanden) die Batterie das zulassen.'));
+      pc.appendChild(auEl('div', 'opsHint', fmt(tr('Price source: %s. The price block pauses heating in expensive hours - only as long as the room temperature and (if present) the battery allow it.'), pr.source)));
       body.appendChild(pc);
     }
     // 3) Werte
     var vals = auEl('div', 'auVals');
-    var nextTxt = (a.nextSwitchAllowedAt && a.nextSwitchAllowedAt * 1000 > Date.now()) ? 'frühestens ' + auTime(a.nextSwitchAllowedAt) : 'jederzeit';
+    var nextTxt = (a.nextSwitchAllowedAt && a.nextSwitchAllowedAt * 1000 > Date.now()) ? fmt(tr('earliest %s'), auTime(a.nextSwitchAllowedAt)) : tr('any time');
     [
-      ['Außen jetzt', auNum(a.outsideNowC) + ' °C'],
-      ['Außen-Mittel ' + (cfg.meanShortHours || '') + ' h', auNum(a.outsideMeanShortC) + ' °C'],
-      ['Außen-Mittel ' + (cfg.meanLongHours || '') + ' h', auNum(a.outsideMeanLongC) + ' °C'],
-      ['Raum-Mittel', auNum(a.roomMeanC) + ' °C'],
-      ['Kühlster Raum', auNum(a.roomMinC) + ' °C'],
-      ['Taupunkt', (a.dewPointC === null || a.dewPointC === undefined) ? '–' : auNum(a.dewPointC) + ' °C'],
-      ['Letzte Umschaltung', auTime(a.lastSwitchAt)],
-      ['Nächste Umschaltung', nextTxt],
-      ['Zuletzt geprüft', auAgo(a.evaluatedAt)]
+      [tr('Outdoor now'), auNum(a.outsideNowC) + ' °C'],
+      [fmt(tr('Outdoor mean %s h'), cfg.meanShortHours || ''), auNum(a.outsideMeanShortC) + ' °C'],
+      [fmt(tr('Outdoor mean %s h'), cfg.meanLongHours || ''), auNum(a.outsideMeanLongC) + ' °C'],
+      [tr('Room mean'), auNum(a.roomMeanC) + ' °C'],
+      [tr('Coolest room'), auNum(a.roomMinC) + ' °C'],
+      [tr('Dew point'), (a.dewPointC === null || a.dewPointC === undefined) ? '–' : auNum(a.dewPointC) + ' °C'],
+      [tr('Last switch'), auTime(a.lastSwitchAt)],
+      [tr('Next switch'), nextTxt],
+      [tr('Last checked'), auAgo(a.evaluatedAt)]
     ].forEach(function (p) { var k = auEl('div', 'auKpi'); k.appendChild(auEl('div', 'val', p[1])); k.appendChild(auEl('div', 'lbl', p[0])); vals.appendChild(k); });
     body.appendChild(vals);
     // 4) Einstellungen (Grenzen aus limits{})
     var set = auEl('div', 'opsTile');
-    set.appendChild(auEl('div', 'opsTitle', 'Einstellungen'));
+    set.appendChild(auEl('div', 'opsTitle', tr('Settings')));
     AUTO_FIELDS.forEach(function (f) {
       var key = f[0], l = lim[key] || {}, cur = autoDraftValue(key);
       if (cur === undefined || cur === null) { return; }
@@ -1706,62 +1741,62 @@
     var coolAvail = !(hum && hum.mode === 'none');
     if (coolAvail) {
       var coolOn = ('coolingEnabled' in autoDraft) ? !!autoDraft.coolingEnabled : !!cfg.coolingEnabled;
-      var cr = auEl('div', 'auField'); cr.appendChild(auEl('label', '', 'Kühlen erlauben'));
+      var cr = auEl('div', 'auField'); cr.appendChild(auEl('label', '', tr('Allow cooling')));
       var cseg = auEl('div', 'opsSeg');
-      [[false, 'Aus'], [true, 'Ein']].forEach(function (p) {
+      [[false, tr('Off')], [true, tr('On')]].forEach(function (p) {
         var b = auEl('button', (coolOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || autoSaving;
         b.onclick = function () { if (p[0] === !!cfg.coolingEnabled) { delete autoDraft.coolingEnabled; } else { autoDraft.coolingEnabled = p[0]; } delete autoErrors.coolingEnabled; renderAuto(); };
         cseg.appendChild(b);
       });
       cr.appendChild(cseg); set.appendChild(cr);
-      set.appendChild(auEl('div', 'opsHint', 'Kühlen nur mit Taupunkt-Schutz (Feuchtequellen und Sicherheitsabstand im HeishaMon-Formular).'));
+      set.appendChild(auEl('div', 'opsHint', tr('Cooling only with dew point protection (humidity sources and safety margin in the HeishaMon form).')));
       if (autoErrors.coolingEnabled) { var ec = auEl('div', 'opsHint', autoErrors.coolingEnabled); ec.style.color = '#ff8a80'; ec.style.opacity = '1'; set.appendChild(ec); }
     } else {
-      set.appendChild(auEl('div', 'opsHint', 'Kühlen nicht verfügbar: Es wurde keine Feuchtequelle gefunden, ohne die der Taupunkt-Schutz nicht arbeiten kann (Quellen im HeishaMon-Formular wählen).'));
+      set.appendChild(auEl('div', 'opsHint', tr('Cooling not available: no humidity source was found, without which the dew point protection cannot work (choose the sources in the HeishaMon form).')));
     }
     if (pr && pr.source && pr.source !== 'none') {
       var pbOn = ('priceBlockEnabled' in autoDraft) ? !!autoDraft.priceBlockEnabled : !!cfg.priceBlockEnabled;
-      var pbr = auEl('div', 'auField'); pbr.appendChild(auEl('label', '', 'Preis-Sperre'));
+      var pbr = auEl('div', 'auField'); pbr.appendChild(auEl('label', '', tr('Price block')));
       var pbs = auEl('div', 'opsSeg');
-      [[false, 'Aus'], [true, 'Ein']].forEach(function (p3) {
+      [[false, tr('Off')], [true, tr('On')]].forEach(function (p3) {
         var b3 = auEl('button', (pbOn === p3[0]) ? 'active' : '', p3[1]); b3.disabled = !feat || autoSaving;
         b3.onclick = function () { if (p3[0] === !!cfg.priceBlockEnabled) { delete autoDraft.priceBlockEnabled; } else { autoDraft.priceBlockEnabled = p3[0]; } delete autoErrors.priceBlockEnabled; renderAuto(); };
         pbs.appendChild(b3);
       });
       pbr.appendChild(pbs); set.appendChild(pbr);
-      set.appendChild(auEl('div', 'opsHint', 'Heizbetrieb in teuren Stunden pausieren. Weitere Einstellungen dazu (Höchstdauer, Sperren pro Tag, Mindestabstand, Raum-Reserve, Batterie) stehen im HeishaMon-Formular.'));
+      set.appendChild(auEl('div', 'opsHint', tr('Pause heating in expensive hours. Further settings for this (maximum duration, blocks per day, minimum interval, room reserve, battery) are in the HeishaMon form.')));
       if (autoErrors.priceBlockEnabled) { var epb = auEl('div', 'opsHint', autoErrors.priceBlockEnabled); epb.style.color = '#ff8a80'; epb.style.opacity = '1'; set.appendChild(epb); }
     } else if (pr) {
-      set.appendChild(auEl('div', 'opsHint', 'Preis-Sperre nicht verfügbar: Es wurde keine Preisquelle gefunden (im HeishaMon-Formular wählen).'));
+      set.appendChild(auEl('div', 'opsHint', tr('Price block not available: no price source was found (choose one in the HeishaMon form).')));
     }
     if (autoErrors.configRevision) { var ev = auEl('div', 'opsHint', autoErrors.configRevision); ev.style.color = '#ffb74d'; ev.style.opacity = '1'; set.appendChild(ev); }
     var act = auEl('div', 'auActions');
-    var sv = auEl('button', 'curveSave', 'Übernehmen'); sv.id = 'auSave'; sv.disabled = !feat || !autoDirty() || autoSaving;
+    var sv = auEl('button', 'curveSave', tr('Apply')); sv.id = 'auSave'; sv.disabled = !feat || !autoDirty() || autoSaving;
     sv.onclick = function () { autoSend(JSON.parse(JSON.stringify(autoDraft))); };
-    var rv = auEl('button', 'opsBtn', 'Verwerfen'); rv.disabled = !autoDirty() || autoSaving; rv.onclick = function () { autoDraft = {}; autoErrors = {}; autoStatus = ''; renderAuto(); };
+    var rv = auEl('button', 'opsBtn', tr('Discard')); rv.disabled = !autoDirty() || autoSaving; rv.onclick = function () { autoDraft = {}; autoErrors = {}; autoStatus = ''; renderAuto(); };
     act.appendChild(sv); act.appendChild(rv); act.appendChild(auEl('span', 'opsStatus', autoStatus));
     set.appendChild(act);
     body.appendChild(set);
     // 5) Raeume und Feuchte (nur Anzeige; Auswahl im HeishaMon-Formular)
-    var MODE_TXT = { own: 'eigene Auswahl', auto: 'automatisch gefunden', none: 'keine gefunden', off: 'aus' };
+    var MODE_TXT = { own: tr('own selection'), auto: tr('found automatically'), none: tr('none found'), off: tr('off') };
     var src = a.sources || {}, rmode = src.rooms ? src.rooms.mode : null;
     if ((a.rooms && a.rooms.length) || rmode) {
-      var rm = auEl('div', 'opsTile'); var rt = auEl('div', 'opsTitle'); rt.appendChild(document.createTextNode('Überwachte Räume'));
+      var rm = auEl('div', 'opsTile'); var rt = auEl('div', 'opsTitle'); rt.appendChild(document.createTextNode(tr('Monitored rooms')));
       if (rmode) { rt.appendChild(auEl('span', 'opsState', MODE_TXT[rmode] || rmode)); }
       rm.appendChild(rt);
-      (a.rooms || []).forEach(function (r) { var line = auEl('div', 'opsTitle'); line.appendChild(document.createTextNode(r.label || ('Raum ' + r.id))); line.appendChild(auEl('span', 'opsState', auNum(r.valueC) + ' °C')); rm.appendChild(line); });
-      if (rmode === 'none') { rm.appendChild(auEl('div', 'opsHint', 'Es wurden keine Raumtemperaturen gefunden - die Automatik rechnet dann nur mit der Außentemperatur.')); }
-      rm.appendChild(auEl('div', 'opsHint', 'Die Auswahl der Räume pflegt das HeishaMon-Formular (leer = automatisch).'));
+      (a.rooms || []).forEach(function (r) { var line = auEl('div', 'opsTitle'); line.appendChild(document.createTextNode(r.label || fmt(tr('Room %s'), r.id))); line.appendChild(auEl('span', 'opsState', auNum(r.valueC) + ' °C')); rm.appendChild(line); });
+      if (rmode === 'none') { rm.appendChild(auEl('div', 'opsHint', tr('No room temperatures were found - the automation then only uses the outdoor temperature.'))); }
+      rm.appendChild(auEl('div', 'opsHint', tr('The room selection is maintained in the HeishaMon form (empty = automatic).')));
       body.appendChild(rm);
     }
     if (hum) {
-      var hm = auEl('div', 'opsTile'); var ht = auEl('div', 'opsTitle'); ht.appendChild(document.createTextNode('Luftfeuchte (Taupunkt-Schutz)'));
+      var hm = auEl('div', 'opsTile'); var ht = auEl('div', 'opsTitle'); ht.appendChild(document.createTextNode(tr('Humidity (dew point protection)')));
       ht.appendChild(auEl('span', 'opsState', MODE_TXT[hum.mode] || hum.mode)); hm.appendChild(ht);
       if (hum.mode !== 'none') {
-        var hl = auEl('div', 'opsTitle'); hl.appendChild(document.createTextNode('Relative Feuchte / Taupunkt'));
+        var hl = auEl('div', 'opsTitle'); hl.appendChild(document.createTextNode(tr('Relative humidity / dew point')));
         hl.appendChild(auEl('span', 'opsState', auNum(hum.valueRH, 0) + ' % / ' + auNum(hum.dewPointC) + ' °C')); hm.appendChild(hl);
       }
-      hm.appendChild(auEl('div', 'opsHint', 'Die Auswahl der Feuchtequellen pflegt das HeishaMon-Formular.'));
+      hm.appendChild(auEl('div', 'opsHint', tr('The selection of humidity sources is maintained in the HeishaMon form.')));
       body.appendChild(hm);
     }
   }
@@ -1776,12 +1811,12 @@
       if (d.auto) { autoCache = d.auto; }
       var r = d.result || {};
       autoErrors = {};
-      if (r.ok) { autoDraft = {}; autoStatus = 'Gespeichert. Die Automatik wertet beim nächsten Durchlauf aus (das ist noch kein Schaltvorgang).'; }
+      if (r.ok) { autoDraft = {}; autoStatus = tr('Saved. The automation evaluates on its next run (that is not a switching action yet).'); }
       else {
         var errs = r.errors || [];
         errs.forEach(function (e) { autoErrors[e.field] = e.message; });
-        if (autoErrors.configRevision) { autoDraft = {}; autoStatus = 'Zwischenzeitlich geändert - aktuelle Werte geladen, bitte erneut prüfen.'; }
-        else { autoStatus = errs.length ? 'Nicht gespeichert - bitte die markierten Felder prüfen.' : 'Nicht gespeichert - HeishaMon hat abgelehnt.'; }
+        if (autoErrors.configRevision) { autoDraft = {}; autoStatus = tr('Changed in the meantime - current values loaded, please check again.'); }
+        else { autoStatus = errs.length ? tr('Not saved - please check the marked fields.') : tr('Not saved - HeishaMon rejected it.'); }
       }
       updateTabStates();
       if (curTop === 'automatik') { renderAuto(); }
@@ -1795,10 +1830,10 @@
   // dem Vertrag. Intern halten wir je Kanal 7 x 96 Slots (null = Kanal-Standard) und bilden beim Speichern Abschnitte daraus.
   var schedCache = null, schedPending = false, schedDraft = {}, schedPlanOn = null, schedErrors = [], schedStatus = '', schedSaving = false,
       schedConfirm = false, schedTimer = null, schedChan = null, schedBrush = {}, schedSent = {}, schedPaint = null, schedCopyDay = 0, schedApplyAsk = false, schedApplyBusy = false;
-  var SCHED_CH = [['z1Heat', 'Zone 1 Heizen'], ['z1Cool', 'Zone 1 Kühlen'], ['z2Heat', 'Zone 2 Heizen'], ['z2Cool', 'Zone 2 Kühlen'], ['quiet', 'Flüsterbetrieb']];
-  var SCHED_DAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  var SCHED_STATE = { ok: ['Plan wirkt', '#81c784'], pending: ['Befehl gesendet', '#ffb74d'], manual: ['Von Hand oder Platine geändert', '#ff9a3d'],
-    fault: ['Anlage übernimmt den Wert nicht', '#ff5252'], unavailable: ['nicht nutzbar', '#90a4ae'], off: ['aus', '#90a4ae'] };
+  var SCHED_CH = [['z1Heat', tr('Zone 1 heating')], ['z1Cool', tr('Zone 1 cooling')], ['z2Heat', tr('Zone 2 heating')], ['z2Cool', tr('Zone 2 cooling')], ['quiet', tr('Quiet mode')]];
+  var SCHED_DAYS = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
+  var SCHED_STATE = { ok: [tr('Schedule active'), '#81c784'], pending: [tr('Command sent'), '#ffb74d'], manual: [tr('Changed manually or by the board'), '#ff9a3d'],
+    fault: [tr('Unit does not accept the value'), '#ff5252'], unavailable: [tr('not usable'), '#90a4ae'], off: [tr('off'), '#90a4ae'] };
   function scCh(k) { return (schedCache && schedCache.channels) ? schedCache.channels[k] : null; }
   function scAvail() { return SCHED_CH.filter(function (c) { var ch = scCh(c[0]); return ch && ch.available; }); }
   function scHm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
@@ -1831,12 +1866,12 @@
   }
   function scValText(ch, v) {
     if (ch.kind === 'level') { return (ch.labels && ch.labels[v] !== undefined) ? ch.labels[v] : String(v); }
-    var p = ch.presets || {}, n = v === p.eco ? 'ECO' : (v === p.comfort ? 'Komfort' : (v === p.normal ? 'Normal' : null));
+    var p = ch.presets || {}, n = v === p.eco ? tr('ECO') : (v === p.comfort ? tr('Comfort') : (v === p.normal ? tr('Normal') : null));
     return (n ? n + ' ' : '') + '(' + (v > 0 ? '+' : '') + v + ' K)';
   }
   function scShort(ch, v) {
     if (ch.kind === 'level') { return (ch.labels && ch.labels[v] !== undefined) ? ch.labels[v] : String(v); }
-    var p = ch.presets || {}; return v === p.eco ? 'ECO' : (v === p.comfort ? 'Komfort' : (v === p.normal ? 'Normal' : ((v > 0 ? '+' : '') + v)));
+    var p = ch.presets || {}; return v === p.eco ? tr('ECO') : (v === p.comfort ? tr('Comfort') : (v === p.normal ? tr('Normal') : ((v > 0 ? '+' : '') + v)));
   }
   function scColor(ch, v) {
     if (ch.kind === 'level') { return v > 0 ? 'rgba(60,190,175,' + (.35 + .6 * v / Math.max(1, ch.max)).toFixed(2) + ')' : 'rgba(127,135,145,.25)'; }
@@ -1877,14 +1912,14 @@
     Object.keys(schedDraft).forEach(function (k) {
       var dr = schedDraft[k], ch = scCh(k); if (!dr.touched || !ch) { return; }
       var max = ch.maxSegmentsPerDay || 8;
-      for (var d = 0; d < 7; d++) { if (scRuns(dr.slots[d]) > max) { msg = SCHED_CH.filter(function (c) { return c[0] === k; })[0][1] + ': am ' + SCHED_DAYS[d] + ' sind höchstens ' + max + ' Abschnitte erlaubt - bitte zusammenfassen.'; } }
+      for (var d = 0; d < 7; d++) { if (scRuns(dr.slots[d]) > max) { msg = fmt(tr('%1$s: on %2$s at most %3$s segments are allowed - please merge them.'), SCHED_CH.filter(function (c) { return c[0] === k; })[0][1], SCHED_DAYS[d], max); } }
       var segs = scSegsFrom(dr.slots); sent[k] = segs.map(function (s) { return { day: s.day, from: s.from, to: s.to }; });
       payload.channels[k] = { enabled: dr.enabled, default: dr.def, segments: segs };
       if (dr.enabled && !ch.enabled) { turnsOn = true; }
     });
-    if (msg) { schedErrors = [{ text: msg }]; schedStatus = 'Nicht gesendet.'; renderSched(); return; }
+    if (msg) { schedErrors = [{ text: msg }]; schedStatus = tr('Not sent.'); renderSched(); return; }
     if (turnsOn && !confirmed) { schedConfirm = true; renderSched(); return; }
-    schedConfirm = false; schedSent = sent; schedSaving = true; schedErrors = []; schedStatus = 'Sende…';
+    schedConfirm = false; schedSent = sent; schedSaving = true; schedErrors = []; schedStatus = tr('Sending…');
     requestAction('scheduleSave', JSON.stringify(payload)); renderSched();
   }
   // Nur sichtbar, wenn HeishaMon den Zeitstempel stateSince liefert (ab 1.39.2) - ohne bleibt die Funktion verborgen.
@@ -1893,47 +1928,47 @@
     return SCHED_CH.some(function (c) { var x = schedCache.channels[c[0]]; return x && x.available && x.enabled && (x.state === 'manual' || x.state === 'fault') && typeof x.stateSince !== 'undefined'; });
   }
   function scApplyNow() {
-    schedApplyAsk = false; schedApplyBusy = true; schedSent = {}; schedErrors = []; schedStatus = 'Der Plan wird jetzt neu angewendet…';
+    schedApplyAsk = false; schedApplyBusy = true; schedSent = {}; schedErrors = []; schedStatus = tr('The schedule is being re-applied now…');
     requestAction('scheduleSave', JSON.stringify({ applyNow: true })); renderSched();
   }
   function renderSched() {
     var body = document.getElementById('schedBody');
     updateChartTitle();
-    if (!lastData || !lastData.hasSchedule) { body.innerHTML = '<div class="empty">Zeitplan nicht verfügbar.</div>'; return; }
-    if (!schedCache) { if (!schedPending) { scLoad(); } body.innerHTML = '<div class="empty">Lade Wochen-Zeitplan…</div>'; return; }
+    if (!lastData || !lastData.hasSchedule) { body.innerHTML = '<div class="empty">' + tr('Schedule not available.') + '</div>'; return; }
+    if (!schedCache) { if (!schedPending) { scLoad(); } body.innerHTML = '<div class="empty">' + tr('Loading weekly schedule…') + '</div>'; return; }
     var a = schedCache, feat = !!a.featureEnabled, av = scAvail();
     body.innerHTML = '';
     // 1) Kopf: Plan ein/aus
-    var head = scEl('div', 'opsTile'); head.appendChild(scEl('div', 'opsTitle', 'Wochen-Zeitplan'));
-    head.appendChild(scEl('div', 'opsHint', 'Stellt zu festen Zeiten die Heizkurven-Verschiebung (ECO / Normal / Komfort) und den Flüsterbetrieb um. Der Plan läuft im HeishaMon-Modul; die Anlage selbst kann keinen Plan aufnehmen.'));
-    var fi = scEl('div', 'opsHint', 'Funktion in dieser Anlage: ' + (feat ? 'freigeschaltet' : 'nicht freigeschaltet (im HeishaMon-Formular einschalten)')); fi.style.opacity = '1'; fi.style.fontWeight = '700'; fi.style.color = feat ? '#81c784' : '#ffb74d'; head.appendChild(fi);
-    if (a.lastError) { var le = scEl('div', 'opsHint', 'Letzter Fehler: ' + a.lastError); le.style.color = '#ff8a80'; le.style.opacity = '1'; head.appendChild(le); }
+    var head = scEl('div', 'opsTile'); head.appendChild(scEl('div', 'opsTitle', tr('Weekly schedule')));
+    head.appendChild(scEl('div', 'opsHint', tr('Switches the heating curve shift (ECO / Normal / Comfort) and quiet mode at fixed times. The schedule runs in the HeishaMon module; the unit itself cannot hold a schedule.')));
+    var fi = scEl('div', 'opsHint', (feat ? tr('Feature in this installation: enabled') : tr('Feature in this installation: not enabled (switch it on in the HeishaMon form)'))); fi.style.opacity = '1'; fi.style.fontWeight = '700'; fi.style.color = feat ? '#81c784' : '#ffb74d'; head.appendChild(fi);
+    if (a.lastError) { var le = scEl('div', 'opsHint', fmt(tr('Last error: %s'), a.lastError)); le.style.color = '#ff8a80'; le.style.opacity = '1'; head.appendChild(le); }
     var planOn = (schedPlanOn !== null) ? schedPlanOn : !!a.enabled;
     var prow = scEl('div', 'opsSeg');
-    [[false, 'Plan aus'], [true, 'Plan ein']].forEach(function (p) {
+    [[false, tr('Schedule off')], [true, tr('Schedule on')]].forEach(function (p) {
       var b = scEl('button', (planOn === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || schedSaving;
       b.onclick = function () { schedPlanOn = (p[0] === !!a.enabled) ? null : p[0]; renderSched(); };
       prow.appendChild(b);
     });
     head.appendChild(prow);
     if (scNeedsApply()) {
-      var ab = scEl('button', 'opsBtn warn', 'Plan jetzt wieder anwenden'); ab.disabled = schedSaving || schedApplyBusy; ab.style.marginTop = '8px';
+      var ab = scEl('button', 'opsBtn warn', tr('Re-apply schedule now')); ab.disabled = schedSaving || schedApplyBusy; ab.style.marginTop = '8px';
       ab.onclick = function () { schedApplyAsk = true; renderSched(); }; head.appendChild(ab);
     }
     body.appendChild(head);
     if (schedApplyAsk) {
-      var aq = scEl('div', 'opsTile danger'); aq.appendChild(scEl('div', 'opsTitle', 'Plan jetzt wieder anwenden?'));
-      var at = scEl('div', 'opsHint', 'Das beendet Handänderungen und Störungen und sendet den geplanten Wert SOFORT neu an die Anlage. Der Plan selbst bleibt unverändert.'); at.style.opacity = '1'; aq.appendChild(at);
-      var ar = scEl('div', 'opsSeg'); var ay = scEl('button', 'opsBtn warn', 'Ja, jetzt anwenden'); ay.onclick = scApplyNow;
-      var an = scEl('button', 'opsBtn', 'Abbrechen'); an.onclick = function () { schedApplyAsk = false; renderSched(); }; ar.appendChild(ay); ar.appendChild(an); aq.appendChild(ar); body.appendChild(aq);
+      var aq = scEl('div', 'opsTile danger'); aq.appendChild(scEl('div', 'opsTitle', tr('Re-apply schedule now?')));
+      var at = scEl('div', 'opsHint', tr('This ends manual changes and faults and resends the planned value to the unit IMMEDIATELY. The schedule itself stays unchanged.')); at.style.opacity = '1'; aq.appendChild(at);
+      var ar = scEl('div', 'opsSeg'); var ay = scEl('button', 'opsBtn warn', tr('Yes, apply now')); ay.onclick = scApplyNow;
+      var an = scEl('button', 'opsBtn', tr('Cancel')); an.onclick = function () { schedApplyAsk = false; renderSched(); }; ar.appendChild(ay); ar.appendChild(an); aq.appendChild(ar); body.appendChild(aq);
     }
     if (schedConfirm) {
-      var q = scEl('div', 'opsTile danger'); q.appendChild(scEl('div', 'opsTitle', 'Plan einschalten?'));
-      var qt = scEl('div', 'opsHint', 'Beim Einschalten wird der geplante Wert für jetzt SOFORT an die Anlage gesendet. Beim Ausschalten bleibt der zuletzt gesetzte Wert in der Anlage stehen, es wird nichts zurückgestellt.'); qt.style.opacity = '1'; q.appendChild(qt);
-      var qr = scEl('div', 'opsSeg'); var yes = scEl('button', 'opsBtn warn', 'Ja, speichern und einschalten'); yes.onclick = function () { scSave(true); };
-      var no = scEl('button', 'opsBtn', 'Abbrechen'); no.onclick = function () { schedConfirm = false; renderSched(); }; qr.appendChild(yes); qr.appendChild(no); q.appendChild(qr); body.appendChild(q);
+      var q = scEl('div', 'opsTile danger'); q.appendChild(scEl('div', 'opsTitle', tr('Switch schedule on?')));
+      var qt = scEl('div', 'opsHint', tr('When switching on, the planned value for now is sent to the unit IMMEDIATELY. When switching off, the last value set stays in the unit; nothing is reset.')); qt.style.opacity = '1'; q.appendChild(qt);
+      var qr = scEl('div', 'opsSeg'); var yes = scEl('button', 'opsBtn warn', tr('Yes, save and switch on')); yes.onclick = function () { scSave(true); };
+      var no = scEl('button', 'opsBtn', tr('Cancel')); no.onclick = function () { schedConfirm = false; renderSched(); }; qr.appendChild(yes); qr.appendChild(no); q.appendChild(qr); body.appendChild(q);
     }
-    if (!av.length) { body.appendChild(scEl('div', 'empty', 'Keine planbaren Kanäle gefunden (Zone inaktiv oder Anlage im Direktmodus).')); return; }
+    if (!av.length) { body.appendChild(scEl('div', 'empty', tr('No schedulable channels found (zone inactive or unit in direct mode).'))); return; }
     if (!schedChan || !scCh(schedChan) || !scCh(schedChan).available) { schedChan = av[0][0]; }
     // 2) Kanal-Auswahl
     var tabs = scEl('div', 'opsSeg');
@@ -1950,29 +1985,29 @@
     var st = SCHED_STATE[ch.state] || ['', '#90a4ae'];
     var ttl = scEl('div', 'opsTitle'); ttl.appendChild(document.createTextNode(SCHED_CH.filter(function (c) { return c[0] === k; })[0][1]));
     var chip = scEl('span', 'opsState', st[0]); chip.style.color = st[1]; chip.style.fontWeight = '700'; ttl.appendChild(chip); cp.appendChild(ttl);
-    if (ch.stateSince && (ch.state === 'manual' || ch.state === 'fault' || ch.state === 'pending')) { var sd = new Date(ch.stateSince * 1000); chip.textContent += ' seit ' + sd.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); }
+    if (ch.stateSince && (ch.state === 'manual' || ch.state === 'fault' || ch.state === 'pending')) { var sd = new Date(ch.stateSince * 1000); chip.textContent = fmt(tr('%1$s since %2$s'), chip.textContent, sd.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })); }
     var now = [];
-    if (ch.plannedNow !== null && ch.plannedNow !== undefined) { now.push('Plan jetzt: ' + scValText(ch, ch.plannedNow)); }
-    if (ch.actualNow !== null && ch.actualNow !== undefined) { now.push('Anlage meldet: ' + scValText(ch, ch.actualNow)); }
-    if (ch.nextChangeAt) { var nd = new Date(ch.nextChangeAt * 1000); now.push('nächste Änderung ' + nd.toLocaleString('de-DE', { weekday: 'short', hour: '2-digit', minute: '2-digit' })); }
+    if (ch.plannedNow !== null && ch.plannedNow !== undefined) { now.push(fmt(tr('Schedule now: %s'), scValText(ch, ch.plannedNow))); }
+    if (ch.actualNow !== null && ch.actualNow !== undefined) { now.push(fmt(tr('Unit reports: %s'), scValText(ch, ch.actualNow))); }
+    if (ch.nextChangeAt) { var nd = new Date(ch.nextChangeAt * 1000); now.push(fmt(tr('next change %s'), nd.toLocaleString(LOCALE, { weekday: 'short', hour: '2-digit', minute: '2-digit' }))); }
     if (now.length) { cp.appendChild(scEl('div', 'opsHint', now.join(' · '))); }
     if (ch.reason) { cp.appendChild(scEl('div', 'opsHint', ch.reason)); }
-    if (k !== 'quiet' && a.boardRulesActive) { cp.appendChild(scEl('div', 'opsHint', 'Regeln auf der Platine können die Verschiebung überschreiben; der Plan gilt dann nicht dauerhaft.')); }
-    if (k === 'quiet' && a.unitQuietScheduleActive) { var uq = scEl('div', 'opsHint', 'Die Anlage hat eine eigene Flüster-Zeitschaltung aktiv - sie kann mit diesem Plan kollidieren.'); uq.style.color = '#ffb74d'; uq.style.opacity = '1'; cp.appendChild(uq); }
-    var crow = scEl('div', 'auField'); crow.appendChild(scEl('label', '', 'Kanal'));
+    if (k !== 'quiet' && a.boardRulesActive) { cp.appendChild(scEl('div', 'opsHint', tr('Rules on the board can override the shift; the schedule then does not apply permanently.'))); }
+    if (k === 'quiet' && a.unitQuietScheduleActive) { var uq = scEl('div', 'opsHint', tr('The unit has its own quiet-mode timer active - it may collide with this schedule.')); uq.style.color = '#ffb74d'; uq.style.opacity = '1'; cp.appendChild(uq); }
+    var crow = scEl('div', 'auField'); crow.appendChild(scEl('label', '', tr('Channel')));
     var cseg = scEl('div', 'opsSeg');
-    [[false, 'Aus'], [true, 'Ein']].forEach(function (p) { var b = scEl('button', (dr.enabled === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || schedSaving; b.onclick = function () { dr.enabled = p[0]; dr.touched = true; renderSched(); }; cseg.appendChild(b); });
+    [[false, tr('Off')], [true, tr('On')]].forEach(function (p) { var b = scEl('button', (dr.enabled === p[0]) ? 'active' : '', p[1]); b.disabled = !feat || schedSaving; b.onclick = function () { dr.enabled = p[0]; dr.touched = true; renderSched(); }; cseg.appendChild(b); });
     crow.appendChild(cseg); cp.appendChild(crow);
     // Pinsel
-    var pal = scEl('div', 'scPal'); pal.appendChild(scEl('span', 'opsHint', 'Pinsel: '));
+    var pal = scEl('div', 'scPal'); pal.appendChild(scEl('span', 'opsHint', tr('Brush: ')));
     for (var v = ch.min; v <= ch.max; v += (ch.step || 1)) {
       (function (val) {
-        var b = scEl('button', (schedBrush[k] === val) ? 'active' : '', scShort(ch, val) + (val === def ? ' (Standard)' : '')); b.style.borderLeft = '10px solid ' + scColor(ch, val); b.title = scValText(ch, val);
+        var b = scEl('button', (schedBrush[k] === val) ? 'active' : '', (val === def ? fmt(tr('%s (default)'), scShort(ch, val)) : scShort(ch, val))); b.style.borderLeft = '10px solid ' + scColor(ch, val); b.title = scValText(ch, val);
         b.onclick = function () { schedBrush[k] = val; renderSched(); }; pal.appendChild(b);
       })(v);
     }
     cp.appendChild(pal);
-    cp.appendChild(scEl('div', 'opsHint', 'Im Wochenraster mit dem Finger oder der Maus ziehen: die gewählte Stufe wird auf die überstrichenen Viertelstunden gemalt. Der Standard (grau) gilt überall, wo nichts gemalt ist; den Standard-Pinsel nimmst du zum Löschen.'));
+    cp.appendChild(scEl('div', 'opsHint', tr('Drag across the weekly grid with your finger or the mouse: the selected level is painted onto the quarter-hours you sweep over. The default (gray) applies everywhere nothing is painted; use the default brush to erase.')));
     // Raster
     var grid = scEl('div', 'scGrid'), ax = scEl('div', 'scAxis');
     for (var h = 0; h < 24; h += 3) { var t = scEl('span', '', ('0' + h).slice(-2)); t.style.left = (h / 24 * 100) + '%'; ax.appendChild(t); }
@@ -2002,24 +2037,24 @@
     }
     cp.appendChild(grid);
     // Kopieren
-    var cpy = scEl('div', 'scCopy'); cpy.appendChild(document.createTextNode('Tag kopieren: '));
+    var cpy = scEl('div', 'scCopy'); cpy.appendChild(document.createTextNode(tr('Copy day: ')));
     var sel = document.createElement('select'); SCHED_DAYS.forEach(function (n, i) { var o = document.createElement('option'); o.value = String(i); o.textContent = n; if (i === schedCopyDay) { o.selected = true; } sel.appendChild(o); });
     sel.onchange = function () { schedCopyDay = parseInt(sel.value, 10); }; cpy.appendChild(sel);
     var copyTo = function (days) { days.forEach(function (d2) { if (d2 !== schedCopyDay) { dr.slots[d2] = dr.slots[schedCopyDay].slice(); } }); dr.touched = true; renderSched(); };
-    [['auf Werktage', [0, 1, 2, 3, 4]], ['auf Wochenende', [5, 6]], ['auf alle Tage', [0, 1, 2, 3, 4, 5, 6]]].forEach(function (c) { var b = scEl('button', 'opsBtn', c[0]); b.disabled = !feat || schedSaving; b.onclick = function () { copyTo(c[1]); }; cpy.appendChild(b); });
-    var clr = scEl('button', 'opsBtn', 'Tag leeren'); clr.disabled = !feat || schedSaving; clr.onclick = function () { dr.slots[schedCopyDay] = new Array(96).fill(null); dr.touched = true; renderSched(); }; cpy.appendChild(clr);
+    [[tr('to weekdays'), [0, 1, 2, 3, 4]], [tr('to weekend'), [5, 6]], [tr('to all days'), [0, 1, 2, 3, 4, 5, 6]]].forEach(function (c) { var b = scEl('button', 'opsBtn', c[0]); b.disabled = !feat || schedSaving; b.onclick = function () { copyTo(c[1]); }; cpy.appendChild(b); });
+    var clr = scEl('button', 'opsBtn', tr('Clear day')); clr.disabled = !feat || schedSaving; clr.onclick = function () { dr.slots[schedCopyDay] = new Array(96).fill(null); dr.touched = true; renderSched(); }; cpy.appendChild(clr);
     cp.appendChild(cpy);
     // Fehler
     var mine = schedErrors.filter(function (e) { return !e.k || e.k === k; });
     mine.forEach(function (e) { var er = scEl('div', 'opsHint', e.text); er.style.color = '#ff8a80'; er.style.opacity = '1'; cp.appendChild(er); });
     // Aktionen
     var act = scEl('div', 'auActions');
-    var sv = scEl('button', 'curveSave', 'Übernehmen'); sv.disabled = !feat || !scTouched() || schedSaving; sv.onclick = function () { scSave(false); };
-    var rv = scEl('button', 'opsBtn', 'Verwerfen'); rv.disabled = !scTouched() || schedSaving; rv.onclick = function () { schedDraft = {}; schedPlanOn = null; schedErrors = []; schedStatus = ''; renderSched(); };
+    var sv = scEl('button', 'curveSave', tr('Apply')); sv.disabled = !feat || !scTouched() || schedSaving; sv.onclick = function () { scSave(false); };
+    var rv = scEl('button', 'opsBtn', tr('Discard')); rv.disabled = !scTouched() || schedSaving; rv.onclick = function () { schedDraft = {}; schedPlanOn = null; schedErrors = []; schedStatus = ''; renderSched(); };
     act.appendChild(sv); act.appendChild(rv); act.appendChild(scEl('span', 'opsStatus', schedStatus)); cp.appendChild(act);
     body.appendChild(cp);
     var other = schedErrors.filter(function (e) { return e.k && e.k !== k; });
-    if (other.length) { var ot = scEl('div', 'opsHint', 'Weitere Fehler in: ' + other.map(function (e) { return e.k; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; }).join(', ')); ot.style.color = '#ff8a80'; ot.style.opacity = '1'; body.appendChild(ot); }
+    if (other.length) { var ot = scEl('div', 'opsHint', fmt(tr('More errors in: %s'), other.map(function (e) { return e.k; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; }).join(', '))); ot.style.color = '#ff8a80'; ot.style.opacity = '1'; body.appendChild(ot); }
   }
   function handleScheduleMessage(d) {
     if (d && d.ok && d.type === 'scheduleUpdate') {
@@ -2030,7 +2065,7 @@
     if (d && d.ok && d.type === 'scheduleSaved' && schedApplyBusy) {
       schedApplyBusy = false; schedPending = false; if (d.schedule) { schedCache = d.schedule; }
       var ar2 = d.result || {};
-      schedStatus = ar2.ok ? 'Der geplante Wert wurde neu gesendet.' : 'Nicht angewendet: ' + ((ar2.errors && ar2.errors[0] && ar2.errors[0].message) || 'Fehler');
+      schedStatus = ar2.ok ? tr('The planned value was resent.') : fmt(tr('Not applied: %s'), (ar2.errors && ar2.errors[0] && ar2.errors[0].message) || tr('Error'));
       updateTabStates(); if (curTop === 'zeitplan') { renderSched(); }
       return true;
     }
@@ -2039,19 +2074,19 @@
       var r = d.result || {}; schedErrors = [];
       if (r.ok) {
         Object.keys(schedSent).forEach(function (k) { delete schedDraft[k]; }); schedPlanOn = null;
-        schedStatus = 'Gespeichert. Der Plan wirkt ab der nächsten Schaltzeit (beim Einschalten sofort); die Anlage quittiert nichts, der Status des Kanals zeigt es.';
+        schedStatus = tr('Saved. The schedule takes effect from the next switching time (immediately when switched on); the unit does not acknowledge anything, the channel status shows it.');
       } else {
         var errs = r.errors || [];
         errs.forEach(function (e) {
-          var f = String(e.field || ''), m = /^channels\.(\w+)\.?(.*)$/.exec(f), text = e.message || 'Fehler';
+          var f = String(e.field || ''), m = /^channels\.(\w+)\.?(.*)$/.exec(f), text = e.message || tr('Error');
           if (f === 'revision') { schedErrors.push({ text: text }); return; }
           if (!m) { schedErrors.push({ text: text }); return; }
           var sm = /segments\[(\d+)\]/.exec(m[2]), pre = '';
           if (sm && schedSent[m[1]] && schedSent[m[1]][+sm[1]]) { var sg = schedSent[m[1]][+sm[1]]; pre = SCHED_DAYS[sg.day - 1] + ' ' + scHm(sg.from) + '–' + scHm(sg.to) + ': '; }
           schedErrors.push({ k: m[1], text: pre + text });
         });
-        if (errs.some(function (e) { return e.field === 'revision'; })) { schedDraft = {}; schedPlanOn = null; schedStatus = 'Der Plan wurde zwischenzeitlich geändert - aktuelle Werte geladen, Änderungen verworfen. Bitte erneut eingeben.'; }
-        else { schedStatus = 'Nicht gespeichert - bitte die Hinweise prüfen.'; }
+        if (errs.some(function (e) { return e.field === 'revision'; })) { schedDraft = {}; schedPlanOn = null; schedStatus = tr('The schedule was changed in the meantime - current values loaded, changes discarded. Please enter again.'); }
+        else { schedStatus = tr('Not saved - please check the notes.'); }
       }
       updateTabStates(); if (curTop === 'zeitplan') { renderSched(); }
       return true;
@@ -2060,17 +2095,17 @@
   }
   var opsCache = null, opsPending = false, opsSent = {}, opsStatus = {}, opsSaving = {}, opsPollTimer = null, opsConfirmKey = null;
   var OPS_DEFS = [
-    { key: 'quiet', title: 'Flüsterbetrieb', type: 'seg', labels: { 0: 'Aus', 1: 'Leise', 2: 'Leiser', 3: 'Am leisesten' },
-      hint: 'Verdichterleistung und Lüfter werden reduziert - leiser, aber weniger Heizleistung.' },
-    { key: 'powerful', title: 'Leistungsbetrieb', type: 'seg', labels: { 0: 'Aus', 1: '30 min', 2: '60 min', 3: '90 min' },
-      hint: 'Hebt die Leistung zeitlich begrenzt an, danach fällt die Anlage von selbst zurück.' },
-    { key: 'holiday', title: 'Urlaub', type: 'toggle', stateText: { 0: 'Aus', 1: 'Geplant', 2: 'Aktiv' },
-      hint: 'Die Anlage heizt reduziert und schränkt Warmwasser ein. Einen Zeitraum kann das Dashboard nicht setzen - den hinterlegen Sie an der Anlage oder in der Comfort Cloud. "Geplant" ist nicht "aktiv".' },
-    { key: 'emergencyHeater', title: 'Notbetrieb (Heizstab)', type: 'toggle', danger: true, stateText: { 0: 'Aus', 1: 'Aktiv' },
-      hint: 'Wie die Heizstab-Taste der Fernbedienung: die Anlage heizt elektrisch statt mit der Wärmepumpe. Teuerste Wärmequelle, nur bei Störung. HeishaMon schaltet ihn nie selbst wieder ab.',
-      confirm: 'Notbetrieb wirklich einschalten? Die Anlage heizt dann elektrisch mit dem Heizstab (teuerste Wärmequelle) und schaltet sich nicht von selbst wieder ab.' },
-    { key: 'dhwTargetC', title: 'Warmwasser-Solltemperatur', type: 'range', unit: '°C',
-      hint: 'Über etwa 52 °C sinkt die Effizienz (COP) der Wärmepumpe deutlich.' }
+    { key: 'quiet', title: tr('Quiet mode'), type: 'seg', labels: { 0: tr('Off'), 1: tr('Quiet'), 2: tr('Quieter'), 3: tr('Quietest') },
+      hint: tr('Compressor output and fan are reduced - quieter, but less heating output.') },
+    { key: 'powerful', title: tr('Powerful mode'), type: 'seg', labels: { 0: tr('Off'), 1: '30 min', 2: '60 min', 3: '90 min' },
+      hint: tr('Raises the output for a limited time, after which the unit falls back by itself.') },
+    { key: 'holiday', title: tr('Holiday'), type: 'toggle', stateText: { 0: tr('Off'), 1: tr('Planned'), 2: tr('Active') },
+      hint: tr('The unit heats at a reduced level and restricts hot water. The dashboard cannot set a period - enter it on the unit or in the Comfort Cloud. “Planned” is not “active”.') },
+    { key: 'emergencyHeater', title: tr('Emergency mode (heating element)'), type: 'toggle', danger: true, stateText: { 0: tr('Off'), 1: tr('Active') },
+      hint: tr('Like the heating element button on the remote control: the unit heats electrically instead of with the heat pump. The most expensive heat source, only for faults. HeishaMon never switches it off again by itself.'),
+      confirm: tr('Really switch on emergency mode? The unit will then heat electrically with the heating element (most expensive heat source) and will not switch itself off again.') },
+    { key: 'dhwTargetC', title: tr('Hot water target temperature'), type: 'range', unit: '°C',
+      hint: tr('Above about 52 °C the efficiency (COP) of the heat pump drops noticeably.') }
   ];
 
   function opsValue(key) {
@@ -2093,7 +2128,7 @@
   function opsSend(key, value) {
     opsSaving[key] = true;
     opsSent[key] = { value: value, tries: 0 };
-    opsStatus[key] = 'Sende…';
+    opsStatus[key] = tr('Sending…');
     opsConfirmKey = null;
     requestAction('operationSave', JSON.stringify({ name: key, value: value }));
     renderOps();
@@ -2108,11 +2143,11 @@
     var banner = document.getElementById('opsBanner');
     updateChartTitle();
     if (!lastData || !lastData.hasOperations) {
-      grid.innerHTML = '<div class="empty">Bedienung nicht verfügbar.</div>'; banner.style.display = 'none'; return;
+      grid.innerHTML = '<div class="empty">' + tr('Controls not available.') + '</div>'; banner.style.display = 'none'; return;
     }
     if (!opsCache) {
       if (!opsPending) { opsPending = true; requestAction('operationsLoad', '{}'); }
-      grid.innerHTML = '<div class="empty">Lade Bedienfunktionen…</div>'; banner.style.display = 'none'; return;
+      grid.innerHTML = '<div class="empty">' + tr('Loading controls…') + '</div>'; banner.style.display = 'none'; return;
     }
     banner.style.display = (opsValue('emergencyHeater') > 0) ? 'block' : 'none';
     grid.innerHTML = '';
@@ -2138,9 +2173,9 @@
         var q = document.createElement('div'); q.className = 'opsHint'; q.style.opacity = '1'; q.textContent = def.confirm;
         tile.appendChild(q);
         var row = document.createElement('div'); row.className = 'opsSeg';
-        var yes = document.createElement('button'); yes.className = 'opsBtn warn'; yes.textContent = 'Ja, einschalten';
+        var yes = document.createElement('button'); yes.className = 'opsBtn warn'; yes.textContent = tr('Yes, switch on');
         yes.onclick = function () { opsSend(def.key, 1); };
-        var no = document.createElement('button'); no.className = 'opsBtn'; no.textContent = 'Abbrechen';
+        var no = document.createElement('button'); no.className = 'opsBtn'; no.textContent = tr('Cancel');
         no.onclick = function () { opsConfirmKey = null; renderOps(); };
         row.appendChild(yes); row.appendChild(no); tile.appendChild(row);
       } else if (def.type === 'seg') {
@@ -2156,7 +2191,7 @@
         tile.appendChild(seg);
       } else if (def.type === 'toggle') {
         var trow = document.createElement('div'); trow.className = 'opsSeg';
-        [[0, 'Aus'], [1, 'Ein']].forEach(function (pair) {
+        [[0, tr('Off')], [1, tr('On')]].forEach(function (pair) {
           var b = document.createElement('button'); b.textContent = pair[1];
           var isOn = pair[0] === 1;
           b.className = ((v > 0) === isOn) ? 'active' : '';
@@ -2180,13 +2215,13 @@
       tile.appendChild(hint);
       if (def.key === 'dhwTargetC' && v > 52) {
         var w52 = document.createElement('div'); w52.className = 'opsHint'; w52.style.color = '#ffb74d'; w52.style.opacity = '1';
-        w52.textContent = 'Achtung: über 52 °C sinkt der COP spürbar.'; tile.appendChild(w52);
+        w52.textContent = tr('Caution: above 52 °C the COP drops noticeably.'); tile.appendChild(w52);
       }
       var status = document.createElement('div'); status.className = 'opsStatus'; status.textContent = opsStatus[def.key] || '';
       tile.appendChild(status);
       grid.appendChild(tile);
     });
-    if (!shown) { grid.innerHTML = '<div class="empty">Die Anlage meldet keine Bedienfunktionen.</div>'; }
+    if (!shown) { grid.innerHTML = '<div class="empty">' + tr('The unit reports no controls.') + '</div>'; }
     updateOpsTabAlert();
   }
 
@@ -2208,7 +2243,7 @@
     if (curView !== 'day') {
       if (curView === 'custom' && (!customFrom || !customTo)) {
         destroyChart();
-        emptyEl.style.display = ''; emptyEl.textContent = 'Bitte Von-/Bis-Datum wählen';
+        emptyEl.style.display = ''; emptyEl.textContent = tr('Please select a from/to date');
         return;
       }
       emptyEl.style.display = 'none';
@@ -2225,7 +2260,7 @@
     var d = days[idx];
     if (!d || !d.hasData) {
       destroyChart();
-      emptyEl.style.display = ''; emptyEl.textContent = 'Keine Archivdaten für diesen Tag';
+      emptyEl.style.display = ''; emptyEl.textContent = tr('No archive data for this day');
       return;
     }
     emptyEl.style.display = 'none';
@@ -2258,10 +2293,10 @@
       opsCache = d.ops; opsPending = false;
       Object.keys(opsSent).forEach(function (key) {
         var s = opsSent[key];
-        if (opsMatches(key, s.value, opsValue(key))) { delete opsSent[key]; opsStatus[key] = 'Von der Wärmepumpe bestätigt.'; return; }
+        if (opsMatches(key, s.value, opsValue(key))) { delete opsSent[key]; opsStatus[key] = tr('Confirmed by the heat pump.'); return; }
         s.tries += 1;
-        if (s.tries < 10) { opsStatus[key] = 'Gesendet - warte auf Rückmeldung (' + s.tries + '/10)…'; }
-        else { delete opsSent[key]; opsStatus[key] = 'Nicht bestätigt - die Anlage meldet noch den alten Wert (HeishaMon im Modus "nur mithören"? MQTT prüfen).'; }
+        if (s.tries < 10) { opsStatus[key] = fmt(tr('Sent - waiting for feedback (%s/10)…'), s.tries); }
+        else { delete opsSent[key]; opsStatus[key] = tr('Not confirmed - the unit still reports the old value (HeishaMon in "listen only" mode? Check MQTT).'); }
       });
       opsPoll();
       updateTabStates();
@@ -2271,8 +2306,8 @@
     }
     if (d && d.ok && d.type === 'operationSaved') {
       opsCache = d.ops; delete opsSaving[d.name];
-      if (d.saved) { opsStatus[d.name] = 'Gesendet - warte auf Rückmeldung der Wärmepumpe…'; opsPoll(); }
-      else { delete opsSent[d.name]; opsStatus[d.name] = 'Nicht gesendet - HeishaMon lehnt ab (Wert außerhalb des Bereichs, MQTT-Gateway getrennt oder HeishaMon zu alt).'; }
+      if (d.saved) { opsStatus[d.name] = tr('Sent - waiting for feedback from the heat pump…'); opsPoll(); }
+      else { delete opsSent[d.name]; opsStatus[d.name] = tr('Not sent - HeishaMon rejects it (value out of range, MQTT gateway disconnected or HeishaMon too old).'); }
       if (curTop === 'bedienung') { renderOps(); }
       if (curTop === 'heizkurven') { renderCurveQuiet(); }
       return;
@@ -2282,12 +2317,12 @@
       curveShiftSentDone = true;
       if (d.saved && curveShiftSent) {
         curveShiftDraft = null;
-        curveStatusText = 'Verschiebung gesendet - warte auf Rückmeldung der Wärmepumpe…';
+        curveStatusText = tr('Shift sent - waiting for feedback from the heat pump…');
         curveShiftPoll();
       } else {
         curveShiftSent = null;
         curveShiftDraft = null;
-        curveStatusText = 'Verschiebung nicht gesendet - HeishaMon lehnt ab (Zone/Modus nicht aktiv, Direktvorgabe statt Verschiebung, MQTT-Gateway getrennt oder HeishaMon zu alt).';
+        curveStatusText = tr('Shift not sent - HeishaMon rejects it (zone/mode not active, direct setting instead of shift, MQTT gateway disconnected or HeishaMon too old).');
       }
       if (curTop === 'heizkurven') { renderCurvePanel(); }
       return;
@@ -2298,15 +2333,15 @@
         var ci = (curveCache.zones && curveCache.zones[curveShiftSent.zone] && curveCache.zones[curveShiftSent.zone].shift) ? curveCache.zones[curveShiftSent.zone].shift.heat : null;
         if (ci && ci.mode === 'shift' && ci.valueC === curveShiftSent.val) {
           curveShiftSent = null;
-          curveStatusText = 'Verschiebung von der Wärmepumpe bestätigt.';
+          curveStatusText = tr('Shift confirmed by the heat pump.');
         } else {
           curveShiftSent.tries += 1;
           if (curveShiftSent.tries < 10) {
-            curveStatusText = 'Verschiebung gesendet - warte auf Rückmeldung (' + curveShiftSent.tries + '/10)…';
+            curveStatusText = fmt(tr('Shift sent - waiting for feedback (%s/10)…'), curveShiftSent.tries);
             curveShiftPoll();
           } else {
             curveShiftSent = null;
-            curveStatusText = 'Die Wärmepumpe meldet noch die alte Verschiebung - nicht bestätigt (HeishaMon im Modus "nur mithören"? MQTT prüfen).';
+            curveStatusText = tr('The heat pump still reports the old shift - not confirmed (HeishaMon in "listen only" mode? Check MQTT).');
           }
         }
       }
@@ -2315,15 +2350,15 @@
         var now = curveCachedValues(curveSent.zone, curveSent.mode);
         if (curveValuesEqual(now, curveSent.vals)) {
           curveSent = null;
-          curveStatusText = 'Von der Wärmepumpe bestätigt.';
+          curveStatusText = tr('Confirmed by the heat pump.');
         } else {
           curveSent.tries += 1;
           if (curveSent.tries < 6) {
-            curveStatusText = 'Gesendet - warte auf Rückmeldung der Wärmepumpe (' + curveSent.tries + '/6)…';
+            curveStatusText = fmt(tr('Sent - waiting for feedback from the heat pump (%s/6)…'), curveSent.tries);
             curvePollAfterSave();
           } else {
             curveSent = null;
-            curveStatusText = 'Die Wärmepumpe meldet noch die alten Werte - Übernahme nicht bestätigt (Gateway/MQTT prüfen).';
+            curveStatusText = tr('The heat pump still reports the old values - transfer not confirmed (check gateway/MQTT).');
           }
         }
       }
@@ -2343,14 +2378,14 @@
       // hier nur "Zone/Modus vorhanden, Werte plausibel, Nachricht raus"
       // (HeishaMon-Sitzung, 18.09.2026). Werte oben zeigen nach dem Neuladen
       // ohnehin den zuletzt gelesenen Ist-Stand, keine Behauptung noetig.
-      curveStatusText = d.saved ? 'Gesendet - warte auf Rückmeldung der Wärmepumpe…' : 'Nicht gesendet - HeishaMon lehnt den Befehl ab (Zone/Modus nicht aktiv, MQTT-Gateway getrennt oder HeishaMon zu alt).';
+      curveStatusText = d.saved ? tr('Sent - waiting for feedback from the heat pump…') : tr('Not sent - HeishaMon rejects the command (zone/mode not active, MQTT gateway disconnected or HeishaMon too old).');
       if (curTop === 'heizkurven') { renderCurvePanel(); }
       return;
     }
     if (!d || !d.ok) {
       var emptyEl = document.getElementById('empty');
       emptyEl.style.display = '';
-      emptyEl.textContent = (d && d.error) ? d.error : 'Keine Daten.';
+      emptyEl.textContent = (d && d.error) ? d.error : tr('No data.');
       document.getElementById('kpiRow').innerHTML = '';
       document.getElementById('chart').innerHTML = '';
       document.getElementById('legendRow').innerHTML = '';
@@ -2427,36 +2462,36 @@
   var TOUR_STEP = 0;
   var TOUR_STEPS = [
     {
-      title: 'Diese Kurve verrät, wann Ihre Wärmepumpe abtaut',
-      text: 'Im Tages-Diagramm markiert eine blaue Fläche automatisch jede Abtauphase des Verdichters – die kurzen Einbrüche bei elektrischer Leistung und Vorlauftemperatur bekommen damit sofort eine Erklärung, statt wie ein Aussetzer auszusehen. Kein 08/15-Monitoring zeigt das.'
+      title: tr('This curve reveals when your heat pump defrosts'),
+      text: tr('In the daily chart, a blue area automatically marks every defrost phase of the compressor - the short dips in electrical power and flow temperature get an explanation right away instead of looking like a glitch. No run-of-the-mill monitoring shows that.')
     },
     {
-      title: 'Fehlt eine Kennzahl, wird sie ausgeblendet – nicht auf Null gelogen',
-      text: 'Ob COP, Außentemperatur, Verdichterstarts oder Betriebsstunden angezeigt werden, hängt davon ab, was Ihre HeishaMon- oder WPHub-Installation tatsächlich liefert. Fehlt ein Feld, verschwindet nur die betroffene Kennzahl bzw. Kurve – es erscheint nie eine erfundene Nullanzeige.'
+      title: tr('If a key figure is missing, it is hidden - not faked as zero'),
+      text: tr('Whether COP, outdoor temperature, compressor starts or operating hours are shown depends on what your HeishaMon or WPHub installation actually delivers. If a field is missing, only the affected key figure or curve disappears - an invented zero reading never appears.')
     },
     {
-      title: 'Gemessener COP hat immer Vorrang vor geschätztem',
-      text: 'Liefert Ihre Wärmepumpe einen echten gemessenen COP, wird der angezeigt. Nur wenn dieser fehlt, springt die Kachel auf eine grobe Schätzung um – eine geschönte Kennzahl wird nie stillschweigend als „gemessen“ ausgegeben. Bei einer reinen WPHub-Anlage ohne HeishaMon fehlt der COP grundsätzlich ganz (auch keine Schätzung) – der Comfort-Cloud-API von Panasonic fehlt dafür schlicht die nötige Durchfluss-/Wassermengen-Information, das ist kein Fehler dieser Kachel.'
+      title: tr('Measured COP always takes priority over estimated'),
+      text: tr('If your heat pump delivers a real measured COP, that one is shown. Only if it is missing does the tile fall back to a rough estimate - an embellished figure is never silently passed off as “measured”. With a plain WPHub installation without HeishaMon the COP is missing entirely (no estimate either) - Panasonic’s Comfort Cloud API simply lacks the required flow/water volume information; this is not a fault of this tile.')
     },
     {
-      title: 'Bei WPHub zählt der echte Tageszähler, nicht die Hochrechnung',
-      text: 'Panasonic-Wärmepumpen über WPHub liefern keine Momentanleistung, dafür aber einen täglich um Mitternacht zurückspringenden Energiezähler direkt aus der Comfort Cloud. Ist der vorhanden, nutzt die Kachel ihn bevorzugt – nur ohne ihn (z. B. bei HeishaMon) wird die El.-Energie aus der Leistungskurve hochgerechnet.'
+      title: tr('With WPHub the real daily counter counts, not the extrapolation'),
+      text: tr('Panasonic heat pumps via WPHub deliver no instantaneous power, but an energy counter that jumps back every day at midnight, straight from the Comfort Cloud. If it is available, the tile prefers it - only without it (e.g. with HeishaMon) is the electrical energy extrapolated from the power curve.')
     },
     {
-      title: 'Woche, Monat, Jahr, Gesamt – alles ohne Nachladen',
-      text: 'Ein einziger Archivdurchlauf beim Öffnen deckt Tages-, Wochen-, Monats-, Jahres-, Gesamt- und Benutzerdefiniert-Ansicht ab. Beim Umschalten oder Blättern zwischen den Zeiträumen wird nichts erneut vom Archiv nachgeladen – alles rechnet direkt im Browser.'
+      title: tr('Week, month, year, total - all without reloading'),
+      text: tr('A single archive pass when opening covers the daily, weekly, monthly, yearly, total and custom views. When switching or paging between periods, nothing is reloaded from the archive - everything is calculated directly in the browser.')
     },
     {
-      title: 'Vorlauf, Rücklauf und Außentemperatur auf eigener Achse',
-      text: 'Elektrische und thermische Leistung laufen in Watt auf der linken Achse, Vorlauf-/Rücklauftemperatur und Außentemperatur gestrichelt bzw. gepunktet auf einer eigenen °C-Achse rechts – klar getrennt, aber im selben Diagramm vergleichbar.'
+      title: tr('Flow, return and outdoor temperature on their own axis'),
+      text: tr('Electrical and thermal power run in watts on the left axis, flow/return temperature and outdoor temperature dashed or dotted on a separate °C axis on the right - clearly separated, yet comparable in the same chart.')
     },
     {
-      title: 'ECharts oder Highcharts – Sie entscheiden',
-      text: 'Unter „Darstellung“ lässt sich die Zeichen-Engine umstellen. ECharts kommt ohne eigene Lizenz aus, Highcharts benötigt eine eigene gültige Lizenz für die Nutzung – beide werden bei Bedarf vom Internet nachgeladen, nicht im Modul eingebettet.'
+      title: tr('ECharts or Highcharts - you decide'),
+      text: tr('Under “Appearance” the drawing engine can be switched. ECharts needs no license of its own, Highcharts requires your own valid license for use - both are loaded from the internet when needed, not embedded in the module.')
     },
     {
-      title: 'Auch außerhalb des Dashboards nutzbar',
-      text: 'Diese Kachel läuft zusätzlich als eigenständige Webseite über einen automatisch registrierten WebHook (Adresse im Dokumentations-Panel) – ideal für IPSView oder einen beliebigen Browser-Tab, mit automatischer Aktualisierung alle 30 Sekunden.'
+      title: tr('Also usable outside the dashboard'),
+      text: tr('This tile also runs as a standalone web page via an automatically registered WebHook (address in the documentation panel) - ideal for IPSView or any browser tab, with automatic refresh every 30 seconds.')
     }
   ];
 

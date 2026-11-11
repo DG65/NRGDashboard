@@ -21,6 +21,8 @@ inklusive.*
 
 - **Prognose-Kachel (NRGDashboardForecast): Formular, Meldungen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Das gilt auch für die Namen und Auswahltexte der Einstellungen im Doppelpfeil (Instanzvariablen und die Profile `NRGDASHFC.*`): sie werden bei „Übernehmen“ in der aktuellen Sprache nachgezogen, selbst umbenannte Variablen bleiben unangetastet. Intern: die Tage der Kachel tragen einen festen Schlüssel (`key`), die Logik hängt nicht mehr am Anzeigetext; Doku-Panel und Hook-Zeile haben Namen (`PanelDoc`, `HookInfo`); Dezimalzeichen der Tagesbalken kommt aus der Anzeigesprache. Idents, Properties, Funktionen und Profilnamen sind unverändert.
 
+- **WP-Monitor: Formular, Meldungen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Die Kachel nimmt Datums- und Zahlenformate, Monats- und Wochentagsnamen aus der Sprache. Legenden-Sichtbarkeit und Zeitplan-/Automatik-Logik hängen nicht mehr an Anzeigetexten.
+
 ## 0.10.12 (2026-11-09)
 
 - **Fehler behoben: falscher Hinweis „WPHub liefert keine auswertbaren Geräte“.** Seit 0.10.11 wird eine von WPHub nur durchgereichte HeishaMon-Wärmepumpe nicht mehr doppelt gezeigt, die Abdeckungsprüfung zählte aber erst nach diesem Filter und meldete dann im Log alle fünf Minuten einen Fehlfund. Gezählt wird jetzt vor dem Filter. Nur das Log ist betroffen, die Anzeige war richtig.
