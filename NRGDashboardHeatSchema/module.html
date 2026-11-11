@@ -245,7 +245,7 @@
 </style>
 </head>
 <body>
-<button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
 <div id="wrap">
   <!-- Einfuehrungs-Tour (28.08.2026, Dietmar: "eine Tour die bei der ersten
        Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
@@ -257,9 +257,9 @@
       <div class="tour-title" id="tourTitle"></div>
       <div class="tour-text" id="tourText"></div>
       <div class="tour-nav">
-        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+        <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+        <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+        <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
       </div>
     </div>
   </div>
@@ -267,7 +267,19 @@
   <div id="units"></div>
 </div>
 
+<!--NRGDASH_TEXTS-->
 <script>
+// Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+// Fehlt die Tabelle (z. B. beim Oeffnen der Datei ohne PHP), erscheint der englische Quelltext.
+function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+// sprintf light: ersetzt %s und %d der Reihe nach
+function fmt(s) {
+  var a = Array.prototype.slice.call(arguments, 1), i = 0;
+  return s.replace(/%[sd]/g, function () { return a[i++]; });
+}
+// Dezimalzeichen gehoert zur Sprache: die deutsche Tabelle liefert "," -- ohne Uebersetzung bleibt der Punkt.
+var DEC = tr('decimal point') === 'decimal point' ? '.' : tr('decimal point');
+
 var lastData = null;
 
 // Zeichenfarben fuer inline gesetzte SVG-Attribute. Die CSS-Variablen
@@ -285,12 +297,12 @@ function setTheme(light) {
 setTheme(false);
 
 function fmtTemp1(v) {
-  return (v === null || v === undefined) ? null : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+  return (v === null || v === undefined) ? null : (Math.round(v * 10) / 10).toFixed(1).replace('.', DEC);
 }
 function fmtPower(w) {
   if (w === null || w === undefined) { return null; }
   var a = Math.abs(w);
-  return (a >= 1000 ? { v: (w / 1000).toFixed(2).replace('.', ','), u: 'kW' } : { v: String(Math.round(w)), u: 'W' });
+  return (a >= 1000 ? { v: (w / 1000).toFixed(2).replace('.', DEC), u: 'kW' } : { v: String(Math.round(w)), u: 'W' });
 }
 
 function el(tag, attrs) {
@@ -762,7 +774,7 @@ function boreholeUnit(svg, x, y, w, h, running) {
   g.appendChild(arrowHead(down, pipeTop + (pipeBot - pipeTop) * 0.6, 'd', flowCol));
   g.appendChild(arrowHead(up, pipeTop + (pipeBot - pipeTop) * 0.6, 'u', retCol));
   var lbl = el('text', { x: cx, y: y + h + 12, class: 'tag' });
-  lbl.style.fontSize = '7.5px'; lbl.textContent = 'Tiefenbohrung'; g.appendChild(lbl);
+  lbl.style.fontSize = '7.5px'; lbl.textContent = tr('Borehole'); g.appendChild(lbl);
   svg.appendChild(g);
   return g;
 }
@@ -806,7 +818,7 @@ function collectorUnit(svg, x, y, w, h, running) {
   g.appendChild(arrowHead(boxCx - s / 2 - 6, ry1, 'r', flowCol));
   g.appendChild(arrowHead(loopRight + 6, ry2, 'l', retCol));
   var lbl = el('text', { x: x + w / 2, y: y + h + 12, class: 'tag' });
-  lbl.style.fontSize = '7.5px'; lbl.textContent = 'Erdkollektor'; g.appendChild(lbl);
+  lbl.style.fontSize = '7.5px'; lbl.textContent = tr('Ground collector'); g.appendChild(lbl);
   svg.appendChild(g);
   return g;
 }
@@ -829,9 +841,9 @@ function wellUnit(svg, x, y, w, h, running) {
   g.appendChild(arrowHead(leftX, pipeBot - 12, 'd', retCol));
   g.appendChild(arrowHead(rightX, pipeBot - 12, 'u', flowCol));
   var lt = el('text', { x: leftX, y: y + h + 12, class: 'tag' });
-  lt.style.fontSize = '7px'; lt.textContent = 'Sickerbrunnen'; g.appendChild(lt);
+  lt.style.fontSize = '7px'; lt.textContent = tr('Return well'); g.appendChild(lt);
   var rt = el('text', { x: rightX, y: y + h + 12, class: 'tag' });
-  rt.style.fontSize = '7px'; rt.textContent = 'Saugbrunnen'; g.appendChild(rt);
+  rt.style.fontSize = '7px'; rt.textContent = tr('Intake well'); g.appendChild(rt);
   svg.appendChild(g);
   return g;
 }
@@ -1131,7 +1143,7 @@ function buildSchema(unit) {
   // von der tatsaechlichen Bauart-Einstellung.
   var groundSource = bauart === 'sole' || bauart === 'wasser' || bauart === 'kollektor';
   var at = el('text', { x: outdoorX + outdoorW / 2, y: 82, class: 'box-title' });
-  at.textContent = bauart === 'sole' ? 'TIEFENBOHRUNG' : (bauart === 'kollektor' ? 'ERDKOLLEKTOR' : (bauart === 'wasser' ? 'GRUNDWASSER' : 'AUSSENGERÄT'));
+  at.textContent = bauart === 'sole' ? tr('BOREHOLE') : (bauart === 'kollektor' ? tr('GROUND COLLECTOR') : (bauart === 'wasser' ? tr('GROUNDWATER') : tr('OUTDOOR UNIT')));
   svg.appendChild(at);
   // Gehaeuse bei zwei Luefter nahezu doppelt so hoch (Dietmar, 24.08.2026:
   // "die Hoehe des Aussengeraetes verdoppelt sich nahezu, d.h. der
@@ -1164,8 +1176,8 @@ function buildSchema(unit) {
   // bei der einen "Lüfter"-Zeile wie bisher, kein leerer "–"-Ballast fuer
   // Geraete mit nur einem Ventilator.
   var odRows = [
-    ['Leistung', pw ? pw.v + ' ' + pw.u : '–'],
-    ['Verdichter', unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–']
+    [tr('Power'), pw ? pw.v + ' ' + pw.u : '–'],
+    [tr('Compressor'), unit.compressorFreq !== null && unit.compressorFreq !== undefined ? Math.round(unit.compressorFreq) + ' Hz' : '–']
   ];
   if (groundSource) {
     // Foerder-/Rueckpumptemperatur (Dietmar, 10.09.2026: eigene
@@ -1173,15 +1185,15 @@ function buildSchema(unit) {
     // jedes optionale Feld nur eine Zeile, wenn tatsaechlich verknuepft
     // (Kernprinzip 2: kein Nullwert-Ballast fuer unkonfigurierte Anlagen).
     if (unit.sourceInTemp !== null && unit.sourceInTemp !== undefined) {
-      odRows.push(['Fördertemp.', fmtTemp1(unit.sourceInTemp) + ' °C']);
+      odRows.push([tr('Source in'), fmtTemp1(unit.sourceInTemp) + ' °C']);
     }
     if (unit.sourceOutTemp !== null && unit.sourceOutTemp !== undefined) {
-      odRows.push(['Rückpumptemp.', fmtTemp1(unit.sourceOutTemp) + ' °C']);
+      odRows.push([tr('Source out'), fmtTemp1(unit.sourceOutTemp) + ' °C']);
     }
   } else {
-    odRows.push([hasFan2 ? 'Lüfter 1' : 'Lüfter', unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' U/min' : '–']);
+    odRows.push([hasFan2 ? tr('Fan 1') : tr('Fan'), unit.fanSpeed !== null && unit.fanSpeed !== undefined ? Math.round(unit.fanSpeed) + ' ' + tr('rpm') : '–']);
     if (hasFan2) {
-      odRows.push(['Lüfter 2', Math.round(unit.fan2Speed) + ' U/min']);
+      odRows.push([tr('Fan 2'), Math.round(unit.fan2Speed) + ' ' + tr('rpm')]);
     }
   }
   // COP (Dietmar, 17.08.2026: "Steuerungsempfehlungen ... auf die
@@ -1210,12 +1222,12 @@ function buildSchema(unit) {
   // (z. B. "COP waehrend Heizstunden heute") sinnvoll - das ist dieselbe
   // Archiv-Auswertung wie Monats-/Jahres-AZ, bewusst nicht hier gebaut.
   if (unit.copMeasured !== null && unit.copMeasured !== undefined && unit.copMeasured > 0) {
-    odRows.push(['COP aktuell', fmtTemp1(unit.copMeasured)]);
+    odRows.push([tr('COP now'), fmtTemp1(unit.copMeasured)]);
   } else if (unit.copEstimate !== null && unit.copEstimate !== undefined && unit.copEstimate > 0) {
-    odRows.push(['COP aktuell', Math.round(unit.copEstimate)]);
+    odRows.push([tr('COP now'), Math.round(unit.copEstimate)]);
   }
   if (unit.dailyPerformanceFactor !== null && unit.dailyPerformanceFactor !== undefined && unit.dailyPerformanceFactor > 0) {
-    odRows.push(['Tages-AZ', fmtTemp1(unit.dailyPerformanceFactor)]);
+    odRows.push([tr('Daily COP'), fmtTemp1(unit.dailyPerformanceFactor)]);
   }
   // Bei Monoblock bleibt fuer Heiss-/Sauggas kein Kaeltemittelleitungs-
   // Stueck mehr uebrig, an dem die bisherigen Chips (siehe unten)
@@ -1225,8 +1237,8 @@ function buildSchema(unit) {
   // sind reine Angaben ZUM Aussengeraet und passen daher besser in
   // dessen eigene Messwert-Tabelle.
   if (monoblock) {
-    if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) { odRows.push(['Heißgas', fmtTemp1(unit.dischargeTemp) + ' °C']); }
-    if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) { odRows.push(['Sauggas', fmtTemp1(unit.suctionTemp) + ' °C']); }
+    if (unit.dischargeTemp !== null && unit.dischargeTemp !== undefined) { odRows.push([tr('Hot gas'), fmtTemp1(unit.dischargeTemp) + ' °C']); }
+    if (unit.suctionTemp !== null && unit.suctionTemp !== undefined) { odRows.push([tr('Suction gas'), fmtTemp1(unit.suctionTemp) + ' °C']); }
   }
   odRows.forEach(function (row, ri) {
     var ry = odTableY + ri * 15;
@@ -1253,7 +1265,7 @@ function buildSchema(unit) {
     // waere das Badge in die Zeilen hineingerutscht.
     var defrostY = odTableY + odRows.length * 15 + 7;
     svg.appendChild(el('rect', { x: outdoorX, y: defrostY, width: outdoorW, height: 15, rx: 3, fill: '#4a90d9' }));
-    var db = el('text', { x: outdoorX + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = 'ABTAUBETRIEB'; svg.appendChild(db);
+    var db = el('text', { x: outdoorX + outdoorW / 2, y: defrostY + 11, class: 'badge', fill: '#0a1220' }); db.textContent = tr('DEFROST MODE'); svg.appendChild(db);
   }
 
   // Kaeltemittelleitungen zum Innengeraet
@@ -1298,7 +1310,7 @@ function buildSchema(unit) {
   // dem Puffer, und die Sanitaerseite (Kaltwasser rein / Warmwasser zur
   // Zapfstelle H22) gehoert mit ins Bild.
   if (!monoblock) {
-    var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = 'INNENGERÄT'; svg.appendChild(it);
+    var it = el('text', { x: 345, y: 82, class: 'box-title' }); it.textContent = tr('INDOOR UNIT'); svg.appendChild(it);
   }
   // Betriebsart sichtbar machen - ohne sie sind Vor-/Ruecklauffarben und
   // die Kaeltemittel-Beschriftung nicht eindeutig lesbar. Sie gilt fuer
@@ -1315,12 +1327,12 @@ function buildSchema(unit) {
   // 17.08.2026: "warum steht bei Abtaubetrieb der Betriebsmodus ...
   // und zeitgleich Heizbetrieb in der Mitte").
   var modeText, modeColor;
-  if (unit.defrosting) { modeText = 'Abtaubetrieb'; modeColor = '#4a90d9'; }
-  else if (unit.threeWayValve === 1) { modeText = 'Warmwasser'; modeColor = '#e0b93c'; }
-  else if (running && cooling) { modeText = 'Kühlbetrieb'; modeColor = COLD; }
-  else if (running) { modeText = 'Heizbetrieb'; modeColor = HOT; }
-  else if (waterFlow) { modeText = 'Umwälzung'; modeColor = '#8a9cb8'; }
-  else { modeText = 'Standby'; modeColor = '#8a9cb8'; }
+  if (unit.defrosting) { modeText = tr('Defrost mode'); modeColor = '#4a90d9'; }
+  else if (unit.threeWayValve === 1) { modeText = tr('Hot water'); modeColor = '#e0b93c'; }
+  else if (running && cooling) { modeText = tr('Cooling mode'); modeColor = COLD; }
+  else if (running) { modeText = tr('Heating mode'); modeColor = HOT; }
+  else if (waterFlow) { modeText = tr('Circulation'); modeColor = '#8a9cb8'; }
+  else { modeText = tr('Standby'); modeColor = '#8a9cb8'; }
   svg.appendChild(chip(W / 2, 25, modeText, null, modeColor, null));
   // Heizstab (Dietmar, 24.08.2026: "was wir auch vergessen haben, den
   // Heizstab") - HeishaMon meldet intern/extern getrennt nach
@@ -1336,7 +1348,7 @@ function buildSchema(unit) {
   // nur bei true erscheint es, ein Heizstab ist selten genug aktiv, dass
   // ein dauerhaft sichtbares "Aus"-Badge nur Rauschen waere.
   if (unit.heaterActive === true) {
-    svg.appendChild(chip(W / 2, 45, 'Heizstab', null, '#e0503c', null));
+    svg.appendChild(chip(W / 2, 45, tr('Heating element'), null, '#e0503c', null));
   }
   // Anschlusspunkte, an denen der Vorlauf (SUP, y=142) und der
   // gemeinsame Ruecklauf (RET, y=192) den Waermeerzeuger in Richtung
@@ -1429,7 +1441,7 @@ function buildSchema(unit) {
   // schnitt die mittige Beschriftung an (14.08.2026).
   // Ueber dem Waermetauscher statt darunter - so hat Dietmar es in seine
   // Zeichnung verschoben (14.08.2026); unten liegt jetzt der Speicher.
-  var hxTag = el('text', { x: 310, y: 150, class: 'tag' }); hxTag.textContent = 'WT'; svg.appendChild(hxTag);
+  var hxTag = el('text', { x: 310, y: 150, class: 'tag' }); hxTag.textContent = tr('HX'); svg.appendChild(hxTag);
   // Rohrtemperatur der Inneneinheit: im Kuehlbetrieb verdampft das
   // Kaeltemittel hier, das ist die echte kalte Seite (contractVersion 1.7).
   if (cooling && unit.indoorPipeTemp !== null && unit.indoorPipeTemp !== undefined) {
@@ -1442,7 +1454,7 @@ function buildSchema(unit) {
     // Rahmenfarbe wie die Kaeltemittelleitung (#6e9ab8, pipe-refr-cold),
     // nicht das Wasser-Blau (COLD) - der Verdampfer misst die
     // Kaeltemittelseite, keine Wasserleitung (Dietmar, 14.08.2026).
-    svg.appendChild(chip(228, 145, fmtTemp1(unit.indoorPipeTemp), '°C', '#6e9ab8', 'Verdampfer'));
+    svg.appendChild(chip(228, 145, fmtTemp1(unit.indoorPipeTemp), '°C', '#6e9ab8', tr('Evaporator')));
   }
   // Wasserseite: WT -> 3-Wege-Ventil -> Raum (hoch zum Vorlauf) oder WW
   // (runter zum Tank); Ruecklauf ueber 2-Wege-Ventil zurueck zum WT.
@@ -1480,7 +1492,7 @@ function buildSchema(unit) {
   // wird VOR den Anschlussleitungen gezeichnet, damit deren Endpunkte
   // aus den zurueckgegebenen Stutzen stammen statt geraten zu werden.
   var DHW_IN = 374;
-  var dhwPorts = hasDhwTank ? tankShape(svg, 345, 226, 86, 116, unit.dhwTemp, 'WW-Tank', dhwLiters + ' l',
+  var dhwPorts = hasDhwTank ? tankShape(svg, 345, 226, 86, 116, unit.dhwTemp, tr('DHW tank'), dhwLiters + ' l',
     { coil: true, inX: DHW_IN }) : null;
   if (hasDhwTank) {
     // Speicherbezeichnung in den Sockel des Innengeraets (Gehaeuse bis
@@ -1488,7 +1500,7 @@ function buildSchema(unit) {
     // Speicherflaeche.
     var dhwTag = el('text', { x: 345, y: 356, class: 'chip-text' });
     dhwTag.style.fontSize = '8.5px';
-    dhwTag.textContent = 'WW-Tank ' + dhwLiters + ' l';
+    dhwTag.textContent = tr('DHW tank') + ' ' + dhwLiters + ' l';
     svg.appendChild(dhwTag);
   }
   // Ruecklauf durchgehend; das 2-Wege-Ventil sitzt auf der Einmuendung
@@ -1567,28 +1579,28 @@ function buildSchema(unit) {
     && unit.mainInletTemp !== null && unit.mainInletTemp !== undefined;
   var twoWayOpen = unit.twoWayValve !== false;
   var idRows = [];
-  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push(['Pumpe', fmtTemp1(unit.pumpFlow) + ' l/min']); }
-  if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push(['Drehzahl', Math.round(unit.pumpSpeed) + ' U/min']); }
-  if (hasDhwTank && unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push(['WW-Tank ' + dhwLiters + ' l', fmtTemp1(unit.dhwTemp) + ' °C']); }
+  if (unit.pumpFlow !== null && unit.pumpFlow !== undefined) { idRows.push([tr('Pump'), fmtTemp1(unit.pumpFlow) + ' l/min']); }
+  if (unit.pumpSpeed !== null && unit.pumpSpeed !== undefined) { idRows.push([tr('Speed'), Math.round(unit.pumpSpeed) + ' ' + tr('rpm')]); }
+  if (hasDhwTank && unit.dhwTemp !== null && unit.dhwTemp !== undefined) { idRows.push([tr('DHW tank') + ' ' + dhwLiters + ' l', fmtTemp1(unit.dhwTemp) + ' °C']); }
   // Verbund-Enum bevorzugen; nur wo er fehlt, den rohen Herstellerenum
   // uebersetzen (aeltere Modulstaende).
   var NORM_TEXT = {
-    '-1': 'unbekannt', 0: 'Standby', 1: 'Heizen', 2: 'Kühlen',
-    3: 'Warmwasser', 4: 'Heizen + WW', 5: 'Kühlen + WW'
+    '-1': tr('unknown'), 0: tr('Standby'), 1: tr('Heating'), 2: tr('Cooling'),
+    3: tr('Hot water'), 4: tr('Heating + DHW'), 5: tr('Cooling + DHW')
   };
   var RAW_TEXT = {
-    0: 'Nur Heizen', 1: 'Nur Kühlen', 2: 'Auto (Heizen)', 3: 'Nur Warmwasser',
-    4: 'Heizen + WW', 5: 'Kühlen + WW', 6: 'Auto (Heizen) + WW',
-    7: 'Auto (Kühlen)', 8: 'Auto (Kühlen) + WW'
+    0: tr('Heating only'), 1: tr('Cooling only'), 2: tr('Auto (heating)'), 3: tr('Hot water only'),
+    4: tr('Heating + DHW'), 5: tr('Cooling + DHW'), 6: tr('Auto (heating) + DHW'),
+    7: tr('Auto (cooling)'), 8: tr('Auto (cooling) + DHW')
   };
   if (normMode !== null && normMode !== undefined && NORM_TEXT[normMode] !== undefined) {
-    idRows.push(['Modus', NORM_TEXT[normMode]]);
+    idRows.push([tr('Mode'), NORM_TEXT[normMode]]);
   } else if (unit.operatingMode !== null && unit.operatingMode !== undefined) {
-    idRows.push(['Modus', RAW_TEXT[unit.operatingMode] || 'unbekannt']);
+    idRows.push([tr('Mode'), RAW_TEXT[unit.operatingMode] || tr('unknown')]);
   }
   if (hasDhwTank) {
-    idRows.push(['3-Wege-Ventil', toDhw ? 'WW' : 'Raum']);
-    idRows.push(['2-Wege-Ventil', twoWayOpen ? 'Auf' : 'Zu']);
+    idRows.push([tr('3-way valve'), toDhw ? tr('DHW') : tr('Room')]);
+    idRows.push([tr('2-way valve'), twoWayOpen ? tr('Open') : tr('Closed')]);
   }
   // Startet direkt unter dem Geraetesockel statt bei einem fixen Wert -
   // sonst haette die Tabelle bei einem verkuerzten Gehaeuse (kein
@@ -1642,7 +1654,7 @@ function buildSchema(unit) {
     svg.appendChild(mbHxDefs);
     svg.appendChild(el('path', { d: coilPath(mbWtX + 5, mbWtY0 + 4, mbWtY1 - 4, 3, 5), fill: 'none', stroke: 'url(#' + mbGasGradId + ')', 'stroke-width': 1.8 }));
     svg.appendChild(el('path', { d: coilPath(mbWtX + 11, mbWtY0 + 4, mbWtY1 - 4, -3, 5), fill: 'none', stroke: 'url(#' + mbWatGradId + ')', 'stroke-width': 1.8 }));
-    var mbWtTag = el('text', { x: mbWtX + mbWtW / 2, y: mbWtY0 - 6, class: 'tag' }); mbWtTag.textContent = 'WT'; svg.appendChild(mbWtTag);
+    var mbWtTag = el('text', { x: mbWtX + mbWtW / 2, y: mbWtY0 - 6, class: 'tag' }); mbWtTag.textContent = tr('HX'); svg.appendChild(mbWtTag);
     // Kurze Stichleitungen von der WT-Kante bis zur Geraetekante -
     // dahinter beginnt die ganz normale Vor-/Ruecklaufleitung Richtung
     // Puffer/Heizkreis (unveraendert, wie beim Split-Geraet).
@@ -1665,7 +1677,7 @@ function buildSchema(unit) {
   // Dusche rechts neben dem Innengeraet (Dietmar, 14.08.2026).
   var CW = '#7cc4ee', HW = HOT;
   svg.appendChild(el('path', { d: 'M203,331 L320,331', fill: 'none', stroke: CW, 'stroke-width': 3, 'stroke-linecap': 'round' }));
-  var cwTag = el('text', { x: 231, y: 323, class: 'tag' }); cwTag.textContent = 'Kaltwasser'; svg.appendChild(cwTag);
+  var cwTag = el('text', { x: 231, y: 323, class: 'tag' }); cwTag.textContent = tr('Cold water'); svg.appendChild(cwTag);
 
   // Warmwasser oben aus dem Speicher heraus zum Bad. Zwei Abgaenge:
   // links der Wanneneinlauf, rechts die Brause (Dietmar, 14.08.2026).
@@ -1679,7 +1691,7 @@ function buildSchema(unit) {
     d: bentPath([[388, 244], [490, 244], [490, 256]], 8),
     fill: 'none', stroke: HW, 'stroke-width': 3, 'stroke-linecap': 'round'
   }));
-  var hwTag = el('text', { x: 439, y: 236, class: 'tag' }); hwTag.textContent = 'Warmwasser'; svg.appendChild(hwTag);
+  var hwTag = el('text', { x: 439, y: 236, class: 'tag' }); hwTag.textContent = tr('Hot water'); svg.appendChild(hwTag);
   // Wanneneinlauf: Fallrohr mit abgewinkeltem Auslauf ueber dem Wannenrand
   svg.appendChild(el('path', {
     d: 'M435,244 L435,302 Q435,311 444,311',
@@ -1718,7 +1730,7 @@ function buildSchema(unit) {
   ['M448,360 l-3,6 h12 l-3,-6 Z', 'M555,360 l-3,6 h12 l-3,-6 Z'].forEach(function (fd) {
     svg.appendChild(el('path', { d: fd, fill: 'none', stroke: CW, 'stroke-width': 1.8, 'stroke-linejoin': 'round' }));
   });
-  var bTag = el('text', { x: 502, y: 380, class: 'tag' }); bTag.textContent = 'Dusche + Badewanne'; svg.appendChild(bTag);
+  var bTag = el('text', { x: 502, y: 380, class: 'tag' }); bTag.textContent = tr('Shower + bath'); svg.appendChild(bTag);
   }
 
   // ── Puffer als hydraulische Weiche (PAW-BTANK100L) ───────────
@@ -1960,8 +1972,8 @@ function buildSchema(unit) {
   // an den Durchfluss abgetretenen alten Platzes (117), siehe oben.
   if (haveVLRL && unit.pumpFlow !== null && unit.pumpFlow !== undefined && unit.pumpFlow > 0) {
     var pTh = Math.abs((unit.pumpFlow / 60) * 4.186 * (unit.mainOutletTemp - unit.mainInletTemp));
-    drawValve(chip(INNEN_PUF_CX, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', ','), 'kW', SUPC,
-      cooling ? 'Kälteleistung' : 'therm. Leistung'));
+    drawValve(chip(INNEN_PUF_CX, 92, (Math.round(pTh * 100) / 100).toFixed(2).replace('.', DEC), 'kW', SUPC,
+      cooling ? tr('Cooling output') : tr('Thermal output')));
   }
   // Volumenstrom bisher nur klein in der Innengeraet-Tabelle ("Pumpe X
   // l/min") - jetzt zusaetzlich als eigener Chip direkt auf der Leitung.
@@ -2017,7 +2029,7 @@ function buildSchema(unit) {
     // stehen" statt direkt am Tankrand zu kleben).
     var pufTagY = hasFreshWaterStation ? (PUF_TOP - 8) : (PUF_TOP + PUF_H + 14);
     var pufTag = el('text', { x: PUF_CX, y: pufTagY, class: 'tag' });
-    pufTag.textContent = (hasCombiTank ? 'Kombispeicher ' : 'Puffer ') + bufferLiters + ' l';
+    pufTag.textContent = (hasCombiTank ? tr('Combi tank') : tr('Buffer')) + ' ' + bufferLiters + ' l';
     svg.appendChild(pufTag);
     // Beim Kombispeicher entfaellt der einzelne Temperatur-Chip ueber dem
     // Tank (24.09.2026) - der Platz wird stattdessen fuer den neuen
@@ -2050,7 +2062,7 @@ function buildSchema(unit) {
       var comboStubTopY = PUF_TOP - 22;
       svg.appendChild(pipe('M' + PUF_CX + ',' + PUF_TOP + ' L' + PUF_CX + ',' + comboStubTopY, 'pipe-hot', false));
       var wwOutTag = el('text', { x: PUF_CX, y: comboStubTopY - 4, class: 'tag' });
-      wwOutTag.textContent = '→ Warmwasser';
+      wwOutTag.textContent = tr('→ Hot water');
       svg.appendChild(wwOutTag);
 
       // comboInfoGap = 34 (24.09.2026, live-korrigiert): jeder Chip mit
@@ -2062,10 +2074,10 @@ function buildSchema(unit) {
       var comboInfoGap = 34;
       var comboInfoI = 0;
       if (cfg.comboTopTemp !== null && cfg.comboTopTemp !== undefined) {
-        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboTopTemp), '°C', tempColor(cfg.comboTopTemp), 'WW oben'));
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboTopTemp), '°C', tempColor(cfg.comboTopTemp), tr('DHW top')));
       }
       if (cfg.comboBottomTemp !== null && cfg.comboBottomTemp !== undefined) {
-        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboBottomTemp), '°C', tempColor(cfg.comboBottomTemp), 'WW unten'));
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboBottomTemp), '°C', tempColor(cfg.comboBottomTemp), tr('DHW bottom')));
       }
       // ΔT nach demselben Muster wie INNEN_PUF_CX weiter oben (Betrag,
       // amber #e0b93c, Einheit 'K') - Schichtung im Speicher (oben minus
@@ -2073,13 +2085,13 @@ function buildSchema(unit) {
       if (cfg.comboTopTemp !== null && cfg.comboTopTemp !== undefined
         && cfg.comboBottomTemp !== null && cfg.comboBottomTemp !== undefined) {
         var comboDT = Math.abs(cfg.comboTopTemp - cfg.comboBottomTemp);
-        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, 'ΔT ' + fmtTemp1(comboDT), 'K', '#e0b93c', 'Schichtung'));
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, 'ΔT ' + fmtTemp1(comboDT), 'K', '#e0b93c', tr('Stratification')));
       }
       if (cfg.comboReturnTemp !== null && cfg.comboReturnTemp !== undefined) {
-        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboReturnTemp), '°C', tempColor(cfg.comboReturnTemp), 'Rücklauf'));
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(cfg.comboReturnTemp), '°C', tempColor(cfg.comboReturnTemp), tr('Return')));
       }
       if (pufFillTemp !== null && pufFillTemp !== undefined) {
-        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), 'Wärmespeicher'));
+        svg.appendChild(chip(PUF_CX, comboInfoY + comboInfoGap * comboInfoI++, fmtTemp1(pufFillTemp), '°C', tempColor(pufFillTemp), tr('Heat storage')));
       }
     } else if (hasFreshWaterStation) {
       // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham, per
@@ -2177,32 +2189,32 @@ function buildSchema(unit) {
       if (z2Active) {
         svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwColdY + ' L' + fwX + ',' + fwColdY, 'pipe-cold', false));
         var fwColdTagA1 = el('text', { x: fwX - fwStubLen, y: fwColdY - 5, class: 'tag', 'text-anchor': 'start' });
-        fwColdTagA1.textContent = 'Kalt';
+        fwColdTagA1.textContent = tr('Cold');
         svg.appendChild(fwColdTagA1);
         var fwColdTagA2 = el('text', { x: fwX - fwStubLen, y: fwColdY + 9, class: 'tag', 'text-anchor': 'start' });
-        fwColdTagA2.textContent = 'Wasser →';
+        fwColdTagA2.textContent = tr('water →');
         svg.appendChild(fwColdTagA2);
         svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwWarmY + ' L' + fwX + ',' + fwWarmY, 'pipe-hot', false));
         var fwWarmTagA1 = el('text', { x: fwX - fwStubLen, y: fwWarmY - 5, class: 'tag', 'text-anchor': 'start' });
-        fwWarmTagA1.textContent = '← Warm';
+        fwWarmTagA1.textContent = tr('← Warm');
         svg.appendChild(fwWarmTagA1);
         var fwWarmTagA2 = el('text', { x: fwX - fwStubLen, y: fwWarmY + 9, class: 'tag', 'text-anchor': 'start' });
-        fwWarmTagA2.textContent = 'Wasser';
+        fwWarmTagA2.textContent = tr('water');
         svg.appendChild(fwWarmTagA2);
       } else {
       svg.appendChild(pipe('M' + (fwX - fwStubLen) + ',' + fwSecY + ' L' + fwX + ',' + fwSecY, 'pipe-cold', false));
       var fwColdTag1 = el('text', { x: fwX - fwStubLen, y: fwSecY - 5, class: 'tag', 'text-anchor': 'start' });
-      fwColdTag1.textContent = 'Kalt';
+      fwColdTag1.textContent = tr('Cold');
       svg.appendChild(fwColdTag1);
       var fwColdTag2 = el('text', { x: fwX - fwStubLen, y: fwSecY + 9, class: 'tag', 'text-anchor': 'start' });
-      fwColdTag2.textContent = 'Wasser →';
+      fwColdTag2.textContent = tr('water →');
       svg.appendChild(fwColdTag2);
       svg.appendChild(pipe('M' + (fwX + fwW) + ',' + fwSecY + ' L' + (fwX + fwW + fwStubLen) + ',' + fwSecY, 'pipe-hot', false));
       var fwWarmTag1 = el('text', { x: fwX + fwW + fwStubLen, y: fwSecY - 5, class: 'tag', 'text-anchor': 'end' });
-      fwWarmTag1.textContent = '→ Warm';
+      fwWarmTag1.textContent = tr('→ Warm');
       svg.appendChild(fwWarmTag1);
       var fwWarmTag2 = el('text', { x: fwX + fwW + fwStubLen, y: fwSecY + 9, class: 'tag', 'text-anchor': 'end' });
-      fwWarmTag2.textContent = 'Wasser';
+      fwWarmTag2.textContent = tr('water');
       svg.appendChild(fwWarmTag2);
       }
       // Beschriftung UNTER dem Gehaeuse statt darueber (29.09.2026, Dietmar:
@@ -2211,7 +2223,7 @@ function buildSchema(unit) {
       // Mit zweitem Heizkreis endet die Beschriftung sonst nur ~0,5 px vor
       // dessen Ruecklauf-Leitung (x=620) - deshalb 12 px nach links.
       var fwTag = el('text', { x: z2Active ? fwCX - 12 : fwCX, y: fwY + fwH + 14, class: 'tag' });
-      fwTag.textContent = 'Frischwasserstation';
+      fwTag.textContent = tr('Fresh water station');
       svg.appendChild(fwTag);
     }
 
@@ -2373,11 +2385,11 @@ function buildSchema(unit) {
       drawValve(valveSymbol(694, z.y, 7, z.mvPos > 0 ? SUPC : PAL.draw,
         Math.round(z.mvPos) + ' %', z.mvPos > 0));
     } else if (z.mv === 2) {
-      drawValve(valveSymbol(694, z.y, 7, HOT, 'öffnet', true));
+      drawValve(valveSymbol(694, z.y, 7, HOT, tr('opening'), true));
     } else if (z.mv === 1) {
-      drawValve(valveSymbol(694, z.y, 7, COLD, 'schließt', true));
+      drawValve(valveSymbol(694, z.y, 7, COLD, tr('closing'), true));
     } else if (z.mv === 0) {
-      drawValve(valveSymbol(694, z.y, 7, PAL.draw, 'steht', false));
+      drawValve(valveSymbol(694, z.y, 7, PAL.draw, tr('idle'), false));
     } else {
       drawValve(valveSymbol(694, z.y, 7, PAL.draw, null, false));
     }
@@ -2388,10 +2400,10 @@ function buildSchema(unit) {
     // Leitungen, da die Zone-2-Abzweige bei x=645/620 liegen, ausserhalb
     // beider Wortbreiten.
     var mischerTag = el('text', { x: 694, y: z.y - 25, class: 'tag' });
-    mischerTag.textContent = 'Mischer';
+    mischerTag.textContent = tr('Mixer');
     svg.appendChild(mischerTag);
     var pumpeTag = el('text', { x: 754, y: z.y - 25, class: 'tag' });
-    pumpeTag.textContent = z.pumpKnown ? 'Pumpe' : 'Pumpe (kein Status)';
+    pumpeTag.textContent = z.pumpKnown ? tr('Pump') : tr('Pump (no status)');
     svg.appendChild(pumpeTag);
     // Pfeile im Vor-/Ruecklauf: bei HK1 (16.08.2026) und jetzt auch bei
     // HK2 (16.08.2026) entfernt - die Flussanimation (Punkte) zeigt die
@@ -2468,7 +2480,7 @@ function buildSchema(unit) {
           // Element") - class "tag" (8.5px) haelt "RADIATOREN" bei
           // ~60px deutlich unter den 110px der Kontur.
           var radLabel = el('text', { x: curX - 30 + radW / 2, y: peakY - 14, class: 'tag' });
-          radLabel.textContent = 'Radiatoren';
+          radLabel.textContent = tr('Radiators');
           svg.appendChild(radLabel);
           var fgid = 'radfill' + z.n + unit.id;
           var manifoldH = 8;
@@ -2524,7 +2536,7 @@ function buildSchema(unit) {
           // "FUSSBODENHEIZUNGEN" bleibt mit ~113px unter der
           // Elementbreite.
           var floorLabel = el('text', { x: (fLeft - 36 + fLeft + fSide) / 2, y: fTop - 8, class: 'tag' });
-          floorLabel.textContent = 'Fußbodenheizungen';
+          floorLabel.textContent = tr('Underfloor heating');
           svg.appendChild(floorLabel);
           // Farbverlauf statt hartem Rot/Blau-Wechsel (Dietmar,
           // 17.08.2026: "dann sollte das Ganze auch ein Farbverlauf
@@ -2578,7 +2590,7 @@ function buildSchema(unit) {
     // darunter) noch den Heizkoerper (der beginnt erst bei x=830+).
     var hkCX = (694 + 754) / 2;
     var rt = el('text', { x: hkCX, y: z.y - 53, class: 'box-title' });
-    rt.textContent = hasZone2 ? ('HEIZKREIS ' + z.n) : 'HEIZKREIS';
+    rt.textContent = hasZone2 ? (tr('HEATING CIRCUIT') + ' ' + z.n) : tr('HEATING CIRCUIT');
     svg.appendChild(rt);
     if (z.caption) {
       var rc = el('text', { x: hkCX, y: z.y - 39, class: 'tag' });
@@ -2650,8 +2662,8 @@ function buildBasicCard(unit) {
   var box = document.createElement('div');
   box.style.cssText = 'padding:14px 16px;border-radius:4px;background:var(--surface);border:1.5px solid var(--line);color:var(--ink);font-size:12px;';
   var pw = fmtPower(unit.power);
-  box.innerHTML = 'Keine Anlagenschema-Daten (Pumpen/Ventile/Durchfluss) verfügbar - nur Basiswerte.' +
-    (pw ? '<div style="margin-top:6px;font-weight:700">Leistung: ' + pw.v + ' ' + pw.u + '</div>' : '');
+  box.innerHTML = tr('No plant diagram data (pumps/valves/flow) available - basic values only.') +
+    (pw ? '<div style="margin-top:6px;font-weight:700">' + tr('Power') + ': ' + pw.v + ' ' + pw.u + '</div>' : '');
   return box;
 }
 
@@ -2668,44 +2680,44 @@ let TOUR_SHOWN_LOCAL = false;
 let TOUR_STEP = 0;
 const TOUR_STEPS = [
   {
-    title: 'Kein Messwert-Raster - ein echtes Rohrschema',
-    text: 'Diese Kachel zeichnet Ihre Wärmepumpe als animiertes Anlagenschema, wie es sonst nur professionelle Gebäudeleittechnik zeigt: Pumpen, Ventile und Fließrichtung live in Bewegung - statt einer Tabelle mit Zahlen, die Sie selbst interpretieren müssen.'
+    title: tr('Not a grid of readings - a real pipe diagram'),
+    text: tr('This tile draws your heat pump as an animated plant diagram, the kind usually found only in professional building management systems: pumps, valves and flow direction live in motion - instead of a table of numbers you have to interpret yourself.')
   },
   {
-    title: 'Läuft mit jeder angebundenen Wärmepumpe',
-    text: 'Die Kachel findet Ihre Wärmepumpe automatisch über HeishaMon oder WPHub - kein Gerätetyp ist fest verdrahtet. Haben Sie keines der beiden, lassen sich unter „Manuelle Datenanbindung" eigene, bereits vorhandene Variablen auf dieselben Felder verknüpfen.'
+    title: tr('Works with any connected heat pump'),
+    text: tr('The tile finds your heat pump automatically through HeishaMon or WPHub - no device type is hard-wired. If you have neither, you can link your own existing variables to the same fields under “Manual data connection”.')
   },
   {
-    title: 'Zeigt nur, was Ihre Anlage wirklich hergibt',
-    text: 'Liefert Ihre Datenquelle keine Pumpen-/Ventildaten (z. B. reine WPHub-Cloud-Anbindung ohne HeishaMon), erscheinen nur die Basiswerte statt eines falsch wirkenden, unvollständigen Schemas. Auch einzelne fehlende Sensoren (z. B. kein zweiter Heizkreis) blenden sich automatisch aus, statt eine Null vorzutäuschen.'
+    title: tr('Shows only what your system actually provides'),
+    text: tr('If your data source supplies no pump/valve data (e.g. a pure WPHub cloud connection without HeishaMon), only the basic values appear instead of an incomplete diagram that looks wrong. Individual missing sensors (e.g. no second heating circuit) are also hidden automatically instead of faking a zero.')
   },
   {
-    title: 'Verdichterfrequenz: läuft er gerade, und wie stark?',
-    text: '0 Hz heißt: der Verdichter steht (Standby oder zwischen zwei Takten). Ein Wert größer 0 zeigt, wie schnell er gerade dreht - höhere Frequenz bedeutet mehr Heiz-/Kühlleistung, aber auch höhere elektrische Aufnahme. Die genaue Skala hängt vom jeweiligen Verdichtermodell ab, ist also zwischen Anlagen nicht 1:1 vergleichbar.'
+    title: tr('Compressor frequency: is it running, and how hard?'),
+    text: tr('0 Hz means the compressor is stopped (standby or between two cycles). A value above 0 shows how fast it is currently turning - a higher frequency means more heating/cooling output, but also higher electrical consumption. The exact scale depends on the compressor model, so it cannot be compared 1:1 between systems.')
   },
   {
-    title: 'ΔT zwischen Vor- und Rücklauf zeigt, wie stark die Anlage gerade heizt',
-    text: 'Die Differenz zwischen Vorlauf- und Rücklauftemperatur (ΔT) wächst, je mehr Wärme die Anlage gerade abgibt. Ein Fußbodenheizkreis läuft typisch mit kleiner Spreizung (wenige Kelvin), Heizkörper oder die Warmwasserbereitung deutlich mehr. Ein dauerhaft sehr kleines ΔT bei laufendem Verdichter kann auf zu hohen Durchfluss oder Luft im System hindeuten - ein Fachbetrieb kann das im Zweifel einordnen, die Kachel bewertet nicht automatisch.'
+    title: tr('ΔT between flow and return shows how hard the system is heating'),
+    text: tr('The difference between flow and return temperature (ΔT) grows the more heat the system is currently delivering. An underfloor heating circuit typically runs with a small spread (a few kelvin), radiators or hot water preparation with considerably more. A permanently very small ΔT with the compressor running can indicate too high a flow rate or air in the system - a heating professional can assess that if in doubt; the tile does not rate it automatically.')
   },
   {
-    title: 'Arbeitszahl auf einen Blick',
-    text: 'Sofern Ihre Wärmepumpe es liefert, zeigt das Schema den aktuellen COP (Schätzung des Herstellers oder echte Messung über einen externen Zähler) sowie die Tages-Arbeitszahl - bewusst ohne Nachkommastelle, um keine Genauigkeit vorzutäuschen, die die Quelle gar nicht hergibt. COP ist dabei eine Momentaufnahme (aktueller Wirkungsgrad genau jetzt), die Arbeitszahl mittelt über den ganzen Tag - bei stark wechselnder Außentemperatur oder häufigem Takten können beide Werte deutlich auseinanderliegen, das ist normal.'
+    title: tr('Performance factor at a glance'),
+    text: tr('If your heat pump supplies it, the diagram shows the current COP (the manufacturer’s estimate or a real measurement via an external meter) as well as the daily performance factor - deliberately without decimal places, so as not to fake an accuracy the source does not provide. COP is a snapshot (the efficiency right now), while the performance factor averages over the whole day - with strongly changing outdoor temperatures or frequent cycling the two values can differ considerably; that is normal.')
   },
   {
-    title: 'Zwei Heizkreise, unabhängig einstellbar',
-    text: 'Heizkörper und Fußbodenheizung lassen sich je Heizkreis getrennt ein- und ausblenden - für Anlagen mit nur einer Heizflächenart oder nur einem statt zwei Heizkreisen. Umschalten direkt über die aufgezogene Kachelansicht (Doppelpfeil), ohne die Instanz neu zu konfigurieren.'
+    title: tr('Two heating circuits, adjustable independently'),
+    text: tr('Radiators and underfloor heating can be shown or hidden separately for each heating circuit - for systems with only one type of heating surface or only one instead of two heating circuits. Switch directly in the expanded tile view (double arrow), without reconfiguring the instance.')
   },
   {
-    title: 'Passt sich Ihrer Anlagenbauart an',
-    text: 'Split oder Monoblock, Pufferspeicher, Warmwasser-Tank mit eigenem Volumen - alles über Schalter in der aufgezogenen Kachelansicht einstellbar. Stellen Sie Monoblock ein, verschwinden die Warmwasser-Tank-Optionen automatisch, weil es dort ohnehin nie einen integrierten Tank gibt.'
+    title: tr('Adapts to your system type'),
+    text: tr('Split or monoblock, buffer tank, hot water tank with its own volume - everything adjustable through switches in the expanded tile view. If you set monoblock, the hot water tank options disappear automatically, because such a unit never has an integrated tank anyway.')
   },
   {
-    title: 'Wasserfluss nach Ihrem Geschmack',
-    text: 'Fünf verschiedene Optiken für den animierten Wasserfluss (organische Welle, Punkte, Striche, Flüssigkeitsglanz, digitale Signalimpulse) sowie Bewegungsart und Geschwindigkeit getrennt wählbar - ebenfalls hinter dem Doppelpfeil.'
+    title: tr('Water flow to your taste'),
+    text: tr('Five different styles for the animated water flow (organic wave, dots, dashes, liquid gloss, digital signal pulses) as well as motion type and speed selectable separately - also behind the double arrow.')
   },
   {
-    title: 'Testen ohne laufende Anlage',
-    text: 'Über die Simulation (Doppelpfeil-Ansicht) lassen sich Heiz-, Kühl-, Warmwasser-, Standby- und Abtaubetrieb mit festen Beispielwerten durchspielen - praktisch, um die Darstellung zu prüfen, ohne auf den passenden echten Betriebszustand warten zu müssen. (Abtaubetrieb: die Anlage kehrt kurz den Kältekreislauf um, um Reif vom Außengerät zu schmelzen - normal bei Frost, keine Störung.)'
+    title: tr('Testing without a running system'),
+    text: tr('The simulation (double-arrow view) lets you play through heating, cooling, hot water, standby and defrost mode with fixed sample values - handy for checking the display without waiting for the matching real operating state. (Defrost mode: the system briefly reverses the refrigeration cycle to melt frost off the outdoor unit - normal in freezing weather, not a fault.)')
   }
 ];
 
@@ -2750,6 +2762,11 @@ function dismissTour() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // feste Texte der Seite (im HTML englisch) in die Sprache der Oberflaeche bringen
+  document.getElementById('tourRestartBtn').title = tr('Show introduction tour');
+  document.getElementById('tourPrev').textContent = tr('Back');
+  document.getElementById('tourNext').textContent = tr('Next');
+  document.getElementById('tourDone').textContent = tr('✓ Understood, do not show again');
   document.getElementById('tourPrev').addEventListener('click', () => {
     if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
   });
@@ -2804,7 +2821,7 @@ function handleMessage(raw) {
   if (!d || !d.ok) {
     unitsEl.style.display = 'none';
     empty.style.display = 'flex';
-    empty.textContent = (d && d.error) || 'Keine Daten verfügbar.';
+    empty.textContent = (d && d.error) || tr('No data available.');
     return;
   }
   empty.style.display = 'none';
