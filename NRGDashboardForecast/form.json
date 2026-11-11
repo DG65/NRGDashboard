@@ -2,61 +2,63 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Was zeigt die Kachel: PV-Erzeugung und Verbrauch als Prognose-Kurven (P50) mit Unsicherheitsband (P10–P90) über bis zu 5 Tage — der EMS-Blick: Erzeugung gegen Verbrauch, die Lücke ist Netzbezug/Einspeisung. Hover/Touch zeigt Werte und Saldo zur Uhrzeit."
+          "caption": "What the tile shows: PV generation and consumption as forecast curves (P50) with an uncertainty band (P10–P90) for up to 5 days — the EMS view: generation against consumption, the gap is grid import/export. Hover/touch shows the values and the balance at that time of day."
         },
         {
           "type": "Label",
-          "caption": "Quellen: die PV- und die Lastprognose-Instanz werden automatisch gefunden (nur bei mehreren Instanzen manuell wählen). Die Kachel funktioniert auch mit nur einer Quelle; per Schalter oder Klick auf den Legendeneintrag lässt sich jede Reihe ausblenden."
+          "caption": "Sources: the PV and load forecast instances are found automatically (choose manually only if there are several instances). The tile also works with just one source; every series can be hidden with its switch or by clicking its legend entry."
         },
         {
           "type": "Label",
-          "caption": "Ist-Werte: mit den beiden Ist-Leistungsvariablen erscheinen der Momentanwert in der Legende, ein Punkt auf der Jetzt-Linie, der gemessene Tagesverlauf als gestrichelte Linie (optional) und die Ist-kWh unter den Soll-Werten. Einheit W/kW wird automatisch erkannt."
+          "caption": "Actual values: with the two actual-power variables, the current value appears in the legend, a dot on the now line, the measured course of the day as a dashed line (optional) and the actual kWh below the forecast values. The unit W/kW is detected automatically."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt) wird jetzt verworfen statt den „Ist“-Vergleich zur Prognose zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+          "caption": "✨ Detail (outlier protection, 01.09.2026): a single defective archive value (e.g. a communication error in a partner module in the order of megawatts) is now discarded instead of distorting the “actual” comparison with the forecast - a generic implausibility limit (1 MW), not a plant-specific value."
         },
         {
           "type": "Label",
-          "caption": "Gestern: zeigt den Vortag mit gemessener Kurve (ganzer Tag) und der damaligen Prognose. So sieht man, wie gut die Prognose getroffen hat."
+          "caption": "Yesterday: shows the previous day with the measured curve (whole day) and the forecast made at that time. This shows how well the forecast hit the mark."
         },
         {
           "type": "Label",
-          "caption": "Diagramm-Engine: ECharts (quelloffen, auch kommerziell kostenlos) oder Highcharts (nur privat/nicht-kommerziell kostenlos). Beide sehen praktisch gleich aus; die Library wird per CDN geladen (Internet im Anzeigegerät nötig). Umschaltbar über die aufgezogene Kachelansicht (Doppelpfeil), nicht hier im Formular."
+          "caption": "Chart engine: ECharts (open source, free of charge for commercial use too) or Highcharts (free for private/non-commercial use only). Both look practically the same; the library is loaded from a CDN (the display device needs internet access). Switch it in the expanded tile view (double arrow), not here in the form."
         },
         {
           "type": "Label",
-          "caption": "Darstellung: Linienstärke, Glättung, Band-Transparenz, Gitter, Y-Achse, Farben, Schriftart/-größe, Tage, Ist-Anzeige, Cache — alles über die aufgezogene Kachelansicht (Doppelpfeil) einstellbar, nicht hier im Formular. Der Archiv-Cache (Ist-Verlauf) reduziert die Last; Standard 120 s reicht."
+          "caption": "Appearance: line width, smoothing, band transparency, grid, y-axis, colors, font/size, days, actual display, cache — all adjustable in the expanded tile view (double arrow), not here in the form. The archive cache (actual course) reduces the load; the default of 120 s is enough."
         },
         {
           "type": "Label",
-          "caption": "Tipp: Kachel im WebFront groß genug ziehen (Kachelgröße = sichtbarer Ausschnitt, Diagrammhöhe passt sich automatisch an)."
+          "caption": "Tip: pull the tile large enough in the WebFront (tile size = visible area, the chart height adapts automatically)."
         },
         {
           "type": "Label",
-          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
         },
         {
           "type": "CheckBox",
           "name": "StandaloneEnabled",
-          "caption": "Standalone-Webseite für Browser und IPSView aktivieren"
+          "caption": "Enable standalone web page for browser and IPSView"
         },
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn die Kachel als eigene Webseite (Browser, IPSView) laufen soll. Wer nur die Kachel im WebFront nutzt, kann das abschalten: Dann ist kein WebHook registriert und der Zugriff von außen entfällt. Beim Abschalten wird der vorhandene Eintrag entfernt."
+          "caption": "Only needed if the tile is to run as its own web page (browser, IPSView). If you only use the tile in the WebFront, you can switch this off: then no WebHook is registered and access from outside is removed. Switching it off removes the existing entry."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the saved “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with one shared login for all visitors)."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASHFC_ResetTour($id);"
         }
       ]
@@ -64,22 +66,22 @@
     {
       "type": "Label",
       "name": "SourceStatus",
-      "caption": "Verbindungsstatus wird berechnet …"
+      "caption": "Connection status is being calculated …"
     },
     {
       "type": "Label",
-      "caption": "Quellen werden automatisch erkannt (je eine PV- und Lastprognose-Instanz). Nur bei mehreren Instanzen hier festlegen."
+      "caption": "Sources are detected automatically (one PV and one load forecast instance each). Only set them here if there are several instances."
     },
     {
       "type": "SelectInstance",
       "name": "PVSource",
-      "caption": "PV-Prognose-Instanz (leer = automatisch)",
+      "caption": "PV forecast instance (empty = automatic)",
       "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
     },
     {
       "type": "NumberSpinner",
       "name": "MaxLineKw",
-      "caption": "Anlagenleistung für die gestrichelte Linie (kW, 0 = Summe der Modul-kWp aus der PV-Prognose)",
+      "caption": "Plant power for the dashed line (kW, 0 = sum of the module kWp from the PV forecast)",
       "digits": 2,
       "minimum": 0,
       "maximum": 1000,
@@ -88,43 +90,43 @@
     {
       "type": "SelectInstance",
       "name": "LoadSource",
-      "caption": "Last-Prognose-Instanz (leer = automatisch, optional)",
+      "caption": "Load forecast instance (empty = automatic, optional)",
       "moduleID": "{DC5AD508-507F-40EA-8630-0959AED83050}"
     },
     {
       "type": "Label",
-      "caption": "── Ist-Werte (optional): eigene Leistungsvariablen für den gemessenen Verlauf, unabhängig von Prognoses eigener Konfiguration ──"
+      "caption": "── Actual values (optional): own power variables for the measured course, independent of the forecast module's own configuration ──"
     },
     {
       "type": "Label",
       "name": "ActualStatusPV",
-      "caption": "PV (Ist): wird beim Öffnen des Formulars geprüft …"
+      "caption": "PV (actual): is checked when the form opens …"
     },
     {
       "type": "SelectVariable",
       "name": "ActualPV",
-      "caption": "Ist-PV-Leistung (W)"
+      "caption": "Actual PV power (W)"
     },
     {
       "type": "Label",
       "name": "ActualStatusLoad",
-      "caption": "Verbrauch (Ist): wird beim Öffnen des Formulars geprüft …"
+      "caption": "Consumption (actual): is checked when the form opens …"
     },
     {
       "type": "SelectVariable",
       "name": "ActualLoad",
-      "caption": "Ist-Hausverbrauch (W)"
+      "caption": "Actual house consumption (W)"
     }
   ],
   "actions": [
     {
       "type": "Button",
-      "caption": "Doppelpfeil-Einstellungen auf Standard zurücksetzen",
+      "caption": "Reset double-arrow settings to default",
       "onClick": "NRGDASHFC_ResetStyle($id);"
     },
     {
       "type": "Button",
-      "caption": "🔄 Übernehmen erzwingen (ohne Formularänderung)",
+      "caption": "🔄 Force apply (without form change)",
       "onClick": "IPS_ApplyChanges($id); echo '✅ ApplyChanges() ausgeführt.';"
     }
   ],
@@ -132,12 +134,12 @@
     {
       "code": 102,
       "icon": "active",
-      "caption": "Aktiv"
+      "caption": "Active"
     },
     {
       "code": 104,
       "icon": "inactive",
-      "caption": "Keine Prognose-Instanz gefunden"
+      "caption": "No forecast instance found"
     }
   ]
 }

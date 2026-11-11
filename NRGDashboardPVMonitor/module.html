@@ -512,7 +512,7 @@
 </style>
 </head>
 <body>
-  <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+  <button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
   <div class="wrap">
     <!-- Einfuehrungs-Tour (29.08.2026, Dietmar: "eine Tour die bei der ersten
          Benutzung eingeblendet und nur per Haken ausgeblendet werden kann").
@@ -524,50 +524,50 @@
         <div class="tour-title" id="tourTitle"></div>
         <div class="tour-text" id="tourText"></div>
         <div class="tour-nav">
-          <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-          <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-          <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+          <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+          <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+          <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
         </div>
       </div>
     </div>
     <div id="bar">
       <select id="type" class="sel">
-        <option value="day">Tag (Verlauf)</option>
-        <option value="week">Woche (Energie)</option>
-        <option value="month">Monat (Energie)</option>
-        <option value="year">Jahr (Energie)</option>
-        <option value="all">Gesamt (Energie)</option>
-        <option value="custom">Benutzerdefiniert</option>
+        <option value="day">Day (history)</option>
+        <option value="week">Week (energy)</option>
+        <option value="month">Month (energy)</option>
+        <option value="year">Year (energy)</option>
+        <option value="all">All time (energy)</option>
+        <option value="custom">Custom</option>
       </select>
-      <button id="prev" class="nav" title="Zurück">&#9664;</button>
+      <button id="prev" class="nav" title="Back">&#9664;</button>
       <span id="periodLabel" class="pick" style="display:none; cursor:default;"></span>
       <input id="pick" class="pick" type="date">
       <input id="pickTo" class="pick" type="date" style="display:none">
-      <button id="next" class="nav" title="Vor">&#9654;</button>
+      <button id="next" class="nav" title="Forward">&#9654;</button>
       <span id="quick"></span>
     </div>
     <div id="body">
       <div id="tabsWrap" data-anim="spring">
-        <button id="tabsToggle" title="Reiterleiste ein-/ausblenden">&#9664;</button>
+        <button id="tabsToggle" title="Show/hide tab bar">&#9664;</button>
         <div id="tabs">
-          <button class="tab active" data-tab="solar">PV & Einstrahlung</button>
-          <button class="tab" data-tab="mpp">MPP-Tracker</button>
-          <button class="tab" data-tab="battery">Batterie</button>
-          <button class="tab" data-tab="price">Strompreis</button>
-          <button class="tab" data-tab="flow">Energiebilanz</button>
-          <button class="tab" data-tab="balance">Bilanz</button>
-          <button class="tab" data-tab="yearcompare">Jahresvergleich</button>
-          <button class="tab" data-tab="tagesplan">Tagesplan</button>
-          <button class="tab" data-tab="scenarios">Szenarien</button>
+          <button class="tab active" data-tab="solar">PV & irradiance</button>
+          <button class="tab" data-tab="mpp">MPP tracker</button>
+          <button class="tab" data-tab="battery">Battery</button>
+          <button class="tab" data-tab="price">Electricity price</button>
+          <button class="tab" data-tab="flow">Energy balance</button>
+          <button class="tab" data-tab="balance">Balance</button>
+          <button class="tab" data-tab="yearcompare">Year comparison</button>
+          <button class="tab" data-tab="tagesplan">Daily plan</button>
+          <button class="tab" data-tab="scenarios">Scenarios</button>
         </div>
       </div>
       <div id="chartcol">
         <div id="chartTitle"></div>
-        <button id="chartZoomBtn" title="Diagramm auf Kachelgröße vergrößern">+</button>
+        <button id="chartZoomBtn" title="Enlarge chart to tile size">+</button>
         <div id="chart"></div>
         <div id="priceUnitRow" class="ycSubTabs" style="display:none">
           <button data-unit="kwh">kWh</button>
-          <button data-unit="kw">Ø kW</button>
+          <button data-unit="kw">avg kW</button>
         </div>
         <div id="ampelStrip" class="ampelStrip" style="display:none"></div>
         <div id="manualPanel" style="display:none"></div>
@@ -582,7 +582,35 @@
   </div>
 
   <script>/*__ECHARTS_JS__*/</script>
+  <!--NRGDASH_TEXTS-->
   <script>
+    // Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+    // Fehlt die Tabelle (z. B. beim Oeffnen der Datei ohne PHP), erscheint der englische Quelltext.
+    function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+    // sprintf light: ersetzt %s und %d der Reihe nach
+    function sf(s) {
+      var a = Array.prototype.slice.call(arguments, 1), i = 0;
+      return s.replace(/%[sd]/g, function () { return a[i++]; });
+    }
+    // Sprachkennung fuer Zahlen/Datum (deutsch de-DE, englisch en-GB) und Dezimaltrenner daraus
+    // Produktname des Boersenpreis-Moduls (Eigenname, nicht uebersetzt)
+    var SPOT_MODULE_NAME = 'NRG-Stack B\u00f6rsenpreis';
+    var LOC = tr('en-GB');
+    var DECSEP = (1.5).toLocaleString(LOC).charAt(1);
+    // Datum/Uhrzeit nach Vorlage: YYYY Jahr, MM Monat, DD Tag, HH Stunde, mm Minute, MON Monatskurzname
+    function fdate(d, pat) {
+      var p2 = function (n) { return ('0' + n).slice(-2); };
+      return pat.replace(/YYYY|DD|MM|HH|mm|MON/g, function (t) {
+        switch (t) {
+          case 'YYYY': return d.getFullYear();
+          case 'DD': return p2(d.getDate());
+          case 'MM': return p2(d.getMonth() + 1);
+          case 'HH': return p2(d.getHours());
+          case 'mm': return p2(d.getMinutes());
+          default: return MONTH_NAMES[d.getMonth()];
+        }
+      });
+    }
     // idx=1 statt 0, weil days[0] jetzt "morgen" ist (nur beim Strompreis-
     // Reiter befuellt, siehe module.php::buildPayload()) - der Default beim
     // Oeffnen der Kachel bleibt "heute" (Dietmars Wunsch, 28.07.2026:
@@ -715,14 +743,14 @@
     // Netz ins Haus = Blau, Sonne ins Netz (Einspeisung) = Gelb + Blau = Grün, Sonne über die Batterie = Gelb + Rot = Orange, Netz über die Batterie = Blau + Rot = Violett.
     // Netz über die Batterie ist blau-dominant (Violett), Batterie ins Netz rot-dominant (Rosa/Magenta). Laden und Entladen über die Batterie behalten die Farbe ihrer Herkunft. Die Fläche zeigt die Verwendung: oben (Verbrauch) was das Haus bekommt, unten (Erzeugung) wohin es geht.
     var BALANCE_SERIES = [
-      { key: 'netzbezug',             name: 'Netzbezug',                color: '#2E86DE', panel: 'v' },
-      { key: 'batterieentladungNetz', name: 'Batterieentladung (Netz)', color: '#9B51E0', panel: 'v' },
-      { key: 'batterieentladungPv',   name: 'Batterieentladung (PV)',   color: '#F26B1D', panel: 'v' },
-      { key: 'direktverbrauch',       name: 'Direktverbrauch',          color: '#F7C600', panel: 'both' },
-      { key: 'batterieladung',        name: 'Batterieladung (PV)',      color: '#F26B1D', panel: 'e' },
-      { key: 'netzladung',            name: 'Batterieladung (Netz)',    color: '#9B51E0', panel: 'both' },
-      { key: 'netzeinspeisung',       name: 'Netzeinspeisung',          color: '#34B36B', panel: 'e' },
-      { key: 'netzeinspeisungBatterie', name: 'Netzeinspeisung (Batterie)', color: '#E0457B', panel: 'e' }
+      { key: 'netzbezug',             name: tr('Grid import'),                color: '#2E86DE', panel: 'v' },
+      { key: 'batterieentladungNetz', name: tr('Battery discharge (grid)'), color: '#9B51E0', panel: 'v' },
+      { key: 'batterieentladungPv',   name: tr('Battery discharge (PV)'),   color: '#F26B1D', panel: 'v' },
+      { key: 'direktverbrauch',       name: tr('Direct consumption'),          color: '#F7C600', panel: 'both' },
+      { key: 'batterieladung',        name: tr('Battery charging (PV)'),      color: '#F26B1D', panel: 'e' },
+      { key: 'netzladung',            name: tr('Battery charging (grid)'),    color: '#9B51E0', panel: 'both' },
+      { key: 'netzeinspeisung',       name: tr('Grid feed-in'),          color: '#34B36B', panel: 'e' },
+      { key: 'netzeinspeisungBatterie', name: tr('Grid feed-in (battery)'), color: '#E0457B', panel: 'e' }
     ];
     // Plastischere Chart-Flaechen statt flacher Einheitsfarbe (Dietmar,
     // 31.07.2026: "Koennte man die Chartflaechen etwas plastischer
@@ -733,7 +761,7 @@
     // Farbe einer Serie je Panel: die Netzladung erscheint auch im Verbrauch-Panel (zeitrichtiger Netzbezug), dort blasser, weil sie nicht zum Verbrauch zaehlt
     function balPanelColor(s, panel) { return (panel === 'v' && s.key === 'netzladung') ? balanceLightenHex(s.color, 0.55) : s.color; }
     // Ladestand der Batterie (31.10.2026, Dietmar): Linie mit eigener Prozentachse rechts im unteren Panel der Tagesansicht
-    var SOC_NAME = 'Batterie-Ladestand (SOC)';
+    var SOC_NAME = tr('Battery state of charge (SOC)');
     var BALANCE_SOC_COLOR = '';
     // Farben der Bilanz aus dem Formular (Farbschema und Einzelfarben, vom Modul je Serie aufgeloest); ohne Angabe bleiben die eingebauten Farben
     function balanceApplyColors(bc) {
@@ -929,7 +957,7 @@
         document.getElementById('periodLabel').textContent = tagesplanLabel(tagesplanDay);
         document.getElementById('prev').disabled = (tagesplanDay <= TAGESPLAN_MIN_DAY);
         document.getElementById('next').disabled = (tagesplanDay >= 1);
-        [[-1, 'Gestern'], [0, 'Heute'], [1, 'Morgen']].forEach(function (e) {
+        [[-1, tr('Yesterday')], [0, tr('Today')], [1, tr('Tomorrow')]].forEach(function (e) {
           var btn = document.createElement('button');
           btn.className = 'qday' + (tagesplanDay === e[0] ? ' active' : '');
           btn.textContent = e[1];
@@ -959,7 +987,7 @@
         document.getElementById('next').disabled = (idx <= 0);
         var d = dayAt(idx);
         if (d) { pick.value = d.id; }
-        var labels = [['Vorgestern', 2], ['Gestern', 1], ['Heute', 0]];
+        var labels = [[tr('Day before yesterday'), 2], [tr('Yesterday'), 1], [tr('Today'), 0]];
         labels.forEach(function (l) {
           var target = l[1] + 1;
           var dd = dayAt(target);
@@ -1001,7 +1029,7 @@
       document.getElementById('prev').disabled = false;
       document.getElementById('next').disabled = false;
       if (curView === 'week') {
-        periodLabel.textContent = 'KW ' + isoWeekNumber(viewRef) + ', ' + viewRef.getFullYear();
+        periodLabel.textContent = sf(tr('Week %s, %s'), isoWeekNumber(viewRef), viewRef.getFullYear());
       } else if (curView === 'month') {
         periodLabel.textContent = MONTH_NAMES_FULL[viewRef.getMonth()] + ' ' + viewRef.getFullYear();
       } else if (curView === 'year') {
@@ -1068,11 +1096,11 @@
       if (tab === 'mpp') {
         var keys = lastData.mpptKeys || [];
         return keys.map(function (k, i) {
-          return { name: 'MPPT ' + k, color: MPPT_COLORS[i % MPPT_COLORS.length], map: (lastData.energy && lastData.energy.mppt && lastData.energy.mppt[k]) || {} };
+          return { name: sf(tr('MPPT %s'), k), color: MPPT_COLORS[i % MPPT_COLORS.length], map: (lastData.energy && lastData.energy.mppt && lastData.energy.mppt[k]) || {} };
         });
       }
       if (tab === 'battery') {
-        return [{ name: 'Batterie-Leistung', color: '#43a047', map: (lastData.energy && lastData.energy.bat) || {} }];
+        return [{ name: tr('Battery power'), color: '#43a047', map: (lastData.energy && lastData.energy.bat) || {} }];
       }
       // solar - spiegelt die drei Linien der Tagesansicht (Dietmar,
       // 28.07.2026: "Woche zeigt nur PV-Erzeugung, Einstrahlung/PV
@@ -1083,20 +1111,20 @@
       // Einstrahlungs-Variable bleibt die Reihe leer, die Legende versprach sie trotzdem.
       var expMap = (lastData.energy && lastData.energy.expected) || {};
       if (lastData.hasModel && (lastData.hasIrr || Object.keys(expMap).length > 0)) {
-        solarSeries.push({ name: 'PV erwartet', color: '#e57373', map: expMap });
+        solarSeries.push({ name: tr('PV expected'), color: '#e57373', map: expMap });
       }
-      solarSeries.push({ name: 'PV-Erzeugung', color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} });
+      solarSeries.push({ name: tr('PV generation'), color: '#e53935', map: (lastData.energy && lastData.energy.pv) || {} });
       if (lastData.hasIrr) {
-        solarSeries.push({ name: 'Einstrahlung', color: '#fbc02d', map: (lastData.energy && lastData.energy.irr) || {} });
+        solarSeries.push({ name: tr('Irradiance'), color: '#fbc02d', map: (lastData.energy && lastData.energy.irr) || {} });
       }
       return solarSeries;
     }
 
-    var MONTH_NAMES = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
-    var MONTH_NAMES_FULL = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-    var WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    var MONTH_NAMES = [tr('Jan'), tr('Feb'), tr('Mar'), tr('Apr'), tr('May'), tr('Jun'), tr('Jul'), tr('Aug'), tr('Sep'), tr('Oct'), tr('Nov'), tr('Dec')];
+    var MONTH_NAMES_FULL = [tr('January'), tr('February'), tr('March'), tr('April'), tr('May'), tr('June'), tr('July'), tr('August'), tr('September'), tr('October'), tr('November'), tr('December')];
+    var WEEKDAY_NAMES = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
 
-    var WEEKDAY_NAMES_FULL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+    var WEEKDAY_NAMES_FULL = [tr('Monday'), tr('Tuesday'), tr('Wednesday'), tr('Thursday'), tr('Friday'), tr('Saturday'), tr('Sunday')];
 
     function buildEnergyRows(tab) {
       var seriesDefs = energySeriesFor(tab);
@@ -1107,8 +1135,8 @@
         var ws = startOfWeek(viewRef);
         for (var i = 0; i < 7; i++) {
           var dt = new Date(ws); dt.setDate(ws.getDate() + i);
-          categories.push(WEEKDAY_NAMES[i] + ' ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2));
-          fullLabels.push(WEEKDAY_NAMES_FULL[i] + ', ' + ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear());
+          categories.push(WEEKDAY_NAMES[i] + ' ' + fdate(dt, tr('DD/MM')));
+          fullLabels.push(WEEKDAY_NAMES_FULL[i] + ', ' + fdate(dt, tr('DD/MM/YYYY')));
           dateLists.push([fmtDate(dt)]);
         }
       } else if (curView === 'month') {
@@ -1145,8 +1173,8 @@
       } else if (curView === 'custom' && customFrom && customTo) {
         var from = new Date(customFrom + 'T00:00:00'), to = new Date(customTo + 'T00:00:00');
         for (var cd = new Date(from); cd <= to; cd.setDate(cd.getDate() + 1)) {
-          categories.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2));
-          fullLabels.push(('0' + cd.getDate()).slice(-2) + '.' + ('0' + (cd.getMonth() + 1)).slice(-2) + '.' + cd.getFullYear());
+          categories.push(fdate(cd, tr('DD/MM')));
+          fullLabels.push(fdate(cd, tr('DD/MM/YYYY')));
           dateLists.push([fmtDate(cd)]);
         }
       }
@@ -1180,7 +1208,7 @@
         var col = document.getElementById('chartcol');
         var zoomed = col.classList.toggle('zoomed');
         btn.textContent = zoomed ? '−' : '+';
-        btn.title = zoomed ? 'Diagramm wieder verkleinern' : 'Diagramm auf Kachelgröße vergrößern';
+        btn.title = zoomed ? tr('Shrink chart again') : tr('Enlarge chart to tile size');
         setTimeout(sizeChart, 60);
       };
     })();
@@ -1204,7 +1232,7 @@
         var series = [];
         keys.forEach(function (k, i) {
           var color = MPPT_COLORS[i % MPPT_COLORS.length];
-          series.push({ name: 'MPPT ' + k, data: toKw(d.mppt && d.mppt[k]), axis: 0, color: color, dashed: false });
+          series.push({ name: sf(tr('MPPT %s'), k), data: toKw(d.mppt && d.mppt[k]), axis: 0, color: color, dashed: false });
           // "PV erwartet" je Strang (Dietmars Wunsch, 28.07.2026, analog zur
           // Gesamt-Erwartungskurve im Solar-Reiter) - nur wenn das Backend
           // eine belastbare Generator-zu-Strang-Zuordnung liefern konnte
@@ -1219,7 +1247,7 @@
           var share = lastData.mpptShare && lastData.mpptShare[k];
           if (lastData.hasMpptModel && share && d.expected && d.expected.length) {
             var scaled = d.expected.map(function (p) { return [p[0], p[1] * share]; });
-            series.push({ name: 'MPPT ' + k + ' erwartet', data: toKw(scaled), axis: 0, color: color, dashed: true });
+            series.push({ name: sf(tr('MPPT %s expected'), k), data: toKw(scaled), axis: 0, color: color, dashed: true });
           }
         });
         return series;
@@ -1227,20 +1255,20 @@
       if (tab === 'battery') {
         // Linke Achse in kW statt W (Dietmars Wunsch, 28.07.2026, analog
         // Solar/MPP-Tracker).
-        var series = [{ name: 'Batterie-Leistung', data: toKw(d.bat), axis: 0, color: '#43a047', dashed: false }];
+        var series = [{ name: tr('Battery power'), data: toKw(d.bat), axis: 0, color: '#43a047', dashed: false }];
         if (lastData.hasSoc) {
-          series.push({ name: 'Batterie-SOC', data: d.soc, axis: 1, color: '#9575cd', dashed: false });
+          series.push({ name: tr('Battery SOC'), data: d.soc, axis: 1, color: '#9575cd', dashed: false });
         }
         return series;
       }
       // solar (Standard) - linke Achse in kW statt W (Dietmars Wunsch,
       // 27.07.2026), Einstrahlung (rechte Achse, W/m²) bleibt unveraendert.
-      var series = [{ name: 'PV-Erzeugung', data: toKw(d.pv), axis: 0, color: '#e53935', dashed: false }];
+      var series = [{ name: tr('PV generation'), data: toKw(d.pv), axis: 0, color: '#e53935', dashed: false }];
       if (lastData.hasIrr) {
-        series.push({ name: 'Einstrahlung', data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
+        series.push({ name: tr('Irradiance'), data: d.irr, axis: 1, color: '#fbc02d', dashed: false });
       }
       if (lastData.hasModel && d.expected && d.expected.length) {
-        series.push({ name: 'PV erwartet', data: toKw(d.expected), axis: 0, color: '#e57373', dashed: true });
+        series.push({ name: tr('PV expected'), data: toKw(d.expected), axis: 0, color: '#e57373', dashed: true });
       }
       return series;
     }
@@ -1262,13 +1290,13 @@
         var extra = '';
         var fmtE = function (v) {
           if (v === null || v === undefined) { return null; }
-          return (v >= 100 ? Math.round(v).toLocaleString('de-DE') : v.toLocaleString('de-DE', { maximumFractionDigits: 1 }));
+          return (v >= 100 ? Math.round(v).toLocaleString(LOC) : v.toLocaleString(LOC, { maximumFractionDigits: 1 }));
         };
         var energyExtra = function (day, month, year) {
           var parts = [];
-          if (fmtE(day) !== null) { parts.push('Tag ' + fmtE(day)); }
-          if (fmtE(month) !== null) { parts.push('Monat ' + fmtE(month)); }
-          if (fmtE(year) !== null) { parts.push('Jahr ' + fmtE(year)); }
+          if (fmtE(day) !== null) { parts.push(sf(tr('Day %s'), fmtE(day))); }
+          if (fmtE(month) !== null) { parts.push(sf(tr('Month %s'), fmtE(month))); }
+          if (fmtE(year) !== null) { parts.push(sf(tr('Year %s'), fmtE(year))); }
           return parts.length ? ' <span style="opacity:.65">(' + parts.join(' · ') + ' kWh)</span>' : '';
         };
         // Tag/Monat/Jahr beziehen sich auf den ANGEZEIGTEN Tag (Dietmar,
@@ -1284,14 +1312,14 @@
         // Zaehlerstand bevorzugt; Monat/Jahr fehlen bei reiner
         // Leistungs-Integration bewusst). Fallback auf den Heute-Wert
         // (lastData.gridEnergy), falls der Tages-Eintrag keinen traegt.
-        if (tab === 'price' && it.name.indexOf('Netzbezug') === 0) {
+        if (tab === 'price' && it.name.indexOf(tr('Grid import')) === 0) {
           var ge = (refDay && refDay.gridEnergy) ? refDay.gridEnergy : lastData.gridEnergy;
           if (ge) { extra = energyExtra(ge.day, ge.month, ge.year); }
         }
         // PV-Erzeugung im Solar-Reiter: Summen client-seitig aus der
         // Tages-kWh-Karte (energy.pv), gefiltert bis einschliesslich des
         // angezeigten Tages (ISO-Datums-Strings vergleichen korrekt).
-        if (tab === 'solar' && it.name === 'PV-Erzeugung' && lastData.energy && lastData.energy.pv) {
+        if (tab === 'solar' && it.name === tr('PV generation') && lastData.energy && lastData.energy.pv) {
           var pvMap = lastData.energy.pv;
           var monthPrefix = refId.slice(0, 7), yearPrefix = refId.slice(0, 4);
           var pvDay = (pvMap[refId] !== undefined) ? pvMap[refId] : null;
@@ -1366,8 +1394,8 @@
       if (!peak) { return ''; }
       var slotStart = peak.ts - 450000, slotEnd = peak.ts + 450000;
       var dt = new Date(peak.ts);
-      var dateStr = ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.';
-      return peak.kw.toFixed(2) + ' kW  ' + dateStr + '  ' + fmtHM(slotStart) + '–' + fmtHM(slotEnd) + ' Uhr';
+      var dateStr = fdate(dt, tr('DD MON'));
+      return peak.kw.toFixed(2) + ' kW  ' + dateStr + '  ' + sf(tr('%s h'), fmtHM(slotStart) + '–' + fmtHM(slotEnd));
     }
     function priceStepPoints(d) {
       return ((d && d.price) || []).map(function (slot) {
@@ -1410,7 +1438,7 @@
     // ohne Steuern/Umlagen/Netzentgelt). Slot: [startMs, endMs, ct, aufloesung].
     var SPOT_COLOR = '#26c6da';
     function spotSeriesName() {
-      return (lastData && lastData.hasTibber) ? 'Börsenpreis (netto)' : 'Börsenpreis (netto, ohne Steuern und Netzentgelt)';
+      return (lastData && lastData.hasTibber) ? tr('Spot price (net)') : tr('Spot price (net, excluding taxes and grid fees)');
     }
     function spotStepPoints(d) {
       return ((d && d.spot) || []).map(function (slot) {
@@ -1444,23 +1472,23 @@
     function spotTooltipLine(d, ms, dotHtml) {
       var s = spotSlotAt(d, ms);
       if (!s) { return ''; }
-      var neg = s[2] < 0 ? ' <span style="color:#ef5350">(negativ)</span>' : '';
-      var hourly = s[3] === 3600 ? ' <span style="opacity:.7">(Stundenwert)</span>' : '';
-      return '<div>' + dotHtml + 'Börsenpreis: <b>' + Number(s[2]).toFixed(2) + ' ct/kWh</b>' + neg + hourly + '</div>';
+      var neg = s[2] < 0 ? ' <span style="color:#ef5350">' + tr('(negative)') + '</span>' : '';
+      var hourly = s[3] === 3600 ? ' <span style="opacity:.7">' + tr('(hourly value)') + '</span>' : '';
+      return '<div>' + dotHtml + sf(tr('Spot price: %s'), '<b>' + Number(s[2]).toFixed(2) + ' ct/kWh</b>') + neg + hourly + '</div>';
     }
     var SPOT_NEG_COLOR = 'rgba(239,83,80,.14)';
     function spotCreditText() {
       var q = lastData && lastData.spotQuelle;
-      if (q === 'energy-charts') { return 'Börsenpreis: Energy-Charts.info (Fraunhofer ISE), Daten Bundesnetzagentur | SMARD.de'; }
-      if (q === 'awattar') { return 'Börsenpreis: aWATTar'; }
+      if (q === 'energy-charts') { return tr('Spot price: Energy-Charts.info (Fraunhofer ISE), data Bundesnetzagentur | SMARD.de'); }
+      if (q === 'awattar') { return tr('Spot price: aWATTar'); }
       // NRGSpotPrice 0.3.0 (14.09.2026, per send_message): neue Quelle
       // 'entsoe' (EPEX Spot ueber ENTSO-E Transparency Platform).
-      if (q === 'entsoe') { return 'Börsenpreis: EPEX Spot, veröffentlicht auf der ENTSO-E Transparency Platform'; }
+      if (q === 'entsoe') { return tr('Spot price: EPEX Spot, published on the ENTSO-E Transparency Platform'); }
       // NRGSpotPrice 0.4.0 (14.09.2026, per send_message): neue Quelle
       // 'tibber' (Tibber-Preisuebersicht per PLZ, ohne Tibber-Konto - price
       // bleibt der reine Boersenpreis, Tibbers Endpreis steht nur in deren
       // eigener Energie-Manager-Variable, nie in diesem Vertrag).
-      if (q === 'tibber') { return 'Börsenpreis: Tibber-Preisübersicht'; }
+      if (q === 'tibber') { return tr('Spot price: Tibber price overview'); }
       return '';
     }
 
@@ -1568,10 +1596,10 @@
       // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
       // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? ((d && d.price && d.price.length) ? [{ name: 'Strompreis', data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }] : [])
+        ? ((d && d.price && d.price.length) ? [{ name: tr('Electricity price'), data: priceStepPoints(d), color: '#ffb300', axis: 1, dashed: false, step: 'middle' }] : [])
           .concat((d && d.spot && d.spot.length) ? [{ name: spotSeriesName(), data: spotStepPoints(d), color: SPOT_COLOR, axis: 1, dashed: false, step: 'middle' }] : [])
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
-            ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
+            ? [{ name: priceUnitKw ? tr('Grid import (avg kW)') : tr('Grid import'), data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
@@ -1666,7 +1694,7 @@
               // Dietmar, 27.08.2026: einzeilig, 90 Grad gegen den
               // Uhrzeigersinn gedreht statt zweizeilig waagerecht.
               label: { show: true, position: 'inside', align: 'center', verticalAlign: 'middle', formatter: '{b}', rotate: 90, color: 'rgba(226,232,240,.75)', fontSize: 18 },
-              data: [[{ xAxis: wmMs, name: 'Zeitbereich ohne Bezugsdaten!' }, { xAxis: wmShadeEnd }]],
+              data: [[{ xAxis: wmMs, name: tr('Time range without import data!') }, { xAxis: wmShadeEnd }]],
             };
             var wmPrevData = (gridSeriesW.markLine && gridSeriesW.markLine.data) ? gridSeriesW.markLine.data : [];
             gridSeriesW.markLine = Object.assign({}, gridSeriesW.markLine, {
@@ -1731,12 +1759,12 @@
               var refX = gridP ? gridP.value[0] : (priceP ? priceP.value[0] : (spotP ? spotP.value[0] : null));
               if (!priceP && !gridP && spotP) { priceP = spotP; }
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
-              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
-                : (priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd) + ' Uhr</div>') : '');
+              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + sf(tr('%s h'), fmtHM(slot[0]) + '–' + fmtHM(slot[1])) + '</div>')
+                : (priceP ? ('<div style="font-weight:600;margin-bottom:2px">' + sf(tr('%s h'), fmtHM(priceP.data.slotStart) + '–' + fmtHM(priceP.data.slotEnd)) + '</div>') : '');
               var lines = [];
               var priceVal = slot ? slot[2] : ((priceP && !priceP.data.isSpot) ? priceP.value[1] : null);
               if (priceVal !== null && priceVal !== undefined) {
-                lines.push('<div><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb300;margin-right:4px"></span>Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+                lines.push('<div><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ffb300;margin-right:4px"></span>' + sf(tr('Electricity price: %s'), '<b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b>') + '</div>');
               }
               if (refX !== null && isVisible(spotSeriesName())) {
                 lines.push(spotTooltipLine(d, refX, '<span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + SPOT_COLOR + ';margin-right:4px"></span>'));
@@ -1745,7 +1773,7 @@
               if (gridP) {
                 gridV = (gridP.value && gridP.value[1] !== undefined) ? gridP.value[1] : gridP.value;
                 if (gridV !== null && gridV !== undefined) {
-                  var gridLabel = priceUnitKw ? 'Ø Leistung' : 'Netzbezug';
+                  var gridLabel = priceUnitKw ? tr('Avg power') : tr('Grid import');
                   var gridUnit = priceUnitKw ? 'kW' : 'kWh';
                   lines.push('<div>' + gridP.marker + ' ' + gridLabel + ': <b>' + Number(gridV).toFixed(2) + ' ' + gridUnit + '</b></div>');
                 }
@@ -1756,13 +1784,13 @@
               // angezeigt wird (Faktor 4 zurueckgerechnet).
               var gridKwh = (gridV !== null && gridV !== undefined) ? (priceUnitKw ? gridV / GRID_KWH_TO_KW : gridV) : null;
               if (gridKwh !== null && gridKwh !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + formatCost(gridKwh * priceVal) + '</b></div>');
+                lines.push('<div>' + sf(tr('Costs: %s'), '<b>' + formatCost(gridKwh * priceVal) + '</b>') + '</div>');
               }
               return head + lines.join('');
             }
             return params.map(function (p, i) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
-              var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString('de-DE') + '</div>' : '';
+              var head = i === 0 ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(p.value[0]).toLocaleString(LOC) + '</div>' : '';
               return head + '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
             }).join('');
           }
@@ -1809,10 +1837,10 @@
       // Balken auf der linken Achse (kWh) - analog zu InverterHubMonitors
       // Strompreis-Reiter (Dietmars Wunsch, 28.07.2026, deren Vorbild).
       var allSeries = (tab === 'price')
-        ? ((d && d.price && d.price.length) ? [{ name: 'Strompreis', data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }] : [])
+        ? ((d && d.price && d.price.length) ? [{ name: tr('Electricity price'), data: priceStepPointsHC(d), color: '#ffb300', axis: 1, dashed: false, step: 'center' }] : [])
           .concat((d && d.spot && d.spot.length) ? [{ name: spotSeriesName(), data: spotStepPointsHC(d), color: SPOT_COLOR, axis: 1, dashed: false, step: 'center' }] : [])
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
-            ? [{ name: priceUnitKw ? 'Netzbezug (Ø kW)' : 'Netzbezug', data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
+            ? [{ name: priceUnitKw ? tr('Grid import (avg kW)') : tr('Grid import'), data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
@@ -1973,18 +2001,18 @@
               var refX = gridQ ? gridQ.x : (priceQ ? priceQ.x : (spotQ ? spotQ.x : null));
               if (!priceQ && !gridQ && spotQ) { priceQ = spotQ; }
               var slot = (refX !== null) ? priceSlotAt(d, refX) : null;
-              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(slot[0]) + '–' + fmtHM(slot[1]) + ' Uhr</div>')
-                : (priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd) + ' Uhr</div>') : '');
+              var head = slot ? ('<div style="font-weight:600;margin-bottom:2px">' + sf(tr('%s h'), fmtHM(slot[0]) + '–' + fmtHM(slot[1])) + '</div>')
+                : (priceQ ? ('<div style="font-weight:600;margin-bottom:2px">' + sf(tr('%s h'), fmtHM(priceQ.slotStart) + '–' + fmtHM(priceQ.slotEnd)) + '</div>') : '');
               var lines = [];
               var priceVal = slot ? slot[2] : ((priceQ && !isSpotPt(priceQ)) ? priceQ.y : null);
               if (priceVal !== null && priceVal !== undefined) {
-                lines.push('<div><span style="color:#ffb300">●</span> Strompreis: <b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b></div>');
+                lines.push('<div><span style="color:#ffb300">●</span> ' + sf(tr('Electricity price: %s'), '<b>' + Number(priceVal).toFixed(2) + ' ct/kWh</b>') + '</div>');
               }
               if (refX !== null && isVisible(spotSeriesName())) {
                 lines.push(spotTooltipLine(d, refX, '<span style="color:' + SPOT_COLOR + '">●</span> '));
               }
               if (gridQ && gridQ.y !== null && gridQ.y !== undefined) {
-                var gridLabelHc = priceUnitKw ? 'Ø Leistung' : 'Netzbezug';
+                var gridLabelHc = priceUnitKw ? tr('Avg power') : tr('Grid import');
                 var gridUnitHc = priceUnitKw ? 'kW' : 'kWh';
                 lines.push('<div><span style="color:' + gridQ.color + '">●</span> ' + gridLabelHc + ': <b>' + Number(gridQ.y).toFixed(2) + ' ' + gridUnitHc + '</b></div>');
               }
@@ -1994,7 +2022,7 @@
               // angezeigt wird (Faktor 4 zurueckgerechnet).
               var gridKwhHc = (gridQ && gridQ.y !== null && gridQ.y !== undefined) ? (priceUnitKw ? gridQ.y / GRID_KWH_TO_KW : gridQ.y) : null;
               if (gridKwhHc !== null && gridKwhHc !== undefined && priceVal !== null && priceVal !== undefined) {
-                lines.push('<div>Kosten: <b>' + formatCost(gridKwhHc * priceVal) + '</b></div>');
+                lines.push('<div>' + sf(tr('Costs: %s'), '<b>' + formatCost(gridKwhHc * priceVal) + '</b>') + '</div>');
               }
               return head + lines.join('');
             }
@@ -2005,7 +2033,7 @@
             // Deshalb hier bewusst natives JS-Datum statt Highcharts-API.
             var dt = new Date(this.x);
             var p2 = function (n) { return ('0' + n).slice(-2); };
-            var head = '<div style="font-weight:600;margin-bottom:2px">' + p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes()) + '</div>';
+            var head = '<div style="font-weight:600;margin-bottom:2px">' + fdate(dt, tr('DD/MM/YYYY HH:mm')) + '</div>';
             var lines = (this.points || [this]).map(function (p) {
               return '<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>';
             });
@@ -2033,7 +2061,7 @@
         // seitlicher Versatz zeigt, der mit der Schriftgroesse waechst
         // (Dietmars Fund, 27.08.2026, bei steigender Schriftgroesse
         // zunehmend sichtbar geworden).
-        chart.renderer.text('Zeitbereich ohne Bezugsdaten!', wmX, wmY)
+        chart.renderer.text(tr('Time range without import data!'), wmX, wmY)
           .css({ color: 'rgba(226,232,240,.75)', fontSize: '18px' })
           .attr({ align: 'center', rotation: -90, zIndex: 6, 'dominant-baseline': 'central' })
           .add();
@@ -2136,21 +2164,21 @@
     // PVPrognose/Lastprognose (keine unnoetige Kopplung).
     var SLOT_MS = 900000; // Viertelstunde
     var PLAN_OP_COLORS = {
-      0: { name: 'Automatik', color: '#AAAAAA' },
-      1: { name: 'PV-Eigenverbrauch (laden)', color: '#4CAF50' },
-      2: { name: 'Netz laden', color: '#2962FF' },
-      3: { name: 'Eigenverbrauch (entladen)', color: '#FF9800' },
-      4: { name: 'Standby', color: '#78909C' },
-      5: { name: 'Einspeisen', color: '#9C27B0' },
-      6: { name: 'Backup', color: '#8D6E63' },
-      7: { name: 'Grid Rewards (Tibber)', color: '#E91E63' },
+      0: { name: tr('Automatic'), color: '#AAAAAA' },
+      1: { name: tr('PV self-consumption (charge)'), color: '#4CAF50' },
+      2: { name: tr('Charge from grid'), color: '#2962FF' },
+      3: { name: tr('Self-consumption (discharge)'), color: '#FF9800' },
+      4: { name: tr('Standby'), color: '#78909C' },
+      5: { name: tr('Feed in'), color: '#9C27B0' },
+      6: { name: tr('Backup'), color: '#8D6E63' },
+      7: { name: tr('Grid Rewards (Tibber)'), color: '#E91E63' },
       // Neu (EMS-Abstimmung 19.09.2026): op 8 = 0-W-Fall des frueheren op 5 -
       // Haus laeuft aus dem Netz, Akku wird geschont, NICHTS geht ins Netz.
       // Vorher war das derselbe lila "Einspeisen"-Balken wie echte Einspeisung
       // (irrefuehrend). Limette hebt sich von Automatik (grau), Netz laden
       // (kraeftiges Blau), PV-Eigenverbrauch (gruen) und Einspeisen (lila) ab. Unbekannte op-Werte fallen weiter
       // still auf grau "op N" zurueck (planOpInfo).
-      8: { name: 'Akku halten (Netzbezug)', color: '#CDDC39' },
+      8: { name: tr('Hold battery (grid import)'), color: '#CDDC39' },
       // Rueckblick: fuer diese Viertelstunde ist keine Betriebsart archiviert
       '-1': { name: 'unbekannt', color: '#555B63' }
     };
@@ -2158,15 +2186,16 @@
     function planXsetText(slot) {
       if (!slot || !slot.xsetW) return '';
       var kw = Math.abs(slot.xsetW) / 1000;
-      var txt = (slot.gwModeLabel ? slot.gwModeLabel + ' mit ' : 'Schaltleistung ') + kw.toFixed(kw >= 10 ? 0 : 1).replace('.', ',') + ' kW';
+      var kwTxt = kw.toFixed(kw >= 10 ? 0 : 1).replace('.', DECSEP);
+      var txt = slot.gwModeLabel ? sf(tr('%s with %s kW'), slot.gwModeLabel, kwTxt) : sf(tr('Switching power %s kW'), kwTxt);
       return txt;
     }
     // Restwert der Batterieenergie (optional, EMS 0.60.0): Akku wird geschont, weil die
     // gespeicherte Energie spaeter noch bis zu diesem Preis gebraucht wird
     function planRestwertText(slot) {
       if (!slot || slot.rw === null || slot.rw === undefined) return '';
-      var t = 'Akku geschont: Energie wird später bis ' + slot.rw.toFixed(0) + ' ct/kWh gebraucht';
-      if (slot.price !== null && slot.price !== undefined) { t += ', Bezug jetzt ' + slot.price.toFixed(0) + ' ct/kWh'; }
+      var t = sf(tr('Battery spared: energy will be needed later up to %s ct/kWh'), slot.rw.toFixed(0));
+      if (slot.price !== null && slot.price !== undefined) { t = sf(tr('Battery spared: energy will be needed later up to %s ct/kWh, import now %s ct/kWh'), slot.rw.toFixed(0), slot.price.toFixed(0)); }
       return t;
     }
     // Ersparnis-Zeile fuer das Ladefenster, in dem der Slot liegt (EMS_GetDayPlan 1.2)
@@ -2175,8 +2204,8 @@
       for (var i = 0; slot && i < wins.length; i++) {
         var w = wins[i];
         if (slot.time >= w.start && slot.time < w.end) {
-          return 'Ladefenster: ca. ' + w.savingsEur.toFixed(2).replace('.', ',') + ' EUR ' + (w.savingsEur >= 0 ? 'gespart' : 'Mehrkosten')
-            + ' ggü. Ø-Preis (' + w.avgPriceCt.toFixed(1).replace('.', ',') + ' statt ' + w.referenceCt.toFixed(1).replace('.', ',') + ' ct/kWh)';
+          return sf(w.savingsEur >= 0 ? tr('Charging window: approx. %s EUR saved vs. average price (%s instead of %s ct/kWh)') : tr('Charging window: approx. %s EUR extra cost vs. average price (%s instead of %s ct/kWh)'),
+            w.savingsEur.toFixed(2).replace('.', DECSEP), w.avgPriceCt.toFixed(1).replace('.', DECSEP), w.referenceCt.toFixed(1).replace('.', DECSEP));
         }
       }
       return '';
@@ -2187,13 +2216,13 @@
     // relayed ueber die StromGedacht-Sitzung). Farben 1:1 aus der
     // StromGedacht-Kachel uebernommen, siehe module.php AMPEL_COLORS.
     var AMPEL_COLORS = {
-      '-1': { name: 'Supergrün — bevorzugt nutzen', color: '#00BFA5' },
-      '1': { name: 'Grün — wie gewohnt', color: '#00C853' },
-      '2': { name: 'Gelb', color: '#FFD600' },
-      '3': { name: 'Orange — reduzieren', color: '#FF6D00' },
-      '4': { name: 'Rot — vermeiden', color: '#D50000' }
+      '-1': { name: tr('Super green — use preferentially'), color: '#00BFA5' },
+      '1': { name: tr('Green — as usual'), color: '#00C853' },
+      '2': { name: tr('Yellow'), color: '#FFD600' },
+      '3': { name: tr('Orange — reduce'), color: '#FF6D00' },
+      '4': { name: tr('Red — avoid'), color: '#D50000' }
     };
-    function ampelInfo(v) { return AMPEL_COLORS[String(v)] || { name: 'Zustand ' + v, color: '#888' }; }
+    function ampelInfo(v) { return AMPEL_COLORS[String(v)] || { name: sf(tr('State %s'), v), color: '#888' }; }
 
     // Ampel als echtes Mini-Chart statt einer unabhaengigen Flexbox-
     // Zeitleiste (Dietmars Feedback, 22.08.2026: "in keiner Weise mit dem
@@ -2279,12 +2308,12 @@
     // die Tagesgrenzen selbst (fuer eine feste x-Achse, gleiches Muster wie
     // die normale Tagesansicht mit d.dayStart/d.dayEnd).
     function tagesplanLabel(off) {
-      if (off === 0) { return 'Heute'; }
-      if (off === 1) { return 'Morgen'; }
-      if (off === -1) { return 'Gestern'; }
+      if (off === 0) { return tr('Today'); }
+      if (off === 1) { return tr('Tomorrow'); }
+      if (off === -1) { return tr('Yesterday'); }
       var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off);
-      return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()] + ' ' +
-        ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.';
+      return [tr('Sun'), tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat')][d.getDay()] + ' ' +
+        fdate(d, tr('DD MON'));
     }
     function dayPlanForSelectedDay(dp) {
       var start = new Date(); start.setHours(0, 0, 0, 0);
@@ -2321,7 +2350,7 @@
         var chip = document.createElement('span');
         chip.className = 'legItem';
         chip.style.cssText = 'font-weight:600;padding:1px 8px;border-radius:10px;background:#F9A825;color:#222;opacity:1';
-        chip.textContent = dec.dryRun ? 'Trockenlauf - Plan wird nicht ausgeführt' : 'Nur beobachtend' + (dec.observeReason ? ' - ' + dec.observeReason : '');
+        chip.textContent = dec.dryRun ? tr('Dry run - plan will not be executed') : (dec.observeReason ? sf(tr('Observing only - %s'), dec.observeReason) : tr('Observing only'));
         row.appendChild(chip);
       }
       // Ersparnis der Ladefenster (EMS_GetDayPlan 1.2) - Planzahl, daher "ca."
@@ -2331,7 +2360,7 @@
         var sc = document.createElement('span');
         sc.className = 'legItem';
         sc.style.fontWeight = '600';
-        sc.textContent = 'Netzladen spart ca. ' + sum.toFixed(2).replace('.', ',') + ' EUR ggü. Ø-Preis';
+        sc.textContent = sf(tr('Grid charging saves approx. %s EUR vs. average price'), sum.toFixed(2).replace('.', DECSEP));
         row.appendChild(sc);
       }
       Object.keys(seen).forEach(function (op) {
@@ -2368,10 +2397,10 @@
       var series = [];
       var priceData = dp.slots.filter(function (s) { return s.price !== null && s.price !== undefined; })
         .map(function (s) { return [s.time, s.price]; });
-      if (priceData.length) { series.push({ name: 'Strompreis', data: priceData, axis: 1, color: '#ffb300', step: true }); }
+      if (priceData.length) { series.push({ name: tr('Electricity price'), data: priceData, axis: 1, color: '#ffb300', step: true }); }
       var socData = dp.slots.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
         .map(function (s) { return [s.time + SLOT_MS, s.soc]; }); // EMS liefert den SOC NACH dem Slot -> am Slot-Ende zeichnen
-      if (socData.length) { series.push({ name: 'Batterie-SOC (geplant)', data: socData, axis: 2, color: '#9575cd', dashed: true }); }
+      if (socData.length) { series.push({ name: tr('Battery SOC (planned)'), data: socData, axis: 2, color: '#9575cd', dashed: true }); }
       // Namen bewusst OHNE "-Prognose"/"(geplant)"-Zusatz (Dietmar,
       // 24.08.2026: "die Vergangenheit so darstellen wie sie war, nicht
       // mehr als Prognose") - die Linien sind jetzt links vom "Jetzt"-
@@ -2382,7 +2411,7 @@
         series.push({ name: 'PV', data: dp.pvForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#e57373', dashed: false });
       }
       if (dp.loadForecast && dp.loadForecast.length) {
-        series.push({ name: 'Last', data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
+        series.push({ name: tr('Load'), data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
       }
       return series;
     }
@@ -2452,7 +2481,7 @@
             // unabhaengig von der Aufloesung der einzelnen Serien.
             var ts = params.length ? params[0].axisValue : null;
             var slot = ts !== null ? dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]) : null;
-            var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString('de-DE') + '</div>' : '';
+            var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString(LOC) + '</div>' : '';
             var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' + (planXsetText(slot) ? '<div>' + planXsetText(slot) + '</div>' : '') + (planWindowText(slot) ? '<div>' + planWindowText(slot) + '</div>' : '') + (planRestwertText(slot) ? '<div>' + planRestwertText(slot) + '</div>' : '') : '';
             var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
@@ -2506,8 +2535,8 @@
       // der vom letzten Render mit Jetzt-Linie stehen gebliebene Text als
       // Leiche auf der Zeichenflaeche stehen.
       var nowPx = showNowLine ? chart.convertToPixel({ xAxisIndex: 0 }, Date.now()) : 0;
-      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? '◀ Historie' : '', x: nowPx - 8, textAlign: 'right' }), silent: true });
-      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? 'Ausblick ▶' : '', x: nowPx + 8, textAlign: 'left' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? tr('◀ History') : '', x: nowPx - 8, textAlign: 'right' }), silent: true });
+      els.push({ type: 'text', style: Object.assign({}, lblStyle, { text: showNowLine ? tr('Outlook ▶') : '', x: nowPx + 8, textAlign: 'left' }), silent: true });
       chart.setOption({ graphic: els });
     }
 
@@ -2556,8 +2585,8 @@
         // inzwischen entfernte drawPlanEdgeArrowsHC). Da beide Labels am
         // selben plotLine-Wert haengen, laeuft der Pfeil automatisch mit.
         var lblStyle = { color: isLightTheme() ? '#333' : '#ddd', fontSize: '13px', fontWeight: '400', fontFamily: 'Arial, sans-serif', opacity: .8 };
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: '◀ Historie', align: 'right', rotation: 0, x: -8, y: 15, style: lblStyle } });
-        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: 'Ausblick ▶', align: 'left', rotation: 0, x: 8, y: 15, style: lblStyle } });
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: tr('◀ History'), align: 'right', rotation: 0, x: -8, y: 15, style: lblStyle } });
+        plotLines.push({ value: nowVal, width: 0, zIndex: 5, label: { text: tr('Outlook ▶'), align: 'left', rotation: 0, x: 8, y: 15, style: lblStyle } });
       }
       chart = Highcharts.chart(el, {
         time: { useUTC: false },
@@ -2588,7 +2617,7 @@
             // SOC), falls sichtbar - die trifft die echte Position am
             // genauesten.
             var finePoint = (this.points || []).filter(function (p) {
-              return p.series.name === 'Strompreis' || p.series.name === 'Batterie-SOC (geplant)';
+              return p.series.name === tr('Electricity price') || p.series.name === tr('Battery SOC (planned)');
             })[0];
             var ts = finePoint ? finePoint.x : this.x;
             var slot = dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]);
@@ -2602,7 +2631,7 @@
             // Tages-Reiter.
             var dtP = new Date(ts);
             var p2P = function (n) { return ('0' + n).slice(-2); };
-            var tsLabel = p2P(dtP.getDate()) + '.' + p2P(dtP.getMonth() + 1) + '.' + dtP.getFullYear() + ' ' + p2P(dtP.getHours()) + ':' + p2P(dtP.getMinutes());
+            var tsLabel = fdate(dtP, tr('DD/MM/YYYY HH:mm'));
             var lines = ['<b>' + tsLabel + '</b>', planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + (planXsetText(slot) ? '<br>' + planXsetText(slot) : '') + (planWindowText(slot) ? '<br>' + planWindowText(slot) : '') + (planRestwertText(slot) ? '<br>' + planRestwertText(slot) : '')];
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
@@ -2644,7 +2673,7 @@
       if (first) {
         var priceData = first.plan.filter(function (s) { return s.price !== null && s.price !== undefined; })
           .map(function (s) { return [s.time * 1000, s.price]; });
-        if (priceData.length) { allSeries.push({ name: 'Strompreis', data: priceData, axis: 1, color: '#ffb300', dashed: false, step: true }); }
+        if (priceData.length) { allSeries.push({ name: tr('Electricity price'), data: priceData, axis: 1, color: '#ffb300', dashed: false, step: true }); }
       }
       keys.forEach(function (k, i) {
         var sc = scenarios[k];
@@ -2652,10 +2681,10 @@
         var label = sc.label || sc.ibnText || k;
         var powerData = sc.plan.filter(function (s) { return s.power !== null && s.power !== undefined; })
           .map(function (s) { return [s.time * 1000, s.power / 1000]; });
-        if (powerData.length) { allSeries.push({ name: 'Leistung – ' + label, data: powerData, axis: 0, color: color, dashed: false }); }
+        if (powerData.length) { allSeries.push({ name: sf(tr('Power – %s'), label), data: powerData, axis: 0, color: color, dashed: false }); }
         var socData = sc.plan.filter(function (s) { return s.soc !== null && s.soc !== undefined; })
           .map(function (s) { return [s.time * 1000 + SLOT_MS, s.soc]; });
-        if (socData.length) { allSeries.push({ name: 'SOC – ' + label, data: socData, axis: 2, color: color, dashed: true }); }
+        if (socData.length) { allSeries.push({ name: sf(tr('SOC – %s'), label), data: socData, axis: 2, color: color, dashed: true }); }
       });
       return { keys: keys, allSeries: allSeries, first: first };
     }
@@ -2673,9 +2702,9 @@
         var sc = scenarios[k];
         var color = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
         var parts = [sc.label || sc.ibnText || k];
-        if (sc.verguetungCt !== null && sc.verguetungCt !== undefined) { parts.push(Number(sc.verguetungCt).toFixed(2).replace('.', ',') + ' ct/kWh'); }
-        if (sc.einspeisegrenzeW) { parts.push('Grenze ' + Math.round(sc.einspeisegrenzeW / 1000).toLocaleString('de-DE') + ' kW'); }
-        if (sc.negativpreisPflicht) { parts.push('§51-Pflicht'); }
+        if (sc.verguetungCt !== null && sc.verguetungCt !== undefined) { parts.push(Number(sc.verguetungCt).toFixed(2).replace('.', DECSEP) + ' ct/kWh'); }
+        if (sc.einspeisegrenzeW) { parts.push(sf(tr('Limit %s kW'), Math.round(sc.einspeisegrenzeW / 1000).toLocaleString(LOC))); }
+        if (sc.negativpreisPflicht) { parts.push(tr('§51 obligation')); }
         var span = document.createElement('span');
         span.className = 'scenItem';
         span.innerHTML = '<span class="dot" style="background:' + color + '"></span>' + parts.join(' · ');
@@ -2705,7 +2734,7 @@
           backgroundColor: 'rgba(30,32,36,0.92)', borderWidth: 0, textStyle: { color: '#e8e8e8' },
           extraCssText: 'box-shadow:0 2px 10px rgba(0,0,0,.4);',
           formatter: function (params) {
-            var head = params.length ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(params[0].axisValue).toLocaleString('de-DE') + '</div>' : '';
+            var head = params.length ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(params[0].axisValue).toLocaleString(LOC) + '</div>' : '';
             var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
@@ -2757,7 +2786,7 @@
           formatter: function () {
             var dt = new Date(this.x);
             var p2 = function (n) { return ('0' + n).slice(-2); };
-            var tsLabel = p2(dt.getDate()) + '.' + p2(dt.getMonth() + 1) + '.' + dt.getFullYear() + ' ' + p2(dt.getHours()) + ':' + p2(dt.getMinutes());
+            var tsLabel = fdate(dt, tr('DD/MM/YYYY HH:mm'));
             var lines = ['<b>' + tsLabel + '</b>'];
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
@@ -2788,7 +2817,7 @@
       if (!balance || balance.ok === false) {
         destroyChart();
         document.getElementById('balancePanel').innerHTML = '';
-        el.innerHTML = '<div class="empty">Keine Bilanzdaten für diesen Zeitraum</div>';
+        el.innerHTML = '<div class="empty">' + tr('No balance data for this period') + '</div>';
         return;
       }
       // Engine-Weiche (Fix, 30.07.2026): ECharts wird von GetVisualizationTile()
@@ -2851,8 +2880,8 @@
       // unterbringen (Dietmar, 23.09.2026: "vielleicht waere es besser, wenn
       // man mit einem Schalter die Monatswerte mit dem kumulierten Wert
       // austauschen koennte") - jetzt EIN Schalter, EIN Wert pro Zelle.
-      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>Summe</th></tr>';
-      function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', ','); }
+      var head = '<tr><th></th>' + MONTH_NAMES.map(function (m) { return '<th>' + m + '</th>'; }).join('') + '<th>' + tr('Sum') + '</th></tr>';
+      function fmt(v) { return v === null || v === undefined ? '' : v.toFixed(2).replace('.', DECSEP); }
       // Siegertreppchen je Spalte (Dietmar, 23.09.2026): die drei hoechsten Werte
       // je Monat (und Summe) ueber alle JAHRE (Mittelwert/Erwartung zaehlen nicht
       // mit - das sind keine Jahre) werden Gold/Silber/Bronze eingefaerbt - NUR
@@ -2897,7 +2926,7 @@
         if (v === null || v === undefined || full.ranks[v] === undefined) { return ''; }
         var place = full.ranks[v] + 1;
         var emoji = (place <= 3 || full.total >= 30) ? placeEmoji(place) + ' ' : '';
-        return emoji + 'Platz ' + place + ' von ' + full.total;
+        return emoji + sf(tr('Place %s of %s'), place, full.total);
       }
       function cumulate(arr) {
         var cum = 0, cumOk = true;
@@ -2941,22 +2970,22 @@
           + '</tr>';
       }
       var body = data.years.map(function (y) { return rowHtml(y, values[y], '', true); }).join('');
-      body += rowHtml('Mittelwert', values.mittelwert, 'ycTotal');
-      if (values.expected) { body += rowHtml('Erwartung', values.expected, 'ycExpected'); }
+      body += rowHtml(tr('Average'), values.mittelwert, 'ycTotal');
+      if (values.expected) { body += rowHtml(tr('Expected'), values.expected, 'ycExpected'); }
       // Zwei verschiedene Schalterarten (Dietmar, 23.09.2026): Gesamtertrag/
       // Spezifischer Anlagenertrag bleiben sich AUSSCHLIESSENDE Knoepfe (genau
       // einer aktiv), "Kumuliert" ist dagegen ein echter EIN/AUS-Toggle (kein
       // Gegenstueck-Knopf "Monatswerte" mehr).
       var sub = '<div class="ycSubTabs">'
-        + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">Gesamtertrag</button>'
-        + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">Spezifischer Anlagenertrag</button>'
+        + '<button data-sub="total" class="' + (yearCompareSub === 'total' ? 'active' : '') + '">' + tr('Total yield') + '</button>'
+        + '<button data-sub="specific" ' + (data.kwp ? '' : 'disabled') + ' class="' + (yearCompareSub === 'specific' ? 'active' : '') + '">' + tr('Specific plant yield') + '</button>'
         + '<span class="ycToggleGap"></span>'
-        + '<button id="ycCumToggle" class="ycToggle' + (isCum ? ' active' : '') + '" aria-pressed="' + isCum + '">Kumuliert</button>'
+        + '<button id="ycCumToggle" class="ycToggle' + (isCum ? ' active' : '') + '" aria-pressed="' + isCum + '">' + tr('Cumulative') + '</button>'
         + '</div>';
-      var hint = data.kwp ? '' : '<div class="ycHint">Für den spezifischen Anlagenertrag (kWh/kWp) bitte das Prognose-Modul installieren oder die Anlagenleistung unten manuell eingeben.</div>';
+      var hint = data.kwp ? '' : '<div class="ycHint">' + tr('For the specific plant yield (kWh/kWp), please install the forecast module or enter the plant capacity manually below.') + '</div>';
       panel.innerHTML = sub + hint
         + '<div class="ycTableWrap"><table class="ycTable"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>'
-        + '<div class="ycFoot"><button id="ycHistoryBtn">Vorjahreswerte nachtragen</button><button id="ycConfigBtn">Erwartete Leistung einstellen</button></div>';
+        + '<div class="ycFoot"><button id="ycHistoryBtn">' + tr('Add previous-year values') + '</button><button id="ycConfigBtn">' + tr('Set expected output') + '</button></div>';
       Array.prototype.forEach.call(panel.querySelectorAll('.ycSubTabs button[data-sub]'), function (btn) {
         btn.onclick = function () {
           if (btn.disabled) { return; }
@@ -2988,19 +3017,19 @@
         : (nowYear - 1);
       function monthInputsHtml(row) {
         return MONTH_NAMES.map(function (m, i) {
-          var v = (row && row[i + 1] !== undefined) ? String(row[i + 1]).replace('.', ',') : '';
+          var v = (row && row[i + 1] !== undefined) ? String(row[i + 1]).replace('.', DECSEP) : '';
           return '<div><span>' + m + '</span><input type="number" step="0.01" data-m="' + (i + 1) + '" value="' + v + '"></div>';
         }).join('');
       }
       overlay.innerHTML =
         '<div class="ycDialog">'
-        + '<h3>Vorjahreswerte nachtragen</h3>'
-        + '<div style="opacity:.7;margin-bottom:4px">Für Monate ohne Zählerhistorie im Archiv (z. B. vor Inbetriebnahme) - wirkt nur dort, wo das Archiv selbst keinen Wert liefert. Leeres Feld = kein Nachtrag für diesen Monat. Jahr wählen/eintippen, das schon einen Nachtrag hat, lädt dessen Werte zum Bearbeiten.</div>'
-        + '<div class="ycRow"><label>Jahr</label><input type="number" step="1" id="ycHistYear" value="' + startYear + '"></div>'
+        + '<h3>' + tr('Add previous-year values') + '</h3>'
+        + '<div style="opacity:.7;margin-bottom:4px">' + tr('For months without meter history in the archive (e.g. before commissioning) - only takes effect where the archive itself provides no value. Empty field = no addition for this month. Choosing/typing a year that already has an addition loads its values for editing.') + '</div>'
+        + '<div class="ycRow"><label>' + tr('Year') + '</label><input type="number" step="1" id="ycHistYear" value="' + startYear + '"></div>'
         + '<div class="ycMonthGrid" id="ycHistGrid">' + monthInputsHtml(data.manualHistory ? data.manualHistory[String(startYear)] : null) + '</div>'
         + '<div class="ycDialogFoot">'
         + '<span></span>'
-        + '<span><button id="ycHistCancel">Abbrechen</button> <button id="ycHistSave">Speichern</button></span>'
+        + '<span><button id="ycHistCancel">' + tr('Cancel') + '</button> <button id="ycHistSave">' + tr('Save') + '</button></span>'
         + '</div>'
         + '</div>';
       panel.appendChild(overlay);
@@ -3021,7 +3050,7 @@
           months[inp.getAttribute('data-m')] = parseFloat(raw.replace(',', '.'));
         });
         overlay.remove();
-        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Speichere…</div>';
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">' + tr('Saving…') + '</div>';
         requestAction('yearCompareHistory', JSON.stringify({ year: parseInt(yearEl.value, 10) || nowYear, months: months }));
       };
     }
@@ -3029,8 +3058,8 @@
       if (!data || !data.years || !data.years.length) {
         destroyChart();
         document.getElementById('yearComparePanel').innerHTML = '<div class="empty">' + ((lastData && !lastData.hasPv)
-          ? 'Keine PV-Leistungsvariable gefunden - im Formular „PV-Leistung“ auswählen (bei mehreren InverterHub-Instanzen wird nicht geraten) oder Vorjahreswerte nachtragen'
-          : 'Keine Ertragsdaten im Archiv gefunden') + '</div>';
+          ? tr('No PV power variable found - choose “PV power” in the form (with several InverterHub instances nothing is guessed) or add previous-year values')
+          : tr('No yield data found in the archive')) + '</div>';
         return;
       }
       var unit = (yearCompareSub === 'specific' && data.kwp) ? 'kWh/kWp' : 'kWh';
@@ -3044,11 +3073,11 @@
       // verschwand im Hellmodus) - hell genug fuer Kontrast auf Dunkel,
       // dunkel genug fuer Kontrast auf Hell, aber gedeckter als die
       // kraeftigen Jahresfarben, damit beide weiter im Hintergrund bleiben.
-      var legendYears = data.years.concat(['Mittelwert']);
+      var legendYears = data.years.concat([tr('Average')]);
       var legendItems = legendYears.map(function (y, i) {
-        return { name: String(y), color: (y === 'Mittelwert') ? '#8a919c' : ycColor(y) };
+        return { name: String(y), color: (y === tr('Average')) ? '#8a919c' : ycColor(y) };
       });
-      if (values.expected) { legendItems.push({ name: 'Erwartung', color: '#aeb4bd' }); }
+      if (values.expected) { legendItems.push({ name: tr('Expected'), color: '#aeb4bd' }); }
       renderLegend('yearcompare', legendItems);
       var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
       if (wantEngine === 'highcharts') {
@@ -3069,21 +3098,21 @@
       var overlay = document.createElement('div');
       overlay.className = 'ycOverlay';
       var monthInputs = MONTH_NAMES.map(function (m, i) {
-        return '<div><span>' + m + '</span><input type="number" step="0.1" data-m="' + i + '" value="' + (cfg.monthlyPct[i] || 0).toString().replace('.', ',') + '"></div>';
+        return '<div><span>' + m + '</span><input type="number" step="0.1" data-m="' + i + '" value="' + (cfg.monthlyPct[i] || 0).toString().replace('.', DECSEP) + '"></div>';
       }).join('');
       overlay.innerHTML =
         '<div class="ycDialog">'
-        + '<h3>Erwartete Leistung einstellen</h3>'
-        + '<div style="opacity:.7;margin-bottom:4px">Prognose kennt keinen erwarteten Jahresertrag (nur eine 3-Tage-Wetterprognose) - spezifischer Jahresertrag und Monatsverteilung müssen hier geschätzt werden. Nur die Anlagenleistung (kWp) kann Prognose liefern.</div>'
-        + '<div class="ycRow"><label>Spezifischer Jahresertrag (kWh/kWp)</label><input type="number" step="1" id="ycSpecific" value="' + cfg.specificYield + '"></div>'
-        + '<div class="ycRow"><label>Anlagenleistung (kWp)</label><input type="number" step="0.1" id="ycKwp" value="' + (cfg.useAutoKwp && data.autoKwp ? data.autoKwp : cfg.kwp) + '" ' + (cfg.useAutoKwp && data.autoKwp ? 'disabled' : '') + '></div>'
-        + (data.autoKwp ? '<div class="ycRow"><label>Anlagenleistung aus Prognose-Modul übernehmen (' + data.autoKwp + ' kWp)</label><input type="checkbox" id="ycAutoKwp" ' + (cfg.useAutoKwp ? 'checked' : '') + '></div>' : '')
-        + '<div style="opacity:.7;margin-top:8px">Monatsverteilung (%, Summe muss 100 ergeben) - z.B. per "Aus Mittelwert vorschlagen" aus der bisherigen Ist-Historie ableiten:</div>'
+        + '<h3>' + tr('Set expected output') + '</h3>'
+        + '<div style="opacity:.7;margin-bottom:4px">' + tr('The forecast knows no expected annual yield (only a 3-day weather forecast) - the specific annual yield and the monthly distribution have to be estimated here. Only the plant capacity (kWp) can be supplied by the forecast.') + '</div>'
+        + '<div class="ycRow"><label>' + tr('Specific annual yield (kWh/kWp)') + '</label><input type="number" step="1" id="ycSpecific" value="' + cfg.specificYield + '"></div>'
+        + '<div class="ycRow"><label>' + tr('Plant capacity (kWp)') + '</label><input type="number" step="0.1" id="ycKwp" value="' + (cfg.useAutoKwp && data.autoKwp ? data.autoKwp : cfg.kwp) + '" ' + (cfg.useAutoKwp && data.autoKwp ? 'disabled' : '') + '></div>'
+        + (data.autoKwp ? '<div class="ycRow"><label>' + sf(tr('Take plant capacity from forecast module (%s kWp)'), data.autoKwp) + '</label><input type="checkbox" id="ycAutoKwp" ' + (cfg.useAutoKwp ? 'checked' : '') + '></div>' : '')
+        + '<div style="opacity:.7;margin-top:8px">' + tr('Monthly distribution (%, sum must be 100) - e.g. derive it from the past actual history via "Suggest from average":') + '</div>'
         + '<div class="ycMonthGrid">' + monthInputs + '</div>'
         + '<div class="ycSum" id="ycSum"></div>'
         + '<div class="ycDialogFoot">'
-        + '<button id="ycSuggest">Aus Mittelwert vorschlagen</button>'
-        + '<span><button id="ycCancel">Abbrechen</button> <button id="ycSave">Speichern</button></span>'
+        + '<button id="ycSuggest">' + tr('Suggest from average') + '</button>'
+        + '<span><button id="ycCancel">' + tr('Cancel') + '</button> <button id="ycSave">' + tr('Save') + '</button></span>'
         + '</div>'
         + '</div>';
       panel.appendChild(overlay);
@@ -3092,7 +3121,7 @@
       function updateSum() {
         var sum = monthEls().reduce(function (s, inp) { return s + (parseFloat(inp.value.replace(',', '.')) || 0); }, 0);
         var el = overlay.querySelector('#ycSum');
-        el.textContent = 'Summe: ' + sum.toFixed(1).replace('.', ',') + ' %';
+        el.textContent = sf(tr('Sum: %s %'), sum.toFixed(1).replace('.', DECSEP));
         el.classList.toggle('bad', Math.abs(sum - 100) > 0.5);
       }
       monthEls().forEach(function (inp) { inp.oninput = updateSum; });
@@ -3123,7 +3152,7 @@
           monthlyPct: monthEls().map(function (inp) { return parseFloat(inp.value.replace(',', '.')) || 0; })
         };
         overlay.remove();
-        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">Speichere…</div>';
+        document.getElementById('yearComparePanel').innerHTML = '<div class="empty">' + tr('Saving…') + '</div>';
         requestAction('yearCompareConfig', JSON.stringify(newCfg));
       };
     }
@@ -3141,9 +3170,9 @@
       var series = data.years.map(function (y) {
         return { name: String(y), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: ycColor(y), data: values[y], z: 10 };
       });
-      series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: '#8a919c', data: values.mittelwert, z: 2 });
+      series.push({ name: tr('Average'), type: 'line', connectNulls: true, symbol: 'circle', symbolSize: 5, lineStyle: { width: 1.5 }, color: '#8a919c', data: values.mittelwert, z: 2 });
       if (values.expected) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 1.5, type: 'dashed' }, color: '#aeb4bd', data: values.expected, z: 1 });
+        series.push({ name: tr('Expected'), type: 'line', connectNulls: true, symbol: 'none', lineStyle: { width: 1.5, type: 'dashed' }, color: '#aeb4bd', data: values.expected, z: 1 });
       }
       chart.setOption({
         backgroundColor: 'transparent',
@@ -3179,11 +3208,11 @@
       var series = data.years.filter(function (y) { return isVisible(String(y)); }).map(function (y) {
         return { name: String(y), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: ycColor(y), data: values[y], zIndex: 10 };
       });
-      if (isVisible('Mittelwert')) {
-        series.push({ name: 'Mittelwert', type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: '#8a919c', data: values.mittelwert, zIndex: 2 });
+      if (isVisible(tr('Average'))) {
+        series.push({ name: tr('Average'), type: 'line', connectNulls: true, marker: { radius: 3 }, lineWidth: 1.5, color: '#8a919c', data: values.mittelwert, zIndex: 2 });
       }
-      if (values.expected && isVisible('Erwartung')) {
-        series.push({ name: 'Erwartung', type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 1.5, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 1 });
+      if (values.expected && isVisible(tr('Expected'))) {
+        series.push({ name: tr('Expected'), type: 'line', connectNulls: true, marker: { enabled: false }, lineWidth: 1.5, dashStyle: 'Dash', color: '#aeb4bd', data: values.expected, zIndex: 1 });
       }
       chart = Highcharts.chart(el, {
         // Gleiche feste Plotraender wie alle anderen Reiter (58/58/28/60).
@@ -3324,7 +3353,7 @@
       chart.__balBars = null;
       chart.__balMode = 'day';
       balanceWireHoverHighcharts(el, chart);
-      renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
+      renderBilanzPanel(totals, tr('Daily consumption'), tr('Daily yield'));
     }
 
     // Zentrierte "Verbrauch"/"Erzeugung"-Beschriftung ueber jedem Panel -
@@ -3344,10 +3373,10 @@
       // untere Chart (Dietmar, 31.07.2026 - an ECharts angeglichen, wo
       // "Erzeugung" bereits unterhalb statt oberhalb des Panels steht).
       c.__balLabels.push(
-        c.renderer.text('Verbrauch', midX, c.yAxis[0].top - 4, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+        c.renderer.text(tr('Consumption'), midX, c.yAxis[0].top - 4, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
       );
       c.__balLabels.push(
-        c.renderer.text('Erzeugung', midX, c.yAxis[1].top + c.yAxis[1].len + 16, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
+        c.renderer.text(tr('Generation'), midX, c.yAxis[1].top + c.yAxis[1].len + 16, false).css(style).attr({ align: 'center', zIndex: 6 }).add()
       );
       // "kW"/"kWh"-Achsenname je Panel via renderer.text() statt
       // yAxis.title (Dietmar, 31.07.2026: Highcharts' automatische Titel-
@@ -3452,8 +3481,8 @@
 
       var totals = { netzbezug: 0, batterieentladung: 0, direktverbrauch: 0, batterieladung: 0, netzeinspeisung: 0, netzladung: 0, batterieentladungNetz: 0, batterieentladungPv: 0, netzeinspeisungBatterie: 0, approxDays: 0 };
       bars.forEach(function (b) { Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); }); });
-      var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
-      renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
+      var balLabels = (granularity === 'month') ? [tr('Monthly consumption'), tr('Monthly yield')] : (granularity === 'year') ? [tr('Yearly consumption'), tr('Yearly yield')] : [tr('Overall consumption'), tr('Overall yield')];
+      renderBilanzPanel(totals, balLabels[0], balLabels[1]);
     }
 
     // Zwei per Mousemove selbst gesteuerte Tooltip-Schilder fuer die
@@ -3493,14 +3522,14 @@
       if ((panelKey === 'e' || panelKey === 'v') && balanceHasSoc(curve) && isVisible(SOC_NAME)) {
         var sp = (curve.soc || [])[idx];
         if (sp && sp[1] !== null && sp[1] !== undefined) {
-          lines.push('<div><span style="color:' + balanceSocColor() + '">●</span> Ladestand: <b>' + Number(sp[1]).toFixed(0) + ' %</b></div>');
+          lines.push('<div><span style="color:' + balanceSocColor() + '">●</span> ' + sf(tr('State of charge: %s'), '<b>' + Number(sp[1]).toFixed(0) + ' %</b>') + '</div>');
         }
       }
       if (!lines.length) { return ''; }
       var head = '';
       if (ts !== null) {
         var t = new Date(ts);
-        head = '<div style="font-weight:600;margin-bottom:2px">' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2) + ' Uhr</div>';
+        head = '<div style="font-weight:600;margin-bottom:2px">' + sf(tr('%s h'), ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2)) + '</div>';
       }
       var sub = '<div style="font-weight:600;color:' + themeLabelColor() + ';margin:0 0 2px">' + title + '</div>';
       return head + sub + lines.join('');
@@ -3556,14 +3585,14 @@
         if (!refArr || !refArr.length) { hideBoth(); return; }
         var ts = toValueFn(x);
         var idx = balanceNearestIndex(refArr, ts);
-        htmlV = balancePanelHtml(curve, idx, 'v', 'Verbrauch');
-        htmlE = balancePanelHtml(curve, idx, 'e', 'Erzeugung');
+        htmlV = balancePanelHtml(curve, idx, 'v', tr('Consumption'));
+        htmlE = balancePanelHtml(curve, idx, 'e', tr('Generation'));
       } else if (mode === 'bars') {
         if (!bars || !bars.length) { hideBoth(); return; }
         var rawIdx = toValueFn(x);
         var bidx = Math.max(0, Math.min(bars.length - 1, Math.round(rawIdx)));
-        htmlV = balancePanelHtmlBars(bars, bidx, 'v', 'Verbrauch');
-        htmlE = balancePanelHtmlBars(bars, bidx, 'e', 'Erzeugung');
+        htmlV = balancePanelHtmlBars(bars, bidx, 'v', tr('Consumption'));
+        htmlE = balancePanelHtmlBars(bars, bidx, 'e', tr('Generation'));
       }
       if (htmlV) { tipV.innerHTML = htmlV; tipV.style.display = 'block'; balancePositionTip(tipV, x, w, top, top + h * 0.40); } else { tipV.style.display = 'none'; }
       if (htmlE) { tipE.innerHTML = htmlE; tipE.style.display = 'block'; balancePositionTip(tipE, x, w, h * 0.50, h * 0.96); } else { tipE.style.display = 'none'; }
@@ -3658,8 +3687,8 @@
         title: [
           // Verbrauch bleibt ueber dem oberen, Erzeugung wandert unter das
           // untere Chart (Dietmar, 31.07.2026).
-          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
-          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
+          { text: tr('Consumption'), left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
+          { text: tr('Generation'), left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
         ],
         legend: { show: false },
         // Beide x-Achsen gekoppelt, damit die Fadenkreuz-Linie in beiden
@@ -3708,7 +3737,7 @@
       chart.__balBars = null;
       chart.__balMode = 'day';
       balanceWireHover(el, chart);
-      renderBilanzPanel(totals, 'Tagesverbrauch', 'Tagesertrag');
+      renderBilanzPanel(totals, tr('Daily consumption'), tr('Daily yield'));
     }
 
     function renderBalanceBars(el, bars, granularity) {
@@ -3747,8 +3776,8 @@
           { left: 58, right: 58, top: '50%', height: '46%' }
         ],
         title: [
-          { text: 'Verbrauch', left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
-          { text: 'Erzeugung', left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
+          { text: tr('Consumption'), left: 'center', top: 4, textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } },
+          { text: tr('Generation'), left: 'center', top: '97%', textStyle: { fontSize: 12, fontWeight: 600, color: themeLabelColor() } }
         ],
         legend: { show: false },
         axisPointer: { link: [{ xAxisIndex: 'all' }] },
@@ -3779,8 +3808,8 @@
       bars.forEach(function (b) {
         Object.keys(totals).forEach(function (k) { totals[k] += (b[k] || 0); });
       });
-      var labelPrefix = (granularity === 'month') ? 'Monat' : (granularity === 'year') ? 'Jahr' : 'Gesamt';
-      renderBilanzPanel(totals, labelPrefix + 'sverbrauch', labelPrefix + 'sertrag');
+      var balLabels = (granularity === 'month') ? [tr('Monthly consumption'), tr('Monthly yield')] : (granularity === 'year') ? [tr('Yearly consumption'), tr('Yearly yield')] : [tr('Overall consumption'), tr('Overall yield')];
+      renderBilanzPanel(totals, balLabels[0], balLabels[1]);
     }
 
     function renderBilanzPanel(totals, verbrauchLabel, ertragLabel) {
@@ -3793,7 +3822,7 @@
       // Seit 31.10.2026 mit Herkunft: Entladung aus Netzladung (batterieentladungNetz) zaehlt nicht als autark, Dietmar.
       var entladungPv = Math.max(0, (totals.batterieentladung || 0) - (totals.batterieentladungNetz || 0));
       var autarkie = verbrauch > 0 ? Math.round(((totals.direktverbrauch || 0) + entladungPv) / verbrauch * 100) : 0;
-      function kwh(val) { return val.toFixed(2).replace('.', ',') + ' kWh'; }
+      function kwh(val) { return val.toFixed(2).replace('.', DECSEP) + ' kWh'; }
       // Eine Grid-Zeile bildet IMMER beide Seiten zugleich ab (Dietmar,
       // 31.07.2026: "ich wuensche mir hier mehr Praezision" - zwei
       // unabhaengige Spalten-Grids garantierten keine exakt gleiche
@@ -3832,20 +3861,20 @@
       // Tabelle aus, #chart waechst dann von selbst in den freien Platz.
       panel.innerHTML =
         '<div class="balWrap">'
-        + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> Bilanz</div>'
+        + '<div class="balHead" id="balHeadToggle"><span class="car">▼</span> ' + tr('Balance') + '</div>'
         + '<div class="balBody' + (balancePanelCollapsed ? ' collapsed' : '') + '" id="balBodyRows">'
         + pairRow(verbrauchLabel, gradV, kwh(verbrauch), ertragLabel, gradE, kwh(ertrag), 'total')
-        + pairRow('Netzbezug', col.netzbezug, kwh(totals.netzbezug || 0), 'Batterieladung (PV)', col.batterieladung, kwh(totals.batterieladung || 0))
-        + pairRow('Batterieentladung', col.batterieentladung, kwh(totals.batterieentladung || 0), 'Netzeinspeisung', col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
-        + pairRow('Direktverbrauch', col.direktverbrauch, kwh(totals.direktverbrauch || 0), 'Batterieladung (Netz)', col.netzladung, kwh(totals.netzladung || 0))
-        + ((totals.netzeinspeisungBatterie || 0) > 0 ? pairRow(null, null, null, 'Netzeinspeisung (Batterie)', col.netzeinspeisungBatterie, kwh(totals.netzeinspeisungBatterie || 0)) : '')
-        + pairRow('Autarkiequote', null, autarkie + ' %', 'Direktverbrauchsquote', null, quote + ' %', 'quote')
+        + pairRow(tr('Grid import'), col.netzbezug, kwh(totals.netzbezug || 0), tr('Battery charging (PV)'), col.batterieladung, kwh(totals.batterieladung || 0))
+        + pairRow(tr('Battery discharge'), col.batterieentladung, kwh(totals.batterieentladung || 0), tr('Grid feed-in'), col.netzeinspeisung, kwh(totals.netzeinspeisung || 0))
+        + pairRow(tr('Direct consumption'), col.direktverbrauch, kwh(totals.direktverbrauch || 0), tr('Battery charging (grid)'), col.netzladung, kwh(totals.netzladung || 0))
+        + ((totals.netzeinspeisungBatterie || 0) > 0 ? pairRow(null, null, null, tr('Grid feed-in (battery)'), col.netzeinspeisungBatterie, kwh(totals.netzeinspeisungBatterie || 0)) : '')
+        + pairRow(tr('Self-sufficiency rate'), null, autarkie + ' %', tr('Direct consumption rate'), null, quote + ' %', 'quote')
         + ((totals.netzladung || 0) > 0 || (totals.batterieentladungNetz || 0) > 0
-            ? '<div class="balNote">Netzbezug insgesamt ' + kwh((totals.netzbezug || 0) + (totals.netzladung || 0)) + ': ' + kwh(totals.netzbezug || 0) + ' für das Haus und ' + kwh(totals.netzladung || 0) + ' für die Batterieladung (zählt weder zum Verbrauch noch zum Ertrag). Von der Batterieentladung stammen ' + kwh(totals.batterieentladungNetz || 0) + ' aus Netzladung (zählt nicht als autark).</div>' : '')
+            ? '<div class="balNote">' + sf(tr('Total grid import %s: %s for the house and %s for battery charging (counts neither as consumption nor as yield). Of the battery discharge, %s comes from grid charging (does not count as self-sufficient).'), kwh((totals.netzbezug || 0) + (totals.netzladung || 0)), kwh(totals.netzbezug || 0), kwh(totals.netzladung || 0), kwh(totals.batterieentladungNetz || 0)) + '</div>' : '')
         + ((totals.netzeinspeisungBatterie || 0) > 0
-            ? '<div class="balNote">Die Netzeinspeisung aus der Batterie (' + kwh(totals.netzeinspeisungBatterie || 0) + ') zählt weder zum Verbrauch noch zum Ertrag.</div>' : '')
+            ? '<div class="balNote">' + sf(tr('The grid feed-in from the battery (%s) counts neither as consumption nor as yield.'), kwh(totals.netzeinspeisungBatterie || 0)) + '</div>' : '')
         + ((totals.approxDays || 0) > 0
-            ? '<div class="balNote">Für ' + totals.approxDays + ' Tage ist die Herkunft der Batterieladung noch nicht aufgeteilt, sie wird im Hintergrund nachberechnet.</div>' : '')
+            ? '<div class="balNote">' + sf(totals.approxDays === 1 ? tr('For %s day the origin of the battery charging has not been split yet; it is being recalculated in the background.') : tr('For %s days the origin of the battery charging has not been split yet; it is being recalculated in the background.'), totals.approxDays) + '</div>' : '')
         + '</div>'
         + '</div>';
       var head = document.getElementById('balHeadToggle');
@@ -3901,7 +3930,7 @@
     // Sortierung griff vorher nicht, weil "Wärmepumpe" dort nicht vorkam).
     // Wird der Verbraucher dort umbenannt, muss diese Liste mitgezogen
     // werden.
-    var SANKEY_SINK_ORDER = ['Wärmepumoe', 'Klimaanlage', 'Sonstiger Verbrauch', 'Netzeinspeisung', 'WB 1', 'WB 2'];
+    var SANKEY_SINK_ORDER = ['W\u00e4rmepumoe', 'Klimaanlage', tr('Other consumption'), tr('Grid feed-in'), 'WB 1', 'WB 2'];
 
     function sankeyNodesTopDown(flow) {
       var maxColumn = Math.max.apply(null, (flow.nodes || []).map(function (n) { return n.column; }).concat([0]));
@@ -3960,7 +3989,7 @@
             var v = Math.max(lk.incoming[key] || 0, lk.outgoing[key] || 0);
             var pctN = totalIn > 0 ? (v / totalIn * 100) : 0;
             var extra = (lk.incoming[key] > 0.0001 && lk.outgoing[key] > 0.0001)
-              ? '<br/>eingespeist ' + lk.incoming[key].toFixed(2) + ' kWh / entnommen ' + lk.outgoing[key].toFixed(2) + ' kWh' : '';
+              ? '<br/>' + sf(tr('fed in %s kWh / drawn %s kWh'), lk.incoming[key].toFixed(2), lk.outgoing[key].toFixed(2)) : '';
             return '<b>' + (lk.label[key] || key) + '</b>: ' + v.toFixed(2) + ' kWh (' + pctN.toFixed(0) + ' %)' + extra;
           }
         },
@@ -4104,7 +4133,7 @@
               var v = Math.max(lk.incoming[key] || 0, lk.outgoing[key] || 0);
               var pctN = totalIn > 0 ? (v / totalIn * 100) : 0;
               var extra = (lk.incoming[key] > 0.0001 && lk.outgoing[key] > 0.0001)
-                ? '<br/>eingespeist ' + lk.incoming[key].toFixed(2) + ' kWh / entnommen ' + lk.outgoing[key].toFixed(2) + ' kWh' : '';
+                ? '<br/>' + sf(tr('fed in %s kWh / drawn %s kWh'), lk.incoming[key].toFixed(2), lk.outgoing[key].toFixed(2)) : '';
               return '<b>' + this.point.name + '</b>: ' + v.toFixed(2) + ' kWh (' + pctN.toFixed(0) + ' %)' + extra;
             }
             var pctE = totalIn > 0 ? (this.point.weight / totalIn * 100) : 0;
@@ -4149,7 +4178,7 @@
       // (Dietmar, 28.08.2026) - "PV & Einstrahlung" nur, wenn wirklich
       // eine Einstrahlungs-Variable verknuepft ist.
       var solarBtn = document.querySelector('button.tab[data-tab="solar"]');
-      if (solarBtn) { solarBtn.textContent = lastData.hasIrr ? 'PV & Einstrahlung' : 'Photovoltaik'; }
+      if (solarBtn) { solarBtn.textContent = lastData.hasIrr ? tr('PV & irradiance') : tr('Photovoltaics'); }
       var todayId = fmtDate(new Date());
       var today = null;
       ((lastData.days) || []).forEach(function (d) { if (d && d.id === todayId) { today = d; } });
@@ -4242,7 +4271,7 @@
       // der bei einem schmalen Band wieder abgeschnitten werden koennte
       // (siehe Kommentar zum Wasserzeichen-Band oben).
       if (spotCredit && priceDayCheck && spotNegativeRanges(priceDayCheck).length) {
-        spotCredit += ' - rot hinterlegt: negativer Börsenpreis (§ 51 EEG, keine Einspeisevergütung)';
+        spotCredit += ' - ' + tr('shaded red: negative spot price (§ 51 EEG, no feed-in tariff)');
       }
       spotCreditEl.textContent = spotCredit;
       spotCreditEl.style.display = spotCredit ? '' : 'none';
@@ -4257,19 +4286,19 @@
           && (!priceDayCheck.spot || !priceDayCheck.spot.length)) {
         destroyChart();
         el.innerHTML = '<div class="empty">' + (lastData.hasSpot && !lastData.hasTibber
-          ? 'Für diesen Tag liegen keine Börsenpreise vor (Rückblick erst ab Installation von „NRG-Stack Börsenpreis“ 0.2.0, morgen ab ca. 12:45 Uhr)'
-          : 'Keine Preiskurve verfügbar - Tibber Grid Rewards oder NRG-Stack Börsenpreis installieren') + '</div>';
+          ? sf(tr('No spot prices available for this day (retrospective only from the installation of “%s” 0.2.0, tomorrow from about 12:45)'), SPOT_MODULE_NAME)
+          : sf(tr('No price curve available - install Tibber Grid Rewards or %s'), SPOT_MODULE_NAME)) + '</div>';
         return;
       }
 
       if (curTab === 'mpp' && (!lastData.mpptKeys || !lastData.mpptKeys.length)) {
         destroyChart();
-        el.innerHTML = '<div class="empty">Keine MPPT-Stränge gefunden - InverterHubMonitor-Instanz mit Diagnose-Daten installieren</div>';
+        el.innerHTML = '<div class="empty">' + tr('No MPPT strings found - install an InverterHubMonitor instance with diagnostic data') + '</div>';
         return;
       }
       if (curTab === 'battery' && !lastData.hasBat && !lastData.hasSoc) {
         destroyChart();
-        el.innerHTML = '<div class="empty">Keine Batterie-Variable gefunden - im Formular „Datenquelle“ wählen oder InverterHub installieren</div>';
+        el.innerHTML = '<div class="empty">' + tr('No battery variable found - select “Data source” in the form or install InverterHub') + '</div>';
         return;
       }
       document.getElementById('planKeyRow').style.display = (curTab === 'tagesplan') ? '' : 'none';
@@ -4307,7 +4336,7 @@
           document.getElementById('legendRow').innerHTML = '';
           document.getElementById('planKeyRow').style.display = 'none';
           document.getElementById('ampelStrip').style.display = 'none';
-          el.innerHTML = '<div class="empty">Lade Tagesplan…</div>';
+          el.innerHTML = '<div class="empty">' + tr('Loading daily plan…') + '</div>';
           return;
         }
         var dp = dayPlanCache;
@@ -4323,7 +4352,7 @@
             document.getElementById('legendRow').innerHTML = '';
             document.getElementById('planKeyRow').style.display = 'none';
             document.getElementById('ampelStrip').style.display = 'none';
-            el.innerHTML = '<div class="empty">Lade Rückblick…</div>';
+            el.innerHTML = '<div class="empty">' + tr('Loading retrospective…') + '</div>';
             return;
           }
         }
@@ -4380,7 +4409,7 @@
         if (!lastData.hasScenarios) {
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
-          el.innerHTML = '<div class="empty">Szenarienvergleich nicht verfügbar</div>';
+          el.innerHTML = '<div class="empty">' + tr('Scenario comparison not available') + '</div>';
           return;
         }
         if (!scenarioCache) {
@@ -4390,14 +4419,14 @@
           }
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
-          el.innerHTML = '<div class="empty">Lade Szenarien…</div>';
+          el.innerHTML = '<div class="empty">' + tr('Loading scenarios…') + '</div>';
           return;
         }
         var scenKeys = Object.keys(scenarioCache || {});
         if (!scenKeys.length) {
           destroyChart();
           document.getElementById('legendRow').innerHTML = '';
-          el.innerHTML = '<div class="empty">Keine Szenariodaten erhalten</div>';
+          el.innerHTML = '<div class="empty">' + tr('No scenario data received') + '</div>';
           return;
         }
         var wantEngineScen = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
@@ -4413,25 +4442,25 @@
         if (!lastData.hasEnergyFlow) {
           destroyChart();
           document.getElementById('balancePanel').innerHTML = '';
-          el.innerHTML = '<div class="empty">Keine InverterHubEnergy-Instanz gefunden - im Formular „Datenquelle“ wählen oder InverterHubEnergy installieren</div>';
+          el.innerHTML = '<div class="empty">' + tr('No InverterHubEnergy instance found - select “Data source” in the form or install InverterHubEnergy') + '</div>';
           return;
         }
         if (curView === 'custom' && (!customFrom || !customTo)) {
           destroyChart();
           document.getElementById('balancePanel').innerHTML = '';
-          el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>';
+          el.innerHTML = '<div class="empty">' + tr('Please choose a from/to date') + '</div>';
           return;
         }
         var balBounds, balGran;
         if (curView === 'day') {
           var balDay = dayAt(idx);
-          if (!balDay) { destroyChart(); el.innerHTML = '<div class="empty">Lade…</div>'; return; }
+          if (!balDay) { destroyChart(); el.innerHTML = '<div class="empty">' + tr('Loading…') + '</div>'; return; }
           balBounds = { start: Math.floor(balDay.dayStart / 1000), end: Math.floor(balDay.dayEnd / 1000) };
           balGran = 'day';
         } else {
           balBounds = flowPeriodBounds();
           balGran = (curView === 'week') ? 'month' : curView; // Woche hat keine eigene Bilanz-Granularitaet - Tagesbalken wie Monat
-          if (!balBounds) { destroyChart(); el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>'; return; }
+          if (!balBounds) { destroyChart(); el.innerHTML = '<div class="empty">' + tr('Please choose a from/to date') + '</div>'; return; }
         }
         var balKey = 'balance_' + balGran + '_' + balBounds.start + '_' + balBounds.end;
         if (balanceCache[balKey] !== undefined) {
@@ -4439,7 +4468,7 @@
         } else {
           destroyChart();
           document.getElementById('balancePanel').innerHTML = '';
-          el.innerHTML = '<div class="empty">Lade Bilanz…</div>';
+          el.innerHTML = '<div class="empty">' + tr('Loading balance…') + '</div>';
           if (balancePendingKey !== balKey) {
             balancePendingKey = balKey;
             requestAction('balancePeriod', JSON.stringify({ key: balKey, granularity: balGran, start: balBounds.start, end: balBounds.end }));
@@ -4454,7 +4483,7 @@
         } else {
           destroyChart();
           document.getElementById('yearComparePanel').innerHTML = '';
-          el.innerHTML = '<div class="empty">Lade Jahresvergleich…</div>';
+          el.innerHTML = '<div class="empty">' + tr('Loading year comparison…') + '</div>';
           if (!yearComparePending) {
             yearComparePending = true;
             requestAction('yearCompare', '{}');
@@ -4465,7 +4494,7 @@
       if (curTab === 'flow') {
         if (!lastData.hasEnergyFlow) {
           destroyChart();
-          el.innerHTML = '<div class="empty">Keine InverterHubEnergy-Instanz gefunden - im Formular „Datenquelle“ wählen oder InverterHubEnergy installieren</div>';
+          el.innerHTML = '<div class="empty">' + tr('No InverterHubEnergy instance found - select “Data source” in the form or install InverterHubEnergy') + '</div>';
           return;
         }
         var flowObj = null;
@@ -4484,7 +4513,7 @@
           var bounds = flowPeriodBounds();
           if (!bounds) {
             destroyChart();
-            el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>';
+            el.innerHTML = '<div class="empty">' + tr('Please choose a from/to date') + '</div>';
             return;
           }
           var key = bounds.start + '_' + bounds.end;
@@ -4492,7 +4521,7 @@
             flowObj = flowCache[key];
           } else {
             destroyChart();
-            el.innerHTML = '<div class="empty">Lade Energiebilanz…</div>';
+            el.innerHTML = '<div class="empty">' + tr('Loading energy balance…') + '</div>';
             if (flowPendingKey !== key) {
               flowPendingKey = key;
               requestAction('flowPeriod', JSON.stringify(bounds));
@@ -4502,7 +4531,7 @@
         }
         if (!flowObj || !flowObj.hasData) {
           destroyChart();
-          el.innerHTML = '<div class="empty">Keine Energiedaten für diesen Zeitraum</div>';
+          el.innerHTML = '<div class="empty">' + tr('No energy data for this period') + '</div>';
           return;
         }
         var legendRowEl = document.getElementById('legendRow'); if (legendRowEl) { legendRowEl.innerHTML = ''; }
@@ -4527,7 +4556,7 @@
       if (curView !== 'day') {
         if (curView === 'custom' && (!customFrom || !customTo)) {
           destroyChart();
-          el.innerHTML = '<div class="empty">Bitte Von-/Bis-Datum wählen</div>';
+          el.innerHTML = '<div class="empty">' + tr('Please choose a from/to date') + '</div>';
           return;
         }
         var wantEngineBar = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
@@ -4542,12 +4571,12 @@
       var d = dayAt(idx);
       if (!d) {
         destroyChart();
-        el.innerHTML = '<div class="empty">Lade…</div>';
+        el.innerHTML = '<div class="empty">' + tr('Loading…') + '</div>';
         return;
       }
       if (!d.hasData) {
         destroyChart();
-        el.innerHTML = '<div class="empty">Keine Archivdaten für diesen Tag</div>';
+        el.innerHTML = '<div class="empty">' + tr('No archive data for this day') + '</div>';
         return;
       }
       var wantEngine = (lastData.engine === 'highcharts') ? 'highcharts' : 'echarts';
@@ -4828,7 +4857,7 @@
     function noPlanText(dp) {
       var r = (dp && dp.planReason) || (dayPlanCache && dayPlanCache.planReason) || '';
       if (r) { return String(r).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-      return 'Kein EMS-Tagesplan verfügbar - EMS installieren/konfigurieren (Vertrag EMS_GetDayPlan, ab EMS 0.22.0)';
+      return tr('No EMS daily plan available - install/configure EMS (contract EMS_GetDayPlan, from EMS 0.22.0)');
     }
     // ---- Editor fuer manuelle Tagesplan-Eintraege (EMS 0.76.0, EMS_GetManualPlan/EMS_SetManualPlan, Vertrag manualplan 1.0) ----
     // Der Plan liegt im EMS; dieser Editor ersetzt beim Speichern die ganze Liste mit der zuletzt gelesenen Revision.
@@ -4869,10 +4898,10 @@
         return { date: e.date, from: e.from, to: e.to, action: e.action, power: (a && a.usesPower) ? (parseInt(e.power, 10) || 0) : 0 };
       });
       mpDroppedPast = droppedPast;
-      manualSaving = true; manualErrors = []; manualStatus = 'Sende…';
+      manualSaving = true; manualErrors = []; manualStatus = tr('Sending…');
       if (manualSaveTimer) { clearTimeout(manualSaveTimer); }
       manualSaveTimer = setTimeout(function () {
-        if (manualSaving) { manualSaving = false; mpExitAfterSave = false; manualStatus = 'Keine Antwort - der Editor funktioniert im WebFront, nicht auf der eigenständigen Webseite (IPSView/Browser).'; renderManual(); }
+        if (manualSaving) { manualSaving = false; mpExitAfterSave = false; manualStatus = tr('No response - the editor works in the WebFront, not on the standalone web page (IPSView/browser).'); renderManual(); }
       }, 15000);
       requestAction('manualPlanSave', JSON.stringify({ revision: plan.revision, entries: entries }));
       renderManual();
@@ -4888,10 +4917,10 @@
         if (r.ok) {
           manualDraft = null;
           if (exitWanted) { mpEdit = false; mpSel = -1; }
-          manualStatus = 'Gespeichert. Der Plan wird neu geladen und rechnet sich innerhalb von etwa 30 Sekunden neu.';
+          manualStatus = tr('Saved. The plan is being reloaded and recalculates within about 30 seconds.');
           // Hinweis (kein Fehler): vergangene Einträge, die wir weggelassen oder das EMS entfernt hat (EMS ab 0.89.1: Feld removed)
           var rm = (r.removed && r.removed.length) ? r.removed.length : 0, gone = Math.max(rm, mpDroppedPast);
-          if (gone > 0) { manualStatus += ' ' + gone + (gone === 1 ? ' vergangener Eintrag wurde entfernt.' : ' vergangene Einträge wurden entfernt.'); }
+          if (gone > 0) { manualStatus += ' ' + (gone === 1 ? sf(tr('%s past entry was removed.'), gone) : sf(tr('%s past entries were removed.'), gone)); }
           // Aktualisieren haengt am Speichern: sofort den Tagesplan holen (EMS hat ihn ggf. schon neu gerechnet) und nach einem
           // EMS-Zyklus (ca. 30 s) nochmals, bis der neue Eintrag im Plan steht.
           dayPlanLoadedAt = 0; requestAction('dayPlanLoad', '{}');
@@ -4900,12 +4929,12 @@
           var errs = r.errors || [];
           var rev = false;
           errs.forEach(function (e) {
-            var f = String(e.field || ''), m = /^entries\[(\d+)\]/.exec(f), text = e.message || 'Fehler';
+            var f = String(e.field || ''), m = /^entries\[(\d+)\]/.exec(f), text = e.message || tr('Error');
             if (f === 'revision') { rev = true; }
             manualErrors.push({ idx: m ? +m[1] : -1, text: text, field: f });
           });
-          if (rev) { manualDraft = null; manualErrors = []; manualStatus = 'Der Plan wurde zwischenzeitlich geändert - aktuelle Einträge geladen, Änderungen verworfen. Bitte erneut eingeben.'; }
-          else { manualStatus = 'Nicht gespeichert - bitte die Hinweise an den Einträgen prüfen.'; }
+          if (rev) { manualDraft = null; manualErrors = []; manualStatus = tr('The plan was changed in the meantime - current entries loaded, changes discarded. Please enter again.'); }
+          else { manualStatus = tr('Not saved - please check the notes on the entries.'); }
         }
       }
       if (curTab === 'tagesplan') { renderManual(); }
@@ -4975,9 +5004,9 @@
         b.style.left = mpPct(day, m.a) + '%'; b.style.width = (mpPct(day, m.b) - mpPct(day, m.a)) + '%';
         b.style.background = act.color + '55'; b.style.borderColor = act.color;
         var lab = (e.date === '' ? '∞ ' : '') + act.name.replace(/ \(.*\)$/, '');
-        if (e.action === 2 && e.power > 0) { lab += ' ' + (e.power / 1000).toFixed(e.power >= 10000 ? 0 : 1).replace('.', ',') + ' kW'; }
+        if (e.action === 2 && e.power > 0) { lab += ' ' + (e.power / 1000).toFixed(e.power >= 10000 ? 0 : 1).replace('.', DECSEP) + ' kW'; }
         b.textContent = lab;
-        b.title = (e.date === '' ? 'Jeden Tag ' : '') + mpFmt(m.a) + '–' + mpFmt(m.b) + ' ' + act.name + (e.srv && e.srv.text ? '\n' + e.srv.text : '');
+        b.title = (e.date === '' ? tr('Every day') + ' ' : '') + mpFmt(m.a) + '–' + mpFmt(m.b) + ' ' + act.name + (e.srv && e.srv.text ? '\n' + e.srv.text : '');
         var hl = mpEl('div', 'mpH l'), hr = mpEl('div', 'mpH r'); b.appendChild(hl); b.appendChild(hr);
         var canEdit = m.b > minM;
         b.onpointerdown = function (ev) {
@@ -4998,16 +5027,16 @@
       if (mpDrag) { return; }   // waehrend des Ziehens nicht neu aufbauen
       if (curTab !== 'tagesplan' || !lastData || !lastData.hasManualPlan || tagesplanDay < 0) { box.style.display = 'none'; mpHideOverlay(); return; }
       box.style.display = '';
-      if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', 'Lade manuelle Einträge…')); mpHideOverlay(); return; }
+      if (!manualCache) { if (!manualPending) { mpLoad(); } box.innerHTML = ''; box.appendChild(mpEl('div', 'mpHint', tr('Loading manual entries…'))); mpHideOverlay(); return; }
       box.innerHTML = '';
       var day = mpDayInfo();
-      var head = mpEl('div', 'mpHead'); head.appendChild(mpEl('span', 'mpTitle', 'Manuelle Einträge – ' + tagesplanLabel(tagesplanDay)));
+      var head = mpEl('div', 'mpHead'); head.appendChild(mpEl('span', 'mpTitle', sf(tr('Manual entries – %s'), tagesplanLabel(tagesplanDay))));
       box.appendChild(head);
-      if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || 'Nicht verfügbar.')); mpHideOverlay(); return; }
+      if (!manualCache.available) { head.appendChild(mpEl('span', 'mpHint', manualCache.hint || tr('Not available.'))); mpHideOverlay(); return; }
       var plan = manualCache.plan, draft = mpDraft();
       // Mit ungespeicherten Aenderungen speichert der Knopf und beendet das Bearbeiten in einem Zug (bei Fehlern bleibt es offen)
       var togDirty = mpEdit && mpDirty();
-      var tog = mpEl('button', 'qday' + (mpEdit ? ' active' : ''), !mpEdit ? 'Bearbeiten' : (togDirty ? 'Speichern und beenden' : 'Bearbeiten beenden'));
+      var tog = mpEl('button', 'qday' + (mpEdit ? ' active' : ''), !mpEdit ? tr('Edit') : (togDirty ? tr('Save and finish') : tr('Finish editing')));
       tog.disabled = manualSaving;
       tog.onclick = function () {
         if (!mpEdit) { mpEdit = true; renderManual(); return; }
@@ -5017,7 +5046,7 @@
       head.appendChild(tog);
       // Sofort aktualisieren: Tagesplan und (ohne ungespeicherte Aenderungen) die Eintraege neu vom EMS holen. Das EMS rechnet den Plan
       // in einem Zyklus (ca. 30 s) neu - der Knopf holt den jeweils aktuellen Stand, er stoesst keine Neuberechnung an.
-      var refr = mpEl('button', 'qday', manualRefreshing ? 'Aktualisiere…' : 'Sofort aktualisieren');
+      var refr = mpEl('button', 'qday', manualRefreshing ? tr('Refreshing…') : tr('Refresh immediately'));
       refr.disabled = manualRefreshing || manualSaving;
       refr.onclick = function () {
         manualRefreshing = true; manualStatus = '';
@@ -5029,8 +5058,8 @@
       };
       head.appendChild(refr);
       head.appendChild(mpEl('span', 'mpHint', mpEdit
-        ? 'Zeitraum im Diagramm ziehen, dann die Aktion wählen. Ränder ziehen = verlängern/verkürzen, Balken ziehen = verschieben. Vorrang vor der automatischen Planung, nicht vor § 14a und Grid Rewards; kein Entladen ins Netz.'
-        : 'Eingetragene Zeiträume liegen als Balken im Diagramm. „Bearbeiten“ schaltet das Ziehen im Diagramm frei.'));
+        ? tr('Drag a time range in the chart, then choose the action. Drag the edges = lengthen/shorten, drag the bar = move. Takes precedence over the automatic planning, but not over § 14a and Grid Rewards; no discharging into the grid.')
+        : tr('Entered time ranges appear as bars in the chart. “Edit” enables dragging in the chart.')));
 
       // Ebene auf der Plotflaeche
       var ov = mpOverlayEl(); ov.innerHTML = ''; ov.classList.toggle('on', !!mpEdit); mpPlaceOverlay();
@@ -5108,31 +5137,31 @@
         });
         var act = mpAction(plan, e.action);
         if (act && act.usesPower) {
-          var pin = mpEl('input', 'pick mpPow'); pin.type = 'number'; pin.min = '0'; pin.step = '100'; pin.value = String(e.power || 0); pin.title = 'Leistung in W, 0 = so viel wie möglich';
+          var pin = mpEl('input', 'pick mpPow'); pin.type = 'number'; pin.min = '0'; pin.step = '100'; pin.value = String(e.power || 0); pin.title = tr('Power in W, 0 = as much as possible');
           pin.onchange = function () { e.power = parseInt(pin.value, 10) || 0; e.srv = null; renderManual(); };
-          row.appendChild(pin); row.appendChild(mpEl('span', 'mpLab', 'W (0 = so viel wie möglich)'));
+          row.appendChild(pin); row.appendChild(mpEl('span', 'mpLab', tr('W (0 = as much as possible)')));
         }
         var ev1 = mpEl('label', 'mpLab'); var cb = mpEl('input'); cb.type = 'checkbox'; cb.checked = (e.date === ''); cb.disabled = manualSaving;
         cb.onchange = function () { e.date = cb.checked ? '' : day.str; e.srv = null; renderManual(); };
-        ev1.appendChild(cb); ev1.appendChild(document.createTextNode(' Jeden Tag')); row.appendChild(ev1);
-        var del = mpEl('button', 'qday danger', 'Löschen'); del.disabled = manualSaving;
+        ev1.appendChild(cb); ev1.appendChild(document.createTextNode(' ' + tr('Every day'))); row.appendChild(ev1);
+        var del = mpEl('button', 'qday danger', tr('Delete')); del.disabled = manualSaving;
         del.onclick = function () { draft.splice(mpSel, 1); mpSel = -1; renderManual(); };
         row.appendChild(del);
-        var done = mpEl('button', 'qday', 'Fertig'); done.onclick = function () { mpSel = -1; renderManual(); }; row.appendChild(done);
+        var done = mpEl('button', 'qday', tr('Done')); done.onclick = function () { mpSel = -1; renderManual(); }; row.appendChild(done);
         card.appendChild(row);
         var errs = manualErrors.filter(function (x) { return x.idx === mpSel; });
         if (errs.length) { errs.forEach(function (x) { card.appendChild(mpEl('div', 'mpSt bad', x.text)); }); }
         else if (e.srv) { card.appendChild(mpEl('div', (!e.srv.ok || e.srv.state === 'invalid') ? 'mpSt bad' : (e.srv.state === 'past' ? 'mpSt warn' : 'mpSt'), e.srv.text || '')); }
-        else { card.appendChild(mpEl('div', 'mpSt', 'Noch nicht gespeichert.')); }
+        else { card.appendChild(mpEl('div', 'mpSt', tr('Not saved yet.'))); }
         box.appendChild(card);
       }
       // Eintraege an anderen Tagen bleiben unveraendert erhalten
       var others = draft.filter(function (o) { return !mpVisible(o, day); }).length;
-      if (others) { box.appendChild(mpEl('div', 'mpHint', others + (others === 1 ? ' weiterer Eintrag liegt' : ' weitere Einträge liegen') + ' an anderen Tagen und bleibt unverändert.')); }
+      if (others) { box.appendChild(mpEl('div', 'mpHint', sf(others === 1 ? tr('%s further entry lies on other days and remains unchanged.') : tr('%s further entries lie on other days and remain unchanged.'), others))); }
       manualErrors.filter(function (x) { return x.idx < 0 || x.idx >= draft.length; }).forEach(function (x) { box.appendChild(mpEl('div', 'mpErr', x.text)); });
       var btns = mpEl('div', 'mpBtns');
       // Gespeichert wird mit dem Knopf oben ("Speichern und beenden"); hier nur Verwerfen
-      var rev = mpEl('button', 'qday', 'Verwerfen'); rev.disabled = manualSaving || !mpDirty();
+      var rev = mpEl('button', 'qday', tr('Discard')); rev.disabled = manualSaving || !mpDirty();
       rev.onclick = function () { manualDraft = null; manualErrors = []; manualStatus = ''; mpSel = -1; renderManual(); };
       btns.appendChild(rev);
       if (manualStatus) { btns.appendChild(mpEl('span', 'mpLab', manualStatus)); }
@@ -5159,40 +5188,40 @@
     var TOUR_STEP = 0;
     var TOUR_STEPS = [
       {
-        title: 'Diese Reiterleiste räumt sich selbst auf',
-        text: 'Kein PV-Monitoring wie jedes andere: Reiter ohne passende Datenquelle werden komplett ausgeblendet – kommt später z. B. ein Batteriespeicher oder eine Wallbox dazu, erscheint der Reiter von selbst, ohne dass irgendwo eine Einstellung geändert werden müsste. Reiter mit Quelle, aber gerade ohne aktuelle Daten, färben sich leicht rot – so sieht man sofort, was gerade klemmt.'
+        title: tr('This tab bar tidies itself up'),
+        text: tr('Not like any other PV monitoring: tabs without a suitable data source are hidden completely – if a battery storage or a wall box is added later, for example, the tab appears by itself, without any setting having to be changed anywhere. Tabs with a source but currently without current data turn slightly red – so you see immediately what is currently stuck.')
       },
       {
-        title: 'Die Leiste schwebt, statt Platz zu fressen',
-        text: 'Über den Doppelpfeil neben der Zeitsteuerung lässt sich die Reiterleiste ein- und ausklappen. Sie legt sich dabei ÜBER das stehende Diagramm statt das Layout zu verschieben, und klappt nach der Auswahl von selbst wieder zu. Hinter dem Pfeil warten vier wählbare Animationen – darunter ein physikalisch simuliertes „Einsaugen ins schwarze Loch“ mit 20 Partikeln auf Spiralbahnen.'
+        title: tr('The bar floats instead of eating space'),
+        text: tr('The double arrow next to the time control expands and collapses the tab bar. It lays itself OVER the standing chart instead of shifting the layout, and collapses again by itself after a tab has been chosen. Behind the arrow wait four selectable animations – including a physically simulated “suction into a black hole” with 20 particles on spiral paths.')
       },
       {
-        title: 'Kleine Sonnen, die wissen, wie das Wetter wird',
-        text: 'Über der Zeitachse laufen kleine Sonnen zwischen Auf- und Untergang mit – ihre Höhe zeigt den echten Sonnenstand. Ist ein Prognose-Modul installiert, koppeln sich Größe und Helligkeit zusätzlich an die vorhergesagte PV-Leistung: An einem bewölkten Vormittag erscheinen die Sonnen blass, nicht strahlend. Auch im Tagesplan-Reiter zu sehen.'
+        title: tr('Little suns that know what the weather will be'),
+        text: tr('Little suns travel along the time axis between sunrise and sunset – their height shows the real position of the sun. If a forecast module is installed, size and brightness are additionally coupled to the forecast PV power: on a cloudy morning the suns appear pale, not radiant. Also visible in the daily plan tab.')
       },
       {
-        title: 'Der Reiter heißt nur, was er auch kann',
-        text: 'Ohne angeschlossenen Einstrahlungssensor heißt der erste Reiter schlicht „Photovoltaik“ statt „PV & Einstrahlung“ – die Beschriftung verspricht nie mehr, als die Anlage tatsächlich liefert.'
+        title: tr('The tab is only called what it can do'),
+        text: tr('Without a connected irradiance sensor, the first tab is simply called “Photovoltaics” instead of “PV & irradiance” – the label never promises more than the installation actually delivers.')
       },
       {
-        title: 'Legenden, die mitrechnen',
-        text: 'Hinter PV-Erzeugung und Netzbezug stehen laufend aktualisierte Tages-, Monats- und Jahres-kWh, die sich immer auf den GERADE ANGEZEIGTEN Tag beziehen – beim Zurückblättern rechnen sie live mit. Der Netzbezug bevorzugt dabei echte Zählerstände des abrechnungsverbindlichen Zählers, wo vorhanden.'
+        title: tr('Legends that calculate along'),
+        text: tr('Behind PV generation and grid import there are continuously updated daily, monthly and yearly kWh figures that always refer to the day CURRENTLY DISPLAYED – when you page back, they recalculate live. For grid import, real meter readings of the billing meter are preferred where available.')
       },
       {
-        title: 'Der Börsenpreis ist nicht Ihr Strompreis',
-        text: 'Die Kurve im Strompreis-Reiter zeigt den Day-Ahead-Börsenpreis je Viertelstunde (ab ca. 13 Uhr auch schon für morgen, entstanden um 12 Uhr in der Strombörsen-Auktion) – den reinen Großhandelspreis, netto, ohne Netzentgelt, Steuern und Umlagen. Ihr tatsächlicher Bezugspreis liegt deutlich höher; mit Tibber erscheint er zusätzlich als eigene Kurve, sonst steht er nur auf der Stromrechnung. Liefert die gewählte Quelle nur Stundenwerte, verteilt sich ein Preis gleichmäßig auf vier Viertelstunden – eine einzelne negative Viertelstunde kann darin untergehen.'
+        title: tr('The spot price is not your electricity price'),
+        text: tr('The curve in the electricity price tab shows the day-ahead spot price per quarter-hour (from about 1 pm also for tomorrow, determined at 12 noon in the power exchange auction) – the pure wholesale price, net, without grid fees, taxes and levies. Your actual purchase price is considerably higher; with Tibber it additionally appears as a curve of its own, otherwise it only appears on your electricity bill. If the chosen source only delivers hourly values, a price is spread evenly over four quarter-hours – a single negative quarter-hour can get lost in it.')
       },
       {
-        title: 'Rote Flächen: negative Börsenpreise',
-        text: 'Rot hinterlegte Viertelstunden hatten einen negativen Börsenpreis – es gab mehr Strom im Netz als Bedarf, meist mittags bei viel Sonne und Wind. Für PV-Anlagen mit Inbetriebnahme ab 25.02.2025 entfällt in diesen Viertelstunden die Einspeisevergütung (§ 51 EEG, „Solarspitzengesetz“); das EMS lenkt den Strom dann bevorzugt in Batterie, Wärmepumpe oder Auto statt ins Netz. Ältere Anlagen sind je nach Größe/Baujahr anders oder gar nicht betroffen – das hier ist keine Rechtsberatung, nur ein Hinweis, worauf die rote Fläche zurückgeht.'
+        title: tr('Red areas: negative spot prices'),
+        text: tr('Quarter-hours shaded red had a negative spot price – there was more electricity in the grid than demand, mostly at midday with plenty of sun and wind. For PV installations commissioned from 25.02.2025, the feed-in tariff does not apply in these quarter-hours (§ 51 EEG, “Solarspitzengesetz”); EMS then preferably directs the electricity into the battery, heat pump or car instead of into the grid. Older installations are affected differently or not at all, depending on size/year of construction – this is not legal advice, just a pointer to what the red area is based on.')
       },
       {
-        title: 'Ehrliche Lücken statt erfundener Nullen',
-        text: 'Manche Abrechnungszähler (z. B. Inexogy) archivieren erst mit 15–45 Minuten Verzögerung. Statt diese Lücke stillschweigend als Nullverbrauch anzuzeigen, markiert der Strompreis-Reiter den betroffenen Zeitbereich schraffiert als „Zeitbereich ohne Bezugsdaten!“ – lieber ehrlich unvollständig als falsch vollständig. Vergangene Tage stammen dabei aus dem Archiv des Preis-Moduls und reichen nur bis zu dessen Installation zurück; welche Quelle (Energy-Charts, EPEX Spot/ENTSO-E, Tibber-Preisübersicht oder aWATTar) das ist, steht unter dem Diagramm.'
+        title: tr('Honest gaps instead of invented zeros'),
+        text: tr('Some billing meters (e.g. Inexogy) only archive with a delay of 15–45 minutes. Instead of silently showing this gap as zero consumption, the electricity price tab marks the affected time range with hatching as “Time range without import data!” – better honestly incomplete than falsely complete. Past days come from the archive of the price module and only reach back to its installation; which source (Energy-Charts, EPEX Spot/ENTSO-E, Tibber price overview or aWATTar) that is, is shown below the chart.')
       },
       {
-        title: 'Auch außerhalb des Dashboards nutzbar',
-        text: 'Diese Kachel läuft zusätzlich als eigenständige Webseite über einen automatisch registrierten WebHook (Adresse im Dokumentations-Panel) – ideal für IPSView oder einen beliebigen Browser-Tab, mit automatischer Aktualisierung alle 30 Sekunden.'
+        title: tr('Also usable outside the dashboard'),
+        text: tr('This tile additionally runs as a standalone web page via an automatically registered WebHook (address in the documentation panel) – ideal for IPSView or any browser tab, with automatic refresh every 30 seconds.')
       }
     ];
 
@@ -5251,6 +5280,37 @@
         });
       }
     });
+
+    // feste Texte der Seite (im HTML englisch) in die Sprache der Oberflaeche bringen
+    function setText(sel, txt) { var e = document.querySelector(sel); if (e) { e.textContent = txt; } }
+    function setTitle(sel, txt) { var e = document.querySelector(sel); if (e) { e.title = txt; } }
+    function applyStaticTexts() {
+      setTitle('#tourRestartBtn', tr('Show introduction tour'));
+      setText('#tourPrev', tr('Back'));
+      setText('#tourNext', tr('Next'));
+      setText('#tourDone', tr('✓ Understood, do not show again'));
+      setText('#type option[value="day"]', tr('Day (history)'));
+      setText('#type option[value="week"]', tr('Week (energy)'));
+      setText('#type option[value="month"]', tr('Month (energy)'));
+      setText('#type option[value="year"]', tr('Year (energy)'));
+      setText('#type option[value="all"]', tr('All time (energy)'));
+      setText('#type option[value="custom"]', tr('Custom'));
+      setTitle('#prev', tr('Back'));
+      setTitle('#next', tr('Forward'));
+      setTitle('#tabsToggle', tr('Show/hide tab bar'));
+      setText('button.tab[data-tab="solar"]', tr('PV & irradiance'));
+      setText('button.tab[data-tab="mpp"]', tr('MPP tracker'));
+      setText('button.tab[data-tab="battery"]', tr('Battery'));
+      setText('button.tab[data-tab="price"]', tr('Electricity price'));
+      setText('button.tab[data-tab="flow"]', tr('Energy balance'));
+      setText('button.tab[data-tab="balance"]', tr('Balance'));
+      setText('button.tab[data-tab="yearcompare"]', tr('Year comparison'));
+      setText('button.tab[data-tab="tagesplan"]', tr('Daily plan'));
+      setText('button.tab[data-tab="scenarios"]', tr('Scenarios'));
+      setTitle('#chartZoomBtn', tr('Enlarge chart to tile size'));
+      setText('#priceUnitRow button[data-unit="kw"]', tr('avg kW'));
+    }
+    applyStaticTexts();
   </script>
 </body>
 </html>

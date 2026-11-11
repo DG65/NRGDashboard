@@ -147,7 +147,8 @@ check('Reset gibt Klartext mit Übernehmen-Hinweis', str_contains($msg, 'Überne
 
 echo "Echte Formulare der Module\n";
 $expect = [
-    'Map' => [['Datenquelle' => 'source', 'Details je Kategorie' => 'details', 'Darstellung' => 'style'], ['source', 'details', 'style']],
+    // Map findet seine Panels über name (wie Topology)
+    'Map' => [['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'], ['source', 'details', 'style']],
     // Topology findet seine Panels über name (Prüfstand läuft mit der englischen form.json + Konsolen-Übersetzung)
     'Topology' => [['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'], ['source', 'details', 'style']],
     'Tile' => [['Automatisch gefundene Geräte' => 'devices', 'Manuelle Datenpunkte' => 'manual', 'Weitere Verbraucher' => 'consumers', 'Fahrzeuge' => 'vehicles', 'Gesundheit / Diagnose' => 'health', 'Darstellung' => 'style'], ['devices', 'manual', 'consumers', 'vehicles', 'health', 'style']],

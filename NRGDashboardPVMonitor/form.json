@@ -2,95 +2,98 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Zeitreihen-Kachel des NRG-Stack-Verbunds - Übergabe von InverterHubMonitor: die Diagnose-Logik bleibt bei InverterHub, die Darstellung wandert hierher. Erste Ausbaustufe: Reiter „PV & Einstrahlung“, Ansicht „Tag (Verlauf)“."
+          "caption": "Time-series tile of the NRG-Stack federation - handed over from InverterHubMonitor: the diagnostic logic stays with InverterHub, the presentation moves here. First stage: tab “PV & irradiance”, view “Day (history)”."
         },
         {
           "type": "Label",
-          "caption": "PV-/Batterie-Leistung werden automatisch über InverterHub gefunden (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert), sofern genau eine InverterHub-Instanz installiert ist - bei mehreren Wechselrichtern oder ohne InverterHub bitte die Variablen unten manuell wählen."
+          "caption": "PV and battery power are found automatically via InverterHub (any inverter manufacturer for which a driver exists there is supported) as long as exactly one InverterHub instance is installed - with several inverters or without InverterHub, please choose the variables below manually."
         },
         {
           "type": "Label",
-          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
         },
         {
           "type": "CheckBox",
           "name": "StandaloneEnabled",
-          "caption": "Standalone-Webseite für Browser und IPSView aktivieren"
+          "caption": "Enable standalone web page for browser and IPSView"
         },
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn die Kachel als eigene Webseite (Browser, IPSView) laufen soll. Wer nur die Kachel im WebFront nutzt, kann das abschalten: Dann ist kein WebHook registriert und der Zugriff von außen entfällt. Beim Abschalten wird der vorhandene Eintrag entfernt."
+          "caption": "Only needed if the tile is to run as its own web page (browser, IPSView). If you only use the tile in the WebFront, you can switch this off: then no WebHook is registered and access from outside is removed. Switching it off removes the existing entry."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten — Reiterleiste: Reiter ohne Datenquelle werden automatisch ausgeblendet; Reiter mit Quelle aber ohne aktuelle Daten färben sich leicht rot (zeigt, was gerade schief läuft), versorgte leicht grün. Die Leiste schwebt als Panel über dem Diagramm (Pfeil-Knopf öffnet, Reiterwahl schließt, Zustand wird je Gerät gemerkt) — mit vier wählbaren Animationen hinter dem Doppelpfeil, darunter ein physikalisch simuliertes Einsaugen ins schwarze Loch."
+          "caption": "✨ Details — tab bar: tabs without a data source are hidden automatically; tabs with a source but without current data turn slightly red (shows what is currently going wrong), supplied ones slightly green. The bar floats as a panel above the chart (arrow button opens it, choosing a tab closes it, the state is remembered per device) — with four selectable animations behind the double arrow, including a physically simulated suction into a black hole."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten — Diagramme: kleine Sonnen über der Zeitachse zeigen den Sonnenstand; mit installiertem Prognose-Modul folgen Größe/Helligkeit der prognostizierten PV-Leistung (bewölkter Vormittag = blasse Sonnen), auch im Tagesplan. Ohne Einstrahlungssensor heißt der erste Reiter schlicht „Photovoltaik“. Die Tages-/Monats-/Jahres-kWh in der Legende beziehen sich auf den angezeigten Tag und rechnen beim Zurückblättern mit. Bei verzögert archivierenden Abrechnungszählern markiert eine schraffierte Fläche den Zeitbereich ohne Bezugsdaten, statt Lücken als Nullverbrauch zu zeigen."
+          "caption": "✨ Details — charts: small suns above the time axis show the position of the sun; with a forecast module installed, size and brightness follow the forecast PV power (cloudy morning = pale suns), also in the daily plan. Without an irradiance sensor the first tab is simply called “Photovoltaics”. The daily/monthly/yearly kWh in the legend refer to the displayed day and are recalculated as you page back. For billing meters that archive with a delay, a hatched area marks the time range without import data instead of showing gaps as zero consumption."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (real gefunden: 261.554.185 W nachts durch einen Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht, Jahresvergleich oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+          "caption": "✨ Detail (outlier protection, 01.09.2026): a single faulty archive value (found in real life: 261,554,185 W at night caused by a communication error in a partner module) is now discarded instead of distorting the day view, year comparison or energy balance - a generic plausibility limit (1 MW), not a value specific to any installation."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Diagramm-Zoom, 01.09.2026): der „+“-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter."
+          "caption": "✨ Detail (chart zoom, 01.09.2026): the “+” button at the top right of the chart hides the legend/table/additional bars and lets the chart take up the full tile size - especially helpful in the year comparison with many years, where the growing legend would otherwise keep shrinking the chart. Applies in every tab."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the stored “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with a shared login for all visitors)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Automatisches Durchschalten, 01.09.2026): die Einstellung „Reiter automatisch alle 10 s weiterschalten“ (unten unter „Darstellung“, Standard aus) versetzt die Kachel in einen Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert - z. B. für eine Demo-Instanz gedacht."
+          "caption": "✨ Detail (automatic tab cycling, 01.09.2026): the setting “Switch tabs automatically every 10 s” (below under “Appearance”, off by default) puts the tile into a kiosk/demo mode that pages through all visible tabs on its own - intended e.g. for a demo instance."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Diagrammtitel, 03.09.2026): oben mittig über dem Diagramm steht jetzt der Name des gerade aktiven Reiters - direkt aus der Reiterleiste übernommen, keine zweite, separat zu pflegende Beschriftung."
+          "caption": "✨ Detail (chart title, 03.09.2026): the name of the currently active tab now appears at the top centre above the chart - taken directly from the tab bar, no second label to maintain separately."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Historie/Ausblick, 10.09.2026): im Tagesplan laufen die Beschriftungen „Historie“ und „Ausblick“ links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein gut erkennbarer Pfeil am linken und rechten Diagrammrand - auf einen Blick klar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt."
+          "caption": "✨ Detail (history/outlook, 10.09.2026): in the daily plan the labels “History” and “Outlook” move left/right along with the red now line, plus a clearly visible arrow at the left and right chart edge - it is clear at a glance which side shows measured values and which a forecast."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Börsenpreis, 13.09.2026): ist das Modul „NRG-Stack Börsenpreis“ installiert, zeigt der Reiter „Strompreis“ zusätzlich den Day-Ahead-Börsenpreis - auch ganz ohne Tibber; heute/morgen direkt von der Quelle, vergangene Tage aus dem Archiv des Börsenpreis-Moduls (ab 0.2.0). Negative Viertelstunden (dort gibt es nach § 51 EEG für neuere Anlagen keine Einspeisevergütung) sind rot hinterlegt, Stundenwerte werden im Tooltip als solche gekennzeichnet. Der Börsenpreis ist netto ohne Steuern und Netzentgelt und wird deshalb nie für die Kosten verwendet."
+          "caption": "✨ Detail (spot price, 13.09.2026): if the NRG-Stack spot price module is installed, the “Electricity price” tab additionally shows the day-ahead spot price - even without Tibber; today/tomorrow directly from the source, past days from the archive of the spot price module (from 0.2.0). Negative quarter-hours (for which newer installations get no feed-in tariff under § 51 EEG) are shaded red, hourly values are marked as such in the tooltip. The spot price is net, without taxes and grid fees, and is therefore never used for costs."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASHPVMON_ResetTour($id);"
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Datenquelle",
+      "name": "PanelSource",
+      "caption": "Data source",
       "expanded": true,
       "items": [
         {
           "type": "Label",
           "name": "SourcesStatus",
-          "caption": "Verbindungsstatus wird berechnet …"
+          "caption": "Connection status is being calculated …"
         },
         {
           "type": "SelectVariable",
           "name": "PvPowerID",
-          "caption": "PV-Leistung"
+          "caption": "PV power"
         },
         {
           "type": "Select",
           "name": "PvPowerUnit",
-          "caption": "Einheit PV-Leistung",
+          "caption": "Unit of PV power",
           "options": [
             {
-              "caption": "Automatisch (aus dem Variablenprofil)",
+              "caption": "Automatic (from the variable profile)",
               "value": 0
             },
             {
@@ -105,82 +108,82 @@
         },
         {
           "type": "Label",
-          "caption": "PV-Leistung: optional, sonst automatisch über InverterHub. Erwartet wird die Erzeugung als positiver Wert in W. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
+          "caption": "PV power: optional, otherwise found automatically via InverterHub. The generation is expected as a positive value in W. Unit: “Automatic” reads the suffix “kW” or “MW” from the variable’s profile; without a suffix, watts are assumed. If the variable is in kW and has no suffix, choose “Kilowatt” here."
         },
         {
           "type": "SelectVariable",
           "name": "IrradianceID",
-          "caption": "Einstrahlungs-Variable (W/m²)"
+          "caption": "Irradiance variable (W/m²)"
         },
         {
           "type": "Label",
-          "caption": "Einstrahlung: optional. Ohne sie fehlt die gestrichelte Linie „PV erwartet“ im Monitoring."
+          "caption": "Irradiance: optional. Without it, the dashed “PV expected” line is missing in the monitoring."
         },
         {
           "type": "SelectInstance",
           "name": "PvfInstance",
-          "caption": "PV-Prognose-Instanz",
+          "caption": "PV forecast instance",
           "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
         },
         {
           "type": "Label",
-          "caption": "PV-Prognose: optional, sonst automatisch bei genau einer Instanz."
+          "caption": "PV forecast: optional, otherwise found automatically if there is exactly one instance."
         },
         {
           "type": "Label",
-          "caption": "Ohne PV-Prognose-Instanz fehlt nur die gestrichelte „PV erwartet“-Linie - der Verlauf von PV-Erzeugung und Einstrahlung wird trotzdem angezeigt."
+          "caption": "Without a PV forecast instance only the dashed “PV expected” line is missing - the curve of PV generation and irradiance is still shown."
         },
         {
           "type": "SelectVariable",
           "name": "TemperatureID",
-          "caption": "Außentemperatur (°C)"
+          "caption": "Outdoor temperature (°C)"
         },
         {
           "type": "Label",
-          "caption": "Außentemperatur: optional, verbessert „PV erwartet“."
+          "caption": "Outdoor temperature: optional, improves “PV expected”."
         },
         {
           "type": "NumberSpinner",
           "name": "TempCoeff",
-          "caption": "Temperaturkoeffizient (%/K)",
+          "caption": "Temperature coefficient (%/K)",
           "digits": 2,
           "minimum": -1,
           "maximum": 0
         },
         {
           "type": "Label",
-          "caption": "Temperaturkoeffizient der Module nach Herstellerangabe, die Vorgabe -0,40 passt für die meisten Siliziummodule."
+          "caption": "Temperature coefficient of the modules according to the manufacturer; the default of -0.40 suits most silicon modules."
         },
         {
           "type": "Label",
-          "caption": "Ohne Temperatur-Variable wird „PV erwartet“ nur aus Einstrahlung berechnet - an heißen, sonnigen Tagen weicht die Linie dann ab Mittag zunehmend nach oben von der tatsächlichen Erzeugung ab, weil wärmere Solarzellen real weniger liefern als die reine Einstrahlungsrechnung annimmt."
+          "caption": "Without a temperature variable, “PV expected” is calculated from irradiance only - on hot, sunny days the line then deviates upwards from the actual generation more and more from midday on, because warmer solar cells actually deliver less than the pure irradiance calculation assumes."
         },
         {
           "type": "CheckBox",
           "name": "IrradianceHorizontal",
-          "caption": "Einstrahlungssensor horizontal montiert",
+          "caption": "Irradiance sensor mounted horizontally",
           "value": true
         },
         {
           "type": "Label",
-          "caption": "Üblich bei Wetterstationen, zum Beispiel Ecowitt."
+          "caption": "Usual for weather stations, for example Ecowitt."
         },
         {
           "type": "Label",
-          "caption": "Ein horizontaler Sensor misst weniger Einstrahlung als die tatsächlich geneigte Modulfläche empfängt (Dietmar, 23.09.2026: Ecowitt-Wetterstation, horizontal) - „PV erwartet“ rechnet die horizontale Messung auf die Modulebene um (Neigung/Ausrichtung aus der PV-Prognose-Instanz). Haken raus, wenn der Sensor bereits in Modulebene montiert ist."
+          "caption": "A horizontal sensor measures less irradiance than the tilted module surface actually receives (Dietmar, 23.09.2026: Ecowitt weather station, horizontal) - “PV expected” converts the horizontal measurement to the module plane (tilt/orientation from the PV forecast instance). Untick if the sensor is already mounted in the module plane."
         },
         {
           "type": "SelectVariable",
           "name": "BatPowerID",
-          "caption": "Batterie-Leistung"
+          "caption": "Battery power"
         },
         {
           "type": "Select",
           "name": "BatPowerUnit",
-          "caption": "Einheit Batterie-Leistung",
+          "caption": "Unit of battery power",
           "options": [
             {
-              "caption": "Automatisch (aus dem Variablenprofil)",
+              "caption": "Automatic (from the variable profile)",
               "value": 0
             },
             {
@@ -195,29 +198,29 @@
         },
         {
           "type": "Label",
-          "caption": "Batterie-Leistung: optional, sonst automatisch über InverterHub. Vorzeichen: + = Entladen, − = Laden (liefert die Variable es umgekehrt, bitte die Quelle prüfen). Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
+          "caption": "Battery power: optional, otherwise found automatically via InverterHub. Sign: + = discharging, − = charging (if the variable delivers it the other way round, please check the source). Unit: “Automatic” reads the suffix “kW” or “MW” from the variable’s profile; without a suffix, watts are assumed. If the variable is in kW and has no suffix, choose “Kilowatt” here."
         },
         {
           "type": "SelectVariable",
           "name": "SocID",
-          "caption": "Batterie-Ladestand (SOC, %)"
+          "caption": "Battery state of charge (SOC, %)"
         },
         {
           "type": "Label",
-          "caption": "Ladestand: optional, sonst automatisch über InverterHub."
+          "caption": "State of charge: optional, otherwise found automatically via InverterHub."
         },
         {
           "type": "SelectVariable",
           "name": "GridPowerID",
-          "caption": "Netzleistung"
+          "caption": "Grid power"
         },
         {
           "type": "Select",
           "name": "GridPowerUnit",
-          "caption": "Einheit Netzleistung",
+          "caption": "Unit of grid power",
           "options": [
             {
-              "caption": "Automatisch (aus dem Variablenprofil)",
+              "caption": "Automatic (from the variable profile)",
               "value": 0
             },
             {
@@ -233,47 +236,47 @@
         {
           "type": "CheckBox",
           "name": "GridPowerInvert",
-          "caption": "Netzleistung umkehren"
+          "caption": "Invert grid power"
         },
         {
           "type": "Label",
-          "caption": "Erwartet wird + = Einspeisung, − = Bezug. Liefert deine Netz-Variable es umgekehrt (Bezug +, Einspeisung −), hier den Haken setzen."
+          "caption": "Expected: + = feed-in, − = import. If your grid variable delivers it the other way round (import +, feed-in −), tick this box."
         },
         {
           "type": "Label",
-          "caption": "Netzleistung: optional, sonst automatisch über InverterHub. Vorzeichen: + = Einspeisung, − = Bezug. Zeigt den Netzbezug als Balken im Strompreis-Reiter. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
+          "caption": "Grid power: optional, otherwise found automatically via InverterHub. Sign: + = feed-in, − = import. Shows the grid import as bars in the electricity price tab. Unit: “Automatic” reads the suffix “kW” or “MW” from the variable’s profile; without a suffix, watts are assumed. If the variable is in kW and has no suffix, choose “Kilowatt” here."
         },
         {
           "type": "Label",
-          "caption": "MPPT-Stränge werden automatisch gefunden, sofern genau eine InverterHubMonitor-Instanz installiert ist (unterstützt jeden Wechselrichter-Hersteller, für den dort ein Treiber existiert) - ohne InverterHubMonitor bitte die Variablen unten manuell wählen (nicht jeder Wechselrichter hat 4 Stränge, ungenutzte Felder leer lassen)."
+          "caption": "MPPT strings are found automatically as long as exactly one InverterHubMonitor instance is installed (any inverter manufacturer for which a driver exists there is supported) - without InverterHubMonitor, please choose the variables below manually (not every inverter has 4 strings, leave unused fields empty)."
         },
         {
           "type": "SelectVariable",
           "name": "Mppt1ID",
-          "caption": "MPPT-Strang 1"
+          "caption": "MPPT string 1"
         },
         {
           "type": "SelectVariable",
           "name": "Mppt2ID",
-          "caption": "MPPT-Strang 2"
+          "caption": "MPPT string 2"
         },
         {
           "type": "SelectVariable",
           "name": "Mppt3ID",
-          "caption": "MPPT-Strang 3"
+          "caption": "MPPT string 3"
         },
         {
           "type": "SelectVariable",
           "name": "Mppt4ID",
-          "caption": "MPPT-Strang 4"
+          "caption": "MPPT string 4"
         },
         {
           "type": "Select",
           "name": "MpptPowerUnit",
-          "caption": "Einheit MPPT-Stränge",
+          "caption": "Unit of MPPT strings",
           "options": [
             {
-              "caption": "Automatisch (aus dem Variablenprofil)",
+              "caption": "Automatic (from the variable profile)",
               "value": 0
             },
             {
@@ -288,40 +291,41 @@
         },
         {
           "type": "Label",
-          "caption": "MPPT-Stränge: Die Einheit gilt für alle vier Variablen. Einheit: „Automatisch“ liest den Suffix „kW“ oder „MW“ aus dem Profil der Variable, ohne Suffix wird Watt angenommen. Liegt die Variable in kW vor und hat keinen Suffix, hier „Kilowatt“ wählen."
+          "caption": "MPPT strings: the unit applies to all four variables. Unit: “Automatic” reads the suffix “kW” or “MW” from the variable’s profile; without a suffix, watts are assumed. If the variable is in kW and has no suffix, choose “Kilowatt” here."
         },
         {
           "type": "SelectInstance",
           "name": "TibberInstance",
-          "caption": "Tibber Grid Rewards-Instanz",
+          "caption": "Tibber Grid Rewards instance",
           "moduleID": "{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}"
         },
         {
           "type": "Label",
-          "caption": "Tibber: optional für den Strompreis-Reiter, sonst automatisch bei genau einer Instanz."
+          "caption": "Tibber: optional for the electricity price tab, otherwise found automatically if there is exactly one instance."
         },
         {
           "type": "Label",
-          "caption": "Energiebilanz (Sankey): Solar/Batterie kommen automatisch von InverterHub, Netzbezug/-einspeisung, Hausverbrauch und einzelne Verbraucher automatisch von den passend getaggten MeterHub-Zählern (Funktion „Netzanschluss“/„Hausverbrauch“/… in deren Konfiguration) - keine eigene Instanz nötig."
+          "caption": "Energy balance (Sankey): solar/battery come automatically from InverterHub; grid import/feed-in, house consumption and individual consumers automatically from the suitably tagged MeterHub meters (function “Grid connection”/“House consumption”/… in their configuration) - no instance of its own needed."
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Darstellung",
+      "name": "PanelStyle",
+      "caption": "Appearance",
       "expanded": false,
       "items": [
         {
           "type": "Select",
           "name": "Engine",
-          "caption": "Chart-Engine",
+          "caption": "Chart engine",
           "options": [
             {
-              "caption": "ECharts (eingebettet, empfohlen)",
+              "caption": "ECharts (embedded, recommended)",
               "value": "echarts"
             },
             {
-              "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)",
+              "caption": "Highcharts (loaded from the internet, own license required)",
               "value": "highcharts"
             }
           ]
@@ -329,27 +333,27 @@
         {
           "type": "SelectColor",
           "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+          "caption": "Background color (-1 = system default)"
         },
         {
           "type": "Label",
-          "caption": "Farben der Bilanz: Der Farbton zeigt die Herkunft des Stroms (Farbkreis: Sonne = Gelb, Netz = Blau, Batterie = Rot, die Wege sind Mischfarben), die Fläche die Verwendung. Wähle ein Farbschema und überschreibe bei Bedarf einzelne Farben; „Systemstandard“ (-1) heißt: Farbe des Schemas. Laden und Entladen über die Batterie teilen sich je Herkunft eine Farbe."
+          "caption": "Balance colors: the hue shows where the electricity comes from (color wheel: sun = yellow, grid = blue, battery = red, the paths are mixed colors), the area shows how it is used. Choose a color scheme and override individual colors if needed; “system default” (-1) means: color of the scheme. Charging and discharging via the battery share one color per origin."
         },
         {
           "type": "Select",
           "name": "BalanceColorScheme",
-          "caption": "Farbschema der Bilanz",
+          "caption": "Balance color scheme",
           "options": [
             {
-              "caption": "Farbkreis (Standard)",
+              "caption": "Color wheel (default)",
               "value": 0
             },
             {
-              "caption": "Klassisch (die ursprünglichen Farben)",
+              "caption": "Classic (the original colors)",
               "value": 1
             },
             {
-              "caption": "Farbenblind-freundlich (Okabe-Ito)",
+              "caption": "Colorblind-friendly (Okabe-Ito)",
               "value": 2
             }
           ]
@@ -357,57 +361,57 @@
         {
           "type": "SelectColor",
           "name": "ColorBalNetzbezug",
-          "caption": "Netzbezug (Netz ins Haus)"
+          "caption": "Grid import (grid to house)"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalDirekt",
-          "caption": "Direktverbrauch (Sonne ins Haus)"
+          "caption": "Direct consumption (sun to house)"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalEinspeisung",
-          "caption": "Netzeinspeisung (Sonne ins Netz)"
+          "caption": "Grid feed-in (sun to grid)"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalBatPv",
-          "caption": "Batterie aus PV (Laden und Entladen)"
+          "caption": "Battery from PV (charging and discharging)"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalBatNetz",
-          "caption": "Batterie aus Netz (Laden und Entladen)"
+          "caption": "Battery from grid (charging and discharging)"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalEinspBat",
-          "caption": "Netzeinspeisung aus der Batterie"
+          "caption": "Grid feed-in from the battery"
         },
         {
           "type": "SelectColor",
           "name": "ColorBalSoc",
-          "caption": "Ladestand-Linie (Systemstandard = Beschriftungsfarbe)"
+          "caption": "State-of-charge line (system default = label color)"
         },
         {
           "type": "Button",
-          "caption": "↩️ Farben der Bilanz zurücksetzen",
+          "caption": "↩️ Reset balance colors",
           "onClick": "echo NRGDASHPVMON_ResetBalanceColors($id);"
         },
         {
           "type": "ValidationTextBox",
           "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+          "caption": "Font (empty/“system” = system font)"
         },
         {
           "type": "CheckBox",
           "name": "LightTheme",
-          "caption": "Symcon-Oberfläche ist auf Hell gestellt (für theme-abhängige Textfarben, z.B. Sankey-Beschriftung - Symcon bietet der Kachel keine automatische Erkennung an)"
+          "caption": "Symcon interface is set to light (for theme-dependent text colors, e.g. Sankey labels - Symcon offers the tile no automatic detection)"
         },
         {
           "type": "CheckBox",
           "name": "AutoCycleTabs",
-          "caption": "Reiter automatisch alle 10 s weiterschalten (Kiosk-/Vorführmodus, z.B. für eine Demo-Instanz)"
+          "caption": "Switch tabs automatically every 10 s (kiosk/demo mode, e.g. for a demo instance)"
         }
       ]
     }

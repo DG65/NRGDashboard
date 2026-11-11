@@ -252,6 +252,11 @@ if (is_file($htmlDatei)) {
     $komponiert = [
         '%d instances' => ' Instanzen', '%d instances · status %s' => ' Instanzen · Status ', 'Status: %s' => 'Status: ',
         '%d/%d partner instances healthy' => ' Partnerinstanzen gesund',
+        // Forecast: zusammengesetzte Anzeige, Gesamtausgabe prueft deutsch-vergleich-forecast.php
+        '%s forecast' => ' Soll', '%s actual' => ' Ist', 'Max. %s kW' => 'Max. ', 'Plant %s kWp' => 'Anlage ',
+        '%s forecast %s kWh' => ' Soll ', '%s forecast %s kWh, actual %s kWh' => ', Ist ',
+        'PV (forecast)' => '(Soll)', 'Consumption (forecast)' => '(Soll)',
+        'Bars: the forecast is available at %d min resolution - to get 15-minute bars, set the time resolution to 15 min in the PV and load forecasts.' => 'Balken: Die Prognose liegt in ',
     ];
     foreach ($trTexte as $s) {
         $d = $de[$s] ?? '';

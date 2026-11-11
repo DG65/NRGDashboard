@@ -128,7 +128,7 @@
 </head>
 
 <body>
-    <button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+    <button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
     <div class="wrap">
         <div id="legend"></div>
         <div id="viewHint"></div>
@@ -150,15 +150,20 @@
                 <div class="tour-title" id="tourTitle"></div>
                 <div class="tour-text" id="tourText"></div>
                 <div class="tour-nav">
-                    <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-                    <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-                    <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+                    <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+                    <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+                    <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!--NRGDASH_TEXTS-->
     <script>
+        // Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+        function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+        // %s / %d der Reihe nach durch die Argumente ersetzen
+        function fmt(s) { var a = Array.prototype.slice.call(arguments, 1), i = 0; return s.replace(/%[sd]/g, function () { return a[i++]; }); }
         var lastData = null, chart = null, chartEngine = null;
         var userHide = { pv: false, load: false, pvm: false, lom: false };
         var libs = { hc: 0, ec: 0 };
@@ -201,36 +206,36 @@
         let TOUR_STEP = 0;
         const TOUR_STEPS = [
             {
-                title: 'Diese Kachel merkt sich, was sie gestern versprochen hat',
-                text: 'Die meisten Prognose-Widgets zeigen nur "was kommt". Diese hier speichert zusätzlich einen Schnappschuss der Vortages-Prognose und legt ihn "Gestern" neben den tatsächlich gemessenen Verlauf – Sie sehen auf einen Blick, wie gut PV- und Verbrauchsprognose wirklich getroffen haben, nicht nur, was für heute erwartet wird.'
+                title: tr('This tile remembers what it promised yesterday'),
+                text: tr('Most forecast widgets only show “what is coming”. This one also stores a snapshot of yesterday’s forecast and places it next to the actually measured course under “Yesterday” – you see at a glance how well the PV and consumption forecasts really hit the mark, not just what is expected for today.')
             },
             {
-                title: 'PV gegen Verbrauch – die Lücke ist Ihr Netzbezug',
-                text: 'Zwei Kurven in einem Chart: PV-Erzeugung und Hausverbrauch als Prognose (P50) über bis zu 5 Tage. Der Tooltip beim Antippen/Hovern zeigt zusätzlich den Saldo zur jeweiligen Uhrzeit – genau der EMS-Blick, ob Netzbezug oder Einspeisung ansteht.'
+                title: tr('PV against consumption – the gap is your grid import'),
+                text: tr('Two curves in one chart: PV generation and house consumption as a forecast (P50) over up to 5 days. The tooltip on tap/hover also shows the balance at that time of day – exactly the EMS view of whether grid import or export is coming up.')
             },
             {
-                title: 'Unsicherheitsband bei der Lastprognose',
-                text: 'Um die Verbrauchskurve legt sich ein P10–P90-Band – die Bandbreite, in der die tatsächliche Last mit hoher Wahrscheinlichkeit liegt. Die PV-Prognose ist dagegen physikbasiert (kein Streubereich) und bleibt bewusst als reine Linie.'
+                title: tr('Uncertainty band for the load forecast'),
+                text: tr('A P10–P90 band surrounds the consumption curve – the range in which the actual load is very likely to fall. The PV forecast, in contrast, is physics-based (no spread) and deliberately stays a plain line.')
             },
             {
-                title: 'Ist-Werte live überlagert',
-                text: 'Mit zwei eigenen Ist-Leistungsvariablen (Konsole: "Ist-Werte") erscheint der Momentanwert in der Legende, ein Punkt auf der "jetzt"-Linie und der bisherige Tagesverlauf als gestrichelte Linie – unter den Soll-kWh steht zusätzlich, was tatsächlich schon geflossen ist.'
+                title: tr('Actual values overlaid live'),
+                text: tr('With two actual-power variables of your own (console: “Actual values”), the current value appears in the legend, a dot on the “now” line and the course of the day so far as a dashed line – below the forecast kWh it also shows what has actually flowed already.')
             },
             {
-                title: 'Legende zum Klicken',
-                text: 'Ein Klick auf "PV" oder "Verbrauch" in der Legende blendet die jeweilige Kurve samt Band und Ist-Linie aus – praktisch, um bei überlagerten Kurven kurz nur eine Seite zu sehen.'
+                title: tr('Clickable legend'),
+                text: tr('A click on “PV” or “Consumption” in the legend hides that curve including its band and actual line – handy to look at just one side for a moment when curves overlap.')
             },
             {
-                title: 'Mehr als 3 Tage? Es wird gescrollt, nicht gequetscht',
-                text: 'Ab mehr als 3 angezeigten Tagen wird das Diagramm proportional breiter statt die Kurven zusammenzudrücken – die Y-Achse links bleibt dabei beim Scrollen sichtbar stehen (Pfeile links/rechts zeigen an, dass es weitergeht).'
+                title: tr('More than 3 days? It scrolls instead of squeezing'),
+                text: tr('With more than 3 days shown, the chart becomes proportionally wider instead of squeezing the curves together – the y-axis on the left stays visible while scrolling (arrows left/right indicate that there is more).')
             },
             {
-                title: 'Zwei Diagramm-Engines zur Wahl',
-                text: 'ECharts (quelloffen, auch kommerziell nutzbar) oder Highcharts (nur privat/nicht-kommerziell) – umschaltbar direkt in der aufgezogenen Kachelansicht über den Doppelpfeil, ganz ohne Formular.'
+                title: tr('Two chart engines to choose from'),
+                text: tr('ECharts (open source, also usable commercially) or Highcharts (private/non-commercial only) – switchable directly in the expanded tile view via the double arrow, without the form.')
             },
             {
-                title: 'Auch außerhalb von Symcon nutzbar',
-                text: 'Diese Kachel läuft zusätzlich als eigenständige Webseite mit Auto-Aktualisierung – ideal für IPSView per WebView/Popup oder einen beliebigen Browser im Netzwerk. Die Adresse findet sich im Konsolenformular unter "Dokumentation & Hilfe".'
+                title: tr('Usable outside Symcon too'),
+                text: tr('This tile also runs as a standalone web page with auto-refresh – ideal for IPSView via WebView/popup or any browser on the network. The address can be found in the console form under “Documentation & help”.')
             }
         ];
 
@@ -270,6 +275,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('tourRestartBtn').title = tr('Show introduction tour');
+            document.getElementById('tourPrev').textContent = tr('Back');
+            document.getElementById('tourNext').textContent = tr('Next');
+            document.getElementById('tourDone').textContent = tr('✓ Understood, do not show again');
             document.getElementById('tourPrev').addEventListener('click', function () {
                 if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
             });
@@ -392,7 +401,7 @@
             if (!data.hasData || !data.days || !data.days.length) {
                 destroyChart();
                 legEl.style.display = 'none'; daysEl.style.display = 'none';
-                el.innerHTML = '<div class="empty">' + (data.message || 'Keine Daten') + '</div>';
+                el.innerHTML = '<div class="empty">' + (data.message || tr('No data')) + '</div>';
                 updateScrollHint();
                 return;
             }
@@ -402,6 +411,15 @@
                 chartEngine = engine;
                 if (engine === 'echarts') { buildEC(); } else { buildHC(); }
             });
+        }
+
+        function labelTexts() {
+            var lo = tr('Consumption');
+            return {
+                pv: 'PV', lo: lo,
+                pvForecast: fmt(tr('%s forecast'), 'PV'), loForecast: fmt(tr('%s forecast'), lo),
+                pvActual: fmt(tr('%s actual'), 'PV'), loActual: fmt(tr('%s actual'), lo)
+            };
         }
 
         // ---- gemeinsame Datenaufbereitung -------------------------------
@@ -442,7 +460,7 @@
                 actualPV: data.actualPV, actualLoad: data.actualLoad,
                 yMaxManual: data.yMaxManual || 0, showGrid: (data.showGrid !== false), showLegend: (data.showLegend !== false),
                 showIstRow: (data.showIstRow !== false), font: data.font || 'sans-serif',
-                maxKwp: (data.showMaxLine && data.maxKwp > 0) ? data.maxKwp : 0, maxLabel: (data.maxManual ? 'Max. ' : 'Anlage '), maxUnit: (data.maxManual ? ' kW' : ' kWp'), showViewHint: (data.showViewHint !== false),
+                maxKwp: (data.showMaxLine && data.maxKwp > 0) ? data.maxKwp : 0, maxText: function (v) { return data.maxManual ? fmt(tr('Max. %s kW'), v.toFixed(2)) : fmt(tr('Plant %s kWp'), v.toFixed(2)); }, showViewHint: (data.showViewHint !== false),
                 bars: (data.view === 'bars'), coarseMin: 0, stH: 0.25,
                 pvBars: [], loBars: [], pvMBars: [],
                 pvPresent: false, loPresent: false, pvLine: [], pvBand: [], loLine: [], loBand: []
@@ -476,6 +494,8 @@
                 if (d.loMeas) { var n2 = d.loMeas.length, st2 = 24 / n2, off2 = D.bars ? st2 / 2 : 0; for (var j = 0; j < n2; j++) { if (d.loMeas[j] != null) { D.loMeas.push([di * 24 + j * st2 + off2, d.loMeas[j] / 1000]); } } }
             });
             D.hasIst = data.days.some(function (d) { return d.pvKwhIst != null || d.loKwhIst != null; });
+            // Beschriftungen (Tooltip, Legende) in der Anzeigesprache; PV bleibt in beiden Sprachen "PV"
+            D.L = labelTexts();
 
             // Sichtbarkeit je Reihe (Legenden-Klick) + Y-Achsen-Max — geteilt zwischen
             // beiden Engines, damit die feststehende Y-Achsen-Überlagerung (siehe
@@ -500,7 +520,7 @@
                 var h = document.getElementById('viewHint'); if (!h) { return; }
                 if (D.bars && D.coarseMin > 0 && D.showViewHint) {
                     h.style.display = 'block'; h.style.color = D.TEXT;
-                    h.textContent = 'Balken: Die Prognose liegt in ' + D.coarseMin + ' min Auflösung vor - für 15-Minuten-Balken in PV- und Lastprognose die zeitliche Auflösung auf 15 min stellen.';
+                    h.textContent = fmt(tr('Bars: the forecast is available at %d min resolution - to get 15-minute bars, set the time resolution to 15 min in the PV and load forecasts.'), D.coarseMin);
                 } else { h.style.display = 'none'; h.textContent = ''; }
             })();
 
@@ -509,7 +529,7 @@
             // D.nowX/D.actualPV/D.actualLoad + der aktuellen userHide-Sichtbarkeit.
             D.nowX = null;
             var heuteIdx = -1;
-            data.days.forEach(function (d, di) { if (d.label === 'heute') { heuteIdx = di; } });
+            data.days.forEach(function (d, di) { if (d.key === 'today') { heuteIdx = di; } });
             if (heuteIdx >= 0) {
                 var now = new Date(); D.nowX = heuteIdx * 24 + now.getHours() + now.getMinutes() / 60;
             }
@@ -561,7 +581,7 @@
             buildYAxisOverlay(D, canvasH);
             el.style.height = canvasH + 'px'; el.style.width = D.renderW + 'px';
 
-            var TEXT = D.TEXT, MUTED = D.MUTED, GRID = D.GRID, TIP = D.TIP, days = D.days, nDays = D.nDays;
+            var TEXT = D.TEXT, MUTED = D.MUTED, GRID = D.GRID, TIP = D.TIP, days = D.days, nDays = D.nDays, L = D.L;
             var pvC = D.pvC, loC = D.loC, scale = D.scale, lw = D.lw;
             var stype = (D.smooth && !D.bars) ? 'spline' : 'line', showBand = D.showBand && !D.bars, bandOp = D.bandOp;
             var fpx = function (n) { return (n * scale) + 'px'; };
@@ -571,25 +591,25 @@
             if (pvVis && D.bars) {
                 // Balken je Zeitscheibe: Soll als helle Säule über die volle Slot-Breite, Ist schmaler und deckend davor.
                 // pointRange = Slot-Breite in Stunden, damit die Säulen die Zeitachse lückenlos füllen.
-                series.push({ id: 'pv', type: 'column', name: 'PV', data: D.pvLine, color: Highcharts.color(pvC).setOpacity(0.38).get('rgba'),
+                series.push({ id: 'pv', type: 'column', name: 'pv', data: D.pvLine, color: Highcharts.color(pvC).setOpacity(0.38).get('rgba'),
                     pointRange: D.stH, pointPadding: 0.04, groupPadding: 0, borderWidth: 0, grouping: false, zIndex: 1 });
             } else if (pvVis) {
-                series.push({ id: 'pv', type: stype, name: 'PV', data: D.pvLine, color: pvC, lineWidth: lw, zIndex: 3 });
-                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'PV-Band', data: D.pvBand, color: pvC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'pv', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
+                series.push({ id: 'pv', type: stype, name: 'pv', data: D.pvLine, color: pvC, lineWidth: lw, zIndex: 3 });
+                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'pv-band', data: D.pvBand, color: pvC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'pv', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
             }
             if (loVis) {
-                series.push({ id: 'load', type: stype, name: 'Verbrauch', data: D.loLine, color: loC, lineWidth: lw, zIndex: 3 });
-                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'Verbrauch-Band', data: D.loBand, color: loC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'load', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
+                series.push({ id: 'load', type: stype, name: 'load', data: D.loLine, color: loC, lineWidth: lw, zIndex: 3 });
+                if (showBand && bandOp > 0) { series.push({ type: 'arearange', name: 'load-band', data: D.loBand, color: loC, fillOpacity: bandOp, lineWidth: 0, linkedTo: 'load', enableMouseTracking: false, showInLegend: false, zIndex: 1 }); }
             }
-            if (D.pvMVis && D.bars) { series.push({ id: 'pvm', type: 'column', name: 'PV gemessen', data: D.pvMeas, color: D.pvMC, pointRange: D.stH, pointPadding: 0.2, groupPadding: 0, borderWidth: 0, grouping: false, showInLegend: false, zIndex: 2 }); }
-            else if (D.pvMVis) { series.push({ type: stype, name: 'PV gemessen', data: D.pvMeas, color: D.pvMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
-            if (D.loMVis) { series.push({ id: D.bars ? 'lom' : undefined, type: stype, name: 'Verbrauch gemessen', data: D.loMeas, color: D.loMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: !!D.bars, showInLegend: false, zIndex: 3 }); }
+            if (D.pvMVis && D.bars) { series.push({ id: 'pvm', type: 'column', name: 'pvm', data: D.pvMeas, color: D.pvMC, pointRange: D.stH, pointPadding: 0.2, groupPadding: 0, borderWidth: 0, grouping: false, showInLegend: false, zIndex: 2 }); }
+            else if (D.pvMVis) { series.push({ type: stype, name: 'pvm', data: D.pvMeas, color: D.pvMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: false, showInLegend: false, zIndex: 3 }); }
+            if (D.loMVis) { series.push({ id: D.bars ? 'lom' : undefined, type: stype, name: 'lom', data: D.loMeas, color: D.loMC, dashStyle: D.actualSolid ? 'Solid' : 'ShortDash', lineWidth: Math.max(1, lw - 0.5), enableMouseTracking: !!D.bars, showInLegend: false, zIndex: 3 }); }
             var nowPts = [];
             if (D.nowX != null) {
                 if (pvVis && D.actualPV != null) { nowPts.push({ x: D.nowX, y: D.actualPV / 1000, color: (D.pvMeas.length > 1 ? D.pvMC : pvC) }); }
                 if (loVis && D.actualLoad != null) { nowPts.push({ x: D.nowX, y: D.actualLoad / 1000, color: (D.loMeas.length > 1 ? D.loMC : loC) }); }
             }
-            if (nowPts.length) { series.push({ type: 'scatter', name: 'jetzt', data: nowPts, showInLegend: false, enableMouseTracking: false, zIndex: 6, marker: { enabled: true, radius: 5, symbol: 'circle', lineColor: TIP, lineWidth: 2 } }); }
+            if (nowPts.length) { series.push({ type: 'scatter', name: 'now', data: nowPts, showInLegend: false, enableMouseTracking: false, zIndex: 6, marker: { enabled: true, radius: 5, symbol: 'circle', lineColor: TIP, lineWidth: 2 } }); }
 
             var plotLines = [];
             for (var di = 1; di < nDays; di++) { plotLines.push({ value: di * 24, color: D.SEP, width: 1, zIndex: 2 }); }
@@ -621,7 +641,7 @@
                 // Scrollen sichtbar bleibt) — Gitterlinien bleiben wie gehabt.
                 yAxis: { min: 0, max: D.yMax, title: { text: null }, gridLineColor: GRID, gridLineWidth: D.showGrid ? 1 : 0, labels: { enabled: false },
                     plotLines: (D.maxKwp > 0) ? [{ value: D.maxKwp, color: MUTED, width: 1.5, dashStyle: 'Dash', zIndex: 4,
-                        label: { text: D.maxLabel + D.maxKwp.toFixed(2) + D.maxUnit, align: 'left', x: 6, y: -4, style: { color: MUTED, fontSize: fpx(10) } } }] : [] },
+                        label: { text: D.maxText(D.maxKwp), align: 'left', x: 6, y: -4, style: { color: MUTED, fontSize: fpx(10) } } }] : [] },
                 tooltip: { shared: true, useHTML: true, backgroundColor: TIP, borderColor: GRID, borderRadius: 6, style: { color: TEXT, fontSize: fpx(11) }, formatter: function () {
                     var x = this.x, di = Math.floor(x / 24 + 1e-6), hod = x - di * 24, hh = Math.floor(hod + 1e-6), mm = Math.round((hod - hh) * 60); if (mm >= 60) { hh++; mm -= 60; }
                     var head = cap((days[di] || days[0]).label) + ' ' + pad(hh) + ':' + pad(mm);
@@ -629,21 +649,21 @@
                     // Balken: kW ist die Ø-Leistung der Zeitscheibe, daneben die Energie der Zeitscheibe in kWh
                     var kwhOf = function (v) { return D.bars ? ' <span style="color:' + MUTED + '">(' + (v * D.stH).toFixed(3) + ' kWh)</span>' : ''; };
                     this.points.forEach(function (p) {
-                        if (p.series.userOptions.id === 'pvm') { html += '<div><span style="color:' + D.pvMC + '">●</span> PV Ist: <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>'; }
-                        if (p.series.userOptions.id === 'lom') { html += '<div><span style="color:' + D.loMC + '">●</span> Verbrauch Ist: <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>'; }
+                        if (p.series.userOptions.id === 'pvm') { html += '<div><span style="color:' + D.pvMC + '">●</span> ' + L.pvActual + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>'; }
+                        if (p.series.userOptions.id === 'lom') { html += '<div><span style="color:' + D.loMC + '">●</span> ' + L.loActual + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>'; }
                         if (p.series.userOptions.id === 'pv') {
                             // Kein P10/P90 bei PV (Dietmar, 26.08.2026): die PV-Prognose ist
                             // physikbasiert statt k-NN-Quantile wie bei der Last — echte
                             // Streuwerte gibt es dafür nicht, nur bei Verbrauch.
                             pvV = p.y;
-                            html += '<div><span style="color:' + pvC + '">●</span> PV' + (D.bars ? ' Soll' : '') + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>';
+                            html += '<div><span style="color:' + pvC + '">●</span> ' + (D.bars ? L.pvForecast : L.pv) + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + '</div>';
                         }
                         if (p.series.userOptions.id === 'load') {
                             loV = p.y; var lb = nearestBand(D.loBand, p.x);
-                            html += '<div><span style="color:' + loC + '">●</span> Verbrauch' + (D.bars ? ' Soll' : '') + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + (lb ? ' <span style="color:' + MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
+                            html += '<div><span style="color:' + loC + '">●</span> ' + (D.bars ? L.loForecast : L.lo) + ': <b>' + p.y.toFixed(2) + ' kW</b>' + kwhOf(p.y) + (lb ? ' <span style="color:' + MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
                         }
                     });
-                    if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + MUTED + ';margin-top:2px">Saldo ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
+                    if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + MUTED + ';margin-top:2px">' + tr('Balance') + ' ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
                     return html;
                 } },
                 plotOptions: { series: { animation: false, marker: { enabled: false }, states: { inactive: { opacity: 1 } } } },
@@ -664,19 +684,19 @@
             var h = '';
             function item(id, name, color, present, actual, hidden) {
                 if (!present) { return; }
-                var v = actual != null ? (' · Ist jetzt <b>' + kw(actual) + ' kW</b>') : '';
-                h += '<span class="lg" onclick="toggleSeries(\'' + id + '\')" title="Klick: aus-/einblenden" style="opacity:' + (hidden ? 0.4 : 1) + '"><span class="sw" style="background:' + color + '"></span>' + name + v + '</span>';
+                var v = actual != null ? (' · ' + tr('Actual now') + ' <b>' + kw(actual) + ' kW</b>') : '';
+                h += '<span class="lg" onclick="toggleSeries(\'' + id + '\')" title="' + tr('Click: hide/show') + '" style="opacity:' + (hidden ? 0.4 : 1) + '"><span class="sw" style="background:' + color + '"></span>' + name + v + '</span>';
             }
             // Gespiegelt von Prognoses Energiebilanz (Build 133, Forum hbraun #42): die Prognosekurve
             // heisst "Soll", sobald es ein Ist-Gegenstueck gibt (gemessene Linie ODER Momentanwert);
             // der Momentanwert heisst "Ist jetzt". Ohne Ist bleibt der nackte Name.
-            var pvSuffix = (D.pvMeas.length > 1 || D.actualPV != null) ? ' (Soll)' : '';
-            var loSuffix = (D.loMeas.length > 1 || D.actualLoad != null) ? ' (Soll)' : '';
-            item('pv', 'PV' + pvSuffix, D.pvC, D.pvPresent, D.actualPV, userHide.pv);
-            item('load', 'Verbrauch' + loSuffix, D.loC, D.loPresent, D.actualLoad, userHide.load);
+            var pvName = (D.pvMeas.length > 1 || D.actualPV != null) ? tr('PV (forecast)') : 'PV';
+            var loName = (D.loMeas.length > 1 || D.actualLoad != null) ? tr('Consumption (forecast)') : tr('Consumption');
+            item('pv', pvName, D.pvC, D.pvPresent, D.actualPV, userHide.pv);
+            item('load', loName, D.loC, D.loPresent, D.actualLoad, userHide.load);
             // gemessene Linien als eigene Eintraege (Forum Ghostraider, 10.10.2026)
-            item('pvm', 'PV (Ist)', D.pvMC, D.pvMeas.length > 1, null, userHide.pvm);
-            item('lom', 'Verbrauch (Ist)', D.loMC, D.loMeas.length > 1, null, userHide.lom);
+            item('pvm', tr('PV (actual)'), D.pvMC, D.pvMeas.length > 1, null, userHide.pvm);
+            item('lom', tr('Consumption (actual)'), D.loMC, D.loMeas.length > 1, null, userHide.lom);
             legEl.innerHTML = h;
             legEl.style.fontSize = (11 * D.scale) + 'px'; legEl.style.fontFamily = D.font; legEl.style.color = D.TEXT;
         }
@@ -699,9 +719,9 @@
             var h = '<div style="display:flex;padding:0 ' + D.plotRight + 'px 0 ' + D.plotLeft + 'px">';
             D.days.forEach(function (day, di) {
                 var pv = userHide.pv ? null : day.pv, lo = userHide.load ? null : day.load;
-                var soll = kwhRow(hasIst ? 'Soll' : '', pv ? pv.kwh : null, lo ? lo.kwh : null);
+                var soll = kwhRow(hasIst ? tr('Forecast') : '', pv ? pv.kwh : null, lo ? lo.kwh : null);
                 var ipv = (!userHide.pv && D.showIstRow) ? day.pvKwhIst : null, ilo = (!userHide.load && D.showIstRow) ? day.loKwhIst : null;
-                var ist = (ipv != null || ilo != null) ? kwhRow('Ist', ipv, ilo) : '';
+                var ist = (ipv != null || ilo != null) ? kwhRow(tr('Actual'), ipv, ilo) : '';
                 h += '<div style="flex:1;text-align:center;line-height:1.3"><div style="font-weight:500;color:' + D.TEXT + '">' + cap(day.label) + '</div>' + soll + ist + '</div>';
             });
             daysEl.innerHTML = h + '</div>';
@@ -739,8 +759,10 @@
         // Ein Balken je Tag mit der Tagesenergie in kWh (PV und Verbrauch nebeneinander), zur schnellen Einschätzung.
         // Reines HTML/CSS ohne Diagramm-Bibliothek (kein Laden aus dem Netz, beide Engines-Einstellungen unberührt).
         // Heller Balken = Soll (Prognose), voller Balken darin = Ist bisher (heute) bzw. Ist des Tages (gestern).
-        function fmtKwh(v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); }
-        function fmtKwh2(v) { return v.toFixed(2).replace('.', ','); }
+        // Dezimalzeichen der Anzeigesprache kommt aus PHP (payload.decSep)
+        function decSep() { return (lastData && lastData.decSep) || ','; }
+        function fmtKwh(v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', decSep()); }
+        function fmtKwh2(v) { return v.toFixed(2).replace('.', decSep()); }
         function dayBarStep(maxV) {
             var steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
             for (var i = 0; i < steps.length; i++) { if (maxV / steps[i] <= 4) { return steps[i]; } }
@@ -754,7 +776,7 @@
             if (D.showLegend) {
                 legEl.style.display = 'block'; renderLegend(legEl, D);
                 if (D.hasIst && D.showIstRow) {
-                    legEl.innerHTML += '<span style="margin-left:16px;color:' + D.MUTED + '">hell = Soll, voll = Ist bisher</span>';
+                    legEl.innerHTML += '<span style="margin-left:16px;color:' + D.MUTED + '">' + tr('light = forecast, solid = actual so far') + '</span>';
                 }
             } else { legEl.style.display = 'none'; legEl.innerHTML = ''; }
             daysEl.style.display = 'none'; daysEl.innerHTML = '';
@@ -782,7 +804,7 @@
             h += '<div style="position:absolute;left:' + axisW + 'px;right:0;top:0;bottom:0;display:flex">';
             function bar(name, color, soll, ist) {
                 var bh = Math.max(soll > 0 ? 2 : 0, plotH * soll / yMax), ih = (ist != null) ? Math.min(bh, plotH * ist / yMax) : 0;
-                var tip = name + ' Soll ' + fmtKwh2(soll) + ' kWh' + (ist != null ? ', Ist ' + fmtKwh2(ist) + ' kWh' : '');
+                var tip = (ist != null) ? fmt(tr('%s forecast %s kWh, actual %s kWh'), name, fmtKwh2(soll), fmtKwh2(ist)) : fmt(tr('%s forecast %s kWh'), name, fmtKwh2(soll));
                 return '<div title="' + tip + '" style="flex:0 1 38%;max-width:' + Math.round(70 * D.scale) + 'px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'
                     + '<div style="font-weight:600;margin-bottom:2px;white-space:nowrap">' + fmtKwh(soll) + '</div>'
                     + '<div style="position:relative;width:100%;height:' + bh.toFixed(1) + 'px">'
@@ -796,13 +818,13 @@
                 var ipv = (pv && showIst) ? d.pvKwhIst : null, ilo = (lo && showIst) ? d.loKwhIst : null;
                 h += '<div style="flex:1;position:relative;min-width:0">'
                   + '<div style="position:absolute;left:0;right:0;top:0;height:' + baseY + 'px;display:flex;align-items:flex-end;justify-content:center;gap:' + Math.round(6 * D.scale) + 'px">'
-                  + (pv ? bar('PV', D.pvC, pv.kwh || 0, ipv) : '') + (lo ? bar('Verbrauch', D.loC, lo.kwh || 0, ilo) : '')
+                  + (pv ? bar('PV', D.pvC, pv.kwh || 0, ipv) : '') + (lo ? bar(tr('Consumption'), D.loC, lo.kwh || 0, ilo) : '')
                   + '</div>'
                   + '<div style="position:absolute;left:0;right:0;top:' + (baseY + 5) + 'px;text-align:center;line-height:1.3">'
                   + '<div style="font-weight:500">' + main + '</div>'
                   + (sub ? '<div style="color:' + D.MUTED + ';font-size:0.86em">' + sub + '</div>' : '');
                 if (ipv != null || ilo != null) {
-                    h += '<div style="color:' + D.MUTED + ';font-size:0.86em">Ist ' + (ipv != null ? '<span style="color:' + D.pvC + '">' + fmtKwh(ipv) + '</span>' : '') + (ipv != null && ilo != null ? ' · ' : '')
+                    h += '<div style="color:' + D.MUTED + ';font-size:0.86em">' + tr('Actual') + ' ' + (ipv != null ? '<span style="color:' + D.pvC + '">' + fmtKwh(ipv) + '</span>' : '') + (ipv != null && ilo != null ? ' · ' : '')
                       + (ilo != null ? '<span style="color:' + D.loC + '">' + fmtKwh(ilo) + '</span>' : '') + ' kWh</div>';
                 }
                 h += '</div></div>';
@@ -820,7 +842,7 @@
             buildYAxisOverlay(D, canvasH);
             el.style.height = canvasH + 'px'; el.style.width = D.renderW + 'px';
 
-            var pvVis = D.pvVis, loVis = D.loVis;
+            var pvVis = D.pvVis, loVis = D.loVis, L = D.L;
             var fs = function (n) { return n * D.scale; };
             var series = [];
 
@@ -863,24 +885,24 @@
                 if (pvVis) {
                     rectSeries(D.pvBars, D.pvC, 0.38, 0.04, 1);
                     // unsichtbare Linie nur für den Tooltip (Achsen-Tooltip braucht Linien-/Punktdaten)
-                    series.push({ id: 'pv', name: 'PV', type: 'line', data: D.pvLine, symbol: 'none', lineStyle: { opacity: 0 }, itemStyle: { opacity: 0 }, z: 1, animation: false });
+                    series.push({ id: 'pv', name: 'pv', type: 'line', data: D.pvLine, symbol: 'none', lineStyle: { opacity: 0 }, itemStyle: { opacity: 0 }, z: 1, animation: false });
                 }
                 if (D.pvMVis) {
                     rectSeries(D.pvMBars, D.pvMC, 0.95, 0.2, 2);
-                    series.push({ name: 'PV Ist', type: 'line', data: D.pvMeas, symbol: 'none', lineStyle: { opacity: 0 }, itemStyle: { opacity: 0 }, z: 1, animation: false });
+                    series.push({ name: 'pvm', type: 'line', data: D.pvMeas, symbol: 'none', lineStyle: { opacity: 0 }, itemStyle: { opacity: 0 }, z: 1, animation: false });
                 }
             }
 
             if (D.pvMVis && !D.bars) { series.push({ type: 'line', data: D.pvMeas, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvMC, width: Math.max(1, D.lw - 0.5), type: D.actualSolid ? 'solid' : 'dashed' }, silent: true, animation: false, z: 3 }); }
-            if (D.loMVis) { series.push({ name: D.bars ? 'Verbrauch Ist' : undefined, type: 'line', data: D.loMeas, symbol: 'none', smooth: D.smooth && !D.bars, lineStyle: { color: D.loMC, width: Math.max(1, D.lw - 0.5), type: D.actualSolid ? 'solid' : 'dashed' }, silent: true, animation: false, z: 3 }); }
+            if (D.loMVis) { series.push({ name: D.bars ? 'lom' : undefined, type: 'line', data: D.loMeas, symbol: 'none', smooth: D.smooth && !D.bars, lineStyle: { color: D.loMC, width: Math.max(1, D.lw - 0.5), type: D.actualSolid ? 'solid' : 'dashed' }, silent: true, animation: false, z: 3 }); }
 
             var markData = [];
             for (var di = 1; di < D.nDays; di++) { markData.push({ xAxis: di * 24, lineStyle: { color: D.SEP, type: 'solid', width: 1 } }); }
             if (D.nowX != null) { markData.push({ xAxis: D.nowX, lineStyle: { color: NOW_LINE_COLOR, type: 'dashed', width: 1 } }); }
             var markLine = { silent: true, symbol: 'none', label: { show: false }, data: markData, animation: false };
             var attached = false;
-            if (pvVis && !D.bars) { var sp = { id: 'pv', name: 'PV', type: 'line', data: D.pvLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvC, width: D.lw }, itemStyle: { color: D.pvC }, z: 3, animation: false }; if (!attached) { sp.markLine = markLine; attached = true; } series.push(sp); }
-            if (loVis) { var sl = { id: 'load', name: 'Verbrauch', type: 'line', data: D.loLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.loC, width: D.lw }, itemStyle: { color: D.loC }, z: 3, animation: false }; if (!attached) { sl.markLine = markLine; attached = true; } series.push(sl); }
+            if (pvVis && !D.bars) { var sp = { id: 'pv', name: 'pv', type: 'line', data: D.pvLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.pvC, width: D.lw }, itemStyle: { color: D.pvC }, z: 3, animation: false }; if (!attached) { sp.markLine = markLine; attached = true; } series.push(sp); }
+            if (loVis) { var sl = { id: 'load', name: 'load', type: 'line', data: D.loLine, symbol: 'none', smooth: D.smooth, lineStyle: { color: D.loC, width: D.lw }, itemStyle: { color: D.loC }, z: 3, animation: false }; if (!attached) { sl.markLine = markLine; attached = true; } series.push(sl); }
             if (!attached && markData.length) { series.push({ type: 'line', data: [], silent: true, markLine: markLine }); }
 
             var dots = [];
@@ -893,7 +915,7 @@
             if (D.maxKwp > 0) {
                 series.push({ type: 'line', data: [], silent: true, animation: false, markLine: { silent: true, symbol: 'none', animation: false,
                     lineStyle: { color: D.MUTED, type: 'dashed', width: 1.5 },
-                    label: { show: true, position: 'insideStartTop', color: D.MUTED, fontSize: fs(10), formatter: D.maxLabel + D.maxKwp.toFixed(2) + D.maxUnit },
+                    label: { show: true, position: 'insideStartTop', color: D.MUTED, fontSize: fs(10), formatter: D.maxText(D.maxKwp) },
                     data: [{ yAxis: D.maxKwp }] } });
             }
 
@@ -914,21 +936,21 @@
                         var html = '<div style="font-weight:500;margin-bottom:2px">' + head + '</div>', pvV = null, loV = null;
                         var kwhOf = function (v) { return D.bars ? ' <span style="color:' + D.MUTED + '">(' + (v * D.stH).toFixed(3) + ' kWh)</span>' : ''; };
                         ps.forEach(function (p) {
-                            if (p.seriesName === 'PV Ist') { html += '<div><span style="color:' + D.pvMC + '">●</span> PV Ist: <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>'; }
-                            if (p.seriesName === 'Verbrauch Ist') { html += '<div><span style="color:' + D.loMC + '">●</span> Verbrauch Ist: <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>'; }
-                            if (p.seriesName === 'PV') {
+                            if (p.seriesName === 'pvm') { html += '<div><span style="color:' + D.pvMC + '">●</span> ' + L.pvActual + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>'; }
+                            if (p.seriesName === 'lom') { html += '<div><span style="color:' + D.loMC + '">●</span> ' + L.loActual + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>'; }
+                            if (p.seriesName === 'pv') {
                                 // Kein P10/P90 bei PV (Dietmar, 26.08.2026): die PV-Prognose ist
                                 // physikbasiert statt k-NN-Quantile wie bei der Last — echte
                                 // Streuwerte gibt es dafür nicht, nur bei Verbrauch.
                                 pvV = p.value[1];
-                                html += '<div><span style="color:' + D.pvC + '">●</span> PV' + (D.bars ? ' Soll' : '') + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>';
+                                html += '<div><span style="color:' + D.pvC + '">●</span> ' + (D.bars ? L.pvForecast : L.pv) + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + '</div>';
                             }
-                            if (p.seriesName === 'Verbrauch') {
+                            if (p.seriesName === 'load') {
                                 loV = p.value[1]; var lb = nearestBand(D.loBand, p.value[0]);
-                                html += '<div><span style="color:' + D.loC + '">●</span> Verbrauch' + (D.bars ? ' Soll' : '') + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + (lb ? ' <span style="color:' + D.MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
+                                html += '<div><span style="color:' + D.loC + '">●</span> ' + (D.bars ? L.loForecast : L.lo) + ': <b>' + p.value[1].toFixed(2) + ' kW</b>' + kwhOf(p.value[1]) + (lb ? ' <span style="color:' + D.MUTED + '">(P10–P90 ' + lb[1].toFixed(2) + '–' + lb[2].toFixed(2) + ' kW)</span>' : '') + '</div>';
                             }
                         });
-                        if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + D.MUTED + ';margin-top:2px">Saldo ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
+                        if (pvV != null && loV != null) { var s = pvV - loV; html += '<div style="color:' + D.MUTED + ';margin-top:2px">' + tr('Balance') + ' ' + (s >= 0 ? '+' : '') + s.toFixed(2) + ' kW</div>'; }
                         return html;
                     } },
                 series: series

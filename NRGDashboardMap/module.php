@@ -24,8 +24,50 @@ class NRGDashboardMap extends IPSModule
     use NRGDashFormStatus;
     use NRGDashFormLayout;
 
-    /** Wählbare Fachpanels für „Formular: Aufbau“: Beginn der Panel-Caption => stabiler Schlüssel (SUITE.md 3a). */
-    private const FORM_LAYOUT_PANELS = ['Datenquelle' => 'source', 'Details je Kategorie' => 'details', 'Darstellung' => 'style'];
+    /**
+     * Wählbare Fachpanels für „Formular: Aufbau“: Panel-name aus form.json => stabiler Schlüssel (SUITE.md 3a).
+     * Gefunden werden die Panels über ihren Namen, nie über die (übersetzte) Caption; die Schlüssel stehen so in der Property FormLayout.
+     */
+    private const FORM_LAYOUT_PANELS = ['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'];
+
+    /**
+     * Texte der Karte (HTML in GenerateHTML()): englische Quelltexte, die dort mit tr('...') benutzt werden. PHP liefert die
+     * Übersetzungen als Tabelle (window.NRGDASH_TEXTS), siehe NRGDASH_Text::kachelHtml(); der Prüfstand vergleicht beides.
+     */
+    private const TILE_TEXTS = [
+        'Show introduction tour',
+        'Back',
+        'Next',
+        '✓ Understood, do not show again',
+        'PV string',
+        'Battery',
+        'Grid',
+        'House consumption',
+        'Consumers',
+        'Wallbox',
+        'Vehicle',
+        'Not a table - a 3D space',
+        'Instead of lists and bars, this map shows your installation as a freely rotatable 3D space in which devices automatically group into clusters when there are many instances, instead of cluttering the overview. Everything is found automatically through the installed partner modules - no manual linking needed.',
+        'Inverter at the center',
+        'Unlike other federation views, it is not EMS but the inverter that sits physically at the center - PV strings and battery hang directly off it.',
+        'Collective node for several instances',
+        'If there are several devices of one category (e.g. two grid meters or two wallboxes), ONE cluster node appears on the main ring - the individual instances fan out locally further outside. This keeps the map clear no matter how many meters are added.',
+        'Every MeterHub assignment visible',
+        'Not just grid and house consumption: heat pump, stove, carport consumers and the like from MeterHub also appear as a node of their own in the category “Consumers”.',
+        'Rotate and zoom',
+        'Drag with the mouse button held down to rotate the map - the rotation eases out gently after release instead of stopping abruptly. Zoom with the mouse wheel.',
+        'Details on hover',
+        'Move the mouse over a node to see its name, category and - for collective nodes - the number of grouped instances.',
+        'Colored sectors on the floor',
+        'Each category gets a subtle, transparent floor area in its color - this keeps the grouping recognizable at once even while rotating, without having to read any connecting lines.',
+        '❌ No devices found - install InverterHub/MeterHub/ChargerHub/Tessie or wait for the next search run.',
+        'Devices: %d',
+        'Center · %s',
+        'Single instance · %s',
+        '%d instances · %s',
+        '%d instances',
+        '❌ Three.js not loaded',
+    ];
 
     private const IHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';
     private const MHUB_GUID = '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}';
@@ -52,17 +94,17 @@ class NRGDashboardMap extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.7.6' => [
-            '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
+            '🪟 New: “Form: layout” at the very bottom of the form - choose for each section whether it is expanded, collapsed or hidden when opened, and at which position it appears (applies after “Apply changes” the next time the form is opened; hidden sections keep working).',
         ],
         '0.7.5' => [
-            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Karte tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-            'Neu: Geräte werden jetzt nach Kategorie geclustert dargestellt (wie die Verbund-Gesundheit-Kachel) - deutlich übersichtlicher bei mehreren Netzzählern/Wallboxen/Fahrzeugen.',
-            'Neu: alle MeterHub-Funktionen erscheinen jetzt als eigener Knoten (vorher nur Netz/Hausverbrauch, andere Verbraucher fielen still raus).',
-            'Neu: ruhigere 3D-Navigation mit Trägheit statt direktem 1:1-Mitziehen.',
+            'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+            '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+            '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+            '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what this map does and what it is good for - meant for first contact, can be dismissed once.',
+            'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+            'New: devices are now shown clustered by category (like the federation health tile) - much clearer with several grid meters/wallboxes/vehicles.',
+            'New: all MeterHub functions now appear as a node of their own (previously only grid/house consumption; other consumers silently dropped out).',
+            'New: calmer 3D navigation with inertia instead of direct 1:1 dragging.',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -70,17 +112,30 @@ class NRGDashboardMap extends IPSModule
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
 
-    // Anzeigename je Geraete-Kategorie - fuer Cluster-Hub-Beschriftung
-    // ("Netz, 2 Instanzen") analog MODULE_LABELS in NRGDashboardTopology.
-    private const CATEGORY_LABELS = [
-        'pv'       => 'PV-Strang',
-        'battery'  => 'Batterie',
-        'grid'     => 'Netz',
-        'house'    => 'Hausverbrauch',
-        'consumer' => 'Verbraucher',
-        'wallbox'  => 'Wallbox',
-        'vehicle'  => 'Fahrzeug',
-    ];
+    /**
+     * Anzeigename je Geraete-Kategorie - fuer die Aufschluesselung im Formular ("2x Netz, 1x Wallbox"), analog MODULE_LABELS
+     * in NRGDashboardTopology. Jeder Name ein eigenes t()-Literal (Prüfstand); unbekannte Kategorien erscheinen unverändert.
+     */
+    private function categoryLabel(string $cat): string
+    {
+        switch ($cat) {
+            case 'pv':
+                return NRGDASH_Text::t('PV string');
+            case 'battery':
+                return NRGDASH_Text::t('Battery');
+            case 'grid':
+                return NRGDASH_Text::t('Grid');
+            case 'house':
+                return NRGDASH_Text::t('House consumption');
+            case 'consumer':
+                return NRGDASH_Text::t('Consumers');
+            case 'wallbox':
+                return NRGDASH_Text::t('Wallbox');
+            case 'vehicle':
+                return NRGDASH_Text::t('Vehicle');
+        }
+        return $cat;
+    }
 
     /**
      * "Ueber dieses Modul" (SUITE.md "Einheitliche Formular-Optik" Punkt 5) -
@@ -93,14 +148,14 @@ class NRGDashboardMap extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
     }
@@ -108,7 +163,7 @@ class NRGDashboardMap extends IPSModule
     public function Create()
     {
         parent::Create();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text (Merkliste-Cache, Stolperstein 24): Texte dieses Moduls und der gemeinsamen Traits
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('InverterInstance', 0);
@@ -144,7 +199,7 @@ class NRGDashboardMap extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text (Merkliste-Cache, Stolperstein 24): Texte dieses Moduls und der gemeinsamen Traits
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetTimerInterval('NRGDASHMAP_Discover', 10 * 60 * 1000);
         $this->Discover();
@@ -219,7 +274,7 @@ class NRGDashboardMap extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     /**
@@ -278,36 +333,57 @@ class NRGDashboardMap extends IPSModule
         $ids = @IPS_GetInstanceListByModuleID(self::IHUB_GUID);
         $ids = is_array($ids) ? $ids : [];
         if (count($ids) === 0) {
-            return 'ℹ️ Keine InverterHub-Instanz gefunden - ohne Wechselrichter-Quelle bleibt der Mittelpunkt der Karte leer; Geräte aus MeterHub, ChargerHub, HeishaMon und Tessie erscheinen trotzdem.';
+            return NRGDASH_Text::t('ℹ️ No InverterHub instance found - without an inverter source the center of the map stays empty; devices from MeterHub, ChargerHub, HeishaMon and Tessie still appear.');
         }
         $cfg = $this->readIntProperty('InverterInstance', 0);
         $explicit = $cfg > 0 && IPS_InstanceExists($cfg) && IPS_GetInstance($cfg)['ModuleInfo']['ModuleID'] === self::IHUB_GUID;
         $id = $this->InverterInstanceID();
         $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
         $vals = [];
-        $ver = '';
+        $hasContract = false;
+        $contract = '';
         if (function_exists('IHUB_GetFunctions')) {
             $d = @IHUB_GetFunctions($id);
             if (is_array($d)) {
-                $ver = isset($d['contractVersion']) ? ', Vertrag ' . $d['contractVersion'] : '';
-                foreach (['pvPowerID' => 'PV-Leistung', 'batPowerID' => 'Batterie-Leistung', 'gridPowerID' => 'Netz-Leistung'] as $k => $label) {
-                    if ((int) ($d[$k] ?? 0) > 0) {
-                        $vals[] = $label . ' #' . (int) $d[$k];
-                    }
+                $hasContract = isset($d['contractVersion']);
+                $contract = $hasContract ? (string) $d['contractVersion'] : '';
+                if ((int) ($d['pvPowerID'] ?? 0) > 0) {
+                    $vals[] = NRGDASH_Text::t('PV power #%d', (int) $d['pvPowerID']);
+                }
+                if ((int) ($d['batPowerID'] ?? 0) > 0) {
+                    $vals[] = NRGDASH_Text::t('Battery power #%d', (int) $d['batPowerID']);
+                }
+                if ((int) ($d['gridPowerID'] ?? 0) > 0) {
+                    $vals[] = NRGDASH_Text::t('Grid power #%d', (int) $d['gridPowerID']);
                 }
             }
         }
         if (!$explicit && count($ids) > 1) {
-            return '⚠️ ' . count($ids) . ' InverterHub-Instanzen gefunden, keine ausgewählt - verwendet wird ' . $head . '. Bitte unten gezielt auswählen, damit die Zuordnung eindeutig ist.';
+            return NRGDASH_Text::t('⚠️ %d InverterHub instances found, none selected - %s is used. Please choose one below so the assignment is unambiguous.', count($ids), $head);
         }
-        $how = $explicit ? 'ausgewählt' : 'automatisch erkannt';
         if (count($vals) === 0) {
-            return '⚠️ InverterHub ' . $head . ' ' . $how . $ver . ', liefert aber keine PV-/Batterie-/Netz-Leistung - Mittelpunkt und Kategorien bleiben leer, bis der Wechselrichter Daten meldet.';
+            // Ganze Sätze je Fall (keine Satzteile kleben)
+            if ($explicit) {
+                return $hasContract
+                    ? NRGDASH_Text::t('⚠️ InverterHub %s selected, contract %s, but it delivers no PV/battery/grid power - center and categories stay empty until the inverter reports data.', $head, $contract)
+                    : NRGDASH_Text::t('⚠️ InverterHub %s selected, but it delivers no PV/battery/grid power - center and categories stay empty until the inverter reports data.', $head);
+            }
+            return $hasContract
+                ? NRGDASH_Text::t('⚠️ InverterHub %s detected automatically, contract %s, but it delivers no PV/battery/grid power - center and categories stay empty until the inverter reports data.', $head, $contract)
+                : NRGDASH_Text::t('⚠️ InverterHub %s detected automatically, but it delivers no PV/battery/grid power - center and categories stay empty until the inverter reports data.', $head);
         }
         if (!$explicit) {
             $this->hideFormField($elements, 'InverterInstance');
         }
-        return ($explicit ? '✏️' : '🔗') . ' InverterHub: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . $ver . ' - übernommen: ' . implode(', ', $vals) . '.';
+        $list = implode(', ', $vals);
+        if ($explicit) {
+            return $hasContract
+                ? NRGDASH_Text::t('✏️ InverterHub: %s (own entry), contract %s - adopted: %s.', $head, $contract, $list)
+                : NRGDASH_Text::t('✏️ InverterHub: %s (own entry) - adopted: %s.', $head, $list);
+        }
+        return $hasContract
+            ? NRGDASH_Text::t('🔗 InverterHub: %s (detected automatically), contract %s - adopted: %s.', $head, $contract, $list)
+            : NRGDASH_Text::t('🔗 InverterHub: %s (detected automatically) - adopted: %s.', $head, $list);
     }
 
     public function GetConfigurationForm()
@@ -336,11 +412,11 @@ class NRGDashboardMap extends IPSModule
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMAP_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is in beta — feedback, bug reports and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHMAP_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -364,10 +440,11 @@ class NRGDashboardMap extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            ? NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
             : 'ℹ️ NRG-Stack Dashboard';
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            // Panel über den Namen finden, nie über die (übersetzte) Caption
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -386,12 +463,12 @@ class NRGDashboardMap extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Stellt denselben Gerätebestand wie die NRGDashboard-Hauptkachel als räumliche 3D-Karte dar, nach Kategorie gruppiert (PV, Batterie, Netz, Verbraucher, Wallbox, Fahrzeug).'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: gerade bei vielen gleichartigen Geräten (mehrere Netzzähler, Wallboxen, Fahrzeuge) bleibt die Karte übersichtlich, wo die flache Energiefluss-Kachel schnell unübersichtlich würde.'],
-                ['type' => 'Label', 'caption' => 'Ergänzend zeigt NRGDashboardTile denselben Energiefluss als klassische Kachel, NRGDashboardTopology die Gesundheit des gesamten NRG-Stack-Verbunds.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMAP_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'Shows the same device inventory as the main NRGDashboard tile as a spatial 3D map, grouped by category (PV, battery, grid, consumers, wallbox, vehicle).'],
+                ['type' => 'Label', 'caption' => 'The benefit: especially with many devices of the same kind (several grid meters, wallboxes, vehicles) the map stays clear where the flat energy-flow tile would quickly become cluttered.'],
+                ['type' => 'Label', 'caption' => 'In addition, NRGDashboardTile shows the same energy flow as a classic tile, and NRGDashboardTopology shows the health of the entire NRG-Stack federation.'],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHMAP_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -437,19 +514,19 @@ class NRGDashboardMap extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => NRGDASH_Text::t('🆕 New since the version you last saw — please take a quick look and check your settings if needed:')]];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHMAP_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHMAP_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -490,7 +567,7 @@ class NRGDashboardMap extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -573,13 +650,13 @@ class NRGDashboardMap extends IPSModule
             for ($i = 1; $i <= 4; $i++) {
                 $vid = $this->FindVarByIdent($ihub, 'mppt' . $i . '_power');
                 if ($vid > 0) {
-                    $nodes[] = ['id' => 'pv_' . $i, 'label' => 'PV-Strang ' . $i, 'category' => 'pv'];
+                    $nodes[] = ['id' => 'pv_' . $i, 'label' => NRGDASH_Text::t('PV string %d', $i), 'category' => 'pv'];
                     $edges[] = ['source' => $centerId, 'target' => 'pv_' . $i];
                 }
             }
 
             if ((int) ($ihubData['batPowerID'] ?? 0) > 0) {
-                $nodes[] = ['id' => 'battery', 'label' => 'Batterie', 'category' => 'battery'];
+                $nodes[] = ['id' => 'battery', 'label' => NRGDASH_Text::t('Battery'), 'category' => 'battery'];
                 $edges[] = ['source' => $centerId, 'target' => 'battery'];
             }
         } else {
@@ -587,7 +664,7 @@ class NRGDashboardMap extends IPSModule
             // Mittelpunkt bestehen, nur ohne PV/Batterie-Zweig (Muster:
             // Topology zeigt bei fehlender EMS-Instanz eine Fehlermeldung
             // statt stillschweigend eine leere Karte).
-            $nodes[] = ['id' => $centerId, 'label' => 'NRG-Stack Verbund', 'category' => 'inverter', 'center' => true];
+            $nodes[] = ['id' => $centerId, 'label' => NRGDASH_Text::t('NRG-Stack federation'), 'category' => 'inverter', 'center' => true];
         }
 
         // MeterHub: JEDE Zuordnung wird ein eigener Knoten. 'grid'/'house'
@@ -644,7 +721,7 @@ class NRGDashboardMap extends IPSModule
             }
             foreach ($entries as $e) {
                 $key = 'wb_' . $id;
-                $nodes[] = ['id' => $key, 'label' => (string) ($e['label'] ?? 'Wallbox'), 'category' => 'wallbox'];
+                $nodes[] = ['id' => $key, 'label' => (string) ($e['label'] ?? NRGDASH_Text::t('Wallbox')), 'category' => 'wallbox'];
                 // Faellt OHNE 'house'-Knoten NICHT auf einen beliebigen
                 // Netzzaehler zurueck (Dietmar, 10.08.2026: "Verbindungen,
                 // die es gar nicht gibt" - reale Ursache: kein
@@ -680,7 +757,7 @@ class NRGDashboardMap extends IPSModule
                     continue;
                 }
                 $key = 'vehicle_' . $id;
-                $nodes[] = ['id' => $key, 'label' => (string) ($state['name'] ?? 'Fahrzeug'), 'category' => 'vehicle'];
+                $nodes[] = ['id' => $key, 'label' => (string) ($state['name'] ?? NRGDASH_Text::t('Vehicle')), 'category' => 'vehicle'];
                 $edges[] = ['source' => $wbIds[0] ?? ($houseId ?? $centerId), 'target' => $key];
             }
         }
@@ -723,22 +800,26 @@ class NRGDashboardMap extends IPSModule
     {
         $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
-            return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
+            return NRGDASH_Text::t('ℹ️ Not searched yet — press the button above.');
         }
         $byCat = json_decode((string) $this->ReadAttributeString('CategoryCache'), true) ?: [];
         $count = array_sum($byCat);
         $icon = $count > 0 ? '✅' : '⚠️';
-        return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+        // Einzahl/Mehrzahl als zwei vollständige Sätze (deutsch gleich)
+        if ($count === 1) {
+            return NRGDASH_Text::t('%s %d device found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
+        }
+        return NRGDASH_Text::t('%s %d devices found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
     }
 
     private function formatCategoryBreakdown(array $byCat): string
     {
         if (empty($byCat)) {
-            return 'Noch keine Details - erst suchen.';
+            return NRGDASH_Text::t('No details yet - search first.');
         }
         $parts = [];
         foreach ($byCat as $cat => $count) {
-            $parts[] = $count . 'x ' . (self::CATEGORY_LABELS[$cat] ?? $cat);
+            $parts[] = $count . 'x ' . $this->categoryLabel((string) $cat);
         }
         return implode(', ', $parts);
     }
@@ -768,7 +849,7 @@ class NRGDashboardMap extends IPSModule
         $hookPathJs = json_encode('/hook/nrgdashmap' . $this->InstanceID);
         $showTour = (!(bool) $this->ReadAttributeBoolean('TourSeen')) ? 'true' : 'false';
 
-        return <<<HTML
+        $html = <<<HTML
 <!DOCTYPE html>
 <html>
 <head>
@@ -867,7 +948,7 @@ class NRGDashboardMap extends IPSModule
 </style>
 </head>
 <body>
-<button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
+<button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
 <div id="wrap"></div>
 <div id="labels"></div>
 <div id="info"></div>
@@ -879,15 +960,25 @@ class NRGDashboardMap extends IPSModule
     <div class="tour-title" id="tourTitle"></div>
     <div class="tour-text" id="tourText"></div>
     <div class="tour-nav">
-      <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-      <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-      <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+      <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+      <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+      <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
     </div>
   </div>
 </div>
 
+<!--NRGDASH_TEXTS-->
 <script>
 $three
+
+// Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+// Fehlt die Tabelle, erscheint der englische Quelltext.
+function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+// sprintf light: ersetzt %s und %d der Reihe nach
+function fmt(s) {
+  var a = Array.prototype.slice.call(arguments, 1), i = 0;
+  return s.replace(/%[sd]/g, function () { return a[i++]; });
+}
 
 // Kategorie-Farben - eine Farbe je physischer Geraeteart, unabhaengig
 // davon, ob Einzelknoten oder Cluster-Hub.
@@ -896,8 +987,8 @@ var CAT_COLOR = {
   house: 0xE8A23C, consumer: 0x90A4AE, wallbox: 0x9575CD, vehicle: 0x4DD0E1
 };
 var CAT_LABEL = {
-  pv: 'PV-Strang', battery: 'Batterie', grid: 'Netz', house: 'Hausverbrauch',
-  consumer: 'Verbraucher', wallbox: 'Wallbox', vehicle: 'Fahrzeug'
+  pv: tr('PV string'), battery: tr('Battery'), grid: tr('Grid'), house: tr('House consumption'),
+  consumer: tr('Consumers'), wallbox: tr('Wallbox'), vehicle: tr('Vehicle')
 };
 
 var nodesData = $nodes;
@@ -910,13 +1001,13 @@ var SHOW_TOUR = {$showTour};
 var TOUR_SHOWN_LOCAL = false;
 var TOUR_STEP = 0;
 var TOUR_STEPS = [
-  { title: 'Keine Tabelle - ein 3D-Raum', text: 'Statt Listen und Balken zeigt diese Karte Ihre Anlage als frei drehbaren 3D-Raum, in dem sich Geräte bei vielen Instanzen automatisch zu Clustern zusammenfassen, statt die Übersicht zu überladen. Alles wird automatisch über die installierten Partnermodule gefunden - keine manuelle Verknüpfung nötig.' },
-  { title: 'Wechselrichter als Mittelpunkt', text: 'Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Stränge und Batterie hängen direkt an ihm.' },
-  { title: 'Sammelknoten bei mehreren Instanzen', text: 'Gibt es mehrere Geräte einer Kategorie (z. B. zwei Netzzähler oder zwei Wallboxen), erscheint EIN Cluster-Knoten auf dem Hauptring - die einzelnen Instanzen fächern sich lokal weiter außen auf. Das hält die Karte uebersichtlich, egal wie viele Zähler dazukommen.' },
-  { title: 'Jede MeterHub-Zuordnung sichtbar', text: 'Nicht nur Netz und Hausverbrauch: auch Wärmepumpe, Herd, Carport-Verbraucher & Co. aus MeterHub erscheinen als eigener Knoten in der Kategorie „Verbraucher".' },
-  { title: 'Drehen und Zoomen', text: 'Mit gedrückter Maustaste ziehen, um die Karte zu drehen - die Drehung klingt nach dem Loslassen sanft aus, statt abrupt zu stoppen. Mit dem Mausrad zoomen.' },
-  { title: 'Details per Hover', text: 'Fahren Sie mit der Maus über einen Knoten, um Bezeichnung, Kategorie und - bei Sammelknoten - die Anzahl der zusammengefassten Instanzen zu sehen.' },
-  { title: 'Farbige Sektoren am Boden', text: 'Jede Kategorie bekommt eine dezente, transparente Bodenfläche in ihrer Farbe - so bleibt die Gruppierung auch beim Drehen sofort erkennbar, ganz ohne Verbindungslinien lesen zu muessen.' }
+  { title: tr('Not a table - a 3D space'), text: tr('Instead of lists and bars, this map shows your installation as a freely rotatable 3D space in which devices automatically group into clusters when there are many instances, instead of cluttering the overview. Everything is found automatically through the installed partner modules - no manual linking needed.') },
+  { title: tr('Inverter at the center'), text: tr('Unlike other federation views, it is not EMS but the inverter that sits physically at the center - PV strings and battery hang directly off it.') },
+  { title: tr('Collective node for several instances'), text: tr('If there are several devices of one category (e.g. two grid meters or two wallboxes), ONE cluster node appears on the main ring - the individual instances fan out locally further outside. This keeps the map clear no matter how many meters are added.') },
+  { title: tr('Every MeterHub assignment visible'), text: tr('Not just grid and house consumption: heat pump, stove, carport consumers and the like from MeterHub also appear as a node of their own in the category “Consumers”.') },
+  { title: tr('Rotate and zoom'), text: tr('Drag with the mouse button held down to rotate the map - the rotation eases out gently after release instead of stopping abruptly. Zoom with the mouse wheel.') },
+  { title: tr('Details on hover'), text: tr('Move the mouse over a node to see its name, category and - for collective nodes - the number of grouped instances.') },
+  { title: tr('Colored sectors on the floor'), text: tr('Each category gets a subtle, transparent floor area in its color - this keeps the grouping recognizable at once even while rotating, without having to read any connecting lines.') }
 ];
 
 var R_TYPE = 42;    // Hauptring: Einzelinstanz oder Cluster-Hub
@@ -1093,10 +1184,10 @@ function renderMap() {
 
   var info = document.getElementById('info');
   if (nodesData.length === 0) {
-    info.textContent = '❌ Keine Geräte gefunden - InverterHub/MeterHub/ChargerHub/Tessie installieren oder auf den nächsten Suchlauf warten.';
+    info.textContent = tr('❌ No devices found - install InverterHub/MeterHub/ChargerHub/Tessie or wait for the next search run.');
     return;
   }
-  info.textContent = 'Geräte: ' + (nodesData.length - 1);
+  info.textContent = fmt(tr('Devices: %d'), nodesData.length - 1);
 
   var positions = {};
   var center = nodesData.find(function (n) { return n.center; }) || nodesData[0];
@@ -1104,7 +1195,7 @@ function renderMap() {
 
   var centerNG = makeNodeGroup(CAT_COLOR.inverter, 12, false);
   group.add(centerNG.group);
-  centerNG.mesh.userData = { label: center.label, sub: 'Zentrum · ' + center.id };
+  centerNG.mesh.userData = { label: center.label, sub: fmt(tr('Center · %s'), center.id) };
   centerNG.mesh.userData.baseY = 0; centerNG.mesh.userData.phase = Math.random() * Math.PI * 2;
   nodeMeshes[center.id] = centerNG.mesh;
   addLabel(center.id, center.label, false);
@@ -1145,7 +1236,7 @@ function renderMap() {
     var hubLabelText = isCluster ? (CAT_LABEL[grp.category] || grp.category) : grp.members[0].label;
     hubNG.mesh.userData = {
       label: hubLabelText,
-      sub: isCluster ? (grp.members.length + ' Instanzen · ' + (CAT_LABEL[grp.category] || grp.category)) : ('Einzelinstanz · ' + grp.members[0].id)
+      sub: isCluster ? fmt(tr('%d instances · %s'), grp.members.length, CAT_LABEL[grp.category] || grp.category) : fmt(tr('Single instance · %s'), grp.members[0].id)
     };
     hubNG.mesh.userData.baseY = 0; hubNG.mesh.userData.phase = Math.random() * Math.PI * 2;
     nodeMeshes[hubId] = hubNG.mesh;
@@ -1153,7 +1244,7 @@ function renderMap() {
     if (isCluster) {
       var countEl = document.createElement('div');
       countEl.className = 'label small hub-count';
-      countEl.textContent = grp.members.length + ' Instanzen';
+      countEl.textContent = fmt(tr('%d instances'), grp.members.length);
       countEl.id = 'label_' + hubId + '_count';
       document.getElementById('labels').appendChild(countEl);
     }
@@ -1287,6 +1378,11 @@ function dismissTour() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  // feste Texte der Seite (im HTML englisch) in die Sprache der Oberflaeche bringen
+  document.getElementById('tourRestartBtn').title = tr('Show introduction tour');
+  document.getElementById('tourPrev').textContent = tr('Back');
+  document.getElementById('tourNext').textContent = tr('Next');
+  document.getElementById('tourDone').textContent = tr('✓ Understood, do not show again');
   document.getElementById('tourPrev').addEventListener('click', function () {
     if (TOUR_STEP > 0) { TOUR_STEP--; renderTour(); }
   });
@@ -1311,12 +1407,15 @@ document.addEventListener('DOMContentLoaded', function () {
 if (typeof THREE !== 'undefined') {
   initScene();
 } else {
-  document.getElementById('info').textContent = '❌ Three.js nicht geladen';
+  document.getElementById('info').textContent = tr('❌ Three.js not loaded');
 }
 </script>
 </body>
 </html>
 HTML;
+
+        // Texte: englische Quelltexte im HTML, die Tabelle window.NRGDASH_TEXTS liefert die Übersetzung (Stolperstein 24: je Text einmal gefragt)
+        return NRGDASH_Text::kachelHtml($html, self::TILE_TEXTS);
     }
 
     private function FindVarByIdent(int $parentID, string $ident): int

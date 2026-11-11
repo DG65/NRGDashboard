@@ -10,11 +10,23 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
-## Unreleased
+## 0.11.0 (2026-11-11)
+
+- **Zweisprachig (Deutsch/Englisch), erste Etappe:** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor und PV-Monitoring folgen jetzt der Symcon-Sprache. Die Energiefluss-Kachel (NRGDashboardTile) ist noch nur deutsch und folgt in einer späteren Version. Deutsch bleibt wortgleich.
 
 - **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
 - **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
 - Intern: die Statuszeilen der übrigen Module vergleichen „aktiv“ nicht mehr am Anzeigetext, und alle Module tragen den Übersetzer für die gemeinsamen Formular-Texte ein. Keine sichtbare Änderung.
+- **3D-Karte: Formular, Statuszeilen und Karte jetzt zweisprachig (Deutsch/Englisch).** Auch die Texte in der Karte selbst (Einführungs-Tour, Hinweise, Kategorienamen, Tooltips) folgen der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Die Panels des Formulars haben stabile Namen, „Formular: Aufbau“ findet sie darüber; die gespeicherte Auswahl bleibt gültig. Die Prüfwerkzeuge für die Karte liegen unter `.tools/` (`locale-pruefen-map.php`, `szenarien-map.php`, `deutsch-vergleich-map.php`).
+
+- **Heizungsschema: Formular, Variablen- und Profilnamen, Statuszeilen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Panels haben stabile Namen (`PanelDoc`, `PanelManual`, `PanelAppearance`), die Versionszeile im Doku-Panel wird darüber gefunden. Die Kachel (inklusive Einführungs-Tour und Standalone-Seite) liest ihre Texte aus einer Tabelle, das Dezimalzeichen der Zahlen folgt der Sprache. Neue Variablen- und Profilnamen erscheinen in der Sprache, in der die Instanz angelegt bzw. übernommen wird; bereits vorhandene Variablen behalten ihren Namen. Idents, Property-Namen und Funktionen bleiben unverändert.
+
+- **Prognose-Kachel (NRGDashboardForecast): Formular, Meldungen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Das gilt auch für die Namen und Auswahltexte der Einstellungen im Doppelpfeil (Instanzvariablen und die Profile `NRGDASHFC.*`): sie werden bei „Übernehmen“ in der aktuellen Sprache nachgezogen, selbst umbenannte Variablen bleiben unangetastet. Intern: die Tage der Kachel tragen einen festen Schlüssel (`key`), die Logik hängt nicht mehr am Anzeigetext; Doku-Panel und Hook-Zeile haben Namen (`PanelDoc`, `HookInfo`); Dezimalzeichen der Tagesbalken kommt aus der Anzeigesprache. Idents, Properties, Funktionen und Profilnamen sind unverändert.
+
+- **WP-Monitor: Formular, Meldungen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Die Kachel nimmt Datums- und Zahlenformate, Monats- und Wochentagsnamen aus der Sprache. Legenden-Sichtbarkeit und Zeitplan-/Automatik-Logik hängen nicht mehr an Anzeigetexten.
+
+- **PV-Monitoring: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Formular, Statuszeilen, Meldungen, Kachel (Reiter, Legenden, Tooltips, Tagesplan-Editor, Tour) und die „Was ist neu“-Zeilen liegen in `libs/locale/NRGDashboardPVMonitor.json`; Datums- und Dezimalformate der Kachel folgen der Sprache (de-DE bzw. en-GB). Panels haben stabile Namen (`PanelDoc`, `PanelSource`, `PanelStyle`), die Versionszeile im Dokumentations-Panel wird darüber gefunden. Idents, Property- und Attributnamen bleiben unverändert.
+- **PV-Monitoring: Textrückfall für „Trockenlauf“/„Nur beobachtend“ entfernt.** Die Tagesplan-Kennzeichnung (`BuildDecisionFlags`) liest nur noch die Felder `dryRun`, `observeOnly` und `observeReason` aus `EMS_GetCurrentDecision` (Vertrag 1.1); der frühere Vergleich mit dem Anfang des EMS-Statustexts entfällt, weil jedes EMS diese Felder liefert.
 
 ## 0.10.12 (2026-11-09)
 
