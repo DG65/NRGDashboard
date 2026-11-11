@@ -42,6 +42,295 @@ class NRGDashboardWPMonitor extends IPSModule
 {
     use NRGDashFormStatus;
 
+    /**
+     * Texte der Kachel (module.html): englische Quelltexte, die dort mit tr('...') benutzt werden. PHP liefert die
+     * Übersetzungen als Tabelle (window.NRGDASH_TEXTS), siehe NRGDASH_Text::kachelHtml(); der Prüfstand
+     * .tools/locale-pruefen.php vergleicht diese Liste mit module.html und locale.json.
+     */
+    private const TILE_TEXTS = [
+        'en-GB',
+        'Show introduction tour',
+        'Day (history)',
+        'Week (energy)',
+        'Month (energy)',
+        'Year (energy)',
+        'Total (energy)',
+        'Custom',
+        'Back',
+        'Forward',
+        'Show/hide tab bar',
+        'History',
+        'Heating curves',
+        'Controls',
+        'Automation',
+        'Schedule',
+        'Apply',
+        'Emergency mode active - the unit is heating electrically with the heating element.',
+        'Next',
+        '✓ Understood, do not show again',
+        'Current COP',
+        'Daily SPF',
+        'Op. hours',
+        'Starts',
+        'Ø runtime',
+        'kWh electricity',
+        'kWh heat',
+        'El. power',
+        'Therm. power',
+        'Flow',
+        'Return',
+        'Outdoor temp.',
+        'Outdoor temp. Ø1h',
+        'Outdoor temp. Ø24h',
+        '%1$s/%2$s/%3$s %4$s:%5$s',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+        'January',
+        'February',
+        'March',
+        'April',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+        'Mon',
+        'Tue',
+        'Wed',
+        'Thu',
+        'Fri',
+        'Sat',
+        'Sun',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+        'El. energy',
+        'Therm. energy',
+        '%1$s %2$s/%3$s',
+        '%1$s, %2$s/%3$s/%4$s',
+        '%1$s %2$s %3$s',
+        '%1$s/%2$s',
+        '%1$s/%2$s/%3$s',
+        'Day before yesterday',
+        'Yesterday',
+        'Today',
+        'Week %s, %s',
+        'Heating circuit 2',
+        'Heating circuit 1',
+        'Cooling',
+        'Heating',
+        'Sending shift…',
+        'Quiet mode',
+        'Off',
+        'Shift',
+        'ECO',
+        'Normal',
+        'Comfort',
+        'Shift the curve in parallel',
+        'Shift the curve in parallel. Board rules can override the value.',
+        'Outdoor temperature',
+        'Flow temperature',
+        'with shift %s',
+        'Heating curve editing is not available.',
+        'Loading heating curve…',
+        'No heating curve found.',
+        'Saving…',
+        'Heating on below',
+        'Outdoor temperature mean from which the automation switches heating on.',
+        'Heating off above',
+        'Outdoor temperature mean from which the automation switches heating off (must be above the switch-on threshold, otherwise the module rejects it).',
+        'Minimum room value',
+        'If a monitored room falls below this, heating stays on or switches on.',
+        'never',
+        'just now',
+        '%s min ago',
+        '%s h ago',
+        'Sending…',
+        'On',
+        'Automation not available.',
+        'Loading heating automation…',
+        'Heating automation',
+        'Only switches heating on or off (never the whole heat pump), based on the outdoor temperature mean. Frost protection always takes priority.',
+        'Feature in this installation: enabled',
+        'Feature in this installation: not enabled (switch it on in the HeishaMon form)',
+        'Switch automation on?',
+        'Switch automation off?',
+        'On the first run the automation can change the operating mode immediately (e.g. from heating to hot water only).',
+        'When switched off, heating that the automation had turned off is switched back on.',
+        'Yes, switch on',
+        'Yes, switch off',
+        'Cancel',
+        'Your switch for the automation (default: off).',
+        'Can only be operated after the feature has been enabled in the HeishaMon form.',
+        'Heating mode',
+        'Cooling mode',
+        'Heating off (automation)',
+        'Price block (heating paused)',
+        'Fault',
+        'Automation not running',
+        'Last error: %s',
+        'Electricity price (price block)',
+        'active',
+        'off',
+        'yes',
+        'no',
+        'Now',
+        'Threshold (expensive from)',
+        'Median',
+        'Currently expensive',
+        'Blocks today',
+        'Blocked since',
+        'Battery covers the load',
+        'Price source: %s. The price block pauses heating in expensive hours - only as long as the room temperature and (if present) the battery allow it.',
+        'earliest %s',
+        'any time',
+        'Outdoor now',
+        'Outdoor mean %s h',
+        'Room mean',
+        'Coolest room',
+        'Dew point',
+        'Last switch',
+        'Next switch',
+        'Last checked',
+        'Settings',
+        'Allow cooling',
+        'Cooling only with dew point protection (humidity sources and safety margin in the HeishaMon form).',
+        'Cooling not available: no humidity source was found, without which the dew point protection cannot work (choose the sources in the HeishaMon form).',
+        'Price block',
+        'Pause heating in expensive hours. Further settings for this (maximum duration, blocks per day, minimum interval, room reserve, battery) are in the HeishaMon form.',
+        'Price block not available: no price source was found (choose one in the HeishaMon form).',
+        'Discard',
+        'own selection',
+        'found automatically',
+        'none found',
+        'Monitored rooms',
+        'Room %s',
+        'No room temperatures were found - the automation then only uses the outdoor temperature.',
+        'The room selection is maintained in the HeishaMon form (empty = automatic).',
+        'Humidity (dew point protection)',
+        'Relative humidity / dew point',
+        'The selection of humidity sources is maintained in the HeishaMon form.',
+        'Saved. The automation evaluates on its next run (that is not a switching action yet).',
+        'Changed in the meantime - current values loaded, please check again.',
+        'Not saved - please check the marked fields.',
+        'Not saved - HeishaMon rejected it.',
+        'Zone 1 heating',
+        'Zone 1 cooling',
+        'Zone 2 heating',
+        'Zone 2 cooling',
+        'Schedule active',
+        'Command sent',
+        'Changed manually or by the board',
+        'Unit does not accept the value',
+        'not usable',
+        '%1$s: on %2$s at most %3$s segments are allowed - please merge them.',
+        'Not sent.',
+        'The schedule is being re-applied now…',
+        'Schedule not available.',
+        'Loading weekly schedule…',
+        'Weekly schedule',
+        'Switches the heating curve shift (ECO / Normal / Comfort) and quiet mode at fixed times. The schedule runs in the HeishaMon module; the unit itself cannot hold a schedule.',
+        'Schedule off',
+        'Schedule on',
+        'Re-apply schedule now',
+        'Re-apply schedule now?',
+        'This ends manual changes and faults and resends the planned value to the unit IMMEDIATELY. The schedule itself stays unchanged.',
+        'Yes, apply now',
+        'Switch schedule on?',
+        'When switching on, the planned value for now is sent to the unit IMMEDIATELY. When switching off, the last value set stays in the unit; nothing is reset.',
+        'Yes, save and switch on',
+        'No schedulable channels found (zone inactive or unit in direct mode).',
+        '%1$s since %2$s',
+        'Schedule now: %s',
+        'Unit reports: %s',
+        'next change %s',
+        'Rules on the board can override the shift; the schedule then does not apply permanently.',
+        'The unit has its own quiet-mode timer active - it may collide with this schedule.',
+        'Channel',
+        'Brush: ',
+        '%s (default)',
+        'Drag across the weekly grid with your finger or the mouse: the selected level is painted onto the quarter-hours you sweep over. The default (gray) applies everywhere nothing is painted; use the default brush to erase.',
+        'Copy day: ',
+        'to weekdays',
+        'to weekend',
+        'to all days',
+        'Clear day',
+        'More errors in: %s',
+        'The planned value was resent.',
+        'Not applied: %s',
+        'Error',
+        'Saved. The schedule takes effect from the next switching time (immediately when switched on); the unit does not acknowledge anything, the channel status shows it.',
+        'The schedule was changed in the meantime - current values loaded, changes discarded. Please enter again.',
+        'Not saved - please check the notes.',
+        'Quiet',
+        'Quieter',
+        'Quietest',
+        'Compressor output and fan are reduced - quieter, but less heating output.',
+        'Powerful mode',
+        'Raises the output for a limited time, after which the unit falls back by itself.',
+        'Holiday',
+        'Planned',
+        'Active',
+        'The unit heats at a reduced level and restricts hot water. The dashboard cannot set a period - enter it on the unit or in the Comfort Cloud. “Planned” is not “active”.',
+        'Emergency mode (heating element)',
+        'Like the heating element button on the remote control: the unit heats electrically instead of with the heat pump. The most expensive heat source, only for faults. HeishaMon never switches it off again by itself.',
+        'Really switch on emergency mode? The unit will then heat electrically with the heating element (most expensive heat source) and will not switch itself off again.',
+        'Hot water target temperature',
+        'Above about 52 °C the efficiency (COP) of the heat pump drops noticeably.',
+        'Controls not available.',
+        'Loading controls…',
+        'Caution: above 52 °C the COP drops noticeably.',
+        'The unit reports no controls.',
+        'Please select a from/to date',
+        'No archive data for this day',
+        'Confirmed by the heat pump.',
+        'Sent - waiting for feedback (%s/10)…',
+        'Not confirmed - the unit still reports the old value (HeishaMon in "listen only" mode? Check MQTT).',
+        'Sent - waiting for feedback from the heat pump…',
+        'Not sent - HeishaMon rejects it (value out of range, MQTT gateway disconnected or HeishaMon too old).',
+        'Shift sent - waiting for feedback from the heat pump…',
+        'Shift not sent - HeishaMon rejects it (zone/mode not active, direct setting instead of shift, MQTT gateway disconnected or HeishaMon too old).',
+        'Shift confirmed by the heat pump.',
+        'Shift sent - waiting for feedback (%s/10)…',
+        'The heat pump still reports the old shift - not confirmed (HeishaMon in "listen only" mode? Check MQTT).',
+        'Sent - waiting for feedback from the heat pump (%s/6)…',
+        'The heat pump still reports the old values - transfer not confirmed (check gateway/MQTT).',
+        'Not sent - HeishaMon rejects the command (zone/mode not active, MQTT gateway disconnected or HeishaMon too old).',
+        'No data.',
+        'This curve reveals when your heat pump defrosts',
+        'In the daily chart, a blue area automatically marks every defrost phase of the compressor - the short dips in electrical power and flow temperature get an explanation right away instead of looking like a glitch. No run-of-the-mill monitoring shows that.',
+        'If a key figure is missing, it is hidden - not faked as zero',
+        'Whether COP, outdoor temperature, compressor starts or operating hours are shown depends on what your HeishaMon or WPHub installation actually delivers. If a field is missing, only the affected key figure or curve disappears - an invented zero reading never appears.',
+        'Measured COP always takes priority over estimated',
+        'If your heat pump delivers a real measured COP, that one is shown. Only if it is missing does the tile fall back to a rough estimate - an embellished figure is never silently passed off as “measured”. With a plain WPHub installation without HeishaMon the COP is missing entirely (no estimate either) - Panasonic’s Comfort Cloud API simply lacks the required flow/water volume information; this is not a fault of this tile.',
+        'With WPHub the real daily counter counts, not the extrapolation',
+        'Panasonic heat pumps via WPHub deliver no instantaneous power, but an energy counter that jumps back every day at midnight, straight from the Comfort Cloud. If it is available, the tile prefers it - only without it (e.g. with HeishaMon) is the electrical energy extrapolated from the power curve.',
+        'Week, month, year, total - all without reloading',
+        'A single archive pass when opening covers the daily, weekly, monthly, yearly, total and custom views. When switching or paging between periods, nothing is reloaded from the archive - everything is calculated directly in the browser.',
+        'Flow, return and outdoor temperature on their own axis',
+        'Electrical and thermal power run in watts on the left axis, flow/return temperature and outdoor temperature dashed or dotted on a separate °C axis on the right - clearly separated, yet comparable in the same chart.',
+        'ECharts or Highcharts - you decide',
+        'Under “Appearance” the drawing engine can be switched. ECharts needs no license of its own, Highcharts requires your own valid license for use - both are loaded from the internet when needed, not embedded in the module.',
+        'Also usable outside the dashboard',
+        'This tile also runs as a standalone web page via an automatically registered WebHook (address in the documentation panel) - ideal for IPSView or any browser tab, with automatic refresh every 30 seconds.',
+    ];
+
     private const HEISHA_GUID  = '{1919151A-3C0F-4C09-B906-291638EC1469}';
     private const WPHUB_GUID   = '{5BE429EA-3AAD-4A8B-85DE-5778CCA2E6BC}';
     // Waermepumpen-Quellen des heatpump-Vertrags (Discovery-Liste). Neu am
@@ -123,21 +412,21 @@ class NRGDashboardWPMonitor extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.9.170' => [
-            'Neu: Reiter "Zeitplan" (nur bei HeishaMon ab 1.39.0) - grafischer Wochen-Editor für ECO / Normal / Komfort der Heizkurve (Zone 1 und 2, Heizen und Kühlen) und den Flüsterbetrieb: Abschnitte im 15-Minuten-Raster mit dem Finger oder der Maus malen, Tage kopieren, Kanäle und den ganzen Plan ein- und ausschalten. Der Plan läuft im HeishaMon-Modul; das Einschalten fragt vorher nach, weil der geplante Wert sofort gesendet wird.',
-            'Fix: der senkrechte Verschiebe-Regler im Reiter "Heizkurven" speicherte nie (die Kachel hat HeishaMon den falschen Modus übergeben) - jetzt funktioniert er. Neu daneben: Schnelltasten ECO / Normal / Komfort für die Verschiebung und eine Leiste für den Flüsterbetrieb (Aus/1/2/3).',
-            'Neu: Reiter "Automatik" (nur bei HeishaMon ab 1.35.0) - die Heizungs-Automatik zeigt Zustand, Grund und Messwerte und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Das Einschalten fragt vorher nach, weil die Betriebsart dabei sofort wechseln kann.',
+            'New: "Schedule" tab (HeishaMon 1.39.0 and later only) - graphical weekly editor for ECO / Normal / Comfort of the heating curve (zone 1 and 2, heating and cooling) and quiet mode: paint segments on a 15-minute grid with your finger or the mouse, copy days, switch channels and the whole schedule on and off. The schedule runs in the HeishaMon module; switching on asks first, because the planned value is sent immediately.',
+            'Fix: the vertical shift slider in the "Heating curves" tab never saved (the tile passed the wrong mode to HeishaMon) - it works now. New next to it: quick buttons ECO / Normal / Comfort for the shift and a bar for quiet mode (Off/1/2/3).',
+            'New: "Automation" tab (HeishaMon 1.35.0 and later only) - the heating automation shows state, reason and measured values and lets you set the on/off threshold, minimum room value, cooling and the automation switch. Switching on asks first, because the operating mode can change immediately.',
         ],
         '0.2.8' => [
-            'Neu: Seite "Bedienung" (nur bei HeishaMon) - Flüsterbetrieb, Leistungsbetrieb, Urlaub, Notbetrieb (mit Bestätigung und Warnpunkt am Reiter) und Warmwasser-Solltemperatur direkt in der Kachel. Die Wärmepumpe quittiert Befehle nicht - die Kachel wartet auf die Rückmeldung und zeigt ehrlich an, ob sie bestätigt wurde.',
-            'Neu: senkrechter Regler rechts neben dem Heizkurven-Diagramm verschiebt die Heizkurve parallel (-5 bis +5 K), als gestrichelte Linie über der eingestellten Kurve. Nur im Verschiebe-Modus der Anlage, nicht bei Direktvorgabe der Vorlauftemperatur.',
-            'Neu: Reiter "Heizkurven" (nur bei HeishaMon) - Vorlauftemperatur je Außentemperatur für bis zu 2 Heizkreise und Heizen/Kühlen direkt zum Ziehen im Diagramm, mit "Übernehmen"-Knopf zum Speichern auf der Wärmepumpe.',
-            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-            'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Heim-Wärmepumpe) verzerrte bisher Tagesansicht und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
-            'Architektur an NRGDashboardPVMonitor angeglichen: Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht laufen jetzt rein clientseitig (kein Nachladen bei jedem Ansichtswechsel mehr), plus wahlweise Highcharts oder ECharts als Zeichen-Engine (Formular "Darstellung").',
+            'New: "Controls" page (HeishaMon only) - quiet mode, powerful mode, holiday, emergency mode (with confirmation and a warning dot on the tab) and hot water target temperature directly in the tile. The heat pump does not acknowledge commands - the tile waits for the feedback and honestly shows whether it was confirmed.',
+            'New: vertical slider to the right of the heating curve chart shifts the heating curve in parallel (-5 to +5 K), as a dashed line above the set curve. Only in the unit\'s shift mode, not with direct flow temperature setting.',
+            'New: "Heating curves" tab (HeishaMon only) - flow temperature per outdoor temperature for up to 2 heating circuits and heating/cooling, to drag directly in the chart, with an "Apply" button to save to the heat pump.',
+            'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+            '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+            '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+            '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what this tile does and what it is good for - meant for first contact, can be dismissed once.',
+            'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+            'Fix: a single faulty archive value (e.g. a communication error at a partner module in the order of megawatts for a home heat pump) previously distorted the daily view and the energy balance - such implausible values are now discarded instead of flowing into the display.',
+            'Architecture aligned with NRGDashboardPVMonitor: week/month/year/total/custom views now run purely client-side (no reloading on every view change), plus a choice of Highcharts or ECharts as the drawing engine (form "Appearance").',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -156,14 +445,14 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
     }
@@ -171,7 +460,7 @@ class NRGDashboardWPMonitor extends IPSModule
     public function Create()
     {
         parent::Create();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text::t() eintragen (Symcons Translate() dieser Instanz, Merkliste siehe libs/NRGDASH_Text.php)
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterPropertyInteger('ColorBackground', self::DEF_BACKGROUND);
@@ -206,12 +495,12 @@ class NRGDashboardWPMonitor extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHMON.TabAnim')) {
             IPS_CreateVariableProfile('NRGDASHMON.TabAnim', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, 'Federnder Einschub', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, '3D-Kaskaden-Flip', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Ecke für Ecke in den Pfeil', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, 'Blur-Morph', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, NRGDASH_Text::t('Springy slide-in'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, NRGDASH_Text::t('3D cascade flip'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, NRGDASH_Text::t('Corner by corner into the arrow'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, NRGDASH_Text::t('Blur morph'), '', -1);
         $animIsNew = @IPS_GetObjectIDByIdent('TabAnimation', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('TabAnimation', 'Reiterleisten-Animation', 'NRGDASHMON.TabAnim', 10);
+        $this->RegisterVariableInteger('TabAnimation', NRGDASH_Text::t('Tab bar animation'), 'NRGDASHMON.TabAnim', 10);
         $this->EnableAction('TabAnimation');
         if ($animIsNew) {
             $this->SetValue('TabAnimation', 0);
@@ -223,7 +512,7 @@ class NRGDashboardWPMonitor extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text::t() eintragen (Symcons Translate() dieser Instanz, Merkliste siehe libs/NRGDASH_Text.php)
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
@@ -346,7 +635,7 @@ class NRGDashboardWPMonitor extends IPSModule
             return;
         }
         header('Content-Type: text/html; charset=utf-8');
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
                . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
                . '.then(function(l){l.forEach(function(m){handleMessage(m);});}).catch(function(){});}</script>';
@@ -362,7 +651,7 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         $entries = $this->DiscoverHeatpumps();
         if (count($entries) === 0) {
-            return 'ℹ️ Keine Wärmepumpe gefunden (HeishaMon, WPHub, WPModbusHub, Gateway, SamsungEhs) - die Kachel zeigt nur einen Hinweis, bis eine Quelle installiert ist.';
+            return NRGDASH_Text::t('ℹ️ No heat pump found (HeishaMon, WPHub, WPModbusHub, gateway, SamsungEhs) - the tile only shows a note until a source is installed.');
         }
         $ids = array_values(array_unique(array_map(function ($e) {
             return (int) $e['_instanceID'];
@@ -373,30 +662,40 @@ class NRGDashboardWPMonitor extends IPSModule
         $id = (int) ($sel['_instanceID'] ?? 0);
         $head = $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
         if (!$explicit && count($ids) > 1) {
-            return '⚠️ ' . count($ids) . ' Wärmepumpen gefunden, keine ausgewählt - verwendet wird ' . $head . '. Bitte unten gezielt auswählen.';
+            return NRGDASH_Text::t('⚠️ %d heat pumps found, none selected - %s is used. Please choose one below.', count($ids), $head);
         }
         $vals = [];
-        foreach (['powerID' => 'Leistung', 'energyID' => 'Energie'] as $k => $label) {
+        foreach (['powerID', 'energyID'] as $k) {
             $v = (int) ($sel[$k] ?? $sel[ucfirst($k)] ?? 0);
             if ($v > 0) {
-                $vals[] = $label . ' #' . $v;
+                // zwei vollständige Texte statt Satzteile (Ternary außerhalb von t())
+                $vals[] = ($k === 'powerID') ? NRGDASH_Text::t('Power #%d', $v) : NRGDASH_Text::t('Energy #%d', $v);
             }
         }
-        $curve = $this->HeatingCurveInstanceID() > 0 ? ' Heizkurven-Reiter verfügbar.' : '';
-        $ops = $this->OperationsAvailable() ? ' Bedienung verfügbar.' : '';
+        $taken = count($vals) ? implode(', ', $vals) : NRGDASH_Text::t('only temperature/status fields (no power/energy)');
+        $line = $explicit
+            ? NRGDASH_Text::t('✏️ Heat pump: %s (own entry) - taken over: %s.', $head, $taken)
+            : NRGDASH_Text::t('🔗 Heat pump: %s (detected automatically) - taken over: %s.', $head, $taken);
+        if ($this->HeatingCurveInstanceID() > 0) {
+            $line .= ' ' . NRGDASH_Text::t('Heating curve tab available.');
+        }
+        if ($this->OperationsAvailable()) {
+            $line .= ' ' . NRGDASH_Text::t('Controls available.');
+        }
         if (!$explicit) {
             $this->hideFormField($elements, 'HeatpumpInstance');
         }
-        return ($explicit ? '✏️' : '🔗') . ' Wärmepumpe: ' . $head . ($explicit ? ' (eigene Angabe)' : ' (automatisch erkannt)') . ' - übernommen: ' . (count($vals) ? implode(', ', $vals) : 'nur Temperatur-/Statusfelder (keine Leistung/Energie)') . '.' . $curve . $ops;
+        return $line;
     }
 
     public function GetConfigurationForm()
     {
-        $raw = str_replace('%%HOOK%%', '/hook/nrgdashwpmonitor' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
-        $form = json_decode($raw, true);
+        $form = json_decode((string) file_get_contents(__DIR__ . '/form.json'), true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }
+        // Das Label mit dem Hook-Pfad enthält einen eingesetzten Wert: die Konsole fände den Text so nicht mehr, deshalb selbst übersetzen.
+        $this->setFormCaption($form['elements'], 'HookInfo', NRGDASH_Text::t('IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.', '/hook/nrgdashwpmonitor' . $this->InstanceID));
 
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine($form['elements']));
@@ -413,11 +712,11 @@ class NRGDashboardWPMonitor extends IPSModule
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is in beta — feedback, bug reports and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHWPMON_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -430,10 +729,11 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
-            : 'ℹ️ NRG-Stack Dashboard';
+            ? NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
+            : NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard');
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            // Panel über den Namen finden, nie über die (übersetzte) Caption
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -452,12 +752,12 @@ class NRGDashboardWPMonitor extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Zeigt Verlauf und Kennzahlen einer Wärmepumpe - elektrische/thermische Leistung, Vorlauf/Rücklauf, Außentemperatur - als Tages- bis Jahresansicht, wahlweise mit Highcharts oder ECharts.'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: Effizienz und Betriebsverhalten der Wärmepumpe über die Zeit verstehen, ohne selbst Diagramme aus den Rohdaten bauen zu müssen.'],
-                ['type' => 'Label', 'caption' => 'Die Daten liefert HeishaMon oder WPHub über den gemeinsamen "heatpump"-Vertrag - fehlt eines davon, entfallen nur einzelne Kennzahlen, nicht die ganze Kachel. NRGDashboardHeatSchema zeigt ergänzend den Aufbau der Anlage als Prinzipschema.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'Shows history and key figures of a heat pump - electrical/thermal power, flow/return, outdoor temperature - as daily to yearly views, optionally with Highcharts or ECharts.'],
+                ['type' => 'Label', 'caption' => 'The benefit: understand the efficiency and operating behavior of the heat pump over time without having to build charts from the raw data yourself.'],
+                ['type' => 'Label', 'caption' => 'The data comes from HeishaMon or WPHub via the shared "heatpump" contract - if one of them is missing, only individual key figures drop out, not the whole tile. NRGDashboardHeatSchema additionally shows the layout of the installation as a schematic diagram.'],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHWPMON_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -503,19 +803,20 @@ class NRGDashboardWPMonitor extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => NRGDASH_Text::t('🆕 New since the version you last saw — please take a quick look and check your settings if needed:')]];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                // Zeilen stehen englisch in NEWS_VERSIONS; die Aufzählungspunkt-Marke ist kein Text
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHWPMON_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHWPMON_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -556,7 +857,7 @@ class NRGDashboardWPMonitor extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -619,7 +920,7 @@ class NRGDashboardWPMonitor extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -887,7 +1188,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date(NRGDASH_Text::t('d/m/Y H:i'), (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -945,7 +1246,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date(NRGDASH_Text::t('d/m/Y H:i'), (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -979,7 +1280,7 @@ class NRGDashboardWPMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date(NRGDASH_Text::t('d/m/Y'), (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -1126,7 +1427,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // Kachel nie. Pruefung, Grenzen und Teil-Update liegen im HeishaMon-Modul.
             $req = json_decode((string) $Value, true);
             $id = $this->HeatingCurveInstanceID();
-            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - HeishaMon-Funktion nicht verfügbar (HeishaMon zu alt?).']]];
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - HeishaMon function not available (HeishaMon too old?).')]]];
             if (is_array($req) && $id > 0 && function_exists('HEISHA_SetHeatingAutomation')) {
                 $payload = [];
                 foreach (['onBelowC', 'offAboveC', 'roomMinC'] as $k) {
@@ -1149,7 +1450,7 @@ class NRGDashboardWPMonitor extends IPSModule
                     }
                     $result = is_array($r) ? $r : $result;
                 } catch (\Throwable $e) {
-                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - %s', $e->getMessage())]]];
                 }
             }
             $this->PushMessage(json_encode(['ok' => true, 'type' => 'automationSaved', 'result' => $result, 'auto' => $this->BuildAutomation()]));
@@ -1164,7 +1465,7 @@ class NRGDashboardWPMonitor extends IPSModule
             // featureEnabled schreibt die Kachel nie. Pruefung, Obergrenzen und alles-oder-nichts liegen im HeishaMon-Modul.
             $req = json_decode((string) $Value, true);
             $id = $this->HeatingCurveInstanceID();
-            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - HeishaMon-Funktion nicht verfügbar (HeishaMon zu alt?).']]];
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - HeishaMon function not available (HeishaMon too old?).')]]];
             if (is_array($req) && $id > 0 && function_exists('HEISHA_SetSchedule')) {
                 $payload = [];
                 if (($req['applyNow'] ?? null) === true) {
@@ -1210,7 +1511,7 @@ class NRGDashboardWPMonitor extends IPSModule
                     }
                     $result = is_array($r) ? $r : $result;
                 } catch (\Throwable $e) {
-                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - %s', $e->getMessage())]]];
                 }
             }
             $this->PushMessage(json_encode(['ok' => true, 'type' => 'scheduleSaved', 'result' => $result, 'schedule' => $this->BuildSchedule()]));
@@ -1289,7 +1590,7 @@ class NRGDashboardWPMonitor extends IPSModule
     {
         $payload = $this->buildPayload();
         $this->SetStatus(($payload['ok'] ?? false) ? 102 : 104);
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>handleMessage(' . json_encode($payload) . ');</script>';
         return $html;
     }
@@ -1327,7 +1628,7 @@ class NRGDashboardWPMonitor extends IPSModule
         if ($lastSeen <= 0 || time() - $lastSeen <= $limit) {
             return '';
         }
-        return 'Keine aktuelle Messung seit ' . date('d.m.Y H:i', $lastSeen) . ' - die angezeigten Werte sind veraltet.';
+        return NRGDASH_Text::t('No current measurement since %s - the displayed values are outdated.', date(NRGDASH_Text::t('d/m/Y H:i'), $lastSeen));
     }
 
     private function buildPayload(): array
@@ -1336,7 +1637,7 @@ class NRGDashboardWPMonitor extends IPSModule
         if ($unit === null) {
             return [
                 'ok'    => false,
-                'error' => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren.',
+                'error' => NRGDASH_Text::t('No heat pump found - install and configure HeishaMon or WPHub.'),
             ];
         }
 

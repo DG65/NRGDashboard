@@ -2,65 +2,67 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Verlaufs-/Diagnose-Kachel für die Wärmepumpe (Kennzahlen-Kopfzeile + Tagesansicht), Geschwistermodul zu NRGDashboardPVMonitor. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
+          "caption": "History/diagnostics tile for the heat pump (key-figure header + daily view), sibling module of NRGDashboardPVMonitor. Automatically finds all heat pump instances via the shared 'heatpump' contract (HeishaMon, WPHub) - no manual linking needed."
         },
         {
           "type": "Label",
-          "caption": "Fehlt ein Vertragsfeld (z. B. COP oder Außentemperatur bei einer reinen WPHub-Installation), blendet die Kachel die jeweilige Kennzahl/Kurve einfach aus, statt eine Nullanzeige zu zeigen."
+          "caption": "If a contract field is missing (e.g. COP or outdoor temperature with a plain WPHub installation), the tile simply hides the respective key figure/curve instead of showing a zero reading."
         },
         {
           "type": "Label",
-          "caption": "Kennzahlen-Kopfzeile + Tages-/Wochen-/Monats-/Jahres-/Gesamt-/Benutzerdefiniert-Ansicht, wahlweise mit ECharts oder Highcharts als Zeichen-Engine (Formular „Darstellung“) - identische Architektur wie die PV-Monitoring-Kachel. Detail-Umschalter (Verdichterfrequenz, Durchfluss, WW-Temperatur, Betriebsart-Farbcodierung) folgen als nächster Ausbauschritt."
+          "caption": "Key-figure header + daily/weekly/monthly/yearly/total/custom view, optionally drawn with ECharts or Highcharts (form “Appearance”) - same architecture as the PV monitoring tile. Detail switches (compressor frequency, flow rate, hot water temperature, operating mode color coding) follow as the next expansion step."
         },
         {
           "type": "Label",
-          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
         },
         {
           "type": "CheckBox",
           "name": "StandaloneEnabled",
-          "caption": "Standalone-Webseite für Browser und IPSView aktivieren"
+          "caption": "Enable standalone web page for browser and IPSView"
         },
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn die Kachel als eigene Webseite (Browser, IPSView) laufen soll. Wer nur die Kachel im WebFront nutzt, kann das abschalten: Dann ist kein WebHook registriert und der Zugriff von außen entfällt. Beim Abschalten wird der vorhandene Eintrag entfernt."
+          "caption": "Only needed if the tile is to run as its own web page (browser, IPSView). If you only use the tile in the WebFront, you can switch this off: then no WebHook is registered and access from outside is removed. Switching it off removes the existing entry."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten: Die Kachel startet direkt mit der heutigen Tagesansicht samt Vorgestern/Gestern/Heute-Schnellwahl - kein leerer Startzustand."
+          "caption": "✨ Details: The tile starts directly with today’s daily view including the day before yesterday/yesterday/today quick select - no empty start state."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Wochen-Zeitplan, 18.10.2026): bei HeishaMon ab 1.39.0 erscheint der Reiter „Zeitplan“ - ein grafischer Wochen-Editor (Mo–So × 24 Stunden, 15-Minuten-Raster) für ECO / Normal / Komfort der Heizkurve (Zone 1 und 2, Heizen und Kühlen) und den Flüsterbetrieb. Abschnitte malst du mit dem Finger oder der Maus, Tage lassen sich kopieren, jeder Kanal und der ganze Plan lassen sich ein- und ausschalten. Der Plan läuft im HeishaMon-Modul (die Anlage selbst kann keinen Plan aufnehmen): Beim Einschalten wird der geplante Wert sofort gesendet, beim Ausschalten bleibt der zuletzt gesetzte Wert stehen. Eine manuelle Änderung gilt bis zur nächsten Schaltzeit, Regeln auf der Platine können die Verschiebung überschreiben (Hinweis steht dabei). Die Anlage quittiert nichts: der Status je Kanal zeigt, ob der Wert übernommen wurde."
+          "caption": "✨ Detail (weekly schedule, 18.10.2026): with HeishaMon 1.39.0 and later the “Schedule” tab appears - a graphical weekly editor (Mon–Sun × 24 hours, 15-minute grid) for ECO / Normal / Comfort of the heating curve (zone 1 and 2, heating and cooling) and quiet mode. You paint segments with your finger or the mouse, days can be copied, and each channel and the whole schedule can be switched on and off. The schedule runs in the HeishaMon module (the unit itself cannot hold a schedule): when switched on, the planned value is sent immediately; when switched off, the last value set stays in place. A manual change applies until the next switching time, rules on the board can override the shift (a note is shown). The unit does not acknowledge anything: the status of each channel shows whether the value was accepted."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Schnelltasten, 18.10.2026): im Reiter „Heizkurven“ stellen drei Tasten ECO / Normal / Komfort die Verschiebung der Heizkurve mit einem Klick auf -5 / 0 / +5 K (nur im Verschiebe-Modus der Anlage, nicht im Direktmodus), daneben schaltet eine Leiste den Flüsterbetrieb auf Aus/1/2/3. Die Anlage quittiert nichts: die Kachel liest den Wert nach und meldet erst dann „bestätigt“. Regeln auf der Platine können die Verschiebung überschreiben, der Hinweis steht dabei."
+          "caption": "✨ Detail (quick buttons, 18.10.2026): in the “Heating curves” tab, three buttons ECO / Normal / Comfort set the heating curve shift to -5 / 0 / +5 K with one click (only in the unit’s shift mode, not in direct mode); next to them a bar switches quiet mode to Off/1/2/3. The unit does not acknowledge anything: the tile reads the value back and only then reports “confirmed”. Rules on the board can override the shift, a note is shown."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Heizungs-Automatik, 17.10.2026): bei HeishaMon ab 1.35.0 erscheint der Reiter „Automatik“ - er zeigt Zustand, Grund, Außen- und Raumwerte sowie letzte und nächste Umschaltung und lässt Ein-/Aus-Schwelle, Raum-Mindestwert, Kühlen und den Automatik-Schalter einstellen. Grenzen und Prüfung kommen vom Modul (Fehler erscheinen am betroffenen Feld); das Einschalten fragt vorher nach, weil die Betriebsart sofort wechseln kann. „Funktion in dieser Anlage“ (im HeishaMon-Formular freigeschaltet) und „Automatik“ (Ihr Schalter) sind zwei verschiedene Dinge. Räume und Luftfeuchte zeigt der Reiter mit ihrer Quelle an (automatisch gefunden, eigene Auswahl oder keine gefunden); „Kühlen“ lässt sich nur einstellen, wenn eine Feuchtequelle gefunden wurde. Die Auswahl pflegt das HeishaMon-Formular."
+          "caption": "✨ Detail (heating automation, 17.10.2026): with HeishaMon 1.35.0 and later the “Automation” tab appears - it shows state, reason, outdoor and room values as well as the last and next switch, and lets you set the on/off threshold, minimum room value, cooling and the automation switch. Limits and validation come from the module (errors appear at the affected field); switching on asks first, because the operating mode can change immediately. “Feature in this installation” (enabled in the HeishaMon form) and “Automation” (your switch) are two different things. The tab shows rooms and humidity together with their source (found automatically, own selection or none found); “Cooling” can only be set if a humidity source was found. The selection is maintained in the HeishaMon form."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul) wird jetzt verworfen statt Tagesansicht oder Energiebilanz zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+          "caption": "✨ Detail (outlier protection, 01.09.2026): a single faulty archive value (e.g. a communication error at a partner module) is now discarded instead of distorting the daily view or the energy balance - a generic implausibility limit (1 MW), not an installation-specific value."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the saved “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with one shared login for all visitors)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet die Wärmepumpen-Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. WPHub ab Vertrag 1.13) und liegt der länger als 15 Minuten zurück, erscheint über den Kennzahlen ein gelber Hinweis „Keine aktuelle Messung seit …“ - statt veraltete Werte kommentarlos als aktuell zu zeigen."
+          "caption": "✨ Detail (no current measurement, 13.09.2026): if the heat pump source reports the time of its last real measurement (e.g. WPHub from contract 1.13) and that is more than 15 minutes ago, a yellow note “No current measurement since …” appears above the key figures - instead of silently showing stale values as current."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASHWPMON_ResetTour($id);"
         }
       ]
@@ -68,41 +70,41 @@
     {
       "type": "Label",
       "name": "HeatpumpStatus",
-      "caption": "Verbindungsstatus wird berechnet …"
+      "caption": "Connection status is being calculated …"
     },
     {
       "type": "SelectInstance",
       "name": "HeatpumpInstance",
-      "caption": "Wärmepumpe (leer = automatisch die erste gefundene HeishaMon-/WPHub-Instanz)"
+      "caption": "Heat pump (empty = automatically the first HeishaMon/WPHub instance found)"
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Darstellung",
+      "caption": "Appearance",
       "expanded": false,
       "items": [
         {
           "type": "Select",
           "name": "Engine",
-          "caption": "Chart-Engine",
+          "caption": "Chart engine",
           "options": [
-            { "caption": "ECharts (vom Internet nachgeladen, empfohlen)", "value": "echarts" },
-            { "caption": "Highcharts (vom Internet nachgeladen, eigene Lizenz erforderlich)", "value": "highcharts" }
+            { "caption": "ECharts (loaded from the internet, recommended)", "value": "echarts" },
+            { "caption": "Highcharts (loaded from the internet, own license required)", "value": "highcharts" }
           ]
         },
         {
           "type": "SelectColor",
           "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+          "caption": "Background color (-1 = system default)"
         },
         {
           "type": "ValidationTextBox",
           "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+          "caption": "Font (empty/“system” = system font)"
         },
         {
           "type": "CheckBox",
           "name": "LightTheme",
-          "caption": "Symcon-Oberfläche ist auf Hell gestellt (Symcon bietet der Kachel keine automatische Erkennung an)"
+          "caption": "Symcon interface is set to light (Symcon provides no automatic detection for tiles)"
         }
       ]
     }
