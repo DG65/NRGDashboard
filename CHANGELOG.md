@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## Unreleased
+
+- **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
+- **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
+- Intern: die Statuszeilen der übrigen Module vergleichen „aktiv“ nicht mehr am Anzeigetext, und alle Module tragen den Übersetzer für die gemeinsamen Formular-Texte ein. Keine sichtbare Änderung.
+
 ## 0.10.12 (2026-11-09)
 
 - **Fehler behoben: falscher Hinweis „WPHub liefert keine auswertbaren Geräte“.** Seit 0.10.11 wird eine von WPHub nur durchgereichte HeishaMon-Wärmepumpe nicht mehr doppelt gezeigt, die Abdeckungsprüfung zählte aber erst nach diesem Filter und meldete dann im Log alle fünf Minuten einen Fehlfund. Gezählt wird jetzt vor dem Filter. Nur das Log ist betroffen, die Anzeige war richtig.
