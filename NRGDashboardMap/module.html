@@ -25,7 +25,10 @@
   </div>
 
   <script src="three.min.js"></script>
+  <!--NRGDASH_TEXTS-->
   <script>
+    // Texte: Uebersetzungen kommen als window.NRGDASH_TEXTS (Schluessel = englischer Quelltext); ohne Tabelle erscheint der Quelltext.
+    function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
     var CAT_COLOR = {
       pv: 0xF2C230, inverter: 0xE8823C, battery: 0x5FCB6B, grid: 0x4AA3E0,
       house: 0xE8A23C, consumer: 0x90A4AE, wallbox: 0x9575CD, vehicle: 0x4DD0E1,
@@ -142,7 +145,7 @@
       liveValues = d.values || {};
       if (nodes.length === 0) {
         document.getElementById('empty').style.display = 'flex';
-        document.getElementById('empty').textContent = 'Noch keine Geräte gefunden - InverterHub/MeterHub/ChargerHub/Tessie installieren oder auf den nächsten Suchlauf warten.';
+        document.getElementById('empty').textContent = tr('No devices found yet - install InverterHub/MeterHub/ChargerHub/Tessie or wait for the next search run.');
         return;
       }
       document.getElementById('empty').style.display = 'none';
@@ -256,7 +259,7 @@
       if (!scene) { initScene(); }
       if (!d || !d.ok) {
         document.getElementById('empty').style.display = 'flex';
-        document.getElementById('empty').textContent = (d && d.error) || 'Keine Daten verfügbar.';
+        document.getElementById('empty').textContent = (d && d.error) || tr('No data available.');
         return;
       }
       if (d.values && !d.nodes) {

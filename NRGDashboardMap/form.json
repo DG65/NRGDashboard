@@ -2,57 +2,59 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Räumliche 3D-Karte des gesamten NRG-Stack-Verbunds: der Wechselrichter im Zentrum, alle Geräte-Kategorien (PV, Batterie, Netz, Hausverbrauch, Verbraucher, Wallbox, Fahrzeug) radial darum. Alle Geräte werden automatisch über die installierten Partnermodule gefunden - keine manuelle Konfiguration nötig."
+          "caption": "Spatial 3D map of the entire NRG-Stack federation: the inverter at the center, all device categories (PV, battery, grid, house consumption, consumers, wallbox, vehicle) arranged radially around it. All devices are found automatically through the installed partner modules - no manual configuration needed."
         },
         {
           "type": "Label",
-          "caption": "Kategorien mit mehreren Instanzen (z. B. zwei Netzzähler oder zwei Wallboxen) erscheinen als Sammelknoten mit den einzelnen Instanzen lokal aufgefächert - das hält die Karte übersichtlich, egal wie viele Zähler dazukommen. Alle MeterHub-Zähler/-Funktionen erscheinen dabei automatisch als eigener Knoten, auch bei mehreren Zählern derselben Kategorie."
+          "caption": "Categories with several instances (e.g. two grid meters or two wallboxes) appear as a collective node with the individual instances fanned out locally around it - this keeps the map clear no matter how many meters are added. All MeterHub meters/functions automatically appear as a node of their own, even with several meters of the same category."
         },
         {
           "type": "Label",
-          "caption": "Mit der Maus ziehen zum Drehen (mit sanftem Ausklingen), Mausrad zum Zoomen."
+          "caption": "Drag with the mouse to rotate (with a gentle ease-out), use the mouse wheel to zoom."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the saved “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with one shared login for all visitors)."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASHMAP_ResetTour($id);"
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Datenquelle",
+      "name": "PanelSource",
+      "caption": "Data source",
       "expanded": true,
       "items": [
         {
           "type": "Label",
           "name": "InverterStatus",
-          "caption": "Verbindungsstatus wird berechnet …"
+          "caption": "Connection status is being calculated …"
         },
         {
           "type": "Label",
-          "caption": "Optional - wird bei genau einer installierten InverterHub-Instanz automatisch erkannt. Nur bei mehreren Instanzen gezielt auswählen."
+          "caption": "Optional - detected automatically when exactly one InverterHub instance is installed. Only choose one here if there are several instances."
         },
         {
           "type": "SelectInstance",
           "name": "InverterInstance",
-          "caption": "InverterHub-Instanz",
+          "caption": "InverterHub instance",
           "moduleID": "{BBE2C593-1A91-426D-A714-29A9C7E87589}"
         }
       ]
     },
     {
       "type": "Button",
-      "caption": "Geräte jetzt suchen",
+      "caption": "Search devices now",
       "onClick": "NRGDASHMAP_Discover($id);"
     },
     {
@@ -62,7 +64,8 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Details je Kategorie",
+      "name": "PanelDetails",
+      "caption": "Details per category",
       "expanded": false,
       "items": [
         {
@@ -74,24 +77,25 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Darstellung",
+      "name": "PanelStyle",
+      "caption": "Appearance",
       "expanded": false,
       "items": [
         {
           "type": "SelectColor",
           "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+          "caption": "Background color (-1 = system default)"
         },
         {
           "type": "ValidationTextBox",
           "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+          "caption": "Font (empty/“system” = system font)"
         }
       ]
     },
     {
       "type": "Button",
-      "caption": "Stil zurücksetzen",
+      "caption": "Reset style",
       "onClick": "NRGDASHMAP_ResetStyle($id);"
     }
   ],
@@ -99,7 +103,7 @@
     {
       "code": 102,
       "icon": "active",
-      "caption": "Karte aktiv."
+      "caption": "Map active."
     }
   ]
 }
