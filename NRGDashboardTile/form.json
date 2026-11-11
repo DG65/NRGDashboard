@@ -2,144 +2,146 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "NRG Dashboard erkennt automatisch alle installierten NRG-Stack-Partnermodule (InverterHub, MeterHub, ChargerHub, HeishaMon, Tessie) über deren Verträge - keine manuelle Verknüpfung von Variablen-IDs nötig."
+          "caption": "NRG Dashboard automatically detects all installed NRG-Stack partner modules (InverterHub, MeterHub, ChargerHub, HeishaMon, Tessie) through their contracts - no manual linking of variable IDs needed."
         },
         {
           "type": "Label",
-          "caption": "Manuelle Datenpunkte und die Verbraucher-Liste ergänzen die automatische Suche, ersetzen sie nicht - beide Wege wirken gleichzeitig."
+          "caption": "Manual data points and the consumer list complement the automatic search, they do not replace it - both work at the same time."
         },
         {
           "type": "Label",
-          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
         },
         {
           "type": "Label",
-          "caption": "Vorführmodus (01.09.2026): eine eigene Instanz mit aktiviertem Häkchen zeigt weiterhin alle Geräte/Werte an, blendet aber jede Wallbox-Steuerung (Freigabe/Limit/Start/Stopp) komplett aus - weder das Frontend zeigt Schalter, noch nimmt der WebHook Steuerbefehle an. Gedacht für Demo-/Vorstellungs-Instanzen, die keine Auswirkung auf echte Geräte haben dürfen. Erkennt zusätzlich automatisch, wenn OCPPHub selbst im eigenen Vorführmodus ist (OHUB_IsDemoMode()) und blendet die Steuerung dann auch bei ausgeschaltetem eigenem Vorführmodus für dieses Gerät aus."
+          "caption": "Demo mode (01.09.2026): an instance of its own with this box ticked still shows all devices/values, but hides every wallbox control (enable/limit/start/stop) completely - neither does the frontend show switches, nor does the WebHook accept control commands. Intended for demo/showcase instances that must have no effect on real devices. It also detects automatically when OCPPHub itself is in its own demo mode (OHUB_IsDemoMode()) and then hides the controls for that device even when the tile's own demo mode is off."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten: Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, kachelfüllende Seite - mit allen Vertragsfeldern des Geräts (z. B. Spannung/Strom/cos φ je Phase bei Zählern, Ladezustand/Steckerstatus bei Wallboxen/Fahrzeugen), Leistungsverlauf mit Tagesnavigation und Energie-Balken der letzten 14 Tage. Rein aus den vorhandenen Verträgen erzeugt - kein zusätzlicher Konfigurationsaufwand je Gerät."
+          "caption": "✨ Details: clicking a device node opens its details as a separate, tile-filling page - with all contract fields of the device (e.g. voltage/current/cos φ per phase for meters, state of charge/plug status for wallboxes/vehicles), a power history with day navigation and energy bars for the last 14 days. Generated purely from the existing contracts - no additional configuration per device."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Archivierung selbst aktivieren, 31.08.2026): War die Leistungs-Variable eines Geräts noch nicht protokolliert, aktiviert die Detailseite die Archivierung beim ersten Aufruf des Leistungsdiagramms automatisch selbst - statt nur „keine Archivdaten“ zu melden. Der erste Aufruf zeigt noch keine Historie, ab da sammelt sich der Verlauf von selbst."
+          "caption": "✨ Detail (enabling archiving by itself, 31.08.2026): if a device's power variable was not logged yet, the detail page enables archiving itself the first time the power chart is opened - instead of just reporting “no archive data”. The first call does not show any history yet; from then on the history builds up by itself."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ausreißer-Schutz, 01.09.2026): ein einzelner defekter Archivwert eines Partnermoduls (real gefunden: 261.554.185 W nachts bei einer 9,18-kWp-Solaranlage) wird jetzt verworfen statt den Tagesbalken/das Leistungsdiagramm zu verzerren - eine generische Implausibilitätsgrenze (1 MW), kein anlagenspezifischer Wert."
+          "caption": "✨ Detail (outlier protection, 01.09.2026): a single defective archive value from a partner module (found in practice: 261,554,185 W at night on a 9.18 kWp solar system) is now discarded instead of distorting the daily bar/power chart - a generic plausibility limit (1 MW), not a system-specific value."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Preis-Vertrag für den Verbund, 31.08.2026): Andere Module können den zu jedem Zeitpunkt gültigen Strompreis über NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries() direkt bei uns abrufen - echte Tibber-Preisslots, wo verfügbar, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert. Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht nur den heutigen Tag - eine Preisermittlung reicht für den ganzen Verbund."
+          "caption": "✨ Detail (price contract for the federation, 31.08.2026): other modules can query the electricity price valid at any point in time directly from us via NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries() - real Tibber price slots where available, otherwise reconstructed from our own BDEW price history. A basis for cost evaluations over any period (day/month/year/lifetime), not just today - one price determination is enough for the whole federation."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten (Knoten-Anzeige, 28.08.2026): Batterie-Knoten zeigt den Ladestand zusätzlich als steigenden Füllstand; ein rotes Warndreieck erscheint direkt am betroffenen Knoten, sobald eine Diagnose auffällig/kritisch wird; ein gestrichelter „Geisterring“ vergleicht die aktuelle Leistung mit gestern zur gleichen Uhrzeit; der Solar-Knoten trägt einen Fortschrittsring (heutiger Ertrag vs. Tagesprognose, sofern eine PV-Prognose-Instanz vorhanden ist); der Netz-Knoten zeigt eine Strompreis-Sparkline und wechselt alle paar Sekunden zwischen Watt und Kosten pro Stunde (sofern eine Preisquelle - Tibber Grid Rewards oder automatisch der BDEW-Haushaltsdurchschnitt - vorhanden ist); der Haus-Chip trägt einen grünen Autarkiegrad-Bogen (Anteil des heutigen Verbrauchs ohne Netzbezug); die Verbindungslinien werden mit der Leistung dicker und zeigen einen kleinen Querstrich an der Position der heutigen Tagesspitze; bei installierter StromGedacht-Instanz färbt die Netzampel den Kachelhintergrund dezent ein."
+          "caption": "✨ Details (node display, 28.08.2026): the battery node additionally shows the state of charge as a rising fill level; a red warning triangle appears directly at the affected node as soon as a diagnosis becomes conspicuous/critical; a dashed “ghost ring” compares the current power with yesterday at the same time of day; the solar node carries a progress ring (today's yield vs. daily forecast, if a PV forecast instance exists); the grid node shows an electricity price sparkline and switches every few seconds between watts and cost per hour (if a price source - Tibber Grid Rewards or automatically the BDEW household average - is available); the house chip carries a green self-sufficiency arc (share of today's consumption without grid import); the connection lines get thicker with power and show a small cross mark at the position of today's daily peak; with a StromGedacht instance installed, the grid traffic light tints the tile background subtly."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheiten (Ab vielen Geräten, 28.08.2026): Ab einer größeren Anzahl an Verbraucher-Knoten wechselt der Haus-Knoten automatisch von der Kreis- in eine „Chip“-Form (Pille mit geraden Seiten), damit die einzelnen Knoten trotz vieler Geräte nicht immer weiter schrumpfen müssen."
+          "caption": "✨ Details (with many devices, 28.08.2026): from a larger number of consumer nodes on, the house node automatically switches from the circle to a “chip” shape (a pill with straight sides), so that the individual nodes do not have to keep shrinking despite many devices."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Anzeige-Einstellungen, 28.08.2026, um alle übrigen Animations-Steuerungen erweitert am 10.09.2026): Ob inaktive Knotenpunkte ausgeblendet oder nur ausgegraut werden, ob Blitzbögen/Leuchtschein an die Leistung gekoppelt sind und wie stark diese Effekte wirken, die Übergangszeit aktiv/inaktiv, das Fluss-Tempo (Leistung für Höchsttempo der laufenden Dreiecke), die automatische Vorführung sowie die Animationen beim Ebenenwechsel (je 3 Varianten für Erfolg und Blockiert plus „Zufällig“) stellt jeder Nutzer selbst im WebFront ein - Kachel über den Doppelpfeil aufziehen (öffnet die Standard-Objektansicht der Instanz mit den entsprechenden Schaltern/Reglern/Auswahllisten), statt hier in der Konsole zu suchen. So lässt sich z. B. eine gerade laufende automatische Vorführung auch direkt im WebFront stoppen."
+          "caption": "✨ Detail (display settings, 28.08.2026, extended by all remaining animation controls on 10.09.2026): whether inactive nodes are hidden or just greyed out, whether lightning arcs/glow are coupled to power and how strong these effects are, the active/inactive transition time, the flow speed (power for top speed of the running triangles), the automatic demo run and the animations on level change (3 variants each for success and blocked, plus “random”) are set by each user in the WebFront - pull the tile open with the double arrow (opens the instance's standard object view with the corresponding switches/sliders/selection lists) instead of searching for them here in the console. For example, a running automatic demo run can also be stopped directly in the WebFront."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Wallbox-Steuerung, 30.08.2026): Wird eine Wallbox (ChargerHub oder OCPPHub) von keiner anderen Instanz geregelt (z. B. EMS/Tibber/§14a), zeigt die Geräte-Detailseite direkte Schaltflächen für Ladefreigabe und Stromlimit - herstellerunabhängig über die gemeinsame Vertragsvariable. Bei OCPP-Ladepunkten kommen zusätzlich echte Lade-Start/Stopp-Befehle und ein einmaliger Tages-Override ('heute trotzdem vollladen') dazu."
+          "caption": "✨ Detail (wallbox control, 30.08.2026): if a wallbox (ChargerHub or OCPPHub) is not controlled by any other instance (e.g. EMS/Tibber/§14a), the device detail page shows direct buttons for charging enable and current limit - independent of the manufacturer through the shared contract variable. For OCPP charge points, real charge start/stop commands and a one-time daily override ('fully charge anyway today') are added."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Stromlimit-Schieberegler, 31.08.2026): Ober-/Untergrenze kommen ausschließlich aus dem Vertrag des jeweiligen Geräts (z. B. 5 A bei manchen Tesla-Wallboxen statt pauschal 6 A) - nie ein fest verdrahteter Wert. Der Regler zeigt zusätzlich den Prozentwert der maximalen Ladeleistung, ein Tick-Raster und markiert die halbe Leistung als eigenen Punkt, damit auch bei größeren Wallboxen (z. B. 32 A/22 kW) sofort erkennbar ist, wo man sich auf der Skala befindet."
+          "caption": "✨ Detail (current limit slider, 31.08.2026): upper/lower limits come exclusively from the respective device's contract (e.g. 5 A on some Tesla wallboxes instead of a flat 6 A) - never a hard-wired value. The slider also shows the percentage of the maximum charging power, a tick grid and marks half power as a point of its own, so that even with larger wallboxes (e.g. 32 A/22 kW) you can see immediately where you are on the scale."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Rückmeldung bei Wallbox-Befehlen, 31.08.2026): Jeder Klick auf Freigabe/Limit/Start/Stopp zeigt sofort einen Sendestatus an. Bei Start/Stopp wird zusätzlich nach kurzer Zeit die tatsächliche Leistung der Wallbox nachgeladen - bleibt sie bei „Laden starten“ auf 0 W, erscheint ein Hinweis, dass die Wallbox den Befehl vermutlich abgelehnt hat. Liefert das Partnermodul über das optionale Vertragsfeld „blockReasonID“ einen konkreten Ablehnungsgrund, erscheint dieser prominent direkt über den Steuer-Schaltflächen - herstellerunabhängig, kein Sonderfall je Anbieter."
+          "caption": "✨ Detail (feedback on wallbox commands, 31.08.2026): every click on enable/limit/start/stop immediately shows a sending status. For start/stop, the wallbox's actual power is additionally reloaded after a short time - if it stays at 0 W after “Start charging”, a note appears that the wallbox has probably rejected the command. If the partner module supplies a concrete rejection reason through the optional contract field “blockReasonID”, it appears prominently right above the control buttons - independent of the manufacturer, no special case per vendor."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the saved “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with one shared login for all visitors)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (EMS-Begründung, 03.09.2026): sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt, zeigt die Kachel unten ein kleines Feld mit der aktuellen Schaltentscheidung inkl. Klartext-Begründung (z. B. „Netzladen – Grid Rewards (Tibber)“) - rein informativ, ohne dass das Dashboard selbst etwas schaltet oder interpretiert."
+          "caption": "✨ Detail (EMS reasoning, 03.09.2026): if the EMS module provides the contract EMS_GetCurrentDecision(), the tile shows a small field at the bottom with the current switching decision including a plain-text reason (e.g. “Grid charging – Grid Rewards (Tibber)”) - purely informational, the dashboard itself neither switches nor interprets anything."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ladestand bei manueller Wallbox, 03.09.2026): eine manuell eingetragene Wallbox („Weitere Verbraucher“) kann zusätzlich ein „SocID“ tragen (direkt in der gespeicherten Liste, kein eigenes Formularfeld) - zeigt dann wie bei automatisch erkannten Fahrzeugen den Ladestand am Knoten."
+          "caption": "✨ Detail (state of charge on a manual wallbox, 03.09.2026): a manually entered wallbox (“More consumers”) can additionally carry a “SocID” (directly in the saved list, not a form field of its own) - it then shows the state of charge at the node, as with automatically detected vehicles."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Isolierter Demo-Modus, 03.09.2026): das Häkchen „Isolierter Demo-Modus“ (oben unter „Vorführmodus“) schaltet JEDE automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Gedacht für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten - eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern würde sonst nicht aufgehen. Auch die Strompreis-Sparkline am Netz-Knoten nutzt dort (10.09.2026) zuerst eine vorhandene echte TibberGridReward-Instanz wie jede andere Instanz auch - erst wenn weder Tibber noch die BDEW-Historie genug Slots liefern (ohne Tibber höchstens einer pro Tag, zu wenig für eine sichtbare Kurve), springt die Demo auf eine eigene, klar als Näherung markierte stündliche Tageskurve."
+          "caption": "✨ Detail (isolated demo mode, 03.09.2026): the “Isolated demo mode” box (above, under “Demo mode”) switches off EVERY automatic device detection - grid/PV/battery/house then come exclusively from the manual core fields. Intended for a pure showcase instance with invented but internally consistent values - a mix of real live measurements and invented extra consumers would not add up otherwise. The electricity price sparkline at the grid node there (10.09.2026) also uses an existing real TibberGridReward instance first, like any other instance - only when neither Tibber nor the BDEW history provides enough slots (without Tibber at most one per day, too few for a visible curve) does the demo fall back to an hourly daily curve of its own, clearly marked as an approximation."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Breite Kachel besser genutzt, 03.09.2026): die Anordnung passt sich jetzt der tatsächlichen Kachel-Breite an, statt immer in einem festen Quadrat zu bleiben - bei vielen Geräten (Chip-Form des Haus-Knotens) finden dadurch deutlich mehr davon nebeneinander Platz, ohne kleiner werden zu müssen."
+          "caption": "✨ Detail (wide tile used better, 03.09.2026): the arrangement now adapts to the actual tile width instead of always staying in a fixed square - with many devices (chip shape of the house node) considerably more of them fit side by side without having to get smaller."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Beliebige Zusatzwerte, 03.09.2026): eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher kann zusätzlich beliebig viele eigene Wertfelder tragen (JSON-Zeile, Feldname endet auf „ID“/„IDs“, z.B. „vinID“) - erscheinen automatisch in der „Aktuelle Werte“-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten."
+          "caption": "✨ Detail (arbitrary extra values, 03.09.2026): a manually entered wallbox or other consumer can additionally carry any number of value fields of its own (JSON line, field name ends in “ID”/“IDs”, e.g. “vinID”) - they appear automatically in the “Current values” table of the detail page, exactly as with automatically detected devices."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ruhigere Blitzbögen bei breiter Pille, 03.09.2026): die Blitzbögen am Haus-Knoten passen Amplitude und Feinheit jetzt dem Seitenverhältnis der Pille an - bei vielen Geräten (breite, flache Pille) wirken sie dadurch fein statt zappelig, bei kreisrunder Form unverändert."
+          "caption": "✨ Detail (calmer lightning arcs on a wide pill, 03.09.2026): the lightning arcs on the house node now adapt amplitude and fineness to the aspect ratio of the pill - with many devices (wide, flat pill) they look fine instead of jittery, and are unchanged for a circular shape."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Aufschachteln, 03.09.2026, Kurz-/Lang-Zuordnung am 09.09.2026 korrigiert): Sammelknoten - virtuelle Zähler mit Unterzählern (MeterHubVirtual-Vertrag 1.3 „members“) oder manuelle Verbraucher mit verschachteltem „Members“ - tragen ein Zähler-Badge. Kurzer Klick/Druck öffnet - wie an jedem Knoten und der Mittelpille selbst - immer die Detailseite (auch für Mitglieder ohne eigenes Gerät), mit dem gewohnten gelb aufbauenden Zeitring. Erst ein langer Druck, bei dem der Ring komplett gelb wird, wechselt die Ebene: an einem Sammelknoten färbt er sich dabei grün, der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an - mit allen Funktionen der ersten Ebene, beliebig tief. Zurück geht es ebenso per langem Druck auf die Pille selbst - ein kleines „‹“-Badge oben links auf dem Pillenrand (dieselbe Optik und Randposition wie die anderen Badges - Warn-Dreieck/Zähler-Badge/Minus-Badge) zeigt an, dass eine übergeordnete Ebene existiert, deren Name als Hover-Tooltip steht. Ein tatsächlicher Ebenenwechsel spielt dabei eine kleine Erfolgs-Animation ab (Funkenschauer, Portal-Iris - echte überlappende Lamellen um einen randnahen Drehpunkt im selben dunkel-glänzenden Metall-Look wie die Haus-/Knoten-Münze, mit Glasreflex in der Mitte, wie bei einer echten Kamerablende - Kopfnicken (der Knoten nickt um die waagerechte Achse) oder Abfluss (der Knoten wird wie in einen Wasserabfluss eingesaugt); wählbar hinter dem Doppelpfeil, inkl. „Zufällig“). Geht es in die jeweilige Richtung nicht (ein Blatt ohne Mitglieder, oder die Pille auf Ebene 1), spielt stattdessen eine der vier Blockiert-Animationen (Kopfschütteln - der echte Knoten/die echte Pille dreht sich um die vertikale Achse -, Kreiswellen - Ringe in der Farbe des Knotenrands laufen wie ein Stein im See nach außen -, Schwindel-Sternchen oder Häufchen - der echte Knoten brennt von unten nach oben ab, mit glühender Kante, Flammen und Rauch, und ein Aschehäufchen bleibt kurz übrig -, ebenfalls mit „Zufällig“ wählbar), ohne Wirkung. Lange Gruppennamen in der Mittelpille selbst bleiben dabei innerhalb des Kreises (nur gestaucht, nie gestreckt - beim Zurückwechseln erscheint „Haus“ wieder in normaler Breite). Abgezogene Mitglieder (negativer Faktor, z. B. „Hausverbrauch ohne Wallboxen“) erscheinen gestrichelt mit Minus - die Hierarchie kommt vom Anbieter (MeterHub), die Kachel legt keine eigenen Gruppen an."
+          "caption": "✨ Detail (drilling down, 03.09.2026, short/long assignment corrected on 09.09.2026): group nodes - virtual meters with sub-meters (MeterHubVirtual contract 1.3 “members”) or manual consumers with a nested “Members” - carry a meter badge. A short click/press always opens the detail page - as on every node and the center pill itself (also for members without a device of their own), with the familiar yellow time ring that fills up. Only a long press, during which the ring turns completely yellow, changes the level: on a group node it turns green, the node becomes the center pill and its members arrange themselves around it - with all functions of the first level, to any depth. Going back works the same way with a long press on the pill itself - a small “‹” badge at the top left of the pill edge (same look and edge position as the other badges - warning triangle/meter badge/minus badge) shows that a higher level exists, whose name is shown as a hover tooltip. An actual level change plays a small success animation (spark shower, portal iris - real overlapping blades around an off-center pivot in the same dark glossy metal look as the house/node coin, with a glass highlight in the middle, like a real camera aperture - head nod (the node nods around the horizontal axis) or drain (the node is sucked in like into a water drain); selectable behind the double arrow, including “random”). If it does not go in the respective direction (a leaf without members, or the pill on level 1), one of the four blocked animations plays instead (head shake - the real node/pill turns around the vertical axis -, circular waves - rings in the colour of the node edge travel outwards like a stone in a lake -, dizzy stars or little pile - the real node burns down from bottom to top, with a glowing edge, flames and smoke, and a little pile of ash remains briefly -, also selectable with “random”), without any effect. Long group names in the center pill itself stay inside the circle (only compressed, never stretched - when switching back, “House” appears in normal width again). Subtracted members (negative factor, e.g. “House consumption without wallboxes”) appear dashed with a minus - the hierarchy comes from the provider (MeterHub), the tile creates no groups of its own."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (09.09.2026): Bedienelemente sitzen bewusst im SVG-Inhalt der Kachel, nicht als eigenes HTML-Element am Kachelrand - WebFront legt in der eingebetteten Ansicht eigenes, natives Chrome sowohl über den oberen (Titelzeile) als auch den unteren Kachelrand, das dort jedes HTML-Overlay verdeckt oder unklickbar macht, egal welcher Abstand gewählt wird."
+          "caption": "✨ Detail (09.09.2026): controls deliberately sit inside the tile's SVG content, not as an HTML element of their own at the tile edge - in the embedded view, the WebFront places its own native chrome over both the top (title bar) and the bottom edge of the tile, which hides or blocks any HTML overlay there, no matter which distance is chosen."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (09.09.2026): Die automatische Vorführung blendet gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - im Isolierten Demo-Modus ohne echte InverterHub-Instanz aus dem aktuellen Solar-Wert plausibel abgeleitet, damit Interessenten auch diese Funktion in der Vorführung sehen."
+          "caption": "✨ Detail (09.09.2026): the automatic demo run occasionally also shows the health/diagnostics panel (solar yield vs. expectation, MPPT string comparison, insulation resistance) - in isolated demo mode without a real InverterHub instance, plausibly derived from the current solar value, so that interested parties also see this function in the demo."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Automatische Vorführung, 03.09.2026): das Häkchen „Automatische Vorführung“ (oben, Standard aus) lässt die Kachel bei Inaktivität von selbst Detailseiten öffnen und Sammelknoten auf- und zuschachteln - jede Berührung pausiert das für zwei Minuten. Gedacht für Vorstellungs-Instanzen, damit Interessenten alle Ansichten sehen, ohne klicken zu müssen."
+          "caption": "✨ Detail (automatic demo run, 03.09.2026): the “Automatic demo run” box (above, default off) lets the tile open detail pages and nest/unnest group nodes by itself during inactivity - any touch pauses this for two minutes. Intended for showcase instances, so that interested parties see all views without having to click."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Schaltgruppen, 03.09.2026): liefert MeterHubVirtual „switchID“/„switchStateID“ (Vertrag 1.4), zeigt die Kachel einen kleinen Schalt-Knopf am Knoten - grau/gelb/grün für aus/teilweise/an. Ein einzelnes Mitglied lässt sich direkt schalten, eine Gruppe schaltet alle schaltbaren (nur positiven) Mitglieder auf einmal - über denselben transportneutralen RequestAction-Weg wie die Wallbox-Steuerung, respektiert also auch den Vorführmodus. Seit 09.09.2026 auch auf der Detailseite verfügbar (langer Klick) - vorher nur am Knoten selbst, der während der geöffneten Detailseite verdeckt ist."
+          "caption": "✨ Detail (switch groups, 03.09.2026): if MeterHubVirtual provides “switchID”/“switchStateID” (contract 1.4), the tile shows a small switch button at the node - grey/yellow/green for off/partially/on. A single member can be switched directly, a group switches all switchable (positive only) members at once - via the same transport-neutral RequestAction route as the wallbox control, so it also respects demo mode. Since 09.09.2026 also available on the detail page (long click) - before, only at the node itself, which is covered while the detail page is open."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ebene 1 ohne Doppelzählung, 11.09.2026): steckt ein Verbraucher als positives Mitglied in einem Sammelzähler (z. B. „Licht EG“ und „Licht OG“ in „Licht Gesamt“), erscheint auf Ebene 1 nur noch der Sammelknoten - die Mitglieder sind durch Aufschachteln erreichbar, statt daneben ein zweites Mal gezählt zu werden. Das gilt auch dann, wenn die Mitglieder in MeterHub noch ihre eigene Dashboard-Zuordnung haben; MeterHub meldet je Zähler nur die eigene Ebene, die Zusammenführung erledigt die Kachel. Abgezogene Mitglieder (negativer Faktor, etwa Wallboxen in einem „Hausverbrauch ohne Wallboxen“) bleiben bewusst eigene Knoten - sie sind nicht enthalten, sondern herausgerechnet. Welche Knoten warum ausgeblendet wurden, steht im Debug-Fenster der Instanz (Kanal „Aufschachteln“)."
+          "caption": "✨ Detail (level 1 without double counting, 11.09.2026): if a consumer is a positive member of a group meter (e.g. “Light GF” and “Light UF” in “Light total”), only the group node appears on level 1 - the members can be reached by drilling down, instead of being counted a second time next to it. This also applies when the members still have their own dashboard assignment in MeterHub; MeterHub reports only each meter's own level, and the tile does the merging. Subtracted members (negative factor, e.g. wallboxes in a “House consumption without wallboxes”) deliberately remain nodes of their own - they are not included but calculated out. Which nodes were hidden and why is shown in the instance's debug window (channel “Nesting”)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Kosten oder Erlös, 12.09.2026): der Netzknoten wechselt alle paar Sekunden zwischen Leistung und Geld pro Stunde - bei Bezug als Kosten mit Minus („−1,04 €/h“, zum aktuellen Strompreis aus Tibber bzw. der BDEW-Näherung), bei Einspeisung als Erlös mit Plus („+1,06 €/h“, zur Einspeisevergütung - automatisch aus dem EMS, sonst aus dem Feld unten). Ohne eingetragene Vergütung bleibt es bei Einspeisung bei der Leistungsanzeige - Einspeisung wird nie mehr mit dem Bezugspreis als scheinbare Kosten bewertet."
+          "caption": "✨ Detail (cost or revenue, 12.09.2026): the grid node switches every few seconds between power and money per hour - when importing as cost with a minus (“−1,04 €/h”, at the current electricity price from Tibber or the BDEW approximation), when feeding in as revenue with a plus (“+1,06 €/h”, at the feed-in tariff - automatically from the EMS, otherwise from the field below). Without a feed-in tariff entered, feed-in stays with the power display - feed-in is never again valued at the import price as apparent cost."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Einspeise-Erlös, 17.10.2026): die Detailseite des Netzknotens zeigt zusätzlich „Einspeise-Erlös heute“ und „Einspeise-Erlös diesen Monat“ - eingespeiste kWh mal Einspeisevergütung (Formularfeld unten, ohne Vergütung erscheint keine Zeile). Die Monatssumme braucht einen echten Einspeise-Zähler im Archiv; gerechnet wird mit der heute eingetragenen Vergütung, negative Börsenpreis-Viertelstunden (§ 51 EEG) sind nicht abgezogen. Dazu Jahres- und 12-Monats-Erlös, ein empfohlener monatlicher Abschlag und - mit dem Formularfeld „Monatlicher Abschlag“ - der Abgleich samt Hochrechnung der Jahresabrechnung (mehr ausbezahlt oder zurückzuzahlen)."
+          "caption": "✨ Detail (feed-in revenue, 17.10.2026): the grid node's detail page additionally shows “Feed-in revenue today” and “Feed-in revenue this month” - fed-in kWh times feed-in tariff (form field below; without a tariff no row appears). The monthly total needs a real feed-in meter in the archive; it is calculated with the tariff entered today, negative spot-price quarter-hours (§ 51 EEG) are not deducted. In addition: annual and 12-month revenue, a recommended monthly advance payment and - with the form field “Monthly advance payment” - the reconciliation including a projection of the annual settlement (more paid out or to be refunded)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Kosten je Ladesitzung, 13.09.2026): die Detailseite jeder Wallbox listet die Ladesitzungen der letzten 7 Tage mit ihren tatsächlichen Kosten - je Viertelstunde mit dem dort gültigen Bezugspreis gerechnet (aus dem EMS, sonst Tibber inkl. vergangener Tage, fester Preis aus dem Feld unten oder BDEW-Näherung), nur für den Anteil, der wirklich aus dem Netz kam. Eigenstrom steht getrennt daneben: Solarstrom mit 0 € plus entgangener Einspeisevergütung, Batteriestrom mit seinem Einstandspreis aus dem EMS (ohne EMS mit 0 € und gekennzeichnet). Funktioniert auch für eine Wallbox, die nur über einen Zähler eingebunden ist."
+          "caption": "✨ Detail (cost per charging session, 13.09.2026): the detail page of every wallbox lists the charging sessions of the last 7 days with their actual costs - calculated per quarter-hour with the import price valid at that time (from the EMS, otherwise Tibber including past days, fixed price from the field below or BDEW approximation), only for the share that really came from the grid. Own electricity is shown separately beside it: solar power at 0 € plus lost feed-in tariff, battery power at its cost basis from the EMS (without EMS at 0 € and marked). Also works for a wallbox that is connected only via a meter."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ladesitzung auf einen Blick, 05.10.2026): ganz oben auf der Detailseite jeder Wallbox steht eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn, Ladeende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Die Zeiten sind standardmäßig aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten gehören zur Sitzung); liefert ChargerHub (ab Vertrag 1.7, Option „Stecker-Zeiten“ im Panel Datenpunkte) die Stecker-Wechsel, stehen dort „Angeschlossen um“ und „Abgesteckt um“ und - bei CHARX/DaheimLader - die echte Ladezeit der Wallbox. Wo das Gerät eine Ladefreigabe bzw. ein Stromlimit anbietet, gibt es einen „Volle Leistung“-Knopf: er schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum, zurück geht es mit dem Stromlimit-Regler."
+          "caption": "✨ Detail (charging session at a glance, 05.10.2026): at the very top of every wallbox's detail page there is a simple overview of the current or last charging session - status, start of charging, end of charging, charging time, energy charged, cost and current charging power. By default the times are derived from the charging power (pauses of up to 30 minutes belong to the session); if ChargerHub (from contract 1.7, option “Plug times” in the data points panel) supplies the plug changes, “Connected at” and “Unplugged at” are shown there and - for CHARX/DaheimLader - the real charging time of the wallbox. Where the device offers a charging enable or current limit, there is a “Full power” button: it switches the charging enable on and sets the current limit to the maximum; you go back with the current limit slider."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet eine Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. ChargerHub/OCPPHub) und liegt der länger als 5 Minuten zurück, zeigt der Knoten „—“ mit „keine aktuelle Messung“ und gelbem Warnzeichen - statt eine eingefrorene 0 W als „läuft nicht“ darzustellen."
+          "caption": "✨ Detail (no current measurement, 13.09.2026): if a source reports the time of its last real measurement (e.g. ChargerHub/OCPPHub) and it is more than 5 minutes ago, the node shows “—” with “no current measurement” and a yellow warning sign - instead of presenting a frozen 0 W as “not running”."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Ein Netzknoten, ein Preis, 11.09.2026): melden mehrere Quellen einen Netzzähler (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler wie Inexogy), zeigt der Energiefluss genau EINEN Netzknoten - den echtzeitfähigsten. Er trägt Strompreis, Mittelpillen-Bilanz, PV-Ersparnis und Hauslast-Schätzung aus ein und derselben Auswahl; die übrigen Netzzähler werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite als „Weiterer Netzzähler“ ausgewiesen (Abrechnung/verzögert markiert), treiben aber weder Fluss noch Bilanz noch Preis. Die Ausblende-Liste „Automatisch gefundene Geräte“ merkt sich Geräte seit dieser Version über ihre Leistungsvariable statt über den Namen - eine Umbenennung an der Quelle lässt ein abgewähltes Gerät nicht mehr wieder auftauchen; bestehende Abwahlen werden automatisch übernommen. Begründungen im Debug-Fenster, Kanal „Netzzähler“."
+          "caption": "✨ Detail (one grid node, one price, 11.09.2026): if several sources report a grid meter (e.g. a real-time meter and a billing meter that archives with a delay such as Inexogy), the energy flow shows exactly ONE grid node - the most real-time capable one. It carries the electricity price, center-pill balance, PV savings and house load estimate from one and the same selection; the other grid meters are attached to it as a fallback or secondary source and listed on its detail page as “Additional grid meter” (billing/delayed marked), but drive neither flow nor balance nor price. The hide list “Automatically found devices” remembers devices since this version by their power variable instead of by name - renaming at the source no longer makes a deselected device reappear; existing deselections are taken over automatically. Reasons in the debug window, channel “Grid meter”."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASH_ResetTour($id);"
         }
       ]
@@ -147,30 +149,30 @@
     {
       "type": "CheckBox",
       "name": "DemoMode",
-      "caption": "Vorführmodus (keine Steuerbefehle an echte Geräte, z.B. für eine Demo-/Vorstellungs-Instanz)"
+      "caption": "Demo mode (no control commands to real devices, e.g. for a demo/showcase instance)"
     },
     {
       "type": "CheckBox",
       "name": "DemoIsolated",
-      "caption": "Isolierter Demo-Modus: keine echten Geräte erkennen, nur die manuell eingetragenen Kern-/Verbraucher-Felder verwenden (für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich stimmigen Werten)"
+      "caption": "Isolated demo mode: do not detect real devices, use only the manually entered core/consumer fields (for a pure showcase instance with invented but consistent values)"
     },
     {
       "type": "Label",
-      "caption": "Automatische Vorführung: jetzt hinter dem Doppelpfeil im WebFront einstellbar (siehe Feinheit weiter unten), keine Konsolen-Eigenschaft mehr."
+      "caption": "Automatic demo run: can now be set behind the double arrow in the WebFront (see the detail further below), no longer a console property."
     },
     {
       "type": "Button",
-      "caption": "Geräte jetzt suchen",
+      "caption": "Search devices now",
       "onClick": "NRGDASH_Discover($id);"
     },
     {
       "type": "Button",
-      "caption": "Archivierung der Geräteleistungen aktivieren",
+      "caption": "Enable archiving of device power values",
       "onClick": "echo NRGDASH_EnableArchiving($id);"
     },
     {
       "type": "Label",
-      "caption": "Die Diagramme der Detailseiten brauchen archivierte Leistungsvariablen. Das Archiv schaltest nur du ein: mit diesem Knopf für alle gefundenen Geräte auf einmal, oder einzeln in der Archiv-Instanz. Die Kachel selbst schaltet nie etwas ein."
+      "caption": "The charts on the detail pages need archived power variables. Only you switch the archive on: with this button for all found devices at once, or one by one in the archive instance. The tile itself never switches anything on."
     },
     {
       "type": "Label",
@@ -179,62 +181,63 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Automatisch gefundene Geräte",
+      "name": "PanelDevices",
+      "caption": "Automatically found devices",
       "expanded": true,
       "items": [
         {
           "type": "Label",
-          "caption": "Alle über NRG-Stack-Partnermodule gefundenen Geräte. Einzelne Geräte lassen sich hier abwählen, ohne sie neu einzutragen - z. B. wenn ein doppelt erkanntes oder nicht gewünschtes Gerät nicht in der Kachel erscheinen soll. Bleibt nach dem nächsten „Geräte jetzt suchen“ erhalten, solange Quelle/Rolle/Bezeichnung gleich bleiben."
+          "caption": "All devices found through NRG-Stack partner modules. Individual devices can be deselected here without re-entering them - e.g. if a device that was detected twice or is not wanted should not appear in the tile. Stays in place after the next “Search devices now” as long as source/role/name remain the same."
         },
         {
           "type": "List",
           "name": "DeviceVisibility",
-          "caption": "Geräte",
+          "caption": "Devices",
           "rowCount": 8,
           "add": false,
           "delete": false,
           "loadValuesFromConfiguration": false,
           "columns": [
             {
-              "caption": "Anzeigen",
+              "caption": "Show",
               "name": "Enabled",
               "width": "90px",
               "add": true,
               "edit": { "type": "CheckBox" }
             },
             {
-              "caption": "Variablen-ID",
+              "caption": "Variable ID",
               "name": "ID",
               "width": "110px",
               "add": 0
             },
             {
-              "caption": "Instanz",
+              "caption": "Instance",
               "name": "Instanz",
               "width": "220px",
               "add": ""
             },
             {
-              "caption": "Bezeichnung (leer = Vorgabe)",
+              "caption": "Name (empty = default)",
               "name": "Name",
               "width": "220px",
               "add": "",
               "edit": { "type": "ValidationTextBox" }
             },
             {
-              "caption": "Rolle",
+              "caption": "Role",
               "name": "Rolle",
               "width": "130px",
               "add": ""
             },
             {
-              "caption": "Quelle",
+              "caption": "Source",
               "name": "Quelle",
               "width": "auto",
               "add": ""
             },
             {
-              "caption": "Key",
+              "caption": "Key (internal)",
               "name": "Key",
               "width": "0px",
               "add": "",
@@ -247,45 +250,47 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Manuelle Datenpunkte (optional, ohne installiertes Partnermodul)",
+      "name": "PanelManual",
+      "caption": "Manual data points (optional, without an installed partner module)",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn kein NRG-Stack-Partnermodul (InverterHub, MeterHub, ChargerHub, HeishaMon) installiert ist oder ein Wert von dort fehlt. Ergänzt die automatische Suche, ersetzt sie nicht - beide wirken gleichzeitig. Unter jedem Feld steht der aktuelle Wert mit Vorzeichen und wie das Dashboard ihn deutet (nach dem Speichern aktualisiert). Stimmt die Richtung nicht, den passenden Schalter setzen."
+          "caption": "Only needed if no NRG-Stack partner module (InverterHub, MeterHub, ChargerHub, HeishaMon) is installed or a value from there is missing. Complements the automatic search, does not replace it - both work at the same time. Below each field you see the current value with its sign and how the dashboard interprets it (updated after saving). If the direction is wrong, set the matching switch."
         },
-        { "type": "SelectVariable", "name": "ManualPvID", "caption": "Solar-Leistung" },
+        { "type": "SelectVariable", "name": "ManualPvID", "caption": "Solar power" },
         { "type": "Label", "name": "ManualPvLive", "caption": "" },
-        { "type": "SelectVariable", "name": "ManualGridID", "caption": "Netz-/Zählerleistung (+ Einspeisung / − Bezug)" },
-        { "type": "CheckBox", "name": "ManualGridInvert", "caption": "Netz-Leistung invertieren" },
+        { "type": "SelectVariable", "name": "ManualGridID", "caption": "Grid/meter power (+ feed-in / − import)" },
+        { "type": "CheckBox", "name": "ManualGridInvert", "caption": "Invert grid power" },
         { "type": "Label", "name": "ManualGridLive", "caption": "" },
-        { "type": "SelectVariable", "name": "ManualBatID", "caption": "Batterie-Leistung (+ Entladen / − Laden)" },
-        { "type": "CheckBox", "name": "ManualBatInvert", "caption": "Batterie-Leistung invertieren" },
+        { "type": "SelectVariable", "name": "ManualBatID", "caption": "Battery power (+ discharging / − charging)" },
+        { "type": "CheckBox", "name": "ManualBatInvert", "caption": "Invert battery power" },
         { "type": "Label", "name": "ManualBatLive", "caption": "" },
-        { "type": "SelectVariable", "name": "ManualSocID", "caption": "Batterie-Ladestand (SOC, %)" },
-        { "type": "SelectVariable", "name": "ManualHouseID", "caption": "Echter Hauslastzähler (optional, ersetzt die berechnete Näherung)" },
+        { "type": "SelectVariable", "name": "ManualSocID", "caption": "Battery state of charge (SOC, %)" },
+        { "type": "SelectVariable", "name": "ManualHouseID", "caption": "Real house load meter (optional, replaces the calculated approximation)" },
         { "type": "Label", "name": "ManualHouseCheck", "caption": "" }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Weitere Verbraucher (optional)",
+      "name": "PanelConsumers",
+      "caption": "More consumers (optional)",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Beliebig viele zusätzliche Verbraucher, die als eigene Kreise dargestellt werden - unabhängig davon, ob sie über ein Hub-Modul erkannt wurden. Nicht jeder Haushalt hat dieselben Geräte; die Art bestimmt das Icon, die Bezeichnung den Text unter dem Kreis (leer = Vorgabe der Art). Liefert die Leistungs-Variable Kilowatt statt Watt (z. B. manche Wallbox-Register), bei „Einheit“ Kilowatt wählen - Vorgabe Watt entspricht dem bisherigen Verhalten. Die letzten drei Spalten gelten nur für die Art „Wallbox“ und dürfen sonst leer bleiben - sie beschreiben, woran die Wallbox erkennt, dass ein Fahrzeug eingesteckt ist."
+          "caption": "Any number of additional consumers, shown as circles of their own - regardless of whether they were detected through a hub module. Not every household has the same devices; the type determines the icon, the name the text below the circle (empty = default of the type). If the power variable delivers kilowatts instead of watts (e.g. some wallbox registers), choose kilowatt under “Unit” - the default watt corresponds to the previous behaviour. The last three columns only apply to the type “Wallbox” and may otherwise stay empty - they describe how the wallbox recognizes that a vehicle is plugged in."
         },
         {
           "type": "List",
           "name": "Consumers",
-          "caption": "Verbraucher",
+          "caption": "Consumers",
           "rowCount": 6,
           "add": true,
           "delete": true,
           "columns": [
             {
-              "caption": "Art",
+              "caption": "Type",
               "name": "Type",
               "width": "200px",
               "add": "wallbox",
@@ -293,45 +298,45 @@
                 "type": "Select",
                 "options": [
                   { "caption": "Wallbox",             "value": "wallbox" },
-                  { "caption": "Wärmepumpe",          "value": "heatpump" },
-                  { "caption": "Klimaanlage",         "value": "ac" },
-                  { "caption": "Pool-Wärmepumpe",     "value": "poolheat" },
-                  { "caption": "Pool-Pumpe",          "value": "poolpump" },
+                  { "caption": "Heat pump",          "value": "heatpump" },
+                  { "caption": "Air conditioning",         "value": "ac" },
+                  { "caption": "Pool heat pump",     "value": "poolheat" },
+                  { "caption": "Pool pump",          "value": "poolpump" },
                   { "caption": "Sauna",               "value": "sauna" },
-                  { "caption": "Warmwasser",          "value": "boiler" },
-                  { "caption": "Trockner",            "value": "dryer" },
-                  { "caption": "Waschmaschine",       "value": "washer" },
-                  { "caption": "Spülmaschine",        "value": "dishwasher" },
-                  { "caption": "Backofen",            "value": "oven" },
-                  { "caption": "Herd",                "value": "stove" },
-                  { "caption": "Kühl-/Gefriergerät",  "value": "fridge" },
-                  { "caption": "Küche",               "value": "kitchen" },
-                  { "caption": "Heizung",             "value": "heater" },
-                  { "caption": "Lüftung",             "value": "vent" },
-                  { "caption": "Beleuchtung",         "value": "light" },
-                  { "caption": "Server / Netzwerk",   "value": "it" },
-                  { "caption": "Werkstatt",           "value": "workshop" },
+                  { "caption": "Hot water",          "value": "boiler" },
+                  { "caption": "Tumble dryer",            "value": "dryer" },
+                  { "caption": "Washing machine",       "value": "washer" },
+                  { "caption": "Dishwasher",        "value": "dishwasher" },
+                  { "caption": "Oven",            "value": "oven" },
+                  { "caption": "Stove",                "value": "stove" },
+                  { "caption": "Fridge/freezer",  "value": "fridge" },
+                  { "caption": "Kitchen",               "value": "kitchen" },
+                  { "caption": "Heating",             "value": "heater" },
+                  { "caption": "Ventilation",             "value": "vent" },
+                  { "caption": "Lighting",         "value": "light" },
+                  { "caption": "Server / network",   "value": "it" },
+                  { "caption": "Workshop",           "value": "workshop" },
                   { "caption": "Garage",              "value": "garage" },
-                  { "caption": "Sonstiger Verbraucher", "value": "other" }
+                  { "caption": "Other consumer", "value": "other" }
                 ]
               }
             },
             {
-              "caption": "Bezeichnung (leer = Vorgabe der Art)",
+              "caption": "Name (empty = default of the type)",
               "name": "Name",
               "width": "220px",
               "add": "",
               "edit": { "type": "ValidationTextBox" }
             },
             {
-              "caption": "Leistungs-Variable",
+              "caption": "Power variable",
               "name": "VariableID",
               "width": "240px",
               "add": 0,
               "edit": { "type": "SelectVariable" }
             },
             {
-              "caption": "Einheit",
+              "caption": "Unit",
               "name": "Unit",
               "width": "110px",
               "add": "W",
@@ -344,28 +349,28 @@
               }
             },
             {
-              "caption": "Nur Wallbox: Verbunden-Variable",
+              "caption": "Wallbox only: connected variable",
               "name": "PlugID",
               "width": "240px",
               "add": 0,
               "edit": { "type": "SelectVariable" }
             },
             {
-              "caption": "Bedingung",
+              "caption": "Condition",
               "name": "PlugOp",
               "width": "230px",
               "add": "truthy",
               "edit": {
                 "type": "Select",
                 "options": [
-                  { "caption": "ist gesetzt (wahr / ≠ 0 / nicht leer)", "value": "truthy" },
-                  { "caption": "gleich Wert",   "value": "eq" },
-                  { "caption": "ungleich Wert", "value": "ne" }
+                  { "caption": "is set (true / ≠ 0 / not empty)", "value": "truthy" },
+                  { "caption": "equals value",   "value": "eq" },
+                  { "caption": "does not equal value", "value": "ne" }
                 ]
               }
             },
             {
-              "caption": "Vergleichswert",
+              "caption": "Comparison value",
               "name": "PlugVal",
               "width": "auto",
               "add": "",
@@ -377,67 +382,68 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Fahrzeuge (optional, für Wallbox-Anzeige)",
+      "name": "PanelVehicles",
+      "caption": "Vehicles (optional, for the wallbox display)",
       "expanded": false,
       "items": [
         {
           "type": "Label",
           "name": "TessieStatus",
-          "caption": "Verbindungsstatus wird berechnet …"
+          "caption": "Connection status is being calculated …"
         },
         {
           "type": "Label",
-          "caption": "Tesla-Fahrzeuge über Tessie werden automatisch erkannt - hier nur für andere Fabrikate ohne Tessie nötig. Bei eingesteckter Wallbox wird automatisch das gerade angesteckte Fahrzeug erkannt (über die zeitliche Nähe der beiden „Verbunden“-Meldungen) und dessen Name sowie Ladestand an der Wallbox angezeigt - keine feste Wallbox-Fahrzeug-Zuordnung nötig, auch bei mehreren Wallboxen/Fahrzeugen."
+          "caption": "Tesla vehicles via Tessie are detected automatically - only needed here for other makes without Tessie. With a wallbox plugged in, the vehicle that has just been plugged in is detected automatically (from the temporal proximity of the two “connected” reports) and its name and state of charge are shown at the wallbox - no fixed wallbox-vehicle assignment needed, even with several wallboxes/vehicles."
         },
         {
           "type": "List",
           "name": "Vehicles",
-          "caption": "Fahrzeuge",
+          "caption": "Vehicles",
           "rowCount": 4,
           "add": true,
           "delete": true,
           "columns": [
             {
-              "caption": "Bezeichnung",
+              "caption": "Name",
               "name": "Name",
               "width": "180px",
               "add": "",
               "edit": { "type": "ValidationTextBox" }
             },
             {
-              "caption": "Ladestand-Variable (%)",
+              "caption": "State-of-charge variable (%)",
               "name": "SocID",
               "width": "240px",
               "add": 0,
               "edit": { "type": "SelectVariable" }
             },
             {
-              "caption": "Verbunden-Variable",
+              "caption": "Connected variable",
               "name": "PlugID",
               "width": "240px",
               "add": 0,
               "edit": { "type": "SelectVariable" }
             },
             {
-              "caption": "Bedingung",
+              "caption": "Condition",
               "name": "PlugOp",
               "width": "230px",
               "add": "truthy",
               "edit": {
                 "type": "Select",
                 "options": [
-                  { "caption": "ist gesetzt (wahr / ≠ 0 / nicht leer)", "value": "truthy" },
-                  { "caption": "gleich Wert",           "value": "eq" },
-                  { "caption": "ungleich Wert",         "value": "ne" },
-                  { "caption": "größer Wert",           "value": "gt" },
-                  { "caption": "größer/gleich Wert",    "value": "ge" },
-                  { "caption": "kleiner Wert",          "value": "lt" },
-                  { "caption": "kleiner/gleich Wert",   "value": "le" }
+                  { "caption": "is set (true / ≠ 0 / not empty)", "value": "truthy" },
+                  { "caption": "equals value",           "value": "eq" },
+                  { "caption": "does not equal value",         "value": "ne" },
+                  { "caption": "greater than value",           "value": "gt" },
+                  { "caption": "greater than or equal to value",    "value": "ge" },
+                  { "caption": "less than value",          "value": "lt" },
+                  { "caption": "less than or equal to value",   "value": "le" }
                 ]
               }
             },
             {
-              "caption": "Vergleichswert",
+              "caption": "Comparison value",
               "name": "PlugVal",
               "width": "auto",
               "add": "",
@@ -448,7 +454,7 @@
         {
           "type": "NumberSpinner",
           "name": "MatchToleranceSec",
-          "caption": "Zeitfenster für die Zuordnung (0 = ohne Begrenzung)",
+          "caption": "Time window for the assignment (0 = unlimited)",
           "minimum": 0,
           "maximum": 86400,
           "suffix": "s"
@@ -457,42 +463,43 @@
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Gesundheit / Diagnose (optional)",
+      "name": "PanelHealth",
+      "caption": "Health / diagnostics (optional)",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Nur bei genau einer installierten InverterHub-Instanz aktiv (sonst wäre die Zuordnung nicht eindeutig). MPPT-Strangvergleich läuft automatisch. Für „Ertrag vs. Prognose“ zusätzlich Einstrahlung + PV-Prognose-Instanz eintragen. Für den Isolationswiderstand-Hinweis zusätzlich eine Warnschwelle setzen - ohne Schwelle wird der Rohwert angezeigt, aber nicht bewertet."
+          "caption": "Only active with exactly one installed InverterHub instance (otherwise the assignment would not be unambiguous). The MPPT string comparison runs automatically. For “Yield vs. forecast”, additionally enter irradiance + a PV forecast instance. For the insulation resistance note, additionally set a warning threshold - without a threshold the raw value is shown but not rated."
         },
         {
           "type": "Label",
           "name": "HealthSourcesStatus",
-          "caption": "Verbindungsstatus wird berechnet …"
+          "caption": "Connection status is being calculated …"
         },
-        { "type": "SelectVariable", "name": "IrradianceID", "caption": "Einstrahlungs-Variable (W/m², optional - sonst automatisch von der NRG-Dashboard-Monitor-Kachel übernommen, sofern dort eingetragen)" },
+        { "type": "SelectVariable", "name": "IrradianceID", "caption": "Irradiance variable (W/m², optional - otherwise taken over automatically from the NRG Dashboard monitor tile, if entered there)" },
         {
           "type": "SelectInstance",
           "name": "PvfInstance",
-          "caption": "PV-Prognose-Instanz (optional, sonst automatisch bei genau einer Instanz)",
+          "caption": "PV forecast instance (optional, otherwise automatic if there is exactly one instance)",
           "moduleID": "{257DD4E8-9705-462E-89FC-56D0A1038353}"
         },
         {
           "type": "NumberSpinner",
           "name": "RisoWarnKOhm",
-          "caption": "Warnschwelle Isolationswiderstand (kΩ, 0 = keine Bewertung)",
+          "caption": "Insulation resistance warning threshold (kΩ, 0 = no rating)",
           "minimum": 0,
           "suffix": " kΩ"
         },
         {
           "type": "SelectInstance",
           "name": "TibberInstance",
-          "caption": "Tibber Grid Rewards-Instanz für Strompreis-Kennzahlen auf den Geräte-Detailseiten (optional, sonst automatisch bei genau einer Instanz)",
+          "caption": "Tibber Grid Rewards instance for electricity price figures on the device detail pages (optional, otherwise automatic if there is exactly one instance)",
           "moduleID": "{E92F62F4-88A6-4C6E-9F0D-E76C3B1C9A01}"
         },
         {
           "type": "NumberSpinner",
           "name": "FeedInTariffCt",
-          "caption": "Einspeisevergütung für die Erlös-Anzeige am Netzknoten - nur nötig ohne EMS, dessen Einspeisevergütung automatisch Vorrang hat (0 = keine Erlös-Anzeige)",
+          "caption": "Feed-in tariff for the revenue display at the grid node - only needed without EMS, whose feed-in tariff automatically takes precedence (0 = no revenue display)",
           "minimum": 0,
           "digits": 2,
           "suffix": " ct/kWh"
@@ -500,40 +507,40 @@
         {
           "type": "NumberSpinner",
           "name": "FeedInAbschlagEUR",
-          "caption": "Monatlicher Abschlag, den der Netzbetreiber dir für die Einspeisung zahlt - für den Abgleich auf der Netz-Detailseite (Differenz zum tatsächlichen Erlös, Hochrechnung der Jahresabrechnung); 0 = kein Abgleich",
+          "caption": "Monthly advance payment that the grid operator pays you for feed-in - for the reconciliation on the grid detail page (difference to the actual revenue, projection of the annual settlement); 0 = no reconciliation",
           "minimum": 0,
           "digits": 2,
-          "suffix": " €/Monat"
+          "suffix": " €/month"
         },
         {
           "type": "NumberSpinner",
           "name": "PurchasePriceCt",
-          "caption": "Fester Bezugspreis für die Kosten je Ladesitzung (brutto) - nur ohne EMS und bei festem Stromtarif nötig (mit EMS kommt der Bezugspreis automatisch von dort); 0 = automatisch (Tibber, sonst BDEW-Haushaltsdurchschnitt als Näherung)",
+          "caption": "Fixed import price for the cost per charging session (gross) - only needed without EMS and with a fixed electricity tariff (with EMS the import price comes from there automatically); 0 = automatic (Tibber, otherwise BDEW household average as an approximation)",
           "minimum": 0,
           "digits": 2,
           "suffix": " ct/kWh"
         },
         {
           "type": "Label",
-          "caption": "Eigener Bezugspreis (brutto, ct/kWh) mit Gültig-ab-Datum: Hast du einen Festpreis oder einen Tarif, der vom BDEW-Durchschnitt abweicht, trage ihn hier ein. Bei einer Preisänderung eine neue Zeile mit dem Datum, ab dem der neue Preis gilt, so behalten vergangene Zeiträume ihren alten Preis. Gilt vor EMS, Tibber und BDEW; leer = bisheriges Verhalten. Es wird ein einziger Arbeitspreis angenommen (kein Tag-/Nachttarif)."
+          "caption": "Own import price (gross, ct/kWh) with a valid-from date: if you have a fixed price or a tariff that differs from the BDEW average, enter it here. When the price changes, add a new row with the date from which the new price applies, so that past periods keep their old price. Takes precedence over EMS, Tibber and BDEW; empty = previous behaviour. A single energy price is assumed (no day/night tariff)."
         },
         {
           "type": "List",
           "name": "PurchasePriceList",
-          "caption": "Eigener Bezugspreis",
+          "caption": "Own import price",
           "rowCount": 4,
           "add": true,
           "delete": true,
           "columns": [
             {
-              "caption": "Gültig ab (JJJJ-MM-TT)",
+              "caption": "Valid from (YYYY-MM-DD)",
               "name": "ValidFrom",
               "width": "200px",
               "add": "",
               "edit": { "type": "ValidationTextBox", "validate": "^$|^\\d{4}-\\d{2}-\\d{2}$" }
             },
             {
-              "caption": "Preis (ct/kWh, brutto)",
+              "caption": "Price (ct/kWh, gross)",
               "name": "PriceCt",
               "width": "200px",
               "add": 0,
@@ -543,38 +550,39 @@
         },
         {
           "type": "Label",
-          "caption": "Ohne Tibber Grid Rewards-Instanz greift automatisch der bundesweite BDEW-Haushaltsstrompreis als grober Richtwert (vierteljährlich selbstständig von bdew.de abgerufen, keine weitere Einrichtung nötig) - nur ganz ohne beide Quellen fehlen die Kosten-/Strompreis-Kennzahlen auf den Detailseiten."
+          "caption": "Without a Tibber Grid Rewards instance, the nationwide BDEW household electricity price automatically applies as a rough guide (retrieved by itself from bdew.de every quarter, no further setup needed) - only with neither source at all are the cost/electricity price figures on the detail pages missing."
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Darstellung",
+      "name": "PanelStyle",
+      "caption": "Appearance",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Die Kreisfarben sind fest an die jeweilige Größe gebunden (Solar = Gelb, Netz = Grün/Rot je nach Richtung, Haus = Grün-Rot-Verlauf je nach Netzbezugsanteil, Batterie = Blau) und nicht anpassbar."
+          "caption": "The circle colours are firmly tied to the respective quantity (solar = yellow, grid = green/red depending on direction, house = green-red gradient depending on the share of grid import, battery = blue) and cannot be changed."
         },
         {
           "type": "SelectColor",
           "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+          "caption": "Background colour (-1 = system default)"
         },
         {
           "type": "ValidationTextBox",
           "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+          "caption": "Font (empty/“system” = system font)"
         },
         {
           "type": "Label",
-          "caption": "Alle Steuermöglichkeiten für die Animation (inaktive Knotenpunkte ausblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität, Übergangszeit aktiv/inaktiv, Fluss-Tempo, automatische Vorführung) stellt jeder Nutzer selbst im WebFront ein — Kachel über den Doppelpfeil aufziehen, statt hier in der Konsole zu suchen."
+          "caption": "All controls for the animation (hide inactive nodes, coupling of lightning/glow to power, effect intensity, active/inactive transition time, flow speed, automatic demo run) are set by each user in the WebFront themselves — pull the tile open with the double arrow instead of searching for them here in the console."
         }
       ]
     },
     {
       "type": "Button",
-      "caption": "Stil zurücksetzen",
+      "caption": "Reset style",
       "onClick": "NRGDASH_ResetStyle($id);"
     }
   ]

@@ -53,8 +53,11 @@ class NRGDashboardTile extends IPSModule
     use NRGDashFormStatus;
     use NRGDashFormLayout;
 
-    /** Wählbare Fachpanels für „Formular: Aufbau“: Beginn der Panel-Caption => stabiler Schlüssel (SUITE.md 3a). */
-    private const FORM_LAYOUT_PANELS = ['Automatisch gefundene Geräte' => 'devices', 'Manuelle Datenpunkte' => 'manual', 'Weitere Verbraucher' => 'consumers', 'Fahrzeuge' => 'vehicles', 'Gesundheit / Diagnose' => 'health', 'Darstellung' => 'style'];
+    /**
+     * Wählbare Fachpanels für „Formular: Aufbau“: Panel-name aus form.json => stabiler Schlüssel (SUITE.md 3a).
+     * Gefunden werden die Panels über ihren Namen, nie über die (übersetzte) Caption; die Schlüssel stehen so in der Property FormLayout.
+     */
+    private const FORM_LAYOUT_PANELS = ['PanelDevices' => 'devices', 'PanelManual' => 'manual', 'PanelConsumers' => 'consumers', 'PanelVehicles' => 'vehicles', 'PanelHealth' => 'health', 'PanelStyle' => 'style'];
 
     // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
     // Verteilung -> Verbraucher), siehe Phase 2. functionCategory() ordnet
@@ -95,104 +98,104 @@ class NRGDashboardTile extends IPSModule
     // Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.10.6' => [
-            '⚡ Neu (Forum-Wunsch, danke!): Sind Tibber Grid Rewards an der Wallbox am Werk, zeigt der Wallbox-Knoten im Energiefluss einen kleinen grünen Blitz-Kreis oben links, auf der Detailseite steht unter „Regelung“ die Zeile „Grid Rewards“ mit Fahrzeug, Grund und Beginn. Voraussetzung: ein Tibber-Grid-Rewards-Modul. Die Zuordnung ist vorsichtig: zuerst Wallboxen, deren Regler Tibber ist, sonst die eine gerade ladende; bei mehreren Kandidaten gibt es keinen Hinweis.'
+            '⚡ New (forum request, thank you!): if Tibber Grid Rewards are at work on the wallbox, the wallbox node in the energy flow shows a small green lightning circle at the top left, and the detail page shows the line “Grid Rewards” under “Control” with vehicle, reason and start. Requirement: a Tibber Grid Rewards module. The assignment is cautious: first wallboxes whose controller is Tibber, otherwise the one that is currently charging; with several candidates there is no note.'
         ],
         '0.10.5' => [
-            '🪟 Neu: „Formular: Aufbau“ ganz unten im Formular - je Bereich festlegen, ob er beim Öffnen aufgeklappt, zugeklappt oder ausgeblendet ist, und an welcher Position er steht (gilt nach „Übernehmen“ beim nächsten Öffnen; ausgeblendete Bereiche arbeiten weiter).'
+            '🪟 New: “Form: layout” at the very bottom of the form - choose for each section whether it is expanded, collapsed or hidden when opened, and at which position it appears (applies after “Apply changes” the next time the form is opened; hidden sections keep working).'
         ],
         '0.9.33' => [
-        'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-        '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-        '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-        '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was NRGDashboard tut und welchen Nutzen es stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-        'Fix: Netzzähler aus MeterHub wurden mit vertauschtem Vorzeichen gelesen - MeterHub zählt "+ = Bezug", der Energiefluss "+ = Einspeisung". Bezug und Einspeisung (samt Kosten/Erlös, Tagesbilanz und Vortageswert) erschienen dadurch vertauscht, sofern der Zähler nicht zufällig per "Leistung invertieren" gegen die MeterHub-Konvention gedreht war. Jetzt rechnet die Kachel MeterHub-Netzwerte um wie das PV-Monitoring; eine InverterHub-Ersatzquelle behält ihr eigenes Vorzeichen. Wer "Leistung invertieren" am MeterHub-Netzzähler nur als Ausgleich gesetzt hatte, muss es jetzt abschalten.',
-        'Neu: der Netzknoten unterscheidet in der Kostenanzeige jetzt Bezug und Einspeisung - Bezug erscheint als Kosten ("−x,xx €/h") zum aktuellen Strompreis, Einspeisung als Erlös ("+x,xx €/h") zur Einspeisevergütung. Die Vergütung wird im Formular unter "Einspeisevergütung" in ct/kWh eingetragen; ohne Eintrag zeigt der Knoten bei Einspeisung einfach die Leistung (bisher wurde Einspeisung fälschlich mit dem Bezugspreis als Kosten angezeigt).',
-        'Fix: gab es mehr als eine Tibber-Grid-Rewards-Instanz (z. B. zusätzlich eine abgeschaltete Demo-Instanz), fand die Kachel Tibber nicht automatisch - der Netzknoten zeigte dann keinen aktuellen Strompreis und wechselte nie auf die Kostenanzeige. Jetzt genügt es, dass genau eine davon aktiv ist.',
-        'Fix: ein Sammelzähler (z. B. "Heizung / Klima" aus Wärmepumpe + Klimaanlage) konnte als "doppelte Messung" unter einen einzelnen Zähler derselben Funktion gefaltet werden und verschwand - besonders nachts, wenn beide nahe 0 W lagen. Sammelzähler nehmen an der Doppelmessungs-Erkennung jetzt grundsätzlich nicht mehr teil; eine Summe ist nie dieselbe Messung wie ein einzelner Zähler.',
-        'Fix: auf Tablets markierte der lange Druck (Auf-/Zuschachteln) den Leistungswert als Text bzw. öffnete Lupe oder Kontextmenü - Textauswahl und Kontextmenü sind in der Kachel jetzt unterbunden.',
-        'Neu: Zuschachteln ist jetzt sichtbar das Gegenstück zum Aufschachteln - dieselbe Halte-Geste auf der Mittelpille, aber der Füllring wächst gegen den Uhrzeigersinn statt im Uhrzeigersinn. Auf Ebene 1 (kein Zurück möglich) bleibt er wie bisher.',
-        'Fix: ein Netz-Sammelzähler (z. B. "Solarpark 1 + 2" über zwei Netzverknüpfungspunkte) wurde als Ersatzquelle unter einen seiner eigenen Netzanschlusspunkte gehängt statt selbst Netzknoten zu werden - die Netzknoten-Zusammenführung lief vor der Gruppenauflösung. Jetzt werden Sammelzähler zuerst aufgelöst und ihre Mitglieder ausgeblendet; erst danach werden die verbleibenden Netzzähler zu einem Netzknoten zusammengeführt.',
-        'Fix: Wechselrichter (PV), die in einem PV-Sammelzähler stecken (z. B. 24 Wechselrichter in "Trafo 4.1"), standen weiterhin einzeln auf Ebene 1 neben ihrem Sammelzähler - Kernknoten (PV/Batterie/Netz/Haus) waren von der Ebene-1-Bereinigung pauschal ausgenommen. Jetzt werden sie ausgeblendet, sobald der Sammelzähler dieselbe Funktion trägt; ein Netz- oder PV-Knoten in einem Verbraucher-Sammelzähler bleibt wie bisher stehen.',
-        'Fix: Knoten waren deutlich über ihren sichtbaren Kreis hinaus klickbar - der (auch unsichtbare) Leuchtschein um jeden Knoten nahm Klicks an und überdeckte Schalter und Knoten der Nachbarn (z. B. öffnete der Schalter von "Nebenraum" die Detailseite von "Schuppen"). Klickbar ist jetzt nur noch der sichtbare Kreis samt Badges.',
-        'Neu: Knoten mit Schalter (z. B. Leuchten über MeterHub-Schaltgruppen) gelten als aktiv, wenn der Schalter an ist - nicht mehr erst ab 20 W. Ohne Schalter liegt die Schwelle jetzt bei 5 W statt 20 W, sodass auch sparsame LED-Beleuchtung aktiv erscheint, der Eigenverbrauch der Aktoren (~1 W) aber nicht. Eine aufgeschachtelte Sammelpille ist aktiv, sobald eines ihrer Mitglieder aktiv ist.',
-        'Fix: eine breite Mittelpille (ab 9 Knoten) schrumpfte im Inaktiv-Zustand gleichmäßig wie ein Kreisknoten - an den Halbkreisen dadurch um ein Vielfaches stärker als oben/unten. Der Abstand zu den Speichen und Knoten war seitlich sichtbar größer, und die Speichen zeigten nicht mehr auf die Kappenmittelpunkte. Die Pille behält jetzt ihre Größe und wird inaktiv nur abgedunkelt.',
-        'Fix: beim Aufschachteln trägt die Mittelpille jetzt das Symbol des Sammelknotens (z. B. Glühbirne bei "Licht EG") statt immer des Hauses; zurück auf Ebene 1 erscheint wieder das Haus.',
-        'Neu: Mitglieder ohne eigenen Namen in MeterHub heißen jetzt wie die Instanz, unter der ihre Leistungsvariable liegt (z. B. der Name des Aktors), statt "Mitglied 1, 2, …".',
-        'Fix: ein Sammelknoten ab Ebene 2 (z. B. "Licht EG" innerhalb von "Licht Gesamt") zeigte das "›"-Badge statt der Anzahl seiner Unterzähler - die Mitgliederzahl wird jetzt auf jeder Ebene mitgeliefert, das "›" bleibt nur für Sammelknoten mit tatsächlich unbekannter Anzahl.',
-        'Fix: es gibt im Energiefluss jetzt genau EINEN Netzknoten. Standen mehrere Netzzähler nebeneinander (z. B. ein Echtzeit-Zähler und ein verzögert archivierender Abrechnungszähler), hing der Strompreis am ersten gefundenen - in diesem Fall am verzögerten Abrechnungszähler mit 0 W, und die Mittelpillen-Bilanz rechnete damit statt mit dem echten Netzaustausch. Jetzt überlebt der echtzeitfähigste Zähler als Netzknoten (mit Preis, Bilanz und Ersparnis), die übrigen werden als Fallback bzw. Nebenquelle an ihn gehängt und auf seiner Detailseite ausgewiesen. Außerdem verwenden Preis, Bilanz, PV-Ersparnis und Hauslast-Schätzung nun dieselbe Auswahl (vorher: drei Stellen den ersten, eine den letzten Netzzähler).',
-        'Fix: ausgeblendete Geräte tauchten nach einer Umbenennung an der Quelle wieder auf ("obwohl ich ihn mehrfach deaktiviert habe, wird er immer wieder aktiviert") - der Ausblende-Schlüssel enthielt das Label. Er basiert jetzt auf der Leistungsvariable; bestehende Ausblendungen werden automatisch übernommen, nichts muss neu abgewählt werden.',
-        'Fix: ein Sammelzähler und seine eigenen Mitglieder standen gemeinsam auf Ebene 1 (Beispiel: "Licht Gesamt" neben "Licht EG" und "Licht OG"), sobald die Mitglieder ihre eigene Dashboard-Zuordnung behalten hatten - die Beleuchtung zählte dadurch doppelt in die sichtbaren Abflüsse. Wurzeln, die als positives Mitglied in einem anderen Sammelknoten stecken, werden jetzt auf Ebene 1 ausgeblendet und sind nur noch durch Aufschachteln erreichbar. Abgezogene Mitglieder (negativer Faktor, z. B. Wallboxen in "Hausverbrauch ohne Wallboxen") bleiben eigene Knoten.',
-        'Portal-Iris optisch überarbeitet (Dietmar: "so soll das aussehen" mit Verweis auf eine glänzende Kamera-Objektiv-Referenz) - die Lamellen tragen jetzt denselben dunkel-glänzenden Metall-Verlauf wie die Haus-/Knoten-Münze selbst statt flacher grüner Flächen, dazu ein Glasreflex in der Mitte, der wie bei einer echten Linse durch die sich schließenden Lamellen hindurchschimmert.',
-        'Zweiter Feinschliff nach genauerem Test (Dietmar: "recherchiere wie eine Kamera-Iris wirklich funktioniert"): Portal-Iris besteht jetzt aus echten, überlappenden Lamellen, die sich wie bei einer echten Kamerablende um einen randnahen Drehpunkt zur Mitte drehen, statt eines einzelnen Rings. Kreiswellen wachsen jetzt tatsächlich aus der Mitte nach außen wie ein Stein im Wasser, statt nur zu verblassen. Kopfschütteln und Häufchen wirken jetzt direkt auf den echten Knoten bzw. die echte Mittelpille selbst (der Knoten dreht sich tatsächlich um die vertikale Achse bzw. staucht sich sichtbar nach unten zusammen) statt auf einer zusätzlichen Kopie davor. Schwindel-Sternchen nochmals verlangsamt.',
-        'Feinschliff an den Ebenenwechsel-Animationen nach erstem Test: Funkenschauer ist jetzt größer und intensiver (mehr, größere, weiter fliegende Funken); die vorherige Irisblende war kaum sichtbar - "Portal-Iris" zeigt jetzt einen kräftigen, segmentierten Blenden-Ring; "Ping-Puls" wich "Kreiswellen" (mehrere zeitversetzte Ringe wie ein Stein im Wasser). Beim Blockiert-Fall: "Kopfschütteln" dreht jetzt tatsächlich sichtbar die Knoten-/Pillenfläche um die vertikale Mittelachse hin und her (vorher unsichtbar); Schwindel-Sternchen laufen spürbar langsamer; "Seifenblase" wich "Häufchen" (die Fläche staucht sich sichtbar nach unten zusammen und zerfließt).',
-        'Neu: das Verbotszeichen aus 0.9.10 ist wieder weg ("gefällt mir überhaupt nicht") - stattdessen gibt es jetzt für jede Ebenenwechsel-Richtung 3 auswählbare Animationen plus "Zufällig" (hinter dem Doppelpfeil): wechselt die Ebene tatsächlich, spielt wahlweise ein Funkenschauer (Standard), eine Irisblende/Strudel oder ein Ping-Puls; geht es nicht weiter, statt eines Verbotszeichens jetzt ein Kopfschütteln, Schwindel-Sternchen oder eine zerplatzende Seifenblase.',
-        'Neu: ein langer Druck, der nicht weiterführt (Blatt-Knoten ohne Mitglieder, oder die Mittelpille auf Ebene 1 ohne Ebene darüber), zeigt jetzt statt eines kurzen roten Aufblitzens ein echtes Verbotszeichen - der Ring wird dicker und bekommt einen diagonalen Balken, hält eine Sekunde und zerfällt dann sichtbar zu Asche (Grau, ausblendend). Signalisiert deutlich: hier geht es nicht weiter, man bleibt auf derselben Ebene.',
-        'Neu: alle Steuermöglichkeiten für die Animation sitzen jetzt gemeinsam hinter dem Doppelpfeil oben rechts (Kachel im WebFront aufziehen) - dazu sind "Übergangszeit aktiv/inaktiv", "Fluss-Tempo" und die "Automatische Vorführung" von der Konsole dorthin gewandert. Damit lässt sich z. B. eine gerade laufende automatische Vorführung direkt im WebFront stoppen, ohne Konsolenzugriff.',
-        'Fix: der "Isolierte Demo-Modus" versuchte für die Strompreis-Sparkline gar nicht erst eine vorhandene echte Tibber-Instanz - läuft sie auf demselben Symcon wie die Demo-Kachel (Regelfall), werden jetzt wie bei jeder anderen Instanz zuerst die echten Preise verwendet; nur ohne jede echte Quelle (weder Tibber noch ausreichend BDEW-Historie) springt die Demo auf eine synthetische Näherungskurve.',
-        'Fix: die Strompreis-Sparkline am Netz-Knoten war im "Isolierten Demo-Modus" unsichtbar - ohne echte Tibber-Instanz lieferte die BDEW-Näherung höchstens einen einzigen Slot pro Tag, die Sparkline zeichnet aber erst ab zwei Punkten. Die Demo bekommt jetzt eine eigene, deutlich als Näherung markierte stündliche Tageskurve (Nachttal, Morgen-/Abendspitze) statt der echten Quellen.',
-        'Korrektur: kurzer Klick/Druck öffnet jetzt IMMER die Detailseite (Knoten wie Mittelpille) - vorher war das bei Sammelknoten genau umgekehrt. Ein langer Druck (Ring wird komplett gelb) wechselt stattdessen die Ebene: an einem Sammelknoten auf Grün und eine Ebene tiefer, an der Pille auf Grün und eine Ebene zurück. Geht es in die jeweilige Richtung nicht (Blatt ohne Mitglieder bzw. bereits Ebene 1), wird der Ring stattdessen kurz Rot - ohne Wirkung. Das neue Verhalten steht jetzt auch prominent in der Einführungs-Tour.',
-        'Fix: nach dem Zurückwechseln von einer aufgeschachtelten Ebene mit langem Gruppennamen (z.B. "Küche & Haushalt") wurde "Haus" auf die alte, größere Textbreite gestreckt statt in seiner natürlichen Größe zu erscheinen - die feste Breitenvorgabe des vorherigen Namens wurde nicht zurückgesetzt.',
-        'Fix: ein langer Gruppenname (z.B. "Küche & Haushalt") konnte beim Aufschachteln über den Rand der Mittelpille hinausragen - die Namensbreite wird jetzt wie bei jedem Außenknoten an die tatsächliche Pillengeometrie angepasst.',
-        'Fix: das Rück-Badge beim Aufschachteln saß mittig in der Pille - sitzt jetzt wie die anderen Badges (Warn-Dreieck, Zähler-Badge, Minus-Badge) direkt auf dem Pillenrand, oben links, dem einzigen dort noch freien Eckplatz.',
-        'Neu: die Detailseite eines Schaltgruppen-Mitglieds (MeterHubVirtual-Vertrag 1.4) zeigt jetzt einen echten Schalt-Knopf bzw. bei einer Gruppe ohne eigenes Ganzes den Zustand (aus/teilweise/an) - bisher gab es das nur am Knoten selbst, der während der geöffneten Detailseite genau verdeckt ist.',
-        'Fix: das Rück-Badge beim Aufschachteln ist jetzt ein kleiner Kreis mit "‹" statt eines Text-Chips - dieselbe Optik wie das bereits vorhandene "›"-Badge an Sammelknoten ohne bekannte Mitgliederzahl. Der Name der übergeordneten Ebene steht als Hover-Tooltip.',
-        'Neu: die "Automatische Vorführung" blendet jetzt gelegentlich auch das Gesundheits-/Diagnose-Panel ein (Solar-Ertrag vs. Erwartung, MPPT-Strangvergleich, Isolationswiderstand) - der "Isolierte Demo-Modus" erzeugt dafür eine plausible, aus dem aktuellen Solar-Wert abgeleitete Diagnose, da dort keine echte InverterHub-Instanz vorhanden ist.',
-        'Fix: die Ruecknavigation beim Aufschachteln kollidierte an JEDEM Kachelrand (oben mit der Titelzeile, unten ebenfalls) mit WebFront-eigenem Chrome, das dort als eigene Ebene über dem Inhalt liegt - sitzt jetzt direkt in der Mittelpille selbst ("‹ übergeordnete Ebene" über dem Namen), wo garantiert nichts überdeckt.',
-        'Die automatische Vorführung wartet jetzt 8 statt 20 Sekunden Inaktivität, bis sie startet - bei vorhandenen Sammelknoten schachtelt sie bevorzugt einen davon auf, zeigt eine Detailseite darin und schachtelt wieder zu.',
-        'Fix: die Brotkrumen-Zeile (Aufschachteln) saß zu weit oben und geriet in eingebetteten Ansichten in Kollision mit dem WebFront-eigenen Kachel-Rahmen - 20px tiefer gerückt.',
-        'Neu: Schaltgruppen (MeterHubVirtual-Vertrag 1.4) - ein kleiner Schalt-Knopf am Knoten schaltet ein einzelnes Mitglied (z. B. eine Z-Wave-Leuchte) oder eine ganze Gruppe (aus/teilweise/an) direkt in der Kachel, transportneutral über dieselbe RequestAction-Bindung wie bei Wallboxen - respektiert den Vorführmodus.',
-        'Neu: Aufschachteln - Sammelknoten (virtuelle Zähler mit Unterzählern, MeterHubVirtual-Vertrag 1.3 oder verschachtelte "Weitere Verbraucher") tragen ein Zähler-Badge; kurzer Klick öffnet die nächste Ebene (der Knoten wird zur Mittelpille, seine Mitglieder ordnen sich darum an - beliebig tief), Klick auf die Pille oder die Brotkrumen-Zeile führt zurück. Langer Klick (500 ms, Füllring) öffnet weiterhin die Detailseite. Abgezogene Mitglieder (negativer Faktor) erscheinen gestrichelt mit Minus.',
-        'Neu: "Automatische Vorführung" (Instanz-Eigenschaft, Standard aus) - die Kachel öffnet bei Inaktivität von selbst Detailseiten und schachtelt Sammelknoten auf/zu, pausiert bei jeder Berührung. Für Vorstellungs-Instanzen.',
-        'Fix: die Blitzbögen am Haus-Knoten wirkten bei einer sehr breiten Pille (viele Geräte) zappelig, weil ihr Sampling entlang des Randes bei Rundung und Geradseite unterschiedlich große Sprünge macht - Amplitude/Feinheit passen sich jetzt dem Seitenverhältnis an, bleiben bei kreisrunder Form unverändert.',
-        'Neu: eine manuell eingetragene Wallbox oder ein sonstiger Verbraucher ("Weitere Verbraucher") kann jetzt beliebig viele zusätzliche Wertfelder tragen (JSON-Zeile, z.B. "vinID"/"rangeKmID") - erscheinen automatisch in der "Aktuelle Werte"-Tabelle der Detailseite, exakt wie bei automatisch erkannten Geräten.',
-        'Fix: bei sehr vielen Geräten wirkte der breit gezogene Haus-Tisch wie ein dünner Balken - die Höhe wächst jetzt bei extremer Breite proportional mit, bleibt also ein rundliches Rechteck.',
-        'Fix: bei einer breiten Kachel blieb links/rechts viel Platz ungenutzt (die Anordnung durfte nie breiter als hoch werden) - die Leinwand passt sich jetzt der tatsächlichen Kachel-Breite an, wodurch bei vielen Geräten (Chip-Form) deutlich mehr davon Platz finden, ohne kleiner zu werden.',
-        'Neu: "Isolierter Demo-Modus" (Instanz-Eigenschaft) schaltet jede automatische Geräte-Erkennung ab - Netz/PV/Batterie/Haus kommen dann ausschließlich aus den manuellen Kern-Feldern. Für eine reine Vorstellungs-Instanz mit erfundenen, aber in sich rechnerisch stimmigen Werten (eine Mischung aus echten Live-Messwerten und erfundenen Zusatzverbrauchern geht sonst rechnerisch nicht auf).',
-        'Neu: eine manuell eingetragene Wallbox ("Weitere Verbraucher") kann jetzt zusätzlich ein SocID tragen (JSON-Zeile, kein eigenes Formularfeld) - zeigt dann wie bei automatisch erkannten Fahrzeugen den Ladestand am Knoten.',
-        'Neu: die Kachel zeigt jetzt unten ein kleines Feld mit der aktuellen EMS-Schaltentscheidung inkl. Begründung (z. B. "Netzladen – Grid Rewards (Tibber)"), sofern das EMS-Modul den Vertrag EMS_GetCurrentDecision() bereitstellt. Rein informativ, ohne Rückwirkung.',
-        'Fix: bei bestimmten Knotenbeschriftungen brach die komplette Kachel-Darstellung in Safari ab ("Invalid value for <text> attribute textLength"), während Chrome/Firefox den fehlerhaften Wert stillschweigend ignorierten - ein Rundungsfehler nahe der Kreisgrenze wird jetzt zuverlässig abgefangen.',
-        'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-        'Leistungsdiagramm, Energie-Balken der letzten 14 Tage und Geisterring/Autarkiegrad/PV-Prognose-Ring verwerfen jetzt einzelne unplausible Archivwerte (z. B. ein defekter Messwert in der Größenordnung von Megawatt bei einer Haushaltsanlage) statt sie ungeprüft in die Darstellung einfließen zu lassen.',
-        'Vorführmodus erkennt jetzt auch, wenn OCPPHub selbst im Vorführmodus ist (OHUB_IsDemoMode()) - unsere Wallbox-Steuerung blendet sich dann für dieses Gerät ebenfalls aus, statt Buttons zu zeigen, die beim Klick ohnehin nur abgelehnt würden.',
-        'Neuer "Vorführmodus" (Instanz-Eigenschaft): eine so markierte Instanz zeigt weiterhin alle Geräte an, blendet aber jede Wallbox-Steuerung komplett aus und lehnt Steuerbefehle auch serverseitig ab - für Demo-/Vorstellungs-Instanzen ohne Auswirkung auf echte Geräte.',
-        'Neuer Verbund-Vertrag NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): andere Module können jetzt den zu jedem Zeitpunkt gültigen Strompreis (echte Tibber-Slots, sonst aus unserer eigenen BDEW-Preishistorie rekonstruiert) direkt bei uns abrufen, statt Preisermittlung ein zweites Mal zu bauen - Grundlage für Kostenauswertungen über beliebige Zeiträume (Tag/Monat/Jahr/Lebenszeit), nicht mehr nur den heutigen Tag.',
-        'Der Stromlimit-Schieberegler der Wallbox-Steuerung zeigt jetzt zusätzlich den Prozentwert der maximalen Ladeleistung an, hat ein Raster (Tick-Striche) und markiert die halbe Leistung als eigenen Punkt - Ober-/Untergrenze kommen dabei weiterhin ausschließlich vom jeweiligen Vertrag (echte Gerätegrenzen, kein pauschaler Wert).',
-        'Das Leistungsdiagramm der Geräte-Detailseite meldet fehlende Archivdaten und verweist auf den Formular-Knopf zum Einschalten der Archivierung (die Visualisierung schaltet das Logging fremder Variablen nicht selbst ein).',
-        'Wallbox-Steuerung (Start/Stopp/Freigabe/Limit) meldet jetzt sichtbar zurück, ob der Befehl gesendet wurde und ob die Wallbox danach tatsächlich reagiert - statt wie bisher bei Erfolg komplett stumm zu bleiben. Liefert das Partnermodul einen konkreten Ablehnungsgrund (z. B. warum ein Ladebefehl gerade nicht wirkt), erscheint dieser jetzt prominent direkt über den Steuer-Schaltflächen.',
-        'Wallboxen über OCPPHub (OCPP 1.6J) werden jetzt automatisch erkannt. Geräte-Detailseite bietet jetzt herstellerunabhängige Wallbox-Steuerung (Ladefreigabe, Stromlimit für ChargerHub UND OCPPHub, zusätzlich Start/Stopp/Tages-Override bei OCPP-Ladepunkten), sofern keine andere Instanz die Regelhoheit hält.',
-        'Haus-Knoten wechselt ab vielen Verbrauchern automatisch von der Kreis- in eine „Chip“-Form, damit die einzelnen Knoten nicht immer weiter schrumpfen müssen.',
-        'Kostenersparnis-Berechnung nutzt jetzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) statt eines festen Werts, inklusive Aufschlüsselung nach Netzentgelt/Tarif/Grid-Reward-Erlös auf der Geräte-Detailseite.',
-        'Detailseite zeigt jetzt eine Tabelle aller relevanten Stromwerte je Gerät, auch je MPPT-Strang und je Batterie-Turm.',
-        'Batterie-Knoten zeigt den Ladestand zusätzlich als steigenden Füllstand, Diagnose-Warnungen erscheinen jetzt direkt am betroffenen Knoten statt nur im separaten Diagnose-Badge.',
-        'Gestrichelter „Geisterring“ vergleicht die aktuelle Leistung jedes Knotens mit gestern zur gleichen Uhrzeit.',
-        'Solar-Knoten zeigt einen Fortschrittsring (heutiger Ertrag vs. Tagesprognose), Netz-Knoten eine Strompreis-Sparkline mit Kosten-Ticker, Haus-Knoten einen Autarkiegrad-Bogen.',
-        'Verbindungslinien werden mit der Leistung dicker und markieren die heutige Tagesspitze; bei installierter StromGedacht-Instanz färbt die Netzampel den Kachelhintergrund dezent ein.',
-        'Anzeige-Feinheiten (inaktive Knoten aus-/einblenden, Blitz-/Leuchtschein-Kopplung an die Leistung, Effekt-Intensität) stellt jeder Nutzer selbst im WebFront ein - Kachel über den Doppelpfeil aufziehen.',
-        'Ereignisgesteuerte Aktualisierung (sofortiger Push bei jeder Wertänderung) statt reinem 5-Minuten-Takt.',
-        'Echte Hauslast (IHUBTILE_GetHouseLoad) bevorzugt vor der berechneten Näherung, sofern konfiguriert.',
-        'Manuelle Datenpunkte und frei editierbare Verbraucherliste - die Kachel läuft jetzt auch ganz ohne installiertes Partnermodul.',
-        'Vollständige Darstellungs-Einstellungen (Hintergrundfarbe, Schriftart, Übergangszeit, Fluss-Tempo) wie InverterHubTile.',
-        'Einzelne automatisch gefundene Geräte lassen sich jetzt ein-/ausblenden, ohne sie manuell neu einzutragen.',
-        'Eingesteckte, nicht ladende Wallbox animiert keinen Fluss-Pfeil mehr ohne echte Leistung.',
-        'Gesundheits-/Diagnose-Anzeige (Ertrag vs. Prognose, MPPT-Strangvergleich, Isolationswiderstand) selbst berechnet, keine InverterHubMonitor-Instanz mehr nötig.',
-        'Fahrzeug-Erkennung an Wallboxen: Tesla-Fahrzeuge über Tessie vollautomatisch erkannt (Name + Ladestand), auch ChargerHub-Wallboxen jetzt korrekt einbezogen.',
-        'Modul heißt jetzt „NRG-Stack Dashboard Energiefluss" (bisher „NRG Dashboard“/„Energiefluss-Kachel“) - bestehende Instanzen bleiben unverändert funktionsfähig.',
-        'Klick auf einen Geräte-Knoten öffnet dessen Details als eigene, kachelfüllende Seite (Leistungsverlauf, Energiebilanz, alle Vertragsfelder inkl. Phasenwerte) - komplett automatisch aus den vorhandenen Verträgen, ohne zusätzliche Einrichtung.',
+        'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+        '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+        '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+        '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what NRGDashboard does and what it is good for - meant for first contact, can be dismissed once.',
+        'Fix: grid meters from MeterHub were read with the wrong sign - MeterHub counts "+ = import", the energy flow "+ = feed-in". Import and feed-in (including cost/revenue, daily balance and previous-day value) therefore appeared swapped, unless the meter happened to be turned against the MeterHub convention with "Invert power". The tile now converts MeterHub grid values like the PV monitoring does; an InverterHub substitute source keeps its own sign. If you had set "Invert power" on the MeterHub grid meter only as a compensation, you must now switch it off.',
+        'New: in the cost display the grid node now distinguishes import and feed-in - import appears as cost ("−x,xx €/h") at the current electricity price, feed-in as revenue ("+x,xx €/h") at the feed-in tariff. The tariff is entered in the form under "Feed-in tariff" in ct/kWh; without an entry the node simply shows the power when feeding in (previously feed-in was wrongly shown as cost at the import price).',
+        'Fix: if there was more than one Tibber Grid Rewards instance (e.g. an additional, switched-off demo instance), the tile did not find Tibber automatically - the grid node then showed no current electricity price and never switched to the cost display. It is now enough that exactly one of them is active.',
+        'Fix: a group meter (e.g. "Heating / cooling" made of heat pump + air conditioning) could be folded as a "duplicate measurement" under a single meter of the same function and disappeared - especially at night, when both were close to 0 W. Group meters no longer take part in duplicate-measurement detection at all; a sum is never the same measurement as a single meter.',
+        'Fix: on tablets the long press (nest/unnest) selected the power value as text or opened the magnifier or context menu - text selection and context menu are now suppressed in the tile.',
+        'New: unnesting is now visibly the counterpart of nesting - the same hold gesture on the center pill, but the fill ring grows counter-clockwise instead of clockwise. On level 1 (no way back) it stays as before.',
+        'Fix: a grid group meter (e.g. "Solar park 1 + 2" over two grid connection points) was attached as a substitute source under one of its own grid connection points instead of becoming the grid node itself - the grid node merging ran before the group resolution. Group meters are now resolved first and their members hidden; only then are the remaining grid meters merged into one grid node.',
+        'Fix: inverters (PV) that are part of a PV group meter (e.g. 24 inverters in "Transformer 4.1") still stood individually on level 1 next to their group meter - core nodes (PV/battery/grid/house) were exempt from the level-1 cleanup across the board. They are now hidden as soon as the group meter carries the same function; a grid or PV node in a consumer group meter stays as before.',
+        'Fix: nodes could be clicked far beyond their visible circle - the (also invisible) glow around each node accepted clicks and covered switches and nodes of the neighbours (e.g. the switch of "Side room" opened the detail page of "Shed"). Only the visible circle including its badges is clickable now.',
+        'New: nodes with a switch (e.g. lights via MeterHub switch groups) count as active when the switch is on - no longer only from 20 W. Without a switch, the threshold is now 5 W instead of 20 W, so even low-power LED lighting appears active, but the standby consumption of the actuators (~1 W) does not. A nested group pill is active as soon as one of its members is active.',
+        'Fix: a wide center pill (from 9 nodes) shrank uniformly like a circular node when inactive - at the semicircles considerably more than at the top/bottom. The distance to the spokes and nodes was visibly larger at the sides, and the spokes no longer pointed at the cap centers. The pill now keeps its size and is only darkened when inactive.',
+        'Fix: when nesting, the center pill now carries the symbol of the group node (e.g. a light bulb for "Light GF") instead of always the house; back on level 1 the house appears again.',
+        'New: members without a name of their own in MeterHub are now named after the instance under which their power variable lies (e.g. the name of the actuator), instead of "Member 1, 2, …".',
+        'Fix: a group node from level 2 on (e.g. "Light GF" inside "Light total") showed the "›" badge instead of the number of its sub-meters - the member count is now supplied on every level; the "›" remains only for group nodes with a truly unknown count.',
+        'Fix: there is now exactly ONE grid node in the energy flow. When several grid meters stood side by side (e.g. a real-time meter and a billing meter that archives with a delay), the electricity price hung on the first one found - in this case on the delayed billing meter at 0 W, and the center-pill balance calculated with it instead of with the real grid exchange. Now the most real-time capable meter survives as the grid node (with price, balance and savings), the others are attached to it as a fallback or secondary source and listed on its detail page. In addition, price, balance, PV savings and house load estimate now use the same selection (before: three places used the first, one the last grid meter).',
+        'Fix: hidden devices reappeared after a rename at the source ("although I have deactivated it several times, it keeps being activated again") - the hide key contained the label. It is now based on the power variable; existing hide entries are taken over automatically, nothing has to be deselected again.',
+        'Fix: a group meter and its own members stood together on level 1 (example: "Light total" next to "Light GF" and "Light UF") as soon as the members had kept their own dashboard assignment - the lighting was thereby counted twice in the visible outflows. Roots that are a positive member of another group node are now hidden on level 1 and reachable only by drilling down. Subtracted members (negative factor, e.g. wallboxes in "House consumption without wallboxes") remain nodes of their own.',
+        'Portal iris visually revised (Dietmar: "that is how it should look" with a reference to a glossy camera-lens image) - the blades now carry the same dark glossy metal gradient as the house/node coin itself instead of flat green areas, plus a glass highlight in the middle that shimmers through the closing blades like on a real lens.',
+        'Second refinement after closer testing (Dietmar: "research how a camera iris really works"): the portal iris now consists of real, overlapping blades that turn towards the center around an off-center pivot like a real camera aperture, instead of a single ring. Circular waves now really grow outwards from the center like a stone in water, instead of just fading. Head shake and little pile now act directly on the real node or the real center pill itself (the node actually turns around the vertical axis or visibly squashes downwards) instead of on an additional copy in front of it. Dizzy stars slowed down once more.',
+        'Refinement of the level-change animations after the first test: the spark shower is now larger and more intense (more, larger, farther-flying sparks); the previous iris diaphragm was barely visible - "portal iris" now shows a strong, segmented diaphragm ring; "ping pulse" gave way to "circular waves" (several time-shifted rings like a stone in water). In the blocked case: "head shake" now visibly turns the node/pill surface back and forth around the vertical center axis (previously invisible); dizzy stars run noticeably slower; "soap bubble" gave way to "little pile" (the surface visibly squashes downwards and dissolves).',
+        'New: the prohibition sign from 0.9.10 is gone again ("I do not like it at all") - instead, there are now 3 selectable animations for each level-change direction plus "random" (behind the double arrow): if the level really changes, a spark shower (default), an iris diaphragm/vortex or a ping pulse plays as you choose; if it cannot go further, instead of a prohibition sign now a head shake, dizzy stars or a bursting soap bubble.',
+        'New: a long press that leads nowhere (leaf node without members, or the center pill on level 1 without a level above) now shows a real prohibition sign instead of a brief red flash - the ring gets thicker and gets a diagonal bar, holds for a second and then visibly disintegrates into ash (grey, fading out). Clearly signals: no further here, you stay on the same level.',
+        'New: all controls for the animation now sit together behind the double arrow at the top right (pull the tile open in the WebFront) - "transition time active/inactive", "flow speed" and the "automatic demo run" moved there from the console. A running automatic demo run can thus be stopped directly in the WebFront, without console access.',
+        'Fix: the "isolated demo mode" did not even try an existing real Tibber instance for the electricity price sparkline - if it runs on the same Symcon as the demo tile (the usual case), the real prices are now used first, as with any other instance; only without any real source (neither Tibber nor sufficient BDEW history) does the demo fall back to a synthetic approximation curve.',
+        'Fix: the electricity price sparkline at the grid node was invisible in "isolated demo mode" - without a real Tibber instance the BDEW approximation provided at most a single slot per day, but the sparkline only draws from two points. The demo now gets an hourly daily curve of its own (night trough, morning/evening peak), clearly marked as an approximation, instead of the real sources.',
+        'Correction: a short click/press now ALWAYS opens the detail page (node as well as center pill) - before, it was exactly the other way round for group nodes. A long press (ring turns completely yellow) changes the level instead: on a group node to green and one level deeper, on the pill to green and one level back. If it does not go in the respective direction (leaf without members, or already level 1), the ring turns briefly red instead - without effect. The new behaviour is now also shown prominently in the introduction tour.',
+        'Fix: after switching back from a nested level with a long group name (e.g. "Kitchen & household"), "House" was stretched to the old, larger text width instead of appearing at its natural size - the fixed width setting of the previous name was not reset.',
+        'Fix: a long group name (e.g. "Kitchen & household") could protrude beyond the edge of the center pill when nesting - the name width is now adapted to the actual pill geometry like for every outer node.',
+        'Fix: the back badge when nesting sat in the middle of the pill - it now sits like the other badges (warning triangle, meter badge, minus badge) directly on the pill edge, top left, the only corner position still free there.',
+        'New: the detail page of a switch group member (MeterHubVirtual contract 1.4) now shows a real switch button or, for a group without a whole of its own, the state (off/partially/on) - previously this existed only at the node itself, which is exactly covered while the detail page is open.',
+        'Fix: the back badge when nesting is now a small circle with "‹" instead of a text chip - the same look as the existing "›" badge on group nodes without a known member count. The name of the parent level is shown as a hover tooltip.',
+        'New: the "automatic demo run" now occasionally also shows the health/diagnostics panel (solar yield vs. expectation, MPPT string comparison, insulation resistance) - the "isolated demo mode" generates a plausible diagnosis derived from the current solar value for it, since there is no real InverterHub instance there.',
+        'Fix: the back navigation when nesting collided at EVERY tile edge (top with the title bar, bottom likewise) with WebFront\'s own chrome, which lies there as a layer of its own over the content - it now sits directly in the center pill itself ("‹ parent level" above the name), where nothing is guaranteed to be covered.',
+        'The automatic demo run now waits 8 instead of 20 seconds of inactivity before it starts - with group nodes present it preferably nests one of them, shows a detail page in it and nests back again.',
+        'Fix: the breadcrumb line (nesting) sat too high and collided with the WebFront\'s own tile frame in embedded views - moved down by 20px.',
+        'New: switch groups (MeterHubVirtual contract 1.4) - a small switch button at the node switches a single member (e.g. a Z-Wave lamp) or a whole group (off/partially/on) directly in the tile, transport-neutral via the same RequestAction binding as for wallboxes - respects demo mode.',
+        'New: nesting - group nodes (virtual meters with sub-meters, MeterHubVirtual contract 1.3 or nested "More consumers") carry a meter badge; a short click opens the next level (the node becomes the center pill, its members arrange themselves around it - to any depth), a click on the pill or the breadcrumb line leads back. A long click (500 ms, fill ring) still opens the detail page. Subtracted members (negative factor) appear dashed with a minus.',
+        'New: "Automatic demo run" (instance property, default off) - the tile opens detail pages and nests/unnests group nodes by itself during inactivity, pauses at every touch. For showcase instances.',
+        'Fix: the lightning arcs on the house node looked jittery on a very wide pill (many devices), because their sampling along the edge makes jumps of different size at the curve and the straight side - amplitude/fineness now adapt to the aspect ratio and stay unchanged for a circular shape.',
+        'New: a manually entered wallbox or other consumer ("More consumers") can now carry any number of additional value fields (JSON line, e.g. "vinID"/"rangeKmID") - they appear automatically in the "Current values" table of the detail page, exactly as with automatically detected devices.',
+        'Fix: with very many devices, the widened house table looked like a thin bar - the height now grows proportionally at extreme widths, so it remains a roundish rectangle.',
+        'Fix: with a wide tile a lot of space stayed unused on the left/right (the arrangement was never allowed to become wider than high) - the canvas now adapts to the actual tile width, so that with many devices (chip shape) considerably more of them fit without getting smaller.',
+        'New: "Isolated demo mode" (instance property) switches off every automatic device detection - grid/PV/battery/house then come exclusively from the manual core fields. For a pure showcase instance with invented but arithmetically consistent values (a mix of real live measurements and invented extra consumers does not add up arithmetically otherwise).',
+        'New: a manually entered wallbox ("More consumers") can now additionally carry a SocID (JSON line, not a form field of its own) - it then shows the state of charge at the node, as with automatically detected vehicles.',
+        'New: the tile now shows a small field at the bottom with the current EMS switching decision including its reason (e.g. "Grid charging – Grid Rewards (Tibber)"), provided the EMS module supplies the contract EMS_GetCurrentDecision(). Purely informational, without any effect on the system.',
+        'Fix: with certain node labels the complete tile rendering aborted in Safari ("Invalid value for <text> attribute textLength"), while Chrome/Firefox silently ignored the faulty value - a rounding error near the circle limit is now reliably caught.',
+        'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+        'The power chart, the energy bars of the last 14 days and the ghost ring/self-sufficiency/PV forecast ring now discard individual implausible archive values (e.g. a defective measurement in the order of megawatts on a household system) instead of letting them flow into the display unchecked.',
+        'Demo mode now also detects when OCPPHub itself is in demo mode (OHUB_IsDemoMode()) - our wallbox control then also hides for that device, instead of showing buttons that would only be rejected on click anyway.',
+        'New "demo mode" (instance property): an instance marked this way still shows all devices, but hides every wallbox control completely and also rejects control commands on the server side - for demo/showcase instances without any effect on real devices.',
+        'New federation contract NRGDASH_GetPriceAt()/NRGDASH_GetPriceSeries(): other modules can now query the electricity price valid at any point in time (real Tibber slots, otherwise reconstructed from our own BDEW price history) directly from us, instead of building the price determination a second time - a basis for cost evaluations over any period (day/month/year/lifetime), no longer just today.',
+        'The current limit slider of the wallbox control now additionally shows the percentage of the maximum charging power, has a grid (tick marks) and marks half power as a point of its own - upper/lower limits still come exclusively from the respective contract (real device limits, no flat value).',
+        'The power chart on the device detail page reports missing archive data and points to the form button for switching archiving on (the visualization does not switch on logging of foreign variables by itself).',
+        'Wallbox control (start/stop/enable/limit) now gives visible feedback on whether the command was sent and whether the wallbox actually reacts afterwards - instead of staying completely silent on success as before. If the partner module supplies a concrete rejection reason (e.g. why a charge command currently has no effect), it now appears prominently right above the control buttons.',
+        'Wallboxes via OCPPHub (OCPP 1.6J) are now detected automatically. The device detail page now offers manufacturer-independent wallbox control (charging enable, current limit for ChargerHub AND OCPPHub, plus start/stop/daily override for OCPP charge points), provided no other instance holds control authority.',
+        'From many consumers on, the house node automatically switches from the circle to a "chip" shape, so that the individual nodes do not have to keep shrinking.',
+        'Cost savings calculation now uses real electricity prices (Tibber Grid Rewards, otherwise automatically the BDEW household average) instead of a fixed value, including a breakdown by grid fee/tariff/grid reward revenue on the device detail page.',
+        'The detail page now shows a table of all relevant electrical values per device, also per MPPT string and per battery tower.',
+        'Battery node shows the state of charge additionally as a rising fill level, diagnostic warnings now appear directly at the affected node instead of only in the separate diagnostics badge.',
+        'Dashed "ghost ring" compares the current power of each node with yesterday at the same time of day.',
+        'Solar node shows a progress ring (today\'s yield vs. daily forecast), grid node an electricity price sparkline with cost ticker, house node a self-sufficiency arc.',
+        'Connection lines get thicker with power and mark today\'s daily peak; with a StromGedacht instance installed, the grid traffic light subtly tints the tile background.',
+        'Display details (show/hide inactive nodes, coupling of lightning/glow to power, effect intensity) are set by each user in the WebFront - pull the tile open with the double arrow.',
+        'Event-driven update (immediate push on every value change) instead of a pure 5-minute cycle.',
+        'Real house load (IHUBTILE_GetHouseLoad) preferred over the calculated approximation, if configured.',
+        'Manual data points and a freely editable consumer list - the tile now also runs entirely without an installed partner module.',
+        'Full display settings (background colour, font, transition time, flow speed) like InverterHubTile.',
+        'Individual automatically found devices can now be shown/hidden without entering them manually again.',
+        'A plugged-in, non-charging wallbox no longer animates a flow arrow without real power.',
+        'Health/diagnostics display (yield vs. forecast, MPPT string comparison, insulation resistance) calculated by itself, no InverterHubMonitor instance needed any more.',
+        'Vehicle detection at wallboxes: Tesla vehicles detected fully automatically via Tessie (name + state of charge), ChargerHub wallboxes now correctly included as well.',
+        'The module is now called "NRG-Stack Dashboard Energiefluss" (previously "NRG Dashboard"/"Energiefluss tile") - existing instances remain fully functional.',
+        'A click on a device node opens its details as a separate, tile-filling page (power history, energy balance, all contract fields including phase values) - fully automatic from the existing contracts, without additional setup.',
         ],
         '0.9.73' => [
-            'Neu: Quoten-Knopf oben links zeigt Autarkiegrad und Eigenverbrauchsquote als zwei Apple-Watch-artige Ringe für heute - Klick öffnet eine Tabelle mit beiden Werten für Tag, Monat, Jahr und Gesamt. Löst den bisherigen Autarkiegrad-Bogen am Haus-Knoten ab, der nur "heute" konnte.',
-            'Der Kosten-Ticker am Netz-Knoten zeigt jetzt den reinen ct/kWh-Preis (Bezugspreis bzw. Einspeisevergütung) statt der auf die aktuelle Leistung hochgerechneten Stundenkosten.',
-            'Quoten-Panel und Diagnose-Panel schließen sich jetzt von selbst nach 30 Sekunden.',
+            'New: quota button at the top left shows self-sufficiency and self-consumption rate as two Apple-Watch-like rings for today - a click opens a table with both values for day, month, year and total. Replaces the previous self-sufficiency arc at the house node, which could only do "today".',
+            'The cost ticker at the grid node now shows the pure ct/kWh price (import price or feed-in tariff) instead of the hourly cost extrapolated to the current power.',
+            'Quota panel and diagnostics panel now close by themselves after 30 seconds.',
         ],
         '0.9.159' => [
-        '✨ Neu: Die Detailseite jeder Wallbox zeigt oben eine einfache Übersicht der aktuellen bzw. letzten Ladesitzung - Status, Ladebeginn und -ende, Ladezeit, geladene Energie, Kosten und aktuelle Ladeleistung. Dazu ein „Volle Leistung“-Knopf (Boost), der die Ladefreigabe einschaltet und das Stromlimit auf das Maximum setzt (Anregung aus dem Forum).',
+        '✨ New: the detail page of every wallbox shows a simple overview of the current or last charging session at the top - status, start and end of charging, charging time, energy charged, cost and current charging power. Also a "Full power" button (boost) that switches on the charging enable and sets the current limit to the maximum (suggestion from the forum).',
         ],
         '0.9.170' => [
-        '💶 Neu: die Detailseite des Netzknotens zeigt „Einspeise-Erlös heute“ und „… diesen Monat“ (eingespeiste kWh mal Einspeisevergütung). Dafür im Formular die Einspeisevergütung in ct/kWh eintragen; ohne Vergütung erscheint keine Zeile. Dazu: Jahres- und 12-Monats-Erlös, ein empfohlener monatlicher Abschlag und - mit dem neuen Formularfeld „Monatlicher Abschlag“ - der Abgleich mit dem tatsächlichen Erlös samt Hochrechnung der Jahresabrechnung.',
+        '💶 New: the detail page of the grid node shows "Feed-in revenue today" and "… this month" (fed-in kWh times feed-in tariff). To use it, enter the feed-in tariff in ct/kWh in the form; without a tariff no row appears. In addition: annual and 12-month revenue, a recommended monthly advance payment and - with the new form field "Monthly advance payment" - the reconciliation with the actual revenue including a projection of the annual settlement.',
         ],
         '0.9.169' => [
-        'Die Ebenenwechsel-Animation „Kreiswellen“ sieht jetzt aus wie ein Stein im See: mehrere Ringe in Farbe und Stärke des Knotenrands laufen nacheinander vom Knotenrand nach außen und werden dabei blasser - im Knoten selbst ist nichts zu sehen.',
-        '✨ Neu: „Animation bei Ebenenwechsel“ kennt jetzt „Kopfnicken“ - derselbe ruhige Ablauf wie das Kopfschütteln, nur nickt der Knoten um die waagerechte Achse. Eine bereits gewählte Option „Zufällig“ bleibt erhalten und würfelt jetzt auch das Kopfnicken mit. Ebenfalls neu: „Abfluss“ - der Knoten dreht sich beim Schrumpfen zur Mitte, als würde er in einen Wasserabfluss eingesaugt.',
+        'The level-change animation "circular waves" now looks like a stone in a lake: several rings in the colour and strength of the node edge travel outwards one after another from the node edge and fade as they go - nothing is visible inside the node itself.',
+        '✨ New: "Animation on level change" now includes "head nod" - the same calm sequence as the head shake, only the node nods around the horizontal axis. An already chosen option "random" is kept and now also rolls the head nod. Also new: "drain" - the node turns towards the center while shrinking, as if sucked into a water drain.',
         ],
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
@@ -215,14 +218,14 @@ class NRGDashboardTile extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
     }
@@ -304,10 +307,10 @@ class NRGDashboardTile extends IPSModule
         // angepasste Einstellung beim Umbau nicht stillschweigend
         // zurueckfaellt.
         $doppelpfeil = [
-            'HideInactive'    => ['Inaktive Knotenpunkte ausblenden statt nur ausgrauen', 200, false],
-            'CoupleBoltPower' => ['Blitzbögen an Leistung koppeln', 201, true],
-            'CoupleGlowPower' => ['Leuchtschein an Leistung koppeln', 202, true],
-            'DemoAutoTour'    => ['Automatische Vorführung (öffnet bei Inaktivität von selbst Detailseiten/Ebenen)', 205, false],
+            'HideInactive'    => [NRGDASH_Text::t('Hide inactive nodes instead of just greying them out'), 200, false],
+            'CoupleBoltPower' => [NRGDASH_Text::t('Couple lightning arcs to power'), 201, true],
+            'CoupleGlowPower' => [NRGDASH_Text::t('Couple glow to power'), 202, true],
+            'DemoAutoTour'    => [NRGDASH_Text::t('Automatic demo run (opens detail pages/levels by itself during inactivity)'), 205, false],
         ];
         foreach ($doppelpfeil as $ident => [$caption, $pos, $default]) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -318,19 +321,19 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $isNewIntensity = @IPS_GetObjectIDByIdent('EffectIntensity', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('EffectIntensity', 'Effekt-Intensität (Blitze/Leuchtschein)', '~Intensity.100', 203);
+        $this->RegisterVariableInteger('EffectIntensity', NRGDASH_Text::t('Effect intensity (lightning/glow)'), '~Intensity.100', 203);
         $this->EnableAction('EffectIntensity');
         if ($isNewIntensity) {
             $this->SetValue('EffectIntensity', (int) $this->legacyValue('EffectIntensity', 100));
         }
         $isNewFlowRef = @IPS_GetObjectIDByIdent('FlowRefW', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('FlowRefW', 'Fluss-Tempo: Leistung für Höchsttempo', '', 204);
+        $this->RegisterVariableInteger('FlowRefW', NRGDASH_Text::t('Flow speed: power for top speed'), '', 204);
         $this->EnableAction('FlowRefW');
         if ($isNewFlowRef) {
             $this->SetValue('FlowRefW', (int) $this->legacyValue('FlowRefW', self::DEF_FLOWREF));
         }
         $isNewTransition = @IPS_GetObjectIDByIdent('TransitionMs', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('TransitionMs', 'Übergangszeit aktiv/inaktiv (0 = ohne Animation)', '', 206);
+        $this->RegisterVariableInteger('TransitionMs', NRGDASH_Text::t('Transition time active/inactive (0 = no animation)'), '', 206);
         $this->EnableAction('TransitionMs');
         if ($isNewTransition) {
             $this->SetValue('TransitionMs', (int) $this->legacyValue('TransitionMs', self::DEF_TRANSITION));
@@ -354,7 +357,7 @@ class NRGDashboardTile extends IPSModule
         if (IPS_VariableProfileExists('NRGDASH.OpenAnimStyle')) {
             $assoc = IPS_GetVariableProfile('NRGDASH.OpenAnimStyle')['Associations'] ?? [];
             $byVal = array_column($assoc, 'Name', 'Value');
-            if (($byVal[1] ?? '') === 'Abfluss') {
+            if (in_array($byVal[1] ?? '', ['Abfluss', NRGDASH_Text::t('Drain')], true)) { // 'Abfluss' = Altbestand (deutsche Namen früherer Fassungen)
                 $openAnimMap = null; // schon neue Belegung
             } elseif (isset($byVal[5])) {
                 $openAnimMap = [0 => 0, 1 => 2, 2 => 3, 3 => 2, 4 => 1, 5 => 4];
@@ -367,7 +370,7 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $this->ensureEnumProfile('NRGDASH.OpenAnimStyle', [
-            0 => 'Kopfnicken', 1 => 'Abfluss', 2 => 'Funkenschauer', 3 => 'Portal-Iris', 4 => 'Zufällig',
+            0 => NRGDASH_Text::t('Head nod'), 1 => NRGDASH_Text::t('Drain'), 2 => NRGDASH_Text::t('Spark shower'), 3 => NRGDASH_Text::t('Portal iris'), 4 => NRGDASH_Text::t('Random'),
         ]);
         // alter Eintrag 5 (Zufällig der Abfluss-Fassung) - nur löschen, wenn er noch existiert
         // (IPS meldet sonst eine Warnung, die Create() abbricht)
@@ -382,7 +385,7 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $isNewOpenAnim = @IPS_GetObjectIDByIdent('OpenAnimStyle', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('OpenAnimStyle', 'Animation bei Ebenenwechsel', 'NRGDASH.OpenAnimStyle', 207);
+        $this->RegisterVariableInteger('OpenAnimStyle', NRGDASH_Text::t('Animation on level change'), 'NRGDASH.OpenAnimStyle', 207);
         $this->EnableAction('OpenAnimStyle');
         if ($isNewOpenAnim) {
             $this->SetValue('OpenAnimStyle', 2);
@@ -397,7 +400,7 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $this->ensureEnumProfile('NRGDASH.BlockedAnimStyle', [
-            0 => 'Kopfschütteln', 1 => 'Kreiswellen', 2 => 'Schwindel-Sternchen', 3 => 'Häufchen', 4 => 'Zufällig',
+            0 => NRGDASH_Text::t('Head shake'), 1 => NRGDASH_Text::t('Circular waves'), 2 => NRGDASH_Text::t('Dizzy stars'), 3 => NRGDASH_Text::t('Little pile'), 4 => NRGDASH_Text::t('Random'),
         ]);
         $blockedVarID = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID);
         if ($blockedMap !== null && $blockedVarID !== false) {
@@ -407,7 +410,7 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $isNewBlockedAnim = @IPS_GetObjectIDByIdent('BlockedAnimStyle', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('BlockedAnimStyle', 'Animation, wenn keine Ebene mehr möglich ist', 'NRGDASH.BlockedAnimStyle', 208);
+        $this->RegisterVariableInteger('BlockedAnimStyle', NRGDASH_Text::t('Animation when no further level is possible'), 'NRGDASH.BlockedAnimStyle', 208);
         $this->EnableAction('BlockedAnimStyle');
         if ($isNewBlockedAnim) {
             $this->SetValue('BlockedAnimStyle', 0);
@@ -416,23 +419,23 @@ class NRGDashboardTile extends IPSModule
         // Automatisch vom 24.10. bis 01.11., sonst aus - oder fest ein/aus. Geräusche separat und
         // standardmäßig AUS (Browser spielen Ton erst nach einem Klick, und nicht jeder will Ton).
         $this->ensureEnumProfile('NRGDASH.Seasonal', [
-            0 => 'Automatisch (nach Jahreszeit)', 1 => 'Aus', 2 => 'Immer an: Gruselzeit (zum Ausprobieren)', 3 => 'Immer an: Winterzeit (zum Ausprobieren)', 4 => 'Immer an: Feierzeit (zum Ausprobieren)', 5 => 'Immer an: Frühlingszeit (zum Ausprobieren)',
+            0 => NRGDASH_Text::t('Automatic (by season)'), 1 => NRGDASH_Text::t('Off'), 2 => NRGDASH_Text::t('Always on: spooky season (to try out)'), 3 => NRGDASH_Text::t('Always on: winter season (to try out)'), 4 => NRGDASH_Text::t('Always on: festive season (to try out)'), 5 => NRGDASH_Text::t('Always on: spring season (to try out)'),
         ]);
-        $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => 'Aus', 1 => 'Geräusche an']);
-        $this->ensureEnumProfile('NRGDASH.SeasonalBg', [0 => 'Dunkel mit den Effekten', 1 => 'Immer Standard', 2 => 'Immer dunkel (Nachthimmel)']);
+        $this->ensureEnumProfile('NRGDASH.SeasonalSound', [0 => NRGDASH_Text::t('Off'), 1 => NRGDASH_Text::t('Sounds on')]);
+        $this->ensureEnumProfile('NRGDASH.SeasonalBg', [0 => NRGDASH_Text::t('Dark with the effects'), 1 => NRGDASH_Text::t('Always default'), 2 => NRGDASH_Text::t('Always dark (night sky)')]);
         $isNewSeasonal = @IPS_GetObjectIDByIdent('Seasonal', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('Seasonal', 'Saison-Effekte', 'NRGDASH.Seasonal', 209);
+        $this->RegisterVariableInteger('Seasonal', NRGDASH_Text::t('Seasonal effects'), 'NRGDASH.Seasonal', 209);
         $this->EnableAction('Seasonal');
         $isNewSeasonalSound = @IPS_GetObjectIDByIdent('SeasonalSound', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('SeasonalSound', 'Saison-Effekte: Geräusche', 'NRGDASH.SeasonalSound', 210);
+        $this->RegisterVariableInteger('SeasonalSound', NRGDASH_Text::t('Seasonal effects: sounds'), 'NRGDASH.SeasonalSound', 210);
         $this->EnableAction('SeasonalSound');
         // Bestehende Instanzen: alte Namen auf die neutralen umstellen (nur wenn nicht vom Nutzer umbenannt)
-        foreach ([['Seasonal', 'Saison-Effekte (Halloween)', 'Saison-Effekte'], ['SeasonalSound', 'Saison-Effekte: Gruselgeräusche', 'Saison-Effekte: Geräusche']] as [$sIdent, $sOld, $sNew]) {
+        foreach ([['Seasonal', 'Saison-Effekte (Halloween)', NRGDASH_Text::t('Seasonal effects')], ['SeasonalSound', 'Saison-Effekte: Gruselger' . html_entity_decode('&auml;', ENT_QUOTES, 'UTF-8') . 'usche', NRGDASH_Text::t('Seasonal effects: sounds')]] as [$sIdent, $sOld, $sNew]) {
             $sVid = @IPS_GetObjectIDByIdent($sIdent, $this->InstanceID);
             if ($sVid && IPS_GetName($sVid) === $sOld) { IPS_SetName($sVid, $sNew); }
         }
         $isNewSeasonalBg = @IPS_GetObjectIDByIdent('SeasonalBg', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('SeasonalBg', 'Saison-Effekte: Hintergrund', 'NRGDASH.SeasonalBg', 211);
+        $this->RegisterVariableInteger('SeasonalBg', NRGDASH_Text::t('Seasonal effects: background'), 'NRGDASH.SeasonalBg', 211);
         $this->EnableAction('SeasonalBg');
         if ($isNewSeasonalBg) { $this->SetValue('SeasonalBg', 0); }
         if ($isNewSeasonal) { $this->SetValue('Seasonal', 0); }
@@ -748,8 +751,8 @@ class NRGDashboardTile extends IPSModule
     {
         $pvf = $this->PvfInstanceID();
         $tib = $this->TibberInstanceID();
-        return $this->autoFieldLine($elements, 'PvfInstance', 'PV-Prognose (Ertrag vs. Erwartung)', (int) $this->ReadPropertyInteger('PvfInstance') === $pvf ? $pvf : 0, $pvf, 'der Instanzsuche', 'nicht gefunden - "Ertrag vs. Prognose" entfällt.')
-            . "\n" . $this->autoFieldLine($elements, 'TibberInstance', 'Tibber (Strompreis-Kennzahlen)', (int) $this->ReadPropertyInteger('TibberInstance') === $tib ? $tib : 0, $tib, 'der Instanzsuche', 'nicht gefunden - Preis-Kennzahlen kommen vom BDEW-Richtwert.');
+        return $this->autoFieldLine($elements, 'PvfInstance', NRGDASH_Text::t('PV forecast (yield vs. expectation)'), (int) $this->ReadPropertyInteger('PvfInstance') === $pvf ? $pvf : 0, $pvf, NRGDASH_Text::t('the instance search'), NRGDASH_Text::t('not found - “Yield vs. forecast” does not apply.'))
+            . "\n" . $this->autoFieldLine($elements, 'TibberInstance', NRGDASH_Text::t('Tibber (electricity price figures)'), (int) $this->ReadPropertyInteger('TibberInstance') === $tib ? $tib : 0, $tib, NRGDASH_Text::t('the instance search'), NRGDASH_Text::t('not found - price figures come from the BDEW guide value.'));
     }
 
     /** Verbindungsstatus zu Tessie (SUITE.md "Verbund-Verbindungen sichtbar machen"). */
@@ -758,30 +761,37 @@ class NRGDashboardTile extends IPSModule
         $ids = @IPS_GetInstanceListByModuleID(NRGDASH_GUID_TESSIE);
         $ids = is_array($ids) ? $ids : [];
         if (count($ids) === 0) {
-            return 'ℹ️ Keine Tessie-Instanz gefunden - es gilt nur die manuelle Fahrzeug-Liste unten (andere Fabrikate).';
+            return NRGDASH_Text::t('ℹ️ No Tessie instance found - only the manual vehicle list below applies (other makes).');
         }
         if (!function_exists('TESSIE_GetVehicleState')) {
-            return '⚠️ Tessie-Instanz vorhanden (' . $this->formInstanceLabel((int) $ids[0]) . '), aber die Funktion TESSIE_GetVehicleState fehlt - Tessie aktualisieren; bis dahin keine automatische Fahrzeug-Erkennung.';
+            return NRGDASH_Text::t('⚠️ Tessie instance present (%s), but the function TESSIE_GetVehicleState is missing - update Tessie; until then no automatic vehicle detection.', $this->formInstanceLabel((int) $ids[0]));
         }
         $vehicles = $this->discoverTessieVehicles();
         if (count($vehicles) === 0) {
-            return '⚠️ Tessie ' . $this->formInstanceLabel((int) $ids[0]) . ' gefunden, liefert aber kein Fahrzeug mit Ladestand-Variable - Fahrzeug und Ladestand-Datenpunkt in Tessie prüfen.';
+            return NRGDASH_Text::t('⚠️ Tessie %s found, but it supplies no vehicle with a state-of-charge variable - check the vehicle and the state-of-charge data point in Tessie.', $this->formInstanceLabel((int) $ids[0]));
         }
         $parts = array_map(function ($v) {
-            return $v['name'] . ' (Ladestand #' . $v['socID'] . ($v['connected'] ? ', angesteckt' : '') . ')';
+            // zwei vollständige Fassungen statt angeklebter Satzteile
+            return $v['connected']
+                ? NRGDASH_Text::t('%s (state of charge #%s, plugged in)', $v['name'], $v['socID'])
+                : NRGDASH_Text::t('%s (state of charge #%s)', $v['name'], $v['socID']);
         }, $vehicles);
-        return '🔗 Tessie: ' . count($vehicles) . ' Fahrzeug' . (count($vehicles) === 1 ? '' : 'e') . ' automatisch erkannt - ' . implode(', ', $parts) . '.';
+        if (count($vehicles) === 1) {
+            return NRGDASH_Text::t('🔗 Tessie: %d vehicle detected automatically - %s.', count($vehicles), implode(', ', $parts));
+        }
+        return NRGDASH_Text::t('🔗 Tessie: %d vehicles detected automatically - %s.', count($vehicles), implode(', ', $parts));
     }
 
     public function GetConfigurationForm()
     {
-        $raw = str_replace('%%HOOK%%', '/hook/nrgdashtile' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
-        $form = json_decode($raw, true);
+        $form = json_decode((string) file_get_contents(__DIR__ . '/form.json'), true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }
 
         $this->injectVersionIntoDocPanel($form);
+        // Label mit eingesetztem Wert: die Konsole findet den Text danach nicht mehr, deshalb Platzhalter %s und Übersetzung hier
+        $this->setFormCaption($form['elements'], 'HookInfo', NRGDASH_Text::t('IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.', '/hook/nrgdashtile' . $this->InstanceID));
         $this->setFormStatusLine($form['elements'], 'TessieStatus', $this->tessieStatusLine());
         $this->setFormStatusLine($form['elements'], 'HealthSourcesStatus', $this->healthSourcesStatusLines($form['elements']));
         $this->injectDeviceToggleValues($form);
@@ -803,11 +813,11 @@ class NRGDashboardTile extends IPSModule
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASH_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is beta — feedback, bugs and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASH_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -845,9 +855,9 @@ class NRGDashboardTile extends IPSModule
 
         $line = '';
         if ($pvId > 0) {
-            $line = ($pv === null) ? 'Keinen Wert gelesen - Variable prüfen.' : 'Aktuell ' . $fmt($pv) . ' - Solar erwartet Erzeugung als positiven Wert.';
+            $line = ($pv === null) ? NRGDASH_Text::t('No value read - check the variable.') : NRGDASH_Text::t('Currently %s - solar expects generation as a positive value.', $fmt($pv));
             if ($pv !== null && $pv < 0) {
-                $line .= ' ⚠️ Negativ: Erzeugung wird meist positiv geliefert, Variable prüfen.';
+                $line .= ' ' . NRGDASH_Text::t('⚠️ Negative: generation is usually delivered as a positive value, check the variable.');
             }
         }
         $this->setFormStatusLine($elements, 'ManualPvLive', $line);
@@ -855,11 +865,11 @@ class NRGDashboardTile extends IPSModule
         $line = '';
         if ($gridId > 0) {
             if ($grid === null) {
-                $line = 'Keinen Wert gelesen - Variable prüfen.';
+                $line = NRGDASH_Text::t('No value read - check the variable.');
             } else {
-                $dir = ($gridEff > 0) ? 'Einspeisung' : (($gridEff < 0) ? 'Netzbezug' : 'weder Bezug noch Einspeisung');
-                $line = 'Aktuell ' . $fmt($grid) . ($gridInv ? ' → invertiert ' . $fmt($gridEff) : '') . ' = ' . $dir
-                    . '. Erwartet: + Einspeisung, − Bezug. Zählt deine Quelle Bezug als plus (z. B. viele Leseköpfe), Schalter „invertieren“ an.';
+                $dir = ($gridEff > 0) ? NRGDASH_Text::t('feed-in') : (($gridEff < 0) ? NRGDASH_Text::t('grid import') : NRGDASH_Text::t('neither import nor feed-in'));
+                $now = $gridInv ? NRGDASH_Text::t('%s → inverted %s', $fmt($grid), $fmt($gridEff)) : $fmt($grid);
+                $line = NRGDASH_Text::t('Currently %s = %s. Expected: + feed-in, − import. If your source counts import as plus (e.g. many reading heads), switch “invert” on.', $now, $dir);
             }
         }
         $this->setFormStatusLine($elements, 'ManualGridLive', $line);
@@ -867,11 +877,11 @@ class NRGDashboardTile extends IPSModule
         $line = '';
         if ($batId > 0) {
             if ($bat === null) {
-                $line = 'Keinen Wert gelesen - Variable prüfen.';
+                $line = NRGDASH_Text::t('No value read - check the variable.');
             } else {
-                $dir = ($batEff > 0) ? 'Entladen' : (($batEff < 0) ? 'Laden' : 'Ruhe');
-                $line = 'Aktuell ' . $fmt($bat) . ($batInv ? ' → invertiert ' . $fmt($batEff) : '') . ' = ' . $dir
-                    . '. Erwartet: + Entladen, − Laden. Vergleiche mit der Anzeige deines Speichers, Richtung ggf. mit „invertieren“ umdrehen.';
+                $dir = ($batEff > 0) ? NRGDASH_Text::t('discharging') : (($batEff < 0) ? NRGDASH_Text::t('charging') : NRGDASH_Text::t('idle'));
+                $now = $batInv ? NRGDASH_Text::t('%s → inverted %s', $fmt($bat), $fmt($batEff)) : $fmt($bat);
+                $line = NRGDASH_Text::t('Currently %s = %s. Expected: + discharging, − charging. Compare with the display of your storage and reverse the direction with “invert” if necessary.', $now, $dir);
             }
         }
         $this->setFormStatusLine($elements, 'ManualBatLive', $line);
@@ -881,18 +891,18 @@ class NRGDashboardTile extends IPSModule
         if ($houseId > 0) {
             // Ein echter Hauslastzaehler ersetzt die Berechnung; eine ungueltige ID wird ignoriert (siehe discoverManualCore())
             if (!@IPS_VariableExists($houseId)) {
-                $line = '⚠️ Als Hauslastzähler ist die Variable #' . $houseId . ' eingetragen, sie ist ungültig oder existiert nicht mehr und wird ignoriert; die Hauslast wird berechnet. Feld leeren (Kreuz neben der Auswahl) oder eine vorhandene Variable wählen.';
+                $line = NRGDASH_Text::t('⚠️ Variable #%d is entered as house load meter, but it is invalid or no longer exists and is ignored; the house load is calculated. Clear the field (cross next to the selection) or choose an existing variable.', $houseId);
             } else {
                 $hv = $this->resolveVariableValue($houseId);
-                $line = 'Hauslast kommt vom eingetragenen Zähler #' . $houseId . ' (' . @IPS_GetName($houseId) . '), aktuell ' . ($hv === null ? 'kein Wert' : $fmt($hv)) . ' - die Berechnung Solar − Netz + Batterie wird dann nicht verwendet.';
+                $line = NRGDASH_Text::t('House load comes from the entered meter #%d (%s), currently %s - the calculation solar − grid + battery is then not used.', $houseId, @IPS_GetName($houseId), $hv === null ? NRGDASH_Text::t('no value') : $fmt($hv));
             }
         } elseif ($pv !== null && $gridEff !== null) {
             $house = $pv - $gridEff + ($batEff ?? 0.0);
             if ($house <= 0 && $pv > 50) {
-                $line = '⚠️ Berechnete Hauslast ' . $fmt($house) . ' (Solar ' . $fmt($pv) . ' − Netz ' . $fmt($gridEff)
-                    . ' + Batterie ' . $fmt($batEff ?? 0.0) . ') - bei laufender Erzeugung ist das unplausibel. Möglich ist, dass eine Quelle fehlt (zum Beispiel ein nicht gemessener Wechselrichter oder Erzeuger, dessen Leistung in der Batterie steckt, aber nicht in der Solar-Summe) oder dass eine Richtung nicht zu den Rohwerten oben passt. Bitte Quellen und Vorzeichen prüfen.';
+                $line = NRGDASH_Text::t('⚠️ Calculated house load %s (solar %s − grid %s + battery %s) - with generation running this is implausible. A source may be missing (for example an unmeasured inverter or generator whose power ends up in the battery but not in the solar total), or a direction does not match the raw values above. Please check sources and signs.',
+                    $fmt($house), $fmt($pv), $fmt($gridEff), $fmt($batEff ?? 0.0));
             } else {
-                $line = 'Berechnete Hauslast aktuell ' . $fmt($house) . ' (Solar − Netz + Batterie).';
+                $line = NRGDASH_Text::t('Calculated house load currently %s (solar − grid + battery).', $fmt($house));
             }
         }
         $this->setFormStatusLine($elements, 'ManualHouseCheck', $line);
@@ -913,10 +923,11 @@ class NRGDashboardTile extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRGDashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            ? NRGDASH_Text::t('ℹ️ NRGDashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
             : 'ℹ️ NRGDashboard';
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            // Panel über den Namen finden, nie über die (übersetzte) Caption
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -936,12 +947,16 @@ class NRGDashboardTile extends IPSModule
     {
         $ts = (int) $this->ReadAttributeInteger('LastDiscoveryTs');
         if ($ts === 0) {
-            return 'ℹ️ Noch nicht gesucht — Button oben drücken.';
+            return NRGDASH_Text::t('ℹ️ Not searched yet — press the button above.');
         }
         $devices = json_decode((string) $this->ReadAttributeString('DeviceCache'), true) ?: [];
         $count = count($devices);
         $icon = $count > 0 ? '✅' : '⚠️';
-        return sprintf('%s %d Geräte gefunden (zuletzt %s Uhr).', $icon, $count, date('H:i:s', $ts));
+        // Einzahl/Mehrzahl als zwei vollständige Sätze (deutsch gleich)
+        if ($count === 1) {
+            return NRGDASH_Text::t('%s %d device found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
+        }
+        return NRGDASH_Text::t('%s %d devices found (last checked at %s).', $icon, $count, date('H:i:s', $ts));
     }
 
     private function injectDiscoveryResultLabel(array &$form): void
@@ -1150,12 +1165,12 @@ class NRGDashboardTile extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'NRGDashboard zeigt den kompletten Energiefluss deiner Anlage - PV, Batterie, Netz, Hausverbrauch, Wallboxen und weitere Verbraucher - live als eine einzige, animierte Kachel.'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: auf einen Blick sehen, woher der Strom gerade kommt und wohin er fließt, ohne selbst eine einzige Variable verknüpfen zu müssen - alle Geräte werden automatisch über die Verträge der Partnermodule gefunden.'],
-                ['type' => 'Label', 'caption' => 'Ergänzend zeigt NRGDashboardMap dieselben Geräte räumlich als 3D-Karte, NRGDashboardTopology die Gesundheit des gesamten NRG-Stack-Verbunds.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASH_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'NRGDashboard shows the complete energy flow of your installation - PV, battery, grid, house consumption, wallboxes and other consumers - live as one single animated tile.'],
+                ['type' => 'Label', 'caption' => 'The benefit: see at a glance where the electricity is coming from right now and where it is flowing, without having to link a single variable yourself - all devices are found automatically through the contracts of the partner modules.'],
+                ['type' => 'Label', 'caption' => 'In addition, NRGDashboardMap shows the same devices spatially as a 3D map, and NRGDashboardTopology the health of the entire NRG-Stack federation.'],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASH_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -1201,19 +1216,19 @@ class NRGDashboardTile extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => '🆕 New since the version you last saw — please take a quick look and check your settings if needed:']];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASH_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASH_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -1254,7 +1269,7 @@ class NRGDashboardTile extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagation to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -1304,7 +1319,7 @@ class NRGDashboardTile extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     /** "Uebernehmen": siehe AckNewsApply() - nur lokaler Zustand, keine Propagation. */
@@ -1529,7 +1544,7 @@ class NRGDashboardTile extends IPSModule
         $incomplete = $devices === [] || $this->partnerNotReady;
         $this->partnerNotReady = false;
         if ($incomplete && is_array($cached) && $cached !== [] && $cacheAge < 15 * 60) {
-            $this->SendDebug('Discover', 'leerer Fund bei gefuelltem Cache - alter Stand bleibt, neuer Versuch in 30 s', 0);
+            $this->SendDebug('Discover', NRGDASH_Text::t('empty result with a filled cache - old state is kept, new attempt in 30 s'), 0);
             $this->SetTimerInterval('NRGDASH_Refresh', 30 * 1000);
             return $cached;
         }
@@ -1543,7 +1558,7 @@ class NRGDashboardTile extends IPSModule
         $this->WriteAttributeInteger('LastDiscoveryTs', time());
         $this->SetStatus(102);
         $this->LogMessage(
-            sprintf('NRG Dashboard: %d Geräte, %d Diagnose-Einträge gefunden', count($devices), count($diagnostics)),
+            NRGDASH_Text::t('NRG Dashboard: %d devices, %d diagnostic entries found', count($devices), count($diagnostics)),
             KL_MESSAGE
         );
         // Sichtbare Rueckmeldung im Konfigurationsformular - vorher lief der
@@ -1686,12 +1701,15 @@ class NRGDashboardTile extends IPSModule
         }
         $stray = ob_get_clean();
         if ($stray !== '') {
-            $this->LogMessage('Unerwartete Ausgabe bei Wallbox-Steuerbefehl: ' . substr($stray, 0, 500), KL_WARNING);
+            $this->LogMessage(NRGDASH_Text::t('Unexpected output on wallbox control command: %s', substr($stray, 0, 500)), KL_WARNING);
             // Den Text des Partnermoduls mit anzeigen (Forum Mstaudi, 05.10.2026:
             // "Aktion am Partnermodul fehlgeschlagen" ohne erkennbaren Grund) -
             // meist eine PHP-Warnung/Meldung des Partners, ohne HTML und gekuerzt.
             $text = trim(preg_replace('/\s+/', ' ', strip_tags($stray)));
-            return 'Unerwartete Antwort vom Partnermodul' . ($text !== '' ? ': ' . mb_substr($text, 0, 240) : '') . ' (siehe IPS-Systemlog).';
+            if ($text !== '') {
+                return NRGDASH_Text::t('Unexpected response from the partner module: %s (see the Symcon system log).', mb_substr($text, 0, 240));
+            }
+            return NRGDASH_Text::t('Unexpected response from the partner module (see the Symcon system log).');
         }
         return null;
     }
@@ -1735,7 +1753,7 @@ class NRGDashboardTile extends IPSModule
             // "keine Auswirkungen auf das System" (Dietmar) auch dann gilt.
             if ($this->readBoolProperty('DemoMode', false)) {
                 http_response_code(403);
-                echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Control is disabled in demo mode.')]);
                 return;
             }
             $key = (string) ($_GET['key'] ?? '');
@@ -1744,7 +1762,7 @@ class NRGDashboardTile extends IPSModule
             $expected = (int) ($_GET['instanceId'] ?? 0);
             if ($d === null || $instanceID <= 0 || $instanceID !== $expected || ($d['function'] ?? '') !== 'charger' || !empty($d['externallyManaged'])) {
                 http_response_code(403);
-                echo json_encode(['ok' => false, 'error' => 'Ungültiges oder nicht steuerbares Gerät.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Invalid or non-controllable device.')]);
                 return;
             }
             // OCPPHub-eigener Vorfuehrmodus (01.09.2026) - OCPPHub lehnt den
@@ -1755,7 +1773,7 @@ class NRGDashboardTile extends IPSModule
                 $splitterId = (int) @IPS_GetProperty($instanceID, 'SplitterID');
                 if ($splitterId > 0 && @OHUB_IsDemoMode($splitterId)) {
                     http_response_code(403);
-                    echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert (OCPPHub).']);
+                    echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Control is disabled in demo mode (OCPPHub).')]);
                     return;
                 }
             }
@@ -1770,13 +1788,13 @@ class NRGDashboardTile extends IPSModule
                 $vid = (int) ($d['chargeEnableID'] ?? 0);
                 if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
                     http_response_code(400);
-                    echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar.']);
+                    echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Charging enable cannot be controlled on this device.')]);
                     return;
                 }
                 $target = $this->resolveActionTarget($vid);
                 if ($target === null) {
                     http_response_code(400);
-                    echo json_encode(['ok' => false, 'error' => 'Ladefreigabe an diesem Gerät nicht steuerbar (kein Ident ermittelbar).']);
+                    echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Charging enable cannot be controlled on this device (no ident determinable).')]);
                     return;
                 }
                 $err = $this->runPartnerCall(function () use ($target) {
@@ -1786,13 +1804,13 @@ class NRGDashboardTile extends IPSModule
                 $vid = (int) ($d['currentLimitID'] ?? 0);
                 if ($vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
                     http_response_code(400);
-                    echo json_encode(['ok' => false, 'error' => 'Stromlimit an diesem Gerät nicht steuerbar.']);
+                    echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Current limit cannot be controlled on this device.')]);
                     return;
                 }
                 $target = $this->resolveActionTarget($vid);
                 if ($target === null) {
                     http_response_code(400);
-                    echo json_encode(['ok' => false, 'error' => 'Stromlimit an diesem Gerät nicht steuerbar (kein Ident ermittelbar).']);
+                    echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Current limit cannot be controlled on this device (no ident determinable).')]);
                     return;
                 }
                 $min = (int) ($d['minCurrent'] ?? 6);
@@ -1815,12 +1833,12 @@ class NRGDashboardTile extends IPSModule
                 });
             } else {
                 http_response_code(400);
-                echo json_encode(['ok' => false, 'error' => 'Unbekannte oder nicht verfügbare Aktion.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Unknown or unavailable action.')]);
                 return;
             }
             if ($err !== null) {
                 http_response_code(500);
-                echo json_encode(['ok' => false, 'error' => 'Aktion am Partnermodul fehlgeschlagen: ' . $err]);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Action on the partner module failed: %s', $err)]);
                 return;
             }
             echo json_encode(['ok' => true]);
@@ -1836,7 +1854,7 @@ class NRGDashboardTile extends IPSModule
                 echo json_encode(['ok' => false, 'error' => $msg]);
             };
             if ($this->readBoolProperty('DemoMode', false)) {
-                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                $fail(403, NRGDASH_Text::t('Control is disabled in demo mode.'));
                 return;
             }
             $field = (string) $_GET['emsWbAction'];
@@ -1845,16 +1863,16 @@ class NRGDashboardTile extends IPSModule
             $d = $this->FindDeviceByKey($key);
             if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
                 || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
-                $fail(403, 'Ungültige Wallbox.');
+                $fail(403, NRGDASH_Text::t('Invalid wallbox.'));
                 return;
             }
             $ec = $this->EmsWallboxControls($pid);
             if ($ec === null || !isset($ec[2][$field])) {
-                $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen oder ist nicht bedienbar.');
+                $fail(400, NRGDASH_Text::t('This wallbox cannot be assigned unambiguously to an EMS wallbox or cannot be operated.'));
                 return;
             }
             if (empty($ec[3])) {
-                $fail(409, 'Diese Wallbox wird nicht vom EMS geregelt, die Einstellungen hätten keine Wirkung.');
+                $fail(409, NRGDASH_Text::t('This wallbox is not controlled by the EMS, the settings would have no effect.'));
                 return;
             }
             [$emsInst, $n, $vars] = $ec;
@@ -1867,42 +1885,42 @@ class NRGDashboardTile extends IPSModule
                 }
                 $val = (int) $raw;
                 if (!ctype_digit(ltrim($raw, '-')) || !in_array($val, $allowed, true)) {
-                    $fail(400, 'Ungültiger Wert.');
+                    $fail(400, NRGDASH_Text::t('Invalid value.'));
                     return;
                 }
             } elseif ($field === 'kwh') {
                 $pres = @IPS_GetVariablePresentation($vid);
                 $val = (float) str_replace(',', '.', $raw);
                 if (!is_numeric(str_replace(',', '.', $raw)) || $val < (float) ($pres['MIN'] ?? 0) || $val > (float) ($pres['MAX'] ?? 100)) {
-                    $fail(400, 'Ladeziel außerhalb des erlaubten Bereichs.');
+                    $fail(400, NRGDASH_Text::t('Charging target outside the permitted range.'));
                     return;
                 }
             } else {
                 if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $raw)) {
-                    $fail(400, 'Frist bitte als HH:MM angeben.');
+                    $fail(400, NRGDASH_Text::t('Please enter the deadline as HH:MM.'));
                     return;
                 }
                 $val = $raw;
             }
             $bufKey = 'EmsWbLast_' . $vid;
             if (time() - (int) $this->GetBuffer($bufKey) < 5) {
-                $fail(429, 'Bitte einen Moment warten – das EMS lädt nach jeder Änderung neu.');
+                $fail(429, NRGDASH_Text::t('Please wait a moment – the EMS reloads after every change.'));
                 return;
             }
             $this->SetBuffer($bufKey, (string) time());
             $target = $this->resolveActionTarget($vid);
             if ($target === null) {
-                $fail(400, 'Variable nicht bedienbar (kein Ident ermittelbar).');
+                $fail(400, NRGDASH_Text::t('Variable cannot be operated (no ident determinable).'));
                 return;
             }
             $err = $this->runPartnerCall(function () use ($target, $val) {
                 IPS_RequestAction($target[0], $target[1], $val);
             });
             if ($err !== null) {
-                $fail(500, 'Aktion am EMS fehlgeschlagen: ' . $err);
+                $fail(500, NRGDASH_Text::t('Action on the EMS failed: %s', $err));
                 return;
             }
-            $this->LogMessage(sprintf('Wallbox-Bedienung über die Detailseite: EMS_WB%d %s = %s', $n, $field, (string) $val), KL_MESSAGE);
+            $this->LogMessage(NRGDASH_Text::t('Wallbox operation via the detail page: EMS_WB%d %s = %s', $n, $field, (string) $val), KL_MESSAGE);
             echo json_encode(['ok' => true]);
             return;
         }
@@ -1915,11 +1933,11 @@ class NRGDashboardTile extends IPSModule
                 echo json_encode(['ok' => false, 'error' => $msg, 'errors' => $errors]);
             };
             if ($this->readBoolProperty('DemoMode', false)) {
-                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                $fail(403, NRGDASH_Text::t('Control is disabled in demo mode.'));
                 return;
             }
             if (!function_exists('EMS_SetWeekTargets')) {
-                $fail(400, 'Das EMS bietet die Wochen-Frist nicht an.');
+                $fail(400, NRGDASH_Text::t('The EMS does not offer the weekly deadline.'));
                 return;
             }
             $key = (string) ($_GET['key'] ?? '');
@@ -1927,23 +1945,23 @@ class NRGDashboardTile extends IPSModule
             $d = $this->FindDeviceByKey($key);
             if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
                 || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
-                $fail(403, 'Ungültige Wallbox.');
+                $fail(403, NRGDASH_Text::t('Invalid wallbox.'));
                 return;
             }
             $ec = $this->EmsWallboxControls($pid);
             if ($ec === null) {
-                $fail(400, 'Diese Wallbox lässt sich nicht eindeutig einer EMS-Wallbox zuordnen.');
+                $fail(400, NRGDASH_Text::t('This wallbox cannot be assigned unambiguously to an EMS wallbox.'));
                 return;
             }
             $emsInst = (int) $ec[0];
             if (empty($ec[3])) {
-                $fail(409, 'Diese Wallbox wird nicht vom EMS geregelt, die Einstellungen hätten keine Wirkung.');
+                $fail(409, NRGDASH_Text::t('This wallbox is not controlled by the EMS, the settings would have no effect.'));
                 return;
             }
             $n = (int) $ec[1];
             $in = json_decode((string) ($_GET['days'] ?? ''), true);
             if (!is_array($in) || count($in) < 1 || count($in) > 7) {
-                $fail(400, 'Ungültige Tage.');
+                $fail(400, NRGDASH_Text::t('Invalid days.'));
                 return;
             }
             $days = [];
@@ -1952,14 +1970,14 @@ class NRGDashboardTile extends IPSModule
                 $time = (string) ($row['time'] ?? '');
                 $kwh = (float) ($row['kwh'] ?? 0);
                 if ($day < 1 || $day > 7 || ($time !== '' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) || $kwh < 0 || $kwh > 200) {
-                    $fail(400, 'Ungültige Frist oder ungültiges Ladeziel.');
+                    $fail(400, NRGDASH_Text::t('Invalid deadline or invalid charging target.'));
                     return;
                 }
                 $days[] = ['day' => $day, 'time' => $time, 'kwh' => round($kwh, 1)];
             }
             $bufKey = 'EmsWeekLast_' . $n;
             if (time() - (int) $this->GetBuffer($bufKey) < 5) {
-                $fail(429, 'Bitte einen Moment warten – das EMS lädt nach jeder Änderung neu.');
+                $fail(429, NRGDASH_Text::t('Please wait a moment – the EMS reloads after every change.'));
                 return;
             }
             $this->SetBuffer($bufKey, (string) time());
@@ -1976,14 +1994,14 @@ class NRGDashboardTile extends IPSModule
                 $res = json_decode($res, true);
             }
             if ($err !== null) {
-                $fail(500, 'Aktion am EMS fehlgeschlagen: ' . $err);
+                $fail(500, NRGDASH_Text::t('Action on the EMS failed: %s', $err));
                 return;
             }
             if (!is_array($res) || empty($res['ok'])) {
-                $fail(422, 'Nicht gespeichert.', is_array($res['errors'] ?? null) ? $res['errors'] : []);
+                $fail(422, NRGDASH_Text::t('Not saved.'), is_array($res['errors'] ?? null) ? $res['errors'] : []);
                 return;
             }
-            $this->LogMessage(sprintf('Wochen-Frist über die Detailseite gespeichert: EMS-Wallbox %d (%d Tage)', $n, count($days)), KL_MESSAGE);
+            $this->LogMessage(NRGDASH_Text::t('Weekly deadline saved via the detail page: EMS wallbox %d (%d days)', $n, count($days)), KL_MESSAGE);
             echo json_encode(['ok' => true]);
             return;
         }
@@ -1996,11 +2014,11 @@ class NRGDashboardTile extends IPSModule
                 echo json_encode(['ok' => false, 'error' => $msg]);
             };
             if ($this->readBoolProperty('DemoMode', false)) {
-                $fail(403, 'Steuerung im Vorführmodus deaktiviert.');
+                $fail(403, NRGDASH_Text::t('Control is disabled in demo mode.'));
                 return;
             }
             if (!function_exists('CHUB_GetManagedByOptions') || !function_exists('CHUB_SetManagedBy')) {
-                $fail(400, 'Diese ChargerHub-Version bietet die Umstellung nicht an.');
+                $fail(400, NRGDASH_Text::t('This ChargerHub version does not offer the switchover.'));
                 return;
             }
             $key = (string) ($_GET['key'] ?? '');
@@ -2008,7 +2026,7 @@ class NRGDashboardTile extends IPSModule
             $d = $this->FindDeviceByKey($key);
             if ($d === null || $this->normalizeDeviceCategory((string) ($d['function'] ?? '')) !== 'wallbox'
                 || !in_array($pid, array_map('intval', $this->SessionPowerIDs($key, $d, (int) ($d['powerID'] ?? 0))), true)) {
-                $fail(403, 'Ungültige Wallbox.');
+                $fail(403, NRGDASH_Text::t('Invalid wallbox.'));
                 return;
             }
             $abs = json_decode((string) $this->ReadAttributeString('AbsorbedWallboxes'), true);
@@ -2032,12 +2050,12 @@ class NRGDashboardTile extends IPSModule
                 }
             }
             if ($iid <= 0 || !in_array($value, $allowed, true)) {
-                $fail(400, 'Ungültiger Wert oder keine ChargerHub-Wallbox.');
+                $fail(400, NRGDASH_Text::t('Invalid value or not a ChargerHub wallbox.'));
                 return;
             }
             $bufKey = 'ManagedByLast_' . $iid;
             if (time() - (int) $this->GetBuffer($bufKey) < 5) {
-                $fail(429, 'Bitte einen Moment warten.');
+                $fail(429, NRGDASH_Text::t('Please wait a moment.'));
                 return;
             }
             $this->SetBuffer($bufKey, (string) time());
@@ -2046,13 +2064,13 @@ class NRGDashboardTile extends IPSModule
                 $res = CHUB_SetManagedBy($iid, $value);
             });
             if ($err === null && is_array($res) && empty($res['ok'])) {
-                $err = (string) ($res['error'] ?? 'abgelehnt');
+                $err = (string) ($res['error'] ?? NRGDASH_Text::t('rejected'));
             }
             if ($err !== null) {
-                $fail(500, 'Umstellung fehlgeschlagen: ' . $err);
+                $fail(500, NRGDASH_Text::t('Switchover failed: %s', $err));
                 return;
             }
-            $this->LogMessage(sprintf('Wallbox-Steuerhoheit über die Detailseite umgestellt: ChargerHub #%d -> %s', $iid, $value), KL_MESSAGE);
+            $this->LogMessage(NRGDASH_Text::t('Wallbox control authority switched via the detail page: ChargerHub #%d -> %s', $iid, $value), KL_MESSAGE);
             echo json_encode(['ok' => true]);
             return;
         }
@@ -2070,7 +2088,7 @@ class NRGDashboardTile extends IPSModule
             header('Content-Type: application/json; charset=utf-8');
             if ($this->readBoolProperty('DemoMode', false)) {
                 http_response_code(403);
-                echo json_encode(['ok' => false, 'error' => 'Steuerung im Vorführmodus deaktiviert.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Control is disabled in demo mode.')]);
                 return;
             }
             $key = (string) ($_GET['key'] ?? '');
@@ -2078,13 +2096,13 @@ class NRGDashboardTile extends IPSModule
             $vid = (int) ($d['switchID'] ?? 0);
             if ($d === null || $vid <= 0 || !IPS_VariableExists($vid) || (IPS_GetVariable($vid)['VariableAction'] ?? 0) <= 0) {
                 http_response_code(400);
-                echo json_encode(['ok' => false, 'error' => 'Ungültiges oder nicht schaltbares Gerät.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Invalid or non-switchable device.')]);
                 return;
             }
             $target = $this->resolveActionTarget($vid);
             if ($target === null) {
                 http_response_code(500);
-                echo json_encode(['ok' => false, 'error' => 'Ziel-Instanz konnte nicht ermittelt werden.']);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Target instance could not be determined.')]);
                 return;
             }
             $value = ($_GET['value'] ?? '1') === '1';
@@ -2093,7 +2111,7 @@ class NRGDashboardTile extends IPSModule
             });
             if ($err !== null) {
                 http_response_code(500);
-                echo json_encode(['ok' => false, 'error' => 'Schalten fehlgeschlagen: ' . $err]);
+                echo json_encode(['ok' => false, 'error' => NRGDASH_Text::t('Switching failed: %s', $err)]);
                 return;
             }
             echo json_encode(['ok' => true]);
@@ -2229,7 +2247,7 @@ class NRGDashboardTile extends IPSModule
             if ($lastSeen > 0 && time() - $lastSeen > self::STALE_AFTER_SEC) {
                 $d['stale'] = true;
                 $d['value'] = 0.0;
-                $d['sub'] = 'keine aktuelle Messung';
+                $d['sub'] = NRGDASH_Text::t('no current measurement');
             }
             // Manueller Invert-Schalter (Netz/Batterie) - nur bei manuell
             // konfigurierten Geraeten gesetzt (discoverManualCore()).
@@ -3239,7 +3257,7 @@ class NRGDashboardTile extends IPSModule
             }
             $name = trim((string) ($row['Name'] ?? ''));
             $out[] = [
-                'name' => ($name !== '' ? $name : 'Fahrzeug'),
+                'name' => ($name !== '' ? $name : NRGDASH_Text::t('Vehicle')),
                 'socID' => $socID,
                 'plugID' => (int) ($row['PlugID'] ?? 0),
                 'plugOp' => (string) ($row['PlugOp'] ?? 'truthy'),
@@ -3280,7 +3298,7 @@ class NRGDashboardTile extends IPSModule
             }
             $changeVid = $this->FindVarByIdent((int) $id, 'stat_tel_DetailedChargeState');
             $out[] = [
-                'name' => trim((string) ($state['name'] ?? '')) ?: 'Fahrzeug',
+                'name' => trim((string) ($state['name'] ?? '')) ?: NRGDASH_Text::t('Vehicle'),
                 'socID' => (int) $state['socID'],
                 'connected' => (bool) ($state['connected'] ?? false),
                 'changedAt' => $this->ChangedAt($changeVid),
@@ -3782,16 +3800,16 @@ class NRGDashboardTile extends IPSModule
         $ratio = $expected > 0 ? $measured / $expected : 1.0;
         if ($ratio < 0.5) {
             $level = 'kritisch';
-            $reason = 'Gemessener Ertrag liegt unter 50 % der Erwartung — Verschmutzung oder Defekt möglich.';
+            $reason = NRGDASH_Text::t('Measured yield is below 50 % of expectation — soiling or defect possible.');
         } elseif ($ratio < 0.8) {
             $level = 'auffaellig';
-            $reason = 'Gemessener Ertrag liegt unter 80 % der Erwartung.';
+            $reason = NRGDASH_Text::t('Measured yield is below 80 % of expectation.');
         } else {
             $level = 'normal';
             $reason = '';
         }
         $entries[] = [
-            'type' => 'yield_vs_forecast', 'label' => 'Solar-Ertrag', 'level' => $level, 'unit' => 'W',
+            'type' => 'yield_vs_forecast', 'label' => NRGDASH_Text::t('Solar yield'), 'level' => $level, 'unit' => 'W',
             'measured' => round($measured), 'expected' => round($expected), 'reason' => $reason,
         ];
 
@@ -3800,18 +3818,18 @@ class NRGDashboardTile extends IPSModule
         $maxV = max($strings);
         $diffRatio = $maxV > 0 ? (max($strings) - min($strings)) / $maxV : 0;
         $entries[] = [
-            'type' => 'mppt_string_compare', 'label' => 'MPPT-Strangvergleich',
+            'type' => 'mppt_string_compare', 'label' => NRGDASH_Text::t('MPPT string comparison'),
             'level' => $diffRatio > 0.3 ? 'auffaellig' : 'normal', 'unit' => 'W',
             'stringValues' => array_map(fn ($v) => round($v), $strings),
-            'reason' => $diffRatio > 0.3 ? 'Ein Strang liefert deutlich weniger als der andere.' : '',
+            'reason' => $diffRatio > 0.3 ? NRGDASH_Text::t('One string delivers considerably less than the other.') : '',
         ];
 
         $riso = mt_rand(800, 1400);
         $entries[] = [
-            'type' => 'riso', 'label' => 'Isolationswiderstand', 'unit' => 'kΩ',
+            'type' => 'riso', 'label' => NRGDASH_Text::t('Insulation resistance'), 'unit' => 'kΩ',
             'level' => $riso < 500 ? 'kritisch' : ($riso < 1000 ? 'auffaellig' : 'normal'),
             'measuredValue' => $riso, 'threshold' => 1000,
-            'reason' => $riso < 1000 ? 'Isolationswiderstand nahe der Warnschwelle.' : '',
+            'reason' => $riso < 1000 ? NRGDASH_Text::t('Insulation resistance close to the warning threshold.') : '',
         ];
 
         return $entries;
@@ -3854,21 +3872,21 @@ class NRGDashboardTile extends IPSModule
                     $ratio = $measuredW / $expectedW;
                     if ($ratio < 0.5) {
                         $level = 'kritisch';
-                        $reason = 'Gemessener Ertrag liegt unter 50 % der Erwartung — Verschmutzung oder Defekt möglich.';
+                        $reason = NRGDASH_Text::t('Measured yield is below 50 % of expectation — soiling or defect possible.');
                     } elseif ($ratio < 0.8) {
                         $level = 'auffaellig';
-                        $reason = 'Gemessener Ertrag liegt unter 80 % der Erwartung.';
+                        $reason = NRGDASH_Text::t('Measured yield is below 80 % of expectation.');
                     } else {
                         $level = 'normal';
-                        $reason = 'Ertrag im erwarteten Bereich.';
+                        $reason = NRGDASH_Text::t('Yield within the expected range.');
                     }
                 } else {
                     $level = null;
-                    $reason = 'Erwartete Leistung zu gering für eine Bewertung (Dämmerung/stark bewölkt).';
+                    $reason = NRGDASH_Text::t('Expected power too low for an assessment (dusk/heavily overcast).');
                 }
                 $entries[] = [
                     'type' => 'yield_vs_forecast',
-                    'label' => 'Ertrag vs. Prognose',
+                    'label' => NRGDASH_Text::t('Yield vs. forecast'),
                     'measuredPowerID' => $pvVid,
                     'expected' => round($expectedW, 0),
                     'unit' => 'W',
@@ -3895,21 +3913,21 @@ class NRGDashboardTile extends IPSModule
             $max = max($vals);
             if ($max > 100.0) {
                 $level = 'normal';
-                $reason = 'Alle Stränge im erwarteten Verhältnis zueinander.';
+                $reason = NRGDASH_Text::t('All strings in the expected ratio to each other.');
                 foreach ($vals as $n => $v) {
                     if ($v < 0.5 * $max) {
                         $level = 'auffaellig';
-                        $reason = 'MPPT ' . $n . ' liegt deutlich unter den übrigen Strängen — Verschattung oder Defekt möglich.';
+                        $reason = NRGDASH_Text::t('MPPT %s is considerably below the other strings — shading or defect possible.', $n);
                         break;
                     }
                 }
             } else {
                 $level = null;
-                $reason = 'Erzeugung zu gering für eine Bewertung.';
+                $reason = NRGDASH_Text::t('Generation too low for an assessment.');
             }
             $entries[] = [
                 'type' => 'mppt_string_compare',
-                'label' => 'MPPT-Strangvergleich',
+                'label' => NRGDASH_Text::t('MPPT string comparison'),
                 'stringPowerIDs' => $stringIDs,
                 'unit' => 'W',
                 'level' => $level,
@@ -3927,15 +3945,15 @@ class NRGDashboardTile extends IPSModule
             if ($warn > 0) {
                 $level = ($val < $warn) ? 'kritisch' : 'normal';
                 $reason = ($val < $warn)
-                    ? 'Isolationswiderstand liegt unter der konfigurierten Schwelle (' . $warn . ' kΩ).'
-                    : 'Isolationswiderstand über der konfigurierten Schwelle.';
+                    ? NRGDASH_Text::t('Insulation resistance is below the configured threshold (%s kΩ).', $warn)
+                    : NRGDASH_Text::t('Insulation resistance above the configured threshold.');
             } else {
                 $level = null;
-                $reason = 'Keine Schwelle konfiguriert (Instanzeinstellungen) — Bewertung nicht möglich.';
+                $reason = NRGDASH_Text::t('No threshold configured (instance settings) — assessment not possible.');
             }
             $entries[] = [
                 'type' => 'riso',
-                'label' => 'Isolationswiderstand',
+                'label' => NRGDASH_Text::t('Insulation resistance'),
                 'measuredID' => $risoVid,
                 'unit' => 'kΩ',
                 'level' => $level,
@@ -4007,7 +4025,7 @@ class NRGDashboardTile extends IPSModule
         $this->WriteAttributeInteger('BdewLastTry', time());
         $price = $this->FetchBdewPrice();
         if ($price === null) {
-            $this->SendDebug(__FUNCTION__, 'BDEW-Abruf fehlgeschlagen, naechster Versuch in ' . self::BDEW_RETRY_SECONDS . 's', 0);
+            $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('BDEW retrieval failed, next attempt in %ss', self::BDEW_RETRY_SECONDS), 0);
             return;
         }
         $history[] = ['fetchedAt' => time(), 'priceCtPerKWh' => $price];
@@ -4017,7 +4035,7 @@ class NRGDashboardTile extends IPSModule
             $history = array_slice($history, -40);
         }
         $this->WriteAttributeString('BdewPriceHistory', json_encode($history));
-        $this->SendDebug(__FUNCTION__, 'Neuer BDEW-Durchschnittspreis gespeichert: ' . $price . ' ct/kWh', 0);
+        $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('New BDEW average price saved: %s ct/kWh', $price), 0);
     }
 
     /**
@@ -4047,7 +4065,7 @@ class NRGDashboardTile extends IPSModule
         curl_close($ch);
 
         if ($html === false || $code >= 400) {
-            $this->SendDebug(__FUNCTION__, 'HTTP ' . $code . ' ' . $err, 0);
+            $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('HTTP %s %s', $code, $err), 0);
             return null;
         }
         // Zahl vor "ct/kWh" im Satz mit "durchschnittlich" - deutsches
@@ -4064,7 +4082,7 @@ class NRGDashboardTile extends IPSModule
             if ($price >= 20 && $price <= 80) {
                 return $price;
             }
-            $this->SendDebug(__FUNCTION__, 'Gefundener Wert unplausibel: ' . $price, 0);
+            $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Found value implausible: %s', $price), 0);
         }
         return null;
     }
@@ -4700,10 +4718,8 @@ class NRGDashboardTile extends IPSModule
         $this->duplicatesSkipped = 0;
         if ($instanceCount > 0 && $foundCount === 0 && !$this->partnerNotReady && $dups === 0) {
             $this->LogMessage(
-                sprintf(
-                    'ℹ️ %s ist installiert (%d Instanz(en)), liefert aber keine auswertbaren Geräte - ' .
-                    'entweder ist dort noch keine Funktionszuordnung konfiguriert, oder der Datenvertrag ' .
-                    'hat sich geändert.',
+                NRGDASH_Text::t(
+                    'ℹ️ %s is installed (%d instance(s)), but supplies no evaluable devices - either no function assignment is configured there yet, or the data contract has changed.',
                     $label,
                     $instanceCount
                 ),
@@ -4745,12 +4761,12 @@ class NRGDashboardTile extends IPSModule
             // kein Vertragsbruch) - das faellt in deren Zustaendigkeit, nicht
             // unsere; wir lesen gridPowerID ab jetzt wieder unveraendert.
             $map = [
-                'pv'      => ['Solar',    $data['pvPowerID']   ?? 0],
-                'battery' => ['Batterie', $data['batPowerID']  ?? 0],
-                'grid'    => ['Netz',     $data['gridPowerID'] ?? 0],
+                'pv'      => [NRGDASH_Text::t('Solar'),    $data['pvPowerID']   ?? 0],
+                'battery' => [NRGDASH_Text::t('Battery'), $data['batPowerID']  ?? 0],
+                'grid'    => [NRGDASH_Text::t('Grid'),     $data['gridPowerID'] ?? 0],
                 // InverterHub-Vertrag 1.4 (19.10.2026, Solis house_load_total = Netz- + Backup-Last): gemessener
                 // Gesamtverbrauch, hat Vorrang vor der Bilanz Solar - Netz + Batterie. 0/fehlend bei anderen Treibern.
-                'house'   => ['Haus',     $data['houseLoadID'] ?? 0],
+                'house'   => [NRGDASH_Text::t('House'),     $data['houseLoadID'] ?? 0],
             ];
             foreach ($map as $function => [$label, $powerID]) {
                 if (!$powerID) {
@@ -4835,7 +4851,7 @@ class NRGDashboardTile extends IPSModule
                 $entries = IHUBTILE_GetConsumers($id);
             } catch (\Throwable $e) {
                 $this->LogMessage(
-                    '⚠️ IHUBTILE_GetConsumers($id) ist fehlgeschlagen (' . $e->getMessage() . ') - Verbraucherliste von InverterHubTile wird übersprungen.',
+                    NRGDASH_Text::t('⚠️ IHUBTILE_GetConsumers($id) failed (%s) - the consumer list of InverterHubTile is skipped.', $e->getMessage()),
                     KL_WARNING
                 );
                 continue;
@@ -4879,7 +4895,7 @@ class NRGDashboardTile extends IPSModule
                 $data = IHUBTILE_GetHouseLoad($id);
             } catch (\Throwable $e) {
                 $this->LogMessage(
-                    '⚠️ IHUBTILE_GetHouseLoad($id) ist fehlgeschlagen (' . $e->getMessage() . ') - echte Hauslast-Quelle wird übersprungen, Näherung (pv-grid+bat) greift stattdessen.',
+                    NRGDASH_Text::t('⚠️ IHUBTILE_GetHouseLoad($id) failed (%s) - the real house load source is skipped, the approximation (pv-grid+bat) applies instead.', $e->getMessage()),
                     KL_WARNING
                 );
                 continue;
@@ -4889,7 +4905,7 @@ class NRGDashboardTile extends IPSModule
             }
             $results[] = $this->normalizeEntry([
                 'function' => 'house',
-                'label'    => 'Haus',
+                'label'    => NRGDASH_Text::t('House'),
                 'powerID'  => $data['houseLoadID'],
                 'measured' => true,
             ], 'inverterhubtile', $id);
@@ -4915,13 +4931,13 @@ class NRGDashboardTile extends IPSModule
         $pv = $this->readIntProperty('ManualPvID', 0);
         if ($pv > 0) {
             $results[] = $this->normalizeEntry([
-                'function' => 'pv', 'label' => 'Solar', 'powerID' => $pv, 'measured' => true,
+                'function' => 'pv', 'label' => NRGDASH_Text::t('Solar'), 'powerID' => $pv, 'measured' => true,
             ], 'manual', 0);
         }
         $grid = $this->readIntProperty('ManualGridID', 0);
         if ($grid > 0) {
             $entry = [
-                'function' => 'grid', 'label' => 'Netz', 'powerID' => $grid, 'measured' => true,
+                'function' => 'grid', 'label' => NRGDASH_Text::t('Grid'), 'powerID' => $grid, 'measured' => true,
                 'invert'   => $this->readBoolProperty('ManualGridInvert'),
             ];
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
@@ -4929,7 +4945,7 @@ class NRGDashboardTile extends IPSModule
         $bat = $this->readIntProperty('ManualBatID', 0);
         if ($bat > 0) {
             $entry = [
-                'function' => 'battery', 'label' => 'Batterie', 'powerID' => $bat, 'measured' => true,
+                'function' => 'battery', 'label' => NRGDASH_Text::t('Battery'), 'powerID' => $bat, 'measured' => true,
                 'invert'   => $this->readBoolProperty('ManualBatInvert'),
             ];
             $soc = $this->readIntProperty('ManualSocID', 0);
@@ -4942,7 +4958,7 @@ class NRGDashboardTile extends IPSModule
         // Nur eine echte Variable zaehlt (22.10.2026, Forum AKL: eine ungueltige ID 1 liess "Haus" dauerhaft auf 0 W stehen und ersetzte die Berechnung)
         if ($house > 0 && @IPS_VariableExists($house)) {
             $results[] = $this->normalizeEntry([
-                'function' => 'house', 'label' => 'Haus', 'powerID' => $house, 'measured' => true,
+                'function' => 'house', 'label' => NRGDASH_Text::t('House'), 'powerID' => $house, 'measured' => true,
             ], 'manual', 0);
         }
         return $results;
