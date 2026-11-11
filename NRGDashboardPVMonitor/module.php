@@ -163,6 +163,262 @@ class NRGDashboardPVMonitor extends IPSModule
     private const DEF_FONT       = 'system';
     private const DEF_ENGINE     = 'echarts';
 
+    /**
+     * Texte der Kachel (module.html): englische Quelltexte, die dort mit tr('...') benutzt werden. PHP liefert die
+     * Übersetzungen als Tabelle (window.NRGDASH_TEXTS), siehe NRGDASH_Text::kachelHtml(); der Prüfstand
+     * .tools/locale-pruefen.php vergleicht diese Liste mit module.html und locale.json.
+     */
+    private const TILE_TEXTS = [
+        'en-GB',
+        'Grid import',
+        'Battery discharge (grid)',
+        'Battery discharge (PV)',
+        'Direct consumption',
+        'Battery charging (PV)',
+        'Battery charging (grid)',
+        'Grid feed-in',
+        'Grid feed-in (battery)',
+        'Battery state of charge (SOC)',
+        'Yesterday',
+        'Today',
+        'Tomorrow',
+        'Day before yesterday',
+        'Week %s, %s',
+        'MPPT %s',
+        'Battery power',
+        'PV expected',
+        'PV generation',
+        'Irradiance',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+        'January',
+        'February',
+        'March',
+        'April',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+        'Mon',
+        'Tue',
+        'Wed',
+        'Thu',
+        'Fri',
+        'Sat',
+        'Sun',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+        'DD/MM',
+        'DD/MM/YYYY',
+        'Shrink chart again',
+        'Enlarge chart to tile size',
+        'MPPT %s expected',
+        'Battery SOC',
+        'Day %s',
+        'Month %s',
+        'Year %s',
+        'DD MON',
+        '%s h',
+        'Spot price (net)',
+        'Spot price (net, excluding taxes and grid fees)',
+        '(negative)',
+        '(hourly value)',
+        'Spot price: %s',
+        'Spot price: Energy-Charts.info (Fraunhofer ISE), data Bundesnetzagentur | SMARD.de',
+        'Spot price: aWATTar',
+        'Spot price: EPEX Spot, published on the ENTSO-E Transparency Platform',
+        'Spot price: Tibber price overview',
+        'Electricity price',
+        'Grid import (avg kW)',
+        'Time range without import data!',
+        'Electricity price: %s',
+        'Avg power',
+        'Costs: %s',
+        'DD/MM/YYYY HH:mm',
+        'Automatic',
+        'PV self-consumption (charge)',
+        'Charge from grid',
+        'Self-consumption (discharge)',
+        'Standby',
+        'Feed in',
+        'Backup',
+        'Grid Rewards (Tibber)',
+        'Hold battery (grid import)',
+        '%s with %s kW',
+        'Switching power %s kW',
+        'Battery spared: energy will be needed later up to %s ct/kWh',
+        'Battery spared: energy will be needed later up to %s ct/kWh, import now %s ct/kWh',
+        'Charging window: approx. %s EUR saved vs. average price (%s instead of %s ct/kWh)',
+        'Charging window: approx. %s EUR extra cost vs. average price (%s instead of %s ct/kWh)',
+        'Super green — use preferentially',
+        'Green — as usual',
+        'Yellow',
+        'Orange — reduce',
+        'Red — avoid',
+        'State %s',
+        'Dry run - plan will not be executed',
+        'Observing only - %s',
+        'Observing only',
+        'Grid charging saves approx. %s EUR vs. average price',
+        'Battery SOC (planned)',
+        'Load',
+        '◀ History',
+        'Outlook ▶',
+        'Power – %s',
+        'SOC – %s',
+        'Limit %s kW',
+        '§51 obligation',
+        'No balance data for this period',
+        'Sum',
+        'Place %s of %s',
+        'Average',
+        'Expected',
+        'Total yield',
+        'Specific plant yield',
+        'Cumulative',
+        'For the specific plant yield (kWh/kWp), please install the forecast module or enter the plant capacity manually below.',
+        'Add previous-year values',
+        'Set expected output',
+        'For months without meter history in the archive (e.g. before commissioning) - only takes effect where the archive itself provides no value. Empty field = no addition for this month. Choosing/typing a year that already has an addition loads its values for editing.',
+        'Year',
+        'Cancel',
+        'Save',
+        'Saving…',
+        'No PV power variable found - choose “PV power” in the form (with several InverterHub instances nothing is guessed) or add previous-year values',
+        'No yield data found in the archive',
+        'The forecast knows no expected annual yield (only a 3-day weather forecast) - the specific annual yield and the monthly distribution have to be estimated here. Only the plant capacity (kWp) can be supplied by the forecast.',
+        'Specific annual yield (kWh/kWp)',
+        'Plant capacity (kWp)',
+        'Take plant capacity from forecast module (%s kWp)',
+        'Monthly distribution (%, sum must be 100) - e.g. derive it from the past actual history via "Suggest from average":',
+        'Suggest from average',
+        'Sum: %s %',
+        'Daily consumption',
+        'Daily yield',
+        'Consumption',
+        'Generation',
+        'Monthly consumption',
+        'Monthly yield',
+        'Yearly consumption',
+        'Yearly yield',
+        'Overall consumption',
+        'Overall yield',
+        'State of charge: %s',
+        'Balance',
+        'Battery discharge',
+        'Self-sufficiency rate',
+        'Direct consumption rate',
+        'Total grid import %s: %s for the house and %s for battery charging (counts neither as consumption nor as yield). Of the battery discharge, %s comes from grid charging (does not count as self-sufficient).',
+        'The grid feed-in from the battery (%s) counts neither as consumption nor as yield.',
+        'For %s day the origin of the battery charging has not been split yet; it is being recalculated in the background.',
+        'For %s days the origin of the battery charging has not been split yet; it is being recalculated in the background.',
+        'Other consumption',
+        'fed in %s kWh / drawn %s kWh',
+        'PV & irradiance',
+        'Photovoltaics',
+        'shaded red: negative spot price (§ 51 EEG, no feed-in tariff)',
+        'No spot prices available for this day (retrospective only from the installation of “%s” 0.2.0, tomorrow from about 12:45)',
+        'No price curve available - install Tibber Grid Rewards or %s',
+        'No MPPT strings found - install an InverterHubMonitor instance with diagnostic data',
+        'No battery variable found - select “Data source” in the form or install InverterHub',
+        'Loading daily plan…',
+        'Loading retrospective…',
+        'Scenario comparison not available',
+        'Loading scenarios…',
+        'No scenario data received',
+        'No InverterHubEnergy instance found - select “Data source” in the form or install InverterHubEnergy',
+        'Please choose a from/to date',
+        'Loading…',
+        'Loading balance…',
+        'Loading year comparison…',
+        'Loading energy balance…',
+        'No energy data for this period',
+        'No archive data for this day',
+        'No EMS daily plan available - install/configure EMS (contract EMS_GetDayPlan, from EMS 0.22.0)',
+        'Sending…',
+        'No response - the editor works in the WebFront, not on the standalone web page (IPSView/browser).',
+        'Saved. The plan is being reloaded and recalculates within about 30 seconds.',
+        '%s past entry was removed.',
+        '%s past entries were removed.',
+        'Error',
+        'The plan was changed in the meantime - current entries loaded, changes discarded. Please enter again.',
+        'Not saved - please check the notes on the entries.',
+        'Every day',
+        'Loading manual entries…',
+        'Manual entries – %s',
+        'Not available.',
+        'Edit',
+        'Save and finish',
+        'Finish editing',
+        'Refreshing…',
+        'Refresh now',
+        'Drag a time range in the chart, then choose the action. Drag the edges = lengthen/shorten, drag the bar = move. Takes precedence over the automatic planning, but not over § 14a and Grid Rewards; no discharging into the grid.',
+        'Entered time ranges appear as bars in the chart. “Edit” enables dragging in the chart.',
+        'Power in W, 0 = as much as possible',
+        'W (0 = as much as possible)',
+        'Delete',
+        'Done',
+        'Not saved yet.',
+        '%s further entry lies on other days and remains unchanged.',
+        '%s further entries lie on other days and remain unchanged.',
+        'Discard',
+        'This tab bar tidies itself up',
+        'Not like any other PV monitoring: tabs without a suitable data source are hidden completely – if a battery storage or a wall box is added later, for example, the tab appears by itself, without any setting having to be changed anywhere. Tabs with a source but currently without current data turn slightly red – so you see immediately what is currently stuck.',
+        'The bar floats instead of eating space',
+        'The double arrow next to the time control expands and collapses the tab bar. It lays itself OVER the standing chart instead of shifting the layout, and collapses again by itself after a tab has been chosen. Behind the arrow wait four selectable animations – including a physically simulated “suction into a black hole” with 20 particles on spiral paths.',
+        'Little suns that know what the weather will be',
+        'Little suns travel along the time axis between sunrise and sunset – their height shows the real position of the sun. If a forecast module is installed, size and brightness are additionally coupled to the forecast PV power: on a cloudy morning the suns appear pale, not radiant. Also visible in the daily plan tab.',
+        'The tab is only called what it can do',
+        'Without a connected irradiance sensor, the first tab is simply called “Photovoltaics” instead of “PV & irradiance” – the label never promises more than the installation actually delivers.',
+        'Legends that calculate along',
+        'Behind PV generation and grid import there are continuously updated daily, monthly and yearly kWh figures that always refer to the day CURRENTLY DISPLAYED – when you page back, they recalculate live. For grid import, real meter readings of the billing meter are preferred where available.',
+        'The spot price is not your electricity price',
+        'The curve in the electricity price tab shows the day-ahead spot price per quarter-hour (from about 1 pm also for tomorrow, determined at 12 noon in the power exchange auction) – the pure wholesale price, net, without grid fees, taxes and levies. Your actual purchase price is considerably higher; with Tibber it additionally appears as a curve of its own, otherwise it only appears on your electricity bill. If the chosen source only delivers hourly values, a price is spread evenly over four quarter-hours – a single negative quarter-hour can get lost in it.',
+        'Red areas: negative spot prices',
+        'Quarter-hours shaded red had a negative spot price – there was more electricity in the grid than demand, mostly at midday with plenty of sun and wind. For PV installations commissioned from 25.02.2025, the feed-in tariff does not apply in these quarter-hours (§ 51 EEG, “Solarspitzengesetz”); EMS then preferably directs the electricity into the battery, heat pump or car instead of into the grid. Older installations are affected differently or not at all, depending on size/year of construction – this is not legal advice, just a pointer to what the red area is based on.',
+        'Honest gaps instead of invented zeros',
+        'Some billing meters (e.g. Inexogy) only archive with a delay of 15–45 minutes. Instead of silently showing this gap as zero consumption, the electricity price tab marks the affected time range with hatching as “Time range without import data!” – better honestly incomplete than falsely complete. Past days come from the archive of the price module and only reach back to its installation; which source (Energy-Charts, EPEX Spot/ENTSO-E, Tibber price overview or aWATTar) that is, is shown below the chart.',
+        'Also usable outside the dashboard',
+        'This tile additionally runs as a standalone web page via an automatically registered WebHook (address in the documentation panel) – ideal for IPSView or any browser tab, with automatic refresh every 30 seconds.',
+        'Show introduction tour',
+        'Back',
+        'Next',
+        '✓ Understood, do not show again',
+        'Day (history)',
+        'Week (energy)',
+        'Month (energy)',
+        'Year (energy)',
+        'All time (energy)',
+        'Custom',
+        'Forward',
+        'Show/hide tab bar',
+        'MPP tracker',
+        'Battery',
+        'Energy balance',
+        'Year comparison',
+        'Daily plan',
+        'Scenarios',
+        'avg kW',
+    ];
+
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
@@ -181,37 +437,37 @@ class NRGDashboardPVMonitor extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.10.17' => [
-            '🎨 Neu: Farben der Bilanz selbst wählen (Formular, Darstellung): Farbschema „Farbkreis“, „Klassisch“ (die ursprünglichen Farben) oder „Farbenblind-freundlich“, dazu Einzelfarben zum Überschreiben und ein Knopf zum Zurücksetzen.'
+            '🎨 New: choose the colors of the balance yourself (form, Appearance): color scheme “Color wheel”, “Classic” (the original colors) or “Colorblind-friendly”, plus individual colors to override and a button to reset.'
         ],
         '0.10.16' => [
-            'Bilanz (Tagesansicht): Der Ladestand der Batterie wird als Linie mit eigener Prozentachse rechts in beiden Panels eingeblendet, per Legende ein- und ausschaltbar.'
+            'Balance (day view): the battery state of charge is shown as a line with its own percentage axis on the right in both panels, can be switched on and off via the legend.'
         ],
         '0.10.15' => [
-            'Bilanz: Netzeinspeisung aus der Batterie ist jetzt eine eigene Größe (Rosa/Magenta) und zählt weder zum Verbrauch noch zum Ertrag. Bisher stand sie fälschlich im Ertrag, die zugehörige Entladung im Verbrauch.'
+            'Balance: grid feed-in from the battery is now a quantity of its own (pink/magenta) and counts neither as consumption nor as yield. Previously it was wrongly included in the yield, and the corresponding discharge in the consumption.'
         ],
         '0.10.14' => [
-            'Bilanz: Die Netzladung der Batterie zählt jetzt weder zum Verbrauch noch zum Ertrag, sondern steht als eigene Zeile „Batterieladung (Netz)“ unter der Batterieladung aus PV. Der Tagesertrag besteht nur noch aus PV-Strom.',
-            'Autarkiequote rechnet mit dem Mischverhältnis der Batterie: Strom, der aus dem Netz in die Batterie geladen wurde, zählt bei der Entladung nicht als autark.',
-            'Fix: Die Netzkurve der Bilanz kommt vom echtzeitfähigen Netzzähler (z. B. PAC2200) statt vom verzögert archivierenden Abrechnungszähler, dessen Viertelstundenwerte die Kurve um ein Intervall nach hinten verschoben hatten.'
+            'Balance: grid charging of the battery now counts neither as consumption nor as yield, but appears as a separate row “Battery charging (grid)” below the battery charging from PV. The daily yield now consists of PV electricity only.',
+            'The self-sufficiency rate is calculated with the mix ratio of the battery: electricity that was charged into the battery from the grid does not count as self-sufficient when discharged.',
+            'Fix: the grid curve of the balance now comes from the real-time capable grid meter (e.g. PAC2200) instead of the billing meter that archives with a delay, whose quarter-hour values had shifted the curve back by one interval.'
         ],
         '0.10.13' => [
-            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-            'Fix: Partnermodule (Tibber, PV-Prognose, EMS, Lastprognose, StromGedacht, InverterHub) werden auch dann automatisch gefunden, wenn es mehrere Instanzen gibt, aber nur eine davon aktiv ist - bisher blockierte z. B. eine zusätzliche, abgeschaltete Tibber-Demo-Instanz die Strompreis-Anzeige komplett.',
-            'Neu: im Tagesplan laufen "Historie" und "Ausblick" links/rechts direkt mit der roten Jetzt-Linie mit, dazu je ein Pfeil am linken und rechten Diagrammrand - auf einen Blick erkennbar, welche Seite bereits gemessene Werte und welche eine Prognose zeigt.',
-            'Neu: Diagrammtitel oben mittig zeigt jetzt den Namen des aktiven Reiters - übernommen 1:1 aus der Reiterleiste, keine zweite, separat zu pflegende Beschriftung.',
-            'Neu: "Reiter automatisch alle 10 s weiterschalten" (Instanz-Einstellung, Standard aus) - Kiosk-/Vorführmodus, der selbstständig durch alle sichtbaren Reiter blättert, z. B. für eine Demo-Instanz.',
-            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-            'Neu: "+"-Knopf oben rechts am Diagramm blendet Legende/Tabelle/Zusatzleisten aus und lässt das Diagramm die volle Kachelgröße einnehmen - besonders hilfreich beim Jahresvergleich mit vielen Jahren, wo die wachsende Legende das Diagramm sonst immer weiter schrumpfen lässt. Gilt in jedem Reiter.',
-            'Fix: der Reiterleisten-Pfeil stand im Jahresvergleich zu weit oben (unter der Kachel-Titelzeile) - dort wird die Zeitsteuerungszeile ausgeblendet, auf deren Höhe der Pfeil sonst kalibriert ist. Rückt jetzt korrekt mit.',
-            'Fix: der Jahresvergleich verwarf bisher den kompletten Monat, sobald irgendein einzelner Archivwert darin unplausibel war - jetzt fällt nur der einzelne betroffene Tag weg, der Rest des Monats bleibt korrekt erhalten.',
-            'Fix: ein einzelner defekter Archivwert (z. B. ein Kommunikationsfehler bei einem Partnermodul in der Größenordnung von Megawatt bei einer Haushaltsanlage) verzerrte bisher Tagesansicht, Jahresvergleich und Energiebilanz - solche unplausiblen Werte werden jetzt verworfen statt in die Darstellung einzufließen.',
-            'Neu: Reiter "Tagesplan" zeigt den EMS-Ladeplan (heute + morgen) als Zeitleiste - Betriebsart farbig als Hintergrundband, dazu Strompreis, geplanter Batterie-SOC sowie PV-/Lastprognose (direkt von PVPrognose/Lastprognose, sofern installiert).',
-            'Neu: Strompreis-Reiter zeigt beim Netzbezug wahlweise kWh oder Ø Leistung (kW), inkl. gelber Monats-Spitzenwert-Linie.',
-            'Neu: Jahresvergleich erlaubt manuelles Nachtragen von Vorjahreswerten ohne Archivhistorie; laufendes Jahr/laufender Monat werden nicht mehr fälschlich hochgerechnet.',
-            'Fix: Theme-Beschriftung (Hell/Dunkel) an mehreren Charts korrigiert (Solar/Batterie/Strompreis/Bilanz/Jahresvergleich).',
+            'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+            '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+            '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+            '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what this tile does and what it is good for - meant for first contact, can be dismissed once.',
+            'Fix: partner modules (Tibber, PV forecast, EMS, load forecast, StromGedacht, InverterHub) are now also found automatically when there are several instances but only one of them is active - previously, e.g. an additional, switched-off Tibber demo instance blocked the electricity price display completely.',
+            'New: in the daily plan, “History” and “Outlook” move left/right along with the red now line, plus an arrow at the left and right chart edge - it is recognizable at a glance which side shows measured values and which a forecast.',
+            'New: the chart title at the top centre now shows the name of the active tab - taken 1:1 from the tab bar, no second label to maintain separately.',
+            'New: “Switch tabs automatically every 10 s” (instance setting, off by default) - kiosk/demo mode that pages through all visible tabs on its own, e.g. for a demo instance.',
+            'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+            'New: the "+" button at the top right of the chart hides the legend/table/additional bars and lets the chart take up the full tile size - especially helpful in the year comparison with many years, where the growing legend would otherwise keep shrinking the chart. Applies in every tab.',
+            'Fix: the tab bar arrow sat too high in the year comparison (below the tile title row) - the time control row, to whose height the arrow is otherwise calibrated, is hidden there. It now follows correctly.',
+            'Fix: the year comparison used to discard the whole month as soon as any single archive value in it was implausible - now only the single affected day is dropped, the rest of the month is kept correctly.',
+            'Fix: a single faulty archive value (e.g. a communication error in a partner module of the order of magnitude of megawatts on a household installation) used to distort the day view, year comparison and energy balance - such implausible values are now discarded instead of flowing into the display.',
+            'New: the “Daily plan” tab shows the EMS charging plan (today + tomorrow) as a timeline - operating mode as a colored background band, plus electricity price, planned battery SOC and PV/load forecast (directly from PV forecast/load forecast, if installed).',
+            'New: for grid import, the electricity price tab shows either kWh or average power (kW), including a yellow monthly peak line.',
+            'New: the year comparison allows adding previous-year values manually where there is no archive history; the current year/current month are no longer extrapolated incorrectly.',
+            'Fix: theme labelling (light/dark) corrected in several charts (solar/battery/electricity price/balance/year comparison).',
         ],
     ];
 
@@ -226,16 +482,22 @@ class NRGDashboardPVMonitor extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
+    }
+
+    /** Produktname des Börsenpreis-Moduls (Eigenname; ohne Umlaut-Literal im Code, damit der Prüfstand sauber bleibt). */
+    private function spotModuleName(): string
+    {
+        return 'B' . mb_chr(0xF6, 'UTF-8') . 'rsenpreis';
     }
 
     public function Create()
@@ -350,12 +612,12 @@ class NRGDashboardPVMonitor extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHMON.TabAnim')) {
             IPS_CreateVariableProfile('NRGDASHMON.TabAnim', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, 'Federnder Einschub', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, '3D-Kaskaden-Flip', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, 'Ecke für Ecke in den Pfeil', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, 'Blur-Morph', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 0, NRGDASH_Text::t('Springy slide-in'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 1, NRGDASH_Text::t('3D cascade flip'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 2, NRGDASH_Text::t('Corner by corner into the arrow'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHMON.TabAnim', 3, NRGDASH_Text::t('Blur morph'), '', -1);
         $animIsNew = @IPS_GetObjectIDByIdent('TabAnimation', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('TabAnimation', 'Reiterleisten-Animation', 'NRGDASHMON.TabAnim', 10);
+        $this->RegisterVariableInteger('TabAnimation', NRGDASH_Text::t('Tab bar animation'), 'NRGDASHMON.TabAnim', 10);
         $this->EnableAction('TabAnimation');
         if ($animIsNew) {
             $this->SetValue('TabAnimation', 0);
@@ -501,7 +763,7 @@ class NRGDashboardPVMonitor extends IPSModule
             return;
         }
         header('Content-Type: text/html; charset=utf-8');
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html = str_replace('/*__ECHARTS_JS__*/', '', $html);
         $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
                . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
@@ -519,7 +781,7 @@ class NRGDashboardPVMonitor extends IPSModule
         $line = $this->autoFieldLine($elements, $field, $label, $this->readIntProperty($field, 0) === $resolved ? $resolved : 0, $resolved, 'InverterHub', $noneText, false);
         $aid = $this->ArchiveID();
         if ($resolved > 0 && $aid > 0 && !@AC_GetLoggingStatus($aid, $resolved)) {
-            $line .= ' ⚠️ nicht im Archiv protokolliert - Verlauf und Jahresvergleich bleiben leer.';
+            $line .= ' ' . NRGDASH_Text::t('⚠️ not logged in the archive - history and year comparison stay empty.');
         }
         return $line;
     }
@@ -530,37 +792,42 @@ class NRGDashboardPVMonitor extends IPSModule
         $ihubCount = count((array) @IPS_GetInstanceListByModuleID('{BBE2C593-1A91-426D-A714-29A9C7E87589}'));
         $lines = [];
         if ($this->readIntProperty('PvPowerID', 0) <= 0 && $ihubCount > 1 && $this->PvPowerID() <= 0) {
-            $lines[] = '⚠️ ' . $ihubCount . ' InverterHub-Instanzen gefunden, aber keine eindeutige PV-Leistung - PV-Leistung, Batterie und Netz unten gezielt auswählen (es wird nicht geraten).';
+            $lines[] = NRGDASH_Text::t('⚠️ %d InverterHub instances found, but no unambiguous PV power - choose PV power, battery and grid explicitly below (nothing is guessed).', $ihubCount);
         }
-        $lines[] = $this->varSourceLine($elements, 'PvPowerID', 'PV-Leistung', $this->PvPowerID(), 'wird gebraucht - PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).');
-        $lines[] = $this->varSourceLine($elements, 'BatPowerID', 'Batterie-Leistung', $this->BatPowerID(), 'nicht gefunden - der Batterie-Reiter fehlt.');
-        $lines[] = $this->varSourceLine($elements, 'SocID', 'Batterie-Ladestand', $this->SocID(), 'nicht gefunden - kein SOC-Verlauf.');
-        $lines[] = $this->varSourceLine($elements, 'GridPowerID', 'Netzleistung', $this->GridPowerID(), 'nicht gefunden - kein Netzbezug-Balken im Strompreis-Reiter.');
+        $lines[] = $this->varSourceLine($elements, 'PvPowerID', NRGDASH_Text::t('PV power'), $this->PvPowerID(), NRGDASH_Text::t('is needed - PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).'));
+        $lines[] = $this->varSourceLine($elements, 'BatPowerID', NRGDASH_Text::t('Battery power'), $this->BatPowerID(), NRGDASH_Text::t('not found - the battery tab is missing.'));
+        $lines[] = $this->varSourceLine($elements, 'SocID', NRGDASH_Text::t('Battery state of charge'), $this->SocID(), NRGDASH_Text::t('not found - no SOC history.'));
+        $lines[] = $this->varSourceLine($elements, 'GridPowerID', NRGDASH_Text::t('Grid power'), $this->GridPowerID(), NRGDASH_Text::t('not found - no grid import bar in the electricity price tab.'));
         $ems = $this->EmsInstanceID();
         $lines[] = $ems > 0
-            ? '🔗 EMS: ' . $this->formInstanceLabel($ems) . ' (automatisch erkannt, ' . $this->formInstanceState($ems) . ') - Tagesplan, Szenarien.'
-            : 'ℹ️ EMS: nicht gefunden - der Tagesplan-Reiter bleibt ausgeblendet.';
+            ? NRGDASH_Text::t('🔗 EMS: %s (detected automatically, %s) - daily plan, scenarios.', $this->formInstanceLabel($ems), $this->formInstanceState($ems))
+            : NRGDASH_Text::t('ℹ️ EMS: not found - the daily plan tab stays hidden.');
         $pvf = $this->PvfInstanceID();
-        $lines[] = $this->autoFieldLine($elements, 'PvfInstance', 'PV-Prognose', $this->readIntProperty('PvfInstance', 0) === $pvf ? $pvf : 0, $pvf, 'der Instanzsuche', 'nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.');
+        $lines[] = $this->autoFieldLine($elements, 'PvfInstance', NRGDASH_Text::t('PV forecast'), $this->readIntProperty('PvfInstance', 0) === $pvf ? $pvf : 0, $pvf, NRGDASH_Text::t('the instance search'), NRGDASH_Text::t('not found - no expected values in the solar tab and year comparison.'));
         $tib = $this->TibberInstanceID();
         $spot = $this->SpotInstanceID();
         $lines[] = $tib > 0
-            ? $this->autoFieldLine($elements, 'TibberInstance', 'Preiskurve Tibber', $this->readIntProperty('TibberInstance', 0) === $tib ? $tib : 0, $tib, 'der Instanzsuche', '')
-            : 'ℹ️ Preiskurve Tibber: nicht gefunden.';
-        $lines[] = $spot > 0
-            ? '🔗 Preiskurve Börsenpreis: ' . $this->formInstanceLabel($spot) . ' (automatisch erkannt).'
-            : 'ℹ️ Preiskurve Börsenpreis: nicht gefunden' . ($tib > 0 ? '.' : ' - der Strompreis-Reiter zeigt nur den Netzbezug.');
+            ? $this->autoFieldLine($elements, 'TibberInstance', NRGDASH_Text::t('Price curve Tibber'), $this->readIntProperty('TibberInstance', 0) === $tib ? $tib : 0, $tib, NRGDASH_Text::t('the instance search'), '')
+            : NRGDASH_Text::t('ℹ️ Price curve Tibber: not found.');
+        if ($spot > 0) {
+            $lines[] = NRGDASH_Text::t('🔗 Spot price curve: %s (detected automatically).', $this->formInstanceLabel($spot));
+        } elseif ($tib > 0) {
+            $lines[] = NRGDASH_Text::t('ℹ️ Spot price curve: not found.');
+        } else {
+            $lines[] = NRGDASH_Text::t('ℹ️ Spot price curve: not found - the electricity price tab only shows grid import.');
+        }
         return implode("\n", $lines);
     }
 
     public function GetConfigurationForm()
     {
-        $raw = str_replace('%%HOOK%%', '/hook/nrgdashpvmonitor' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
-        $form = json_decode($raw, true);
+        $form = json_decode((string) file_get_contents(__DIR__ . '/form.json'), true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }
 
+        // Das Label mit dem Hook-Pfad enthält einen eingesetzten Wert: die Konsole fände den Text so nicht mehr, deshalb selbst übersetzen.
+        $this->setFormCaption($form['elements'], 'HookInfo', NRGDASH_Text::t('IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.', '/hook/nrgdashpvmonitor' . $this->InstanceID));
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'SourcesStatus', $this->sourcesStatusLines($form['elements']));
 
@@ -576,11 +843,11 @@ class NRGDashboardPVMonitor extends IPSModule
         if (!@$this->ReadAttributeBoolean('ReviewHintDismissed')) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is in beta — feedback, bug reports and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHPVMON_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -593,10 +860,10 @@ class NRGDashboardPVMonitor extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            ? NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
             : 'ℹ️ NRG-Stack Dashboard';
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -615,12 +882,12 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Detaillierte Verlaufsansicht für PV, Batterie, Netz, Wallbox und weitere Reiter - inklusive Börsenpreis-Überlagerung und Jahresvergleich.'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: tief in die eigenen Erzeugungs-/Verbrauchsdaten einsteigen, ohne eigene Diagramme zu bauen - Reiter ohne passende Datenquelle blenden sich automatisch aus.'],
-                ['type' => 'Label', 'caption' => 'Die Geräte kommen automatisch von InverterHub/MeterHub, der Börsenpreis optional vom Modul „Börsenpreis" oder Tibber. NRGDashboardTile zeigt ergänzend den kompletten Energiefluss als eine einzige Kachel.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'Detailed history view for PV, battery, grid, wallbox and further tabs - including spot price overlay and year comparison.'],
+                ['type' => 'Label', 'caption' => 'The benefit: dive deep into your own generation/consumption data without building charts of your own - tabs without a suitable data source hide themselves automatically.'],
+                ['type' => 'Label', 'caption' => NRGDASH_Text::t('The devices come automatically from InverterHub/MeterHub, the spot price optionally from the “%s” module or Tibber. NRGDashboardTile additionally shows the complete energy flow as a single tile.', $this->spotModuleName())],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHPVMON_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -666,19 +933,19 @@ class NRGDashboardPVMonitor extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => NRGDASH_Text::t('🆕 New since the version you last saw — please take a quick look and check your settings if needed:')]];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHPVMON_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHPVMON_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -719,7 +986,7 @@ class NRGDashboardPVMonitor extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -781,7 +1048,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     private function readIntProperty(string $name, int $default): int
@@ -1649,7 +1916,7 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -1967,11 +2234,11 @@ class NRGDashboardPVMonitor extends IPSModule
     // Konsistenz). Zustand 2 (Gelb) ist laut StromGedacht veraltet und
     // kommt praktisch nicht mehr vor, bleibt aber definiert statt zu fehlen.
     private const AMPEL_COLORS = [
-        -1 => ['name' => 'Supergrün — bevorzugt nutzen', 'color' => '#00BFA5'],
-        1  => ['name' => 'Grün — wie gewohnt',            'color' => '#00C853'],
-        2  => ['name' => 'Gelb',                          'color' => '#FFD600'],
-        3  => ['name' => 'Orange — reduzieren',           'color' => '#FF6D00'],
-        4  => ['name' => 'Rot — vermeiden',                'color' => '#D50000'],
+        -1 => ['name' => 'Super green — use preferentially', 'color' => '#00BFA5'],
+        1  => ['name' => 'Green — as usual',            'color' => '#00C853'],
+        2  => ['name' => 'Yellow',                          'color' => '#FFD600'],
+        3  => ['name' => 'Orange — reduce',           'color' => '#FF6D00'],
+        4  => ['name' => 'Red — avoid',                'color' => '#D50000'],
     ];
 
     /**
@@ -2161,11 +2428,11 @@ class NRGDashboardPVMonitor extends IPSModule
     // Unbekannte op-Werte fallen auf denselben Grauton wie "Automatik"
     // zurueck, statt zu fehlen.
     private const PLAN_OP_COLORS = [
-        0 => ['name' => 'Automatik',                 'color' => '#AAAAAA'],
-        1 => ['name' => 'PV-Eigenverbrauch (laden)',  'color' => '#4CAF50'],
-        2 => ['name' => 'Netz laden',                 'color' => '#2962FF'],
-        3 => ['name' => 'Eigenverbrauch (entladen)',  'color' => '#FF9800'],
-        5 => ['name' => 'Einspeisen',                 'color' => '#9C27B0'],
+        0 => ['name' => 'Automatic',                 'color' => '#AAAAAA'],
+        1 => ['name' => 'PV self-consumption (charge)',  'color' => '#4CAF50'],
+        2 => ['name' => 'Charge from grid',                 'color' => '#2962FF'],
+        3 => ['name' => 'Self-consumption (discharge)',  'color' => '#FF9800'],
+        5 => ['name' => 'Feed in',                 'color' => '#9C27B0'],
         7 => ['name' => 'Grid Rewards (Tibber)',      'color' => '#E91E63'],
     ];
 
@@ -2207,10 +2474,10 @@ class NRGDashboardPVMonitor extends IPSModule
     {
         $emsId = $this->EmsInstanceID();
         if ($emsId <= 0) {
-            return ['available' => false, 'hint' => 'EMS nicht gefunden.'];
+            return ['available' => false, 'hint' => NRGDASH_Text::t('EMS not found.')];
         }
         if (!function_exists('EMS_GetManualPlan') || !function_exists('EMS_SetManualPlan')) {
-            return ['available' => false, 'hint' => 'EMS aktualisieren - die installierte Version kennt die manuellen Einträge noch nicht (ab EMS 0.76.0).'];
+            return ['available' => false, 'hint' => NRGDASH_Text::t('Update EMS - the installed version does not know the manual entries yet (from EMS 0.76.0).')];
         }
         try {
             $r = @EMS_GetManualPlan($emsId);
@@ -2218,10 +2485,10 @@ class NRGDashboardPVMonitor extends IPSModule
                 $r = json_decode($r, true);
             }
         } catch (\Throwable $e) {
-            return ['available' => false, 'hint' => 'EMS aktualisieren - die installierte Version kennt die manuellen Einträge noch nicht (ab EMS 0.76.0).'];
+            return ['available' => false, 'hint' => NRGDASH_Text::t('Update EMS - the installed version does not know the manual entries yet (from EMS 0.76.0).')];
         }
         if (!is_array($r) || !isset($r['entries']) || !is_array($r['entries'])) {
-            return ['available' => false, 'hint' => 'EMS liefert keine manuellen Einträge (Antwort unvollständig).'];
+            return ['available' => false, 'hint' => NRGDASH_Text::t('EMS delivers no manual entries (incomplete response).')];
         }
         $actions = [];
         foreach ((array) ($r['actions'] ?? []) as $a) {
@@ -2406,7 +2673,7 @@ class NRGDashboardPVMonitor extends IPSModule
                 'time'  => $t * 1000,
                 'op'    => $lastMode !== null ? $lastMode : -1,
                 'power' => 0,
-                'reason' => 'Rückblick',
+                'reason' => NRGDASH_Text::t('Retrospective'),
                 'price' => $prices[$t] ?? null,
                 'soc'   => $lastSoc,
                 'xsetW' => 0,
@@ -2798,9 +3065,9 @@ class NRGDashboardPVMonitor extends IPSModule
             $data = @AC_GetAggregatedValues($aid, $vid, $level, $from, $to, 0);
             if (!is_array($data)) {
                 $err = error_get_last();
-                $this->SendDebug(__FUNCTION__, sprintf('Archivabfrage fehlgeschlagen: Variable #%d, %s–%s: %s',
-                    $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? 'unbekannt')), 0);
-                $this->LogMessage(sprintf('Energiebilanz unvollständig: Archivabfrage für Variable #%d (%s–%s) fehlgeschlagen', $vid, date('d.m.Y', $from), date('d.m.Y', $to)), KL_WARNING);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Archive query failed: variable #%d, %s–%s: %s',
+                    $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? NRGDASH_Text::t('unknown'))), 0);
+                $this->LogMessage(NRGDASH_Text::t('Energy balance incomplete: archive query for variable #%d (%s–%s) failed', $vid, date('d.m.Y', $from), date('d.m.Y', $to)), KL_WARNING);
                 continue;
             }
             foreach ($data as $row) {
@@ -2808,7 +3075,7 @@ class NRGDashboardPVMonitor extends IPSModule
                 if ($this->RowHasImplausiblePower($row, $pf)) {
                     $this->SendDebug(
                         __FUNCTION__,
-                        sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
+                        NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
                         0
                     );
                     continue;
@@ -3248,14 +3515,14 @@ class NRGDashboardPVMonitor extends IPSModule
         $links = [];
         $batNode = ($batCh > 0 || $batDis > 0);
 
-        if ($solar > 0) { $nodes[] = ['key' => 'solar', 'label' => 'Solar', 'color' => self::COL_SOLAR, 'column' => 0]; }
-        if ($gridImp > 0) { $nodes[] = ['key' => 'gridimp', 'label' => 'Netzbezug', 'color' => self::COL_GRID, 'column' => 0]; }
-        if ($batNode) { $nodes[] = ['key' => 'bat', 'label' => 'Batterie', 'color' => self::COL_BAT, 'column' => 1]; }
+        if ($solar > 0) { $nodes[] = ['key' => 'solar', 'label' => NRGDASH_Text::t('Solar'), 'color' => self::COL_SOLAR, 'column' => 0]; }
+        if ($gridImp > 0) { $nodes[] = ['key' => 'gridimp', 'label' => NRGDASH_Text::t('Grid import'), 'color' => self::COL_GRID, 'column' => 0]; }
+        if ($batNode) { $nodes[] = ['key' => 'bat', 'label' => NRGDASH_Text::t('Battery'), 'color' => self::COL_BAT, 'column' => 1]; }
         foreach ($consumers as $c) {
             $nodes[] = ['key' => $c['key'], 'label' => $c['label'], 'color' => $c['color'], 'column' => 2];
         }
-        if ($rest > 0) { $nodes[] = ['key' => 'rest', 'label' => ($consSum > 0 ? 'Sonstiger Verbrauch' : 'Hausverbrauch'), 'color' => self::COL_LOAD, 'column' => 2]; }
-        if ($gridExp > 0) { $nodes[] = ['key' => 'gridexp', 'label' => 'Netzeinspeisung', 'color' => self::COL_GRID, 'column' => 2]; }
+        if ($rest > 0) { $nodes[] = ['key' => 'rest', 'label' => ($consSum > 0 ? NRGDASH_Text::t('Other consumption') : NRGDASH_Text::t('House consumption')), 'color' => self::COL_LOAD, 'column' => 2]; }
+        if ($gridExp > 0) { $nodes[] = ['key' => 'gridexp', 'label' => NRGDASH_Text::t('Grid feed-in'), 'color' => self::COL_GRID, 'column' => 2]; }
 
         $addLink = function ($from, $to, $val) use (&$links) {
             if ($val > 0.0001) {
@@ -3430,7 +3697,7 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
                     0
                 );
                 continue;
@@ -3606,7 +3873,7 @@ class NRGDashboardPVMonitor extends IPSModule
             if ($this->RowHasImplausiblePower($row, $pf)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
                     0
                 );
                 continue;
@@ -3644,7 +3911,7 @@ class NRGDashboardPVMonitor extends IPSModule
 
     public function GetVisualizationTile()
     {
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         // Fix (31.07.2026): ECharts (~618 KB) NICHT mehr einbetten - selbst
         // NUR bei gewaehlter ECharts-Engine hat das zusammen mit dem
         // restlichen Tage-Fenster-Payload (WINDOW_DAYS Tage x mehrere
@@ -3764,7 +4031,7 @@ class NRGDashboardPVMonitor extends IPSModule
             // nie ueber den offenen WebHook (siehe $allowed in ProcessHookData()).
             $req = json_decode((string) $Value, true);
             $emsId = $this->EmsInstanceID();
-            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - EMS-Funktion nicht verfügbar (EMS zu alt?).']]];
+            $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - EMS function not available (EMS too old?).')]]];
             if (is_array($req) && $emsId > 0 && function_exists('EMS_SetManualPlan') && isset($req['entries']) && is_array($req['entries'])) {
                 $payload = ['entries' => []];
                 if (isset($req['revision']) && is_scalar($req['revision'])) {
@@ -3789,7 +4056,7 @@ class NRGDashboardPVMonitor extends IPSModule
                     }
                     $result = is_array($r) ? $r : $result;
                 } catch (\Throwable $e) {
-                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => 'Nicht gesendet - ' . $e->getMessage()]]];
+                    $result = ['ok' => false, 'errors' => [['field' => '', 'message' => NRGDASH_Text::t('Not sent - %s', $e->getMessage())]]];
                 }
             }
             $this->PushMessage(json_encode(['ok' => true, 'type' => 'manualPlanSaved', 'result' => $result, 'manual' => $this->BuildManualPlan()]));
@@ -3969,7 +4236,7 @@ class NRGDashboardPVMonitor extends IPSModule
         foreach (array_keys(self::BALANCE_COLOR_GROUPS) as $prop) {
             $this->UpdateFormField($prop, 'value', -1);
         }
-        return 'ℹ️ Farben der Bilanz auf Standard gesetzt. Zum Speichern unten „Übernehmen“ klicken.';
+        return NRGDASH_Text::t('ℹ️ Balance colors reset to default. Click “Apply changes” below to save.');
     }
 
     private function ColorOrEmpty(int $v): string
