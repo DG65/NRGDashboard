@@ -15,6 +15,7 @@ inklusive.*
 - **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
 - **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
 - Intern: die Statuszeilen der übrigen Module vergleichen „aktiv“ nicht mehr am Anzeigetext, und alle Module tragen den Übersetzer für die gemeinsamen Formular-Texte ein. Keine sichtbare Änderung.
+- **3D-Karte: Formular, Statuszeilen und Karte jetzt zweisprachig (Deutsch/Englisch).** Auch die Texte in der Karte selbst (Einführungs-Tour, Hinweise, Kategorienamen, Tooltips) folgen der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Die Panels des Formulars haben stabile Namen, „Formular: Aufbau“ findet sie darüber; die gespeicherte Auswahl bleibt gültig. Die Prüfwerkzeuge für die Karte liegen unter `.tools/` (`locale-pruefen-map.php`, `szenarien-map.php`, `deutsch-vergleich-map.php`).
 
 ## 0.10.12 (2026-11-09)
 
