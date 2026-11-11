@@ -874,8 +874,8 @@
 </head>
 <body>
 
-<button id="tourRestartBtn" title="Einführungs-Tour anzeigen" type="button">?</button>
-<button id="arrangeBtn" title="Knoten per Ziehen neu anordnen" type="button">⠿</button>
+<button id="tourRestartBtn" title="Show introduction tour" type="button">?</button>
+<button id="arrangeBtn" title="Rearrange nodes by dragging" type="button">⠿</button>
 <!-- Quoten-Muenze (23.09.2026) - EIGENSTAENDIGES, pixelpositioniertes SVG statt
      Teil des Haupt-Flusscanvas (siehe CSS-Kommentar bei .quota-coin): der
      Haupt-Canvas hat eine QUADRATISCHE viewBox, die bei einer breiten/hohen
@@ -888,7 +888,7 @@
      Fragment-Referenz gilt dokumentweit, nicht nur innerhalb des eigenen
      <svg>, deshalb bleibt die 3D-Muenzenoptik trotzdem identisch. -->
 <svg id="quotaCoin" class="quota-coin" viewBox="0 0 104 104">
-  <title id="quotaCoinTitle">Autarkie- und Selbstverbrauchsquote</title>
+  <title id="quotaCoinTitle">Self-sufficiency and self-consumption rate</title>
   <g transform="translate(52,52)">
     <circle class="coin-shadow" cx="0" cy="7.4" r="46"/>
     <circle class="node-face" r="42"/>
@@ -928,7 +928,7 @@
   </g>
 </svg>
 <div id="quotaPanel">
-  <div class="qHead"><span class="qHeadRing"></span>Autarkie &amp; Eigenverbrauch</div>
+  <div class="qHead"><span class="qHeadRing"></span><span id="qHeadText">Self-sufficiency &amp; self-consumption</span></div>
   <div class="qTableWrap">
   <table id="quotaTable">
     <!-- Netz/Batterie-Spalten (23.09.2026, Dietmar: "PV-Tagesproduktion
@@ -938,15 +938,15 @@
          qEnergyCellHtml() statt quotaCellHtml()). PV-Ertrag und Hausver-
          brauch stehen bereits als qSub UNTER den beiden Quoten-Zellen -
          keine dritte Redundanz noetig, nur Netz und Batterie fehlten. -->
-    <thead><tr><th></th><th>Autarkiegrad</th><th>Eigenverbrauch</th><th>Netz</th><th id="qBatteryHead">Batterie</th></tr></thead>
+    <thead><tr><th></th><th id="qThAut">Self-sufficiency</th><th id="qThSelf">Self-consumption</th><th id="qThGrid">Grid</th><th id="qBatteryHead">Battery</th></tr></thead>
     <tbody id="quotaTableBody"></tbody>
   </table>
   </div>
   <!-- Hinweis auf die Scroll-Faehigkeit (26.09.2026, schmale/Hochformat-
        Kachel) - ohne sichtbaren Hinweis wirkt eine abgeschnittene Tabellen-
        spalte wie ein Fehler statt wie "hier geht's nach rechts weiter". -->
-  <div class="qScrollHint" id="qScrollHint">◄ Tabelle nach links/rechts wischen ►</div>
-  <div class="qFoot">Autarkiegrad: Anteil des Hausverbrauchs ohne Netzbezug. Eigenverbrauchsquote: Anteil der PV-Erzeugung, der nicht eingespeist wurde.</div>
+  <div class="qScrollHint" id="qScrollHint">◄ Swipe the table left/right ►</div>
+  <div class="qFoot" id="qFootText">Self-sufficiency: share of house consumption without grid import. Self-consumption rate: share of PV generation that was not fed in.</div>
 </div>
 <div id="ampelWash"></div>
 <div id="halloweenBack" aria-hidden="true"></div>
@@ -1086,11 +1086,11 @@
     </g>
     <text id="lbl-center-val" x="0" y="9" text-anchor="middle" class="node-value" filter="url(#relief)">0<tspan class="node-value-unit" dx="2">kW</tspan></text>
     <g id="center-back-badge" class="pill-back-badge" style="display:none">
-      <title id="lbl-center-back-title">zurück</title>
+      <title id="lbl-center-back-title">back</title>
       <circle r="9" class="node-count-bg"/>
       <text x="0" y="3.5" class="node-count-txt">‹</text>
     </g>
-    <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">Haus</text>
+    <text id="lbl-center-name" x="0" y="33" text-anchor="middle" class="node-label">House</text>
     </g>
     <!-- Druck-Fuellring der Pille (09.09.2026) - Aequivalent zu .node-press-ring
          an den Aussenknoten, nur als Rechteck statt Kreis (die Pille ist bei
@@ -1113,10 +1113,10 @@
 
 <div id="halloween" aria-hidden="true"></div>
 
-<div id="nrgdash-empty">Keine Geräte gefunden.<br>In den Einstellungen der Instanz „Geräte jetzt suchen“ klicken und prüfen, ob Partnermodule (z. B. InverterHub, MeterHub) eingerichtet sind.</div>
+<div id="nrgdash-empty"><span id="emptyA">No devices found.</span><br><span id="emptyB">In the instance settings, click “Search devices now” and check whether partner modules (e.g. InverterHub, MeterHub) are set up.</span></div>
 
 <div id="detailOverlay">
-  <div id="detailPanel"><iframe id="detailFrame" title="Gerätedetails"></iframe></div>
+  <div id="detailPanel"><iframe id="detailFrame" title="Device details"></iframe></div>
 </div>
 
 <div id="status" class="status-overlay">
@@ -1141,14 +1141,51 @@
     <div class="tour-title" id="tourTitle"></div>
     <div class="tour-text" id="tourText"></div>
     <div class="tour-nav">
-      <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Zurück</button>
-      <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Weiter</button>
-      <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Verstanden, nicht mehr zeigen</button>
+      <button type="button" class="tour-btn tour-btn-ghost" id="tourPrev">Back</button>
+      <button type="button" class="tour-btn tour-btn-accent" id="tourNext">Next</button>
+      <button type="button" class="tour-btn tour-btn-check" id="tourDone">✓ Understood, do not show again</button>
     </div>
   </div>
 </div>
 
+<!--NRGDASH_TEXTS-->
 <script>
+// Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+// Fehlt die Tabelle (z. B. beim Oeffnen der Datei ohne PHP), erscheint der englische Quelltext.
+function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+// sprintf light: ersetzt %s und %d der Reihe nach
+function fmt(s) {
+  var a = Array.prototype.slice.call(arguments, 1), i = 0;
+  return s.replace(/%[sd]/g, function () { return a[i++]; });
+}
+// Zahlenformat nach Sprache: Muster '1,234.5' (Englisch) bzw. '1.234,5' (Deutsch) steht in der Uebersetzung
+var NUMFMT = /1(\D*)234(\D*)5/.exec(tr('Number format 1,234.5')) || [0, ',', '.'];
+function decStr(str) { return String(str).replace('.', NUMFMT[2]); }
+var NUM_LOCALE = tr('en-US');
+// Statische Texte der Seite uebersetzen
+(function () {
+  function txt(id, s) { var e = document.getElementById(id); if (e) { e.textContent = s; } }
+  function htm(id, s) { var e = document.getElementById(id); if (e) { e.innerHTML = s; } }
+  function ttl(id, s) { var e = document.getElementById(id); if (e) { e.setAttribute('title', s); } }
+  ttl('tourRestartBtn', tr('Show introduction tour'));
+  ttl('arrangeBtn', tr('Rearrange nodes by dragging'));
+  txt('quotaCoinTitle', tr('Self-sufficiency and self-consumption rate'));
+  htm('qHeadText', tr('Self-sufficiency &amp; self-consumption'));
+  txt('qThAut', tr('Self-sufficiency'));
+  txt('qThSelf', tr('Self-consumption'));
+  txt('qThGrid', tr('Grid'));
+  txt('qBatteryHead', tr('Battery'));
+  txt('qScrollHint', tr('◄ Swipe the table left/right ►'));
+  txt('qFootText', tr('Self-sufficiency: share of house consumption without grid import. Self-consumption rate: share of PV generation that was not fed in.'));
+  txt('lbl-center-back-title', tr('back'));
+  txt('lbl-center-name', tr('House'));
+  txt('emptyA', tr('No devices found.'));
+  txt('emptyB', tr('In the instance settings, click “Search devices now” and check whether partner modules (e.g. InverterHub, MeterHub) are set up.'));
+  ttl('detailFrame', tr('Device details'));
+  txt('tourPrev', tr('Back'));
+  txt('tourNext', tr('Next'));
+  txt('tourDone', tr('✓ Understood, do not show again'));
+})();
 // --- Übernommen aus InverterHubTile/module.html (Referenz-Visualisierung
 // des Verbunds) - Layout-/Effekt-Engine ist geräteartenneutral, daher 1:1
 // wiederverwendbar. Angepasst: buildItems() konsumiert unser generisches
@@ -1831,7 +1868,7 @@ function lerp(a, b, t) {
 function fmtPower(w, measured) {
   const v = w || 0, a = Math.abs(v);
   const est = (measured === false);
-  const num = (x, d) => (est ? '≈' : '') + x.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const num = (x, d) => (est ? '≈' : '') + x.toLocaleString(NUM_LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
   if (a >= 1000000) { return { value: num(v / 1000000, 3), unit: 'MW' }; }
   if (a >= 1000)    { return { value: num(v / 1000, est ? 1 : 3), unit: 'kW' }; }
   return { value: num(est ? Math.round(v / 10) * 10 : v, 0), unit: 'W' };
@@ -2137,27 +2174,27 @@ function hexToRgb(h) {
 // der MeterHub-Seite: Waerme in Feuertoenen, Kuehlung/Wasser in Tuerkis,
 // Fahrzeuge in Violett, bewusst abgesetzt von der blauen Hausbatterie).
 const CONSUMER_TYPES = {
-  wallbox:    { label: 'Wallbox',            icon: 'car',        color: hexToRgb('#9575CD') },
-  heatpump:   { label: 'Wärmepumpe',         icon: 'heatpump',   color: hexToRgb('#FF7A18') },
-  ac:         { label: 'Klimaanlage',        icon: 'ac',         color: hexToRgb('#26C6DA') },
-  poolheat:   { label: 'Pool-Wärmepumpe',    icon: 'poolheat',   color: hexToRgb('#FF8A50') },
-  poolpump:   { label: 'Pool-Pumpe',         icon: 'poolpump',   color: hexToRgb('#26A69A') },
-  sauna:      { label: 'Sauna',              icon: 'sauna',      color: hexToRgb('#F4511E') },
-  boiler:     { label: 'Warmwasser',         icon: 'boiler',     color: hexToRgb('#FFA726') },
-  dryer:      { label: 'Trockner',           icon: 'dryer',      color: hexToRgb('#78909C') },
-  washer:     { label: 'Waschmaschine',      icon: 'washer',     color: hexToRgb('#4DD0E1') },
-  dishwasher: { label: 'Spülmaschine',       icon: 'dishwasher', color: hexToRgb('#4DB6AC') },
-  oven:       { label: 'Backofen',           icon: 'oven',       color: hexToRgb('#EF6C00') },
-  stove:      { label: 'Herd',               icon: 'stove',      color: hexToRgb('#E64A19') },
-  fridge:     { label: 'Kühl-/Gefriergerät', icon: 'fridge',     color: hexToRgb('#4FC3F7') },
-  kitchen:    { label: 'Küche',              icon: 'kitchen',    color: hexToRgb('#FFB74D') },
-  heater:     { label: 'Heizung',            icon: 'heater',     color: hexToRgb('#FF7043') },
-  vent:       { label: 'Lüftung',            icon: 'vent',       color: hexToRgb('#80DEEA') },
-  light:      { label: 'Beleuchtung',        icon: 'light',      color: hexToRgb('#FFD54F') },
-  it:         { label: 'Server / Netzwerk',  icon: 'it',         color: hexToRgb('#7986CB') },
-  workshop:   { label: 'Werkstatt',          icon: 'workshop',   color: hexToRgb('#8D6E63') },
-  garage:     { label: 'Garage',             icon: 'garage',     color: hexToRgb('#B39DDB') },
-  other:      { label: 'Verbraucher',        icon: 'other',      color: hexToRgb('#90A4AE') },
+  wallbox:    { label: tr('Wallbox'),            icon: 'car',        color: hexToRgb('#9575CD') },
+  heatpump:   { label: tr('Heat pump'),         icon: 'heatpump',   color: hexToRgb('#FF7A18') },
+  ac:         { label: tr('Air conditioning'),        icon: 'ac',         color: hexToRgb('#26C6DA') },
+  poolheat:   { label: tr('Pool heat pump'),    icon: 'poolheat',   color: hexToRgb('#FF8A50') },
+  poolpump:   { label: tr('Pool pump'),         icon: 'poolpump',   color: hexToRgb('#26A69A') },
+  sauna:      { label: tr('Sauna'),              icon: 'sauna',      color: hexToRgb('#F4511E') },
+  boiler:     { label: tr('Hot water'),         icon: 'boiler',     color: hexToRgb('#FFA726') },
+  dryer:      { label: tr('Tumble dryer'),           icon: 'dryer',      color: hexToRgb('#78909C') },
+  washer:     { label: tr('Washing machine'),      icon: 'washer',     color: hexToRgb('#4DD0E1') },
+  dishwasher: { label: tr('Dishwasher'),       icon: 'dishwasher', color: hexToRgb('#4DB6AC') },
+  oven:       { label: tr('Oven'),           icon: 'oven',       color: hexToRgb('#EF6C00') },
+  stove:      { label: tr('Stove'),               icon: 'stove',      color: hexToRgb('#E64A19') },
+  fridge:     { label: tr('Fridge/freezer'), icon: 'fridge',     color: hexToRgb('#4FC3F7') },
+  kitchen:    { label: tr('Kitchen'),              icon: 'kitchen',    color: hexToRgb('#FFB74D') },
+  heater:     { label: tr('Heating'),            icon: 'heater',     color: hexToRgb('#FF7043') },
+  vent:       { label: tr('Ventilation'),            icon: 'vent',       color: hexToRgb('#80DEEA') },
+  light:      { label: tr('Lighting'),        icon: 'light',      color: hexToRgb('#FFD54F') },
+  it:         { label: tr('Server / network'),  icon: 'it',         color: hexToRgb('#7986CB') },
+  workshop:   { label: tr('Workshop'),          icon: 'workshop',   color: hexToRgb('#8D6E63') },
+  garage:     { label: tr('Garage'),             icon: 'garage',     color: hexToRgb('#B39DDB') },
+  other:      { label: tr('Consumer'),        icon: 'other',      color: hexToRgb('#90A4AE') },
 };
 
 // Uebersetzt die im NRG-Stack tatsaechlich vorkommenden function-Werte auf
@@ -2333,7 +2370,7 @@ function renderValueDisplay(refs) {
     // suggerierte eine Praezision, die bei schwankender Last ohnehin nicht
     // stimmte; der Satz selbst (Bezugspreis bzw. Einspeiseverguetung, je
     // nach Fluss­richtung) ist die eigentlich interessante, stabile Zahl.
-    const num = rateCt.toFixed(1).replace('.', ',');
+    const num = decStr(rateCt.toFixed(1));
     refs.valText.firstChild.nodeValue = (exporting ? '+' : '') + num;
     const unitEl = refs.valText.querySelector('.node-value-unit');
     if (unitEl) { unitEl.textContent = 'ct/kWh'; }
@@ -2909,8 +2946,8 @@ function ensureNodes(items) {
       refs.g.style.cursor = 'pointer';
       const tip = el('title', {});
       tip.textContent = item.hasMembers
-        ? ('Details von „' + item.label + '“ (kurz) · aufschachteln (lang drücken)')
-        : ('Details von „' + item.label + '“ öffnen');
+        ? fmt(tr('Details of “%s” (short) · nest (long press)'), item.label)
+        : fmt(tr('Open details of “%s”'), item.label);
       refs.g.appendChild(tip);
       attachPressHandlers(refs, item);
     }
@@ -3222,7 +3259,7 @@ function renderStatus(renderedAtSec) {
   const label = document.getElementById('stateLabel');
   if (!renderedAtSec) {
     dot.className = 'status-dot';
-    label.textContent = 'noch nicht aktualisiert';
+    label.textContent = tr('not updated yet');
     return;
   }
   // "fresh" bezieht sich jetzt auf den tatsaechlichen Push-Zeitpunkt (jedes
@@ -3235,7 +3272,8 @@ function renderStatus(renderedAtSec) {
   dot.className = 'status-dot ' + (fresh ? 'fresh pulse' : 'stale');
   const d = new Date(renderedAtSec * 1000);
   const hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2), ss = ('0' + d.getSeconds()).slice(-2);
-  label.textContent = 'aktualisiert ' + hh + ':' + mm + ':' + ss + (fresh ? '' : ' (veraltet)');
+  const stamp = hh + ':' + mm + ':' + ss;
+  label.textContent = fresh ? fmt(tr('updated %s'), stamp) : fmt(tr('updated %s (outdated)'), stamp);
 }
 
 // -- Diagnose-Panel (IHUBMON_GetDiagnostics, siehe README "Diagnostik-
@@ -3247,7 +3285,7 @@ function renderStatus(renderedAtSec) {
 // Partnermoduls braucht KEINE Aenderung an diesem Renderer, solange er
 // dem Grundschema (type/label/level/reason + einen der bekannten
 // Werte-Felder) folgt - er landet automatisch im "sonst"-Zweig unten.
-const DIAG_LEVEL_LABEL = { normal: 'unauffällig', 'auffaellig': 'auffällig', 'kritisch': 'kritisch' };
+const DIAG_LEVEL_LABEL = { normal: tr('unremarkable'), 'auffaellig': tr('conspicuous'), 'kritisch': tr('critical') };
 const DIAG_LEVEL_RANK = { kritisch: 2, 'auffaellig': 1, normal: 0 };
 
 function fmtNum(v, unit) {
@@ -3258,15 +3296,15 @@ function fmtNum(v, unit) {
 
 function diagValueText(e) {
   if (e.type === 'yield_vs_forecast') {
-    return fmtNum(e.measured, e.unit) + ' / ' + fmtNum(e.expected, e.unit) + ' erwartet';
+    return fmt(tr('%s / %s expected'), fmtNum(e.measured, e.unit), fmtNum(e.expected, e.unit));
   }
   if (e.type === 'mppt_string_compare' && e.stringValues) {
     return Object.keys(e.stringValues).sort().map(function (n) {
-      return 'Str.' + n + ': ' + fmtNum(e.stringValues[n], e.unit);
+      return fmt(tr('String %s: %s'), n, fmtNum(e.stringValues[n], e.unit));
     }).join(' · ');
   }
   if (e.type === 'riso') {
-    return fmtNum(e.measuredValue, e.unit) + (e.threshold ? ' (Grenze ' + e.threshold + ' ' + e.unit + ')' : '');
+    return e.threshold ? fmt(tr('%s (limit %s %s)'), fmtNum(e.measuredValue, e.unit), e.threshold, e.unit) : fmtNum(e.measuredValue, e.unit);
   }
   // Unbekannter kuenftiger Typ: zeige, was vorhanden ist, statt nichts.
   if (e.expected !== undefined) { return fmtNum(e.expected, e.unit); }
@@ -3285,72 +3323,72 @@ let TOUR_SHOWN_LOCAL = false;
 let TOUR_STEP = 0;
 const TOUR_STEPS = [
   {
-    title: 'Mehr als noch eine Energiefluss-Kachel',
-    text: 'Diese Kachel merkt sich, was gestern zur gleichen Uhrzeit los war, rechnet mit Ihren echten Strompreisen statt einem Pauschalwert, warnt direkt am betroffenen Gerät - und wächst automatisch von 3 auf 50+ Verbraucher, ohne dass die Knoten unlesbar klein werden. 17 kurze Schritte, jederzeit über „Einführungs-Tour erneut anzeigen" in der Konsole wiederholbar.'
+    title: tr('More than just another energy flow tile'),
+    text: tr('This tile remembers what was going on yesterday at the same time, calculates with your real electricity prices instead of a flat value, warns directly at the affected device - and grows automatically from 3 to 50+ consumers without the nodes becoming unreadably small. 17 short steps, repeatable at any time via “Show introduction tour again” in the console.')
   },
   {
-    title: 'Details zu jedem Gerät',
-    text: 'Ein kurzer Klick/Druck auf einen Knoten oder die Mittelpille öffnet immer dessen vollständige, kachelfüllende Detailseite - komplett automatisch aus den vorhandenen Geräteverträgen erzeugt, kein Gerätetyp ist dafür fest verdrahtet. Halten Sie stattdessen länger gedrückt, bis der gelbe Ring komplett voll ist: an einem Sammelknoten (Zähler-Badge) wechselt er dann auf Grün mit einer kleinen Erfolgs-Animation (z. B. Funkenschauer) und öffnet eine Ebene tiefer, an der Mittelpille ebenso und geht eine Ebene zurück - geht es in diese Richtung nicht weiter, spielt stattdessen eine der Blockiert-Animationen (z. B. Kopfschütteln). Beide Animationsarten stellen Sie hinter dem Doppelpfeil selbst ein.'
+    title: tr('Details for every device'),
+    text: tr('A short click/press on a node or the center pill always opens its complete, tile-filling detail page - generated fully automatically from the existing device contracts, no device type is hard-wired for it. If you press and hold longer instead, until the yellow ring is completely full: on a group node (meter badge) it then turns green with a small success animation (e.g. spark shower) and opens one level deeper, on the center pill likewise and goes one level back - if it cannot go further in that direction, one of the blocked animations plays instead (e.g. head shake). You set both kinds of animation yourself behind the double arrow.')
   },
   {
-    title: 'Vollständige Messwerte-Tabelle',
-    text: 'Auf der Detailseite stehen alle verfügbaren elektrischen Werte in automatisch gruppierten Tabellen - z. B. je Phase (L1-L3) bei Zählern, je MPPT-Strang unter Solar oder je Batterie-Turm bei Mehrblock-Anlagen.'
+    title: tr('Complete table of measured values'),
+    text: tr('The detail page shows all available electrical values in automatically grouped tables - e.g. per phase (L1-L3) for meters, per MPPT string under solar or per battery tower in multi-block systems.')
   },
   {
-    title: 'Echte Kostenersparnis',
-    text: 'Die Ersparnis-Berechnung auf der Detailseite nutzt echte Strompreise (Tibber Grid Rewards, sonst automatisch der BDEW-Haushaltsdurchschnitt) und schlüsselt sie nach Netzentgelt, dynamischem Tarif und Grid-Reward-Erlös auf - statt eines einzelnen pauschalen Werts.'
+    title: tr('Real cost savings'),
+    text: tr('The savings calculation on the detail page uses real electricity prices (Tibber Grid Rewards, otherwise automatically the BDEW household average) and breaks them down by grid fee, dynamic tariff and grid reward revenue - instead of a single flat value.')
   },
   {
-    title: 'Batterie-Füllstand',
-    text: 'Der Batterie-Knoten füllt sich zusätzlich wie ein Glas - von unten steigend, im Kreis des Knotens - zusätzlich zur genauen Prozentzahl im Icon.'
+    title: tr('Battery fill level'),
+    text: tr('The battery node additionally fills up like a glass - rising from the bottom, inside the node\'s circle - in addition to the exact percentage in the icon.')
   },
   {
-    title: 'Diagnose-Warnsymbol',
-    text: 'Ein rotes oder gelbes Dreieck erscheint direkt an einem Knoten, sobald dort eine Diagnose auffällig oder kritisch wird - vorher nur im separaten, leicht zu übersehenden Diagnose-Badge unten rechts.'
+    title: tr('Diagnostic warning symbol'),
+    text: tr('A red or yellow triangle appears directly at a node as soon as a diagnosis there becomes conspicuous or critical - before, only in the separate, easily overlooked diagnostics badge at the bottom right.')
   },
   {
-    title: 'Gestern-Vergleich',
-    text: 'Der gestrichelte „Geisterring" um jeden Knoten vergleicht die aktuelle Leistung mit dem Wert von gestern zur gleichen Uhrzeit - größer als der feste Ring bedeutet: gestern floss mehr, kleiner: weniger.'
+    title: tr('Comparison with yesterday'),
+    text: tr('The dashed “ghost ring” around each node compares the current power with the value from yesterday at the same time - larger than the fixed ring means: more flowed yesterday, smaller: less.')
   },
   {
-    title: 'PV-Prognose-Fortschritt',
-    text: 'Ist eine PV-Prognose-Instanz installiert, trägt der Solar-Knoten einen Fortschrittsring: wie viel vom heutigen prognostizierten Ertrag bereits erreicht ist.'
+    title: tr('PV forecast progress'),
+    text: tr('If a PV forecast instance is installed, the solar node carries a progress ring: how much of today\'s forecast yield has already been reached.')
   },
   {
-    title: 'Strompreis am Netz-Knoten',
-    text: 'Bei installierter Preisquelle zeigt der Netz-Knoten eine kleine Sparkline des Tagespreisverlaufs und wechselt alle paar Sekunden zwischen Watt und dem reinen ct/kWh-Preis - Bezugspreis oder Einspeisevergütung, je nach Flussrichtung.'
+    title: tr('Electricity price at the grid node'),
+    text: tr('With a price source installed, the grid node shows a small sparkline of the daily price curve and switches every few seconds between watts and the pure ct/kWh price - import price or feed-in tariff, depending on the flow direction.')
   },
   {
-    title: 'Autarkie & Eigenverbrauch',
-    text: 'Der Ring oben links zeigt zwei Kennzahlen auf einen Blick: außen grün den heutigen Autarkiegrad (Anteil des Verbrauchs ohne Netzbezug), innen blau die Eigenverbrauchsquote (Anteil der PV-Erzeugung, der nicht eingespeist wurde). Ein Klick öffnet eine Tabelle mit beiden Werten für Tag, Monat, Jahr und Gesamt - sie schließt sich wie das Diagnose-Panel nach 30 Sekunden von selbst wieder.'
+    title: tr('Self-sufficiency & self-consumption'),
+    text: tr('The ring at the top left shows two key figures at a glance: in green on the outside today\'s self-sufficiency (share of consumption without grid import), in blue on the inside the self-consumption rate (share of PV generation that was not fed in). A click opens a table with both values for day, month, year and total - like the diagnostics panel, it closes again by itself after 30 seconds.')
   },
   {
-    title: 'Flussdicke & Tagesspitze',
-    text: 'Die Verbindungslinien werden mit der fließenden Leistung dicker, nicht nur schneller animiert - und tragen einen kleinen Querstrich an der Position der heutigen Tagesspitze.'
+    title: tr('Flow thickness & daily peak'),
+    text: tr('The connection lines get thicker with the flowing power, not just animated faster - and carry a small cross mark at the position of today\'s daily peak.')
   },
   {
-    title: 'Netzampel-Hintergrund',
-    text: 'Ist eine StromGedacht-Instanz installiert, färbt ein sehr dezenter Farbverlauf im Hintergrund die aktuelle Netzampel-Stufe ein.'
+    title: tr('Grid traffic light background'),
+    text: tr('If a StromGedacht instance is installed, a very subtle colour gradient in the background tints the current grid traffic light level.')
   },
   {
-    title: 'Fahrzeug-Erkennung',
-    text: 'An Wallboxen wird ein angestecktes Tesla-Fahrzeug über Tessie automatisch erkannt - Name und Ladestand erscheinen direkt am Knoten, ohne manuelle Zuordnung.'
+    title: tr('Vehicle detection'),
+    text: tr('At wallboxes, a plugged-in Tesla vehicle is detected automatically via Tessie - name and state of charge appear directly at the node, without manual assignment.')
   },
   {
-    title: 'Chip-Form bei vielen Verbrauchern',
-    text: 'Ab einer größeren Anzahl an Verbraucher-Knoten wechselt der Haus-Knoten automatisch von der Kreis- in eine „Chip"-Form (Pille mit geraden Seiten) - so bleiben die einzelnen Knoten auch bei sehr vielen Geräten auf einer sinnvollen Größe.'
+    title: tr('Chip shape with many consumers'),
+    text: tr('From a larger number of consumer nodes on, the house node automatically switches from the circle to a “chip” shape (a pill with straight sides) - so the individual nodes stay at a sensible size even with a very large number of devices.')
   },
   {
-    title: 'Virtuelle Zähler - die stille Stärke von MeterHub',
-    text: 'MeterHub ist das Modul, das man nie sieht - hier wird sichtbar, was es leistet: Beliebige Zähler und Steckdosen lassen sich zu virtuellen Zählern zusammenfassen (Summen, Abzüge, sogar prozentuale Aufteilung wie 60/40 zwischen zwei Parteien), und virtuelle Zähler lassen sich wieder zu neuen verketten - Gerät → Raum → Geschoss → Haus. Diese Hierarchie liefert MeterHub über einen offenen Vertrag, das Dashboard legt keine eigenen Gruppen an.'
+    title: tr('Virtual meters - the quiet strength of MeterHub'),
+    text: tr('MeterHub is the module you never see - here it becomes visible what it does: any meters and sockets can be combined into virtual meters (sums, subtractions, even percentage splits like 60/40 between two parties), and virtual meters can be chained again into new ones - device → room → floor → house. MeterHub supplies this hierarchy through an open contract, the dashboard creates no groups of its own.')
   },
   {
-    title: 'Aufschachteln: Ebene für Ebene',
-    text: 'Ein Knoten mit Zähler-Badge ist so ein Sammelzähler: lange gedrückt (bis der Ring grün wird) wird er zur Mittelpille, seine Mitglieder ordnen sich darum an - mit allen Funktionen dieser Ansicht, beliebig tief. Zurück geht es ebenso per langem Druck auf die Pille selbst. Abgezogene Mitglieder sind gestrichelt mit Minus markiert.'
+    title: tr('Drilling down: level by level'),
+    text: tr('A node with a meter badge is such a group meter: pressed and held (until the ring turns green), it becomes the center pill and its members arrange themselves around it - with all functions of this view, to any depth. Going back works the same way with a long press on the pill itself. Subtracted members are marked dashed with a minus.')
   },
   {
-    title: 'Eigene Anzeige-Einstellungen',
-    text: 'Ob inaktive Knotenpunkte aus- oder eingeblendet werden und wie stark Blitzbögen/Leuchtschein an die Leistung gekoppelt sind, stellen Sie selbst ein: Kachel über das Doppelpfeil-Symbol (Vollbild-Umschalten) aufziehen - dort erscheinen die passenden Schalter/Regler.'
+    title: tr('Your own display settings'),
+    text: tr('Whether inactive nodes are hidden or shown, and how strongly lightning arcs/glow are coupled to power, you set yourself: pull the tile open via the double-arrow icon (full-screen toggle) - the matching switches/sliders appear there.')
   }
 ];
 
@@ -3477,7 +3515,7 @@ function renderDiagnostics(entries) {
 
   panel.innerHTML = entries.map(function (e) {
     const color = e.level ? ({ normal: '#3a3', 'auffaellig': '#c9a227', 'kritisch': '#c33' }[e.level] || '#999') : '#999';
-    const levelText = e.level ? (DIAG_LEVEL_LABEL[e.level] || e.level) : 'keine Bewertung';
+    const levelText = e.level ? (DIAG_LEVEL_LABEL[e.level] || e.level) : tr('no rating');
     return '<div class="diag-row">' +
       '<div class="diag-label"><span style="width:8px;height:8px;border-radius:50%;background:' + color + ';flex:none;"></span>' +
       (e.label || e.type) + '</div>' +
@@ -3559,11 +3597,11 @@ function restoreCenterForLevel1() {
     let tt = centerG.querySelector(':scope > title');
     if (!realHouse && siteOk) {
       if (!tt) { tt = document.createElementNS('http://www.w3.org/2000/svg', 'title'); centerG.insertBefore(tt, centerG.firstChild); }
-      tt.textContent = 'Berechnet: Solar \u2212 Netz + Batterie (Gesamtverbrauch des Hauses, auch über den Backup-Ausgang)';
+      tt.textContent = tr('Calculated: solar − grid + battery (total consumption of the house, including via the backup output)');
     } else if (tt) { tt.remove(); }
   }
   if (nm) {
-    nm.textContent = hasHouse ? 'Haus' : 'Saldo';
+    nm.textContent = hasHouse ? tr('House') : tr('Balance');
     // Fund 10.09.2026 (Dietmar: "'Haus' brauchst Du nicht so zu ziehen") -
     // fitTextWidth() setzt bei einem LANGEN Namen (z.B. "Küche & Haushalt")
     // ein festes textLength-Attribut, das den Text auf genau diese Breite
@@ -3614,7 +3652,7 @@ function renderLevelBar() {
     badgeG.style.display = 'none';
     return;
   }
-  const parentLabel = LEVEL_STACK.length >= 2 ? LEVEL_STACK[LEVEL_STACK.length - 2].label : 'Haus';
+  const parentLabel = LEVEL_STACK.length >= 2 ? LEVEL_STACK[LEVEL_STACK.length - 2].label : tr('House');
   if (titleEl) { titleEl.textContent = '‹ ' + parentLabel; }
   badgeG.style.display = '';
 }
@@ -3639,7 +3677,7 @@ function memberToDevice(m) {
   return {
     instanceID: m.key,             // eindeutiger Item-Schluessel je Ebene
     function: m.function || 'other',
-    label: niceLabel(m.label) || 'Mitglied',
+    label: niceLabel(m.label) || tr('Member'),
     detailKey: m.detailKey || m.key,
     value: (m.value === undefined) ? null : m.value,
     soc: (m.soc === undefined) ? null : m.soc,
@@ -4311,17 +4349,17 @@ function hwFx(g, S, dt, u, w, h) {                         // Funken, Punkte-Ein
   const txt = (t2, x, y, sz, col) => { g.font = '800 ' + Math.round(sz * u) + 'px system-ui, sans-serif'; g.lineWidth = Math.max(3, sz * u * .18); g.strokeStyle = 'rgba(10,4,16,.85)'; g.fillStyle = col; g.strokeText(t2, x, y); g.fillText(t2, x, y); };
   if (G.st === 1) { const left = Math.max(0, HW_ROUND - G.t), bw = Math.min(w * .5, 260 * u), bx = w / 2 - bw / 2, by = 46 * u, hot = left < 5;
     txt('⏱ ' + Math.ceil(left) + ' s    ★ ' + G.score, w / 2, 24 * u, 22, hot ? '#ff6a5a' : '#ffd35a');
-    if (G.mult > 1 && S.age - G.lastT < 1.6) { txt('×' + G.mult + ' Kombo', w / 2, 68 * u, 19, '#ff9a3a'); g.fillStyle = '#ff9a3a'; g.fillRect(w / 2 - 40 * u, 82 * u, 80 * u * (1 - (S.age - G.lastT) / 1.6), 3 * u); }
+    if (G.mult > 1 && S.age - G.lastT < 1.6) { txt(fmt(tr('×%s combo'), G.mult), w / 2, 68 * u, 19, '#ff9a3a'); g.fillStyle = '#ff9a3a'; g.fillRect(w / 2 - 40 * u, 82 * u, 80 * u * (1 - (S.age - G.lastT) / 1.6), 3 * u); }
     g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(bx, by, bw, 5 * u); g.fillStyle = hot ? '#ff4a3a' : '#ffb13a'; g.fillRect(bx, by, bw * left / HW_ROUND, 5 * u); }
   else if (G.st === 2) { const pw = Math.min(w * .8, 320 * u), ph = (150 + Math.min(8, G.list.length) * 26) * u, px0 = w / 2 - pw / 2, py0 = Math.max(10 * u, h * .5 - ph / 2);
     g.fillStyle = 'rgba(12,6,20,.82)'; g.strokeStyle = 'rgba(255,170,60,.6)'; g.lineWidth = 2 * u; g.beginPath(); if (g.roundRect) { g.roundRect(px0, py0, pw, ph, 14 * u); } else { g.rect(px0, py0, pw, ph); } g.fill(); g.stroke();
-    txt('Zeit um!', w / 2, py0 + 26 * u, 28, '#ff8a3a'); txt(G.last + ' Punkte' + (G.newBest ? ' – Rekord!' : ''), w / 2, py0 + 62 * u, 22, G.newBest ? '#8aff7a' : '#ffd35a');
-    txt('Bestenliste', w / 2, py0 + 96 * u, 15, '#cfc8e8');
+    txt(tr('Time\'s up!'), w / 2, py0 + 26 * u, 28, '#ff8a3a'); txt(G.newBest ? fmt(tr('%s points – new record!'), G.last) : fmt(tr('%s points'), G.last), w / 2, py0 + 62 * u, 22, G.newBest ? '#8aff7a' : '#ffd35a');
+    txt(tr('High scores'), w / 2, py0 + 96 * u, 15, '#cfc8e8');
     G.list.slice(0, 8).forEach((e, i) => { const y = py0 + (122 + i * 26) * u, me = i === G.rank; g.font = '700 ' + Math.round(17 * u) + 'px system-ui, sans-serif'; g.textAlign = 'left'; g.fillStyle = me ? '#8aff7a' : '#e8e2f6'; g.fillText((i + 1) + '.', px0 + 24 * u, y); g.textAlign = 'center'; g.fillText(String(e.s), w / 2, y); g.textAlign = 'right'; g.fillStyle = me ? '#8aff7a' : '#9c94b4'; g.fillText(e.d || '', px0 + pw - 24 * u, y); });
-    g.textAlign = 'center'; if (G.rank > 7) { txt('Dein Platz: ' + (G.rank + 1), w / 2, py0 + ph - 38 * u, 14, '#8aff7a'); }
-    g.globalAlpha = .7; txt('Antippen zum Schließen', w / 2, py0 + ph - 14 * u, 12, '#cfc8e8'); g.globalAlpha = 1; }
-  else if (S.age < 30) { g.globalAlpha = Math.min(1, S.age / 2, (30 - S.age) / 2) * .8; txt('Tippe eine Figur an – 1 Minute Jagd!', w / 2, 24 * u, 17, '#ffd9a0'); g.globalAlpha = 1; }
-  else if (G.best > 0) { g.globalAlpha = .8; txt('Letzte Runde: ' + G.last + '  ·  Rekord: ' + G.best, w / 2, 22 * u, 15, '#ffd9a0'); g.globalAlpha = 1; }
+    g.textAlign = 'center'; if (G.rank > 7) { txt(fmt(tr('Your rank: %s'), G.rank + 1), w / 2, py0 + ph - 38 * u, 14, '#8aff7a'); }
+    g.globalAlpha = .7; txt(tr('Tap to close'), w / 2, py0 + ph - 14 * u, 12, '#cfc8e8'); g.globalAlpha = 1; }
+  else if (S.age < 30) { g.globalAlpha = Math.min(1, S.age / 2, (30 - S.age) / 2) * .8; txt(tr('Tap a figure – 1 minute hunt!'), w / 2, 24 * u, 17, '#ffd9a0'); g.globalAlpha = 1; }
+  else if (G.best > 0) { g.globalAlpha = .8; txt(fmt(tr('Last round: %s  ·  Record: %s'), G.last, G.best), w / 2, 22 * u, 15, '#ffd9a0'); g.globalAlpha = 1; }
 }
 function hwLightning() {
   if (!HW.st) { return; }
@@ -4565,7 +4603,7 @@ function hwNyeDraw(g, t, dt, w, h, u, P, S, gb) {
   gb.drawImage(P.moon, w * .08, h * .1); gb.drawImage(P.sky, 0, P.skyY); gb.drawImage(P.vig, 0, 0);
   // --- Countdown und Finale
   const now = new Date(), fake = SEASONAL_MODE === 4; let secs, label = '';
-  if (fake) { secs = 90 - (t % 90); label = 'Probelauf: '; } else if (now.getMonth() === 0 && now.getDate() === 1) { secs = -1; } else { secs = (new Date(now.getFullYear() + (now.getMonth() === 11 ? 1 : 0), 0, 1) - now) / 1000; }
+  if (fake) { secs = 90 - (t % 90); label = tr('Rehearsal: '); } else if (now.getMonth() === 0 && now.getDate() === 1) { secs = -1; } else { secs = (new Date(now.getFullYear() + (now.getMonth() === 11 ? 1 : 0), 0, 1) - now) / 1000; }
   if (S.nyeLast != null && ((S.nyeLast > 0 && S.nyeLast <= 5 && secs <= 0) || secs > S.nyeLast + 60)) { S.finale = 10; if (SEASONAL_SOUND) { hwPlay('finale'); } }
   S.nyeLast = secs; const yr = fake ? now.getFullYear() + 1 : (now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear());
   S.sndT -= dt; S.boomT -= dt; S.rocketEvery = S.rocketEvery || 4.5;
@@ -4601,9 +4639,9 @@ function hwNyeDraw(g, t, dt, w, h, u, P, S, gb) {
   hwBossRun(g, S, t, dt, w, h, u, hwNyeBossDraw, 'boom', { bar: '#ffb13a', hit: '255,190,70', burst: '255,220,120' });
   // --- Anzeige: Countdown rechts oben, Finale mittig
   g.save(); g.textAlign = 'right'; g.textBaseline = 'middle'; g.font = '800 ' + Math.round(14 * u) + 'px system-ui, sans-serif'; g.lineJoin = 'round'; g.lineWidth = 4 * u; g.strokeStyle = 'rgba(8,4,20,.85)'; g.fillStyle = '#ffd98a';
-  let txt; if (secs < 0) { txt = 'Frohes neues Jahr ' + now.getFullYear() + '!'; } else if (secs >= 86400) { txt = 'Noch ' + Math.ceil(secs / 86400) + ' Tage bis ' + yr; } else if (secs >= 3600) { txt = 'Noch ' + Math.floor(secs / 3600) + ' Std ' + Math.floor(secs % 3600 / 60) + ' Min bis ' + yr; } else { txt = label + ('0' + Math.floor(secs / 60)).slice(-2) + ':' + ('0' + Math.floor(secs % 60)).slice(-2) + ' bis ' + yr; }
+  let txt; if (secs < 0) { txt = fmt(tr('Happy New Year %s!'), now.getFullYear()); } else if (secs >= 86400) { txt = fmt(tr('%s days left until %s'), Math.ceil(secs / 86400), yr); } else if (secs >= 3600) { txt = fmt(tr('%s h %s min left until %s'), Math.floor(secs / 3600), Math.floor(secs % 3600 / 60), yr); } else { txt = label + fmt(tr('%s until %s'), ('0' + Math.floor(secs / 60)).slice(-2) + ':' + ('0' + Math.floor(secs % 60)).slice(-2), yr); }
   g.strokeText(txt, w - 14 * u, 62 * u); g.fillText(txt, w - 14 * u, 62 * u);
-  if (S.finale > 0) { g.textAlign = 'center'; g.globalAlpha = Math.min(1, S.finale / 1.5); g.font = '800 ' + Math.round(38 * u) + 'px system-ui, sans-serif'; g.lineWidth = 8 * u; g.shadowColor = '#ffb13a'; g.shadowBlur = 22 * u; g.strokeText('Frohes neues Jahr ' + yr + '!', w / 2, h * .42); g.fillText('Frohes neues Jahr ' + yr + '!', w / 2, h * .42); }
+  if (S.finale > 0) { g.textAlign = 'center'; g.globalAlpha = Math.min(1, S.finale / 1.5); g.font = '800 ' + Math.round(38 * u) + 'px system-ui, sans-serif'; g.lineWidth = 8 * u; g.shadowColor = '#ffb13a'; g.shadowBlur = 22 * u; g.strokeText(fmt(tr('Happy New Year %s!'), yr), w / 2, h * .42); g.fillText(fmt(tr('Happy New Year %s!'), yr), w / 2, h * .42); }
   g.restore();
 }
 HW_THEMES.nye = {
@@ -4791,7 +4829,7 @@ function hwSoundHint() {
     return;
   }
   if (el.querySelector('.hw-sound')) { return; }
-  const b = document.createElement('div'); b.className = 'hw-sound'; b.textContent = '🔈 Ton: antippen';
+  const b = document.createElement('div'); b.className = 'hw-sound'; b.textContent = tr('🔈 Sound: tap');
   b.addEventListener('pointerdown', e => { e.stopPropagation(); hwUnlock(); }, { passive: true });
   el.appendChild(b);
 }
@@ -5708,7 +5746,7 @@ window.addEventListener('resize', function () {
 function handleMessage(raw) {
   let first;
   try { first = typeof raw === 'string' ? JSON.parse(raw) : raw; }
-  catch (e) { console.warn('NRGDashboard: Nachricht ist kein JSON, ignoriert. Anfang:', String(raw).slice(0, 120)); return; }
+  catch (e) { console.warn(tr('NRGDashboard: message is not JSON, ignored. Start:'), String(raw).slice(0, 120)); return; }
   // Antwort auf requestAction('quotasLoad', ...) - NICHT der volle Kachel-Payload,
   // nur die nachgeforderten Quoten fuer einen einzelnen Zeitraum (Muster: PVMonitor
   // dayPlanUpdate/yearCompareUpdate). Frueh abzweigen, bevor der Rest von
@@ -5752,8 +5790,8 @@ function handleMessage(raw) {
     if (d.emsDecision && d.emsDecision.mode) {
       // Nur Beschriftung: unbekannte Werte (neue EMS-Quellen) erscheinen roh.
       const emsSourceNames = {
-        netzbetreiber: 'Netzbetreiber', tibber: 'Tibber', stromgedacht: 'StromGedacht',
-        tagesplan: 'Tagesplan', nutzer: 'Nutzer', ems: 'EMS', smartcharging: 'Smart Charging'
+        netzbetreiber: tr('Grid operator'), tibber: 'Tibber', stromgedacht: 'StromGedacht',
+        tagesplan: tr('Daily plan'), nutzer: tr('User'), ems: 'EMS', smartcharging: 'Smart Charging'
       };
       const emsSourceLabel = Object.prototype.hasOwnProperty.call(emsSourceNames, d.emsDecision.source)
         ? emsSourceNames[d.emsDecision.source] : d.emsDecision.source;
@@ -5761,7 +5799,7 @@ function handleMessage(raw) {
       emsBadge.querySelector('.reason').textContent = d.emsDecision.reason || '';
       emsBadge.title = 'EMS: ' + d.emsDecision.mode
         + (d.emsDecision.reason ? ' – ' + d.emsDecision.reason : '')
-        + (emsSourceLabel ? ' (Quelle: ' + emsSourceLabel + ')' : '');
+        + (emsSourceLabel ? ' ' + fmt(tr('(source: %s)'), emsSourceLabel) : '');
       emsBadge.classList.add('show');
       // Volltext fuers Klick-Panel (siehe CSS-Kommentar bei #emsDecision) -
       // dasselbe title schon vorhanden, aber per Tooltip auf Touch (Symcon
@@ -5870,7 +5908,7 @@ function handleMessage(raw) {
   if (houseDevice && houseDevice.detailKey && !centerG.dataset.tipBound) {
     centerG.dataset.tipBound = '1';
     const tip = el('title', {});
-    tip.textContent = 'Details von „Haus“ öffnen (kurzer Druck)';
+    tip.textContent = tr('Open details of “House” (short press)');
     centerG.appendChild(tip);
   }
   if (houseDevice && houseDevice.detailKey) {
@@ -5950,7 +5988,7 @@ var RING_R_OUTER = 35, RING_R_INNER = 24;
 var RING_C_OUTER = 2 * Math.PI * RING_R_OUTER;
 var RING_C_INNER = 2 * Math.PI * RING_R_INNER;
 var QUOTA_PERIODS = ['day', 'month', 'year', 'total'];
-var QUOTA_PERIOD_LABEL = { day: 'Tag', month: 'Monat', year: 'Jahr', total: 'Gesamt' };
+var QUOTA_PERIOD_LABEL = { day: tr('Day'), month: tr('Month'), year: tr('Year'), total: tr('Total') };
 
 function pct(frac) { return (frac === null || frac === undefined) ? null : Math.round(frac * 100); }
 
@@ -5980,8 +6018,7 @@ function renderQuotaButton(data) {
   var a = pct(data ? data.autarky : null), s = pct(data ? data.selfConsumption : null);
   document.getElementById('qValAutarky').textContent = a === null ? '–' : a + '%';
   document.getElementById('qValSelf').textContent = s === null ? '–' : s + '%';
-  document.getElementById('quotaCoinTitle').textContent = 'Heute: Autarkie ' + (a === null ? 'unbekannt' : a + ' %')
-    + ' · Eigenverbrauch ' + (s === null ? 'unbekannt' : s + ' %') + ' - Klick für alle Zeiträume';
+  document.getElementById('quotaCoinTitle').textContent = fmt(tr('Today: self-sufficiency %s · self-consumption %s - click for all periods'), a === null ? tr('unknown') : a + ' %', s === null ? tr('unknown') : s + ' %');
 }
 
 /** Eine Tabellenzeile (ein Zeitraum), mit Mini-Ring je Kennzahl statt nur Text -
@@ -5992,7 +6029,7 @@ function quotaCellHtml(color, frac, kwh, unit) {
   }
   var deg = Math.max(0, Math.min(1, frac)) * 360;
   var ring = 'conic-gradient(' + color + ' 0deg ' + deg + 'deg, rgba(255,255,255,.12) ' + deg + 'deg 360deg)';
-  var kwhTxt = (kwh !== null && kwh !== undefined) ? '<span class="qSub">' + kwh.toFixed(1).replace('.', ',') + ' kWh ' + unit + '</span>' : '';
+  var kwhTxt = (kwh !== null && kwh !== undefined) ? '<span class="qSub">' + decStr(kwh.toFixed(1)) + ' kWh ' + unit + '</span>' : '';
   return '<td class="qCell"><span class="qMiniRing" style="background:' + ring + '"></span><span class="qPct">' + pct(frac) + ' %</span>' + kwhTxt + '</td>';
 }
 
@@ -6001,7 +6038,7 @@ function quotaCellHtml(color, frac, kwh, unit) {
  *  Datenquelle vorhanden ist (keine erfundenen Nullen). */
 function qEnergyCellHtml(val1, label1, val2, label2) {
   var line = function (v, lbl) {
-    var txt = (v === null || v === undefined) ? '–' : v.toFixed(1).replace('.', ',') + ' kWh';
+    var txt = (v === null || v === undefined) ? '–' : decStr(v.toFixed(1)) + ' kWh';
     return '<span class="qEnergyLine">' + lbl + ': <span class="qEnergyVal">' + txt + '</span></span>';
   };
   return '<td class="qEnergyCell">' + line(val1, label1) + line(val2, label2) + '</td>';
@@ -6019,15 +6056,15 @@ function renderQuotaTable() {
     var data = quotaCache[p];
     var rowLabel = '<td class="qPeriodLbl">' + QUOTA_PERIOD_LABEL[p] + '</td>';
     if (!data) {
-      return '<tr>' + rowLabel + '<td class="qCell qLoading">Lädt …</td><td class="qCell qLoading">Lädt …</td>'
-        + '<td class="qCell qLoading">Lädt …</td>' + (HAS_BATTERY ? '<td class="qCell qLoading">Lädt …</td>' : '') + '</tr>';
+      var ld = '<td class="qCell qLoading">' + tr('Loading …') + '</td>';
+      return '<tr>' + rowLabel + ld + ld + ld + (HAS_BATTERY ? ld : '') + '</tr>';
     }
     if (data.autarky === null || data.selfConsumption === null) { anyMissingSource = true; }
     return '<tr>' + rowLabel
-      + quotaCellHtml('#43a047', data.autarky, data.houseKWh, 'Verbrauch')
+      + quotaCellHtml('#43a047', data.autarky, data.houseKWh, tr('Consumption'))
       + quotaCellHtml('#1e88e5', data.selfConsumption, data.pvKWh, 'PV')
-      + qEnergyCellHtml(data.gridImportKWh, 'Bezug', data.gridExportKWh, 'Einspeisung')
-      + (HAS_BATTERY ? qEnergyCellHtml(data.batteryChargeKWh, 'Laden', data.batteryDischargeKWh, 'Entladen') : '')
+      + qEnergyCellHtml(data.gridImportKWh, tr('Import'), data.gridExportKWh, tr('Feed-in'))
+      + (HAS_BATTERY ? qEnergyCellHtml(data.batteryChargeKWh, tr('Charging'), data.batteryDischargeKWh, tr('Discharging')) : '')
       + '</tr>';
   }).join('');
   document.querySelector('#quotaPanel .qFoot').style.display = anyMissingSource ? 'none' : '';

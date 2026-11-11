@@ -8,7 +8,7 @@
      anhand des Variablennamens, kein Geraetetyp ist hart verdrahtet. -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gerätedetails</title>
+<title>Device details</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <style>
   :root { --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
@@ -128,7 +128,7 @@
   .hl-card .hl-hint { font-size: 10.5px; color: #7a8189; margin-top: 4px; line-height: 1.4; max-width: 26ch; }
 </style>
 
-<button id="closeBtn"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Schließen</button>
+<button id="closeBtn"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg><span id="closeTxt">Close</span></button>
 <div id="head"><span id="title">…</span><span id="powerNow"></span></div>
 <div id="source"></div>
 <!-- Wallbox-Steuerung (30.08.2026) - nur sichtbar, wenn p.control gesetzt
@@ -141,11 +141,11 @@
 <div id="controlWrap" style="display:none; margin: 10px 0 4px; flex-direction: column; gap: 8px;">
   <div id="ctlEnableRow" style="display:none; align-items: center; gap: 10px;">
     <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-      <input type="checkbox" id="ctlEnable"> Ladefreigabe
+      <input type="checkbox" id="ctlEnable"> <span id="ctlEnableTxt">Charging enable</span>
     </label>
   </div>
   <div id="ctlLimitRow" style="display:none; align-items: center; gap: 10px;">
-    <label for="ctlLimit" style="font-size:13px;">Stromlimit</label>
+    <label for="ctlLimit" id="ctlLimitLbl" style="font-size:13px;">Current limit</label>
     <input type="range" id="ctlLimit" list="ctlLimitTicks" style="width:160px;">
     <datalist id="ctlLimitTicks"></datalist>
     <span id="ctlLimitVal" style="font-size:13px; font-variant-numeric: tabular-nums; min-width: 4ch;"></span>
@@ -156,9 +156,9 @@
        gerade nicht wirkt. -->
   <div id="ctlBlockReason" style="display:none;"></div>
   <div id="ctlOcppRow" style="display:none; gap: 8px;">
-    <button id="ctlStart" class="ctlBtn">▶ Laden starten</button>
-    <button id="ctlStop" class="ctlBtn">■ Laden stoppen</button>
-    <button id="ctlOverride" class="ctlBtn">⚡ Heute Vollladen (Override)</button>
+    <button id="ctlStart" class="ctlBtn">▶ Start charging</button>
+    <button id="ctlStop" class="ctlBtn">■ Stop charging</button>
+    <button id="ctlOverride" class="ctlBtn">⚡ Fully charge today (override)</button>
   </div>
   <div id="ctlStatus"></div>
 </div>
@@ -171,7 +171,7 @@
      identisch zur Unterscheidung am Knoten selbst (updateOuterNode()). -->
 <div id="switchWrap" style="display:none; margin: 10px 0 4px; align-items: center; gap: 10px;">
   <label id="switchRow" style="display:none; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-    <input type="checkbox" id="ctlSwitch"> <span id="switchLabel">Schalten</span>
+    <input type="checkbox" id="ctlSwitch"> <span id="switchLabel">Switch</span>
   </label>
   <div id="switchStateRow" style="display:none; font-size:13px;"></div>
   <div id="switchStatus"></div>
@@ -182,56 +182,95 @@
      Mstaudi: "ein paar Informationen als einfache Uebersicht der aktuellen
      Ladesitzung" inkl. Boost-Knopf) - nur bei Wallboxen (p.sessions gesetzt). -->
 <div id="curSessWrap" style="display:none">
-  <h2 id="curSessTitle">Ladesitzung</h2>
+  <h2 id="curSessTitle">Charging session</h2>
   <div id="curSessGrid"></div>
   <div id="curSessNote" class="note"></div>
 </div>
 
 <!-- Regelung und Plan je Wallbox (25.10.2026, ChargerHub-Vertrag 1.9-1.12): reine Anzeige -->
 <div id="wbInfoWrap" style="display:none">
-  <h2>Regelung &amp; Plan</h2>
+  <h2 id="wbInfoH">Control &amp; plan</h2>
   <div id="wbInfoT"></div>
 </div>
 
 <div id="hlWrap"><div id="hlGrid"></div></div>
 
 <div id="sessWrap" style="display:none">
-  <h2>Ladesitzungen (letzte 7 Tage)</h2>
+  <h2 id="sessH">Charging sessions (last 7 days)</h2>
   <div id="sessT" style="overflow-x:auto"></div>
   <div id="sessNote" class="note"></div>
 </div>
 
 <div id="subMeterWrap" style="display:none">
-  <h2>Kaskadierte Zähler</h2>
+  <h2 id="subMeterH">Cascaded meters</h2>
   <div id="subMeterT"></div>
 </div>
 
 <div class="grid2">
   <div id="groupWrap"></div>
-  <div id="valWrap" style="display:none"><h2>Aktuelle Werte</h2><div id="valT"></div></div>
+  <div id="valWrap" style="display:none"><h2 id="valH">Current values</h2><div id="valT"></div></div>
 </div>
 
 <div id="powerWrap" style="display:none">
-  <h2>Leistung</h2>
+  <h2 id="powerH">Power</h2>
   <div id="dayNav">
     <button id="prevDay">‹</button><span id="dayLabel"></span><button id="nextDay">›</button>
-    <button id="todayBtn">Heute</button>
+    <button id="todayBtn">Today</button>
   </div>
   <div id="powerChart" class="chartbox"></div>
 </div>
 <div id="powerNote" class="note" style="display:none"></div>
 
 <div id="energyWrap" style="display:none">
-  <h2 id="energyH">Energie je Tag</h2>
+  <h2 id="energyH">Energy per day</h2>
   <div id="energyChart" class="chartbox" style="height:260px"></div>
-  <div id="energyNote" class="note" style="display:none">Näherung: aus dem Tagesmittel der Leistung integriert (kein Energiezähler im Vertrag des Geräts).</div>
+  <div id="energyNote" class="note" style="display:none">Approximation: integrated from the daily average of the power (no energy counter in the device's contract).</div>
 </div>
 
 <div id="stamp"></div>
 
+<!--NRGDASH_TEXTS-->
 <script>
 'use strict';
 let powerChart = null, energyChart = null, lastPayload = null;
+// Texte: PHP liefert die Uebersetzungen (window.NRGDASH_TEXTS), die englischen Quelltexte sind die Schluessel.
+function tr(s) { return (window.NRGDASH_TEXTS && window.NRGDASH_TEXTS[s]) || s; }
+// sprintf light: ersetzt %s und %d der Reihe nach
+function fmt(s) {
+  var a = Array.prototype.slice.call(arguments, 1), i = 0;
+  return s.replace(/%[sd]/g, function () { return a[i++]; });
+}
+// Zahlenformat nach Sprache: Muster '1,234.5' (Englisch) bzw. '1.234,5' (Deutsch) steht in der Uebersetzung
+const NUMFMT = /1(\D*)234(\D*)5/.exec(tr('Number format 1,234.5')) || [0, ',', '.'];
+function decStr(str) { return String(str).replace('.', NUMFMT[2]); }
+const NUM_LOCALE = tr('en-US');
+// Datum nach Sprache: Muster 'MM/DD' (Englisch) bzw. 'DD.MM.' (Deutsch), ohne Fuehrungsnull 'M/D' bzw. 'D.M.'
+function dateTxt(d, pat, pad) {
+  const p = n => (pad ? ('0' + n).slice(-2) : String(n));
+  return pat.replace('DD', p(d.getDate())).replace('MM', p(d.getMonth() + 1)).replace('D', p(d.getDate())).replace('M', p(d.getMonth() + 1));
+}
+// Statische Texte der Seite uebersetzen
+(function () {
+  function txt(id, s) { const e = document.getElementById(id); if (e) { e.textContent = s; } }
+  function htm(id, s) { const e = document.getElementById(id); if (e) { e.innerHTML = s; } }
+  document.title = tr('Device details');
+  txt('closeTxt', tr('Close'));
+  txt('ctlEnableTxt', tr('Charging enable'));
+  txt('ctlLimitLbl', tr('Current limit'));
+  txt('ctlStart', tr('▶ Start charging'));
+  txt('ctlStop', tr('■ Stop charging'));
+  txt('ctlOverride', tr('⚡ Fully charge today (override)'));
+  txt('switchLabel', tr('Switch'));
+  txt('curSessTitle', tr('Charging session'));
+  htm('wbInfoH', tr('Control &amp; plan'));
+  txt('sessH', tr('Charging sessions (last 7 days)'));
+  txt('subMeterH', tr('Cascaded meters'));
+  txt('valH', tr('Current values'));
+  txt('powerH', tr('Power'));
+  txt('todayBtn', tr('Today'));
+  txt('energyH', tr('Energy per day'));
+  txt('energyNote', tr('Approximation: integrated from the daily average of the power (no energy counter in the device\'s contract).'));
+})();
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -239,7 +278,7 @@ function esc(s) {
 function fmtW(w) {
   if (w === null || w === undefined) return '';
   const a = Math.abs(w);
-  return a >= 10000 ? (w / 1000).toFixed(1) + ' kW' : Math.round(w).toLocaleString('de-DE') + ' W';
+  return a >= 10000 ? (w / 1000).toFixed(1) + ' kW' : Math.round(w).toLocaleString(NUM_LOCALE) + ' W';
 }
 
 // L1-L3-Gruppierung rein anhand des Variablennamens (Anbieter benennt) -
@@ -256,9 +295,9 @@ function fmtW(w) {
 // einfache Werteliste, damit ein Einzelwert nicht als "Tabelle mit einer
 // Spalte" erscheint.
 const GROUP_PATTERNS = [
-  { key: 'phase', heading: 'Phasen', re: /^(.*?)[\s\-_]*L([123])\s*$/i, col: m => 'L' + m[2], base: m => m[1].trim() },
-  { key: 'mppt', heading: 'MPPT-Stränge', re: /^MPPT\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => 'Strang ' + m[1], base: m => m[2].trim() },
-  { key: 'block', heading: 'Batterie-Blöcke', re: /^(?:Bat\.?|Batterie|Turm)\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => 'Block ' + m[1], base: m => m[2].trim() },
+  { key: 'phase', heading: tr('Phases'), re: /^(.*?)[\s\-_]*L([123])\s*$/i, col: m => 'L' + m[2], base: m => m[1].trim() },
+  { key: 'mppt', heading: tr('MPPT strings'), re: /^MPPT\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => fmt(tr('String %s'), m[1]), base: m => m[2].trim() },
+  { key: 'block', heading: tr('Battery blocks'), re: /^(?:Bat\.?|Batterie|Turm)\s*[-.]?\s*(\d+)[\s.:_-]*(.+)$/i, col: m => fmt(tr('Block %s'), m[1]), base: m => m[2].trim() },
 ];
 
 function splitGroups(rows) {
@@ -336,8 +375,8 @@ function renderPower(p) {
     // Archivierung (Store-Review 30.10.2026): die Visualisierung schaltet das Logging fremder Variablen nie selbst ein, das macht der
     // Benutzer ausdruecklich ueber den Knopf im Formular der Kachel.
     note.textContent = p.archivingActive
-      ? 'Für diesen Tag liegen noch keine Archivdaten vor.'
-      : 'Für die Leistung dieses Geräts liegen keine Archivdaten vor, die Variable wird nicht archiviert. In der Konfiguration der Kachel kannst du die Archivierung mit „Archivierung der Geräteleistungen aktivieren“ einschalten.';
+      ? tr('There is no archive data for this day yet.')
+      : tr('There is no archive data for the power of this device, the variable is not archived. In the tile\'s configuration you can switch archiving on with “Enable archiving of device power values”.');
     note.style.display = '';
     if (powerChart) powerChart.clear();
     return;
@@ -364,17 +403,17 @@ function renderEnergy(p) {
   const e = p.energy || { bars: [] };
   if (!e.bars || !e.bars.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
-  document.getElementById('energyH').textContent = 'Energie je Tag' + (e.name ? ' — ' + e.name : '');
+  document.getElementById('energyH').textContent = tr('Energy per day') + (e.name ? ' — ' + e.name : '');
   document.getElementById('energyNote').style.display = e.approx ? '' : 'none';
   if (!energyChart) energyChart = echarts.init(document.getElementById('energyChart'));
   const cats = e.bars.map(b => {
     const d = new Date(b[0] + 'T00:00:00');
-    return d.getDate() + '.' + (d.getMonth() + 1) + '.';
+    return dateTxt(d, tr('M/D'), false);
   });
   energyChart.setOption({
     animation: false,
     grid: { left: 58, right: 20, top: 20, bottom: 40 },
-    tooltip: { trigger: 'axis', valueFormatter: v => (v === null ? '' : v.toLocaleString('de-DE') + ' ' + (e.unit || '')) },
+    tooltip: { trigger: 'axis', valueFormatter: v => (v === null ? '' : v.toLocaleString(NUM_LOCALE) + ' ' + (e.unit || '')) },
     xAxis: Object.assign({ type: 'category', data: cats }, AXIS),
     yAxis: Object.assign({ type: 'value', splitLine: { lineStyle: { color: '#33373d' } } }, AXIS),
     series: [{ type: 'bar', data: e.bars.map(b => b[1]), itemStyle: { color: '#c9a86b', borderRadius: [3, 3, 0, 0] } }],
@@ -402,40 +441,40 @@ function renderSessions(p) {
   if (!s || !s.list || !s.list.length) {
     wrap.style.display = (s && s.list) ? '' : 'none';
     if (s && s.list) {
-      document.getElementById('sessT').innerHTML = '<div class="note">Keine Ladesitzung in den letzten 7 Tagen gefunden.</div>';
+      document.getElementById('sessT').innerHTML = '<div class="note">' + tr('No charging session found in the last 7 days.') + '</div>';
       document.getElementById('sessNote').textContent = '';
     }
     return;
   }
   wrap.style.display = '';
-  const kwh = v => v.toFixed(2).replace('.', ',') + ' kWh';
-  const eur = v => v === null ? '–' : v.toFixed(2).replace('.', ',') + ' €';
+  const kwh = v => decStr(v.toFixed(2)) + ' kWh';
+  const eur = v => v === null ? '–' : decStr(v.toFixed(2)) + ' €';
   const two = n => ('0' + n).slice(-2);
-  const dt = ts => { const d = new Date(ts * 1000); return two(d.getDate()) + '.' + two(d.getMonth() + 1) + '. ' + two(d.getHours()) + ':' + two(d.getMinutes()); };
+  const dt = ts => { const d = new Date(ts * 1000); return dateTxt(d, tr('MM/DD'), true) + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); };
   const hm = ts => { const d = new Date(ts * 1000); return two(d.getHours()) + ':' + two(d.getMinutes()); };
   const lost = s.list.some(x => x.lostEur !== null);
-  let h = '<table><tr><th>Sitzung</th><th>Energie</th><th>aus dem Netz</th><th>Kosten</th><th>Ø Netzpreis</th><th>Eigenstrom</th>' + (lost ? '<th>entgangene Vergütung</th>' : '') + '</tr>';
+  let h = '<table><tr><th>' + tr('Session') + '</th><th>' + tr('Energy') + '</th><th>' + tr('from the grid') + '</th><th>' + tr('Cost') + '</th><th>' + tr('Ø grid price') + '</th><th>' + tr('Own power') + '</th>' + (lost ? '<th>' + tr('lost feed-in tariff') + '</th>' : '') + '</tr>';
   s.list.forEach(x => {
-    h += '<tr><th>' + esc(dt(x.start) + '–' + hm(x.end)) + (x.ongoing ? ' <span style="opacity:.7">(läuft)</span>' : '') + '</th>' +
-      '<td>' + kwh(x.kwh) + (x.suspect ? ' <span title="Der Zähler der Wallbox meldet ' + esc(kwh(x.counterKwh)) + ' - die berechnete Energie weicht stark ab (Messfehler im Archiv?)">⚠️</span>' : '') + '</td><td>' + kwh(x.gridKwh) + '</td>' +
-      '<td>' + eur(x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0)) + (x.priceGap ? ' <span title="Für einen Teil der Sitzung lag kein Preis vor">*</span>' : '') + '</td>' +
-      '<td>' + (x.avgCt === null ? '–' : x.avgCt.toFixed(1).replace('.', ',') + ' ct/kWh') + '</td>' +
+    h += '<tr><th>' + esc(dt(x.start) + '–' + hm(x.end)) + (x.ongoing ? ' <span style="opacity:.7">(' + tr('running') + ')</span>' : '') + '</th>' +
+      '<td>' + kwh(x.kwh) + (x.suspect ? ' <span title="' + esc(fmt(tr('The wallbox meter reports %s - the calculated energy deviates strongly (measurement error in the archive?)'), kwh(x.counterKwh))) + '">⚠️</span>' : '') + '</td><td>' + kwh(x.gridKwh) + '</td>' +
+      '<td>' + eur(x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0)) + (x.priceGap ? ' <span title="' + esc(tr('No price was available for part of the session')) + '">*</span>' : '') + '</td>' +
+      '<td>' + (x.avgCt === null ? '–' : decStr(x.avgCt.toFixed(1)) + ' ct/kWh') + '</td>' +
       '<td>' + kwh(x.ownKwh) + (x.batteryKwh > 0.005
-        ? ' <span title="davon aus der Batterie">(🔋 ' + kwh(x.batteryKwh) + (x.batteryCostEur !== null ? ', ' + eur(x.batteryCostEur) : '') + ')</span>'
+        ? ' <span title="' + esc(tr('of which from the battery')) + '">(🔋 ' + kwh(x.batteryKwh) + (x.batteryCostEur !== null ? ', ' + eur(x.batteryCostEur) : '') + ')</span>'
         : '') + '</td>' +
       (lost ? '<td>' + eur(x.lostEur) + '</td>' : '') + '</tr>';
   });
   document.getElementById('sessT').innerHTML = h + '</table>';
   const notes = [];
   const batPriced = s.list.some(x => x.batteryCostEur !== null);
-  notes.push('Kosten = Netzanteil je Viertelstunde × dort gültiger Bezugspreis (' + esc(s.priceSourceText) + ')' +
-    (batPriced ? ' plus Batterieanteil × Einstandspreis des gespeicherten Stroms (aus dem EMS)' : '') +
-    '. Netz- und Batterieanteil werden anteilig auf alle Verbraucher des Hauses verteilt, Solarstrom zählt mit 0 €.');
-  if (lost) notes.push('„Entgangene Vergütung“: was der direkt genutzte Solarstrom bei Einspeisung gebracht hätte.');
-  if (batPriced && s.batterySettled === false) notes.push('Der Einstandspreis der Batterie ist noch nicht eingeschwungen (der Anfangsbestand zählt als Solarstrom, bis die Batterie einmal durchgeladen ist) – der Batterieanteil ist bis dahin eher zu günstig bewertet.');
-  if (s.list.some(x => x.batteryUnpriced)) notes.push('🔋 Für einen Teil des Batteriestroms liegt kein Einstandspreis vor (z. B. vor der Einführung im EMS) – dieser Anteil zählt mit 0 €, obwohl er nach einer Netzladung nicht gratis ist.');
-  if (s.list.some(x => x.suspect)) notes.push('⚠️ Werte unsicher: Bei mindestens einer Sitzung weicht die aus der Ladeleistung berechnete Energie stark vom Zähler der Wallbox ab (Zählerwert im Hinweis des Symbols). Kosten und Anteile dieser Sitzung stützen sich auf die berechnete Energie.');
-  if (s.list.some(x => x.gridMissing)) notes.push('Für einen Teil einer Sitzung fehlten Netzdaten – dieser Anteil ist vorsichtshalber komplett als Netzbezug gerechnet.');
+  notes.push(fmt(tr('Cost = grid share per quarter-hour × import price valid then (%s)'), esc(s.priceSourceText)) +
+    (batPriced ? ' ' + tr('plus battery share × cost basis of the stored power (from the EMS)') : '') +
+    tr('. Grid and battery share are distributed proportionally across all consumers of the house, solar power counts as 0 €.'));
+  if (lost) notes.push(tr('“Lost feed-in tariff”: what the directly used solar power would have earned if fed in.'));
+  if (batPriced && s.batterySettled === false) notes.push(tr('The battery\'s cost basis has not settled yet (the initial stock counts as solar power until the battery has been fully cycled once) – until then the battery share tends to be valued too cheaply.'));
+  if (s.list.some(x => x.batteryUnpriced)) notes.push(tr('🔋 No cost basis is available for part of the battery power (e.g. before its introduction in the EMS) – this share counts as 0 €, although it is not free after grid charging.'));
+  if (s.list.some(x => x.suspect)) notes.push(tr('⚠️ Values uncertain: in at least one session the energy calculated from the charging power deviates strongly from the wallbox meter (meter value in the symbol\'s tooltip). Costs and shares of this session are based on the calculated energy.'));
+  if (s.list.some(x => x.gridMissing)) notes.push(tr('Grid data was missing for part of a session – as a precaution this share is counted entirely as grid import.'));
   document.getElementById('sessNote').textContent = notes.join(' ');
 }
 
@@ -449,56 +488,56 @@ function wbControlsHtml(w) {
   const pid = w.powerID;
   let h = '<div class="wbCtl">';
   if (w.managedBy && w.managedBy.options && w.managedBy.options.length) {
-    h += '<div class="wbRow"><span class="wbLab">Regler</span><div class="wbBody"><span class="pill" title="' + esc(w.reason || '') + '">' + esc((w.owner || '–') + ((w.owner === 'EMS' && String(w.managedBy.value) === 'none') ? ' (kein anderer Regler)' : '')) + '</span>' +
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Controller') + '</span><div class="wbBody"><span class="pill" title="' + esc(w.reason || '') + '">' + esc((w.owner || '–') + ((w.owner === 'EMS' && String(w.managedBy.value) === 'none') ? ' (' + tr('no other controller') + ')' : '')) + '</span>' +
       '<select data-wb="' + pid + '" data-f="managedBy" style="font:inherit;font-size:13px;padding:5px 8px;background:#2b2f34;color:#e8eaed;border:1px solid #555b63;border-radius:9px">' +
       w.managedBy.options.map(o => '<option value="' + esc(String(o[0])) + '"' + (String(o[0]) === String(w.managedBy.value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') +
       '</select></div></div>';
   }
   const off = !!(c && c.emsControls === false);
   if (off) {
-    const why = c.emsMode === 'smart' ? 'Tibber Smart Charging steuert diese Wallbox, Einstellungen des EMS wirken nicht.' : (c.emsMode === 'observe' ? 'EMS beobachtet diese Wallbox nur.' : 'Das EMS regelt diese Wallbox nicht.');
-    h += '<div class="wbNote">' + why + ' Die Einstellungen unten sind gesperrt, weil sie keine Wirkung hätten.</div>';
+    const why = c.emsMode === 'smart' ? tr('Tibber Smart Charging controls this wallbox, EMS settings have no effect.') : (c.emsMode === 'observe' ? tr('EMS only observes this wallbox.') : tr('The EMS does not control this wallbox.'));
+    h += '<div class="wbNote">' + why + ' ' + tr('The settings below are locked because they would have no effect.') + '</div>';
   }
   if (c && !off && w.owner && w.owner !== 'EMS') {
-    h += '<div class="wbNote">Diese Wallbox wird gerade nicht vom EMS geregelt (Regler: ' + esc(w.owner) + '). Die Einstellungen unten gelten für das EMS.</div>';
+    h += '<div class="wbNote">' + fmt(tr('This wallbox is currently not controlled by the EMS (controller: %s). The settings below apply to the EMS.'), esc(w.owner)) + '</div>';
   }
   if (c && c.mode && c.mode.options && c.mode.options.length) {
-    h += '<div class="wbRow"><span class="wbLab">Ladeart</span><div class="wbBody"><div class="seg">' +
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Charging mode') + '</span><div class="wbBody"><div class="seg">' +
       c.mode.options.map(o => '<button data-wb="' + pid + '" data-f="mode" data-v="' + esc(String(o[0])) + '"' + (Number(o[0]) === Number(c.mode.value) ? ' class="on"' : '') + '>' + esc(o[1]) + '</button>').join('') + '</div></div></div>';
   }
   if (c && c.kwh) {
-    h += '<div class="wbRow"><span class="wbLab">Ladeziel</span><div class="wbBody">' +
-      '<div class="stepper"><button data-wb="' + pid + '" data-f="kwh-dec" title="weniger">−</button>' +
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Charging target') + '</span><div class="wbBody">' +
+      '<div class="stepper"><button data-wb="' + pid + '" data-f="kwh-dec" title="' + esc(tr('less')) + '">−</button>' +
       '<input type="number" min="' + c.kwh.min + '" max="' + c.kwh.max + '" step="' + c.kwh.step + '" value="' + c.kwh.value + '" data-wb="' + pid + '" data-f="kwh-in" data-orig="' + c.kwh.value + '">' +
-      '<span class="unit">kWh</span><button data-wb="' + pid + '" data-f="kwh-inc" title="mehr">+</button></div>' +
-      '<button class="chip" data-wb="' + pid + '" data-f="kwh-q" data-v="0">aus</button>' +
+      '<span class="unit">kWh</span><button data-wb="' + pid + '" data-f="kwh-inc" title="' + esc(tr('more')) + '">+</button></div>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="kwh-q" data-v="0">' + tr('off') + '</button>' +
       EMS_QUICK_KWH.map(v => '<button class="chip" data-wb="' + pid + '" data-f="kwh-q" data-v="' + v + '">' + v + '</button>').join('') +
-      '<button class="wbApply" data-wb="' + pid + '" data-f="kwh" disabled>Übernehmen</button></div></div>';
+      '<button class="wbApply" data-wb="' + pid + '" data-f="kwh" disabled>' + tr('Apply') + '</button></div></div>';
   }
   if (c && c.time) {
-    h += '<div class="wbRow"><span class="wbLab">Frist</span><div class="wbBody">' +
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Deadline') + '</span><div class="wbBody">' +
       '<input type="time" class="tm" value="' + esc(c.time.value) + '" data-wb="' + pid + '" data-f="time-in" data-orig="' + esc(c.time.value) + '">' +
       EMS_QUICK_TIME.map(v => '<button class="chip" data-wb="' + pid + '" data-f="time-q" data-v="' + v + '">' + v + '</button>').join('') +
-      '<button class="wbApply" data-wb="' + pid + '" data-f="time" disabled>Übernehmen</button></div></div>';
+      '<button class="wbApply" data-wb="' + pid + '" data-f="time" disabled>' + tr('Apply') + '</button></div></div>';
   }
   if (c && c.week) {
-    const wk = c.week, one = (wk.targetKwh > 0 ? wk.targetKwh + ' kWh' : 'kein Ladeziel');
-    h += '<div class="wbRow"><span class="wbLab">Wochen-Frist</span><div class="wbBody" style="display:block">' +
-      '<div style="font-size:12px;color:#9aa0a6;margin-bottom:4px">' + (wk.active ? 'Aktiv: ab dem nächsten Anstecken gilt die nächste Frist ab jetzt.' : 'Noch keine Frist eingetragen – es gilt die einheitliche Frist oben.') + ' Leere Zeit = keine Frist an dem Tag. Ladeziel 0 = einheitliches Ladeziel (' + esc(one) + ').</div>' +
+    const wk = c.week, one = (wk.targetKwh > 0 ? wk.targetKwh + ' kWh' : tr('no charging target'));
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Weekly deadline') + '</span><div class="wbBody" style="display:block">' +
+      '<div style="font-size:12px;color:#9aa0a6;margin-bottom:4px">' + (wk.active ? tr('Active: from the next plug-in on, the next deadline from now on applies.') : tr('No deadline entered yet – the uniform deadline above applies.')) + ' ' + fmt(tr('Empty time = no deadline on that day. Charging target 0 = uniform charging target (%s).'), esc(one)) + '</div>' +
       '<table class="wkTbl" data-wb="' + pid + '" data-rev="' + esc(wk.revision) + '">' +
-      wk.days.map((d, i) => '<tr><td>' + esc(d.label || ('Tag ' + d.day)) + '</td>' +
+      wk.days.map((d, i) => '<tr><td>' + esc(d.label || fmt(tr('Day %s'), d.day)) + '</td>' +
         '<td><input type="time" class="tm" data-wk="' + pid + '" data-i="' + i + '" data-f="wk-time" value="' + esc(d.time) + '" data-orig="' + esc(d.time) + '"></td>' +
         '<td><input type="number" class="kw" min="0" max="200" step="0.5" data-wk="' + pid + '" data-i="' + i + '" data-f="wk-kwh" value="' + d.kwh + '" data-orig="' + d.kwh + '"> kWh</td></tr>').join('') +
       '</table>' +
-      '<div class="wbBody" style="margin-top:6px"><span style="font-size:12px;color:#9aa0a6">Montag übernehmen für:</span>' +
-      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="all">alle Tage</button>' +
-      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="work">Werktage</button>' +
-      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="weekend">Wochenende</button>' +
-      '<button class="wbApply" data-wb="' + pid + '" data-f="wk-save" disabled>Wochen-Frist speichern</button></div>' +
+      '<div class="wbBody" style="margin-top:6px"><span style="font-size:12px;color:#9aa0a6">' + tr('Apply Monday to:') + '</span>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="all">' + tr('all days') + '</button>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="work">' + tr('weekdays') + '</button>' +
+      '<button class="chip" data-wb="' + pid + '" data-f="wk-copy" data-v="weekend">' + tr('weekend') + '</button>' +
+      '<button class="wbApply" data-wb="' + pid + '" data-f="wk-save" disabled>' + tr('Save weekly deadline') + '</button></div>' +
       '<div class="wkErr" data-wkerr="' + pid + '"></div></div></div>';
   }
   if (c && c.command && c.command.options && c.command.options.length) {
-    h += '<div class="wbRow"><span class="wbLab">Aktionen</span><div class="wbBody">' +
+    h += '<div class="wbRow"><span class="wbLab">' + tr('Actions') + '</span><div class="wbBody">' +
       c.command.options.map(o => '<button class="wbAct' + (Number(o[0]) === 1 ? ' primary' : '') + '" data-wb="' + pid + '" data-f="command" data-v="' + esc(String(o[0])) + '">' + (Number(o[0]) === 1 ? '⚡ ' : '') + esc(o[1]) + '</button>').join('') + '</div></div>';
   }
   h += '<div class="wbCtlStatus" data-wb="' + pid + '"></div></div>';
@@ -511,7 +550,7 @@ function emsWbSend(powerId, field, value, confirmText) {
   if (confirmText && !window.confirm(confirmText)) { loadDay(''); return; }
   EMS_LOCK[lockKey] = Date.now() + 6000;
   const st = document.querySelector('.wbCtlStatus[data-wb="' + powerId + '"]');
-  if (st) st.textContent = 'Wird gesendet …';
+  if (st) st.textContent = tr('Sending …');
   const u = new URL(window.location.href);
   u.search = '';
   u.searchParams.set(field === 'managedBy' ? 'wbManagedBy' : 'emsWbAction', field === 'managedBy' ? 'set' : field);
@@ -521,10 +560,10 @@ function emsWbSend(powerId, field, value, confirmText) {
   fetch(u.toString()).then(r => r.json()).then(res => {
     const mb = (field === 'managedBy');
     if (st) st.textContent = (res && res.ok)
-      ? (mb ? 'Umgestellt. Die Anzeige von Regler und Plan aktualisiert sich beim nächsten Lesezyklus der Wallbox, das kann einen Moment dauern.' : 'Gesendet. Das EMS rechnet neu, der Plan erscheint in einigen Sekunden.')
-      : ((res && res.error) || 'Fehlgeschlagen.');
+      ? (mb ? tr('Switched. The display of controller and plan updates at the next read cycle of the wallbox, this may take a moment.') : tr('Sent. The EMS recalculates, the plan appears in a few seconds.'))
+      : ((res && res.error) || tr('Failed.'));
     if (res && res.ok) { setTimeout(() => loadDay(''), mb ? 8000 : 2500); } else EMS_LOCK[lockKey] = 0;
-  }).catch(() => { if (st) st.textContent = 'Keine Verbindung.'; EMS_LOCK[lockKey] = 0; });
+  }).catch(() => { if (st) st.textContent = tr('No connection.'); EMS_LOCK[lockKey] = 0; });
 }
 function wbInput(pid, f) { return document.querySelector('input[data-wb="' + pid + '"][data-f="' + f + '"]'); }
 function wbMarkDirty(pid, f) {
@@ -548,28 +587,28 @@ function wkSave(pid) {
   }
   const tbl = document.querySelector('table.wkTbl[data-wb="' + pid + '"]');
   const errEl = document.querySelector('.wkErr[data-wkerr="' + pid + '"]'), st = document.querySelector('.wbCtlStatus[data-wb="' + pid + '"]');
-  if (!window.confirm('Wochen-Frist speichern? Sie gilt ab dem nächsten Anstecken, das EMS lädt dafür neu.')) return;
+  if (!window.confirm(tr('Save weekly deadline? It applies from the next plug-in on, the EMS reloads for it.'))) return;
   EMS_LOCK[lockKey] = Date.now() + 6000;
   if (errEl) errEl.textContent = '';
   wkInputs(pid).forEach(i => i.classList.remove('bad'));
-  if (st) st.textContent = 'Wird gesendet …';
+  if (st) st.textContent = tr('Sending …');
   const u = new URL(window.location.href); u.search = '';
   u.searchParams.set('emsWeekSave', '1'); u.searchParams.set('key', lastPayload.key); u.searchParams.set('powerId', String(pid));
   u.searchParams.set('days', JSON.stringify(days)); if (tbl && tbl.dataset.rev) u.searchParams.set('revision', tbl.dataset.rev);
   fetch(u.toString()).then(r => r.json()).then(res => {
     if (res && res.ok) {
-      if (st) st.textContent = 'Wochen-Frist gespeichert. Das EMS lädt neu, der Plan aktualisiert sich in einigen Sekunden.';
+      if (st) st.textContent = tr('Weekly deadline saved. The EMS reloads, the plan updates in a few seconds.');
       setTimeout(() => loadDay(''), 2500);
     } else {
       EMS_LOCK[lockKey] = 0;
       const errs = (res && res.errors) || [];
       errs.forEach(e => { const m = /^days\[(\d+)\]\.(time|kwh)/.exec(String(e.field || '')); if (m) { const inp = document.querySelector('input[data-wk="' + pid + '"][data-i="' + m[1] + '"][data-f="wk-' + m[2] + '"]'); if (inp) inp.classList.add('bad'); } });
       const rev = errs.some(e => String(e.field) === 'revision');
-      if (errEl) errEl.textContent = rev ? 'Die Wochen-Frist wurde zwischenzeitlich geändert – bitte neu laden und erneut eingeben.' : (errs.length ? errs.map(e => e.message).join(' ') : ((res && res.error) || 'Nicht gespeichert.'));
+      if (errEl) errEl.textContent = rev ? tr('The weekly deadline has been changed in the meantime – please reload and enter it again.') : (errs.length ? errs.map(e => e.message).join(' ') : ((res && res.error) || tr('Not saved.')));
       if (st) st.textContent = '';
       if (rev) setTimeout(() => loadDay(''), 800);
     }
-  }).catch(() => { EMS_LOCK[lockKey] = 0; if (st) st.textContent = 'Keine Verbindung.'; });
+  }).catch(() => { EMS_LOCK[lockKey] = 0; if (st) st.textContent = tr('No connection.'); });
 }
 document.addEventListener('input', ev => {
   const t = ev.target;
@@ -583,7 +622,7 @@ document.addEventListener('change', ev => {
   const t = ev.target;
   if (t && t.matches && t.matches('select[data-f="managedBy"]')) {
     const txt = t.options[t.selectedIndex].text;
-    emsWbSend(Number(t.dataset.wb), 'managedBy', t.value, 'Steuerhoheit auf „' + txt + '“ umstellen? Das entscheidet, wer diese Wallbox regelt (das EMS lädt nur, wenn es die Hoheit hat).');
+    emsWbSend(Number(t.dataset.wb), 'managedBy', t.value, fmt(tr('Switch control authority to “%s”? This decides who controls this wallbox (the EMS only charges if it has the authority).'), txt));
   }
 });
 document.addEventListener('click', ev => {
@@ -603,8 +642,8 @@ document.addEventListener('click', ev => {
   }
   if (f === 'wk-save') { wkSave(pid); return; }
   if (f === 'mode') {
-    const v = b.dataset.v, aus = (b.textContent.trim().toLowerCase() === 'aus');
-    emsWbSend(pid, 'mode', v, aus ? 'Ladeart auf „Aus“ stellen? Das EMS lädt diese Wallbox dann nicht mehr.' : null);
+    const v = b.dataset.v, aus = ['aus', 'off'].includes(b.textContent.trim().toLowerCase()); // Text kommt vom EMS (Partnermodul), dort je nach Sprache
+    emsWbSend(pid, 'mode', v, aus ? tr('Set charging mode to “Off”? The EMS will then no longer charge this wallbox.') : null);
   } else if (f === 'kwh-dec' || f === 'kwh-inc') {
     const inp = wbInput(pid, 'kwh-in'); if (!inp) return;
     const st = Number(inp.step) || 0.5, mn = Number(inp.min), mx = Number(inp.max);
@@ -622,7 +661,7 @@ document.addEventListener('click', ev => {
     emsWbSend(pid, 'time', wbInput(pid, 'time-in').value, null);
   } else if (f === 'command') {
     const jetzt = (b.dataset.v === '1');
-    emsWbSend(pid, 'command', b.dataset.v, jetzt ? 'Diese Wallbox jetzt eine Stunde laden? Das übersteuert den Plan des EMS.' : null);
+    emsWbSend(pid, 'command', b.dataset.v, jetzt ? tr('Charge this wallbox for one hour now? This overrides the EMS plan.') : null);
   }
 });
 
@@ -633,19 +672,19 @@ function renderWbInfo(p) {
   if (!list || !list.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
   const two = n => ('0' + n).slice(-2);
-  const sinceTxt = ts => { const d = new Date(ts * 1000), n = new Date(); const t = two(d.getHours()) + ':' + two(d.getMinutes()); return d.toDateString() === n.toDateString() ? t : two(d.getDate()) + '.' + two(d.getMonth() + 1) + '. ' + t; };
+  const sinceTxt = ts => { const d = new Date(ts * 1000), n = new Date(); const t = two(d.getHours()) + ':' + two(d.getMinutes()); return d.toDateString() === n.toDateString() ? t : dateTxt(d, tr('MM/DD'), true) + ' ' + t; };
   let h = '';
   list.forEach(w => {
     h += '<div class="hl-card" style="margin-bottom:8px"><div class="hl-label">' + esc(w.label) + '</div>';
     const rows = [];
-    if (w.owner) rows.push(['Regelung', w.owner + (w.since ? ' (seit ' + sinceTxt(w.since) + ')' : '') + (w.reason ? ' – ' + w.reason : '')]);
-    if (w.gridReward && w.gridReward.text) rows.push(['⚡ Grid Rewards', w.gridReward.text]);
-    if (w.plan) rows.push(['Plan', w.plan]);
+    if (w.owner) rows.push([tr('Control'), w.owner + (w.since ? ' ' + fmt(tr('(since %s)'), sinceTxt(w.since)) : '') + (w.reason ? ' – ' + w.reason : '')]);
+    if (w.gridReward && w.gridReward.text) rows.push([tr('⚡ Grid Rewards'), w.gridReward.text]);
+    if (w.plan) rows.push([tr('Plan'), w.plan]);
     const zus = [w.charging, w.state].filter(Boolean).join(' · ');
-    if (zus) rows.push(['Zustand', zus]);
-    if (w.error) rows.push(['Fehler', w.error]);
+    if (zus) rows.push([tr('State'), zus]);
+    if (w.error) rows.push([tr('Error'), w.error]);
     h += rows.map(r => '<div style="font-size:13px;margin-top:4px"><span style="opacity:.65">' + esc(r[0]) + ':</span> ' + esc(r[1]) + '</div>').join('');
-    if (!rows.length) h += '<div style="font-size:13px;opacity:.7">Keine Angaben vom Ladepunkt.</div>';
+    if (!rows.length) h += '<div style="font-size:13px;opacity:.7">' + tr('No information from the charge point.') + '</div>';
     h += wbControlsHtml(w);
     h += '</div>';
   });
@@ -665,36 +704,36 @@ function renderCurrentSession(p) {
   const two = n => ('0' + n).slice(-2);
   const hm = ts => { const d = new Date(ts * 1000); return two(d.getHours()) + ':' + two(d.getMinutes()); };
   const sameDay = ts => new Date(ts * 1000).toDateString() === new Date().toDateString();
-  const when = ts => (sameDay(ts) ? '' : two(new Date(ts * 1000).getDate()) + '.' + two(new Date(ts * 1000).getMonth() + 1) + '. ') + hm(ts);
+  const when = ts => (sameDay(ts) ? '' : dateTxt(new Date(ts * 1000), tr('MM/DD'), true) + ' ') + hm(ts);
   const dur = sec => { const m = Math.max(0, Math.round(sec / 60)); return Math.floor(m / 60) + ':' + two(m % 60) + ' h'; };
   const x = s.list.length ? s.list[0] : null;
   const running = !!(x && x.ongoing);
-  document.getElementById('curSessTitle').textContent = running ? 'Aktuelle Ladesitzung' : 'Letzte Ladesitzung';
+  document.getElementById('curSessTitle').textContent = running ? tr('Current charging session') : tr('Last charging session');
   const card = (label, value, cls) => '<div class="hl-card' + (cls ? ' ' + cls : '') + '"><div class="hl-label">' + esc(label) + '</div><div class="hl-value">' + esc(value) + '</div></div>';
-  let h = card('Status', running ? 'Lädt' : 'Keine Ladung', running ? 'cs-on' : '');
+  let h = card(tr('Status'), running ? tr('Is charging') : tr('Not charging'), running ? 'cs-on' : '');
   // Echte Stecker-Zeiten (ChargerHub-Vertrag 1.7), sonst die aus der
   // Ladeleistung abgeleiteten Zeiten.
   const pi = p.plugInfo;
   const usePlug = !!(pi && pi.hasPlug);
   if (usePlug) {
-    h += card('Angeschlossen um', pi.inAt ? when(pi.inAt) : '–');
+    h += card(tr('Connected at'), pi.inAt ? when(pi.inAt) : '–');
     const stillIn = pi.inAt && (!pi.outAt || pi.outAt < pi.inAt);
-    h += card('Abgesteckt um', stillIn ? 'noch angesteckt' : (pi.outAt ? when(pi.outAt) : '–'));
+    h += card(tr('Unplugged at'), stillIn ? tr('still plugged in') : (pi.outAt ? when(pi.outAt) : '–'));
   } else if (x) {
-    h += card('Ladebeginn', when(x.start));
-    h += card('Ladeende', running ? 'läuft noch' : when(x.end));
+    h += card(tr('Start of charging'), when(x.start));
+    h += card(tr('End of charging'), running ? tr('still running') : when(x.end));
   }
   if (pi && pi.chargeSec) {
-    h += card('Ladezeit', dur(pi.chargeSec));
+    h += card(tr('Charging time'), dur(pi.chargeSec));
   } else if (x) {
-    h += card('Ladezeit', dur(x.end - x.start));
+    h += card(tr('Charging time'), dur(x.end - x.start));
   }
   if (x) {
-    h += card('Geladene Energie', x.kwh.toFixed(1).replace('.', ',') + ' kWh');
+    h += card(tr('Energy charged'), decStr(x.kwh.toFixed(1)) + ' kWh');
     const cost = x.costEur === null ? null : x.costEur + (x.batteryCostEur || 0);
-    if (cost !== null) h += card('Kosten', cost.toFixed(2).replace('.', ',') + ' €');
+    if (cost !== null) h += card(tr('Cost'), decStr(cost.toFixed(2)) + ' €');
   }
-  h += card('Ladeleistung jetzt', fmtW(p.powerNow));
+  h += card(tr('Charging power now'), fmtW(p.powerNow));
   const c = p.control;
   // Boost nur, wenn das Limit zum gemeldeten Bereich passt: liegt der Ist-Wert
   // ueber dem Maximum (z. B. andere Einheit/Skala im Partnermodul), wuerde
@@ -703,18 +742,18 @@ function renderCurrentSession(p) {
     const atMax = !c.limitID || Number(c.limitValue) >= Number(c.maxCurrent);
     const on = !c.enableID || !!c.enableValue;
     const active = on && atMax;
-    h += '<div class="hl-card"><div class="hl-label">Boost</div><div class="cs-boost"><button id="csBoost" class="ctlBtn' +
-      (active ? ' cs-boost-active' : '') + '">⚡ ' + (active ? 'Boost aktiv' : 'Volle Leistung') + '</button></div></div>';
+    h += '<div class="hl-card"><div class="hl-label">' + tr('Boost') + '</div><div class="cs-boost"><button id="csBoost" class="ctlBtn' +
+      (active ? ' cs-boost-active' : '') + '">⚡ ' + (active ? tr('Boost active') : tr('Full power')) + '</button></div></div>';
   }
   grid.innerHTML = h;
   const b = document.getElementById('csBoost');
   if (b) b.addEventListener('click', boostCharging);
   document.getElementById('curSessNote').textContent = (x || usePlug)
     ? (usePlug
-        ? 'Angeschlossen/Abgesteckt aus dem Wechsel des Stecker-Status (Genauigkeit = Leseintervall der Wallbox).'
-        : 'Zeiten aus der Ladeleistung abgeleitet (Pausen bis 30 Minuten zählen zur Sitzung), nicht aus dem Steckerstatus der Wallbox.') +
-      (c && c.limitID && Number(c.limitValue) <= Number(c.maxCurrent) ? ' „Volle Leistung“ schaltet die Ladefreigabe ein und setzt das Stromlimit auf das Maximum; zurücknehmen mit dem Stromlimit-Regler.' : '')
-    : 'In den letzten 7 Tagen wurde nicht geladen.';
+        ? tr('Connected/unplugged from the change of the plug status (accuracy = read interval of the wallbox).')
+        : tr('Times derived from the charging power (pauses of up to 30 minutes belong to the session), not from the plug status of the wallbox.')) +
+      (c && c.limitID && Number(c.limitValue) <= Number(c.maxCurrent) ? ' ' + tr('“Full power” switches the charging enable on and sets the current limit to the maximum; go back with the current limit slider.') : '')
+    : tr('No charging in the last 7 days.');
 }
 
 // Boost: Ladefreigabe an, Stromlimit auf das Geraetemaximum - nutzt dieselben
@@ -744,14 +783,14 @@ function renderSubMeters(p) {
 function handleDetail(p) {
   lastPayload = p;
   if (!p || !p.ok) {
-    document.getElementById('err').textContent = (p && p.error) || 'Daten konnten nicht geladen werden.';
+    document.getElementById('err').textContent = (p && p.error) || tr('Data could not be loaded.');
     document.getElementById('err').style.display = '';
     return;
   }
   document.getElementById('err').style.display = 'none';
   if (p.font) document.documentElement.style.setProperty('--font', p.font);
   if (p.bg) document.body.style.background = p.bg;
-  document.title = p.label + ' — Gerätedetails';
+  document.title = p.label + ' — ' + tr('Device details');
   document.getElementById('title').textContent = (/^NRG-Stack\s+\S+\s+(.+)$/.exec(p.label || '') || [null, p.label])[1];
   document.getElementById('powerNow').textContent = fmtW(p.powerNow);
   document.getElementById('source').textContent = p.source || '';
@@ -765,7 +804,7 @@ function handleDetail(p) {
   renderValues(p);
   renderPower(p);
   renderEnergy(p);
-  document.getElementById('stamp').textContent = 'Stand: ' + new Date(p.renderedAt * 1000).toLocaleTimeString('de-DE');
+  document.getElementById('stamp').textContent = fmt(tr('As of: %s'), new Date(p.renderedAt * 1000).toLocaleTimeString(NUM_LOCALE));
 }
 
 // Stromlimit-Einordnung (31.08.2026, Dietmar: "bevor Du ein Stromlimit
@@ -797,7 +836,7 @@ function populateLimitTicks(min, max) {
   if (![...dl.options].some(o => Number(o.value) === half)) {
     const o = document.createElement('option');
     o.value = half;
-    o.label = 'halbe Leistung';
+    o.label = tr('half power');
     dl.appendChild(o);
   }
 }
@@ -850,7 +889,7 @@ function renderControl(p) {
 // eigene switchID vorliegt (Gruppen-Summe ohne eigenes schaltbares Ganzes,
 // gleiche Unterscheidung wie am Knoten selbst) - dann keine Checkbox,
 // sondern nur ein farbiger Statustext.
-const SWITCH_STATE_TEXT = { 0: 'aus', 1: 'teilweise an', 2: 'an' };
+const SWITCH_STATE_TEXT = { 0: tr('off'), 1: tr('partially on'), 2: tr('on') };
 const SWITCH_STATE_COLOR = { 0: '#9e9e9e', 1: '#c9a227', 2: '#43a047' };
 function renderSwitchControl(p) {
   const wrap = document.getElementById('switchWrap');
@@ -865,7 +904,7 @@ function renderSwitchControl(p) {
   row.style.display = s.switchID ? 'flex' : 'none';
   if (s.switchID) {
     document.getElementById('ctlSwitch').checked = !!s.switchValue;
-    document.getElementById('switchLabel').textContent = s.switchValue ? 'An' : 'Aus';
+    document.getElementById('switchLabel').textContent = s.switchValue ? tr('On') : tr('Off');
   }
   if (!s.switchID && s.stateValue !== undefined && s.stateValue !== null) {
     stateRow.style.display = '';
@@ -887,16 +926,16 @@ function switchAction(on) {
   u.searchParams.set('switchAction', '1');
   u.searchParams.set('key', lastPayload.key);
   u.searchParams.set('value', on ? '1' : '0');
-  setSwitchStatus('Befehl wird gesendet …', 'pending');
+  setSwitchStatus(tr('Sending command …'), 'pending');
   fetch(u.toString()).then(r => r.json()).then(res => {
     if (!res || !res.ok) {
-      setSwitchStatus((res && res.error) || 'Aktion fehlgeschlagen.', 'err');
+      setSwitchStatus((res && res.error) || tr('Action failed.'), 'err');
       return;
     }
-    document.getElementById('switchLabel').textContent = on ? 'An' : 'Aus';
-    setSwitchStatus('Befehl gesendet ✓', 'ok');
+    document.getElementById('switchLabel').textContent = on ? tr('On') : tr('Off');
+    setSwitchStatus(tr('Command sent ✓'), 'ok');
     setTimeout(() => document.getElementById('switchStatus').classList.add('fade'), 3000);
-  }).catch(() => setSwitchStatus('Aktion fehlgeschlagen (keine Verbindung).', 'err'));
+  }).catch(() => setSwitchStatus(tr('Action failed (no connection).'), 'err'));
 }
 document.getElementById('ctlSwitch').addEventListener('change', (e) => { switchAction(e.target.checked); });
 
@@ -921,14 +960,14 @@ function wallboxAction(action, extra) {
   u.searchParams.set('key', lastPayload.key);
   u.searchParams.set('instanceId', lastPayload.control.instanceID);
   if (extra) { Object.keys(extra).forEach(k => u.searchParams.set(k, extra[k])); }
-  setCtlStatus('Befehl wird gesendet …', 'pending');
+  setCtlStatus(tr('Sending command …'), 'pending');
   return fetch(u.toString()).then(r => r.json()).then(res => {
     if (!res || !res.ok) {
-      setCtlStatus((res && res.error) || 'Aktion fehlgeschlagen.', 'err');
+      setCtlStatus((res && res.error) || tr('Action failed.'), 'err');
       return res;
     }
     if (action === 'start' || action === 'stop') {
-      setCtlStatus('Befehl gesendet, prüfe Wallbox …', 'pending');
+      setCtlStatus(tr('Command sent, checking wallbox …'), 'pending');
       setTimeout(() => {
         loadDay('');
         setTimeout(() => {
@@ -939,19 +978,19 @@ function wallboxAction(action, extra) {
             // steht bereits prominent in #ctlBlockReason, hier nur kurz
             // darauf verweisen statt sie zu duplizieren.
             const reason = lastPayload && lastPayload.control && lastPayload.control.blockReason;
-            setCtlStatus(reason ? 'Abgelehnt: ' + reason : 'Befehl gesendet, aber Wallbox lädt noch nicht - evtl. abgelehnt (siehe Systemlog des Partnermoduls).', 'err');
+            setCtlStatus(reason ? fmt(tr('Rejected: %s'), reason) : tr('Command sent, but the wallbox is not charging yet - possibly rejected (see the system log of the partner module).'), 'err');
           } else {
-            setCtlStatus('Befehl angenommen ✓', 'ok');
+            setCtlStatus(tr('Command accepted ✓'), 'ok');
             setTimeout(() => document.getElementById('ctlStatus').classList.add('fade'), 3000);
           }
         }, 300);
       }, 4000);
     } else {
-      setCtlStatus('Befehl gesendet ✓', 'ok');
+      setCtlStatus(tr('Command sent ✓'), 'ok');
       setTimeout(() => document.getElementById('ctlStatus').classList.add('fade'), 3000);
     }
     return res;
-  }).catch(() => setCtlStatus('Aktion fehlgeschlagen (keine Verbindung).', 'err'));
+  }).catch(() => setCtlStatus(tr('Action failed (no connection).'), 'err'));
 }
 
 document.getElementById('ctlEnable').addEventListener('change', (e) => {
