@@ -1175,6 +1175,15 @@ class NRGDashboardTile extends IPSModule
         $this->setFormStatusLine($elements, 'ManualHouseCheck', $line);
     }
 
+    /**
+     * Kurznamen der Panels in der Liste „Formular: Aufbau“: FormLayout übersetzt die Panel-Caption bis zur ersten Klammer selbst
+     * (NRGDASH_Text::t). Die Quelltexte stehen hier, damit der Prüfstand sie als benutzt sieht.
+     */
+    private function formLayoutPanelShortNames(): array
+    {
+        return [NRGDASH_Text::t('Manual data points'), NRGDASH_Text::t('More consumers'), NRGDASH_Text::t('Health / diagnostics')];
+    }
+
     /** Knopf „Auf Standard zurücksetzen“ im Panel „Formular: Aufbau“ (setzt nur die Liste im offenen Formular; gespeichert wird per „Übernehmen“). */
     public function ResetFormLayout(): string
     {
