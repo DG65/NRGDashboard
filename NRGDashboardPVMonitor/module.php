@@ -794,7 +794,7 @@ class NRGDashboardPVMonitor extends IPSModule
         if ($this->readIntProperty('PvPowerID', 0) <= 0 && $ihubCount > 1 && $this->PvPowerID() <= 0) {
             $lines[] = NRGDASH_Text::t('⚠️ %d InverterHub instances found, but no unambiguous PV power - choose PV power, battery and grid explicitly below (nothing is guessed).', $ihubCount);
         }
-        $lines[] = $this->varSourceLine($elements, 'PvPowerID', NRGDASH_Text::t('PV power'), $this->PvPowerID(), NRGDASH_Text::t('is needed - PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).'));
+        $lines[] = $this->varSourceLine($elements, 'PvPowerID', NRGDASH_Text::t('PV power'), $this->PvPowerID(), NRGDASH_Text::t('needed - the PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).'));
         $lines[] = $this->varSourceLine($elements, 'BatPowerID', NRGDASH_Text::t('Battery power'), $this->BatPowerID(), NRGDASH_Text::t('not found - the battery tab is missing.'));
         $lines[] = $this->varSourceLine($elements, 'SocID', NRGDASH_Text::t('Battery state of charge'), $this->SocID(), NRGDASH_Text::t('not found - no SOC history.'));
         $lines[] = $this->varSourceLine($elements, 'GridPowerID', NRGDASH_Text::t('Grid power'), $this->GridPowerID(), NRGDASH_Text::t('not found - no grid import bar in the electricity price tab.'));

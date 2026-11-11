@@ -372,7 +372,7 @@
             "avg kW": "Ø kW",
             "en-GB": "de-DE",
             "fed in %s kWh / drawn %s kWh": "eingespeist %s kWh / entnommen %s kWh",
-            "is needed - PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).": "wird gebraucht - PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).",
+            "needed - the PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).": "wird gebraucht - PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).",
             "not active": "nicht aktiv",
             "not found - no SOC history.": "nicht gefunden - kein SOC-Verlauf.",
             "not found - no expected values in the solar tab and year comparison.": "nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.",

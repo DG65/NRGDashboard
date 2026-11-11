@@ -15,6 +15,8 @@ inklusive.*
 - **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
 - **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
 - Intern: die Statuszeilen der übrigen Module vergleichen „aktiv“ nicht mehr am Anzeigetext, und alle Module tragen den Übersetzer für die gemeinsamen Formular-Texte ein. Keine sichtbare Änderung.
+- **PV-Monitoring: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Formular, Statuszeilen, Meldungen, Kachel (Reiter, Legenden, Tooltips, Tagesplan-Editor, Tour) und die „Was ist neu“-Zeilen liegen in `libs/locale/NRGDashboardPVMonitor.json`; Datums- und Dezimalformate der Kachel folgen der Sprache (de-DE bzw. en-GB). Panels haben stabile Namen (`PanelDoc`, `PanelSource`, `PanelStyle`), die Versionszeile im Dokumentations-Panel wird darüber gefunden. Idents, Property- und Attributnamen bleiben unverändert.
+- **PV-Monitoring: Textrückfall für „Trockenlauf“/„Nur beobachtend“ entfernt.** Die Tagesplan-Kennzeichnung (`BuildDecisionFlags`) liest nur noch die Felder `dryRun`, `observeOnly` und `observeReason` aus `EMS_GetCurrentDecision` (Vertrag 1.1); der frühere Vergleich mit dem Anfang des EMS-Statustexts entfällt, weil jedes EMS diese Felder liefert.
 
 ## 0.10.12 (2026-11-09)
 
