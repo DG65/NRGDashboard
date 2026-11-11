@@ -151,7 +151,8 @@ $expect = [
     'Map' => [['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'], ['source', 'details', 'style']],
     // Topology findet seine Panels über name (Prüfstand läuft mit der englischen form.json + Konsolen-Übersetzung)
     'Topology' => [['PanelSource' => 'source', 'PanelDetails' => 'details', 'PanelStyle' => 'style'], ['source', 'details', 'style']],
-    'Tile' => [['Automatisch gefundene Geräte' => 'devices', 'Manuelle Datenpunkte' => 'manual', 'Weitere Verbraucher' => 'consumers', 'Fahrzeuge' => 'vehicles', 'Gesundheit / Diagnose' => 'health', 'Darstellung' => 'style'], ['devices', 'manual', 'consumers', 'vehicles', 'health', 'style']],
+    // Kachel findet ihre Panels über name
+    'Tile' => [['PanelDevices' => 'devices', 'PanelManual' => 'manual', 'PanelConsumers' => 'consumers', 'PanelVehicles' => 'vehicles', 'PanelHealth' => 'health', 'PanelStyle' => 'style'], ['devices', 'manual', 'consumers', 'vehicles', 'health', 'style']],
 ];
 foreach ($expect as $mod => [$map, $keys]) {
     $form = json_decode(file_get_contents(__DIR__ . '/../NRGDashboard' . $mod . '/form.json'), true);

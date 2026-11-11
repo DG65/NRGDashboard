@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 // Prüfstand für NRGDashboardTile::GridRewardWallboxes() (Grid-Rewards-Hinweis am Wallbox-Knoten). Aufruf: php tests/gridreward.test.php
+// Texte der Methode stehen englisch im Code; der Prüfstand läuft weiter auf Deutsch (Übersetzer aus der gebauten locale.json der Kachel)
+require_once __DIR__ . '/../libs/NRGDASH_Text.php';
+$deTabelle = json_decode((string) file_get_contents(__DIR__ . '/../NRGDashboardTile/locale.json'), true)['translations']['de'];
+NRGDASH_Text::setzen(fn (string $t): string => $deTabelle[$t] ?? $t);
 $src = file_get_contents(__DIR__ . '/../NRGDashboardTile/module.php');
 $a = strpos($src, '    private function GridRewardWallboxes(array $devices): array');
 $b = strpos($src, "    /**\n     * Regelung und Plan je Wallbox fuer die Detailseite");
