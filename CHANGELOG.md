@@ -12,7 +12,7 @@ inklusive.*
 
 ## 0.11.0 (2026-11-11)
 
-- **Zweisprachig (Deutsch/Englisch), erste Etappe:** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor, PV-Monitoring und die Energiefluss-Kachel (NRGDashboardTile) folgen jetzt der Symcon-Sprache. Deutsch bleibt wortgleich.
+- **Zweisprachig (Deutsch/Englisch):** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor, PV-Monitoring und die Energiefluss-Kachel (NRGDashboardTile) folgen jetzt der Symcon-Sprache. Deutsch bleibt wortgleich.
 
 - **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
 - **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
