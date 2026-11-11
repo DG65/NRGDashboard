@@ -5407,8 +5407,8 @@ class NRGDashboardTile extends IPSModule
         }
         $this->absorbedWallboxes = $absorbed;
         foreach ($hidden as $i => $parent) {
-            $this->SendDebug('Aufschachteln', sprintf(
-                'Ebene 1: "%s" ausgeblendet - positives Mitglied von "%s", dort eine Ebene tiefer erreichbar',
+            $this->SendDebug(NRGDASH_Text::t('Nesting'), NRGDASH_Text::t(
+                'Level 1: "%s" hidden - positive member of "%s", reachable one level deeper there',
                 (string) ($devices[$i]['label'] ?? '?'),
                 (string) ($devices[$parent]['label'] ?? '?')
             ), 0);
@@ -5528,11 +5528,11 @@ class NRGDashboardTile extends IPSModule
                     'source'         => (string) ($other['source'] ?? ''),
                     'instanceID'     => (int) ($other['instanceID'] ?? 0),
                 ];
-                $role = ($other['authority'] ?? '') === 'billing' ? 'Abrechnungs-Nebenquelle' : 'Nebenquelle';
+                $role = ($other['authority'] ?? '') === 'billing' ? NRGDASH_Text::t('billing secondary source') : NRGDASH_Text::t('secondary source');
             }
-            $this->SendDebug('Netzzähler', sprintf(
-                'Ebene 1: "%s" (%s) als %s an "%s" gehängt - verzoegerte/Abrechnungs-Zweitmessung desselben Anschlusses',
-                (string) ($other['label'] ?? '?'), $latency !== '' ? $latency : 'ohne latency', $role,
+            $this->SendDebug(NRGDASH_Text::t('Grid meter'), NRGDASH_Text::t(
+                'Level 1: "%s" (%s) attached as %s to "%s" - delayed/billing second measurement of the same connection',
+                (string) ($other['label'] ?? '?'), $latency !== '' ? $latency : NRGDASH_Text::t('without latency'), $role,
                 (string) ($devices[$primary]['label'] ?? '?')
             ), 0);
             $drop[$i] = true;
@@ -5622,7 +5622,7 @@ class NRGDashboardTile extends IPSModule
                 // Aktor "Licht Küche/Esszimmer"), erst dann "Mitglied N".
                 'label'          => trim((string) ($m['name'] ?? $m['label'] ?? ''))
                     ?: ($srcInst > 0 ? trim(IPS_GetName($srcInst)) : '')
-                    ?: ('Mitglied ' . ($i + 1)),
+                    ?: NRGDASH_Text::t('Member %d', $i + 1),
                 'function'       => (string) ($m['function'] ?? $parentFunction),
                 'factor'         => (float) ($m['factor'] ?? 100),
                 'powerID'        => $pid,
@@ -5802,7 +5802,7 @@ class NRGDashboardTile extends IPSModule
     {
         $d = [
             'function'       => (string) ($m['function'] ?? 'other'),
-            'label'          => (string) ($m['label'] ?? 'Mitglied'),
+            'label'          => (string) ($m['label'] ?? NRGDASH_Text::t('Member')),
             'powerID'        => (int) ($m['powerID'] ?? 0),
             'energyImportID' => (int) ($m['energyImportID'] ?? 0),
             'energyExportID' => (int) ($m['energyExportID'] ?? 0),
@@ -5854,12 +5854,12 @@ class NRGDashboardTile extends IPSModule
     {
         $d = $this->FindDeviceByKey($key);
         if ($d === null) {
-            return ['ok' => false, 'error' => 'Gerät nicht gefunden - bitte die Kachel neu öffnen (die Geräteliste hat sich geändert).'];
+            return ['ok' => false, 'error' => NRGDASH_Text::t('Device not found - please reopen the tile (the device list has changed).')];
         }
         // Nutzer-Umbenennung (Formular) auch auf der Detailseite anzeigen.
         $overrides = $this->deviceOverrideMap();
         $o = $overrides[$key] ?? null;
-        $label = !empty($o['name']) ? $o['name'] : ($d['label'] ?? ($d['function'] ?? 'Gerät'));
+        $label = !empty($o['name']) ? $o['name'] : ($d['label'] ?? ($d['function'] ?? NRGDASH_Text::t('Device')));
 
         // MPPT-Strangvergleich + Isolationswiderstand fuer den Solar-Knoten
         // (Dietmar, 28.08.2026: "wuerden mich die ganzen String- bzw.
@@ -5937,7 +5937,7 @@ class NRGDashboardTile extends IPSModule
             'powerNow'  => $powerNow,
             'values'    => $this->DetailValues($d),
             'day'       => date('Y-m-d', $dayStart),
-            'dayLabel'  => date('d.m.Y', $dayStart),
+            'dayLabel'  => date(NRGDASH_Text::t('Y-m-d'), $dayStart),
             'isToday'   => $isToday,
             'power'     => $powerSeries,
             'archivingActive' => $archivingActive,
@@ -6346,7 +6346,7 @@ class NRGDashboardTile extends IPSModule
         $since = min(array_map(static function ($c) { return (int) ($c['since'] ?? time()); }, $active));
         $text = implode(' · ', array_map(static function ($c) {
             $n = trim((string) ($c['name'] ?? ''));
-            return ($n !== '' ? $n . ': ' : '') . (string) ($c['reason'] ?? 'Grid Reward aktiv');
+            return ($n !== '' ? $n . ': ' : '') . (string) ($c['reason'] ?? NRGDASH_Text::t('Grid Reward active'));
         }, $active));
         $out = [];
         foreach ($targets as $pid) {
@@ -6377,8 +6377,8 @@ class NRGDashboardTile extends IPSModule
                 $inst[$iid] = true;
             }
         }
-        $owners = ['none' => 'Keine Regelung', 'ems' => 'EMS', 'surplus' => 'PV-Überschuss', 'goe-controller' => 'go-e-Regler', 'tibber' => 'Tibber',
-                   'p14a' => '§ 14a', 'marketer' => 'Direktvermarkter', 'other' => 'Sonstiges'];
+        $owners = ['none' => NRGDASH_Text::t('No control'), 'ems' => 'EMS', 'surplus' => NRGDASH_Text::t('PV surplus'), 'goe-controller' => NRGDASH_Text::t('go-e controller'), 'tibber' => 'Tibber',
+                   'p14a' => '§ 14a', 'marketer' => NRGDASH_Text::t('Direct marketer'), 'other' => NRGDASH_Text::t('Other')];
         $val = static function (int $id): ?string {
             return ($id > 0 && IPS_VariableExists($id)) ? trim((string) GetValueFormatted($id)) : null;
         };
@@ -6447,7 +6447,7 @@ class NRGDashboardTile extends IPSModule
                     'powerID'  => (int) ($e['powerID'] ?? 0),
                     'managedBy' => $mb,
                     'ctl'      => $ctl,
-                    'label'    => (string) ($e['label'] ?? 'Wallbox'),
+                    'label'    => (string) ($e['label'] ?? NRGDASH_Text::t('Wallbox')),
                     'owner'    => $ow !== '' ? ($owners[$ow] ?? $ow) : null,
                     'reason'   => isset($e['controlReason']) ? (string) $e['controlReason'] : null,
                     'since'    => isset($e['controlSince']) ? (int) $e['controlSince'] : null,
@@ -6826,7 +6826,9 @@ class NRGDashboardTile extends IPSModule
         if ($own) {
             $first = $own[0][1];
             $last = $own[count($own) - 1][1];
-            $txt = 'eigener Bezugspreis ' . number_format($last, 2, ',', '.') . ' ct/kWh' . (count($own) > 1 ? ' (mit Preisänderungen ab Datum)' : '');
+            $txt = count($own) > 1
+                ? NRGDASH_Text::t('own import price %s ct/kWh (with price changes from date)', self::numFmt($last, 2))
+                : NRGDASH_Text::t('own import price %s ct/kWh', self::numFmt($last, 2));
             return [
                 function (int $ts) use ($own): ?array {
                     $p = $this->OwnPurchasePriceAt($own, $ts);
@@ -6854,7 +6856,7 @@ class NRGDashboardTile extends IPSModule
                                 ($s['priceCt'] ?? null) === null ? null : (float) $s['priceCt']];
                         }
                     }
-                    $names = ['tibber' => 'Tibber', 'fest' => 'fester Tarif', 'variable' => 'Preisvariable'];
+                    $names = ['tibber' => 'Tibber', 'fest' => NRGDASH_Text::t('fixed tariff'), 'variable' => NRGDASH_Text::t('price variable')];
                     return [
                         function (int $ts) use ($emsSlots): ?array {
                             foreach ($emsSlots as [$a, $b, $p]) {
@@ -6864,7 +6866,7 @@ class NRGDashboardTile extends IPSModule
                             }
                             return null;
                         },
-                        'Bezugspreis aus dem EMS (' . ($names[$h['tarifart']] ?? (string) $h['tarifart']) . '), je Viertelstunde',
+                        NRGDASH_Text::t('Import price from the EMS (%s), per quarter-hour', $names[$h['tarifart']] ?? (string) $h['tarifart']),
                     ];
                 }
             }
@@ -6873,7 +6875,7 @@ class NRGDashboardTile extends IPSModule
         if ($fixed > 0) {
             return [
                 function (int $ts) use ($fixed) { return [$fixed, 'fest']; },
-                'fester Bezugspreis ' . number_format($fixed, 2, ',', '.') . ' ct/kWh',
+                NRGDASH_Text::t('fixed import price %s ct/kWh', self::numFmt($fixed, 2)),
             ];
         }
         $curve = [];
@@ -6922,9 +6924,11 @@ class NRGDashboardTile extends IPSModule
             return null;
         };
         if (count($curve) > 0 || count($arch) > 0) {
-            $text = 'Tibber, je Viertelstunde' . (count($bdew) > 0 ? '; Lücken mit dem BDEW-Haushaltsdurchschnitt genähert' : '');
+            $text = count($bdew) > 0
+                ? NRGDASH_Text::t('Tibber, per quarter-hour; gaps approximated with the BDEW household average')
+                : NRGDASH_Text::t('Tibber, per quarter-hour');
         } else {
-            $text = count($bdew) > 0 ? 'BDEW-Haushaltsdurchschnitt als Näherung' : 'kein Bezugspreis verfügbar';
+            $text = count($bdew) > 0 ? NRGDASH_Text::t('BDEW household average as an approximation') : NRGDASH_Text::t('no import price available');
         }
         return [$priceAt, $text];
     }
@@ -7041,7 +7045,7 @@ class NRGDashboardTile extends IPSModule
     {
         $out = [];
         $fn = (string) ($d['function'] ?? '');
-        $dayWord = $isToday ? 'heute' : 'an diesem Tag';
+        $dayWord = $isToday ? NRGDASH_Text::t('today') : NRGDASH_Text::t('on this day');
         // Strompreis-Kurve fuer den Tag: bevorzugt TibberGridReward (echte
         // stuendliche Preise), sonst automatisch der BDEW-Haushalts-
         // durchschnitt als grober Ersatzwert (PriceSlotsForDay(), Dietmar
@@ -7055,16 +7059,19 @@ class NRGDashboardTile extends IPSModule
         $priceOwn = count($priceSlots) > 0 && !empty($priceSlots[0]['own']);
         $priceEms = count($priceSlots) > 0 && !empty($priceSlots[0]['ems']);
         $emsSrc = $priceEms ? (string) ($priceSlots[0]['src'] ?? '') : '';
-        $emsName = ['fest' => 'EMS-Festpreis', 'fest-angenommen' => 'EMS-Festpreis (angenommen)', 'tibber' => 'Tibber über EMS', 'tibber-archiv' => 'Tibber-Archiv über EMS', 'variable' => 'EMS-Preisvariable'][$emsSrc] ?? 'EMS';
-        $priceSuffix = $priceApprox ? ' (Ø Haushalt, BDEW)' : ($priceOwn ? ' (eigener Tarif)' : ($priceEms ? ' (' . $emsName . ')' : ''));
+        $emsNames = ['fest' => NRGDASH_Text::t('EMS fixed price'), 'fest-angenommen' => NRGDASH_Text::t('EMS fixed price (assumed)'), 'tibber' => NRGDASH_Text::t('Tibber via EMS'), 'tibber-archiv' => NRGDASH_Text::t('Tibber archive via EMS'), 'variable' => NRGDASH_Text::t('EMS price variable')];
+        $emsName = $emsNames[$emsSrc] ?? 'EMS';
+        $priceSuffix = $priceApprox ? ' ' . NRGDASH_Text::t('(avg. household, BDEW)') : ($priceOwn ? ' ' . NRGDASH_Text::t('(own tariff)') : ($priceEms ? ' (' . $emsName . ')' : ''));
         if (count($priceSlots) > 0) {
             $nowPrice = $this->PriceAt($priceSlots, time());
             if ($nowPrice !== null && in_array($fn, ['grid', 'battery', 'wallbox', 'heatpump'], true)) {
-                $label = $priceApprox ? 'Strompreis' : 'Strompreis gerade jetzt';
-                $hint = $priceApprox ? ('Bundesweiter BDEW-Haushaltsdurchschnitt, vor ' . $priceSlots[0]['ageDays'] . ' Tagen abgerufen - nicht dein Tarif; im Formular unter "Eigener Bezugspreis" kannst du deinen Preis eintragen.')
-                    : ($priceOwn ? 'Eigener Bezugspreis aus dem Formular (brutto), gilt vor EMS, Tibber und BDEW.'
-                        : ($priceEms ? 'Bezugspreis aus dem EMS (brutto, je Viertelstunde): ' . $emsName . ($emsSrc === 'fest-angenommen' ? ' - angenommen, weil kein Preisverlauf hinterlegt ist; im EMS-Bereich „Anlage“ eintragen.' : '.') : null));
-                $item = ['label' => $label . $priceSuffix, 'value' => number_format($nowPrice, 1, ',', '.') . ' ct/kWh'];
+                $label = $priceApprox ? NRGDASH_Text::t('Electricity price') : NRGDASH_Text::t('Electricity price right now');
+                $hint = $priceApprox ? NRGDASH_Text::t('Nationwide BDEW household average, retrieved %s days ago - not your tariff; you can enter your own price in the form under "Own import price".', $priceSlots[0]['ageDays'])
+                    : ($priceOwn ? NRGDASH_Text::t('Own import price from the form (gross), takes precedence over EMS, Tibber and BDEW.')
+                        : ($priceEms ? ($emsSrc === 'fest-angenommen'
+                            ? NRGDASH_Text::t('Import price from the EMS (gross, per quarter-hour): %s - assumed because no price history is stored; enter it in the EMS section “Installation”.', $emsName)
+                            : NRGDASH_Text::t('Import price from the EMS (gross, per quarter-hour): %s.', $emsName)) : null));
+                $item = ['label' => $label . $priceSuffix, 'value' => self::numFmt($nowPrice, 1) . ' ct/kWh'];
                 if ($hint !== null) {
                     $item['hint'] = $hint;
                 }
@@ -7084,8 +7091,8 @@ class NRGDashboardTile extends IPSModule
             }
             $intervalHours = ((float) ($powerSeries[1][0] - $powerSeries[0][0])) / 3600000;
             if ($intervalHours > 0) {
-                $out[] = ['label' => 'Spitzenleistung ' . $dayWord, 'value' => $this->FmtWWithUnit($peak)];
-                $out[] = ['label' => 'In Betrieb ' . $dayWord, 'value' => $this->FmtHours($activeSlots * $intervalHours)];
+                $out[] = ['label' => NRGDASH_Text::t('Peak power %s', $dayWord), 'value' => $this->FmtWWithUnit($peak)];
+                $out[] = ['label' => NRGDASH_Text::t('Operating time %s', $dayWord), 'value' => $this->FmtHours($activeSlots * $intervalHours)];
             }
         }
         // Energie des ausgewaehlten Tages aus den bereits berechneten
@@ -7095,7 +7102,7 @@ class NRGDashboardTile extends IPSModule
             if ($bd === $dayKey) {
                 $unit = $energy['unit'] ?: 'kWh';
                 $approxMark = !empty($energy['approx']) ? '≈ ' : '';
-                $out[] = ['label' => 'Energie ' . $dayWord, 'value' => $approxMark . number_format((float) $bv, 1, ',', '.') . ' ' . $unit];
+                $out[] = ['label' => NRGDASH_Text::t('Energy %s', $dayWord), 'value' => $approxMark . self::numFmt((float) $bv, 1) . ' ' . $unit];
                 break;
             }
         }
@@ -7114,13 +7121,13 @@ class NRGDashboardTile extends IPSModule
                 // 50 W gilt "reicht praktisch beliebig lange" statt einer
                 // konkreten (falschen) Praezisionszahl.
                 if ($houseLoadW < 50) {
-                    $out[] = ['label' => 'Reicht bei Stromausfall', 'value' => '> 24 Std.', 'hint' => 'Bei aktuell sehr geringer Hauslast'];
+                    $out[] = ['label' => NRGDASH_Text::t('Lasts during a power outage'), 'value' => NRGDASH_Text::t('> 24 h'), 'hint' => NRGDASH_Text::t('At currently very low house load')];
                 } else {
                     $hours = $usableKWh / ($houseLoadW / 1000);
                     $out[] = [
-                        'label' => 'Reicht bei Stromausfall',
+                        'label' => NRGDASH_Text::t('Lasts during a power outage'),
                         'value' => $this->FmtHours($hours),
-                        'hint' => 'Schätzung bei aktueller Hauslast von ' . $this->FmtWWithUnit($houseLoadW) . ' - im echten Inselbetrieb versorgt die Batterie meist nur die Notstromkreise, nicht das ganze Haus.',
+                        'hint' => NRGDASH_Text::t('Estimate at the current house load of %s - in real island operation the battery usually supplies only the emergency circuits, not the whole house.', $this->FmtWWithUnit($houseLoadW)),
                     ];
                 }
             }
@@ -7148,10 +7155,10 @@ class NRGDashboardTile extends IPSModule
                 if ($exportKWh === null) { $exportKWh = $expFallback; }
             }
             if ($importKWh !== null) {
-                $out[] = ['label' => 'Netzbezug ' . $dayWord, 'value' => number_format($importKWh, 1, ',', '.') . ' kWh'];
+                $out[] = ['label' => NRGDASH_Text::t('Grid import %s', $dayWord), 'value' => self::numFmt($importKWh, 1) . ' kWh'];
             }
             if ($exportKWh !== null) {
-                $out[] = ['label' => 'Einspeisung ' . $dayWord, 'value' => number_format($exportKWh, 1, ',', '.') . ' kWh'];
+                $out[] = ['label' => NRGDASH_Text::t('Feed-in %s', $dayWord), 'value' => self::numFmt($exportKWh, 1) . ' kWh'];
             }
             // Einspeise-Erloes (Horst, 17.10.2026: "kann man sehen was man bisher durch
             // Einspeisung erwirtschaftet hat? taeglich und monatlich") - eingespeiste kWh
@@ -7160,22 +7167,22 @@ class NRGDashboardTile extends IPSModule
             $feedCt = $this->FeedInTariffCt();
             if ($feedCt > 0) {
                 $feedHint = function (float $kwh) use ($feedCt): string {
-                    return number_format($kwh, 1, ',', '.') . ' kWh eingespeist zu ' . number_format($feedCt, 2, ',', '.') . ' ct/kWh (derzeit eingetragene Vergütung - nicht rückwirkend angepasst, falls sie sich geändert hat; negative Börsenpreis-Viertelstunden nach § 51 EEG sind nicht abgezogen).';
+                    return NRGDASH_Text::t('%s kWh fed in at %s ct/kWh (currently entered tariff - not adjusted retroactively if it has changed; negative spot-price quarter-hours under § 51 EEG are not deducted).', self::numFmt($kwh, 1), self::numFmt($feedCt, 2));
                 };
                 if ($exportKWh !== null) {
-                    $out[] = ['label' => 'Einspeise-Erlös ' . $dayWord, 'value' => number_format($exportKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($exportKWh)];
+                    $out[] = ['label' => NRGDASH_Text::t('Feed-in revenue %s', $dayWord), 'value' => self::numFmt($exportKWh * $feedCt / 100, 2) . ' €', 'hint' => $feedHint($exportKWh)];
                 }
                 // Monat nur mit echtem Zaehler (Differenz zweier Zaehlerstaende, guenstig); ohne Zaehler
                 // waere eine Monatssumme ein schwerer Archivlauf ueber die Leistungsreihe.
                 if ($energyExportID > 0) {
-                    $monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+                    $monthNames = [NRGDASH_Text::t('January'), NRGDASH_Text::t('February'), NRGDASH_Text::t('March'), NRGDASH_Text::t('April'), NRGDASH_Text::t('May'), NRGDASH_Text::t('June'), NRGDASH_Text::t('July'), NRGDASH_Text::t('August'), NRGDASH_Text::t('September'), NRGDASH_Text::t('October'), NRGDASH_Text::t('November'), NRGDASH_Text::t('December')];
                     $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
                     $monthEnd = min(strtotime('+1 month', $monthStart), time());
                     $monthKWh = $this->PeriodEnergyCounter($energyExportID, $monthStart, $monthEnd);
                     if ($monthKWh !== null) {
                         $isThisMonth = date('Y-m', $dayStart) === date('Y-m');
-                        $monthLabel = $isThisMonth ? 'diesen Monat' : 'im ' . $monthNames[(int) date('n', $dayStart) - 1] . ' ' . date('Y', $dayStart);
-                        $out[] = ['label' => 'Einspeise-Erlös ' . $monthLabel, 'value' => number_format($monthKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($monthKWh)];
+                        $monthLabel = $isThisMonth ? NRGDASH_Text::t('this month') : NRGDASH_Text::t('in %s %s', $monthNames[(int) date('n', $dayStart) - 1], date('Y', $dayStart));
+                        $out[] = ['label' => NRGDASH_Text::t('Feed-in revenue %s', $monthLabel), 'value' => self::numFmt($monthKWh * $feedCt / 100, 2) . ' €', 'hint' => $feedHint($monthKWh)];
                     }
                     // Jahressicht und Abschlag-Abgleich (Dietmar, 17.10.2026: "Jahresverguetung, daraus eine
                     // monatliche Abschlagsrechnung, und gegen den Abschlagsbetrag rechnen - was muss man
@@ -7185,21 +7192,21 @@ class NRGDashboardTile extends IPSModule
                     $yearStart = strtotime(date('Y-01-01 00:00:00', $dayStart));
                     $yearKWh = $this->PeriodEnergyCounterStrict($energyExportID, $yearStart, min(strtotime('+1 year', $yearStart), time()));
                     if ($yearKWh !== null) {
-                        $yearLabel = date('Y', $dayStart) === date('Y') ? 'dieses Jahr' : date('Y', $dayStart);
-                        $out[] = ['label' => 'Einspeise-Erlös ' . $yearLabel, 'value' => number_format($yearKWh * $feedCt / 100, 2, ',', '.') . ' €', 'hint' => $feedHint($yearKWh)];
+                        $yearLabel = date('Y', $dayStart) === date('Y') ? NRGDASH_Text::t('this year') : date('Y', $dayStart);
+                        $out[] = ['label' => NRGDASH_Text::t('Feed-in revenue %s', $yearLabel), 'value' => self::numFmt($yearKWh * $feedCt / 100, 2) . ' €', 'hint' => $feedHint($yearKWh)];
                     }
                     if ($isToday) {
                         $nowTs = time();
                         $r12KWh = $this->PeriodEnergyCounterStrict($energyExportID, strtotime('-1 year', $nowTs), $nowTs);
                         $r12Eur = $r12KWh !== null ? $r12KWh * $feedCt / 100 : null;
                         if ($r12Eur !== null) {
-                            $out[] = ['label' => 'Einspeise-Erlös letzte 12 Monate', 'value' => number_format($r12Eur, 2, ',', '.') . ' €', 'hint' => $feedHint($r12KWh)];
-                            $out[] = ['label' => 'Empfohlener Abschlag', 'value' => number_format($r12Eur / 12, 2, ',', '.') . ' €/Monat', 'hint' => 'Ein Zwölftel des Erlöses der letzten 12 Monate - so hoch müsste der monatliche Abschlag sein, damit die Jahresabrechnung ausgeglichen ist (die Jahreszeiten sind darin schon enthalten).'];
+                            $out[] = ['label' => NRGDASH_Text::t('Feed-in revenue last 12 months'), 'value' => self::numFmt($r12Eur, 2) . ' €', 'hint' => $feedHint($r12KWh)];
+                            $out[] = ['label' => NRGDASH_Text::t('Recommended advance payment'), 'value' => NRGDASH_Text::t('%s €/month', self::numFmt($r12Eur / 12, 2)), 'hint' => NRGDASH_Text::t('One twelfth of the revenue of the last 12 months - this is how high the monthly advance payment would have to be for the annual settlement to balance out (the seasons are already included).')];
                         }
                         $abschlag = $this->readFloatProperty('FeedInAbschlagEUR', 0.0);
                         $fmtDiff = function (float $v): string {
-                            $a = number_format(abs($v), 2, ',', '.') . ' €';
-                            return ($v >= 0 ? '+' . $a . ' mehr ausbezahlt' : '−' . $a . ' zurückzuzahlen');
+                            $a = self::numFmt(abs($v), 2) . ' €';
+                            return $v >= 0 ? NRGDASH_Text::t('+%s paid out more', $a) : NRGDASH_Text::t('−%s to be refunded', $a);
                         };
                         if ($abschlag > 0) {
                             $doneMonths = (int) date('n', $nowTs) - 1;
@@ -7209,11 +7216,11 @@ class NRGDashboardTile extends IPSModule
                                 if ($doneKWh !== null) {
                                     $earned = $doneKWh * $feedCt / 100;
                                     $paid = $abschlag * $doneMonths;
-                                    $out[] = ['label' => 'Abschlag-Abgleich bis Ende ' . $monthNames[$doneMonths - 1], 'value' => $fmtDiff($earned - $paid), 'hint' => 'Erlös ' . number_format($earned, 2, ',', '.') . ' € gegenüber ' . $doneMonths . ' Abschlägen zu je ' . number_format($abschlag, 2, ',', '.') . ' € = ' . number_format($paid, 2, ',', '.') . ' € (abgeschlossene Monate dieses Jahres).'];
+                                    $out[] = ['label' => NRGDASH_Text::t('Advance payment reconciliation to the end of %s', $monthNames[$doneMonths - 1]), 'value' => $fmtDiff($earned - $paid), 'hint' => NRGDASH_Text::t('Revenue %s € versus %s advance payments of %s € each = %s € (completed months of this year).', self::numFmt($earned, 2), $doneMonths, self::numFmt($abschlag, 2), self::numFmt($paid, 2))];
                                 }
                             }
                             if ($r12Eur !== null) {
-                                $out[] = ['label' => 'Jahresabrechnung (Hochrechnung)', 'value' => $fmtDiff($r12Eur - 12 * $abschlag), 'hint' => 'Erlös der letzten 12 Monate (' . number_format($r12Eur, 2, ',', '.') . ' €) gegenüber 12 Abschlägen zu je ' . number_format($abschlag, 2, ',', '.') . ' € (' . number_format(12 * $abschlag, 2, ',', '.') . ' €). Eine Schätzung - die tatsächliche Abrechnung hängt vom Verlauf bis zum Jahresende ab.'];
+                                $out[] = ['label' => NRGDASH_Text::t('Annual settlement (projection)'), 'value' => $fmtDiff($r12Eur - 12 * $abschlag), 'hint' => NRGDASH_Text::t('Revenue of the last 12 months (%s €) versus 12 advance payments of %s € each (%s €). An estimate - the actual settlement depends on the course until the end of the year.', self::numFmt($r12Eur, 2), self::numFmt($abschlag, 2), self::numFmt(12 * $abschlag, 2))];
                             }
                         }
                     }
@@ -7224,12 +7231,12 @@ class NRGDashboardTile extends IPSModule
             // so sichtbar, ohne den Live-Fluss zu treiben.
             foreach ((array) ($d['secondaryGrid'] ?? []) as $sg) {
                 $tags = [];
-                if (($sg['authority'] ?? '') === 'billing') { $tags[] = 'Abrechnung'; }
-                if (($sg['latency'] ?? '') === 'delayed') { $tags[] = 'verzögert'; }
+                if (($sg['authority'] ?? '') === 'billing') { $tags[] = NRGDASH_Text::t('billing'); }
+                if (($sg['latency'] ?? '') === 'delayed') { $tags[] = NRGDASH_Text::t('delayed'); }
                 $out[] = [
-                    'label' => 'Weiterer Netzzähler',
+                    'label' => NRGDASH_Text::t('Additional grid meter'),
                     'value' => (string) ($sg['label'] ?? '?') . ($tags ? ' (' . implode(', ', $tags) . ')' : ''),
-                    'hint'  => 'Wird nicht für Live-Fluss, Bilanz oder Preis verwendet - im Energiefluss gibt es genau einen Netzknoten.',
+                    'hint'  => NRGDASH_Text::t('Not used for live flow, balance or price - the energy flow has exactly one grid node.'),
                 ];
             }
             // Bezugskosten mit dem je Zeitpunkt tatsaechlich gueltigen
@@ -7237,7 +7244,7 @@ class NRGDashboardTile extends IPSModule
             // schwanken stuendlich, ein Tagesdurchschnitt waere ungenau.
             $importCost = $this->DayCostEUR($powerSeries, $priceSlots, -1);
             if ($importCost !== null) {
-                $out[] = ['label' => 'Netzbezug-Kosten ' . $dayWord . $priceSuffix, 'value' => number_format($importCost, 2, ',', '.') . ' €'];
+                $out[] = ['label' => NRGDASH_Text::t('Grid import cost %s', $dayWord) . $priceSuffix, 'value' => self::numFmt($importCost, 2) . ' €'];
             }
             // "Ersparnis durch dynamischen Tarif/zeitvariable Netzentgelte"
             // (Dietmar, 28.08.2026) - NICHT die PV/Batterie-Ersparnis (die
@@ -7256,9 +7263,9 @@ class NRGDashboardTile extends IPSModule
                     $standardCost = $importKWh * $bdewRef['priceCtPerKWh'] / 100;
                     $tariffSaving = $standardCost - $importCost;
                     $out[] = [
-                        'label' => 'Ersparnis durch dynamischen Tarif ' . $dayWord,
-                        'value' => number_format($tariffSaving, 2, ',', '.') . ' €',
-                        'hint' => 'Dieselbe Netzbezugsmenge (' . number_format($importKWh, 1, ',', '.') . ' kWh) zum dynamischen Tibber-Tarif inkl. zeitvariabler Netzentgelte statt zum deutschen Standardtarif (BDEW-Haushaltsdurchschnitt, ' . number_format($bdewRef['priceCtPerKWh'], 1, ',', '.') . ' ct/kWh).',
+                        'label' => NRGDASH_Text::t('Savings from dynamic tariff %s', $dayWord),
+                        'value' => self::numFmt($tariffSaving, 2) . ' €',
+                        'hint' => NRGDASH_Text::t('The same grid import quantity (%s kWh) at the dynamic Tibber tariff including time-variable grid fees instead of the German standard tariff (BDEW household average, %s ct/kWh).', self::numFmt($importKWh, 1), self::numFmt($bdewRef['priceCtPerKWh'], 1)),
                     ];
                 }
             }
@@ -7269,9 +7276,9 @@ class NRGDashboardTile extends IPSModule
             $rewardEUR = $this->GridRewardEarningsTodayEUR();
             if ($rewardEUR !== null) {
                 $out[] = [
-                    'label' => 'Grid-Reward-Erlös ' . $dayWord,
-                    'value' => number_format($rewardEUR, 2, ',', '.') . ' €',
-                    'hint' => 'Vergütung von Tibber Grid Rewards für ferngesteuerte Flexibilität (z. B. Batterie-/Fahrzeug-Entladung).',
+                    'label' => NRGDASH_Text::t('Grid reward revenue %s', $dayWord),
+                    'value' => self::numFmt($rewardEUR, 2) . ' €',
+                    'hint' => NRGDASH_Text::t('Compensation from Tibber Grid Rewards for remotely controlled flexibility (e.g. battery/vehicle discharging).'),
                 ];
             }
         }
@@ -7299,9 +7306,11 @@ class NRGDashboardTile extends IPSModule
                 // Stunde ankommt).
                 $avgPrice = array_sum(array_column($priceSlots, 'price')) / count($priceSlots);
                 $out[] = [
-                    'label' => 'Ersparnis ' . $dayWord . $priceSuffix,
-                    'value' => number_format($selfUsedKWh * $avgPrice / 100, 2, ',', '.') . ' €',
-                    'hint' => 'Direkt selbst verbrauchter Solarstrom (' . number_format($selfUsedKWh, 1, ',', '.') . ' kWh) zum ' . ($priceApprox ? 'BDEW-Haushaltsdurchschnitt' : 'Tagesmittel der Strompreise') . ' - ohne zusätzliche Batterie-Ersparnis (sonst würde derselbe Solarstrom doppelt gutgeschrieben).',
+                    'label' => NRGDASH_Text::t('Savings %s', $dayWord) . $priceSuffix,
+                    'value' => self::numFmt($selfUsedKWh * $avgPrice / 100, 2) . ' €',
+                    'hint' => $priceApprox
+                        ? NRGDASH_Text::t('Solar power consumed directly (%s kWh) at the BDEW household average - without additional battery savings (otherwise the same solar power would be credited twice).', self::numFmt($selfUsedKWh, 1))
+                        : NRGDASH_Text::t('Solar power consumed directly (%s kWh) at the daily average of the electricity prices - without additional battery savings (otherwise the same solar power would be credited twice).', self::numFmt($selfUsedKWh, 1)),
                 ];
             }
         }
@@ -7309,16 +7318,16 @@ class NRGDashboardTile extends IPSModule
             $cost = $this->DayCostEUR($powerSeries, $priceSlots, 1);
             if ($cost !== null) {
                 $hint = $priceApprox
-                    ? 'Näherung mit dem bundesweiten BDEW-Haushaltsdurchschnitt statt einem echten stündlichen Preis.'
-                    : 'Auf Basis des jeweils gültigen Strompreises.';
-                $out[] = ['label' => 'Kosten ' . $dayWord . $priceSuffix, 'value' => number_format($cost, 2, ',', '.') . ' €', 'hint' => $hint];
+                    ? NRGDASH_Text::t('Approximation with the nationwide BDEW household average instead of a real hourly price.')
+                    : NRGDASH_Text::t('Based on the electricity price valid at the time.');
+                $out[] = ['label' => NRGDASH_Text::t('Cost %s', $dayWord) . $priceSuffix, 'value' => self::numFmt($cost, 2) . ' €', 'hint' => $hint];
             }
         }
         if ($fn === 'wallbox' && !empty($d['vehicleRangeKm'])) {
             $out[] = [
-                'label' => 'Geschätzte Reichweite',
+                'label' => NRGDASH_Text::t('Estimated range'),
                 'value' => round((float) $d['vehicleRangeKm']) . ' km',
-                'hint' => 'Bei aktuellem Ladestand des Fahrzeugs',
+                'hint' => NRGDASH_Text::t('At the vehicle\'s current state of charge'),
             ];
         }
 
@@ -7402,21 +7411,28 @@ class NRGDashboardTile extends IPSModule
     {
         $a = abs($w);
         return $a >= 10000
-            ? number_format($w / 1000, 1, ',', '.') . ' kW'
-            : number_format($w, 0, ',', '.') . ' W';
+            ? self::numFmt($w / 1000, 1) . ' kW'
+            : self::numFmt($w, 0) . ' W';
+    }
+
+    /** Zahl mit sprachabhängigem Dezimal-/Tausendertrenner (Deutsch ,. / Englisch .,). */
+    private static function numFmt(float $v, int $dec): string
+    {
+        $sep = NRGDASH_Text::t('Decimal and thousands separator (.,)');
+        return number_format($v, $dec, $sep[0], $sep[1]);
     }
 
     private function FmtHours(float $hours): string
     {
         if ($hours >= 24) {
-            return '> 24 Std.';
+            return NRGDASH_Text::t('> 24 h');
         }
         $h = floor($hours);
         $m = round(($hours - $h) * 60);
         if ($m === 60.0) {
             $h++; $m = 0;
         }
-        return $h > 0 ? ($h . ' Std. ' . $m . ' Min.') : ($m . ' Min.');
+        return $h > 0 ? NRGDASH_Text::t('%s h %s min', $h, $m) : NRGDASH_Text::t('%s min', $m);
     }
 
     /**
@@ -7574,7 +7590,7 @@ class NRGDashboardTile extends IPSModule
     {
         $arch = $this->ArchiveID();
         if ($arch <= 0) {
-            return 'Es gibt keine Archiv-Instanz, die Archivierung lässt sich nicht einschalten.';
+            return NRGDASH_Text::t('There is no archive instance, archiving cannot be switched on.');
         }
         $todo = [];
         foreach ($this->GetDevices() as $d) {
@@ -7585,14 +7601,14 @@ class NRGDashboardTile extends IPSModule
             }
         }
         if (count($todo) === 0) {
-            return 'Alle Leistungsvariablen der gefundenen Geräte werden bereits archiviert.';
+            return NRGDASH_Text::t('All power variables of the found devices are already archived.');
         }
         foreach (array_keys($todo) as $vid) {
             AC_SetLoggingStatus($arch, $vid, true);
         }
         IPS_ApplyChanges($arch);
-        $this->LogMessage(sprintf('Archivierung auf Wunsch des Benutzers für %d Leistungsvariablen eingeschaltet', count($todo)), KL_MESSAGE);
-        return sprintf("Die Archivierung wurde für %d Leistungsvariable(n) eingeschaltet:\n- %s\nDie Diagramme füllen sich ab jetzt mit der Zeit.", count($todo), implode("\n- ", array_values($todo)));
+        $this->LogMessage(NRGDASH_Text::t('Archiving switched on at the user\'s request for %d power variables', count($todo)), KL_MESSAGE);
+        return NRGDASH_Text::t("Archiving was switched on for %d power variable(s):\n- %s\nThe charts will fill up over time from now on.", count($todo), implode("\n- ", array_values($todo)));
     }
 
     /**
@@ -7890,8 +7906,8 @@ class NRGDashboardTile extends IPSModule
         if (!is_array($agg)) {
             // Store-Checkliste 9g: false nie still als "keine Daten" werten
             $err = error_get_last();
-            $this->SendDebug(__FUNCTION__, sprintf('Archivabfrage fehlgeschlagen: Variable #%d, %s–%s: %s',
-                $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? 'unbekannt')), 0);
+            $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Archive query failed: variable #%d, %s–%s: %s',
+                $vid, date(NRGDASH_Text::t('Y-m-d H:i'), $from), date(NRGDASH_Text::t('Y-m-d H:i'), $to), (string) ($err['message'] ?? NRGDASH_Text::t('unknown'))), 0);
             return [];
         }
         $out = [];
@@ -7902,7 +7918,7 @@ class NRGDashboardTile extends IPSModule
             if ($tooHigh || $this->RowHasImplausiblePower($row)) {
                 $this->SendDebug(
                     __FUNCTION__,
-                    sprintf('Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W', $vid, date('d.m.Y H:i', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, Max=%s W', $vid, date(NRGDASH_Text::t('Y-m-d H:i'), (int) $row['TimeStamp']), sprintf('%.0f', (float) ($row['Max'] ?? 0))),
                     0
                 );
                 continue;
