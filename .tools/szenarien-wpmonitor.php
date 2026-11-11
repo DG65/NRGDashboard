@@ -232,4 +232,12 @@ if (is_file($root . '/libs/NRGDASH_Text.php')) {
     @$m->ProcessHookData();
     $seite = (string) ob_get_clean();
     echo 'Standalone hat dieselbe Tabelle: ' . (isset($mm[1]) && strpos($seite, 'window.NRGDASH_TEXTS = ' . $mm[1] . ';') !== false ? 'ja' : 'NEIN') . "\n";
+
+    // Stolperstein 24: viele t()-Aufrufe, wenige Translate()-Anfragen (Merkliste)
+    NRGDASH_Text::$anfragen = 0;
+    for ($i = 0; $i < 200; $i++) {
+        $m->GetConfigurationForm();
+        $m->GetVisualizationTile();
+    }
+    echo "=== Stolperstein 24\nTranslate()-Anfragen nach 200 x Formular+Kachel: " . NRGDASH_Text::$anfragen . "\n";
 }
