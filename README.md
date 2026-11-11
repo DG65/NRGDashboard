@@ -7,6 +7,8 @@
 [![Check Style](https://github.com/DG65/NRGDashboard/actions/workflows/check-style.yml/badge.svg)](https://github.com/DG65/NRGDashboard/actions/workflows/check-style.yml)
 [![PayPal](https://img.shields.io/badge/PayPal-Me-blue?logo=paypal)](https://paypal.me/DietmarGureth)
 
+English documentation: [README.en.md](README.en.md)
+
 Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im
 internen Kompatibilitäts-Manifest des NRG-Stack.
 
