@@ -133,22 +133,134 @@ class NRGDashboardHeatSchema extends IPSModule
     // neue Eintraege ab jetzt bekommen ihre EIGENE Versionsnummer als Schluessel.
     private const NEWS_VERSIONS = [
         '0.5.5' => [
-            'Feedback-Panel jetzt 1:1 wie bei MeterHub: eigener "Zum Forums-Thread"-Knopf statt eines reinen Link-Textes.',
-            '💬 Der Symcon-Forum-Thread ist jetzt live - der bisherige GitHub-Hinweis im Feedback-Panel verweist ab sofort dorthin.',
-            'Einführungs-Tour um vier fachlich von HeishaMon geprüfte Erklärungen ergänzt: Verdichterfrequenz, ΔT zwischen Vor-/Rücklauf, Unterschied COP vs. Arbeitszahl, was Abtaubetrieb technisch bedeutet.',
-            '🧡 Neu: "Über dieses Modul" (Lizenz/Spenden-Hinweis) ganz unten im Formular, der Forum/GitHub-Hinweis ist jetzt ein eigenes, dismissibles Panel statt einer schlichten Zeile.',
-            '👋 Neu: ein "Wozu dieses Modul?"-Panel ganz oben im Formular erklärt kurz, was diese Kachel tut und welchen Nutzen sie stiftet - gedacht für den ersten Kontakt, einmalig wegklickbar.',
-            '✨ Neu: drei weitere Bauarten hinter dem Doppelpfeil - "Sole/Wasser (Tiefenbohrung)", "Sole/Wasser (Erdkollektor)" und "Wasser/Wasser (Brunnen)". Statt eines Außengeräts zeigt das Schema dafür eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (Tiefenbohrung, Flächenkollektor oder Saug-/Sickerbrunnen), ohne Lüfter/Abtaubetrieb, die es bei diesen Quellen nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen.',
-            'Fix: der Heizstab war in der Simulation in JEDER Betriebsart eingeblendet, auch im Kühlbetrieb (fachlich falsch) - jetzt standardmäßig aus und nur noch im simulierten Abtaubetrieb sichtbar, wo ein Zuheizer realistisch ist.',
-            'Fix: in der Simulation "Warmwasserbetrieb" liefen beide Heizkreise weiter, obwohl das Dreiwegeventil auf Warmwasser steht - jetzt stehen HK1/HK2 dabei still (wie im Standby), und der Vorlauf zeigt die höhere Speicherlade-Temperatur.',
-            'Neuer "?"-Knopf oben rechts zeigt die Einführungs-Tour jederzeit erneut - unabhängig davon, ob sie schon einmal bestätigt wurde. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang), wo jeder Besucher die Tour selbst starten können soll.',
-            'Neu: COP aktuell + Tages-Arbeitszahl im Anlagenschema (sofern das Wärmepumpen-Modul die Werte liefert).',
-            'Neu: Volumenstrom-Anzeige am Pumpenkreis.',
-            'Neu: manuelle Datenanbindung für Wärmepumpen ohne HeishaMon/WPHub.',
+            'Feedback panel now exactly as in MeterHub: a dedicated "To the forum thread" button instead of a plain link text.',
+            '💬 The Symcon forum thread is now live - the previous GitHub note in the feedback panel now points there.',
+            'Introduction tour extended by four explanations checked by HeishaMon: compressor frequency, ΔT between flow and return, COP vs. performance factor, and what defrost mode means technically.',
+            '🧡 New: "About this module" (license/donation note) at the very bottom of the form; the forum/GitHub note is now a panel of its own that can be dismissed, instead of a plain line.',
+            '👋 New: a "What is this module for?" panel at the very top of the form briefly explains what this tile does and what it is good for - meant for first contact, can be dismissed once.',
+            '✨ New: three further system types behind the double arrow - "Brine/water (borehole)", "Brine/water (ground collector)" and "Water/water (well)". Instead of an outdoor unit, the diagram draws a plain exchanger box for them with the matching underground piping (borehole, surface collector or intake/return wells), without the fan and defrost mode that do not exist for these sources. Two new optional data points for the source inlet/return temperature can be linked manually.',
+            'Fix: in the simulation the heating element was shown in EVERY operating mode, even in cooling mode (technically wrong) - it is now off by default and only visible in simulated defrost mode, where a booster heater is realistic.',
+            'Fix: in the "Hot water mode" simulation both heating circuits kept running although the three-way valve is set to hot water - HC1/HC2 now stand still (as in standby), and the flow shows the higher tank charging temperature.',
+            'New "?" button at the top right shows the introduction tour again at any time - regardless of whether it has been confirmed before. Intended for shared instances (e.g. a demo/showcase instance with a shared login) where every visitor should be able to start the tour themselves.',
+            'New: current COP + daily performance factor in the plant diagram (if the heat pump module supplies the values).',
+            'New: flow rate display on the pump circuit.',
+            'New: manual data connection for heat pumps without HeishaMon/WPHub.',
         ],
         '0.9.147' => [
-            '✨ Neu: dritte Speicherart "Frischwasserstation" hinter dem Doppelpfeil - der Puffer bleibt dabei ein ganz normaler, klassischer Puffer (anders als beim Kombispeicher), ein externes Frischwassermodul mit Plattenwärmetauscher bereitet Warmwasser im Durchlauf statt in einem eigenen Tank. Wird als eigenes Bauteil neben dem Puffer gezeichnet (Puffervorlauf/-rücklauf + Kaltwasser/Warmwasser-Anschluss), keine neuen Datenpunkte nötig, der bestehende Puffer-Temperatursensor reicht.',
+            '✨ New: third storage type "Fresh water station" behind the double arrow - the buffer stays a completely normal, classic buffer (unlike with the combi tank); an external fresh water module with a plate heat exchanger prepares hot water on demand instead of in a tank of its own. Drawn as a separate component next to the buffer (buffer flow/return + cold/hot water connection), no new data points needed, the existing buffer temperature sensor is enough.',
         ],
+    ];
+    /**
+     * Alle Texte der Kachel (module.html, tr('...')): die englischen Quelltexte. NRGDASH_Text::kachelHtml() liefert ihre
+     * Uebersetzungen als Tabelle (window.NRGDASH_TEXTS) an Kachel und Standalone-Seite; der Pruefstand vergleicht beide Listen.
+     */
+    private const TILE_TEXTS = [
+        'decimal point',
+        'Borehole',
+        'Ground collector',
+        'Return well',
+        'Intake well',
+        'BOREHOLE',
+        'GROUND COLLECTOR',
+        'GROUNDWATER',
+        'OUTDOOR UNIT',
+        'Power',
+        'Compressor',
+        'Source in',
+        'Source out',
+        'Fan 1',
+        'Fan',
+        'rpm',
+        'Fan 2',
+        'COP now',
+        'Daily COP',
+        'Hot gas',
+        'Suction gas',
+        'DEFROST MODE',
+        'INDOOR UNIT',
+        'Defrost mode',
+        'Hot water',
+        'Cooling mode',
+        'Heating mode',
+        'Circulation',
+        'Standby',
+        'Heating element',
+        'HX',
+        'Evaporator',
+        'DHW tank',
+        'Pump',
+        'Speed',
+        'unknown',
+        'Heating',
+        'Cooling',
+        'Heating + DHW',
+        'Cooling + DHW',
+        'Heating only',
+        'Cooling only',
+        'Auto (heating)',
+        'Hot water only',
+        'Auto (heating) + DHW',
+        'Auto (cooling)',
+        'Auto (cooling) + DHW',
+        'Mode',
+        '3-way valve',
+        'DHW',
+        'Room',
+        '2-way valve',
+        'Open',
+        'Closed',
+        'Cold water',
+        'Shower + bath',
+        'Cooling output',
+        'Thermal output',
+        'Combi tank',
+        'Buffer',
+        '→ Hot water',
+        'DHW top',
+        'DHW bottom',
+        'Stratification',
+        'Return',
+        'Heat storage',
+        'Cold',
+        'water →',
+        '← Warm',
+        'water',
+        '→ Warm',
+        'Fresh water station',
+        'opening',
+        'closing',
+        'idle',
+        'Mixer',
+        'Pump (no status)',
+        'Radiators',
+        'Underfloor heating',
+        'HEATING CIRCUIT',
+        'No plant diagram data (pumps/valves/flow) available - basic values only.',
+        'Not a grid of readings - a real pipe diagram',
+        'This tile draws your heat pump as an animated plant diagram, the kind usually found only in professional building management systems: pumps, valves and flow direction live in motion - instead of a table of numbers you have to interpret yourself.',
+        'Works with any connected heat pump',
+        'The tile finds your heat pump automatically through HeishaMon or WPHub - no device type is hard-wired. If you have neither, you can link your own existing variables to the same fields under “Manual data connection”.',
+        'Shows only what your system actually provides',
+        'If your data source supplies no pump/valve data (e.g. a pure WPHub cloud connection without HeishaMon), only the basic values appear instead of an incomplete diagram that looks wrong. Individual missing sensors (e.g. no second heating circuit) are also hidden automatically instead of faking a zero.',
+        'Compressor frequency: is it running, and how hard?',
+        '0 Hz means the compressor is stopped (standby or between two cycles). A value above 0 shows how fast it is currently turning - a higher frequency means more heating/cooling output, but also higher electrical consumption. The exact scale depends on the compressor model, so it cannot be compared 1:1 between systems.',
+        'ΔT between flow and return shows how hard the system is heating',
+        'The difference between flow and return temperature (ΔT) grows the more heat the system is currently delivering. An underfloor heating circuit typically runs with a small spread (a few kelvin), radiators or hot water preparation with considerably more. A permanently very small ΔT with the compressor running can indicate too high a flow rate or air in the system - a heating professional can assess that if in doubt; the tile does not rate it automatically.',
+        'Performance factor at a glance',
+        'If your heat pump supplies it, the diagram shows the current COP (the manufacturer’s estimate or a real measurement via an external meter) as well as the daily performance factor - deliberately without decimal places, so as not to fake an accuracy the source does not provide. COP is a snapshot (the efficiency right now), while the performance factor averages over the whole day - with strongly changing outdoor temperatures or frequent cycling the two values can differ considerably; that is normal.',
+        'Two heating circuits, adjustable independently',
+        'Radiators and underfloor heating can be shown or hidden separately for each heating circuit - for systems with only one type of heating surface or only one instead of two heating circuits. Switch directly in the expanded tile view (double arrow), without reconfiguring the instance.',
+        'Adapts to your system type',
+        'Split or monoblock, buffer tank, hot water tank with its own volume - everything adjustable through switches in the expanded tile view. If you set monoblock, the hot water tank options disappear automatically, because such a unit never has an integrated tank anyway.',
+        'Water flow to your taste',
+        'Five different styles for the animated water flow (organic wave, dots, dashes, liquid gloss, digital signal pulses) as well as motion type and speed selectable separately - also behind the double arrow.',
+        'Testing without a running system',
+        'The simulation (double-arrow view) lets you play through heating, cooling, hot water, standby and defrost mode with fixed sample values - handy for checking the display without waiting for the matching real operating state. (Defrost mode: the system briefly reverses the refrigeration cycle to melt frost off the outdoor unit - normal in freezing weather, not a fault.)',
+        'Show introduction tour',
+        'Back',
+        'Next',
+        '✓ Understood, do not show again',
+        'No data available.',
     ];
     private const ATTR_REVIEW_HINT_GONE = 'ReviewHintDismissed';
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
@@ -166,14 +278,14 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         return [
             'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  Über dieses Modul',
+            'caption' => '🧡  About this module',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Entstanden aus echter Begeisterung für die eigene Anlage — und ein paar durchgetippten Abenden. Trotzdem: Software-Hobby hin oder her, das hier ist geistiges Eigentum und echte Arbeit steckt drin.'],
-                ['type' => 'Label', 'caption' => 'Lizenz: PolyForm Noncommercial 1.0.0 — privat und nicht-kommerziell frei nutzbar, für den gewerblichen Einsatz braucht es eine gesonderte Lizenz vom Rechteinhaber.'],
-                ['type' => 'Button', 'caption' => 'Lizenztext ansehen', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Gewerbliche Nutzung oder Fragen zur Lizenz? Einfach melden: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Gefällt dir das Modul und du möchtest trotzdem etwas dalassen? Über eine kleine Spende freue ich mich — völlig freiwillig, keine Gegenleistung nötig.'],
-                ['type' => 'Button', 'caption' => '☕  Spenden via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
+                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
+                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
+                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
+                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
+                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
             ],
         ];
     }
@@ -181,7 +293,7 @@ class NRGDashboardHeatSchema extends IPSModule
     public function Create()
     {
         parent::Create();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text eintragen (Merkliste-Cache, Stolperstein 24)
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
 
         $this->RegisterAttributeString('SeenNews', '');
@@ -282,10 +394,10 @@ class NRGDashboardHeatSchema extends IPSModule
         // "an" zurueckgesetzt. Der Default wird deshalb nur gesetzt,
         // wenn die Variable hier tatsaechlich NEU angelegt wird.
         $zoneToggles = [
-            'Zone1ShowRadiator' => 'Heizkreis 1: Heizkörper',
-            'Zone1ShowFloor'    => 'Heizkreis 1: Fußbodenheizung',
-            'Zone2ShowRadiator' => 'Heizkreis 2: Heizkörper',
-            'Zone2ShowFloor'    => 'Heizkreis 2: Fußbodenheizung',
+            'Zone1ShowRadiator' => NRGDASH_Text::t('Heating circuit 1: radiators'),
+            'Zone1ShowFloor'    => NRGDASH_Text::t('Heating circuit 1: underfloor heating'),
+            'Zone2ShowRadiator' => NRGDASH_Text::t('Heating circuit 2: radiators'),
+            'Zone2ShowFloor'    => NRGDASH_Text::t('Heating circuit 2: underfloor heating'),
         ];
         $pos = 10;
         foreach ($zoneToggles as $ident => $caption) {
@@ -308,13 +420,13 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowStyle')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.FlowStyle', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 0, 'Organische Welle', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 1, 'Gleichmäßige Punkte', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 2, 'Fließende Striche', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 3, 'Flüssigkeitsglanz', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 4, 'Digitale Signalimpulse', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 0, NRGDASH_Text::t('Organic wave'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 1, NRGDASH_Text::t('Even dots'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 2, NRGDASH_Text::t('Flowing dashes'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 3, NRGDASH_Text::t('Liquid gloss'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowStyle', 4, NRGDASH_Text::t('Digital signal pulses'), '', -1);
         $flowIsNew = @IPS_GetObjectIDByIdent('FlowStyle', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('FlowStyle', 'Wasserfluss-Darstellung', 'NRGDASHHEAT.FlowStyle', 50);
+        $this->RegisterVariableInteger('FlowStyle', NRGDASH_Text::t('Water flow style'), 'NRGDASHHEAT.FlowStyle', 50);
         $this->EnableAction('FlowStyle');
         if ($flowIsNew) {
             $this->SetValue('FlowStyle', 0);
@@ -331,10 +443,10 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowMotion')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.FlowMotion', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 0, 'Atmend', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 1, 'Konstant', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 0, NRGDASH_Text::t('Breathing'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowMotion', 1, NRGDASH_Text::t('Constant'), '', -1);
         $flowMotionIsNew = @IPS_GetObjectIDByIdent('FlowMotion', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('FlowMotion', 'Wasserfluss-Bewegungsart', 'NRGDASHHEAT.FlowMotion', 51);
+        $this->RegisterVariableInteger('FlowMotion', NRGDASH_Text::t('Water flow motion'), 'NRGDASHHEAT.FlowMotion', 51);
         $this->EnableAction('FlowMotion');
         if ($flowMotionIsNew) {
             $this->SetValue('FlowMotion', 0);
@@ -343,11 +455,11 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHHEAT.FlowSpeed')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.FlowSpeed', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 0, 'Langsam', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 1, 'Normal', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 2, 'Schnell', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 0, NRGDASH_Text::t('Slow'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 1, NRGDASH_Text::t('Normal'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.FlowSpeed', 2, NRGDASH_Text::t('Fast'), '', -1);
         $flowSpeedIsNew = @IPS_GetObjectIDByIdent('FlowSpeed', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('FlowSpeed', 'Wasserfluss-Geschwindigkeit', 'NRGDASHHEAT.FlowSpeed', 52);
+        $this->RegisterVariableInteger('FlowSpeed', NRGDASH_Text::t('Water flow speed'), 'NRGDASHHEAT.FlowSpeed', 52);
         $this->EnableAction('FlowSpeed');
         if ($flowSpeedIsNew) {
             $this->SetValue('FlowSpeed', 1);
@@ -366,8 +478,8 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHHEAT.Bauart')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.Bauart', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 0, 'Split (mit Innengerät)', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 1, 'Monoblock (nur Außengerät)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 0, NRGDASH_Text::t('Split (with indoor unit)'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 1, NRGDASH_Text::t('Monoblock (outdoor unit only)'), '', -1);
         // Erdsonde und Brunnen (Dietmar, 10.09.2026, Forum-Rueckfrage
         // "somm": "wie schaut es aus wenn man zb wie ich eine
         // Tiefenbohrung hat und keinen Pufferspeicher" - der Puffer war
@@ -378,8 +490,8 @@ class NRGDashboardHeatSchema extends IPSModule
         // bleiben unveraendert, weil mainInletTemp/mainOutletTemp bereits
         // quellenneutral die Temperatur vor/nach dem Verdampfer
         // beschreiben (nicht "Luft"-spezifisch).
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 2, 'Sole/Wasser (Tiefenbohrung)', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 3, 'Wasser/Wasser (Brunnen)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 2, NRGDASH_Text::t('Brine/water (borehole)'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 3, NRGDASH_Text::t('Water/water (well)'), '', -1);
         // Erdkollektor (Dietmar, 10.09.2026, per Referenzbild: "es ist
         // doch so, dass ... bei den 3 moeglichen anderen
         // Waermepumpentypen ... eine recht einfache Verdichterbox
@@ -387,9 +499,9 @@ class NRGDashboardHeatSchema extends IPSModule
         // und Grundwasser als die drei Nicht-Luft-Varianten) - horizontal
         // im Untergrund flach verlegte Rohrschleifen statt einer
         // Tiefenbohrung, braucht mehr Grundstuecksflaeche statt Tiefe.
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 4, 'Sole/Wasser (Erdkollektor)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.Bauart', 4, NRGDASH_Text::t('Brine/water (ground collector)'), '', -1);
         $bauartIsNew = @IPS_GetObjectIDByIdent('Bauart', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('Bauart', 'Bauart', 'NRGDASHHEAT.Bauart', 60);
+        $this->RegisterVariableInteger('Bauart', NRGDASH_Text::t('System type'), 'NRGDASHHEAT.Bauart', 60);
         $this->EnableAction('Bauart');
         if ($bauartIsNew) {
             $this->SetValue('Bauart', 0);
@@ -404,8 +516,8 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!IPS_VariableProfileExists('NRGDASHHEAT.StorageType')) {
             IPS_CreateVariableProfile('NRGDASHHEAT.StorageType', VARIABLETYPE_INTEGER);
         }
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 0, 'Klassisch (Puffer / getrennter WW-Speicher)', '', -1);
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 1, 'Kombispeicher (1 Tank, 3 Abgänge)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 0, NRGDASH_Text::t('Classic (buffer / separate DHW tank)'), '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 1, NRGDASH_Text::t('Combi tank (1 tank, 3 outlets)'), '', -1);
         // Frischwasserstation (29.09.2026, Forum-Wunsch cbeham im WPHub-
         // Thread: "Eine Option 'Frischwasserstation' beim Puffer wäre noch
         // Cool!") - anders als der Kombispeicher (EIN Tank ersetzt Puffer+
@@ -417,17 +529,17 @@ class NRGDashboardHeatSchema extends IPSModule
         // OHNE die Kombispeicher-spezifische Tank-/Chip-Geometrie zu
         // beeinflussen. Legionellen-/Hygienevorteil ist der uebliche Grund
         // fuer diese Bauart.
-        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 2, 'Frischwasserstation (am Puffer, kein WW-Tank)', '', -1);
+        IPS_SetVariableProfileAssociation('NRGDASHHEAT.StorageType', 2, NRGDASH_Text::t('Fresh water station (on the buffer, no DHW tank)'), '', -1);
         $storageTypeIsNew = @IPS_GetObjectIDByIdent('StorageType', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('StorageType', 'Speicherart', 'NRGDASHHEAT.StorageType', 61);
+        $this->RegisterVariableInteger('StorageType', NRGDASH_Text::t('Storage type'), 'NRGDASHHEAT.StorageType', 61);
         $this->EnableAction('StorageType');
         if ($storageTypeIsNew) {
             $this->SetValue('StorageType', 0);
         }
 
         $componentToggles = [
-            'HasBuffer'  => ['Pufferspeicher vorhanden', 62, true],
-            'HasDhwTank' => ['Warmwasser-Tank vorhanden', 65, true],
+            'HasBuffer'  => [NRGDASH_Text::t('Buffer tank present'), 62, true],
+            'HasDhwTank' => [NRGDASH_Text::t('DHW tank present'), 65, true],
         ];
         foreach ($componentToggles as $ident => $spec) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -441,8 +553,8 @@ class NRGDashboardHeatSchema extends IPSModule
         // Profil noetig) - Position direkt hinter dem zugehoerigen
         // Schalter.
         $literToggles = [
-            'BufferLiters' => ['Pufferspeicher: Volumen (l)', 63, 100],
-            'DhwLiters'    => ['Warmwasser-Tank: Volumen (l)', 66, 185],
+            'BufferLiters' => [NRGDASH_Text::t('Buffer tank: volume (l)'), 63, 100],
+            'DhwLiters'    => [NRGDASH_Text::t('DHW tank: volume (l)'), 66, 185],
         ];
         foreach ($literToggles as $ident => $spec) {
             $isNew = @IPS_GetObjectIDByIdent($ident, $this->InstanceID) === false;
@@ -480,7 +592,7 @@ class NRGDashboardHeatSchema extends IPSModule
     public function ApplyChanges()
     {
         parent::ApplyChanges();
-        // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
+        // Uebersetzer fuer NRGDASH_Text eintragen (Merkliste-Cache, Stolperstein 24)
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
         $this->SetVisualizationType(1);
         $this->SetTimerInterval('Refresh', 5 * 60 * 1000);
@@ -587,7 +699,7 @@ class NRGDashboardHeatSchema extends IPSModule
             return;
         }
         header('Content-Type: text/html; charset=utf-8');
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>handleMessage(' . json_encode($payload) . ');'
                . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
@@ -600,7 +712,7 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         $entries = $this->DiscoverHeatpumps();
         if (count($entries) === 0) {
-            return 'ℹ️ Keine Wärmepumpe gefunden (HeishaMon, WPHub, WPModbusHub, Gateway, SamsungEhs) - es gilt die manuelle Datenanbindung unten, sonst zeigt das Schema nur einen Hinweis.';
+            return NRGDASH_Text::t('ℹ️ No heat pump found (HeishaMon, WPHub, WPModbusHub, gateway, SamsungEhs) - the manual data connection below applies, otherwise the diagram only shows a note.');
         }
         $ids = array_values(array_unique(array_map(function ($e) {
             return (int) ($e['_instanceID'] ?? 0);
@@ -610,21 +722,26 @@ class NRGDashboardHeatSchema extends IPSModule
             return $id !== $this->InstanceID;
         }));
         if (count($ids) === 0) {
-            return 'ℹ️ Keine Wärmepumpen-Instanz gefunden - es gilt die manuelle Datenanbindung unten.';
+            return NRGDASH_Text::t('ℹ️ No heat pump instance found - the manual data connection below applies.');
         }
         $names = array_map(function ($id) {
             return $this->formInstanceLabel($id) . ' (' . $this->formInstanceState($id) . ')';
         }, $ids);
-        return '✅ ' . count($ids) . ' Wärmepumpe' . (count($ids) === 1 ? '' : 'n') . ' automatisch erkannt: ' . implode(', ', $names) . '.' . ($manual ? ' Zusätzlich gilt die manuelle Datenanbindung.' : '');
+        // Einzahl/Mehrzahl als zwei vollstaendige Saetze (nie Satzteile kleben)
+        $line = count($ids) === 1
+            ? NRGDASH_Text::t('✅ %d heat pump detected automatically: %s.', count($ids), implode(', ', $names))
+            : NRGDASH_Text::t('✅ %d heat pumps detected automatically: %s.', count($ids), implode(', ', $names));
+        return $line . ($manual ? ' ' . NRGDASH_Text::t('Additionally the manual data connection applies.') : '');
     }
 
     public function GetConfigurationForm()
     {
-        $raw = str_replace('%%HOOK%%', '/hook/nrgdashheatschema' . $this->InstanceID, file_get_contents(__DIR__ . '/form.json'));
-        $form = json_decode($raw, true);
+        $form = json_decode((string) file_get_contents(__DIR__ . '/form.json'), true);
         if (!isset($form['elements']) || !is_array($form['elements'])) {
             $form['elements'] = [];
         }
+        // Label mit eingesetztem Wert: die Konsole findet den Text danach nicht mehr, deshalb hier selbst uebersetzt
+        $this->setFormCaption($form['elements'], 'HookInfo', NRGDASH_Text::t('IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.', '/hook/nrgdashheatschema' . $this->InstanceID));
 
         $this->injectVersionIntoDocPanel($form);
         $this->setFormStatusLine($form['elements'], 'HeatpumpStatus', $this->heatpumpStatusLine());
@@ -641,11 +758,11 @@ class NRGDashboardHeatSchema extends IPSModule
         if (!@$this->ReadAttributeBoolean(self::ATTR_REVIEW_HINT_GONE)) {
             $form['elements'][] = [
                 'type' => 'ExpansionPanel', 'name' => 'ReviewHint', 'expanded' => true,
-                'caption' => '💬  Feedback im Symcon-Forum',
+                'caption' => '💬  Feedback in the Symcon forum',
                 'items' => [
-                    ['type' => 'Label', 'caption' => 'NRGDashboard ist Beta — Rückmeldungen, Fehler und Wünsche sind ausdrücklich willkommen im Forum-Thread.'],
-                    ['type' => 'Button', 'caption' => 'Zum Forums-Thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
-                    ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
+                    ['type' => 'Label', 'caption' => 'NRGDashboard is in beta — feedback, bug reports and wishes are explicitly welcome in the forum thread.'],
+                    ['type' => 'Button', 'caption' => 'To the forum thread', 'onClick' => "echo '" . self::FORUM_URL . "';", 'link' => true],
+                    ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHHEAT_DismissReviewHint($id);'],
                 ],
             ];
         }
@@ -658,10 +775,11 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
         $verTxt = (is_array($lib) && isset($lib['Version']))
-            ? 'ℹ️ NRG-Stack Dashboard Version ' . $lib['Version'] . ' (Build ' . ($lib['Build'] ?? '?') . ')'
+            ? NRGDASH_Text::t('ℹ️ NRG-Stack Dashboard version %s (build %s)', $lib['Version'], $lib['Build'] ?? '?')
             : 'ℹ️ NRG-Stack Dashboard';
         foreach ($form['elements'] as &$el) {
-            if (($el['type'] ?? '') === 'ExpansionPanel' && str_contains($el['caption'] ?? '', 'Dokumentation')) {
+            // Panel ueber den Namen finden, nie ueber die (uebersetzte) Caption
+            if (($el['type'] ?? '') === 'ExpansionPanel' && ($el['name'] ?? '') === 'PanelDoc') {
                 array_unshift($el['items'], ['type' => 'Label', 'caption' => $verTxt]);
                 return;
             }
@@ -680,12 +798,12 @@ class NRGDashboardHeatSchema extends IPSModule
         }
         return [
             'type' => 'ExpansionPanel', 'name' => 'PurposeIntroPanel', 'expanded' => true,
-            'caption' => '👋  Wozu dieses Modul?',
+            'caption' => '👋  What is this module for?',
             'items' => [
-                ['type' => 'Label', 'caption' => 'Zeichnet den Aufbau einer Wärmepumpe - Außen-/Innengerät, Pufferspeicher, Warmwasser, Heizkreise - als Prinzipschema mit Live-Werten (Temperaturen, Durchfluss, Betriebsart).'],
-                ['type' => 'Label', 'caption' => 'Der Nutzen: auf einen Blick sehen, wie die Anlage gerade läuft und wo die Wärme fließt, statt einzelne Temperaturwerte in Tabellenform zu vergleichen. Fehlende Sensoren (z. B. kein zweiter Heizkreis) blenden sich automatisch aus.'],
-                ['type' => 'Label', 'caption' => 'Die Daten liefert HeishaMon oder WPHub über den gemeinsamen "heatpump"-Vertrag. NRGDashboardWPMonitor zeigt ergänzend Verlauf und Kennzahlen derselben Wärmepumpe als Diagramm.'],
-                ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_AckPurposeIntro($id);'],
+                ['type' => 'Label', 'caption' => 'Draws the structure of a heat pump - outdoor/indoor unit, buffer tank, hot water, heating circuits - as a schematic diagram with live values (temperatures, flow, operating mode).'],
+                ['type' => 'Label', 'caption' => 'The benefit: see at a glance how the system is running and where the heat flows, instead of comparing individual temperature values in table form. Missing sensors (e.g. no second heating circuit) are hidden automatically.'],
+                ['type' => 'Label', 'caption' => 'The data comes from HeishaMon or WPHub through the shared "heatpump" contract. NRGDashboardWPMonitor additionally shows history and key figures of the same heat pump as a chart.'],
+                ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHHEAT_AckPurposeIntro($id);'],
             ],
         ];
     }
@@ -731,19 +849,20 @@ class NRGDashboardHeatSchema extends IPSModule
             return null;
         }
         uksort($pending, 'version_compare');
-        $items = [['type' => 'Label', 'caption' => '🆕 Neu seit Ihrer zuletzt gesehenen Version — bitte kurz ansehen und ggf. die Einstellungen prüfen:']];
+        $items = [['type' => 'Label', 'caption' => '🆕 New since the version you last saw — please take a quick look and check your settings if needed:']];
         $multi = count($pending) > 1;
         foreach ($pending as $ver => $lines) {
             if ($multi) {
-                $items[] = ['type' => 'Label', 'caption' => 'Version ' . $ver . ':'];
+                $items[] = ['type' => 'Label', 'caption' => NRGDASH_Text::t('Version %s:', $ver)];
             }
             foreach ($lines as $line) {
-                $items[] = ['type' => 'Label', 'caption' => '• ' . $line];
+                // Zeilen stehen englisch in NEWS_VERSIONS; die Aufzaehlungspunkt-Marke ist kein Text
+                $items[] = ['type' => 'Label', 'caption' => '• ' . NRGDASH_Text::t($line)];
             }
         }
-        $items[] = ['type' => 'Button', 'caption' => 'Verstanden – nicht mehr anzeigen', 'onClick' => 'NRGDASHHEAT_AckNews($id);'];
+        $items[] = ['type' => 'Button', 'caption' => 'Got it – do not show again', 'onClick' => 'NRGDASHHEAT_AckNews($id);'];
         $latest = array_key_last($pending);
-        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => '🆕 Neu bis Version ' . $latest, 'expanded' => true, 'items' => $items];
+        return ['type' => 'ExpansionPanel', 'name' => 'NewsPanel', 'caption' => NRGDASH_Text::t('🆕 New up to version %s', $latest), 'expanded' => true, 'items' => $items];
     }
 
     // Eigene Modul-GUID (14.09.2026, "geteiltes Ausblenden ueber
@@ -784,7 +903,7 @@ class NRGDashboardHeatSchema extends IPSModule
             try {
                 call_user_func($fn, $sib);
             } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, sprintf('Propagieren an Instanz #%d (%s) fehlgeschlagen: %s', $sib, $applyMethod, $e->getMessage()), 0);
+                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
             }
         }
     }
@@ -833,7 +952,7 @@ class NRGDashboardHeatSchema extends IPSModule
         // Store-Checkliste Punkt 13 (13.09.2026): der Button gab bisher keine
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
-        return '✅ Tour wird beim nächsten Öffnen der Kachel wieder angezeigt.';
+        return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
     }
 
     /** "Uebernehmen": siehe AckNewsApply() - nur lokaler Zustand, keine Propagation. */
@@ -932,18 +1051,18 @@ class NRGDashboardHeatSchema extends IPSModule
             IPS_DeleteVariableProfile($profile);
         }
         IPS_CreateVariableProfile($profile, VARIABLETYPE_INTEGER);
-        IPS_SetVariableProfileAssociation($profile, 0, 'Aus (echte Daten)', '', -1);
-        IPS_SetVariableProfileAssociation($profile, 1, 'Heizbetrieb', '', -1);
-        IPS_SetVariableProfileAssociation($profile, 2, 'Kühlbetrieb', '', -1);
+        IPS_SetVariableProfileAssociation($profile, 0, NRGDASH_Text::t('Off (real data)'), '', -1);
+        IPS_SetVariableProfileAssociation($profile, 1, NRGDASH_Text::t('Heating mode'), '', -1);
+        IPS_SetVariableProfileAssociation($profile, 2, NRGDASH_Text::t('Cooling mode'), '', -1);
         if (!$monoblock) {
-            IPS_SetVariableProfileAssociation($profile, 3, 'Warmwasserbetrieb', '', -1);
+            IPS_SetVariableProfileAssociation($profile, 3, NRGDASH_Text::t('Hot water mode'), '', -1);
         }
-        IPS_SetVariableProfileAssociation($profile, 4, 'Standby', '', -1);
+        IPS_SetVariableProfileAssociation($profile, 4, NRGDASH_Text::t('Standby'), '', -1);
         if (!$groundOrWater) {
-            IPS_SetVariableProfileAssociation($profile, 5, 'Abtaubetrieb', '', -1);
+            IPS_SetVariableProfileAssociation($profile, 5, NRGDASH_Text::t('Defrost mode'), '', -1);
         }
         $simIsNew = @IPS_GetObjectIDByIdent('SimulationMode', $this->InstanceID) === false;
-        $this->RegisterVariableInteger('SimulationMode', 'Simulation', $profile, 70);
+        $this->RegisterVariableInteger('SimulationMode', NRGDASH_Text::t('Simulation'), $profile, 70);
         $this->EnableAction('SimulationMode');
         if ($simIsNew) {
             $this->SetValue('SimulationMode', 0);
@@ -960,7 +1079,7 @@ class NRGDashboardHeatSchema extends IPSModule
     {
         $payload = $this->buildPayload();
         $this->updateInstanceStatus($payload);
-        $html = file_get_contents(__DIR__ . '/module.html');
+        $html = NRGDASH_Text::kachelHtml((string) file_get_contents(__DIR__ . '/module.html'), self::TILE_TEXTS);
         $html .= '<script>handleMessage(' . json_encode($payload) . ');</script>';
         return $html;
     }
@@ -1093,7 +1212,7 @@ class NRGDashboardHeatSchema extends IPSModule
             // Bestaetigung (siehe resolveFan2Speed()), das waere hier nur
             // unnoetige Verzoegerung fuer eine ohnehin willentliche Angabe.
             '_manual'     => true,
-            'Caption'     => (string) $this->ReadPropertyString('ManualCaption') ?: 'Wärmepumpe (manuell)',
+            'Caption'     => (string) $this->ReadPropertyString('ManualCaption') ?: NRGDASH_Text::t('Heat pump (manual)'),
             'Measured'    => (int) $this->ReadPropertyInteger('ManualPowerID') > 0,
         ];
         foreach (self::MANUAL_FIELDS as $contractKey => $propertyName) {
@@ -1226,7 +1345,8 @@ class NRGDashboardHeatSchema extends IPSModule
         if ($lastSeen <= 0 || time() - $lastSeen <= $limit) {
             return '';
         }
-        return 'Keine aktuelle Messung seit ' . date('d.m.Y H:i', $lastSeen) . ' - die angezeigten Werte sind veraltet.';
+        // Datumsformat gehoert zur Sprache: 'Y-m-d H:i' (englisch) bzw. 'd.m.Y H:i' (deutsch)
+        return NRGDASH_Text::t('No current measurement since %s - the displayed values are stale.', date(NRGDASH_Text::t('Y-m-d H:i'), $lastSeen));
     }
 
     private function buildPayload(): array
@@ -1248,7 +1368,7 @@ class NRGDashboardHeatSchema extends IPSModule
         if (count($heatpumps) === 0) {
             return [
                 'ok'       => false,
-                'error'    => 'Keine Wärmepumpe gefunden - HeishaMon oder WPHub installieren und konfigurieren, oder im Formular unter "Manuelle Datenanbindung" eigene Variablen verknüpfen.',
+                'error'    => NRGDASH_Text::t('No heat pump found - install and configure HeishaMon or WPHub, or link your own variables in the form under “Manual data connection”.'),
                 'hookPath' => '/hook/nrgdashheatschema' . $this->InstanceID,
                 'showTour' => !(bool) $this->ReadAttributeBoolean('TourSeen'),
             ];
@@ -1475,7 +1595,7 @@ class NRGDashboardHeatSchema extends IPSModule
     private function buildSimulatedUnit(int $mode, int $bauart = 0): array
     {
         $u = [
-            'id' => $this->InstanceID, 'label' => 'Wärmepumpe (Simulation)',
+            'id' => $this->InstanceID, 'label' => NRGDASH_Text::t('Heat pump (simulation)'),
             'hasPipeSchema' => true, 'power' => 1500,
             'pumpFlow' => 15.0, 'pumpSpeed' => 1450.0, 'pumpDuty' => null,
             'threeWayValve' => 0, 'twoWayValve' => true,

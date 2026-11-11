@@ -2,57 +2,59 @@
   "elements": [
     {
       "type": "ExpansionPanel",
-      "caption": "📖 Dokumentation & Hilfe",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Anlagenschema des Heizkreislaufs (Pumpen, Ventile, Durchfluss, Temperaturen) - Vorbild Gebäudeleittechnik-Visualisierungen. Findet automatisch alle Wärmepumpen-Instanzen über den gemeinsamen 'heatpump'-Vertrag (HeishaMon, WPHub) - keine manuelle Verknüpfung nötig."
+          "caption": "Plant diagram of the heating circuit (pumps, valves, flow, temperatures) - modeled on building management system visualizations. Automatically finds all heat pump instances through the shared 'heatpump' contract (HeishaMon, WPHub) - no manual linking needed."
         },
         {
           "type": "Label",
-          "caption": "Liefert die jeweilige Datenquelle keine Pumpen-/Ventil-/Durchfluss-Werte (z. B. reine WPHub-Installation ohne HeishaMon-Zusatzplatine), zeigt die Kachel nur die Basiswerte (elektrische Leistung) statt eines unvollständigen Rohrschemas."
+          "caption": "If the data source supplies no pump/valve/flow values (e.g. a plain WPHub installation without the HeishaMon add-on board), the tile shows only the basic values (electrical power) instead of an incomplete pipe diagram."
         },
         {
           "type": "Label",
-          "caption": "Weder HeishaMon noch WPHub? Unter „Manuelle Datenanbindung“ weiter unten lassen sich eigene, bereits vorhandene Variablen auf dieselben Felder verknüpfen."
+          "caption": "Neither HeishaMon nor WPHub? Under “Manual data connection” further down you can link your own existing variables to the same fields."
         },
         {
           "type": "Label",
-          "caption": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%%HOOK%% (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar."
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
         },
         {
           "type": "CheckBox",
           "name": "StandaloneEnabled",
-          "caption": "Standalone-Webseite für Browser und IPSView aktivieren"
+          "caption": "Enable standalone web page for browser and IPSView"
         },
         {
           "type": "Label",
-          "caption": "Nur nötig, wenn die Kachel als eigene Webseite (Browser, IPSView) laufen soll. Wer nur die Kachel im WebFront nutzt, kann das abschalten: Dann ist kein WebHook registriert und der Zugriff von außen entfällt. Beim Abschalten wird der vorhandene Eintrag entfernt."
+          "caption": "Only needed if the tile is to run as its own web page (browser, IPSView). If you only use the tile in the WebFront, you can switch this off: then no WebHook is registered and access from outside is removed. Switching it off removes the existing entry."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Tour jederzeit selbst starten, 01.09.2026): ein deutlich sichtbarer „?“-Knopf unten links in der Kachel zeigt die Einführungs-Tour jederzeit erneut - unabhängig vom gespeicherten „schon gesehen“-Status. Gedacht für gemeinsam genutzte Instanzen (z. B. eine Demo-/Vorstellungs-Instanz mit einem geteilten Zugang für alle Besucher)."
+          "caption": "✨ Detail (start the tour yourself at any time, 01.09.2026): a clearly visible “?” button at the bottom left of the tile shows the introduction tour again at any time - regardless of the saved “already seen” status. Intended for shared instances (e.g. a demo/showcase instance with one shared login for all visitors)."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Simulation hydraulisch schlüssig, 03.09.2026): im simulierten Warmwasserbetrieb stehen beide Heizkreise still - das Dreiwegeventil leitet den gesamten Volumenstrom in den Speicher, ein gleichzeitig laufender Heizkreis wäre physikalisch unmöglich. Der Vorlauf zeigt dabei die höhere Speicherlade-Temperatur statt der Heizkreis-Temperatur."
+          "caption": "✨ Detail (simulation hydraulically consistent, 03.09.2026): in the simulated hot water mode both heating circuits stand still - the three-way valve sends the entire flow into the tank, so a heating circuit running at the same time would be physically impossible. The flow then shows the higher tank charging temperature instead of the heating circuit temperature."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Heizstab nur wo er hingehört, 03.09.2026): in der Simulation ist der Heizstab standardmäßig aus und erscheint nur noch im Abtaubetrieb - ein Zuheizer im Kühlbetrieb wäre fachlich falsch, in Heiz-/Warmwasserbetrieb bei einer gesunden Anlage die Ausnahme."
+          "caption": "✨ Detail (heating element only where it belongs, 03.09.2026): in the simulation the heating element is off by default and only appears in defrost mode - a booster heater in cooling mode would be technically wrong, and in heating or hot water mode it is the exception for a healthy system."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (Auch ohne Außenluft, 10.09.2026): die Bauart hinter dem Doppelpfeil kennt neben Split/Monoblock jetzt auch „Sole/Wasser (Tiefenbohrung)“, „Sole/Wasser (Erdkollektor)“ und „Wasser/Wasser (Brunnen)“ - das Schema zeichnet dann statt eines Außengeräts eine schlichte Tauscherbox mit der passenden Rohrführung im Untergrund (senkrechte Bohrung, flacher Flächenkollektor oder Saug-/Sickerbrunnen-Paar), ohne Lüfter/Abtaubetrieb, die es dort nicht gibt. Zwei neue optionale Datenpunkte für Förder-/Rückpumptemperatur lassen sich manuell verknüpfen; Wärmetauscher, Innengerät, Puffer/WW-Tank und Heizkreise bleiben unverändert."
+          "caption": "✨ Detail (even without outdoor air, 10.09.2026): besides split/monoblock, the system type behind the double arrow now also offers “Brine/water (borehole)”, “Brine/water (ground collector)” and “Water/water (well)” - instead of an outdoor unit, the diagram then draws a plain exchanger box with the matching underground piping (vertical borehole, flat surface collector or a pair of intake/return wells), without the fan and defrost mode that do not exist there. Two new optional data points for the source inlet/return temperature can be linked manually; heat exchanger, indoor unit, buffer/DHW tank and heating circuits stay unchanged."
         },
         {
           "type": "Label",
-          "caption": "✨ Feinheit (keine aktuelle Messung, 13.09.2026): meldet die Wärmepumpen-Quelle den Zeitpunkt ihrer letzten echten Messung (z. B. WPHub ab Vertrag 1.13) und liegt der länger als 15 Minuten zurück, steht über dem Schema ein gelber Hinweis „Keine aktuelle Messung seit …“ und das Schema wird abgeblendet - die Werte darin sind dann veraltet."
+          "caption": "✨ Detail (no current measurement, 13.09.2026): if the heat pump source reports the time of its last real measurement (e.g. WPHub from contract 1.13) and that is more than 15 minutes ago, a yellow note “No current measurement since …” appears above the diagram and the diagram is dimmed - the values in it are then outdated."
         },
         {
           "type": "Button",
-          "caption": "Einführungs-Tour erneut anzeigen",
+          "caption": "Show introduction tour again",
           "onClick": "echo NRGDASHHEAT_ResetTour($id);"
         }
       ]
@@ -60,284 +62,286 @@
     {
       "type": "Label",
       "name": "HeatpumpStatus",
-      "caption": "Verbindungsstatus wird berechnet …"
+      "caption": "Connection status is being calculated …"
     },
     {
       "type": "ExpansionPanel",
-      "caption": "🔌 Manuelle Datenanbindung (ohne HeishaMon/WPHub)",
+      "name": "PanelManual",
+      "caption": "🔌 Manual data connection (without HeishaMon/WPHub)",
       "expanded": false,
       "items": [
         {
           "type": "Label",
-          "caption": "Für Wärmepumpen ohne HeishaMon/WPHub: eigene, bereits vorhandene Variablen (z. B. aus einem Modbus-Modul oder eigenen Skripten) auf die Felder dieses Schemas verknüpfen. Zusätzlich zur Auto-Erkennung nutzbar - nicht nur als Ersatz."
+          "caption": "For heat pumps without HeishaMon/WPHub: link your own existing variables (e.g. from a Modbus module or your own scripts) to the fields of this diagram. Can be used in addition to automatic detection - not only as a replacement."
         },
         {
           "type": "CheckBox",
           "name": "ManualEnabled",
-          "caption": "Manuell verknüpfte Wärmepumpe anzeigen"
+          "caption": "Show manually linked heat pump"
         },
         {
           "type": "ValidationTextBox",
           "name": "ManualCaption",
-          "caption": "Bezeichnung (leer = „Wärmepumpe (manuell)“)"
+          "caption": "Name (empty = “Heat pump (manual)”)"
         },
         {
           "type": "Label",
-          "caption": "Leistung/Verdichter"
+          "caption": "Power/compressor"
         },
         {
           "type": "SelectVariable",
           "name": "ManualPowerID",
-          "caption": "Elektrische Leistung (W)"
+          "caption": "Electrical power (W)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualCompressorFreqID",
-          "caption": "Verdichterfrequenz (Hz)"
+          "caption": "Compressor frequency (Hz)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualFan1SpeedID",
-          "caption": "Lüfterdrehzahl 1 (U/min)"
+          "caption": "Fan speed 1 (rpm)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualFan2SpeedID",
-          "caption": "Lüfterdrehzahl 2 (U/min) - nur bei Außen-/Monoblockgeräten mit 2 Ventilatoren"
+          "caption": "Fan speed 2 (rpm) - only for outdoor/monoblock units with 2 fans"
         },
         {
           "type": "SelectVariable",
           "name": "ManualInternalHeaterStateID",
-          "caption": "Heizstab intern aktiv (bool)"
+          "caption": "Internal heating element active (bool)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualExternalHeaterStateID",
-          "caption": "Heizstab extern aktiv (bool)"
+          "caption": "External heating element active (bool)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualDischargeTempID",
-          "caption": "Heißgastemperatur (°C)"
+          "caption": "Hot gas temperature (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualSuctionTempID",
-          "caption": "Sauggastemperatur (°C)"
+          "caption": "Suction gas temperature (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualCopEstimateID",
-          "caption": "COP, Schätzung des Herstellers (optional)"
+          "caption": "COP, manufacturer’s estimate (optional)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualCopMeasuredID",
-          "caption": "COP, echte Messung über externen Zähler (optional)"
+          "caption": "COP, real measurement via external meter (optional)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualDailyPerformanceFactorID",
-          "caption": "Tages-Arbeitszahl (optional)"
+          "caption": "Daily performance factor (optional)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualDefrostingStateID",
-          "caption": "Abtaubetrieb aktiv (bool)"
+          "caption": "Defrost mode active (bool)"
         },
         {
           "type": "Label",
-          "caption": "Wärmequelle bei Sole/Wasser oder Wasser/Wasser (optional, nur wenn Bauart entsprechend eingestellt)"
+          "caption": "Heat source for brine/water or water/water (optional, only if the system type is set accordingly)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualSourceInTempID",
-          "caption": "Fördertemperatur (Sole-Vorlauf/Brunnenwasser zur Wärmepumpe, °C)"
+          "caption": "Source inlet temperature (brine flow/well water to the heat pump, °C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualSourceOutTempID",
-          "caption": "Rückpumptemperatur (Sole-Rücklauf/Brunnenwasser zurück ins Erdreich, °C)"
+          "caption": "Source return temperature (brine return/well water back into the ground, °C)"
         },
         {
           "type": "Label",
-          "caption": "Hauptkreis (Vor-/Rücklauf, Pumpe, Ventile)"
+          "caption": "Main circuit (flow/return, pump, valves)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualMainOutletTempID",
-          "caption": "Vorlauftemperatur (°C)"
+          "caption": "Flow temperature (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualMainInletTempID",
-          "caption": "Rücklauftemperatur (°C)"
+          "caption": "Return temperature (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualPumpFlowID",
-          "caption": "Durchfluss (l/min)"
+          "caption": "Flow rate (l/min)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualPumpSpeedID",
-          "caption": "Pumpendrehzahl (U/min)"
+          "caption": "Pump speed (rpm)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualPumpDutyID",
-          "caption": "Pumpenleistung (Rohwert)"
+          "caption": "Pump output (raw value)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualThreeWayValveStateID",
-          "caption": "3-Wege-Ventil (0=Raum/1=Warmwasser)"
+          "caption": "Three-way valve (0=room/1=hot water)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualTwoWayValveStateID",
-          "caption": "2-Wege-Ventil offen (bool)"
+          "caption": "Two-way valve open (bool)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualOperatingModeNormID",
-          "caption": "Betriebsart, NRG-Stack-Enum (0=Standby/1=Heizen/2=Kühlen/3=WW/4=Heizen+WW/5=Kühlen+WW/-1=unbekannt)"
+          "caption": "Operating mode, NRG-Stack enum (0=standby/1=heating/2=cooling/3=DHW/4=heating+DHW/5=cooling+DHW/-1=unknown)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualOperatingModeID",
-          "caption": "Betriebsart, Rohwert des Herstellers (optional, nur Diagnose)"
+          "caption": "Operating mode, raw manufacturer value (optional, diagnostics only)"
         },
         {
           "type": "Label",
-          "caption": "Warmwasser und Puffer"
+          "caption": "Hot water and buffer"
         },
         {
           "type": "SelectVariable",
           "name": "ManualDhwTempID",
-          "caption": "Warmwasser-Tank-Temperatur (°C)"
+          "caption": "DHW tank temperature (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualBufferTempID",
-          "caption": "Pufferspeicher-Temperatur (°C)"
+          "caption": "Buffer tank temperature (°C)"
         },
         {
           "type": "Label",
-          "caption": "Kombispeicher (nur bei Speicherart „Kombispeicher“ hinter dem Doppelpfeil relevant)"
+          "caption": "Combi tank (only relevant for the storage type “Combi tank” behind the double arrow)"
         },
         {
           "type": "SelectVariable",
           "name": "ComboTopTempID",
-          "caption": "Warmwasser oben (°C)"
+          "caption": "Hot water top (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ComboBottomTempID",
-          "caption": "Warmwasser unten (°C)"
+          "caption": "Hot water bottom (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ComboMidTempID",
-          "caption": "Wärmespeicher / Pufferzone (°C)"
+          "caption": "Heat storage / buffer zone (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ComboReturnTempID",
-          "caption": "Rücklauf (°C)"
+          "caption": "Return (°C)"
         },
         {
           "type": "Label",
-          "caption": "Heizkreis 1"
+          "caption": "Heating circuit 1"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ1WaterTempID",
-          "caption": "Vorlauftemperatur Heizkreis 1 (°C)"
+          "caption": "Flow temperature heating circuit 1 (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ1PumpID",
-          "caption": "Pumpe Heizkreis 1 an (bool)"
+          "caption": "Pump heating circuit 1 on (bool)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ1MixingValveID",
-          "caption": "Mischventil Heizkreis 1, Stellrichtung (0=Aus/1=Zu/2=Auf)"
+          "caption": "Mixing valve heating circuit 1, direction (0=off/1=closing/2=opening)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ1MixingValvePositionID",
-          "caption": "Mischventil Heizkreis 1, Stellung in % (optional)"
+          "caption": "Mixing valve heating circuit 1, position in % (optional)"
         },
         {
           "type": "Label",
-          "caption": "Heizkreis 2 (optional - nur wenn vorhanden)"
+          "caption": "Heating circuit 2 (optional - only if present)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ2WaterTempID",
-          "caption": "Vorlauftemperatur Heizkreis 2 (°C)"
+          "caption": "Flow temperature heating circuit 2 (°C)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ2PumpID",
-          "caption": "Pumpe Heizkreis 2 an (bool)"
+          "caption": "Pump heating circuit 2 on (bool)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ2MixingValveID",
-          "caption": "Mischventil Heizkreis 2, Stellrichtung (0=Aus/1=Zu/2=Auf)"
+          "caption": "Mixing valve heating circuit 2, direction (0=off/1=closing/2=opening)"
         },
         {
           "type": "SelectVariable",
           "name": "ManualZ2MixingValvePositionID",
-          "caption": "Mischventil Heizkreis 2, Stellung in % (optional)"
+          "caption": "Mixing valve heating circuit 2, position in % (optional)"
         },
         {
           "type": "Label",
-          "caption": "Sonstiges"
+          "caption": "Other"
         },
         {
           "type": "SelectVariable",
           "name": "ManualIndoorPipeTempID",
-          "caption": "Rohrtemperatur Innengerät/Verdampfer (°C, optional)"
+          "caption": "Indoor unit/evaporator pipe temperature (°C, optional)"
         }
       ]
     },
     {
       "type": "ExpansionPanel",
-      "caption": "Darstellung",
+      "name": "PanelAppearance",
+      "caption": "Appearance",
       "expanded": false,
       "items": [
         {
           "type": "SelectColor",
           "name": "ColorBackground",
-          "caption": "Hintergrundfarbe (-1 = Systemstandard)"
+          "caption": "Background color (-1 = system default)"
         },
         {
           "type": "ValidationTextBox",
           "name": "FontFamily",
-          "caption": "Schriftart (leer/„system“ = Systemschrift)"
+          "caption": "Font (empty/“system” = system font)"
         },
         {
           "type": "CheckBox",
           "name": "LightTheme",
-          "caption": "Symcon-Oberfläche ist auf Hell gestellt (Symcon bietet der Kachel keine automatische Erkennung an)"
+          "caption": "Symcon interface is set to light (Symcon offers the tile no automatic detection)"
         },
         {
           "type": "ValidationTextBox",
           "name": "Zone1Caption",
-          "caption": "Beschriftung Heizkreis 1 (z. B. „Radiatoren“ – leer lassen für keine)"
+          "caption": "Label for heating circuit 1 (e.g. “Radiators” – leave empty for none)"
         },
         {
           "type": "ValidationTextBox",
           "name": "Zone2Caption",
-          "caption": "Beschriftung Heizkreis 2 (nur sichtbar, wenn die Wärmepumpe eine zweite Zone meldet)"
+          "caption": "Label for heating circuit 2 (only visible if the heat pump reports a second zone)"
         },
         {
           "type": "Label",
-          "caption": "Heizkörper/Fußbodenheizung je Heizkreis, Anlagenbauart (Split/Monoblock, Puffer, Warmwasser-Tank), Wasserfluss-Darstellung und Simulation: als Schalter direkt unter dieser Instanz im Objektbaum bzw. in der aufgezogenen Kachelansicht (Doppelpfeil), nicht hier im Formular."
+          "caption": "Radiators/underfloor heating per heating circuit, system type (split/monoblock, buffer, hot water tank), water flow style and simulation: as switches directly under this instance in the object tree or in the expanded tile view (double arrow), not here in the form."
         }
       ]
     }
