@@ -314,4 +314,22 @@ if (is_file($root . '/libs/NRGDASH_Text.php')) {
     $_GET = [];
     preg_match('/window\.NRGDASH_TEXTS = (\{.*?\});<\/script>/s', $detail, $md);
     echo "=== Detail-Texttabelle\n" . ($md[1] ?? 'FEHLT') . "\n";
+
+    // Stolperstein 24: Symcons Translate() liest bei jedem Aufruf die locale.json -- jeder Text soll hoechstens EINMAL je Prozess gefragt werden
+    $m = new NRGDashboardTile();
+    $m->Create();
+    $m->ApplyChanges();
+    ob_start();
+    $m->GetConfigurationForm();
+    $m->GetVisualizationTile();
+    ob_end_clean();
+    $nach1 = NRGDASH_Text::$anfragen;
+    ob_start();
+    for ($i = 0; $i < 50; $i++) {
+        $m->GetConfigurationForm();
+        $m->GetVisualizationTile();
+        privat($m, 'BuildHighlights', ['function' => 'grid', 'energyImportID' => 0, 'energyExportID' => 0], [], ['bars' => []], true, strtotime('today'), strtotime('tomorrow'));
+    }
+    ob_end_clean();
+    echo "=== Translate-Anfragen\nnach dem ersten Durchlauf: " . $nach1 . ', nach 50 weiteren Durchlaeufen (Formular, Kachel, Kennzahlen): ' . NRGDASH_Text::$anfragen . "\n";
 }

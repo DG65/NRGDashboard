@@ -12,7 +12,7 @@ inklusive.*
 
 ## 0.11.0 (2026-11-11)
 
-- **Zweisprachig (Deutsch/Englisch), erste Etappe:** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor und PV-Monitoring folgen jetzt der Symcon-Sprache. Die Energiefluss-Kachel (NRGDashboardTile) ist noch nur deutsch und folgt in einer späteren Version. Deutsch bleibt wortgleich.
+- **Zweisprachig (Deutsch/Englisch), erste Etappe:** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor, PV-Monitoring und die Energiefluss-Kachel (NRGDashboardTile) folgen jetzt der Symcon-Sprache. Deutsch bleibt wortgleich.
 
 - **Topologie: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Gemeinsame Grundlage für die weiteren Module: `libs/NRGDASH_Text.php` (Übersetzung mit Merkliste), `libs/locale/` (gemeinsame und modul-eigene Texte), Prüfwerkzeuge unter `.tools/`.
 - **„Formular: Aufbau“ findet Panels über ihren Namen** statt über den Anfang der (jetzt übersetzten) Überschrift. Die gespeicherte Auswahl bleibt gültig; Module ohne Panel-Namen funktionieren wie bisher.
@@ -27,6 +27,7 @@ inklusive.*
 
 - **PV-Monitoring: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Formular, Statuszeilen, Meldungen, Kachel (Reiter, Legenden, Tooltips, Tagesplan-Editor, Tour) und die „Was ist neu“-Zeilen liegen in `libs/locale/NRGDashboardPVMonitor.json`; Datums- und Dezimalformate der Kachel folgen der Sprache (de-DE bzw. en-GB). Panels haben stabile Namen (`PanelDoc`, `PanelSource`, `PanelStyle`), die Versionszeile im Dokumentations-Panel wird darüber gefunden. Idents, Property- und Attributnamen bleiben unverändert.
 - **PV-Monitoring: Textrückfall für „Trockenlauf“/„Nur beobachtend“ entfernt.** Die Tagesplan-Kennzeichnung (`BuildDecisionFlags`) liest nur noch die Felder `dryRun`, `observeOnly` und `observeReason` aus `EMS_GetCurrentDecision` (Vertrag 1.1); der frühere Vergleich mit dem Anfang des EMS-Statustexts entfällt, weil jedes EMS diese Felder liefert.
+- **Energiefluss-Kachel: Formular, Meldungen, Kachel und Detailseite jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Das gilt für das Formular samt Doku-Panel und „Was ist neu“-Zeilen, die Namen und Auswahltexte der Einstellungen im Doppelpfeil (Instanzvariablen und die Profile `NRGDASH.*`; bestehende Instanzen behalten ihre Namen, die Profil-Migration erkennt alte und neue Namen), Status- und Fehlermeldungen, die Kachel (Einführungs-Tour, Knoten, Quoten-Panel, Saison-Effekte) und die Detailseite (Kennzahlen, Ladesitzungen, Wallbox-Bedienung, Wochen-Frist). Zahlen-, Datums- und Zeitformate folgen der Sprache. Die Panels des Formulars haben stabile Namen (`PanelDoc`, `PanelDevices`, `PanelManual`, `PanelConsumers`, `PanelVehicles`, `PanelHealth`, `PanelStyle`), „Formular: Aufbau“ findet sie darüber; die gespeicherte Auswahl bleibt gültig. Texte, die Partnermodule liefern (Begründungen, Grund und Beginn der Grid Rewards), übersetzt das Partnermodul selbst. Prüfwerkzeuge: `.tools/locale-pruefen-tile.php`, `.tools/szenarien-tile.php`, `.tools/deutsch-vergleich-tile.php`; `tests/gridreward.test.php` und `tests/formlayout.test.php` laufen weiter auf Deutsch.
 
 ## 0.10.12 (2026-11-09)
 
