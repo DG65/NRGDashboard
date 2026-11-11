@@ -23,6 +23,9 @@ inklusive.*
 
 - **WP-Monitor: Formular, Meldungen und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Die Kachel nimmt Datums- und Zahlenformate, Monats- und Wochentagsnamen aus der Sprache. Legenden-Sichtbarkeit und Zeitplan-/Automatik-Logik hängen nicht mehr an Anzeigetexten.
 
+- **PV-Monitoring: Formular und Kachel jetzt zweisprachig (Deutsch/Englisch).** Die Anzeige folgt der Symcon-Sprache; die deutsche Oberfläche bleibt wortgleich. Formular, Statuszeilen, Meldungen, Kachel (Reiter, Legenden, Tooltips, Tagesplan-Editor, Tour) und die „Was ist neu“-Zeilen liegen in `libs/locale/NRGDashboardPVMonitor.json`; Datums- und Dezimalformate der Kachel folgen der Sprache (de-DE bzw. en-GB). Panels haben stabile Namen (`PanelDoc`, `PanelSource`, `PanelStyle`), die Versionszeile im Dokumentations-Panel wird darüber gefunden. Idents, Property- und Attributnamen bleiben unverändert.
+- **PV-Monitoring: Textrückfall für „Trockenlauf“/„Nur beobachtend“ entfernt.** Die Tagesplan-Kennzeichnung (`BuildDecisionFlags`) liest nur noch die Felder `dryRun`, `observeOnly` und `observeReason` aus `EMS_GetCurrentDecision` (Vertrag 1.1); der frühere Vergleich mit dem Anfang des EMS-Statustexts entfällt, weil jedes EMS diese Felder liefert.
+
 ## 0.10.12 (2026-11-09)
 
 - **Fehler behoben: falscher Hinweis „WPHub liefert keine auswertbaren Geräte“.** Seit 0.10.11 wird eine von WPHub nur durchgereichte HeishaMon-Wärmepumpe nicht mehr doppelt gezeigt, die Abdeckungsprüfung zählte aber erst nach diesem Filter und meldete dann im Log alle fünf Minuten einen Fehlfund. Gezählt wird jetzt vor dem Filter. Nur das Log ist betroffen, die Anzeige war richtig.
