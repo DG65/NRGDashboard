@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.1 (2026-11-13)
+
+- Fix: Prognose und PV-Monitoring erkennen Hell/Dunkel jetzt am Farbschema der Visualisierung (CSS-Variablen `--card-color`/`--content-color`) statt am Gerät (`prefers-color-scheme`). Behebt helle Schrift auf hellem Grund, wenn Gerät und Visualisierung unterschiedlich eingestellt sind. Die eigene Wahl (Schriftfarbe/Helles Theme) gilt weiterhin vorrangig
+
 ## 0.11.0 (2026-11-11)
 
 - **Zweisprachig (Deutsch/Englisch):** Topologie, 3D-Karte, Heizungsschema, Prognose, WP-Monitor, PV-Monitoring und die Energiefluss-Kachel (NRGDashboardTile) folgen jetzt der Symcon-Sprache. Deutsch bleibt wortgleich.

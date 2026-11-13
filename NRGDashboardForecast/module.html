@@ -332,6 +332,27 @@
             return lum < 140;
         }
 
+        // Farbschema der Visualisierung aus Symcons CSS-Variablen (SUITE.md Stolperstein 30):
+        // true = dunkel, false = hell, null = unbekannt. Kein prefers-color-scheme.
+        function symconDunkel() {
+          try {
+            var cs = getComputedStyle(document.documentElement);
+            var hl = function (w) {
+              var h = String(w || '').trim().replace(/^#/, '');
+              if (!/^[0-9a-f]+$/i.test(h)) { return null; }
+              if (h.length === 3) { h = h.replace(/(.)/g, '$1$1'); }
+              if (h.length === 8) { h = /^ff/i.test(h) ? h.slice(2) : h.slice(0, 6); }
+              if (h.length !== 6) { return null; }
+              return (0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16)) / 255;
+            };
+            var k = hl(cs.getPropertyValue('--card-color'));
+            if (k !== null) { return k < 0.5; }
+            var t = hl(cs.getPropertyValue('--content-color'));
+            if (t !== null) { return t > 0.5; }
+          } catch (e) { /* ohne Symcon-Variablen */ }
+          return null;
+        }
+
         function addScript(src, cb) {
             var s = document.createElement('script');
             s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); };
@@ -429,7 +450,7 @@
             // Textfarben; ohne (transparent) der Hell-/Dunkelmodus des Geräts.
             var bgDark = isDarkColor(data.bg);
             var dark = (bgDark !== null) ? bgDark
-                     : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                     : (symconDunkel() !== null ? symconDunkel() : true);
             // Eigene Wahl der Schriftfarbe (Forum lungo #62): 1 = hell (dunkle Kachel), 2 = dunkel (helle Kachel) überstimmt
             // die Erkennung - nötig, wenn das WebFront-Theme nicht zum Betriebssystem/Browser passt.
             if (data.labelTone === 1) { dark = true; } else if (data.labelTone === 2) { dark = false; }

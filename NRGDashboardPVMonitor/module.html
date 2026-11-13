@@ -825,8 +825,30 @@
     // "LightTheme" im Formular (Darstellung), einmalig vom Nutzer gesetzt,
     // kommt ueber lastData.lightTheme rein - gilt fuer ALLE Charts im
     // Modul, nicht nur den Sankey.
+    // Farbschema der Visualisierung aus Symcons CSS-Variablen (SUITE.md Stolperstein 30):
+    // true = dunkel, false = hell, null = unbekannt. Kein prefers-color-scheme.
+    function symconDunkel() {
+      try {
+        var cs = getComputedStyle(document.documentElement);
+        var hl = function (w) {
+          var h = String(w || '').trim().replace(/^#/, '');
+          if (!/^[0-9a-f]+$/i.test(h)) { return null; }
+          if (h.length === 3) { h = h.replace(/(.)/g, '$1$1'); }
+          if (h.length === 8) { h = /^ff/i.test(h) ? h.slice(2) : h.slice(0, 6); }
+          if (h.length !== 6) { return null; }
+          return (0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16)) / 255;
+        };
+        var k = hl(cs.getPropertyValue('--card-color'));
+        if (k !== null) { return k < 0.5; }
+        var t = hl(cs.getPropertyValue('--content-color'));
+        if (t !== null) { return t > 0.5; }
+      } catch (e) { /* ohne Symcon-Variablen */ }
+      return null;
+    }
     function isLightTheme() {
-      return !!(lastData && lastData.lightTheme);
+      // Eigene Wahl gewinnt; sonst Farbschema der Visualisierung (Stolperstein 30).
+      if (lastData && lastData.lightTheme) { return true; }
+      return symconDunkel() === false;
     }
     // Dunkelgrau auf Hell, wie bisher Hellgrau auf Dunkel (Dietmar,
     // 31.07.2026: "Wenn Hell eingestellt ist, dann sollte die
