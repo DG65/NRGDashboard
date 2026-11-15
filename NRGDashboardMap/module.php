@@ -206,7 +206,7 @@ class NRGDashboardMap extends IPSModule
             'instanz' => $this->InstanceID,
             'locale' => (string) @IPS_GetOption('Locale'),
             'direkt' => $probe . ' => ' . $this->Translate($probe),
-            'protokoll' => NRGDASH_Text::protokoll(),
+            'protokoll' => json_decode((string) $this->GetBuffer('DiagKachel'), true) ?: [],
         ], JSON_UNESCAPED_UNICODE);
     }
 

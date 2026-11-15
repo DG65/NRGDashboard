@@ -46,17 +46,42 @@ final class NRGDASH_Text
     {
         $klasse = '';
         $einstieg = '';
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 40) as $frame) {
+        $objekt = null;
+        foreach (debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT | DEBUG_BACKTRACE_IGNORE_ARGS, 40) as $frame) {
             $k = $frame['class'] ?? '';
             if ($k !== '' && strpos($k, 'NRGDashboard') === 0) {
                 if ($klasse === '') {
                     $klasse = $k;
+                    $objekt = $frame['object'] ?? null;
                 }
                 // aeusserster Modul-Frame = Einstiegspunkt (GetConfigurationForm, GetVisualizationTile, ProcessHookData, Timer ...)
                 $einstieg = (string) ($frame['function'] ?? '');
             }
         }
-        return [$klasse, $einstieg];
+        return [$klasse, $einstieg, $objekt];
+    }
+
+    /**
+     * Translate() der aufrufenden Modul-Instanz, ohne gemeinsamen Zustand. Der Symcon-Prozess fuehrt Aufrufe auf
+     * verschiedenen Ausfuehrungsstraengen aus; statische Variablen gelten nur je Strang. Eine in ApplyChanges per setzen()
+     * eingetragene Kette stand deshalb in Kachel-, WebHook- und Formular-Aufrufen oft NICHT zur Verfuegung (Englisch statt
+     * Deutsch, je nach Strang zufaellig; live gemessen 15.11.2026). Darum wird Translate() hier in jedem Aufruf von der
+     * Instanz geholt, die im Aufrufstapel steht.
+     */
+    private static function vomObjekt(?object $objekt, string $text): ?string
+    {
+        if ($objekt === null) {
+            return null;
+        }
+        try {
+            $uebersetze = \Closure::bind(function (string $t): string {
+                return (string) $this->Translate($t);
+            }, $objekt, get_class($objekt));
+            self::$anfragen++;
+            return $uebersetze($text);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -84,23 +109,22 @@ final class NRGDASH_Text
 
     private static function uebersetzen(string $text): string
     {
-        [$ctx, $einstieg] = self::kontext();
+        [$ctx, $einstieg, $objekt] = self::kontext();
         $memo = $ctx . '::' . $einstieg;
         if (isset(self::$gemerkt[$memo][$text])) {
             return self::$gemerkt[$memo][$text];
         }
-        // Ohne eigenen Uebersetzer (z.B. Aufruf ausserhalb eines Moduls): irgendeiner, aber NICHT merken - sonst
-        // wuerde eine fremde locale.json die Antwort fuer dieses Modul festschreiben.
-        $eigene = isset(self::$kette[$ctx]) && self::$kette[$ctx] !== [];
-        $kette = $eigene ? self::$kette[$ctx] : array_merge(...array_values(self::$kette ?: [[]]));
+        $antwort = self::vomObjekt($objekt, $text);
+        if ($antwort !== null) {
+            return self::$gemerkt[$memo][$text] = $antwort;
+        }
+        // Rueckfall (Aufruf ausserhalb eines Moduls, z.B. Pruefstand): eingetragene Kette, NICHT merken - sonst wuerde eine
+        // fremde locale.json die Antwort fuer dieses Modul festschreiben.
+        $kette = (self::$kette[$ctx] ?? []) !== [] ? self::$kette[$ctx] : array_merge(...array_values(self::$kette ?: [[]]));
         foreach ($kette as $translate) {
             try {
                 self::$anfragen++;
-                $antwort = (string) $translate($text);
-                if ($eigene) {
-                    self::$gemerkt[$memo][$text] = $antwort;
-                }
-                return $antwort;
+                return (string) $translate($text);
             } catch (\Throwable $e) {
                 // Instanz waehrend des Aufrufs geloescht: naechsten Uebersetzer versuchen.
             }
@@ -148,7 +172,7 @@ final class NRGDASH_Text
     {
         $tabelle = self::tabelle($schluessel);
         // TEMPORAERE DIAGNOSE: wie viele Kachel-Texte kamen wirklich uebersetzt an, und aus welchem Einstiegspunkt?
-        [$ctx, $einstieg] = self::kontext();
+        [$ctx, $einstieg, $objekt] = self::kontext();
         $uebersetzt = 0;
         foreach ($tabelle as $k => $v) {
             if ($k !== $v) {
@@ -172,6 +196,19 @@ final class NRGDASH_Text
             'beispiele' => $beispiele,
         ];
         self::$protokoll = array_slice(self::$protokoll, -30);
+        if ($objekt !== null) {
+            // Statische Variablen gelten nur je Ausfuehrungsstrang: fuer das Auslesen im Instanz-Puffer ablegen.
+            try {
+                $eintrag = self::$protokoll[count(self::$protokoll) - 1];
+                \Closure::bind(function (array $e): void {
+                    $alt = json_decode((string) $this->GetBuffer('DiagKachel'), true);
+                    $alt = is_array($alt) ? $alt : [];
+                    $alt[] = $e;
+                    $this->SetBuffer('DiagKachel', (string) json_encode(array_slice($alt, -12), JSON_UNESCAPED_UNICODE));
+                }, $objekt, get_class($objekt))($eintrag);
+            } catch (\Throwable $e) {
+            }
+        }
         $json = json_encode($tabelle, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
         return str_replace('<!--NRGDASH_TEXTS-->', '<script>window.NRGDASH_TEXTS = ' . $json . ';</script>', $html);
     }
