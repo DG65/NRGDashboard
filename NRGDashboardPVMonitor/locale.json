@@ -150,6 +150,7 @@
             "House consumption": "Hausverbrauch",
             "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in.": "IPSView/Popup: Die Kachel läuft auch als eigenständige Webseite unter http://<IPS-IP>:3777%s (Auto-Aktualisierung alle 30 s). In IPSView ein WebView-Element auf eine Popup-Seite legen und diese URL eintragen. Hinweis: WebHooks sind im lokalen Netz ohne Anmeldung erreichbar.",
             "Implausible archive value discarded: variable #%d, %s, max=%.0f W": "Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%.0f W",
+            "Implausible sample skipped, day recomputed from raw values: variable #%d, %s, %.2f kWh": "Unplausibler Messwert übersprungen, Tag aus Rohwerten neu berechnet: Variable #%d, %s, %.2f kWh",
             "Invert grid power": "Netzleistung umkehren",
             "Irradiance": "Einstrahlung",
             "Irradiance sensor mounted horizontally": "Einstrahlungssensor horizontal montiert",

@@ -73,6 +73,38 @@ class NRGDashboardPVMonitor extends IPSModule
         return max($max, $min) > self::IMPLAUSIBLE_POWER_W;
     }
 
+    /**
+     * Tagesenergie in kWh aus den Rohwerten, OHNE die unplausiblen Messwerte (15.11.2026, Dietmar: August 2026 im
+     * Jahresvergleich falsch; am 28.08. stand ein einzelner Wert von 174.369.457 W ueber 45 s im Archiv, 25,29 kWh echter
+     * Ertrag laut SEMS+ 25,30 kWh). Bisher wurde der ganze Tag verworfen, der echte Ertrag dieses Tages fehlte dann. Jetzt
+     * zaehlt nur der fehlerhafte Messwert nicht (seine Dauer traegt 0 bei), der Rest des Tages bleibt.
+     * Rueckgabe null, wenn keine Rohwerte lesbar sind (dann bleibt der Tag verworfen).
+     */
+    private function DayKwhWithoutImplausible(int $aid, int $vid, int $timestamp, float $factor): ?float
+    {
+        $d = strtotime(date('Y-m-d 00:00:00', $timestamp));
+        $e = strtotime('+1 day', $d);
+        $raw = @AC_GetLoggedValues($aid, $vid, $d, $e, 0);
+        if (!is_array($raw) || count($raw) === 0) {
+            return null;
+        }
+        $sum = 0.0;
+        foreach ($raw as $r) {
+            $w = (float) ($r['Value'] ?? 0) * $factor;
+            if (!is_finite($w) || abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                continue;
+            }
+            $t = max((float) $r['TimeStamp'], (float) $d);
+            $len = min((float) $r['TimeStamp'] + (float) ($r['Duration'] ?? 0), (float) $e) - $t;
+            if ($len <= 0) {
+                continue;
+            }
+            $sum += $w * $len;
+        }
+        $kwh = $sum / 3600.0 / 1000.0;
+        return (is_finite($kwh) && $kwh >= 0) ? $kwh : null;
+    }
+
     /** Manuell gewaehlte Einheit (0 automatisch, 1 Watt, 2 Kilowatt) fuer die Variable, falls sie die PV-, Batterie-, Netz- oder MPPT-Variable ist. */
     private function PowerUnitOverride(int $vid): int
     {
@@ -1923,11 +1955,22 @@ class NRGDashboardPVMonitor extends IPSModule
                 continue;
             }
             if ($this->RowHasImplausiblePower($row, $pf)) {
+                $fix = $this->DayKwhWithoutImplausible($aid, $vid, (int) $row['TimeStamp'], $pf);
+                if ($fix === null) {
+                    $this->SendDebug(
+                        __FUNCTION__,
+                        NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                        0
+                    );
+                    continue;
+                }
                 $this->SendDebug(
                     __FUNCTION__,
-                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0)),
+                    NRGDASH_Text::t('Implausible sample skipped, day recomputed from raw values: variable #%d, %s, %.2f kWh', $vid, date('d.m.Y', (int) $row['TimeStamp']), $fix),
                     0
                 );
+                $ymFix = date('Y-n', (int) $row['TimeStamp']);
+                $out[$ymFix] = ($out[$ymFix] ?? 0.0) + $fix;
                 continue;
             }
             $kwh = ((float) $row['Avg']) * $pf * 24.0 / 1000.0;
@@ -3880,11 +3923,21 @@ class NRGDashboardPVMonitor extends IPSModule
         foreach ($data as $row) {
             $avg = (float) $row['Avg'] * $pf;
             if ($this->RowHasImplausiblePower($row, $pf)) {
+                $fix = $this->DayKwhWithoutImplausible($aid, $vid, (int) $row['TimeStamp'], $pf);
+                if ($fix === null) {
+                    $this->SendDebug(
+                        __FUNCTION__,
+                        NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
+                        0
+                    );
+                    continue;
+                }
                 $this->SendDebug(
                     __FUNCTION__,
-                    NRGDASH_Text::t('Implausible archive value discarded: variable #%d, %s, max=%.0f W', $vid, date('d.m.Y', (int) $row['TimeStamp']), (float) ($row['Max'] ?? 0) * $pf),
+                    NRGDASH_Text::t('Implausible sample skipped, day recomputed from raw values: variable #%d, %s, %.2f kWh', $vid, date('d.m.Y', (int) $row['TimeStamp']), $fix),
                     0
                 );
+                $out[date('Y-m-d', (int) $row['TimeStamp'])] = round($fix, 2);
                 continue;
             }
             $kwh = round($avg * 24.0 / 1000.0, 2);

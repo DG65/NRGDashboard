@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.8 (2026-11-15)
+
+- Fix: Ein einzelner unplausibler Archivwert (z. B. 174 MW für 45 Sekunden) verwirft nicht mehr den ganzen Tag. Der Tag wird aus den Rohwerten ohne den fehlerhaften Messwert neu berechnet; sein echter Ertrag zählt im Jahresvergleich und in den Tages-Energieansichten mit (August 2026: 28.08. mit 25,29 kWh statt komplett verworfen; SEMS+ nennt 25,30 kWh)
+
 ## 0.11.7 (2026-11-15)
 
 - Fix: Die Übersetzung wird in jedem Aufruf direkt von der Modul-Instanz geholt, nicht mehr aus einer beim „Übernehmen“ aufgebauten statischen Kette. Symcon führt Aufrufe auf verschiedenen Ausführungssträngen aus, statische Variablen gelten nur je Strang: Kacheln, WebHook-Seiten (Standalone) und Formular fanden oft keinen Übersetzer und blieben englisch, je nach Strang zufällig. Das war die eigentliche Ursache der Deutsch/Englisch-Mischung und der englischen Standalone-Seiten
