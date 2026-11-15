@@ -159,19 +159,6 @@ class NRGDashboardTopology extends IPSModule
         $this->SetVisualizationType(1);
     }
 
-    /** TEMPORAERE DIAGNOSE (nicht fuer den Store): Protokoll der Kachel-Aufbauten und direkter Uebersetzungstest. */
-    public function Diagnose(): string
-    {
-        $probe = array_values(array_filter(self::TILE_TEXTS, fn ($t) => $t !== 'en-GB'))[0] ?? '';
-        return json_encode([
-            'modul' => static::class,
-            'instanz' => $this->InstanceID,
-            'locale' => (string) @IPS_GetOption('Locale'),
-            'direkt' => $probe . ' => ' . $this->Translate($probe),
-            'protokoll' => json_decode((string) $this->GetBuffer('DiagKachel'), true) ?: [],
-        ], JSON_UNESCAPED_UNICODE);
-    }
-
     /** Beim Loeschen der Instanz den eigenen WebHook-Eintrag mit aufraeumen (kein Verwaisen im WebHook-Control). */
     public function Destroy()
     {

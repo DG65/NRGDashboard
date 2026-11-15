@@ -27,8 +27,6 @@ final class NRGDASH_Text
     private static $kette = [];
     /** @var array<string,array<string,string>> gemerkte Uebersetzungen je Modul-Klasse */
     private static $gemerkt = [];
-    /** @var array<int,array<string,mixed>> TEMPORAERE DIAGNOSE: die letzten Kachel-Aufbauten (siehe kachelHtml) */
-    private static $protokoll = [];
     /** @var int Zaehler fuer den Pruefstand: wie oft wurde Symcon wirklich gefragt */
     public static $anfragen = 0;
 
@@ -158,12 +156,6 @@ final class NRGDASH_Text
         return $aus;
     }
 
-    /** TEMPORAERE DIAGNOSE: Protokoll der Kachel-Aufbauten dieses Prozesses. */
-    public static function protokoll(): array
-    {
-        return self::$protokoll;
-    }
-
     /**
      * Ersetzt die Marke <!--NRGDASH_TEXTS--> im Kachel-HTML durch die Tabelle. Dieselbe Funktion bedient die Kachel
      * (GetVisualizationTile) und die Standalone-Seite (ProcessHookData). Fehlt die Marke, bleibt das HTML unveraendert.
@@ -171,44 +163,6 @@ final class NRGDASH_Text
     public static function kachelHtml(string $html, array $schluessel): string
     {
         $tabelle = self::tabelle($schluessel);
-        // TEMPORAERE DIAGNOSE: wie viele Kachel-Texte kamen wirklich uebersetzt an, und aus welchem Einstiegspunkt?
-        [$ctx, $einstieg, $objekt] = self::kontext();
-        $uebersetzt = 0;
-        foreach ($tabelle as $k => $v) {
-            if ($k !== $v) {
-                $uebersetzt++;
-            }
-        }
-        $beispiele = [];
-        foreach ($tabelle as $k => $v) {
-            if ($k !== 'en-GB' && count($beispiele) < 3) {
-                $beispiele[] = mb_substr($k, 0, 24) . ' => ' . mb_substr($v, 0, 24);
-            }
-        }
-        self::$protokoll[] = [
-            'zeit' => date('H:i:s'),
-            'modul' => $ctx,
-            'einstieg' => $einstieg,
-            'texte' => count($tabelle),
-            'uebersetzt' => $uebersetzt,
-            'kette' => count(self::$kette[$ctx] ?? []),
-            'locale' => (string) @IPS_GetOption('Locale'),
-            'beispiele' => $beispiele,
-        ];
-        self::$protokoll = array_slice(self::$protokoll, -30);
-        if ($objekt !== null) {
-            // Statische Variablen gelten nur je Ausfuehrungsstrang: fuer das Auslesen im Instanz-Puffer ablegen.
-            try {
-                $eintrag = self::$protokoll[count(self::$protokoll) - 1];
-                \Closure::bind(function (array $e): void {
-                    $alt = json_decode((string) $this->GetBuffer('DiagKachel'), true);
-                    $alt = is_array($alt) ? $alt : [];
-                    $alt[] = $e;
-                    $this->SetBuffer('DiagKachel', (string) json_encode(array_slice($alt, -12), JSON_UNESCAPED_UNICODE));
-                }, $objekt, get_class($objekt))($eintrag);
-            } catch (\Throwable $e) {
-            }
-        }
         $json = json_encode($tabelle, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
         return str_replace('<!--NRGDASH_TEXTS-->', '<script>window.NRGDASH_TEXTS = ' . $json . ';</script>', $html);
     }

@@ -13,7 +13,6 @@ inklusive.*
 ## 0.11.7 (2026-11-15)
 
 - Fix: Die Übersetzung wird in jedem Aufruf direkt von der Modul-Instanz geholt, nicht mehr aus einer beim „Übernehmen“ aufgebauten statischen Kette. Symcon führt Aufrufe auf verschiedenen Ausführungssträngen aus, statische Variablen gelten nur je Strang: Kacheln, WebHook-Seiten (Standalone) und Formular fanden oft keinen Übersetzer und blieben englisch, je nach Strang zufällig. Das war die eigentliche Ursache der Deutsch/Englisch-Mischung und der englischen Standalone-Seiten
-- Temporär: Diagnose() je Modul und Protokoll der Kachel-Aufbauten im Instanz-Puffer (wird vor dem Store-Release wieder entfernt)
 
 ## 0.11.6 (2026-11-15)
 
