@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.6 (2026-11-15)
+
+- Fix: Deutsch/Englisch-Mischung in den Kacheln, zweiter Teil: Symcons Übersetzung liefert je nach Aufrufer (Formular, Kachel, WebHook-Seite) nicht dieselbe Sprache; der Zwischenspeicher galt bisher für alle Aufrufer eines Moduls, sodass der zuerst fragende die Sprache für alle festlegte. Der Zwischenspeicher gilt jetzt je Modul und Einstiegspunkt
+
 ## 0.11.5 (2026-11-15)
 
 - Fix: Deutsch und Englisch waren in den Kacheln gemischt (Legenden, Knöpfe und Tooltips teils englisch, Reiter deutsch): Jedes Modul hat eine eigene Sprachdatei, die Übersetzung wurde aber über alle Module im Prozess geteilt; ein Text konnte so über die Sprachdatei eines anderen Moduls abgefragt werden und blieb englisch. Die Übersetzung ist jetzt je Modul getrennt

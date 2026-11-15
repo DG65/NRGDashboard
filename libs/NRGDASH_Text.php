@@ -35,16 +35,26 @@ final class NRGDASH_Text
      * Jedes Modul hat seine EIGENE locale.json, Symcons Translate() einer Instanz kennt nur deren Texte. Alle Module der
      * Bibliothek laufen im selben Prozess: ohne diese Trennung wuerde ein Text, der ueber das Translate() eines ANDEREN
      * Moduls gefragt wird und dort fehlt, englisch zurueckkommen und fuer alle gemerkt (Deutsch/Englisch-Mischung).
+     * Zusaetzlich der Einstiegspunkt: Translate() liefert je nach Aufrufer (Konsole/Formular, Kachel, WebHook-Seite) nicht
+     * dieselbe Sprache (live gemessen: WebHook-Seite immer Englisch). Die Merkliste gilt deshalb nur je Modul UND Einstiegspunkt.
+     *
+     * @return array{0:string,1:string} [Modul-Klasse, Einstiegspunkt]
      */
-    private static function kontext(): string
+    private static function kontext(): array
     {
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25) as $frame) {
-            $klasse = $frame['class'] ?? '';
-            if ($klasse !== '' && strpos($klasse, 'NRGDashboard') === 0) {
-                return $klasse;
+        $klasse = '';
+        $einstieg = '';
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 40) as $frame) {
+            $k = $frame['class'] ?? '';
+            if ($k !== '' && strpos($k, 'NRGDashboard') === 0) {
+                if ($klasse === '') {
+                    $klasse = $k;
+                }
+                // aeusserster Modul-Frame = Einstiegspunkt (GetConfigurationForm, GetVisualizationTile, ProcessHookData, Timer ...)
+                $einstieg = (string) ($frame['function'] ?? '');
             }
         }
-        return '';
+        return [$klasse, $einstieg];
     }
 
     /**
@@ -55,8 +65,12 @@ final class NRGDASH_Text
      */
     public static function setzen(?callable $translate): void
     {
-        $ctx = self::kontext();
-        self::$gemerkt[$ctx] = [];
+        [$ctx] = self::kontext();
+        foreach (array_keys(self::$gemerkt) as $schluessel) {
+            if (strpos($schluessel, $ctx . '::') === 0) {
+                unset(self::$gemerkt[$schluessel]);
+            }
+        }
         if ($translate === null) {
             self::$kette[$ctx] = [];
             return;
@@ -68,9 +82,10 @@ final class NRGDASH_Text
 
     private static function uebersetzen(string $text): string
     {
-        $ctx = self::kontext();
-        if (isset(self::$gemerkt[$ctx][$text])) {
-            return self::$gemerkt[$ctx][$text];
+        [$ctx, $einstieg] = self::kontext();
+        $memo = $ctx . '::' . $einstieg;
+        if (isset(self::$gemerkt[$memo][$text])) {
+            return self::$gemerkt[$memo][$text];
         }
         // Ohne eigenen Uebersetzer (z.B. Aufruf ausserhalb eines Moduls): irgendeiner, aber NICHT merken - sonst
         // wuerde eine fremde locale.json die Antwort fuer dieses Modul festschreiben.
@@ -81,7 +96,7 @@ final class NRGDASH_Text
                 self::$anfragen++;
                 $antwort = (string) $translate($text);
                 if ($eigene) {
-                    self::$gemerkt[$ctx][$text] = $antwort;
+                    self::$gemerkt[$memo][$text] = $antwort;
                 }
                 return $antwort;
             } catch (\Throwable $e) {

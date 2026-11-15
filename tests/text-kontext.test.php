@@ -68,5 +68,25 @@ $a->bauen();
 pruefe('A nach Neubau', $a->t('Balance'), 'Saldo');
 pruefe('B nach A-Neubau', $b->t('Balance'), 'Bilanz');
 
+
+// Einstiegspunkt: Translate() liefert je nach Aufrufer (Formular/Konsole, Kachel, WebHook) eine andere Sprache. Die Merkliste
+// darf deshalb nicht von einem Einstiegspunkt auf den anderen durchschlagen.
+$GLOBALS['SPRACHE'] = 'de';
+class NRGDashboardTestD
+{
+    public function bauen(): void
+    {
+        NRGDASH_Text::setzen(fn (string $t): string => $GLOBALS['SPRACHE'] === 'de' ? 'DE:' . $t : $t);
+    }
+    public function GetConfigurationForm(string $s): string { $GLOBALS['SPRACHE'] = 'de'; return $this->helfer($s); }
+    public function ProcessHookData(string $s): string { $GLOBALS['SPRACHE'] = 'en'; return $this->helfer($s); }
+    private function helfer(string $s): string { return NRGDASH_Text::t($s); }
+}
+$d = new NRGDashboardTestD();
+$d->bauen();
+pruefe('Formular zuerst', $d->GetConfigurationForm('Battery'), 'DE:Battery');
+pruefe('WebHook danach (nicht aus Formular-Merkliste)', $d->ProcessHookData('Battery'), 'Battery');
+pruefe('Formular erneut', $d->GetConfigurationForm('Battery'), 'DE:Battery');
+
 echo $fehler === 0 ? "Alles bestanden.\n" : "$fehler Fehler.\n";
 exit($fehler === 0 ? 0 : 1);
