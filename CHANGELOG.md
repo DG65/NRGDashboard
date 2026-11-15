@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.4 (2026-11-15)
+
+- Neu: Die Legende des Batterie-Diagramms zeigt für „Batterie-Leistung“ einen zweifarbigen Punkt (Laden grün, Entladen orange)
+
 ## 0.11.3 (2026-11-15)
 
 - Neu: Batterie-Diagramm im PV-Monitoring färbt die Leistungskurve nach Laden (grün) und Entladen (orange); je höher die Leistung, desto kräftiger die Farbe. Die 0-kW-Linie ist rot. Gilt für ECharts und Highcharts

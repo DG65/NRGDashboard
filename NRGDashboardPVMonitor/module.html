@@ -1411,7 +1411,12 @@
           }
           extra = energyExtra(pvDay, any ? pvMonth : null, any ? pvYear : null);
         }
-        el.innerHTML = '<span class="dot" style="background:' + it.color + '"></span>' + it.name + extra;
+        // Batterie-Leistung: Punkt zweifarbig (Laden gruen / Entladen orange), passend zur Kurve.
+        var dotBg = it.color;
+        if (tab === 'battery' && it.name === tr('Battery power')) {
+          dotBg = 'linear-gradient(90deg,' + batColor(true, 0.8) + ' 50%,' + batColor(false, 0.8) + ' 50%)';
+        }
+        el.innerHTML = '<span class="dot" style="background:' + dotBg + '"></span>' + it.name + extra;
         el.onclick = function () { setVisible(it.name, !isVisible(it.name)); render(); };
         row.appendChild(el);
       });
