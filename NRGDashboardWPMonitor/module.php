@@ -509,6 +509,15 @@ class NRGDashboardWPMonitor extends IPSModule
         $this->RegisterTimer('Refresh', 0, 'NRGDASHWPMON_Render($_IPS[\'TARGET\']);');
     }
 
+    /** Beim Loeschen der Instanz den eigenen WebHook-Eintrag mit aufraeumen (kein Verwaisen im WebHook-Control). */
+    public function Destroy()
+    {
+        if (IPS_GetKernelRunlevel() === KR_READY) {
+            $this->UnregisterHook('/hook/nrgdashwpmonitor' . $this->InstanceID);
+        }
+        parent::Destroy();
+    }
+
     public function ApplyChanges()
     {
         parent::ApplyChanges();

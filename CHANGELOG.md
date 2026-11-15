@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.2 (2026-11-15)
+
+- Fix: Beim Löschen einer Instanz räumen jetzt alle sieben Module ihren WebHook-Eintrag im WebHook-Control mit auf (bisher blieben die Einträge liegen)
+
 ## 0.11.1 (2026-11-13)
 
 - Fix: Prognose und PV-Monitoring erkennen Hell/Dunkel jetzt am Farbschema der Visualisierung (CSS-Variablen `--card-color`/`--content-color`) statt am Gerät (`prefers-color-scheme`). Behebt helle Schrift auf hellem Grund, wenn Gerät und Visualisierung unterschiedlich eingestellt sind. Die eigene Wahl (Schriftfarbe/Helles Theme) gilt weiterhin vorrangig

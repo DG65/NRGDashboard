@@ -434,6 +434,15 @@ class NRGDashboardForecast extends IPSModule
         IPS_SetVariableProfileText('NRGDASHFC.YMax', '', ' kW');
     }
 
+    /** Beim Loeschen der Instanz den eigenen WebHook-Eintrag mit aufraeumen (kein Verwaisen im WebHook-Control). */
+    public function Destroy()
+    {
+        if (IPS_GetKernelRunlevel() === KR_READY) {
+            $this->UnregisterHook('/hook/nrgdashforecast' . $this->InstanceID);
+        }
+        parent::Destroy();
+    }
+
     public function ApplyChanges()
     {
         parent::ApplyChanges();
