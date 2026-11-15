@@ -850,6 +850,64 @@
       if (lastData && lastData.lightTheme) { return true; }
       return symconDunkel() === false;
     }
+
+    // ---- Batterie-Leistung: Laden/Entladen farbig, Farbe wird mit der Leistung kraeftiger ----
+    // Laden (positiv) gruen, Entladen (negativ) orange; je groesser |kW|, desto satter und
+    // heller (dunkles Theme) bzw. dunkler (helles Theme). Gilt fuer beide Engines.
+    var BAT_ZERO_COLOR = '#e53935';
+    var BAT_STEPS = 8;
+    function batHslHex(h, sat, lig) {
+      sat /= 100; lig /= 100;
+      var a = sat * Math.min(lig, 1 - lig);
+      var f = function (n) {
+        var k = (n + h / 30) % 12;
+        var c = lig - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+        var x = Math.round(255 * c).toString(16);
+        return x.length < 2 ? '0' + x : x;
+      };
+      return '#' + f(0) + f(8) + f(4);
+    }
+    // t = 0 (kaum Leistung, gedaempft) ... 1 (Hoechstleistung, leuchtend)
+    function batColor(charge, t) {
+      var light = isLightTheme();
+      var hue = charge ? 135 : 28;
+      return batHslHex(hue, 30 + 70 * t, light ? (66 - 26 * t) : (34 + 24 * t));
+    }
+    // Obergrenze der Skala = groesster Betrag des Tages, auf ganze kW aufgerundet (mind. 3 kW)
+    function batMaxKw(points) {
+      var m = 0;
+      (points || []).forEach(function (p) {
+        var v = p && p[1];
+        if (v !== null && v !== undefined && isFinite(v)) { m = Math.max(m, Math.abs(v)); }
+      });
+      return Math.max(3, Math.ceil(m));
+    }
+    // ECharts: piecewise visualMap auf Dimension 1 (Wert) der Leistungsserie
+    function batVisualMapEC(seriesIndex, maxKw) {
+      var pieces = [], n = BAT_STEPS, i, step = maxKw / n;
+      for (i = 0; i < n; i++) {
+        pieces.push({ gte: i * step, lt: (i + 1) * step, color: batColor(true, (i + 0.5) / n) });
+      }
+      pieces.push({ gte: maxKw, color: batColor(true, 1) });
+      for (i = 0; i < n; i++) {
+        pieces.push({ gt: -(i + 1) * step, lt: -i * step, color: batColor(false, (i + 0.5) / n) });
+      }
+      pieces.push({ lte: -maxKw, color: batColor(false, 1) });
+      return { show: false, type: 'piecewise', seriesIndex: seriesIndex, dimension: 1, pieces: pieces };
+    }
+    // Highcharts: Zonen, aufsteigend nach Obergrenze
+    function batZonesHC(maxKw) {
+      var zones = [], n = BAT_STEPS, i, step = maxKw / n;
+      zones.push({ value: -maxKw, color: batColor(false, 1) });
+      for (i = n - 1; i >= 0; i--) {
+        zones.push({ value: -i * step, color: batColor(false, (i + 0.5) / n) });
+      }
+      for (i = 0; i < n; i++) {
+        zones.push({ value: (i + 1) * step, color: batColor(true, (i + 0.5) / n) });
+      }
+      zones.push({ color: batColor(true, 1) });
+      return zones;
+    }
     // Dunkelgrau auf Hell, wie bisher Hellgrau auf Dunkel (Dietmar,
     // 31.07.2026: "Wenn Hell eingestellt ist, dann sollte die
     // Beschriftung der Charts dunkelgrau sein") - fuer ALLE Achsen-/
@@ -1674,6 +1732,18 @@
             data: negE.map(function (r) { return [{ xAxis: r[0] }, { xAxis: r[1] }]; }) };
         }
       }
+      // Batterie-Reiter: Leistungskurve nach Laden/Entladen und Hoehe einfaerben, 0-kW-Linie rot.
+      var batVisualMap;
+      if (tab === 'battery') {
+        var batIdxE = -1;
+        series.forEach(function (x, ix) { if (x.name === tr('Battery power')) { batIdxE = ix; } });
+        if (batIdxE >= 0) {
+          batVisualMap = batVisualMapEC(batIdxE, batMaxKw(series[batIdxE].data));
+          series[batIdxE].lineStyle = Object.assign({}, series[batIdxE].lineStyle, { width: 1.3 });
+          series[batIdxE].markLine = { symbol: 'none', silent: true, label: { show: false },
+            lineStyle: { color: BAT_ZERO_COLOR, width: 1.5, type: 'solid' }, data: [{ yAxis: 0 }] };
+        }
+      }
       var priceLeftAxisMax = null;
       if (tab === 'price' && priceUnitKw && d && d.gridMonthPeak) {
         var gridSeriesE = series.filter(function (s) { return s.type === 'bar' && s.yAxisIndex === 0; })[0];
@@ -1848,6 +1918,7 @@
         // Platz in der Kachel), Doppelklick setzt zurueck (ECharts-Standard
         // bei type:'inside').
         dataZoom: DATA_ZOOM_INSIDE,
+        visualMap: batVisualMap,
         series: series
       }, true);
     }
@@ -1876,6 +1947,16 @@
       // der Monats-Spitzenwert ueber den Balken des angezeigten Tages
       // liegt - Highcharts' plotLines beeinflussen die Achsen-Extremwerte
       // sonst ebenfalls nicht automatisch.
+      // Batterie-Reiter: Leistungskurve nach Laden/Entladen und Hoehe einfaerben, 0-kW-Linie rot.
+      var batZeroLinesHC = [];
+      if (tab === 'battery') {
+        var batSerHC = series.filter(function (x) { return x.name === tr('Battery power'); })[0];
+        if (batSerHC) {
+          batSerHC.zones = batZonesHC(batMaxKw(batSerHC.data));
+          batSerHC.lineWidth = 1.3;
+        }
+        batZeroLinesHC = [{ value: 0, color: BAT_ZERO_COLOR, width: 1.5, zIndex: 3 }];
+      }
       var priceLeftAxisMaxHC = null;
       if (tab === 'price' && priceUnitKw && d && d.gridMonthPeak) {
         var gridSeriesHC = series.filter(function (s) { return s.type === 'column' && s.yAxis === 0; })[0];
@@ -1980,7 +2061,7 @@
               { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, gridLineWidth: 0 }
             ]
           : [
-              { title: { text: ax.leftName, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR },
+              { title: { text: ax.leftName, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, tickInterval: ax.leftInterval || undefined, gridLineWidth: 1, gridLineColor: GRID_COLOR, plotLines: batZeroLinesHC },
               { title: { text: ax.rightName, style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, visible: ax.showRight, gridLineWidth: 0, min: (ax.rightMin !== undefined) ? ax.rightMin : null, max: (ax.rightMax !== undefined) ? ax.rightMax : null }
             ],
         legend: { enabled: false },

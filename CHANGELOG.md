@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.3 (2026-11-15)
+
+- Neu: Batterie-Diagramm im PV-Monitoring färbt die Leistungskurve nach Laden (grün) und Entladen (orange); je höher die Leistung, desto kräftiger die Farbe. Die 0-kW-Linie ist rot. Gilt für ECharts und Highcharts
+
 ## 0.11.2 (2026-11-15)
 
 - Fix: Beim Löschen einer Instanz räumen jetzt alle sieben Module ihren WebHook-Eintrag im WebHook-Control mit auf (bisher blieben die Einträge liegen)
