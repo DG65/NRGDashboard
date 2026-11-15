@@ -10,6 +10,12 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.9 (2026-11-15)
+
+- Fix: Energieansichten und Jahresvergleich bei beschädigten Archiv-Aggregaten. Liefert das Archiv für Tage leere Ergebnisse oder Tagessätze mitten am Tag (live seit 13.10.2026 bei der PV-Leistung), wurden diese Tage ausgelassen oder falsch gezählt, und `DailyEnergyMap()` gab beim kleinsten Fehler gar nichts zurück. Jetzt gilt leer/unausgerichtet wie ein Fehler und der Tag wird aus den Rohwerten berechnet; die Energieansichten nutzen denselben Rückfall; die Energiebilanz rechnet fehlgeschlagene Zeiträume tageweise aus den Rohwerten nach
+- Fix: Der Rohwert-Rückfall bezog sich auf die bisher vergangene Zeit des Tages statt auf 24 Stunden und überschätzte dadurch den laufenden Tag
+- Fix: Die monatsweisen Archivabfragen überlappten sich um die Zeile des Folgetags; der erste Tag jedes Monats zählte im Rückfall doppelt
+
 ## 0.11.8 (2026-11-15)
 
 - Fix: Ein einzelner unplausibler Archivwert (z. B. 174 MW für 45 Sekunden) verwirft nicht mehr den ganzen Tag. Der Tag wird aus den Rohwerten ohne den fehlerhaften Messwert neu berechnet; sein echter Ertrag zählt im Jahresvergleich und in den Tages-Energieansichten mit (August 2026: 28.08. mit 25,29 kWh statt komplett verworfen; SEMS+ nennt 25,30 kWh)

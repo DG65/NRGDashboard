@@ -1880,18 +1880,73 @@ class NRGDashboardPVMonitor extends IPSModule
      * Zeilen fuer die bereits vergangenen Tage, die Summe stimmt automatisch.
      */
     /**
+     * Sind alle Tageszeilen auf 00:00 Uhr ausgerichtet? Das Archiv kann Tagessaetze mit Zeitstempel mitten am Tag liefern
+     * (live 15.11.2026: 13.10. 17:20 und 15.10. 07:24, davor schon 18.09.): solche Zeilen sind beschaedigt und duerfen
+     * nicht in eine Energiesumme eingehen.
+     */
+    private function DayRowsAligned($rows): bool
+    {
+        if (!is_array($rows)) {
+            return false;
+        }
+        foreach ($rows as $r) {
+            $ts = (int) ($r['TimeStamp'] ?? 0);
+            if ($ts !== strtotime(date('Y-m-d 00:00:00', $ts))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Tageswerte (Avg/Max) fuer EINEN Tag aus den Rohwerten, ohne unplausible Messwerte. 'Avg' ist auf 86400 s bezogen,
+     * damit Avg*24/1000 genau die bis jetzt aufgelaufene Energie ergibt (auch am laufenden Tag und an Zeitumstellungstagen).
+     */
+    private function DayRowFromRaw(int $aid, int $vid, int $d, int $dEnd): ?array
+    {
+        $raw = @AC_GetLoggedValues($aid, $vid, $d, $dEnd, 0);
+        if (!is_array($raw) || count($raw) === 0) {
+            return null;
+        }
+        $sum = 0.0;
+        $dur = 0.0;
+        $max = 0.0;
+        foreach ($raw as $r) {
+            $w = (float) ($r['Value'] ?? 0);
+            if (!is_finite($w) || abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                continue;
+            }
+            $t = max((float) $r['TimeStamp'], (float) $d);
+            $len = min((float) $r['TimeStamp'] + (float) ($r['Duration'] ?? 0), (float) $dEnd) - $t;
+            if ($len <= 0) {
+                continue;
+            }
+            $sum += $w * $len;
+            $dur += $len;
+            $max = max($max, $w);
+        }
+        if ($dur <= 0) {
+            return null;
+        }
+        return ['TimeStamp' => $d, 'Avg' => $sum / 86400.0, 'Max' => $max];
+    }
+
+    /**
      * Tagesaggregate mit Rueckfall. Ein einziger beschaedigter Tagesdatensatz im
      * Archiv (live gefunden 19.09.2026: Tagessatz vom 18.09. mit Zeitstempel
      * mitten am Tag statt 00:00 Uhr) laesst AC_GetAggregatedValues() fuer JEDEN
      * Zeitraum, der ihn enthaelt, komplett FALSE liefern ("Ungueltige Aggregation
      * day") - der ganze Jahresvergleich blieb dadurch leer. Deshalb: erst am Stueck,
      * bei FALSE monatsweise, bei FALSE tageweise; ein Tag, der auch einzeln
-     * scheitert, wird aus den Rohwerten (zeitgewichteter Mittelwert) berechnet.
+     * scheitert, wird aus den Rohwerten berechnet.
+     * 15.11.2026: Seit 13.10. liefert das Archiv fuer die PV-Leistung teils LEERE Ergebnisse oder Zeilen mitten am Tag
+     * statt FALSE. Leer/unausgerichtet gilt jetzt wie FALSE (sonst fehlten ganze Tage), und der Rohwert-Rueckfall bezieht
+     * sich auf 86400 s statt auf die bisher vergangene Zeit (sonst war der laufende Tag zu hoch).
      */
     private function DayAggregatesResilient(int $aid, int $vid, int $start, int $end): array
     {
         $all = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
-        if (is_array($all)) {
+        if ($this->DayRowsAligned($all)) {
             return $all;
         }
         $out = [];
@@ -1899,47 +1954,42 @@ class NRGDashboardPVMonitor extends IPSModule
         while ($m < $end) {
             $mEnd = min(strtotime('+1 month', $m), $end);
             $chunk = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, max($m, $start), $mEnd, 0);
-            if (is_array($chunk)) {
+            if ($this->DayRowsAligned($chunk)) {
                 $out = array_merge($out, $chunk);
             } else {
-                for ($d = max($m, $start); $d < $mEnd; $d = strtotime('+1 day', $d)) {
+                for ($d = strtotime(date('Y-m-d 00:00:00', max($m, $start))); $d < $mEnd; $d = strtotime('+1 day', $d)) {
                     $dEnd = min(strtotime('+1 day', $d), $end);
                     $one = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $d, $dEnd, 0);
-                    if (is_array($one)) {
+                    $good = [];
+                    if ($this->DayRowsAligned($one)) {
                         // nur Saetze, deren Zeitstempel wirklich in diesen Tag fallen
                         foreach ($one as $r) {
                             if ((int) ($r['TimeStamp'] ?? 0) >= $d && (int) $r['TimeStamp'] < $dEnd) {
-                                $out[] = $r;
+                                $good[] = $r;
                             }
                         }
+                    }
+                    if (count($good) > 0) {
+                        $out = array_merge($out, $good);
                         continue;
                     }
-                    $raw = @AC_GetLoggedValues($aid, $vid, $d, $dEnd, 0);
-                    if (!is_array($raw) || count($raw) === 0) {
-                        continue;
-                    }
-                    $sum = 0.0;
-                    $dur = 0.0;
-                    $max = 0.0;
-                    foreach ($raw as $r) {
-                        $t = max((float) $r['TimeStamp'], (float) $d);
-                        $len = min((float) $r['TimeStamp'] + (float) ($r['Duration'] ?? 0), (float) $dEnd) - $t;
-                        if ($len <= 0) {
-                            continue;
-                        }
-                        $sum += (float) $r['Value'] * $len;
-                        $dur += $len;
-                        $max = max($max, (float) $r['Value']);
-                    }
-                    if ($dur > 0) {
-                        // auf den ganzen Tag normieren (Avg ist ueber 24 h gerechnet)
-                        $out[] = ['TimeStamp' => $d, 'Avg' => $sum / ($dEnd - $d), 'Max' => $max];
+                    $row = $this->DayRowFromRaw($aid, $vid, $d, $dEnd);
+                    if ($row !== null) {
+                        $out[] = $row;
                     }
                 }
             }
             $m = strtotime('+1 month', $m);
         }
-        return $out;
+        // Das Archiv liefert bei einer Abfrage bis zum Monatsende auch die Zeile des Folgetags mit: die Monatsabfragen
+        // ueberlappen sich dadurch um genau diese Zeile. Je Zeitstempel nur eine Zeile behalten (sonst zaehlt der erste
+        // Tag jedes Monats doppelt).
+        $eindeutig = [];
+        foreach ($out as $r) {
+            $eindeutig[(int) $r['TimeStamp']] = $r;
+        }
+        ksort($eindeutig);
+        return array_values($eindeutig);
     }
 
     private function MonthlyEnergyMap(int $aid, int $vid, int $start, int $end): array
@@ -3119,7 +3169,13 @@ class NRGDashboardPVMonitor extends IPSModule
                 $err = error_get_last();
                 $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Archive query failed: variable #%d, %s–%s: %s',
                     $vid, date('d.m.Y H:i', $from), date('d.m.Y H:i', $to), (string) ($err['message'] ?? NRGDASH_Text::t('unknown'))), 0);
-                $this->LogMessage(NRGDASH_Text::t('Energy balance incomplete: archive query for variable #%d (%s–%s) failed', $vid, date('d.m.Y', $from), date('d.m.Y', $to)), KL_WARNING);
+                // Rueckfall (15.11.2026): das Archiv liefert seit 13.10. teils keine Aggregate -> Tag fuer Tag aus den Rohwerten
+                $raw = $this->PowerPartsFromRaw($aid, $vid, $from, $to, $pf);
+                if ($raw === null) {
+                    $this->LogMessage(NRGDASH_Text::t('Energy balance incomplete: archive query for variable #%d (%s–%s) failed', $vid, date('d.m.Y', $from), date('d.m.Y', $to)), KL_WARNING);
+                    continue;
+                }
+                $kwh += ($sign > 0) ? $raw['pos'] : $raw['neg'];
                 continue;
             }
             foreach ($data as $row) {
@@ -3137,6 +3193,45 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
         return $kwh;
+    }
+
+    /**
+     * Energie in kWh aus den Rohwerten, getrennt nach positiver ('pos') und negativer ('neg', als positive Zahl) Leistung.
+     * Rueckfall fuer PowerToEnergy(), wenn das Archiv keine Aggregate liefert; tageweise, damit je Abfrage nur ein Tag
+     * Rohwerte gelesen wird. Unplausible Messwerte zaehlen nicht. null, wenn gar keine Rohwerte lesbar sind.
+     */
+    private function PowerPartsFromRaw(int $aid, int $vid, int $from, int $to, float $pf): ?array
+    {
+        $pos = 0.0;
+        $neg = 0.0;
+        $any = false;
+        for ($d = strtotime(date('Y-m-d 00:00:00', $from)); $d < $to; $d = strtotime('+1 day', $d)) {
+            $dStart = max($d, $from);
+            $dEnd = min(strtotime('+1 day', $d), $to);
+            $raw = @AC_GetLoggedValues($aid, $vid, $dStart, $dEnd, 0);
+            if (!is_array($raw)) {
+                continue;
+            }
+            foreach ($raw as $r) {
+                $w = (float) ($r['Value'] ?? 0) * $pf;
+                if (!is_finite($w) || abs($w) > self::IMPLAUSIBLE_POWER_W) {
+                    continue;
+                }
+                $t = max((float) $r['TimeStamp'], (float) $dStart);
+                $len = min((float) $r['TimeStamp'] + (float) ($r['Duration'] ?? 0), (float) $dEnd) - $t;
+                if ($len <= 0) {
+                    continue;
+                }
+                $any = true;
+                $kwh = $w * $len / 3600.0 / 1000.0;
+                if ($kwh >= 0) {
+                    $pos += $kwh;
+                } else {
+                    $neg += -$kwh;
+                }
+            }
+        }
+        return $any ? ['pos' => $pos, 'neg' => $neg] : null;
     }
 
     /**
@@ -3914,8 +4009,9 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         $end = time();
         $start = strtotime('-' . self::SPAN_YEARS . ' years', $end);
-        $data = @AC_GetAggregatedValues($aid, $vid, self::AGG_DAY, $start, $end, 0);
-        if (!is_array($data)) {
+        // mit Rueckfall (Monats-/Tageweise, Rohwerte): ein beschaedigter Tagessatz darf nicht ALLE Energieansichten leeren
+        $data = $this->DayAggregatesResilient($aid, $vid, $start, $end);
+        if (count($data) === 0) {
             return [];
         }
         $out = [];
