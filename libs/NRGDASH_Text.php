@@ -23,39 +23,67 @@ declare(strict_types=1);
 
 final class NRGDASH_Text
 {
-    /** @var callable[] Uebersetzer der zuletzt gebauten Instanzen, neueste zuerst (loeschen -> naechster springt ein) */
+    /** @var array<string,callable[]> Uebersetzer je Modul-Klasse (Schluessel '' = Aufruf ausserhalb eines Moduls), neueste zuerst */
     private static $kette = [];
-    /** @var array<string,string> gemerkte Uebersetzungen */
+    /** @var array<string,array<string,string>> gemerkte Uebersetzungen je Modul-Klasse */
     private static $gemerkt = [];
     /** @var int Zaehler fuer den Pruefstand: wie oft wurde Symcon wirklich gefragt */
     public static $anfragen = 0;
 
     /**
-     * Uebersetzer eines Moduls eintragen: Symcons Translate() einer Instanz. Alle Instanzen einer Bibliothek
-     * laufen im selben Prozess; wird die Instanz geloescht, deren Translate() gerade zustaendig war, springt
-     * die naechste ein (sonst erschiene ploetzlich Englisch in der deutschen Oberflaeche).
-     * Das Setzen leert die Merkliste, damit ein Sprachwechsel beim naechsten Uebernehmen greift.
+     * Modul-Klasse des Aufrufers (NRGDashboardTile, NRGDashboardPVMonitor ...), auch ueber Traits und Closures hinweg.
+     * Jedes Modul hat seine EIGENE locale.json, Symcons Translate() einer Instanz kennt nur deren Texte. Alle Module der
+     * Bibliothek laufen im selben Prozess: ohne diese Trennung wuerde ein Text, der ueber das Translate() eines ANDEREN
+     * Moduls gefragt wird und dort fehlt, englisch zurueckkommen und fuer alle gemerkt (Deutsch/Englisch-Mischung).
+     */
+    private static function kontext(): string
+    {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 25) as $frame) {
+            $klasse = $frame['class'] ?? '';
+            if ($klasse !== '' && strpos($klasse, 'NRGDashboard') === 0) {
+                return $klasse;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Uebersetzer eines Moduls eintragen: Symcons Translate() einer Instanz. Mehrere Instanzen EINES Moduls laufen im
+     * selben Prozess; wird die Instanz geloescht, deren Translate() gerade zustaendig war, springt die naechste desselben
+     * Moduls ein (sonst erschiene ploetzlich Englisch in der deutschen Oberflaeche).
+     * Das Setzen leert die Merkliste dieses Moduls, damit ein Sprachwechsel beim naechsten Uebernehmen greift.
      */
     public static function setzen(?callable $translate): void
     {
-        self::$gemerkt = [];
+        $ctx = self::kontext();
+        self::$gemerkt[$ctx] = [];
         if ($translate === null) {
-            self::$kette = [];
+            self::$kette[$ctx] = [];
             return;
         }
-        array_unshift(self::$kette, $translate);
-        self::$kette = array_slice(self::$kette, 0, 8);
+        self::$kette[$ctx] = self::$kette[$ctx] ?? [];
+        array_unshift(self::$kette[$ctx], $translate);
+        self::$kette[$ctx] = array_slice(self::$kette[$ctx], 0, 8);
     }
 
     private static function uebersetzen(string $text): string
     {
-        if (isset(self::$gemerkt[$text])) {
-            return self::$gemerkt[$text];
+        $ctx = self::kontext();
+        if (isset(self::$gemerkt[$ctx][$text])) {
+            return self::$gemerkt[$ctx][$text];
         }
-        foreach (self::$kette as $translate) {
+        // Ohne eigenen Uebersetzer (z.B. Aufruf ausserhalb eines Moduls): irgendeiner, aber NICHT merken - sonst
+        // wuerde eine fremde locale.json die Antwort fuer dieses Modul festschreiben.
+        $eigene = isset(self::$kette[$ctx]) && self::$kette[$ctx] !== [];
+        $kette = $eigene ? self::$kette[$ctx] : array_merge(...array_values(self::$kette ?: [[]]));
+        foreach ($kette as $translate) {
             try {
                 self::$anfragen++;
-                return self::$gemerkt[$text] = (string) $translate($text);
+                $antwort = (string) $translate($text);
+                if ($eigene) {
+                    self::$gemerkt[$ctx][$text] = $antwort;
+                }
+                return $antwort;
             } catch (\Throwable $e) {
                 // Instanz waehrend des Aufrufs geloescht: naechsten Uebersetzer versuchen.
             }

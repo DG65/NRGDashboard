@@ -5780,7 +5780,7 @@ function handleMessage(raw) {
     if (d.gridAmpel && d.gridAmpel.color) {
       wash.style.background = 'radial-gradient(circle at 50% 40%, ' + d.gridAmpel.color + '22 0%, transparent 65%)';
       wash.classList.add('show');
-      wash.title = 'Netzampel: ' + (d.gridAmpel.label || '');
+      wash.title = fmt(tr('Grid traffic light: %s'), d.gridAmpel.label || '');
     } else {
       wash.classList.remove('show');
     }
@@ -5806,7 +5806,7 @@ function handleMessage(raw) {
       // App/Tablet) ohnehin unerreichbar.
       document.getElementById('emsPanelMode').textContent = d.emsDecision.mode;
       document.getElementById('emsPanelReason').textContent = d.emsDecision.reason || '';
-      document.getElementById('emsPanelSource').textContent = emsSourceLabel ? 'Quelle: ' + emsSourceLabel : '';
+      document.getElementById('emsPanelSource').textContent = emsSourceLabel ? fmt(tr('Source: %s'), emsSourceLabel) : '';
     } else {
       emsBadge.classList.remove('show');
       document.getElementById('emsDecisionPanel').classList.remove('open');

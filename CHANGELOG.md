@@ -10,6 +10,11 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.11.5 (2026-11-15)
+
+- Fix: Deutsch und Englisch waren in den Kacheln gemischt (Legenden, Knöpfe und Tooltips teils englisch, Reiter deutsch): Jedes Modul hat eine eigene Sprachdatei, die Übersetzung wurde aber über alle Module im Prozess geteilt; ein Text konnte so über die Sprachdatei eines anderen Moduls abgefragt werden und blieb englisch. Die Übersetzung ist jetzt je Modul getrennt
+- Fix: Drei Texte waren noch fest deutsch und erscheinen jetzt in der Symcon-Sprache: Tooltip „Netzampel“ und „Quelle“ im Energiefluss, „(Bezug)“ in der 3D-Karte
+
 ## 0.11.4 (2026-11-15)
 
 - Neu: Die Legende des Batterie-Diagramms zeigt für „Batterie-Leistung“ einen zweifarbigen Punkt (Laden grün, Entladen orange)

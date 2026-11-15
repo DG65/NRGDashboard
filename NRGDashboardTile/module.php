@@ -188,6 +188,8 @@ class NRGDashboardTile extends IPSModule
         'Feed-in',
         'Charging',
         'Discharging',
+        'Grid traffic light: %s',
+        'Source: %s',
     ];
 
     /**

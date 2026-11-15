@@ -66,4 +66,5 @@ Konventionen Punkt 9 und Store-Punkt 25. Deutsch bleibt die Referenz; Englisch i
 - **Anführungszeichen im Deutsch exakt kopieren** (in der Tour stand `„WB 1"` mit geradem Schlusszeichen): Deutsch nie neu tippen,
   per Skript aus dem alten Stand holen.
 - **Sprachwechsel:** `setzen()` leert die Merkliste; ein Wechsel der Symcon-Sprache greift beim nächsten „Übernehmen“/Prozessstart.
+- **Übersetzung je Modul getrennt:** Jedes Modul hat seine EIGENE locale.json (Quelltexte können in zwei Modulen verschiedenes Deutsch haben, z. B. „Balance“). `NRGDASH_Text` ermittelt das Modul über `debug_backtrace()` (Klassenname beginnt mit `NRGDashboard`) und hält Uebersetzer und Merkliste je Modul. Nie zu einer gemeinsamen Tabelle zurück: sonst erscheint Englisch/Deutsch gemischt. `php tests/text-kontext.test.php` sichert das ab.
 - **Kein eigenes Lesen der locale.json** im Modulcode (Store-Prüfung, Stolperstein 24). Nur die Prüfskripte lesen sie.

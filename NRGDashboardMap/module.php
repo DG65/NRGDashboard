@@ -67,6 +67,7 @@ class NRGDashboardMap extends IPSModule
         '%d instances · %s',
         '%d instances',
         '❌ Three.js not loaded',
+        'import',
     ];
 
     private const IHUB_GUID = '{BBE2C593-1A91-426D-A714-29A9C7E87589}';

@@ -61,6 +61,7 @@
       "Unlike other federation views, it is not EMS but the inverter that sits physically at the center - PV strings and battery hang directly off it.": "Anders als andere Verbund-Ansichten sitzt hier nicht das EMS, sondern der Wechselrichter physisch im Zentrum - PV-Stränge und Batterie hängen direkt an ihm.",
       "Vehicle": "Fahrzeug",
       "Wallbox": "Wallbox",
+      "import": "Bezug",
       "ℹ️ No InverterHub instance found - without an inverter source the center of the map stays empty; devices from MeterHub, ChargerHub, HeishaMon and Tessie still appear.": "ℹ️ Keine InverterHub-Instanz gefunden - ohne Wechselrichter-Quelle bleibt der Mittelpunkt der Karte leer; Geräte aus MeterHub, ChargerHub, HeishaMon und Tessie erscheinen trotzdem.",
       "ℹ️ Not searched yet — press the button above.": "ℹ️ Noch nicht gesucht — Button oben drücken.",
       "⚠️ %d InverterHub instances found, none selected - %s is used. Please choose one below so the assignment is unambiguous.": "⚠️ %d InverterHub-Instanzen gefunden, keine ausgewählt - verwendet wird %s. Bitte unten gezielt auswählen, damit die Zuordnung eindeutig ist.",

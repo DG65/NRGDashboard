@@ -175,7 +175,7 @@
           var valText = '';
           if (vals.power !== undefined) {
             var pw = Math.abs(vals.power);
-            var unit = vals.power < 0 ? ' (Bezug)' : '';
+            var unit = vals.power < 0 ? ' (' + tr('import') + ')' : '';
             valText = (pw >= 1000 ? (pw / 1000).toFixed(1) + ' kW' : pw.toFixed(0) + ' W') + unit;
           } else if (vals.value !== undefined) {
             valText = vals.value.toFixed(0) + ' %';
@@ -242,7 +242,7 @@
           var valText = '';
           if (vals.power !== undefined) {
             var pw = Math.abs(vals.power);
-            var unit = vals.power < 0 ? ' (Bezug)' : '';
+            var unit = vals.power < 0 ? ' (' + tr('import') + ')' : '';
             valText = (pw >= 1000 ? (pw / 1000).toFixed(1) + ' kW' : pw.toFixed(0) + ' W') + unit;
           } else if (vals.value !== undefined) {
             valText = vals.value.toFixed(0) + ' %';
