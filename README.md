@@ -1829,6 +1829,13 @@ Grundstruktur wie alle anderen NRG-Stack-Module (Referenz: InverterHub):
 ob etwas ins News-Panel gehört — Ergebnis darf „nichts Relevantes" sein,
 die Prüfung selbst ist Pflicht. Aktuelle `NEWS_VERSION` = `0.2.0`.
 
+## Datenverkehr der Kacheln (ab 0.12.0)
+
+Jeder offene Client (WebFront, auch über Symcon Connect) bekommt die Aktualisierungen der Kacheln als Pakete. Seit 0.12.0 gilt:
+- **Energiefluss und Prognose:** höchstens ein Paket je Mindestabstand (Formularfeld „Mindestabstand zwischen Aktualisierungen“, Standard 5 Sekunden, 0 = jede Änderung sofort), nur bei geänderten Werten, dazu alle 30 Sekunden ein winziger Herzschlag für die Statusanzeige.
+- **PV-Monitoring:** nur noch die Unterschiede zum zuletzt gesendeten Stand (Delta). Jedes Paket trägt eine laufende Nummer; passt sie nicht nahtlos, fordert die Kachel den vollen Satz an.
+- **Messen:** `NRGDASH_GetTrafficStats($id)`, `NRGDASHFC_GetTrafficStats($id)` und `NRGDASHPVMON_GetTrafficStats($id)` liefern gesendete Pakete und Bytes je Stunde und Art (seit dem letzten Instanzstart, 24 Stunden).
+
 ## Store-Review-Checkliste
 
 Wie alle NRG-Stack-Module: keine Selbstpersistenz in Formular-Buttons, kein

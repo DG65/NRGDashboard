@@ -18,10 +18,13 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
+require_once __DIR__ . '/../libs/Push.php';
+require_once __DIR__ . '/../libs/Delta.php';
 
 class NRGDashboardPVMonitor extends IPSModule
 {
     use NRGDashFormStatus;
+    use NRGDashPush;
 
     private const ARCHIVE_GUID     = '{43192F0B-135B-4CE7-A0A7-1475603F3060}';
     private const PVF_GUID         = '{257DD4E8-9705-462E-89FC-56D0A1038353}';
@@ -691,7 +694,8 @@ class NRGDashboardPVMonitor extends IPSModule
         } else {
             $this->RegisterMessage(0, IPS_KERNELMESSAGE);
         }
-        $this->Render();
+        // Nach Konfigurationsaenderung/Start immer der volle Satz
+        $this->pvPush(true);
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -800,7 +804,30 @@ class NRGDashboardPVMonitor extends IPSModule
         }
         if (isset($_GET['json'])) {
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($this->buildPayload());
+            // Mit ?seq=<letzte Nummer>: nichts, wenn sich nichts getan hat, sonst das Delta oder der zuletzt gesendete volle
+            // Satz (aus dem Buffer, ohne neue Archivabfragen). Ohne seq wie bisher ein frisch gebautes Paket.
+            $cur = (int) $this->GetBuffer('PvSeq');
+            if (isset($_GET['seq']) && $cur > 0) {
+                $cs = (int) $_GET['seq'];
+                if ($cs === $cur) {
+                    echo json_encode(['ok' => true, 'type' => 'tick']);
+                    return;
+                }
+                $dj = (string) $this->GetBuffer('PvDeltaJson');
+                if ($dj !== '' && $cs === $cur - 1) {
+                    echo $dj;
+                    return;
+                }
+                $base = json_decode((string) $this->GetBuffer('PvBase'), true);
+                if (is_array($base)) {
+                    $base['seq'] = $cur;
+                    echo json_encode($base);
+                    return;
+                }
+            }
+            $p = $this->buildPayload();
+            $p['seq'] = $cur;
+            echo json_encode($p);
             return;
         }
         header('Content-Type: text/html; charset=utf-8');
@@ -809,8 +836,10 @@ class NRGDashboardPVMonitor extends IPSModule
         $html .= '<script>function requestAction(ident,value){fetch(window.location.pathname+"?action="+encodeURIComponent(ident)'
                . '+"&value="+encodeURIComponent(value||"{}")).then(function(r){return r.json();})'
                . '.then(function(l){l.forEach(function(m){handleMessage(m);});}).catch(function(){});}</script>';
-        $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');'
-               . 'setInterval(function(){fetch(window.location.pathname+"?json=1")'
+        $first = $this->buildPayload();
+        $first['seq'] = (int) $this->GetBuffer('PvSeq');
+        $html .= '<script>handleMessage(' . json_encode($first) . ');'
+               . 'setInterval(function(){fetch(window.location.pathname+"?json=1&seq="+lastSeq)'
                . '.then(function(r){return r.text();}).then(function(t){handleMessage(t);})'
                . '.catch(function(){});},30000);</script>';
         echo $html;
@@ -4079,13 +4108,65 @@ class NRGDashboardPVMonitor extends IPSModule
         // ensureHighcharts()) statt es einzubetten - Platzhalter bleibt
         // deshalb unbesetzt.
         $html = str_replace('/*__ECHARTS_JS__*/', '', $html);
-        $html .= '<script>handleMessage(' . json_encode($this->buildPayload()) . ');</script>';
+        $first = $this->buildPayload();
+        $first['seq'] = (int) $this->GetBuffer('PvSeq');
+        $html .= '<script>handleMessage(' . json_encode($first) . ');</script>';
         return $html;
     }
 
+    /** Timer (alle 5 Minuten): nur Geaendertes an die Kachel (Delta), nichts bei unveraendertem Stand. */
     public function Render(): void
     {
-        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+        $this->pvPush(false);
+    }
+
+    /** Felder eines Tages, die Punktlisten [Zeit, Wert] sind: davon geht nur der neue Schwanz ueber die Leitung. */
+    private const PV_SERIES_FIELDS = ['pv', 'irr', 'expected', 'bat', 'soc', 'gridDraw'];
+
+    /**
+     * Paket an die Kachel (0.12.0, Auftrag EMS 17.11.2026: Symcon-Connect-Limit). Bis 0.11.9 ging alle 5 Minuten das komplette
+     * Datenpaket (8-Tage-Fenster plus 5 Jahre Tages-kWh, rund 0,5 MB) an jeden offenen Client. Jetzt: der volle Satz nur bei
+     * $force (Start, Konfigurationsaenderung, Nachforderung 'fullLoad'), sonst nur die Unterschiede zum zuletzt gesendeten Stand,
+     * und gar nichts, wenn nichts anders ist. Jedes Paket traegt eine laufende Nummer 'seq'; passt sie beim Client nicht
+     * nahtlos, fordert er den vollen Satz an. Alle Teile eines Deltas sind "ersetze durch den aktuellen Wert" (Punktlisten
+     * ab einer Stelle), nicht "addiere": ein Client, der zwischendurch frisch geladen hat, bleibt dadurch konsistent.
+     */
+    private function pvPush(bool $force): void
+    {
+        $new = json_decode((string) json_encode($this->buildPayload()), true);
+        $base = json_decode((string) $this->GetBuffer('PvBase'), true);
+        $seq = (int) $this->GetBuffer('PvSeq');
+        $diff = null;
+        if (!$force && is_array($base)) {
+            $diff = $this->pvDiff($base, $new);
+            if ($diff === null) {
+                $this->pushStat('unchanged');
+                return;
+            }
+        }
+        $seq++;
+        if (!is_array($diff)) {
+            $send = $new;
+            $send['seq'] = $seq;
+            $json = (string) json_encode($send);
+            $this->pushVisu($json, 'full');
+            $this->SetBuffer('PvDeltaJson', '');
+        } else {
+            $diff['ok'] = true;
+            $diff['type'] = 'delta';
+            $diff['seq'] = $seq;
+            $json = (string) json_encode($diff);
+            $this->pushVisu($json, 'delta');
+            $this->SetBuffer('PvDeltaJson', $json);
+        }
+        $this->SetBuffer('PvBase', (string) json_encode($new));
+        $this->SetBuffer('PvSeq', (string) $seq);
+    }
+
+    /** Unterschiede zum zuletzt gesendeten Paket, siehe libs/Delta.php (null = nichts anders, false = voller Satz noetig). */
+    private function pvDiff(array $old, array $new)
+    {
+        return NRGDASH_Delta::diff($old, $new, self::PV_SERIES_FIELDS);
     }
 
     /**
@@ -4109,7 +4190,7 @@ class NRGDashboardPVMonitor extends IPSModule
             $this->hookCapture[] = $json;
             return;
         }
-        $this->UpdateVisualizationValue($json);
+        $this->pushVisu($json, 'msg');
     }
 
     public function RequestAction($Ident, $Value)
@@ -4120,11 +4201,16 @@ class NRGDashboardPVMonitor extends IPSModule
             $this->WriteAttributeBoolean('TourSeen', true);
             return;
         }
+        // Der Client hat ein Delta verpasst (laufende Nummer passt nicht): voller Satz
+        if ($Ident === 'fullLoad') {
+            $this->pvPush(true);
+            return;
+        }
         // Doppelpfeil-Variable (siehe Create()) - Wert setzen, Kachel neu
         // rendern (Muster HeatSchema/Forecast::RequestAction()).
         if ($Ident === 'TabAnimation') {
             $this->SetValue('TabAnimation', (int) $Value);
-            $this->Render();
+            $this->pvPush(true);
             return;
         }
         if ($Ident === 'flowPeriod') {

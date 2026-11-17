@@ -35,10 +35,12 @@ declare(strict_types=1);
  */
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
+require_once __DIR__ . '/../libs/Push.php';
 
 class NRGDashboardForecast extends IPSModule
 {
     use NRGDashFormStatus;
+    use NRGDashPush;
 
     // Request-lokaler Cache der automatisch erkannten Einheiten je Variable
     // (autoPowerFactor()) - 1:1 Muster aus Prognoses Energiebilanz.
@@ -204,6 +206,9 @@ class NRGDashboardForecast extends IPSModule
         parent::Create();
         // Gemeinsame Texte aus libs/FormLayout.php und libs/FormStatus.php (NRGDASH_Text): Uebersetzer eintragen, bis das Modul selbst umgestellt ist
         NRGDASH_Text::setzen(fn (string $text): string => $this->Translate($text));
+        // Drosselung der Aktualisierungen an die Kachel (0.12.0, Symcon-Connect-Limit): Mindestabstand in Sekunden, 0 = aus (wie bis 0.11.9).
+        $this->RegisterPropertyInteger('PushMinSec', 5);
+        $this->RegisterTimer('NRGDASHFC_Push', 0, 'NRGDASHFC_FlushPush($_IPS[\'TARGET\']);');
 
         // Reine Verdrahtung (Quell-/Variablenauswahl) bleibt Property - nur
         // die Konsole bietet SelectInstance/SelectVariable, eine
@@ -507,7 +512,7 @@ class NRGDashboardForecast extends IPSModule
             return;
         }
         if ($Message === VM_UPDATE) {
-            $this->Render();
+            $this->Render(false);
         }
     }
 
@@ -700,9 +705,19 @@ class NRGDashboardForecast extends IPSModule
         }
     }
 
-    private function Render(): void
+    /** Paket an die Kachel: gedrosselt und nur bei Aenderung (siehe libs/Push.php); $force = sofort (Bedienung, Uebernehmen). */
+    private function Render(bool $force = true): void
     {
-        $this->UpdateVisualizationValue($this->buildPayload());
+        $this->pushThrottled(fn () => $this->buildPayload(), 'NRGDASHFC_Push', $this->ReadPropertyInteger('PushMinSec'), $force);
+    }
+
+    /** Nachlaufendes Paket nach einer Drosselung (Timer NRGDASHFC_Push), damit der letzte Stand sicher ankommt. */
+    public function FlushPush(): void
+    {
+        if (IPS_GetKernelRunlevel() !== KR_READY || !IPS_InstanceExists($this->InstanceID)) {
+            return;
+        }
+        $this->Render(false);
     }
 
     public function GetVisualizationTile()

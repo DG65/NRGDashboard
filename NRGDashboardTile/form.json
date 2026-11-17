@@ -575,6 +575,14 @@
           "caption": "Font (empty/“system” = system font)"
         },
         {
+          "type": "NumberSpinner",
+          "name": "PushMinSec",
+          "caption": "Minimum interval between updates to the tile (seconds, 0 = every change immediately)",
+          "minimum": 0,
+          "maximum": 60,
+          "suffix": "s"
+        },
+        {
           "type": "Label",
           "caption": "All controls for the animation (hide inactive nodes, coupling of lightning/glow to power, effect intensity, active/inactive transition time, flow speed, automatic demo run) are set by each user in the WebFront themselves — pull the tile open with the double arrow instead of searching for them here in the console."
         }

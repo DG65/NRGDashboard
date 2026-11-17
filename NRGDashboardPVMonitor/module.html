@@ -624,6 +624,8 @@
     // ist showTour ohnehin immer false, siehe ProcessHookData()).
     var HOOK_PATH = null;
     var lastData = null, chart = null, chartEngine = null, idx = 1, curTab = 'solar';
+    // Laufende Nummer des zuletzt verarbeiteten Pakets (0.12.0): Deltas gelten nur nahtlos, sonst voller Satz
+    var lastSeq = -1;
     var autoCycleTimer = null;
     // Tage ausserhalb des kleinen, eager mitgeschickten Fensters (Dietmar,
     // 23.08.2026: "warum komme ich beim Strompreis nur bis zum 17.08.2026
@@ -4695,9 +4697,55 @@
       }
     }
 
+    // Delta einarbeiten (0.12.0): Punktlisten ab einer Stelle ersetzen, Tage/Energie/oberste Felder ersetzen.
+    function applyTail(cur, v) {
+      if (v && v.__tail) { return (Array.isArray(cur) ? cur.slice(0, v.__tail[0]) : []).concat(v.__tail[1]); }
+      return v;
+    }
+    function applyDelta(d) {
+      if (!lastData || lastSeq < 0 || d.seq !== lastSeq + 1) { requestAction('fullLoad', '{}'); return; }
+      if (d.top) { Object.keys(d.top).forEach(function (k) { lastData[k] = d.top[k]; }); }
+      if (d.energy) {
+        lastData.energy = lastData.energy || {};
+        Object.keys(d.energy).forEach(function (k) {
+          if (k === 'mppt') {
+            lastData.energy.mppt = lastData.energy.mppt || {};
+            Object.keys(d.energy.mppt).forEach(function (n) {
+              lastData.energy.mppt[n] = Object.assign(lastData.energy.mppt[n] || {}, d.energy.mppt[n]);
+            });
+          } else {
+            lastData.energy[k] = Object.assign(lastData.energy[k] || {}, d.energy[k]);
+          }
+        });
+      }
+      if (d.days) {
+        var ok = true;
+        Object.keys(d.days).forEach(function (id) {
+          var day = null;
+          (lastData.days || []).forEach(function (x) { if (x && x.id === id) { day = x; } });
+          if (!day) { ok = false; return; }
+          Object.keys(d.days[id]).forEach(function (f) {
+            if (f === 'mppt') {
+              day.mppt = day.mppt || {};
+              Object.keys(d.days[id].mppt).forEach(function (n) { day.mppt[n] = applyTail(day.mppt[n], d.days[id].mppt[n]); });
+            } else {
+              day[f] = applyTail(day[f], d.days[id][f]);
+            }
+          });
+        });
+        if (!ok) { requestAction('fullLoad', '{}'); return; }
+      }
+      lastSeq = d.seq;
+      lastData.seq = d.seq;
+      handleMessage(lastData);
+    }
+
     function handleMessage(raw) {
       var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (!d || !d.ok) { return; }
+      // Herzschlag/Delta der Aktualisierung (0.12.0)
+      if (d.type === 'tick') { return; }
+      if (d.type === 'delta') { applyDelta(d); return; }
       // Antwort auf requestAction('flowPeriod', ...) - siehe module.php::
       // RequestAction() - NICHT die volle Nutzlast, nur das nachgeforderte
       // Energiebilanz-Ergebnis fuer einen Zeitraum. In flowCache ablegen und
@@ -4774,6 +4822,7 @@
         return;
       }
       lastData = d;
+      if (typeof d.seq === 'number') { lastSeq = d.seq; }
       balanceApplyColors(d.balanceColors);
       if (d.hookPath) { HOOK_PATH = d.hookPath; }
       if (d.showTour) { showTourOverlay(); }

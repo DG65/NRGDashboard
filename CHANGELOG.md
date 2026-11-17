@@ -10,6 +10,14 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.12.0 (2026-11-17)
+
+**Verhaltensänderung: weniger Datenverkehr der Kacheln (Auftrag EMS 17.11.2026, Symcon-Connect-Limit bei Paul).** Jeder offene Client bekam bisher bei jeder Änderung einer beobachteten Variablen das komplette Datenpaket, das PV-Monitoring alle 5 Minuten. Über Symcon Connect zählt das gegen das Limit.
+
+- Neu: **Energiefluss und Prognose** senden höchstens ein Paket je Mindestabstand (Standard 5 Sekunden, einstellbar im Formular, 0 = jede Änderung sofort wie bisher). Das erste Ereignis geht sofort, weitere lösen ein nachlaufendes Paket aus, damit der letzte Stand sicher ankommt. Gesendet wird nur, wenn sich das Paket gegenüber dem zuletzt gesendeten geändert hat; sonst nur alle 30 Sekunden ein winziger Herzschlag für die Statusanzeige. Die Anzeige kann dadurch um höchstens den Mindestabstand träger werden
+- Neu: **PV-Monitoring** sendet nicht mehr alle 5 Minuten das ganze Fenster, sondern nur noch die Unterschiede zum zuletzt gesendeten Stand (neue Messpunkte, geänderte Tages-kWh) und nichts, wenn sich nichts geändert hat. Der volle Satz kommt beim ersten Laden, nach Konfigurationsänderungen, bei Tageswechsel und wenn ein Client ein Paket verpasst hat. Die eigenständige Webseite (Browser/IPSView) fragt ihre Daten nicht mehr alle 30 Sekunden neu ab, sondern holt nur Neues; ihre Daten sind dadurch so aktuell wie der 5-Minuten-Takt des Moduls
+- Neu: `GetTrafficStats()` je Modul (Energiefluss, Prognose, PV-Monitoring) liefert gesendete Pakete und Bytes je Stunde und Art (voll, Delta, Herzschlag, unverändert), zum Messen des Datenverkehrs
+
 ## 0.11.9 (2026-11-15)
 
 - Fix: Energieansichten und Jahresvergleich bei beschädigten Archiv-Aggregaten. Liefert das Archiv für Tage leere Ergebnisse oder Tagessätze mitten am Tag (live seit 13.10.2026 bei der PV-Leistung), wurden diese Tage ausgelassen oder falsch gezählt, und `DailyEnergyMap()` gab beim kleinsten Fehler gar nichts zurück. Jetzt gilt leer/unausgerichtet wie ein Fehler und der Tag wird aus den Rohwerten berechnet; die Energieansichten nutzen denselben Rückfall; die Energiebilanz rechnet fehlgeschlagene Zeiträume tageweise aus den Rohwerten nach

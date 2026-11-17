@@ -69,6 +69,13 @@ Around Halloween and New Year the energy-flow tile can show playful overlay effe
 
 The full list with GUIDs and field details is in the German [README.md](README.md).
 
+## Tile data traffic (from 0.12.0)
+
+Every open client (WebFront, also via Symcon Connect) receives tile updates as packets. Since 0.12.0:
+- **Energy flow and forecast:** at most one packet per minimum interval (form field "Minimum interval between updates", default 5 seconds, 0 = every change immediately), only when values changed, plus a tiny heartbeat every 30 seconds for the status indicator.
+- **PV monitor:** only the differences to the last sent state (delta). Every packet carries a sequence number; if it does not follow seamlessly, the tile asks for the full set.
+- **Measuring:** `NRGDASH_GetTrafficStats($id)`, `NRGDASHFC_GetTrafficStats($id)` and `NRGDASHPVMON_GetTrafficStats($id)` return packets and bytes sent per hour and kind (since the last instance start, 24 hours).
+
 ## Changes
 
 See [CHANGELOG.md](CHANGELOG.md) (German).

@@ -192,6 +192,8 @@
         function handleMessage(payload) {
             var data = (typeof payload === 'string') ? JSON.parse(payload) : payload;
             if (!data) { return; }
+            // Herzschlag (0.12.0): unveraenderte Werte - nichts neu zeichnen
+            if (data.type === 'tick') { return; }
             lastData = data;
             HOOK_PATH = data.hookPath || HOOK_PATH;
             // Hintergrundfarbe gilt für die GANZE Kachel/Seite, nicht nur das Diagramm.

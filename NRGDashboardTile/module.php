@@ -47,10 +47,12 @@ define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 require_once __DIR__ . '/../libs/FormLayout.php';
+require_once __DIR__ . '/../libs/Push.php';
 
 class NRGDashboardTile extends IPSModule
 {
     use NRGDashFormStatus;
+    use NRGDashPush;
     use NRGDashFormLayout;
 
     /**
@@ -826,6 +828,9 @@ class NRGDashboardTile extends IPSModule
         // weiter unten) - so laesst sich eine laufende Vorfuehrung auch
         // direkt im WebFront stoppen, nicht nur ueber die Konsole.
         $this->RegisterTimer('NRGDASH_Refresh', 0, 'NRGDASH_Discover($_IPS[\'TARGET\']);');
+        // Drosselung der Aktualisierungen an die Kachel (0.12.0, Symcon-Connect-Limit): Mindestabstand in Sekunden, 0 = aus (wie bis 0.11.9).
+        $this->RegisterPropertyInteger('PushMinSec', 5);
+        $this->RegisterTimer('NRGDASH_Push', 0, 'NRGDASH_FlushPush($_IPS[\'TARGET\']);');
         // Deklariert die Instanz als HTML-SDK-Kachel (GetVisualizationTile()
         // liefert den Inhalt). Ohne diesen Aufruf bindet WebFront die
         // Visualisierung nicht - die Kachel bleibt leer, unabhaengig von
@@ -960,7 +965,27 @@ class NRGDashboardTile extends IPSModule
 
     private function Render(): void
     {
-        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+        // Nach einer Bedienung sofort und ungedrosselt
+        $this->pushTile(true);
+    }
+
+    /** Paket an die Kachel: gedrosselt und nur bei Aenderung, siehe libs/Push.php. $force = sofort (Bedienung). */
+    private function pushTile(bool $force = false): void
+    {
+        $this->pushThrottled(fn () => $this->buildPayload(), 'NRGDASH_Push', $this->readIntProperty('PushMinSec', 5), $force, ['renderedAt']);
+    }
+
+    /** Nachlaufendes Paket nach einer Drosselung (Timer NRGDASH_Push), damit der letzte Stand sicher ankommt. */
+    public function FlushPush(): void
+    {
+        if (IPS_GetKernelRunlevel() !== KR_READY || !IPS_InstanceExists($this->InstanceID)) {
+            return;
+        }
+        try {
+            $this->pushTile(false);
+        } catch (\Throwable $e) {
+            // der naechste Ereignis- oder Discover()-Lauf holt den Stand nach
+        }
     }
 
     /**
@@ -1040,7 +1065,7 @@ class NRGDashboardTile extends IPSModule
             $this->hookCapture[] = $json;
             return;
         }
-        $this->UpdateVisualizationValue($json);
+        $this->pushVisu($json, 'msg');
     }
 
     /**
@@ -1891,7 +1916,7 @@ class NRGDashboardTile extends IPSModule
         // Werte und hielt es fuer einen Refresh-Bug (war keiner, aber zurecht
         // bemaengelt: InverterHub aktualisiert instantan, wir nicht).
         $this->subscribeToDeviceVariables($devices);
-        $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+        $this->pushTile(false);
 
         return $devices;
     }
@@ -1943,7 +1968,7 @@ class NRGDashboardTile extends IPSModule
                 return;
             }
             try {
-                $this->UpdateVisualizationValue(json_encode($this->buildPayload()));
+                $this->pushTile(false);
             } catch (\Throwable $e) {
                 // Kein Absturz der Instanz durch ein einzelnes verpasstes
                 // Update - der naechste VM_UPDATE oder Discover()-Tick holt

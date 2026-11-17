@@ -5755,6 +5755,12 @@ function handleMessage(raw) {
     renderQuotaPeriod(first.data);
     return;
   }
+  // Herzschlag (0.12.0): bei unveraenderten Werten schickt das Modul nur noch einen winzigen Zeitstempel, damit die
+  // Statusanzeige frisch bleibt - der Rest der Kachel bleibt unberuehrt (und lastRawPayload unveraendert).
+  if (first && first.type === 'tick') {
+    if (first.renderedAt) { renderStatus(first.renderedAt); }
+    return;
+  }
   lastRawPayload = raw;
   updateViewBox();
   const d = first;

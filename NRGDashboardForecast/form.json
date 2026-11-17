@@ -116,6 +116,14 @@
       "type": "SelectVariable",
       "name": "ActualLoad",
       "caption": "Actual house consumption (W)"
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "PushMinSec",
+      "caption": "Minimum interval between updates to the tile (seconds, 0 = every change immediately)",
+      "minimum": 0,
+      "maximum": 60,
+      "suffix": "s"
     }
   ],
   "actions": [
