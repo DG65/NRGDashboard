@@ -577,10 +577,15 @@
         {
           "type": "NumberSpinner",
           "name": "PushMinSec",
-          "caption": "Minimum interval between updates to the tile (seconds, 0 = every change immediately)",
+          "caption": "Minimum update interval",
           "minimum": 0,
           "maximum": 60,
           "suffix": "s"
+        },
+        {
+          "type": "Label",
+          "name": "PushMinSecHint",
+          "caption": "Limits how often the tile receives updates and saves data traffic (e.g. via Symcon Connect). Only the latest state is sent, and only when something changed. 0 = every change immediately, as before version 0.12.0. Default: 5 seconds."
         },
         {
           "type": "Label",
