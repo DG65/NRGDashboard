@@ -1698,6 +1698,7 @@
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
             ? [{ name: priceUnitKw ? tr('Grid import (avg kW)') : tr('Grid import'), data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
+      allSeries = unifyResolution(allSeries);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       // Ausgeblendete Serien werden nicht mitgeschickt, statt sie nur
       // ueber legend.selected zu verstecken - dadurch entfaellt jede
@@ -1952,13 +1953,14 @@
           .concat((lastData.hasGrid && d && d.gridDraw && d.gridDraw.length)
             ? [{ name: priceUnitKw ? tr('Grid import (avg kW)') : tr('Grid import'), data: gridDrawForDisplay(d.gridDraw), color: '#4aa3e0', axis: 0, bar: true }] : [])
         : buildSeries(tab, d);
+      allSeries = unifyResolution(allSeries);
       renderLegend(tab, allSeries.map(function (s) { return { name: s.name, color: s.color }; }));
       var visSeries = allSeries.filter(function (s) { return isVisible(s.name); });
       var series = visSeries.map(function (s) {
         if (s.bar) {
           return { name: s.name, type: 'column', data: s.data, yAxis: s.axis, color: s.color, opacity: 0.55, pointPadding: 0.1, groupPadding: 0.05 };
         }
-        return { name: s.name, type: 'line', step: (s.step === 'center') ? 'center' : (s.step ? 'right' : undefined), data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
+        return { name: s.name, type: 'line', step: (s.step === 'center' || s.step === 'middle') ? 'center' : (s.step === 'hold' ? 'left' : (s.step ? 'right' : undefined)), data: s.data, yAxis: s.axis, color: s.color, lineWidth: 0.7, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false } };
       });
       // Achsen-Obergrenze wie beim ECharts-Pendant explizit anheben, falls
       // der Monats-Spitzenwert ueber den Balken des angezeigten Tages
@@ -2513,6 +2515,106 @@
       return bands;
     }
 
+    // Gemeinsame, feinste Aufloesung fuer alle Linien eines Diagramms (0.12.0, Dietmar 18.11.2026). Leistung kommt im 5-Minuten-
+    // Raster, Preis und Boerse in 15 bis 60 Minuten, Prognosen stuendlich. Bei gemischten Rastern findet der Tooltip nicht fuer jede
+    // Kurve einen Punkt an der Mausposition, Kurven verschwinden daraus und die Hervorhebung springt. Deshalb werden alle Linien auf das
+    // feinste vorkommende Raster gebracht: Stufenkurven (Preis, Boerse, Tagesplan) halten den Wert ihres Zeitfensters, andere Kurven
+    // (z. B. stuendliche Prognose) werden linear aufgefuellt. Balken und Kurven, die schon fein genug sind, bleiben unveraendert; die
+    // Zusatzfelder der Punkte (slotStart/slotEnd/isSpot fuer den Tooltip) bleiben erhalten. Wirkt nur im Browser, die Daten vom Modul
+    // bleiben unveraendert.
+    function unifyResolution(list) {
+      function lies(data) {
+        var out = [];
+        for (var i = 0; i < data.length; i++) {
+          var p = data[i], t, v;
+          if (Array.isArray(p)) { t = p[0]; v = p[1]; }
+          else if (p && Array.isArray(p.value)) { t = p.value[0]; v = p.value[1]; }
+          else if (p && typeof p.x === 'number') { t = p.x; v = p.y; }
+          else { return null; }
+          if (typeof t !== 'number' || !isFinite(t)) { return null; }
+          out.push({ t: t, v: v, src: p });
+        }
+        return out;
+      }
+      function mediane(pts) {
+        var d = [];
+        for (var i = 1; i < pts.length; i++) { var x = pts[i].t - pts[i - 1].t; if (x > 0) { d.push(x); } }
+        if (!d.length) { return 0; }
+        d.sort(function (a, b) { return a - b; });
+        return d[Math.floor(d.length / 2)];
+      }
+      function neu(proto, t, v) {
+        if (Array.isArray(proto)) { return [t, v]; }
+        var o = {};
+        for (var k in proto) { if (Object.prototype.hasOwnProperty.call(proto, k)) { o[k] = proto[k]; } }
+        if (Array.isArray(proto.value)) { o.value = [t, v]; } else { o.x = t; o.y = v; }
+        return o;
+      }
+      var kand = [];
+      (list || []).forEach(function (s) {
+        if (!s || s.bar || !Array.isArray(s.data) || s.data.length < 3) { return; }
+        var pts = lies(s.data);
+        if (!pts) { return; }
+        var st = mediane(pts);
+        if (st > 0) { kand.push({ s: s, pts: pts, step: st }); }
+      });
+      if (kand.length < 2) { return list; }
+      var fein = kand[0];
+      kand.forEach(function (c) { if (c.step < fein.step) { fein = c; } });
+      var raster = fein.step;
+      var phase = ((fein.pts[0].t % raster) + raster) % raster;
+      kand.forEach(function (c) {
+        if (c.step <= raster * 1.5) { return; }
+        var pts = c.pts, out = [], j = 0;
+        var stufe = !!c.s.step;
+        // Stufen gelten fuer ihr ganzes Zeitfenster (am Rand: slotStart/slotEnd oder ein halber Schritt), lineare Kurven nur zwischen
+        // ihrem ersten und letzten Punkt (nicht ueber die Daten hinaus verlaengern).
+        var von = pts[0].t, bis = pts[pts.length - 1].t;
+        if (stufe) {
+          var s0 = pts[0].src, s1 = pts[pts.length - 1].src;
+          von = (s0 && typeof s0.slotStart === 'number') ? s0.slotStart : von - c.step / 2;
+          bis = (s1 && typeof s1.slotEnd === 'number') ? s1.slotEnd - 1 : bis + c.step / 2;
+        }
+        var t0 = Math.ceil((von - phase) / raster) * raster + phase;
+        // Liegen die Fenstergrenzen auf dem Raster, wechselt die Stufe AM Rasterpunkt ('hold'); liegen die Rasterpunkte in der Mitte
+        // der Fenster (feinste Kurve ist selbst eine Stufenkurve mit Punkten in der Fenstermitte), wechselt sie ZWISCHEN den
+        // Punkten ('middle').
+        var modus = 'hold';
+        if (stufe && pts[0].src && typeof pts[0].src.slotStart === 'number') {
+          var r = (((pts[0].src.slotStart - phase) % raster) + raster) % raster;
+          if (Math.abs(r - raster / 2) < 1000) { modus = 'middle'; }
+        }
+        for (var g = t0; g <= bis; g += raster) {
+          while (j < pts.length - 1 && pts[j + 1].t <= g) { j++; }
+          var a = pts[j], b = pts[j + 1];
+          var wert, proto = a.src;
+          if (stufe) {
+            // Stufe: Wert des Zeitfensters. Mit slotStart/slotEnd gilt das Fenster, das g enthaelt, sonst der naechste Punkt.
+            var hit = null;
+            for (var q = Math.max(0, j - 1); q <= Math.min(pts.length - 1, j + 1); q++) {
+              var sp = pts[q].src;
+              if (sp && typeof sp.slotStart === 'number' && g >= sp.slotStart && g < sp.slotEnd) { hit = pts[q]; }
+            }
+            if (!hit) { hit = (b && Math.abs(b.t - g) < Math.abs(g - a.t)) ? b : a; }
+            wert = hit.v; proto = hit.src;
+          } else if (b && a.t <= g && b.t > a.t && (b.t - a.t) <= c.step * 2.5 && typeof a.v === 'number' && typeof b.v === 'number') {
+            wert = a.v + (b.v - a.v) * (g - a.t) / (b.t - a.t);
+            proto = (g - a.t < b.t - g) ? a.src : b.src;
+          } else if (Math.abs(g - a.t) <= c.step / 2) {
+            wert = a.v; proto = a.src;
+          } else {
+            wert = null;
+          }
+          out.push(neu(proto, g, wert));
+        }
+        c.s.data = out;
+        // Stufenkurven halten ihren Wert ab dem Rasterpunkt, an dem das Zeitfenster beginnt (Punkte liegen nicht mehr in der Mitte): 'hold' =
+        // ECharts 'end', Highcharts 'left'
+        if (stufe) { c.s.step = modus; }
+      });
+      return list;
+    }
+
     function planSeries(dp) {
       var series = [];
       var priceData = dp.slots.filter(function (s) { return s.price !== null && s.price !== undefined; })
@@ -2533,7 +2635,7 @@
       if (dp.loadForecast && dp.loadForecast.length) {
         series.push({ name: tr('Load'), data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
       }
-      return series;
+      return unifyResolution(series);
     }
 
     function renderDayPlanECharts(el, dp) {

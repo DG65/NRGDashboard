@@ -12,6 +12,8 @@ inklusive.*
 
 ## 0.12.0 (2026-11-17)
 
+- **PV-Monitoring: alle Linien eines Diagramms haben dieselbe (feinste) Auflösung.** Gröbere Kurven (Preis, Börse, stündliche Prognose, Tagesplan) werden im Browser auf das feinste Raster gebracht: Stufenkurven halten ihren Wert, andere Kurven werden linear aufgefüllt, Balken bleiben. Dadurch bleiben keine Kurven mehr ausgegraut und verschwinden nicht mehr aus dem Tooltip.
+
 **Verhaltensänderung: weniger Datenverkehr der Kacheln (Auftrag EMS 17.11.2026, Symcon-Connect-Limit bei Paul).** Jeder offene Client bekam bisher bei jeder Änderung einer beobachteten Variablen das komplette Datenpaket, das PV-Monitoring alle 5 Minuten. Über Symcon Connect zählt das gegen das Limit.
 
 - Neu: **Energiefluss und Prognose** senden höchstens ein Paket je Mindestabstand (Standard 5 Sekunden, einstellbar im Formular, 0 = jede Änderung sofort wie bisher). Das erste Ereignis geht sofort, weitere lösen ein nachlaufendes Paket aus, damit der letzte Stand sicher ankommt. Gesendet wird nur, wenn sich das Paket gegenüber dem zuletzt gesendeten geändert hat; sonst nur alle 30 Sekunden ein winziger Herzschlag für die Statusanzeige. Die Anzeige kann dadurch um höchstens den Mindestabstand träger werden
