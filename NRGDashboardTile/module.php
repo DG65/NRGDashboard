@@ -1173,6 +1173,10 @@ class NRGDashboardTile extends IPSModule
         $pvId = $this->readIntProperty('ManualPvID', 0);
         $gridId = $this->readIntProperty('ManualGridID', 0);
         $batId = $this->readIntProperty('ManualBatID', 0);
+        // Nicht existierende Variablen (z. B. ID 1 nach Leeren des Feldes) wie ein leeres Feld behandeln: keine Meldung "Keinen Wert gelesen"
+        $pvId = ($pvId > 0 && @IPS_VariableExists($pvId)) ? $pvId : 0;
+        $gridId = ($gridId > 0 && @IPS_VariableExists($gridId)) ? $gridId : 0;
+        $batId = ($batId > 0 && @IPS_VariableExists($batId)) ? $batId : 0;
         $pv = $w($pvId);
         $grid = $w($gridId);
         $bat = $w($batId);
@@ -5266,13 +5270,14 @@ class NRGDashboardTile extends IPSModule
     {
         $results = [];
         $pv = $this->readIntProperty('ManualPvID', 0);
-        if ($pv > 0) {
+        if ($pv > 0 && @IPS_VariableExists($pv)) {
             $results[] = $this->normalizeEntry([
                 'function' => 'pv', 'label' => NRGDASH_Text::t('Solar'), 'powerID' => $pv, 'measured' => true,
             ], 'manual', 0);
         }
         $grid = $this->readIntProperty('ManualGridID', 0);
-        if ($grid > 0) {
+        // Nur echte Variablen zaehlen (Hinweis MeterHub/hbraun 18.11.2026: ID 1 nach Leeren des Feldes erzeugte einen grauen Geister-Netzkreis)
+        if ($grid > 0 && @IPS_VariableExists($grid)) {
             $entry = [
                 'function' => 'grid', 'label' => NRGDASH_Text::t('Grid'), 'powerID' => $grid, 'measured' => true,
                 'invert'   => $this->readBoolProperty('ManualGridInvert'),
@@ -5280,13 +5285,13 @@ class NRGDashboardTile extends IPSModule
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
         }
         $bat = $this->readIntProperty('ManualBatID', 0);
-        if ($bat > 0) {
+        if ($bat > 0 && @IPS_VariableExists($bat)) {
             $entry = [
                 'function' => 'battery', 'label' => NRGDASH_Text::t('Battery'), 'powerID' => $bat, 'measured' => true,
                 'invert'   => $this->readBoolProperty('ManualBatInvert'),
             ];
             $soc = $this->readIntProperty('ManualSocID', 0);
-            if ($soc > 0) {
+            if ($soc > 0 && @IPS_VariableExists($soc)) {
                 $entry['socID'] = $soc;
             }
             $results[] = $this->normalizeEntry($entry, 'manual', 0);
