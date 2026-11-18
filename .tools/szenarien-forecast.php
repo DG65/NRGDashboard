@@ -185,6 +185,10 @@ class IPSModule
     public function SetVisualizationType($t) {}
     public function SetStatus($s) { ips_log('SetStatus', $s); }
     public function UpdateVisualizationValue($v) { ips_log('UpdateVisualizationValue', json_decode($v, true)); }
+    // Buffer der Instanz (seit 0.12.0 von libs/Push.php und dem PV-Monitoring benutzt)
+    public array $buf = [];
+    public function GetBuffer($n) { return $this->buf[$n] ?? ''; }
+    public function SetBuffer($n, $v) { $this->buf[$n] = $v; }
     public function UpdateFormField($f, $k, $v) { ips_log('UpdateFormField ' . $f . '.' . $k, $v); }
     public function SendDebug($m, $t, $f) { ips_log('SendDebug ' . $m, $t); }
     public function Translate($t) { return $GLOBALS['LANG'] === 'de' ? ($GLOBALS['DE'][$t] ?? $t) : $t; }

@@ -107,6 +107,10 @@ class IPSModule
     public function RegisterMessage($a, $b) {}
     public function SetStatus($s) {}
     public function UpdateVisualizationValue($v) { ips_log('UpdateVisualizationValue', 'Payload'); }
+    // Buffer der Instanz (seit 0.12.0 von libs/Push.php und dem PV-Monitoring benutzt)
+    public array $buf = [];
+    public function GetBuffer($n) { return $this->buf[$n] ?? ''; }
+    public function SetBuffer($n, $v) { $this->buf[$n] = $v; }
     public function UpdateFormField($f, $k, $v) { ips_log('UpdateFormField ' . $f . '.' . $k, $v); }
     public function SendDebug($m, $t, $f) { ips_log('SendDebug ' . $m, $t); }
     public function LogMessage($m, $t) { ips_log('LogMessage', $m); }
