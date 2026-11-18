@@ -818,7 +818,7 @@ class NRGDashboardPVMonitor extends IPSModule
                     echo $dj;
                     return;
                 }
-                $base = json_decode((string) $this->GetBuffer('PvBase'), true);
+                $base = $this->pvBaseLoad();
                 if (is_array($base)) {
                     $base['seq'] = $cur;
                     echo json_encode($base);
@@ -4134,7 +4134,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private function pvPush(bool $force): void
     {
         $new = json_decode((string) json_encode($this->buildPayload()), true);
-        $base = json_decode((string) $this->GetBuffer('PvBase'), true);
+        $base = $this->pvBaseLoad();
         $seq = (int) $this->GetBuffer('PvSeq');
         $diff = null;
         if (!$force && is_array($base)) {
@@ -4159,8 +4159,39 @@ class NRGDashboardPVMonitor extends IPSModule
             $this->pushVisu($json, 'delta');
             $this->SetBuffer('PvDeltaJson', $json);
         }
-        $this->SetBuffer('PvBase', (string) json_encode($new));
+        $this->pvBaseSave($new);
         $this->SetBuffer('PvSeq', (string) $seq);
+    }
+
+    /**
+     * Delta-Basis im Instanz-Buffer (0.12.1): Symcon warnt bei Buffern ueber 256 kB bei JEDEM Schreiben ("Buffer is over 256kB").
+     * Die Basis (rund 0,5 MB JSON) wird deshalb gzip-komprimiert und base64-kodiert abgelegt (Zahlenreihen schrumpfen auf etwa ein Achtel).
+     */
+    private function pvBaseSave(array $data): void
+    {
+        $json = (string) json_encode($data);
+        if (function_exists('gzcompress')) {
+            $z = @gzcompress($json, 6);
+            if ($z !== false) {
+                $json = 'z:' . base64_encode($z);
+            }
+        }
+        $this->SetBuffer('PvBase', $json);
+    }
+
+    /** Gegenstueck zu pvBaseSave(); leer oder defekt = null (dann wird der volle Satz gesendet). */
+    private function pvBaseLoad(): ?array
+    {
+        $raw = (string) $this->GetBuffer('PvBase');
+        if ($raw === '') {
+            return null;
+        }
+        if (strncmp($raw, 'z:', 2) === 0) {
+            $bin = base64_decode(substr($raw, 2), true);
+            $raw = ($bin === false || !function_exists('gzuncompress')) ? '' : (string) @gzuncompress($bin);
+        }
+        $d = json_decode($raw, true);
+        return is_array($d) ? $d : null;
     }
 
     /** Unterschiede zum zuletzt gesendeten Paket, siehe libs/Delta.php (null = nichts anders, false = voller Satz noetig). */

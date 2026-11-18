@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.12.1 (2026-11-18)
+
+- **Fix:** PV-Monitoring legt die Delta-Basis komprimiert im Instanz-Buffer ab. In 0.12.0 war der Buffer `PvBase` größer als 256 kB, und Symcon schrieb dadurch bei jeder Aktualisierung eine Warnung „Buffer 'PvBase' is over 256kB“ ins Log.
+
 ## 0.12.0 (2026-11-17)
 
 - **PV-Monitoring: alle Linien eines Diagramms haben dieselbe (feinste) Auflösung.** Gröbere Kurven (Preis, Börse, stündliche Prognose, Tagesplan) werden im Browser auf das feinste Raster gebracht: Stufenkurven halten ihren Wert, andere Kurven werden linear aufgefüllt, Balken bleiben. Dadurch bleiben keine Kurven mehr ausgegraut und verschwinden nicht mehr aus dem Tooltip.
