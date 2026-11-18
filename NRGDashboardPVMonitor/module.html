@@ -980,10 +980,20 @@
     // zugriff und eine eigene gültige Highcharts-Lizenz. ECharts (Standard)
     // ist lokal eingebettet (Apache-2.0) und braucht beides nicht.
     function addScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb; s.onerror = function () { cb && cb(); }; document.head.appendChild(s); }
+    // Kurven nicht ausgrauen (0.12.0, Rueckmeldung Hannes): Highcharts dimmt standardmaessig alle Serien ausser der
+    // naechstgelegenen auf 20 % (states.inactive) und verdickt die gehoverte. Bei Serien mit unterschiedlicher Punktdichte
+    // (Leistung alle paar Sekunden, Preis alle 15 Minuten) springt das mit der Mausposition. Nur fuer Linien: Sankey und
+    // Balken behalten ihr Hover-Verhalten. Gemeinsamer Tooltip und Fadenkreuz bleiben unveraendert.
+    var hcDefaultsSet = false;
+    function hcDefaults() {
+      if (hcDefaultsSet || typeof Highcharts === 'undefined') { return; }
+      hcDefaultsSet = true;
+      Highcharts.setOptions({ plotOptions: { line: { states: { inactive: { enabled: false }, hover: { lineWidthPlus: 0 } } } } });
+    }
     function ensureHighcharts(cb) {
-      if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; return cb(); }
+      if (typeof Highcharts !== 'undefined' && Highcharts.seriesTypes && Highcharts.seriesTypes.line) { libs.hc = 2; hcDefaults(); return cb(); }
       if (libs.hc === 1) { return setTimeout(function () { ensureHighcharts(cb); }, 80); }
-      libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; cb(); });
+      libs.hc = 1; addScript('https://code.highcharts.com/highcharts.js', function () { libs.hc = 2; hcDefaults(); cb(); });
     }
 
     // Fix (31.07.2026): ECharts war bisher IMMER lokal eingebettet (~618KB),
