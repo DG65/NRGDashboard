@@ -21,7 +21,7 @@ foreach ($mods as $m) {
         $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($root) . ' ' . $lang . ' 2>&1';
         $txt = (string) shell_exec($cmd);
         // Laufzeitabhaengiges maskieren (Uhrzeiten und Unixzeiten), damit zwei Laeufe desselben Stands byte-gleich sind
-        $txt = (string) preg_replace(['/\b\d{2}:\d{2}:\d{2}\b/', '/\b1[78]\d{8}\b/'], ['HH:MM:SS', 'UNIXZEIT'], $txt);
+        $txt = (string) preg_replace(['/\b\d{1,2}:\d{2}(:\d{2})?\b/', '/\b1[78]\d{11}\b/', '/\b1[78]\d{8}\b/'], ['HH:MM', 'UNIXZEIT_MS', 'UNIXZEIT'], $txt);
         file_put_contents("$out/szenarien-$m-$lang.txt", $txt);
         echo str_pad("Szenarien $m $lang", 28) . strlen($txt) . " Bytes\n";
     }
