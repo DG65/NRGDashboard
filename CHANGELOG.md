@@ -10,7 +10,7 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
-## 0.13.0 (in Arbeit, lokal)
+## 0.13.0 (2026-11-19)
 
 - **Umbau ohne Verhaltensänderung: gemeinsamer Modulrahmen als Trait (`libs/ModuleBase.php`).** Der WebHook-Eintrag (Anlegen, Entfernen, Aufräumen beim Löschen), der Lizenzhinweis und das Bestätigen von „Was ist neu“, „Wozu dieses Modul?“ und Review-Hinweis (samt geteiltem Ausblenden über Geschwister-Instanzen) standen siebenfach in den sieben Modulen. Sie stehen jetzt einmal im Trait; die Module liefern nur Hook-Pfad (`HOOK_PATH`) und Funktionspräfix (`FN_PREFIX`). Aus den Modulen entfallen 1.359 Zeilen. Die Funktionen wurden wörtlich verschoben (je Modul zeilengenau in beide Richtungen geprüft, Werkzeug `.tools/rahmen-trait.php`); Szenario-Ausgaben auf Deutsch und Englisch und die Liste der öffentlichen Funktionen sind in allen sieben Modulen unverändert (`.tools/rahmen-vergleich.sh`).
 - Abweichende Varianten bleiben vorerst im Modul (eine Klassenmethode ersetzt die Trait-Methode): `propagateDismiss` in der Tile (Meldungstext „Propagation“), `DismissReviewHintApply` in PV-Monitoring und Prognose, `newsBanner`, `PurposeIntro`, `injectVersionIntoDocPanel`.
