@@ -28,12 +28,17 @@ declare(strict_types=1);
  * 1.5, additiv). Fehlt ein Feld (=0), wird es im Schema ausgeblendet statt
  * einer Nullanzeige.
  */
+require_once __DIR__ . '/../libs/ModuleBase.php';
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardHeatSchema extends IPSModule
 {
+    use NRGDashModuleBase;
     use NRGDashFormStatus;
+
+    private const HOOK_PATH = '/hook/nrgdashheatschema';
+    private const FN_PREFIX = 'NRGDASHHEAT_';
 
     private const HEISHA_GUID = '{1919151A-3C0F-4C09-B906-291638EC1469}';
     // WPHub-Vertrag (contractVersion 1.3, mit WPHub am 13.08.2026 bestaetigt):
@@ -266,29 +271,6 @@ class NRGDashboardHeatSchema extends IPSModule
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
     private const LICENSE_URL = 'https://github.com/DG65/NRGDashboard/blob/ems-integration/LICENSE';
     private const PAYPAL_URL = 'https://paypal.me/DietmarGureth';
-
-    /**
-     * "Ueber dieses Modul" (SUITE.md "Einheitliche Formular-Optik" Punkt 5) -
-     * ganz unten, NACH dem Forum-Hinweis, bewusst NICHT dismissible (kein
-     * Attribut/Ack-Methode) - eine Lizenz ist kein einmaliger Hinweis.
-     * Wortlaut verbundweit identisch ("Variante A"), nur LICENSE_URL zeigt
-     * auf das eigene Repo. Eingeklappt by default.
-     */
-    private function LicenseHint(): array
-    {
-        return [
-            'type' => 'ExpansionPanel', 'expanded' => false,
-            'caption' => '🧡  About this module',
-            'items' => [
-                ['type' => 'Label', 'caption' => 'Born out of genuine enthusiasm for my own installation — and a few evenings of typing. Still: hobby software or not, this is intellectual property and real work went into it.'],
-                ['type' => 'Label', 'caption' => 'License: PolyForm Noncommercial 1.0.0 — free for private and non-commercial use; commercial use requires a separate license from the rights holder.'],
-                ['type' => 'Button', 'caption' => 'View license text', 'onClick' => "echo '" . self::LICENSE_URL . "';", 'link' => true],
-                ['type' => 'Label', 'caption' => 'Commercial use or questions about the license? Just get in touch: dietmar@gureth.eu'],
-                ['type' => 'Label', 'caption' => 'Do you like the module and still want to leave something? I would be happy about a small donation — completely voluntary, nothing owed in return.'],
-                ['type' => 'Button', 'caption' => '☕  Donate via PayPal', 'onClick' => "echo '" . self::PAYPAL_URL . "';", 'link' => true],
-            ],
-        ];
-    }
 
     public function Create()
     {
@@ -589,15 +571,6 @@ class NRGDashboardHeatSchema extends IPSModule
         $this->SetVisualizationType(1);
     }
 
-    /** Beim Loeschen der Instanz den eigenen WebHook-Eintrag mit aufraeumen (kein Verwaisen im WebHook-Control). */
-    public function Destroy()
-    {
-        if (IPS_GetKernelRunlevel() === KR_READY) {
-            $this->UnregisterHook('/hook/nrgdashheatschema' . $this->InstanceID);
-        }
-        parent::Destroy();
-    }
-
     public function ApplyChanges()
     {
         parent::ApplyChanges();
@@ -621,68 +594,6 @@ class NRGDashboardHeatSchema extends IPSModule
         if ($Message === IPS_KERNELMESSAGE && isset($Data[0]) && $Data[0] === KR_READY) {
             $this->ApplyChanges();
         }
-    }
-
-    /** Hook je nach Einstellung "Standalone-Webseite" registrieren oder entfernen. */
-    private function SyncHook(string $WebHook): void
-    {
-        if ($this->ReadPropertyBoolean('StandaloneEnabled')) {
-            $this->RegisterHook($WebHook);
-        } else {
-            $this->UnregisterHook($WebHook);
-        }
-    }
-
-    /** Eigenen Eintrag aus dem WebHook-Control entfernen (nur wenn er auf diese Instanz zeigt). */
-    private function UnregisterHook(string $WebHook): void
-    {
-        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
-        if (count($ids) === 0) {
-            return;
-        }
-        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
-        if (!is_array($hooks)) {
-            return;
-        }
-        $kept = [];
-        foreach ($hooks as $hook) {
-            if (($hook['Hook'] ?? '') === $WebHook && (int) ($hook['TargetID'] ?? 0) === $this->InstanceID) {
-                continue;
-            }
-            $kept[] = $hook;
-        }
-        if (count($kept) === count($hooks)) {
-            return;
-        }
-        IPS_SetProperty($ids[0], 'Hooks', json_encode($kept));
-        IPS_ApplyChanges($ids[0]);
-    }
-
-    /** WebHook beim WebHook-Control registrieren (Standard-Muster, 1:1 aus Prognoses Energiebilanz). */
-    private function RegisterHook(string $WebHook): void
-    {
-        $ids = IPS_GetInstanceListByModuleID('{015A6EB8-D6E5-4B93-B496-0D3F77AE9FE1}');
-        if (count($ids) === 0) {
-            return;
-        }
-        $hooks = json_decode(IPS_GetProperty($ids[0], 'Hooks'), true);
-        if (!is_array($hooks)) {
-            $hooks = [];
-        }
-        foreach ($hooks as $index => $hook) {
-            if ($hook['Hook'] === $WebHook) {
-                if ((int) $hook['TargetID'] === $this->InstanceID) {
-                    return;
-                }
-                $hooks[$index]['TargetID'] = $this->InstanceID;
-                IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
-                IPS_ApplyChanges($ids[0]);
-                return;
-            }
-        }
-        $hooks[] = ['Hook' => $WebHook, 'TargetID' => $this->InstanceID];
-        IPS_SetProperty($ids[0], 'Hooks', json_encode($hooks));
-        IPS_ApplyChanges($ids[0]);
     }
 
     /**
@@ -817,27 +728,6 @@ class NRGDashboardHeatSchema extends IPSModule
         ];
     }
 
-    public function AckPurposeIntroApply(): void
-    {
-        $this->WriteAttributeBoolean('PurposeIntroGone', true);
-        $this->UpdateFormField('PurposeIntroPanel', 'visible', false);
-    }
-
-    public function AckPurposeIntro(): void
-    {
-        $this->AckPurposeIntroApply();
-        $this->propagateDismiss('AckPurposeIntroApply');
-    }
-
-    /** Reine Versionszahl ohne Beta-/Build-Zusatz ("0.9.73-beta.1" -> "0.9.73")
-     *  - Vergleichsbasis fuer NEWS_VERSIONS, damit z.B. "0.9.73" (Schluessel) und
-     *  "0.9.73-beta.1" (soeben bestaetigte Bibliotheksversion) als GLEICH gelten
-     *  statt "-beta.1" faelschlich als "neuer" zu werten. */
-    private function BaseVersion(string $v): string
-    {
-        return preg_replace('/-.*$/', '', $v) ?? $v;
-    }
-
     /**
      * "Was ist Neu"-Banner: erscheint nach einem Update (Attribut SeenNews
      * startet leer), bis der Nutzer "Verstanden" klickt - zeigt NUR die
@@ -880,80 +770,6 @@ class NRGDashboardHeatSchema extends IPSModule
     // GUID-Konstanten je Partnermodul).
     private const SELF_MODULE_GUID = '{424584D6-4402-4A56-BDF3-924DB66DE01D}';
 
-    /**
-     * Ruft dieselbe (parameterlose) Methode auf jeder anderen Instanz
-     * DESSELBEN Kachel-Moduls auf - "Was ist Neu"/Review-Hinweis gelten
-     * pro Modul, nicht pro Instanz, ein Nutzer mit mehreren Instanzen
-     * (z. B. Wohnhaus + Demo) soll sie nur einmal bestaetigen muessen.
-     * $propagate=false auf der Geschwister-Seite verhindert, dass diese
-     * ihrerseits wieder alle anderen (inkl. uns) anstoesst - keine
-     * Rekursion, ein Durchlauf pro Klick.
-     */
-    /**
-     * Ruft eine reine "Uebernehmen"-Methode (kein $propagate-Flag mehr,
-     * MeterHub/EMS-Verfeinerung 14.09.2026: getrennte Funktionen statt
-     * Prozessmerker schliessen Ping-Pong STRUKTURELL aus, nicht nur durch
-     * Konvention) auf jeder anderen Instanz DESSELBEN Kachel-Moduls auf.
-     * try/catch(\Throwable) statt @ (EMS/MeterHub-Fund): @ haelt keinen
-     * Fatal Error auf - eine defekte Geschwister-Instanz durfte sonst
-     * nicht die ganze Kette (und die eigene Aktion) mitreissen.
-     */
-    private function propagateDismiss(string $applyMethod): void
-    {
-        foreach (@IPS_GetInstanceListByModuleID(self::SELF_MODULE_GUID) as $sib) {
-            $sib = (int) $sib;
-            if ($sib === $this->InstanceID || !@IPS_InstanceExists($sib)) {
-                continue;
-            }
-            $fn = 'NRGDASHHEAT_' . $applyMethod;
-            if (!function_exists($fn)) {
-                continue;
-            }
-            try {
-                call_user_func($fn, $sib);
-            } catch (\Throwable $e) {
-                $this->SendDebug(__FUNCTION__, NRGDASH_Text::t('Propagating to instance #%d (%s) failed: %s', $sib, $applyMethod, $e->getMessage()), 0);
-            }
-        }
-    }
-
-    /**
-     * "Uebernehmen": setzt NUR den lokalen Zustand, propagiert NIE selbst -
-     * das ist genau das, was propagateDismiss() auf jeder Geschwister-
-     * Instanz aufruft. Oeffentlich, weil IPS Cross-Instanz-Aufrufe nur ueber
-     * die generierte Praefix-Funktion einer PUBLIC Methode erlaubt.
-     */
-    public function AckNewsApply(): void
-    {
-        // Die tatsaechlich installierte Bibliotheksversion merken, NICHT nur
-        // den letzten NEWS_VERSIONS-Schluessel - stellt sicher, dass ein
-        // spaeteres Update (neuer NEWS_VERSIONS-Eintrag) den Banner sicher
-        // wieder zeigt, auch wenn zwischen den beiden Versionen kein News-
-        // Eintrag lag.
-        $lib = @IPS_GetLibrary('{8D4E7A2C-1F6B-4C93-A5D8-3E9F1B6C7D02}');
-        $ver = is_array($lib) ? $this->BaseVersion((string) ($lib['Version'] ?? '')) : '';
-        if ($ver === '') {
-            $ver = (string) array_key_last(self::NEWS_VERSIONS);
-        }
-        $this->WriteAttributeString('SeenNews', $ver);
-        $this->UpdateFormField('NewsPanel', 'visible', false);
-    }
-
-    /**
-     * "Was ist Neu" bestaetigen (Button) - Verbund-Muster "geteiltes
-     * Ausblenden ueber Geschwister-Instanzen" (SUITE.md, 14.09.2026,
-     * EMS/Dietmar): mehrere Instanzen desselben Kachel-Moduls sollen den
-     * Hinweis nur einmal zeigen, nicht je Instanz einzeln. Ruft AckNewsApply()
-     * lokal auf und propagiert an alle Geschwister - die rufen dort ebenfalls
-     * nur AckNewsApply() auf, nie AckNews() selbst, Ping-Pong ist damit
-     * strukturell ausgeschlossen (nicht nur per Laufzeit-Flag).
-     */
-    public function AckNews(): void
-    {
-        $this->AckNewsApply();
-        $this->propagateDismiss('AckNewsApply');
-    }
-
     /** Konsolen-Gegenstueck zur WebFront-Dismiss-Tour. */
     public function ResetTour(): string
     {
@@ -962,20 +778,6 @@ class NRGDashboardHeatSchema extends IPSModule
         // sichtbare Rueckmeldung in der Konsole - die Wirkung zeigte sich nur
         // beim naechsten Oeffnen der WebFront-Kachel.
         return NRGDASH_Text::t('✅ The tour will be shown again the next time the tile is opened.');
-    }
-
-    /** "Uebernehmen": siehe AckNewsApply() - nur lokaler Zustand, keine Propagation. */
-    public function DismissReviewHintApply(): void
-    {
-        $this->WriteAttributeBoolean(self::ATTR_REVIEW_HINT_GONE, true);
-        $this->UpdateFormField('ReviewHint', 'visible', false);
-    }
-
-    /** Store-Review-Hinweis wegklicken (Button) - siehe AckNews(). */
-    public function DismissReviewHint(): void
-    {
-        $this->DismissReviewHintApply();
-        $this->propagateDismiss('DismissReviewHintApply');
     }
 
     private function readIntProperty(string $name, int $default): int
