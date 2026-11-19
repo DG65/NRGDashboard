@@ -210,7 +210,8 @@ if (strpos($neu, "libs/ModuleBase.php") === false) {
     $neu = preg_replace('#(    use NRGDashFormStatus;)#', "    use NRGDashModuleBase;\n$1", $neu, 1);
 }
 if (strpos($neu, 'const HOOK_PATH') === false) {
-    $neu = preg_replace('#(    use NRGDashFormLayout;\n)#', "$1\n    private const HOOK_PATH = '$hook';\n    private const FN_PREFIX = '$prefix';\n", $neu, 1);
+    // Konstanten hinter den letzten "use NRGDash...;" des zusammenhaengenden Blocks am Klassenanfang
+    $neu = preg_replace('#(\\n    use NRGDash[A-Za-z]+;)(?!\\n    use NRGDash)#', "$1\n\n    private const HOOK_PATH = '$hook';\n    private const FN_PREFIX = '$prefix';", $neu, 1);
 }
 file_put_contents($modFile, $neu);
 echo count($entfernen) . " Funktionen aus dem Modul entfernt\n";
