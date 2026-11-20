@@ -18,6 +18,7 @@ define('NRGDASH_GUID_INVERTERHUBMON', '{7B1F9A34-6C52-4E8D-9A1B-4F3E2D7C6A19}');
 define('NRGDASH_GUID_INVERTERHUBTILE', '{9A2E5C7F-3B1D-4A6E-8C9F-2D5B7E1A4C8F}');
 define('NRGDASH_GUID_METERHUB',       '{BAB8E05C-9150-43B9-9F2B-E5215FA54F0A}');
 define('NRGDASH_GUID_METERHUBV',      '{ADF18291-2E60-4354-92F5-B96863C127C8}');
+define('NRGDASH_GUID_METERHUBE',      '{D9F12FFD-BA63-4A91-B1DE-B1CFCB118B6D}');
 define('NRGDASH_GUID_CHARGERHUB',     '{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}');
 define('NRGDASH_GUID_OCPPHUB',        '{81D3E328-9E12-43A9-825A-F7888530868C}');
 define('NRGDASH_GUID_HEISHAMON',      '{1919151A-3C0F-4C09-B906-291638EC1469}');
@@ -1606,6 +1607,9 @@ class NRGDashboardTile extends IPSModule
         $devices = array_merge($devices, $this->discoverListContract(
             NRGDASH_GUID_METERHUBV, 'MHUBV_GetFunctions', 'meterhub'
         ));
+
+        // MeterHubEstimate ("Schaetzzaehler", MeterHub 0.41.0, EMS-Hinweis 20.11.2026): nur Anzeige, nie Messwert
+        $devices = array_merge($devices, $this->discoverEstimateMeters());
 
         $heishaMon = $this->discoverHeishaMon();
         $this->checkSourceCoverage('HeishaMon', NRGDASH_GUID_HEISHAMON, count($heishaMon));
@@ -3339,7 +3343,7 @@ class NRGDashboardTile extends IPSModule
                 continue;
             }
             $fi = $devices[$i]['function'] ?? '';
-            if (!empty($devices[$i]['hasMembers']) || !in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $isRealtimeCandidate($devices[$i])) {
+            if (!empty($devices[$i]['hasMembers']) || !empty($devices[$i]['estimated']) || !in_array($fi, self::REDUNDANCY_ELIGIBLE_FUNCTIONS, true) || $isRealtimeCandidate($devices[$i])) {
                 continue;
             }
             foreach ($clusters as $ci => $members) {
@@ -5832,6 +5836,27 @@ class NRGDashboardTile extends IPSModule
                 'switchID'       => (int) ($m['switchID'] ?? 0),
                 'switchStateID'  => (int) ($m['switchStateID'] ?? 0),
             ];
+        }
+        return $out;
+    }
+
+    /**
+     * Schaetzzaehler (MeterHubEstimate, Vertrag MHUBE_GetFunctions im Format von MHUBV, SUITE.md Fremdanbindung Regel 7): die Werte sind
+     * geschaetzt, nicht gemessen - sie werden nur angezeigt (measured/energyMeasured false, estimated true) und nie fuer Regelung oder
+     * Messwert-Entscheidungen genutzt. Deshalb: Kernrollen (Solar, Batterie, Netz, Haus) uebernimmt die Kachel NICHT von einem Schaetzzaehler,
+     * und mergeRedundantSources() nimmt ihn nie als Ersatzquelle.
+     */
+    private function discoverEstimateMeters(): array
+    {
+        $out = [];
+        foreach ($this->discoverListContract(NRGDASH_GUID_METERHUBE, 'MHUBE_GetFunctions', 'meterhub') as $e) {
+            if (in_array($e['function'] ?? '', ['pv', 'battery', 'grid', 'house'], true)) {
+                continue;
+            }
+            $e['measured'] = false;
+            $e['energyMeasured'] = false;
+            $e['estimated'] = true;
+            $out[] = $e;
         }
         return $out;
     }

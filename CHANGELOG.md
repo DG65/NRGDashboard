@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.13.1 (2026-11-20)
+
+- **Neu: Schätzzähler (MeterHubEstimate) in der Kachel.** Die Kachel findet die neuen Schätzzähler des MeterHub (Vertrag `MHUBE_GetFunctions`) und zeigt sie als Verbraucher an. Ihre Werte sind geschätzt: Sie werden nur angezeigt (`measured`/`energyMeasured` = false), nie als Solar, Batterie, Netz oder Haus übernommen und nie als Ersatzquelle für einen gemessenen Zähler verwendet (SUITE.md Fremdanbindung, Regel 7). Prüfstand `tests/schaetzzaehler.test.php`.
+
 ## 0.13.0 (2026-11-19)
 
 - **Umbau ohne Verhaltensänderung: gemeinsamer Modulrahmen als Trait (`libs/ModuleBase.php`).** Der WebHook-Eintrag (Anlegen, Entfernen, Aufräumen beim Löschen), der Lizenzhinweis und das Bestätigen von „Was ist neu“, „Wozu dieses Modul?“ und Review-Hinweis (samt geteiltem Ausblenden über Geschwister-Instanzen) standen siebenfach in den sieben Modulen. Sie stehen jetzt einmal im Trait; die Module liefern nur Hook-Pfad (`HOOK_PATH`) und Funktionspräfix (`FN_PREFIX`). Aus den Modulen entfallen 1.359 Zeilen. Die Funktionen wurden wörtlich verschoben (je Modul zeilengenau in beide Richtungen geprüft, Werkzeug `.tools/rahmen-trait.php`); Szenario-Ausgaben auf Deutsch und Englisch und die Liste der öffentlichen Funktionen sind in allen sieben Modulen unverändert (`.tools/rahmen-vergleich.sh`).
