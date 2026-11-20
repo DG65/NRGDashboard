@@ -10,7 +10,7 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
-## 0.14.0 (in Arbeit, lokal)
+## 0.14.0 (2026-11-20)
 
 - **Neu: Detailansicht von Gruppenzählern mit „Summe“, „Einzeln“ und „Gestapelt“.** Bei einem Gruppenzähler (Verschachtelung, z. B. „Haus ohne Wallboxen“) zeigte die Detailseite bisher nur die Summe als einen Verbraucher. Jetzt schaltet ein Umschalter über dem Leistungsdiagramm: „Summe“ (wie bisher), „Einzeln“ (eine Linie je Mitglied, die Summe als punktierte Linie) und „Gestapelt“ (Flächen übereinander, abgezogene Mitglieder unter der Nulllinie, gestrichelt). Das Diagramm „Energie je Tag“ schaltet mit (Balken je Mitglied, einzeln oder gestapelt; nur Mitglieder mit Energiezähler). Die Wahl bleibt im Browser erhalten. Unter dem Umschalter öffnet ein Klick auf ein Mitglied dessen eigene Detailansicht, beliebig tief; „‹“ führt eine Ebene zurück. Höchstens 16 Mitglieder je Ansicht, weitere werden als „Nicht angezeigt: n weitere Mitglieder“ gemeldet. Prüfstand `tests/gruppenverlauf.test.php`.
 - Für PV-Quellen: Eine Aufteilung nach MPPT-Strings folgt in einem späteren Schritt.
