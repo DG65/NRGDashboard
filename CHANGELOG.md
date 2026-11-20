@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.14.1 (in Arbeit, lokal)
+
+- **Fix: Zählersprung im Archiv verfälschte „Energie je Tag“ der Detailansicht.** Springt ein Energiezähler kurz auf einen viel zu hohen Wert und zurück (Fund 20.11.2026: 12 Minuten auf 54,6 kWh bei einem Licht-Zähler), zählte das Archiv den Sprung als Tagesverbrauch (54,8 kWh für „Außen“ statt etwa 0,2 kWh). Die Detailansicht prüft Tage über 5 kWh gegen die aus der Leistung integrierte Energie: liegt der Zählerwert über dem Dreifachen plus 2 kWh, wird der Tag aus der Leistung berechnet, und ein Hinweis unter dem Diagramm nennt die korrigierten Tage. Betrifft die Summenansicht ebenso wie „Einzeln“ und „Gestapelt“. Prüfstand `tests/zaehlersprung.test.php`.
+
 ## 0.14.0 (2026-11-20)
 
 - **Neu: Detailansicht von Gruppenzählern mit „Summe“, „Einzeln“ und „Gestapelt“.** Bei einem Gruppenzähler (Verschachtelung, z. B. „Haus ohne Wallboxen“) zeigte die Detailseite bisher nur die Summe als einen Verbraucher. Jetzt schaltet ein Umschalter über dem Leistungsdiagramm: „Summe“ (wie bisher), „Einzeln“ (eine Linie je Mitglied, die Summe als punktierte Linie) und „Gestapelt“ (Flächen übereinander, abgezogene Mitglieder unter der Nulllinie, gestrichelt). Das Diagramm „Energie je Tag“ schaltet mit (Balken je Mitglied, einzeln oder gestapelt; nur Mitglieder mit Energiezähler). Die Wahl bleibt im Browser erhalten. Unter dem Umschalter öffnet ein Klick auf ein Mitglied dessen eigene Detailansicht, beliebig tief; „‹“ führt eine Ebene zurück. Höchstens 16 Mitglieder je Ansicht, weitere werden als „Nicht angezeigt: n weitere Mitglieder“ gemeldet. Prüfstand `tests/gruppenverlauf.test.php`.

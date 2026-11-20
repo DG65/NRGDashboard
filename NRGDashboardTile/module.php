@@ -339,6 +339,7 @@ class NRGDashboardTile extends IPSModule
         'Stacked',
         'Total',
         'Not shown: %d more members.',
+        'Implausible counter value on %s - recalculated from the power.',
     ];
 
     // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
@@ -6453,6 +6454,7 @@ class NRGDashboardTile extends IPSModule
         $days = [];
         $energy = [];
         $unit = '';
+        $fixedDays = [];
         foreach ($members as $i => $m) {
             $bars = $this->DailyEnergyBars($this->synthesizeMemberDevice($m, null), $dayStart, false);
             $energy[$i] = [];
@@ -6462,6 +6464,9 @@ class NRGDashboardTile extends IPSModule
             }
             if ($unit === '' && !empty($bars['unit'])) {
                 $unit = (string) $bars['unit'];
+            }
+            foreach (($bars['fixedDays'] ?? []) as $fd) {
+                $fixedDays[$fd] = true;
             }
         }
         ksort($days);
@@ -6481,7 +6486,7 @@ class NRGDashboardTile extends IPSModule
                 }, $dayList),
             ];
         }
-        return ['t' => $times, 'days' => $dayList, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'omitted' => $omitted, 'members' => $out];
+        return ['t' => $times, 'days' => $dayList, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'omitted' => $omitted, 'fixedDays' => array_keys($fixedDays), 'members' => $out];
     }
 
     private function ResolveSubMeters(array $d): array
@@ -8227,6 +8232,42 @@ class NRGDashboardTile extends IPSModule
     }
 
     /**
+     * Tage, deren Zaehlerwert weit ueber dem liegt, was die Leistung hergibt, aus der Leistung neu berechnen (0.14.1). Nur Tage ueber 5 kWh
+     * werden geprueft; ersetzt wird, wenn der Zaehlerwert mehr als das Dreifache der aus den 5-Minuten-Punkten integrierten Energie plus
+     * 2 kWh betraegt und die Leistung mindestens 12 Punkte hat. @return array{0:array,1:array} Balken, korrigierte Tage
+     */
+    private function CorrectImplausibleCounterDays(array $bars, int $powerID): array
+    {
+        $fixed = [];
+        if ($powerID <= 0) {
+            return [$bars, $fixed];
+        }
+        foreach ($bars as $i => [$day, $kwh]) {
+            if ($kwh <= 5.0) {
+                continue;
+            }
+            $ts = strtotime($day . ' 00:00:00');
+            if ($ts === false) {
+                continue;
+            }
+            $series = $this->DaySeries($powerID, $ts, min(time(), strtotime('+1 day', $ts)));
+            if (count($series) < 12) {
+                continue;
+            }
+            $hours = ((float) ($series[1][0] - $series[0][0])) / 3600000;
+            $integral = 0.0;
+            foreach ($series as [, $w]) {
+                $integral += abs((float) $w) * $hours / 1000;
+            }
+            if ($kwh > 3 * $integral + 2.0) {
+                $bars[$i][1] = round($integral, 2);
+                $fixed[] = $day;
+            }
+        }
+        return [$bars, $fixed];
+    }
+
+    /**
      * Tages-Energiebalken der letzten 14 Tage bis einschliesslich des
      * gewaehlten Tages. Quelle type-neutral: bevorzugt wird die ERSTE
      * archivierte Zaehler-Variable (Aggregationstyp 1) unter allen
@@ -8280,7 +8321,14 @@ class NRGDashboardTile extends IPSModule
                 $unit = 'kWh';
             }
             usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
-            return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID)];
+            // Unplausible Zaehlerspruenge (Fund 20.11.2026: ein Zaehler sprang 12 Minuten auf 54,6 kWh und zurueck, das Archiv zaehlte
+            // den Sprung als 54,8 kWh Tagesverbrauch einer Lichtgruppe): Tage mit Zaehlerwert weit ueber der Leistung werden aus der Leistung berechnet.
+            $fixed = [];
+            if ($unit === '' || strcasecmp($unit, 'kWh') === 0) {
+                $powerForCheck = (int) (!empty($d['usingFallback']) ? ($d['fallbackPowerID'] ?? 0) : ($d['powerID'] ?? 0));
+                [$bars, $fixed] = $this->CorrectImplausibleCounterDays($bars, $powerForCheck);
+            }
+            return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID), 'fixedDays' => $fixed];
         }
 
         // Mitglieder-Verlauf (0.14.0): nur echte Zaehler, keine Integration der Leistung (waere 14 Archivabfragen je Mitglied)

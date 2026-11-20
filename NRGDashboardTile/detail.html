@@ -229,6 +229,7 @@
 <div id="energyWrap" style="display:none">
   <h2 id="energyH">Energy per day</h2>
   <div id="energyChart" class="chartbox" style="height:260px"></div>
+  <div id="energyFix" class="note" style="display:none"></div>
   <div id="energyNote" class="note" style="display:none">Approximation: integrated from the daily average of the power (no energy counter in the device's contract).</div>
 </div>
 
@@ -476,6 +477,10 @@ function renderEnergy(p) {
   const wrap = document.getElementById('energyWrap');
   const e = p.energy || { bars: [] };
   const me = memberEnergyOf(p);
+  const fixEl = document.getElementById('energyFix');
+  const fixedDays = (me && memberMode !== 'sum') ? (p.memberSeries.fixedDays || []) : (e.fixedDays || []);
+  fixEl.textContent = fixedDays.length ? fmt(tr('Implausible counter value on %s - recalculated from the power.'), fixedDays.map(d => dateTxt(new Date(d + 'T00:00:00'), tr('M/D'), false)).join(', ')) : '';
+  fixEl.style.display = fixedDays.length ? '' : 'none';
   if (me && memberMode !== 'sum') {
     wrap.style.display = '';
     document.getElementById('energyH').textContent = tr('Energy per day');

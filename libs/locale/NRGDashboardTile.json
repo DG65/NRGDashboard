@@ -261,6 +261,7 @@
       "If a PV forecast instance is installed, the solar node carries a progress ring: how much of today's forecast yield has already been reached.": "Ist eine PV-Prognose-Instanz installiert, trägt der Solar-Knoten einen Fortschrittsring: wie viel vom heutigen prognostizierten Ertrag bereits erreicht ist.",
       "If a StromGedacht instance is installed, a very subtle colour gradient in the background tints the current grid traffic light level.": "Ist eine StromGedacht-Instanz installiert, färbt ein sehr dezenter Farbverlauf im Hintergrund die aktuelle Netzampel-Stufe ein.",
       "Implausible archive value discarded: variable #%d, %s, Max=%s W": "Unplausibler Archivwert verworfen: Variable #%d, %s, Max=%s W",
+      "Implausible counter value on %s - recalculated from the power.": "Unplausibler Zählerwert am %s - aus der Leistung neu berechnet.",
       "Import": "Bezug",
       "Import price from the EMS (%s), per quarter-hour": "Bezugspreis aus dem EMS (%s), je Viertelstunde",
       "Import price from the EMS (gross, per quarter-hour): %s - assumed because no price history is stored; enter it in the EMS section “Installation”.": "Bezugspreis aus dem EMS (brutto, je Viertelstunde): %s - angenommen, weil kein Preisverlauf hinterlegt ist; im EMS-Bereich „Anlage“ eintragen.",
