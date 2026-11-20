@@ -217,6 +217,11 @@
     <button id="prevDay">‹</button><span id="dayLabel"></span><button id="nextDay">›</button>
     <button id="todayBtn">Today</button>
   </div>
+  <div id="memberMode" class="seg" style="display:none; margin: 2px 0 8px;">
+    <button data-m="sum" id="mmSum">Sum</button><button data-m="single" id="mmSingle">Individual</button><button data-m="stacked" id="mmStacked">Stacked</button>
+  </div>
+  <div id="memberOmitted" class="note" style="display:none"></div>
+  <div id="memberNav" style="display:none; margin: 0 0 8px; flex-wrap: wrap; gap: 6px;"></div>
   <div id="powerChart" class="chartbox"></div>
 </div>
 <div id="powerNote" class="note" style="display:none"></div>
@@ -365,11 +370,80 @@ function renderValues(p) {
 }
 
 const AXIS = { axisLabel: { color: '#9aa0a6' }, axisLine: { lineStyle: { color: '#4a5058' } } };
+
+// Gruppenzaehler/MPPT: Darstellung "Summe" / "Einzeln" / "Gestapelt" (0.14.0). Wahl wird im Browser gemerkt (wenn erlaubt).
+const MEMBER_PALETTE = ['#7fb2d4', '#e0a020', '#6fbf73', '#d9725f', '#a98bd6', '#4fc1c9', '#d6a0c8', '#b5b86a', '#e08a4a', '#7a9ae0', '#c9a86b', '#8fd0a8', '#d86c9a', '#9aa0a6', '#5aa0a0', '#c0c070'];
+let memberMode = (function () {
+  try { const v = localStorage.getItem('nrgdash.detail.memberMode'); return (v === 'single' || v === 'stacked') ? v : 'sum'; } catch (e) { return 'sum'; }
+})();
+function memberSeriesOf(p) {
+  const ms = p && p.memberSeries;
+  return (ms && ms.members && ms.members.length >= 2 && ms.t && ms.t.length) ? ms : null;
+}
+function memberEnergyOf(p) {
+  const ms = p && p.memberSeries;
+  return (ms && ms.days && ms.days.length && ms.members.some(m => m.kwh && m.kwh.some(v => v !== null))) ? ms : null;
+}
+function setMemberMode(m) {
+  memberMode = m;
+  try { localStorage.setItem('nrgdash.detail.memberMode', m); } catch (e) { /* Speicher gesperrt: nur diese Sitzung */ }
+  if (lastPayload) { renderPower(lastPayload); renderEnergy(lastPayload); }
+}
+function renderMemberModeBar(p) {
+  const bar = document.getElementById('memberMode');
+  const has = !!(memberSeriesOf(p) || memberEnergyOf(p));
+  bar.style.display = has ? '' : 'none';
+  document.getElementById('mmSum').textContent = tr('Sum');
+  document.getElementById('mmSingle').textContent = tr('Individual');
+  document.getElementById('mmStacked').textContent = tr('Stacked');
+  Array.from(bar.querySelectorAll('button')).forEach(b => b.classList.toggle('on', b.getAttribute('data-m') === memberMode));
+  const om = document.getElementById('memberOmitted');
+  const n = has && p.memberSeries ? (p.memberSeries.omitted || 0) : 0;
+  om.textContent = n > 0 ? fmt(tr('Not shown: %d more members.'), n) : '';
+  om.style.display = (n > 0 && memberMode !== 'sum') ? '' : 'none';
+}
+document.getElementById('memberMode').addEventListener('click', function (ev) {
+  const b = ev.target && ev.target.closest ? ev.target.closest('button[data-m]') : null;
+  if (b) { setMemberMode(b.getAttribute('data-m')); }
+});
+
 function renderPower(p) {
   const wrap = document.getElementById('powerWrap');
   const note = document.getElementById('powerNote');
   document.getElementById('dayLabel').textContent = p.dayLabel || '';
   document.getElementById('nextDay').disabled = !!p.isToday;
+  renderMemberModeBar(p);
+  renderMemberNav(p);
+  const ms = memberSeriesOf(p);
+  if (ms && memberMode !== 'sum') {
+    note.style.display = 'none';
+    wrap.style.display = '';
+    if (!powerChart) powerChart = echarts.init(document.getElementById('powerChart'));
+    const stacked = memberMode === 'stacked';
+    const series = ms.members.map((m, i) => {
+      const col = MEMBER_PALETTE[i % MEMBER_PALETTE.length];
+      return {
+        name: m.label, type: 'line', showSymbol: false, itemStyle: { color: col },
+        stack: stacked ? (m.sign < 0 ? 'neg' : 'pos') : undefined,
+        data: ms.t.map((t, k) => [t, (stacked && m.v[k] === null) ? 0 : m.v[k]]),
+        lineStyle: { width: stacked ? 0.6 : 1.4, color: col, type: m.sign < 0 ? 'dashed' : 'solid' },
+        areaStyle: stacked ? { color: col, opacity: 0.55 } : undefined,
+      };
+    });
+    if (!stacked && p.power && p.power.length) {
+      series.push({ name: tr('Total'), type: 'line', showSymbol: false, data: p.power, itemStyle: { color: '#9aa0a6' }, lineStyle: { width: 1, color: '#9aa0a6', type: 'dotted' } });
+    }
+    powerChart.setOption({
+      animation: false,
+      legend: { type: 'scroll', top: 0, textStyle: { color: '#9aa0a6' }, pageTextStyle: { color: '#9aa0a6' } },
+      grid: { left: 58, right: 20, top: 44, bottom: 40 },
+      tooltip: { trigger: 'axis', valueFormatter: v => (v === null || v === undefined ? '' : fmtW(v)) },
+      xAxis: Object.assign({ type: 'time' }, AXIS),
+      yAxis: Object.assign({ type: 'value', splitLine: { lineStyle: { color: '#33373d' } } }, AXIS),
+      series: series,
+    }, true);
+    return;
+  }
   if (!p.power || !p.power.length) {
     wrap.style.display = (p.day ? '' : 'none');
     // Archivierung (Store-Review 30.10.2026): die Visualisierung schaltet das Logging fremder Variablen nie selbst ein, das macht der
@@ -401,6 +475,29 @@ function renderPower(p) {
 function renderEnergy(p) {
   const wrap = document.getElementById('energyWrap');
   const e = p.energy || { bars: [] };
+  const me = memberEnergyOf(p);
+  if (me && memberMode !== 'sum') {
+    wrap.style.display = '';
+    document.getElementById('energyH').textContent = tr('Energy per day');
+    document.getElementById('energyNote').style.display = 'none';
+    if (!energyChart) energyChart = echarts.init(document.getElementById('energyChart'));
+    const stackedE = memberMode === 'stacked';
+    const catsE = me.days.map(day => dateTxt(new Date(day + 'T00:00:00'), tr('M/D'), false));
+    energyChart.setOption({
+      animation: false,
+      legend: { type: 'scroll', top: 0, textStyle: { color: '#9aa0a6' }, pageTextStyle: { color: '#9aa0a6' } },
+      grid: { left: 58, right: 20, top: 44, bottom: 40 },
+      tooltip: { trigger: 'axis', valueFormatter: v => (v === null || v === undefined ? '' : v.toLocaleString(NUM_LOCALE) + ' ' + (me.unit || '')) },
+      xAxis: Object.assign({ type: 'category', data: catsE }, AXIS),
+      yAxis: Object.assign({ type: 'value', splitLine: { lineStyle: { color: '#33373d' } } }, AXIS),
+      series: me.members.map((m, i) => ({
+        name: m.label, type: 'bar', stack: stackedE ? (m.sign < 0 ? 'neg' : 'pos') : undefined,
+        data: m.kwh.map(v => (stackedE && v === null) ? 0 : v),
+        itemStyle: { color: MEMBER_PALETTE[i % MEMBER_PALETTE.length] },
+      })),
+    }, true);
+    return;
+  }
   if (!e.bars || !e.bars.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
   document.getElementById('energyH').textContent = tr('Energy per day') + (e.name ? ' — ' + e.name : '');
@@ -1010,8 +1107,36 @@ document.getElementById('ctlOverride').addEventListener('click', () => {
   wallboxAction('override', { active: nowActive ? '1' : '0' });
 });
 
+// Tiefer per Klick: ein Mitglied oeffnet seine eigene Detailansicht (mit eigenen Mitgliedern, beliebig tief); "‹" fuehrt eine Ebene zurueck.
+let currentKey = null; const keyStack = [];
+function openMemberDetail(key) {
+  if (lastPayload && lastPayload.key) { keyStack.push({ key: lastPayload.key, label: lastPayload.label }); }
+  currentKey = key; loadDay('');
+}
+function backMemberDetail() {
+  const prev = keyStack.pop();
+  if (!prev) return;
+  currentKey = prev.key; loadDay('');
+}
+function renderMemberNav(p) {
+  const nav = document.getElementById('memberNav');
+  const ms = memberSeriesOf(p);
+  if (!ms && !keyStack.length) { nav.style.display = 'none'; nav.innerHTML = ''; return; }
+  let h = '';
+  if (keyStack.length) { h += '<span class="seg"><button data-back="1">‹ ' + esc(keyStack[keyStack.length - 1].label) + '</button></span>'; }
+  if (ms) {
+    h += '<span class="seg">' + ms.members.map((m, i) => '<button data-open="' + esc(m.key) + '" style="border-left: 3px solid ' + MEMBER_PALETTE[i % MEMBER_PALETTE.length] + ';">' + esc(m.label) + (m.deeper ? ' ›' : '') + '</button>').join('') + '</span>';
+  }
+  nav.innerHTML = h; nav.style.display = 'flex';
+}
+document.getElementById('memberNav').addEventListener('click', function (ev) {
+  const b = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+  if (!b) return;
+  if (b.hasAttribute('data-back')) { backMemberDetail(); } else if (b.hasAttribute('data-open')) { openMemberDetail(b.getAttribute('data-open')); }
+});
 function loadDay(dayStr) {
   const u = new URL(window.location.href);
+  if (currentKey) u.searchParams.set('detail', currentKey);
   if (dayStr) u.searchParams.set('day', dayStr); else u.searchParams.delete('day');
   u.searchParams.set('json', '1');
   fetch(u.toString()).then(r => r.json()).then(handleDetail).catch(() => {});

@@ -334,6 +334,11 @@ class NRGDashboardTile extends IPSModule
         'Rejected: %s',
         'Command sent, but the wallbox is not charging yet - possibly rejected (see the system log of the partner module).',
         'Command accepted ✓',
+        'Sum',
+        'Individual',
+        'Stacked',
+        'Total',
+        'Not shown: %d more members.',
     ];
 
     // Kategorien für die spätere Anordnung (Erzeugung -> Speicher ->
@@ -6187,6 +6192,8 @@ class NRGDashboardTile extends IPSModule
             // Quelle), zeigt die Detailseite die Unterzaehler automatisch -
             // heute ist die Liste in jedem echten Aufruf leer.
             'subMeters' => $this->ResolveSubMeters($d),
+            // Gruppenzaehler/PV mit MPPT: Verlauf je Mitglied fuer "Einzeln"/"Gestapelt" (0.14.0), null ohne mindestens zwei Mitglieder
+            'memberSeries' => $this->DetailMemberSeries($key, $d, $dayStart, $dayEnd),
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
@@ -6404,6 +6411,79 @@ class NRGDashboardTile extends IPSModule
      * werfen, da noch KEIN Partnermodul dieses Feld liefert und ein
      * kuenftiges Format daher nicht final feststeht.
      */
+    private const DETAIL_MEMBER_MAX = 16;
+
+    /**
+     * Verlauf je Mitglied eines Gruppenzaehlers fuer die Detailseite (je MPPT-String einer PV-Quelle folgt zuletzt, Dietmar 20.11.2026) (0.14.0, Dietmar 20.11.2026:
+     * "jede Schachtelung separiert darstellen ... auch fuer Erzeuger"). Die Seite zeigt "Summe" (wie bisher), "Einzeln" (eine Linie je
+     * Mitglied) oder "Gestapelt". Gemeinsame Zeitachse (Vereinigung der 5-Minuten-Punkte), je Mitglied Werte mit Vorzeichen: abgezogene
+     * Mitglieder (negativer Faktor) negativ, Netz-Mitglieder wie in MembersForKey() gedreht. Tages-Energie je Mitglied nur aus echten
+     * Zaehlern. Hoechstens DETAIL_MEMBER_MAX Mitglieder, der Rest wird nur gezaehlt ('omitted'). null, wenn weniger als zwei Mitglieder.
+     */
+    private function DetailMemberSeries(string $key, array $d, int $dayStart, int $dayEnd): ?array
+    {
+        $members = [];
+        if (!empty($d['hasMembers'])) {
+            foreach ($this->MembersForKey($key) as $m) {
+                if ((int) ($m['powerID'] ?? 0) > 0) {
+                    $members[] = $m;
+                }
+            }
+        }
+        if (count($members) < 2) {
+            return null;
+        }
+        $omitted = max(0, count($members) - self::DETAIL_MEMBER_MAX);
+        $members = array_slice($members, 0, self::DETAIL_MEMBER_MAX);
+
+        $byTime = [];
+        $grid = [];
+        foreach ($members as $i => $m) {
+            $sign = ((float) ($m['factor'] ?? 100) < 0 ? -1 : 1) * (($m['function'] ?? '') === 'grid' ? -1 : 1);
+            $scale = abs((float) ($m['factor'] ?? 100)) / 100;
+            $byTime[$i] = [];
+            foreach ($this->DaySeries((int) $m['powerID'], $dayStart, $dayEnd) as [$t, $w]) {
+                $byTime[$i][$t] = round($w * $scale * $sign, 1);
+                $grid[$t] = true;
+            }
+        }
+        ksort($grid);
+        $times = array_keys($grid);
+
+        $days = [];
+        $energy = [];
+        $unit = '';
+        foreach ($members as $i => $m) {
+            $bars = $this->DailyEnergyBars($this->synthesizeMemberDevice($m, null), $dayStart, false);
+            $energy[$i] = [];
+            foreach (($bars['bars'] ?? []) as [$day, $kwh]) {
+                $energy[$i][$day] = $kwh;
+                $days[$day] = true;
+            }
+            if ($unit === '' && !empty($bars['unit'])) {
+                $unit = (string) $bars['unit'];
+            }
+        }
+        ksort($days);
+        $dayList = array_keys($days);
+
+        $out = [];
+        foreach ($members as $i => $m) {
+            $sign = ((float) ($m['factor'] ?? 100) < 0) ? -1 : 1;
+            $out[] = [
+                'label' => (string) ($m['label'] ?? ''),
+                'key'   => (string) ($m['key'] ?? ''),
+                'sign'  => $sign,
+                'deeper' => !empty($m['hasMembers']),
+                'v'     => array_map(static function ($t) use ($byTime, $i) { return $byTime[$i][$t] ?? null; }, $times),
+                'kwh'   => array_map(static function ($day) use ($energy, $i, $sign) {
+                    return isset($energy[$i][$day]) ? round($energy[$i][$day] * $sign, 3) : null;
+                }, $dayList),
+            ];
+        }
+        return ['t' => $times, 'days' => $dayList, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'omitted' => $omitted, 'members' => $out];
+    }
+
     private function ResolveSubMeters(array $d): array
     {
         $raw = $d['subMeters'] ?? null;
@@ -8155,7 +8235,7 @@ class NRGDashboardTile extends IPSModule
      * keinen Zaehler, wird die Leistung integriert (Tages-Mittel x 24 h) -
      * eine Naeherung, die die Seite auch so kennzeichnet.
      */
-    private function DailyEnergyBars(array $d, int $dayStart): array
+    private function DailyEnergyBars(array $d, int $dayStart, bool $integrate = true): array
     {
         $arch = $this->ArchiveID();
         if ($arch <= 0) {
@@ -8201,6 +8281,11 @@ class NRGDashboardTile extends IPSModule
             }
             usort($bars, function ($a, $b) { return strcmp($a[0], $b[0]); });
             return ['bars' => $bars, 'unit' => ($unit !== '' ? $unit : 'kWh'), 'approx' => false, 'name' => IPS_GetName($counterID)];
+        }
+
+        // Mitglieder-Verlauf (0.14.0): nur echte Zaehler, keine Integration der Leistung (waere 14 Archivabfragen je Mitglied)
+        if (!$integrate) {
+            return ['bars' => [], 'unit' => '', 'approx' => false];
         }
 
         // Gleiche Fallback-Logik wie in BuildDetailPayload() - siehe Kommentar
