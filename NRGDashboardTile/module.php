@@ -1676,6 +1676,9 @@ class NRGDashboardTile extends IPSModule
         $this->checkSourceCoverage('ChargerEEBUSHub', NRGDASH_GUID_CHARGEREEBUSHUB, count($eebusCharger));
         $devices = array_merge($devices, $eebusCharger);
 
+        // Wallboxen anderer Autoren (Fremdanbindung, SUITE.md, EMS-Hinweis 21.11.2026): allgemeine Suche ueber den Vertrag, nur Anzeige
+        $devices = array_merge($devices, $this->discoverForeignChargers($devices));
+
         // IHUBTILE_GetConsumers NUR noch fuer Eintraege, die durch KEINE der
         // permanenten Quellen oben abgedeckt sind (z.B. eine manuell in der
         // Kachel eingetragene Klimaanlage ohne eigenes Hub-Modul). Abgleich
@@ -5265,6 +5268,85 @@ class NRGDashboardTile extends IPSModule
     private bool $partnerNotReady = false;
     // Als Dublette markierte Eintraege (duplicateOf) im laufenden Discover()
     private int $duplicatesSkipped = 0;
+
+    /**
+     * Wallboxen anderer Autoren (Fremdanbindung, SUITE.md "Fremdanbindung", Regeln 2/3/8; Vorbild EMS/Partners.php discoverForeign, 0.14.1):
+     * IPS_GetModuleList -> Geraetemodul -> Praefix -> <PRAEFIX>_GetFunctions. Angenommen werden Eintraege mit contractType (sonst function)
+     * 'charger' und Vertrags-Hauptversion 1. Eigene Module (CHUB/OHUB/CHEEB und die uebrigen bekannten Praefixe) sind ausgenommen, sie kommen
+     * ueber ihren Weg. Doppel ueber deviceSerial (gegen schon gefundene Geraete) und duplicateOf; Quelle 'ext:<PRAEFIX>'. Nur Lesesicht:
+     * Leistung und Status in der Kachel, keine Steuerung. Jeder Aufruf gekapselt (falsche Signatur -> uebersprungen), Zeitbudget 3 s.
+     */
+    private function discoverForeignChargers(array $known): array
+    {
+        $own = ['CHUB', 'OHUB', 'CHEEB', 'MHUB', 'MHUBV', 'MHUBE', 'IHUB', 'IHUBTILE', 'WPHUB', 'WPMBHUB', 'WPMBGW', 'SAMEHS', 'WPBSBL', 'WPEEB',
+            'HMON', 'EMS', 'TIBBERGR', 'SPOT', 'SGW', 'PVF', 'LFC', 'NRGDASH', 'TESSIE'];
+        $serials = [];
+        foreach ($known as $k) {
+            $sn = trim((string) ($k['deviceSerial'] ?? ''));
+            if ($sn !== '') {
+                $serials[$sn] = true;
+            }
+        }
+        $out = [];
+        $t0 = microtime(true);
+        foreach (IPS_GetModuleList() as $guid) {
+            if (microtime(true) - $t0 > 3.0) {
+                $this->SendDebug(__FUNCTION__, 'time budget exhausted', 0);
+                break;
+            }
+            $mod = @IPS_GetModule($guid);
+            if (!is_array($mod) || (int) ($mod['ModuleType'] ?? 0) !== 3) {
+                continue;
+            }
+            $prefix = (string) ($mod['Prefix'] ?? '');
+            $fn = $prefix . '_GetFunctions';
+            if ($prefix === '' || in_array(strtoupper($prefix), $own, true) || !function_exists($fn)) {
+                continue;
+            }
+            foreach (IPS_GetInstanceListByModuleID($guid) as $id) {
+                if ((int) (IPS_GetInstance($id)['InstanceStatus'] ?? 0) === 104) {
+                    continue; // vom Nutzer deaktiviert
+                }
+                try {
+                    $data = call_user_func($fn, $id);
+                } catch (\ArgumentCountError $e) {
+                    continue 2; // gleichnamige Funktion mit anderer Signatur: kein Vertragspartner
+                } catch (\Throwable $e) {
+                    $this->SendDebug(__FUNCTION__, sprintf('%s #%d: %s', $prefix, $id, $e->getMessage()), 0);
+                    continue;
+                }
+                if (is_string($data)) {
+                    $data = json_decode($data, true);
+                }
+                if (!is_array($data)) {
+                    continue;
+                }
+                $entries = (array_keys($data) === range(0, count($data) - 1)) ? $data : [$data];
+                foreach ($entries as $e) {
+                    if (!is_array($e) || (string) ($e['contractType'] ?? ($e['function'] ?? '')) !== 'charger') {
+                        continue;
+                    }
+                    if ((int) explode('.', (string) ($e['contractVersion'] ?? '0'))[0] !== 1 || (int) ($e['powerID'] ?? 0) <= 0) {
+                        continue;
+                    }
+                    if (!empty($e['duplicateOf'])) {
+                        continue;
+                    }
+                    $sn = trim((string) ($e['deviceSerial'] ?? ''));
+                    if ($sn !== '' && isset($serials[$sn])) {
+                        continue; // dasselbe Geraet kommt schon ueber einen eigenen Weg
+                    }
+                    if ($sn !== '') {
+                        $serials[$sn] = true;
+                    }
+                    $e['function'] = (string) ($e['function'] ?? 'charger');
+                    $e['extPrefix'] = $prefix;
+                    $out[] = $this->normalizeEntry($e, 'ext:' . $prefix, $id);
+                }
+            }
+        }
+        return $out;
+    }
 
     private function discoverListContract(string $moduleGUID, string $function, string $source): array
     {

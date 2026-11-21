@@ -10,8 +10,9 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
-## 0.14.1 (in Arbeit, lokal)
+## 0.14.1 (2026-11-21)
 
+- **Neu: Wallboxen anderer Autoren im Energiefluss (Fremdanbindung).** Die Kachel fand Wallboxen bisher nur über ChargerHub, OCPPHub und ChargerEEBUSHub. Jetzt sucht sie zusätzlich allgemein: über `IPS_GetModuleList` das Präfix jedes Gerätemoduls, dann `<PRÄFIX>_GetFunctions`; angenommen werden Einträge mit `contractType` (sonst `function`) `charger` und Vertrags-Hauptversion 1 (SUITE.md „Fremdanbindung“). Eigene Module sind ausgenommen, Doppel erkennt sie über `deviceSerial` und `duplicateOf`, die Quelle heißt `ext:<PRÄFIX>`. Nur Lesesicht: Leistung und Status, keine Steuerung. Jeder Aufruf ist gekapselt (falsche Signatur oder Fehler: übersprungen), Zeitbudget 3 s im bestehenden 5-Minuten-Takt der Gerätesuche. Prüfstand `tests/fremdwallbox.test.php`.
 - **Fix: Zählersprung im Archiv verfälschte „Energie je Tag“ der Detailansicht.** Springt ein Energiezähler kurz auf einen viel zu hohen Wert und zurück (Fund 20.11.2026: 12 Minuten auf 54,6 kWh bei einem Licht-Zähler), zählte das Archiv den Sprung als Tagesverbrauch (54,8 kWh für „Außen“ statt etwa 0,2 kWh). Die Detailansicht prüft Tage über 5 kWh gegen die aus der Leistung integrierte Energie: liegt der Zählerwert über dem Dreifachen plus 2 kWh, wird der Tag aus der Leistung berechnet, und ein Hinweis unter dem Diagramm nennt die korrigierten Tage. Betrifft die Summenansicht ebenso wie „Einzeln“ und „Gestapelt“. Prüfstand `tests/zaehlersprung.test.php`.
 
 ## 0.14.0 (2026-11-20)
