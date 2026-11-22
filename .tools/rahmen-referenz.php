@@ -13,7 +13,7 @@ declare(strict_types=1);
 $root = rtrim($argv[1] ?? dirname(__DIR__), '/');
 $out = rtrim($argv[2] ?? sys_get_temp_dir() . '/rahmen-ref', '/');
 @mkdir($out, 0777, true);
-$mods = ['Tile', 'Map', 'Topology', 'PVMonitor', 'WPMonitor', 'HeatSchema', 'Forecast'];
+$mods = ['Tile', 'Map', 'Topology', 'PVMonitor', 'WPMonitor', 'HeatSchema', 'Forecast', 'Ventilation'];
 
 foreach ($mods as $m) {
     $script = __DIR__ . '/szenarien-' . strtolower($m) . '.php';

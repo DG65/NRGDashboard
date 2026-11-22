@@ -1,0 +1,14 @@
+{
+  "id": "{B2D6F316-7D73-439F-BF31-98468254B043}",
+  "name": "NRGDashboardVentilation",
+  "type": 3,
+  "vendor": "",
+  "aliases": [
+    "NRG-Stack Dashboard Lüftung"
+  ],
+  "url": "https://github.com/DG65/NRGDashboard",
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "NRGDASHVENT"
+}

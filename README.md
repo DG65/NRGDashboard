@@ -12,6 +12,10 @@ English documentation: [README.en.md](README.en.md)
 Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im
 internen Kompatibilitäts-Manifest des NRG-Stack.
 
+## Lüftung (`NRGDashboardVentilation`, ab 0.15.0)
+
+Eigene Kachel für Lüftungs- und RLT-Anlagen: jede Anlage, deren Modul den NRG-Stack-Vertrag `ventilation` liefert (RLTHub, WPISM8 u. a.), erscheint als Karte mit Temperaturen (Außen-, Zu-, Abluft), CO₂, Wirkungsgrad der Wärmerückgewinnung, Ventilator-Volumenstrom (mit Einheit `m³/h` oder `%` aus `fanFlowUnit`), Filterwarnung und Sammelstörung. Felder, die die Anlage nicht meldet (ID 0 oder leer), bleiben ausgeblendet. Die Anlagen werden über die allgemeine Fremdsuche gefunden (`libs/ForeignDiscovery.php`, je Eintrag nach Vertragstyp gefiltert, Hauptversion 1). Nur Anzeige, die Kachel steuert nichts. Eine Lüftung hat keine Leistungsvariable und passt deshalb nicht als Knoten in den Energiefluss.
+
 ## Zweck
 
 Automatisch generierte Energiefluss-Visualisierung (Haus-Stromlaufplan mit

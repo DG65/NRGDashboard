@@ -1,0 +1,101 @@
+{
+  "elements": [
+    {
+      "type": "ExpansionPanel",
+      "name": "PanelDoc",
+      "caption": "📖 Documentation & help",
+      "expanded": false,
+      "items": [
+        {
+          "type": "Label",
+          "caption": "Shows ventilation and air-handling units of the NRG-Stack as a card: temperatures (outside, supply and extract air), CO₂, heat-recovery efficiency, fan flow, filter warning and general fault. Everything the unit does not report stays hidden."
+        },
+        {
+          "type": "Label",
+          "caption": "The units are found automatically: every module that provides the NRG-Stack contract “ventilation” appears (for example RLTHub or a heat-pump module with an integrated ventilation unit). Nothing has to be linked by hand, and the tile only displays - it never controls anything."
+        },
+        {
+          "type": "Label",
+          "name": "HookInfo",
+          "caption": "IPSView/popup: the tile also runs as a standalone web page at http://<Symcon-IP>:3777%s (auto-refresh every 30 s). In IPSView, place a WebView element on a popup page and enter this URL. Note: WebHooks can be reached on the local network without logging in."
+        },
+        {
+          "type": "CheckBox",
+          "name": "StandaloneEnabled",
+          "caption": "Enable standalone web page for browser and IPSView"
+        },
+        {
+          "type": "Label",
+          "caption": "Only needed if the tile is to run as its own web page (browser, IPSView). If you only use the tile in the WebFront, you can switch this off: then no WebHook is registered and access from outside is removed. Switching it off removes the existing entry."
+        }
+      ]
+    },
+    {
+      "type": "ExpansionPanel",
+      "name": "PanelSource",
+      "caption": "Data source",
+      "expanded": true,
+      "items": [
+        {
+          "type": "Label",
+          "name": "VentStatus",
+          "caption": "Ventilation units are being searched …"
+        },
+        {
+          "type": "Label",
+          "caption": "Optional - by default every ventilation unit found is shown. Only choose an instance here to show just this one (for example if several units are installed and the tile should show only one)."
+        },
+        {
+          "type": "SelectInstance",
+          "name": "VentInstance",
+          "caption": "Only this instance"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Refresh now",
+      "onClick": "NRGDASHVENT_Render($id);"
+    },
+    {
+      "type": "Label",
+      "name": "DiscoveryResult",
+      "caption": ""
+    },
+    {
+      "type": "ExpansionPanel",
+      "name": "PanelStyle",
+      "caption": "Appearance",
+      "expanded": false,
+      "items": [
+        {
+          "type": "SelectColor",
+          "name": "ColorBackground",
+          "caption": "Background color (-1 = system default)"
+        },
+        {
+          "type": "ValidationTextBox",
+          "name": "FontFamily",
+          "caption": "Font (empty/“system” = system font)"
+        }
+      ]
+    },
+    {
+      "type": "Button",
+      "caption": "Reset style",
+      "onClick": "NRGDASHVENT_ResetStyle($id);"
+    }
+  ],
+  "status": [
+    {
+      "code": 104,
+      "icon": "inactive",
+      "caption": "No ventilation unit found."
+    },
+    {
+      "code": 102,
+      "icon": "active",
+      "caption": "Tile active."
+    }
+  ]
+}

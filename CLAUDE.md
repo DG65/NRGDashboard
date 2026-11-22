@@ -35,7 +35,7 @@ primäre Detailquelle dieses Repos) und SUITE.md.
 
 Mehrere Module in einer Bibliothek: `NRGDashboardTile` (Hauptkachel),
 `NRGDashboardMap`, `NRGDashboardTopology`, `NRGDashboardPVMonitor`,
-`NRGDashboardWPMonitor`, `NRGDashboardHeatSchema`. Achtung Stolperfalle
+`NRGDashboardWPMonitor`, `NRGDashboardHeatSchema`, `NRGDashboardVentilation` (Lüftung, seit 0.15.0). Achtung Stolperfalle
 (SUITE.md, IPS-Punkt 10): eine „aufgezogene" Kachel zeigt NIE das eigene
 Kachel-HTML — Bedienelemente brauchen echte Instanz-Variablen mit
 `EnableAction()`.

@@ -19,7 +19,7 @@
  */
 declare(strict_types=1);
 
-const MODULE = ['NRGDashboardTile', 'NRGDashboardMap', 'NRGDashboardTopology', 'NRGDashboardPVMonitor', 'NRGDashboardWPMonitor', 'NRGDashboardHeatSchema', 'NRGDashboardForecast'];
+const MODULE = ['NRGDashboardTile', 'NRGDashboardMap', 'NRGDashboardTopology', 'NRGDashboardPVMonitor', 'NRGDashboardWPMonitor', 'NRGDashboardHeatSchema', 'NRGDashboardForecast', 'NRGDashboardVentilation'];
 
 $root = dirname(__DIR__);
 $fehler = 0;

@@ -28,6 +28,7 @@ There is no data contract of its own. Every device is discovered automatically t
 | NRGDashboardWPMonitor | History and key figures of a heat pump |
 | NRGDashboardHeatSchema | Principle diagram of a heat pump |
 | NRGDashboardForecast | PV and load forecast compared with the values actually measured |
+| NRGDashboardVentilation | Ventilation and air-handling units as a card: temperatures, CO₂, heat-recovery efficiency, fan flow, filter warning and fault (display only) |
 
 ## Requirements
 
@@ -44,7 +45,7 @@ Coming from the old `InverterHubTile`: a tile already placed in the WebFront can
 
 ## Language
 
-All seven modules are bilingual (German/English) since version 0.11.0. The console, messages, status lines and the tiles follow the Symcon language. The German text is unchanged. Names of variables and profiles are created in the language active at creation time; existing names are not renamed.
+All eight modules are bilingual (German/English) since version 0.11.0. The console, messages, status lines and the tiles follow the Symcon language. The German text is unchanged. Names of variables and profiles are created in the language active at creation time; existing names are not renamed.
 
 ## Standalone web page
 
