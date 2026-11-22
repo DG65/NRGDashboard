@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.14.2 (in Arbeit, lokal)
+
+- **Neu: Wärmepumpen anderer Autoren (z. B. WPISM8, Wolf ISM8) per allgemeiner Vertragssuche.** Energiefluss (Tile), Wärmepumpen-Monitor und Heizungsschema fanden Wärmepumpen nur über eine feste Liste von Modulen (HeishaMon, WPHub, WPModbusHub, WPModbusGateway, SamsungEhs, WPBsbLan, WPEEBUSHub). Jetzt gilt für alle drei dieselbe Suche wie bei den Wallboxen (0.14.1): `IPS_GetModuleList`, Gerätemodule, `<PRÄFIX>_GetFunctions`; je **Eintrag** wird nach `contractType` (sonst `Type`, sonst `function`) `heatpump` und Vertrags-Hauptversion 1 gefiltert, nie die ganze Liste. Eine Liste mit mehreren Gerätearten (WPISM8: `heatpump` und `ventilation`) liefert so nur die Wärmepumpen; Lüftung gehört nicht dazu. Die Präfixe der festen Liste sind ausgenommen, eine schon bekannte Leistungsvariable erscheint nie doppelt, deaktivierte Instanzen und falsche Funktionssignaturen werden übersprungen, Zeitbudget 3 s. Nur Anzeige, Quelle `ext:<PRÄFIX>`. Die Suche steht einmal in `libs/ForeignDiscovery.php` (Trait `NRGDashForeignDiscovery`) und dient auch der Wallbox-Suche. Prüfstand `tests/fremdsuche.test.php` (ersetzt `tests/fremdwallbox.test.php`).
+
 ## 0.14.1 (2026-11-21)
 
 - **Neu: Wallboxen anderer Autoren im Energiefluss (Fremdanbindung).** Die Kachel fand Wallboxen bisher nur über ChargerHub, OCPPHub und ChargerEEBUSHub. Jetzt sucht sie zusätzlich allgemein: über `IPS_GetModuleList` das Präfix jedes Gerätemoduls, dann `<PRÄFIX>_GetFunctions`; angenommen werden Einträge mit `contractType` (sonst `function`) `charger` und Vertrags-Hauptversion 1 (SUITE.md „Fremdanbindung“). Eigene Module sind ausgenommen, Doppel erkennt sie über `deviceSerial` und `duplicateOf`, die Quelle heißt `ext:<PRÄFIX>`. Nur Lesesicht: Leistung und Status, keine Steuerung. Jeder Aufruf ist gekapselt (falsche Signatur oder Fehler: übersprungen), Zeitbudget 3 s im bestehenden 5-Minuten-Takt der Gerätesuche. Prüfstand `tests/fremdwallbox.test.php`.

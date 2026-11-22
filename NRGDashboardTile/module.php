@@ -46,6 +46,7 @@ define('NRGDASH_GUID_LASTPROGNOSE',   '{DC5AD508-507F-40EA-8630-0959AED83050}');
 define('NRGDASH_GUID_MONITOR',        '{E1A674D1-F48F-492D-B172-F8B9390BFEB3}');
 
 require_once __DIR__ . '/../libs/ModuleBase.php';
+require_once __DIR__ . '/../libs/ForeignDiscovery.php';
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 require_once __DIR__ . '/../libs/FormLayout.php';
@@ -54,6 +55,7 @@ require_once __DIR__ . '/../libs/Push.php';
 class NRGDashboardTile extends IPSModule
 {
     use NRGDashModuleBase;
+    use NRGDashForeignDiscovery;
     use NRGDashFormStatus;
     use NRGDashPush;
     use NRGDashFormLayout;
@@ -1656,6 +1658,9 @@ class NRGDashboardTile extends IPSModule
             }));
             $devices = array_merge($devices, $found);
         }
+
+        // Waermepumpen anderer Autoren (0.14.2): allgemeine Vertragssuche, nur Anzeige
+        $devices = array_merge($devices, $this->discoverForeignHeatpumps($devices));
 
         $chargerHub = $this->discoverListContract(NRGDASH_GUID_CHARGERHUB, 'CHUB_GetFunctions', 'chargerhub');
         $this->checkSourceCoverage('ChargerHub', NRGDASH_GUID_CHARGERHUB, count($chargerHub));
@@ -5270,16 +5275,12 @@ class NRGDashboardTile extends IPSModule
     private int $duplicatesSkipped = 0;
 
     /**
-     * Wallboxen anderer Autoren (Fremdanbindung, SUITE.md "Fremdanbindung", Regeln 2/3/8; Vorbild EMS/Partners.php discoverForeign, 0.14.1):
-     * IPS_GetModuleList -> Geraetemodul -> Praefix -> <PRAEFIX>_GetFunctions. Angenommen werden Eintraege mit contractType (sonst function)
-     * 'charger' und Vertrags-Hauptversion 1. Eigene Module (CHUB/OHUB/CHEEB und die uebrigen bekannten Praefixe) sind ausgenommen, sie kommen
-     * ueber ihren Weg. Doppel ueber deviceSerial (gegen schon gefundene Geraete) und duplicateOf; Quelle 'ext:<PRAEFIX>'. Nur Lesesicht:
-     * Leistung und Status in der Kachel, keine Steuerung. Jeder Aufruf gekapselt (falsche Signatur -> uebersprungen), Zeitbudget 3 s.
+     * Wallboxen anderer Autoren (Fremdanbindung, SUITE.md "Fremdanbindung"; 0.14.1): allgemeine Vertragssuche (libs/ForeignDiscovery.php),
+     * Eintraege mit Vertragstyp 'charger'. Doppel ueber deviceSerial (gegen schon gefundene Geraete) und duplicateOf. Nur Lesesicht:
+     * Leistung und Status in der Kachel, keine Steuerung.
      */
     private function discoverForeignChargers(array $known): array
     {
-        $own = ['CHUB', 'OHUB', 'CHEEB', 'MHUB', 'MHUBV', 'MHUBE', 'IHUB', 'IHUBTILE', 'WPHUB', 'WPMBHUB', 'WPMBGW', 'SAMEHS', 'WPBSBL', 'WPEEB',
-            'HMON', 'EMS', 'TIBBERGR', 'SPOT', 'SGW', 'PVF', 'LFC', 'NRGDASH', 'TESSIE'];
         $serials = [];
         foreach ($known as $k) {
             $sn = trim((string) ($k['deviceSerial'] ?? ''));
@@ -5288,62 +5289,66 @@ class NRGDashboardTile extends IPSModule
             }
         }
         $out = [];
-        $t0 = microtime(true);
-        foreach (IPS_GetModuleList() as $guid) {
-            if (microtime(true) - $t0 > 3.0) {
-                $this->SendDebug(__FUNCTION__, 'time budget exhausted', 0);
-                break;
-            }
-            $mod = @IPS_GetModule($guid);
-            if (!is_array($mod) || (int) ($mod['ModuleType'] ?? 0) !== 3) {
+        foreach ($this->discoverForeignByType('charger') as $e) {
+            if ((int) ($e['powerID'] ?? 0) <= 0 || !empty($e['duplicateOf'])) {
                 continue;
             }
-            $prefix = (string) ($mod['Prefix'] ?? '');
-            $fn = $prefix . '_GetFunctions';
-            if ($prefix === '' || in_array(strtoupper($prefix), $own, true) || !function_exists($fn)) {
+            $sn = trim((string) ($e['deviceSerial'] ?? ''));
+            if ($sn !== '' && isset($serials[$sn])) {
+                continue; // dasselbe Geraet kommt schon ueber einen eigenen Weg
+            }
+            if ($sn !== '') {
+                $serials[$sn] = true;
+            }
+            $id = (int) $e['_instanceID'];
+            unset($e['_instanceID']);
+            $e['function'] = (string) ($e['function'] ?? 'charger');
+            $e['extPrefix'] = (string) $e['_extPrefix'];
+            $out[] = $this->normalizeEntry($e, (string) $e['source'], $id);
+        }
+        return $out;
+    }
+
+    /**
+     * Waermepumpen anderer Autoren (0.14.2, z. B. WPISM8): wie bei den Wallboxen, Eintraege mit Vertragstyp 'heatpump' (nie die ganze Liste:
+     * eine Liste kann auch ventilation-Eintraege tragen). Eine Waermepumpe, deren Leistungsvariable schon im Bestand ist, wird nicht doppelt
+     * gezeigt (Durchreichen ueber HeishaMon/managedBy). Nur Anzeige.
+     */
+    private function discoverForeignHeatpumps(array $known): array
+    {
+        $have = [];
+        $serials = [];
+        foreach ($known as $k) {
+            if (($k['function'] ?? '') === 'heatpump' && (int) ($k['powerID'] ?? 0) > 0) {
+                $have[(int) $k['powerID']] = true;
+            }
+            $sn = trim((string) ($k['deviceSerial'] ?? ''));
+            if ($sn !== '') {
+                $serials[$sn] = true;
+            }
+        }
+        $out = [];
+        foreach ($this->discoverForeignByType('heatpump') as $e) {
+            $id = (int) $e['_instanceID'];
+            if (!isset($e['function']) && isset($e['Type'])) {
+                $e = $this->translateBaseEntry($e, $id);
+            }
+            $pid = (int) ($e['powerID'] ?? 0);
+            if ($pid <= 0 || isset($have[$pid]) || !empty($e['duplicateOf'])) {
                 continue;
             }
-            foreach (IPS_GetInstanceListByModuleID($guid) as $id) {
-                if ((int) (IPS_GetInstance($id)['InstanceStatus'] ?? 0) === 104) {
-                    continue; // vom Nutzer deaktiviert
-                }
-                try {
-                    $data = call_user_func($fn, $id);
-                } catch (\ArgumentCountError $e) {
-                    continue 2; // gleichnamige Funktion mit anderer Signatur: kein Vertragspartner
-                } catch (\Throwable $e) {
-                    $this->SendDebug(__FUNCTION__, sprintf('%s #%d: %s', $prefix, $id, $e->getMessage()), 0);
-                    continue;
-                }
-                if (is_string($data)) {
-                    $data = json_decode($data, true);
-                }
-                if (!is_array($data)) {
-                    continue;
-                }
-                $entries = (array_keys($data) === range(0, count($data) - 1)) ? $data : [$data];
-                foreach ($entries as $e) {
-                    if (!is_array($e) || (string) ($e['contractType'] ?? ($e['function'] ?? '')) !== 'charger') {
-                        continue;
-                    }
-                    if ((int) explode('.', (string) ($e['contractVersion'] ?? '0'))[0] !== 1 || (int) ($e['powerID'] ?? 0) <= 0) {
-                        continue;
-                    }
-                    if (!empty($e['duplicateOf'])) {
-                        continue;
-                    }
-                    $sn = trim((string) ($e['deviceSerial'] ?? ''));
-                    if ($sn !== '' && isset($serials[$sn])) {
-                        continue; // dasselbe Geraet kommt schon ueber einen eigenen Weg
-                    }
-                    if ($sn !== '') {
-                        $serials[$sn] = true;
-                    }
-                    $e['function'] = (string) ($e['function'] ?? 'charger');
-                    $e['extPrefix'] = $prefix;
-                    $out[] = $this->normalizeEntry($e, 'ext:' . $prefix, $id);
-                }
+            $sn = trim((string) ($e['deviceSerial'] ?? ''));
+            if ($sn !== '' && isset($serials[$sn])) {
+                continue;
             }
+            if ($sn !== '') {
+                $serials[$sn] = true;
+            }
+            $have[$pid] = true;
+            $e['function'] = 'heatpump';
+            $e['extPrefix'] = (string) $e['_extPrefix'];
+            unset($e['_instanceID']);
+            $out[] = $this->normalizeEntry($e, (string) $e['source'], $id);
         }
         return $out;
     }

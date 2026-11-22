@@ -29,12 +29,14 @@ declare(strict_types=1);
  * einer Nullanzeige.
  */
 require_once __DIR__ . '/../libs/ModuleBase.php';
+require_once __DIR__ . '/../libs/ForeignDiscovery.php';
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardHeatSchema extends IPSModule
 {
     use NRGDashModuleBase;
+    use NRGDashForeignDiscovery;
     use NRGDashFormStatus;
 
     private const HOOK_PATH = '/hook/nrgdashheatschema';
@@ -995,6 +997,8 @@ class NRGDashboardHeatSchema extends IPSModule
                 }
             }
         }
+        // Waermepumpen anderer Autoren (0.14.2, z. B. WPISM8): allgemeine Vertragssuche, nur Anzeige
+        $entries = $this->mergeForeignHeatpumps($entries);
         $manual = $this->buildManualHeatpumpEntry();
         if ($manual !== null) {
             $entries[] = $manual;

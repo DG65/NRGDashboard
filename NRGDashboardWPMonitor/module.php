@@ -36,12 +36,14 @@ declare(strict_types=1);
  * bewusst noch nicht gebaut - naechster Ausbauschritt.
  */
 require_once __DIR__ . '/../libs/ModuleBase.php';
+require_once __DIR__ . '/../libs/ForeignDiscovery.php';
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 
 class NRGDashboardWPMonitor extends IPSModule
 {
     use NRGDashModuleBase;
+    use NRGDashForeignDiscovery;
     use NRGDashFormStatus;
 
     private const HOOK_PATH = '/hook/nrgdashwpmonitor';
@@ -786,6 +788,8 @@ class NRGDashboardWPMonitor extends IPSModule
                 }
             }
         }
+        // Waermepumpen anderer Autoren (0.14.2, z. B. WPISM8): allgemeine Vertragssuche, nur Anzeige
+        $entries = $this->mergeForeignHeatpumps($entries);
         return $entries;
     }
 

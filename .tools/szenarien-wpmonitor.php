@@ -34,6 +34,8 @@ function ips_log(string $what, $data): void
     $GLOBALS['LOG'][] = $what . ' ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 function IPS_GetKernelRunlevel() { return KR_READY; }
+function IPS_GetModuleList() { return []; }
+function IPS_GetModule($guid) { return false; }
 function IPS_GetInstanceListByModuleID($guid)
 {
     $W = $GLOBALS['W'];
