@@ -190,6 +190,10 @@
           "caption": "All devices found through NRG-Stack partner modules. Individual devices can be deselected here without re-entering them - e.g. if a device that was detected twice or is not wanted should not appear in the tile. Stays in place after the next “Search devices now” as long as source/role/name remain the same."
         },
         {
+          "type": "Label",
+          "caption": "Group: devices with the same group name are combined into one node that opens one level deeper (for example several wallboxes as “Charging park”, or wallbox, light and workshop as “Garage”). A wallbox can bring a group name from its module (column “Default group”); here you can set or override it for any device. “-” = no group. A group needs at least two devices; devices that already belong to a group meter keep that group."
+        },
+        {
           "type": "List",
           "name": "DeviceVisibility",
           "caption": "Devices",
@@ -223,6 +227,19 @@
               "width": "220px",
               "add": "",
               "edit": { "type": "ValidationTextBox" }
+            },
+            {
+              "caption": "Group (empty = default)",
+              "name": "Group",
+              "width": "170px",
+              "add": "",
+              "edit": { "type": "ValidationTextBox" }
+            },
+            {
+              "caption": "Default group",
+              "name": "GroupDefault",
+              "width": "140px",
+              "add": ""
             },
             {
               "caption": "Role",

@@ -794,6 +794,7 @@ class NRGDashboardTile extends IPSModule
         // (Store-Review-Regel: berechnete Anzeigespalten nicht zurueckschreiben,
         // "loadValuesFromConfiguration": false in form.json).
         $this->RegisterPropertyString('DeviceVisibility', '[]');
+        $this->RegisterAttributeString('GroupCandidates', '[]');
         // Vorfuehr-/Demomodus (01.09.2026, Dietmar: "EMS Modulvorstellung" -
         // eine zusaetzliche Instanz zur Praesentation des ganzen Verbunds,
         // "sie duerfen keine Auswirkungen auf das System haben"). Schaltet
@@ -1378,6 +1379,7 @@ class NRGDashboardTile extends IPSModule
                     $map[$row['Key']] = [
                         'enabled' => !empty($row['Enabled']),
                         'name'    => trim((string) ($row['Name'] ?? '')),
+                        'group'   => trim((string) ($row['Group'] ?? '')),
                     ];
                 }
             }
@@ -1405,17 +1407,27 @@ class NRGDashboardTile extends IPSModule
     {
         $overrides = $this->deviceOverrideMap();
         $rows = [];
-        foreach ($this->GetDevices() as $d) {
+        $seen = [];
+        // Geraete im Bestand plus die Geraete, die als Mitglied in einer Gruppe stecken (sonst koennte man sie dort nie wieder herausnehmen)
+        $candidates = json_decode((string) $this->ReadAttributeString('GroupCandidates'), true);
+        $all = array_merge($this->GetDevices(), is_array($candidates) ? $candidates : []);
+        foreach ($all as $d) {
             $key = $this->deviceKey($d);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
             // overrideFor() migriert alte (label-basierte) Schluessel lesend;
             // die Zeile traegt bereits den NEUEN Schluessel, das naechste
             // Speichern durch den Nutzer schreibt ihn dauerhaft.
-            $o = $this->overrideFor($d, $overrides) ?? ['enabled' => true, 'name' => ''];
+            $o = $this->overrideFor($d, $overrides) ?? ['enabled' => true, 'name' => '', 'group' => ''];
             $instanceID = (int) ($d['instanceID'] ?? 0);
             $rows[] = [
                 'Key'      => $key,
                 'Enabled'  => $o['enabled'],
                 'Name'     => $o['name'],
+                'Group'    => (string) ($o['group'] ?? ''),
+                'GroupDefault' => ($d['source'] ?? '') === 'group' ? '' : substr(trim((string) ($d['groupName'] ?? '')), 0, 60),
                 'Rolle'    => $d['function'] ?? '?',
                 'ID'       => (int) ($d['powerID'] ?? 0),
                 'Quelle'   => $d['source'] ?? '?',
@@ -1750,6 +1762,9 @@ class NRGDashboardTile extends IPSModule
         // dafuer ein Zaehler-Badge und erlaubt den Klick in die naechste Ebene.
         $devices = array_map(function (array $d) { return $this->attachMembers($d); }, $devices);
 
+        // Gruppen ueber den Gruppennamen (0.16.0): Geraete mit gleichem Namen werden ein Knoten mit berechneter Summe
+        $devices = $this->applyDeviceGroups($devices);
+
         // Ebene-1-Bereinigung (Dietmar, 11.09.2026): Wurzeln, die als
         // positives Mitglied in einem anderen Sammelknoten stecken, gehoeren
         // eine Ebene tiefer - nicht zusaetzlich neben ihn (Doppelzaehlung).
@@ -1788,6 +1803,7 @@ class NRGDashboardTile extends IPSModule
         $diagnostics = $this->discoverDiagnostics();
 
         $this->WriteAttributeString('DeviceCache', json_encode($devices));
+        $this->WriteAttributeString('GroupCandidates', json_encode($this->groupCandidates));
         $this->WriteAttributeString('AbsorbedWallboxes', json_encode($this->absorbedWallboxes));
         $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
         $this->WriteAttributeInteger('LastDiscoveryTs', time());
@@ -1840,6 +1856,12 @@ class NRGDashboardTile extends IPSModule
         foreach ($devices as $d) {
             foreach (['powerID', 'socID'] as $field) {
                 $vid = $d[$field] ?? 0;
+                if ($vid > 0 && IPS_VariableExists($vid)) {
+                    $this->RegisterMessage($vid, VM_UPDATE);
+                }
+            }
+            foreach (($d['sumPowerIDs'] ?? []) as $sp) {
+                $vid = (int) ($sp[0] ?? 0);
                 if ($vid > 0 && IPS_VariableExists($vid)) {
                     $this->RegisterMessage($vid, VM_UPDATE);
                 }
@@ -2893,6 +2915,19 @@ class NRGDashboardTile extends IPSModule
     private function resolvePowerValue(array &$device): ?float
     {
         $id = (int) ($device['powerID'] ?? 0);
+        // Gruppenknoten ohne eigene Messung (0.16.0): Summe der Mitglieder, je [powerID, Skalierung, Vorzeichen]
+        if ($id <= 0 && !empty($device['sumPowerIDs']) && is_array($device['sumPowerIDs'])) {
+            $sum = 0.0;
+            $any = false;
+            foreach ($device['sumPowerIDs'] as [$sid, $sscale, $ssign]) {
+                $sv = $this->resolveVariableValue((int) $sid);
+                if ($sv !== null) {
+                    $sum += $sv * (float) $sscale * (int) $ssign;
+                    $any = true;
+                }
+            }
+            return $any ? $sum : null;
+        }
         $value = $id > 0 ? $this->resolveVariableValue($id) : null;
         // powerScale (26.09.2026, Forum-Fund somm, siehe discoverManual-
         // Consumers()) - nur bei frei gewaehlten "Weitere Verbraucher"-
@@ -5619,6 +5654,85 @@ class NRGDashboardTile extends IPSModule
      * iterativ aufgeloest; ein Zyklus ohne unbeanspruchte Spitze (Fehl-
      * konfiguration) blendet nichts aus, statt alles verschwinden zu lassen.
      */
+    /** Geraete, die als Gruppenmitglied in der Geraeteliste auftauchen muessen (siehe applyDeviceGroups()). */
+    private array $groupCandidates = [];
+
+    /**
+     * Gruppen ueber den Gruppennamen (0.16.0, Dietmar 22.11.2026: mehrere Wallboxen als "Ladepark", Wallbox mit Licht und Werkstatt als
+     * "Garage"). Ein Geraet gehoert zu der Gruppe, die in der Geraeteliste der Kachel (Spalte "Gruppe") steht, sonst zu der aus seinem
+     * Vertrag ('groupName', z. B. ChargerHub charger 1.14); "-" in der Spalte = keine Gruppe. Gleiche Namen (ohne Gross-/Kleinschreibung)
+     * ergeben EINEN Knoten mit berechneter Summe ('sumPowerIDs'), der wie jeder Sammelknoten eine Ebene tiefer aufklappt. Eine Gruppe braucht
+     * mindestens zwei Mitglieder. Nicht aufgenommen werden Kernrollen (Solar, Batterie, Netz, Haus), ausgeblendete Geraete, Geraete ohne
+     * Leistungsvariable und Geraete, die schon positives Mitglied eines Sammelzaehlers sind (die Zuordnung dort gilt, sonst wuerde die
+     * Leistung doppelt gezaehlt). Laeuft NACH attachMembers(); die Mitglieder-Wurzeln blendet danach hideRootsContainedInGroups() aus.
+     */
+    private function applyDeviceGroups(array $devices): array
+    {
+        $this->groupCandidates = [];
+        $overrides = $this->deviceOverrideMap();
+        $core = ['pv', 'battery', 'grid', 'house'];
+        $claimed = [];
+        foreach ($devices as $d) {
+            foreach (($d['members'] ?? []) as $m) {
+                if ((int) ($m['powerID'] ?? 0) > 0 && (float) ($m['factor'] ?? 100) > 0) {
+                    $claimed[(int) $m['powerID']] = true;
+                }
+            }
+        }
+        $byName = [];
+        foreach ($devices as $d) {
+            $pid = (int) ($d['powerID'] ?? 0);
+            $fn = (string) ($d['function'] ?? '');
+            if (!empty($d['hasMembers']) || $pid <= 0 || in_array($fn, $core, true) || isset($claimed[$pid])) {
+                continue;
+            }
+            $o = $this->overrideFor($d, $overrides) ?? ['enabled' => true, 'name' => '', 'group' => ''];
+            if (($o['enabled'] ?? true) === false) {
+                continue;
+            }
+            $this->groupCandidates[] = $d;
+            $name = trim((string) ($o['group'] ?? ''));
+            if ($name === '') {
+                $name = trim((string) ($d['groupName'] ?? ''));
+            }
+            if ($name === '' || $name === '-') {
+                continue;
+            }
+            $name = function_exists('mb_substr') ? mb_substr($name, 0, 60) : substr($name, 0, 60);
+            $key = function_exists('mb_strtolower') ? mb_strtolower($name) : strtolower($name);
+            $byName[$key]['name'] = $byName[$key]['name'] ?? $name;
+            $byName[$key]['devices'][] = $d;
+        }
+        foreach ($byName as $g) {
+            if (count($g['devices']) < 2) {
+                continue;
+            }
+            $members = [];
+            $sum = [];
+            $functions = [];
+            $allWallbox = true;
+            foreach ($g['devices'] as $d) {
+                $members[] = [
+                    'name' => (string) ($d['label'] ?? ''), 'function' => (string) ($d['function'] ?? 'other'), 'factor' => 100,
+                    'powerID' => (int) $d['powerID'], 'energyImportID' => (int) ($d['energyImportID'] ?? 0),
+                    'energyExportID' => (int) ($d['energyExportID'] ?? 0), 'socID' => (int) ($d['socID'] ?? 0),
+                ];
+                $sum[] = [(int) $d['powerID'], (float) ($d['powerScale'] ?? 1.0), (int) ($d['powerSign'] ?? 1)];
+                $fn = (string) ($d['function'] ?? 'other');
+                $functions[$fn] = true;
+                if ($this->normalizeDeviceCategory($fn) !== 'wallbox') {
+                    $allWallbox = false;
+                }
+            }
+            $groupFn = $allWallbox ? 'wallboxgroup' : (count($functions) === 1 ? (string) array_key_first($functions) : 'other');
+            $devices[] = $this->attachMembers([
+                'function' => $groupFn, 'label' => $g['name'], 'source' => 'group', 'instanceID' => 0, 'powerID' => 0,
+                'measured' => true, 'category' => 'verbraucher', 'sumPowerIDs' => $sum, 'members' => $members, 'groupName' => $g['name'],
+            ]);
+        }
+        return $devices;
+    }
+
     /** Beim Aufschachteln ausgeblendete Wallboxen (nur waehrend der Discovery gefuellt, dann im Attribut AbsorbedWallboxes). */
     private array $absorbedWallboxes = [];
 
@@ -6236,6 +6350,12 @@ class NRGDashboardTile extends IPSModule
             $powerSeries = array_map(function ($p) { return [$p[0], -$p[1]]; }, $powerSeries);
         }
         $energy = $this->DailyEnergyBars($d, $dayStart);
+        $memberSeries = $this->DetailMemberSeries($key, $d, $dayStart, $dayEnd);
+        // Gruppenknoten ohne eigene Messung (0.16.0): Leistung und Energie je Tag aus der Summe der Mitglieder
+        if ($powerID <= 0 && ($d['source'] ?? '') === 'group' && $memberSeries !== null) {
+            [$powerSeries, $energy] = $this->GroupSumFromMembers($memberSeries);
+            $archivingActive = true;
+        }
         $isToday = date('Y-m-d', $dayStart) === date('Y-m-d');
         return [
             'ok'        => true,
@@ -6281,7 +6401,7 @@ class NRGDashboardTile extends IPSModule
             // heute ist die Liste in jedem echten Aufruf leer.
             'subMeters' => $this->ResolveSubMeters($d),
             // Gruppenzaehler/PV mit MPPT: Verlauf je Mitglied fuer "Einzeln"/"Gestapelt" (0.14.0), null ohne mindestens zwei Mitglieder
-            'memberSeries' => $this->DetailMemberSeries($key, $d, $dayStart, $dayEnd),
+            'memberSeries' => $memberSeries,
             'renderedAt' => time(),
             'bg'        => $this->ColorOrEmpty($this->readIntProperty('ColorBackground', self::DEF_BACKGROUND)),
             'font'      => $this->FontStack($this->readStringProperty('FontFamily', self::DEF_FONT)),
@@ -6499,6 +6619,43 @@ class NRGDashboardTile extends IPSModule
      * werfen, da noch KEIN Partnermodul dieses Feld liefert und ein
      * kuenftiges Format daher nicht final feststeht.
      */
+    /**
+     * Summe der Mitglieder-Verlaeufe fuer einen Gruppenknoten ohne eigene Messung (0.16.0). Leistung: je Zeitpunkt die Summe der
+     * vorhandenen Werte (Luecken zaehlen nicht); Energie je Tag: Summe der Mitglieder mit Zaehler. @return array{0:array,1:array} Leistung, Energie
+     */
+    private function GroupSumFromMembers(array $ms): array
+    {
+        $power = [];
+        foreach ($ms['t'] as $k => $t) {
+            $sum = 0.0;
+            $any = false;
+            foreach ($ms['members'] as $m) {
+                if (($m['v'][$k] ?? null) !== null) {
+                    $sum += (float) $m['v'][$k];
+                    $any = true;
+                }
+            }
+            if ($any) {
+                $power[] = [$t, round($sum, 1)];
+            }
+        }
+        $bars = [];
+        foreach ($ms['days'] as $di => $day) {
+            $sum = 0.0;
+            $any = false;
+            foreach ($ms['members'] as $m) {
+                if (($m['kwh'][$di] ?? null) !== null) {
+                    $sum += (float) $m['kwh'][$di];
+                    $any = true;
+                }
+            }
+            if ($any) {
+                $bars[] = [$day, round($sum, 3)];
+            }
+        }
+        return [$power, ['bars' => $bars, 'unit' => (string) ($ms['unit'] ?? 'kWh'), 'approx' => false, 'name' => '', 'fixedDays' => $ms['fixedDays'] ?? []]];
+    }
+
     private const DETAIL_MEMBER_MAX = 16;
 
     /**

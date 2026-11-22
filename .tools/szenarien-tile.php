@@ -257,6 +257,30 @@ foreach ([
     szenario('Hook ' . $name, $welt, $props, [], function ($m) use ($get) { hook($m, $get); });
 }
 
+
+// --- Gruppenknoten ueber den Gruppennamen (0.16.0): berechnete Summe, Mitglieder, Detailseite
+$gruppe = ['function' => 'wallboxgroup', 'label' => 'Ladepark', 'source' => 'group', 'instanceID' => 0, 'powerID' => 0, 'measured' => true, 'category' => 'verbraucher',
+    'sumPowerIDs' => [[11, 1.0, 1], [12, 1.0, 1]], 'groupName' => 'Ladepark', 'hasMembers' => true, 'memberCount' => 2,
+    'members' => [
+        ['key' => 'group|0|wallboxgroup|lLadepark>0', 'label' => 'WB 1', 'function' => 'charger', 'factor' => 100.0, 'powerID' => 11, 'energyImportID' => 0, 'energyExportID' => 0, 'socID' => 0, 'instanceID' => 0, 'hasMembers' => false, 'memberCount' => 0, 'switchID' => 0, 'switchStateID' => 0],
+        ['key' => 'group|0|wallboxgroup|lLadepark>1', 'label' => 'WB 2', 'function' => 'charger', 'factor' => 100.0, 'powerID' => 12, 'energyImportID' => 0, 'energyExportID' => 0, 'socID' => 0, 'instanceID' => 0, 'hasMembers' => false, 'memberCount' => 0, 'switchID' => 0, 'switchStateID' => 0],
+    ]];
+szenario('Gruppenknoten Ladepark (Summe, Mitglieder)', $welt, [], ['DeviceCache' => json_encode([$gruppe])], function ($m) {
+    $r = new ReflectionMethod($m, 'buildPayload');
+    $pl = $r->invoke($m);
+    foreach ($pl['devices'] ?? [] as $d) { echo 'KNOTEN ' . json_encode(['function' => $d['function'] ?? '', 'label' => $d['label'] ?? '', 'value' => $d['value'] ?? null, 'hasMembers' => $d['hasMembers'] ?? null, 'memberCount' => $d['memberCount'] ?? null, 'detailKey' => $d['detailKey'] ?? ''], JSON_UNESCAPED_UNICODE) . "\n"; }
+    $_GET = ['members' => 'group|0|wallboxgroup|lLadepark'];
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    $m->ProcessHookData();
+    $_GET = [];
+});
+szenario('Gruppenknoten Ladepark, Detailseite', $welt, [], ['DeviceCache' => json_encode([$gruppe])], function ($m) {
+    $_GET = ['detail' => 'group|0|wallboxgroup|lLadepark', 'json' => '1'];
+    $_SERVER['REQUEST_METHOD'] = 'GET';
+    $m->ProcessHookData();
+    $_GET = [];
+});
+
 // --- Kachel/Detailseite: Texttabellen und eingesetzte Zahlenformate
 szenario('Detailseite Hook (HTML, Textanfang)', $welt, [], [], function ($m) {
     $_GET = ['detail' => 'gibtsnicht'];
