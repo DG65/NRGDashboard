@@ -12,6 +12,10 @@ English documentation: [README.en.md](README.en.md)
 Teil des **NRG-Stack** (DG65) — welche Modulstände zusammenpassen, steht im
 internen Kompatibilitäts-Manifest des NRG-Stack.
 
+## Gruppen (Ladepark, Garage) – ab 0.16.0
+
+Geräte mit demselben **Gruppennamen** werden im Energiefluss zu einem Knoten mit berechneter Summe, der wie jeder Sammelzähler eine Ebene tiefer aufklappt. Der Name kommt für Wallboxen aus dem Vertrag (`groupName`, ChargerHub ab 0.16.0, auch Fremdmodule), und in der Geräteliste der Kachel („Automatisch gefundene Geräte“, Spalte „Gruppe“) kann jedes Gerät einer Gruppe zugeordnet werden – so entsteht zum Beispiel „Garage“ aus Wallbox, Licht und Werkstatt. „-“ nimmt ein Gerät aus der Gruppe seines Moduls heraus. Eine Gruppe braucht mindestens zwei Geräte; Geräte, die schon zu einem MeterHub-Sammelzähler gehören, bleiben dort (sonst würde ihre Leistung doppelt gezählt).
+
 ## Lüftung (`NRGDashboardVentilation`, ab 0.15.0)
 
 Eigene Kachel für Lüftungs- und RLT-Anlagen: jede Anlage, deren Modul den NRG-Stack-Vertrag `ventilation` liefert (RLTHub, WPISM8 u. a.), erscheint als Karte mit Temperaturen (Außen-, Zu-, Abluft), CO₂, Wirkungsgrad der Wärmerückgewinnung, Ventilator-Volumenstrom (mit Einheit `m³/h` oder `%` aus `fanFlowUnit`), Filterwarnung und Sammelstörung. Felder, die die Anlage nicht meldet (ID 0 oder leer), bleiben ausgeblendet. Die Anlagen werden über die allgemeine Fremdsuche gefunden (`libs/ForeignDiscovery.php`, je Eintrag nach Vertragstyp gefiltert, Hauptversion 1). Nur Anzeige, die Kachel steuert nichts. Eine Lüftung hat keine Leistungsvariable und passt deshalb nicht als Knoten in den Energiefluss.
