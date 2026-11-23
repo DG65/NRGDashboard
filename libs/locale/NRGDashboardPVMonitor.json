@@ -1,6 +1,8 @@
 {
   "translations": {
     "de": {
+      "%s (charged)": "%s (geladen)",
+      "%s (planned)": "%s (geplant)",
       "%s further entries lie on other days and remain unchanged.": "%s weitere Einträge liegen an anderen Tagen und bleibt unverändert.",
       "%s further entry lies on other days and remains unchanged.": "%s weiterer Eintrag liegt an anderen Tagen und bleibt unverändert.",
       "%s h": "%s Uhr",
@@ -330,6 +332,7 @@
       "Update EMS - the installed version does not know the manual entries yet (from EMS 0.76.0).": "EMS aktualisieren - die installierte Version kennt die manuellen Einträge noch nicht (ab EMS 0.76.0).",
       "Usual for weather stations, for example Ecowitt.": "Üblich bei Wetterstationen, zum Beispiel Ecowitt.",
       "W (0 = as much as possible)": "W (0 = so viel wie möglich)",
+      "Wallbox": "Wallbox",
       "Watt": "Watt",
       "Wed": "Mi",
       "Wednesday": "Mittwoch",
@@ -347,6 +350,8 @@
       "Yellow": "Gelb",
       "Yesterday": "Gestern",
       "avg kW": "Ø kW",
+      "calibrating": "kalibriert gerade",
+      "charged": "geladen",
       "en-GB": "de-DE",
       "fed in %s kWh / drawn %s kWh": "eingespeist %s kWh / entnommen %s kWh",
       "needed - the PV tab, daily plan actuals and year comparison stay without data (choose below or install InverterHub).": "wird gebraucht - PV-Reiter, Tagesplan-Ist und Jahresvergleich bleiben ohne Daten (unten auswählen oder InverterHub installieren).",
@@ -354,6 +359,7 @@
       "not found - no expected values in the solar tab and year comparison.": "nicht gefunden - keine Erwartungswerte in Solar-Reiter und Jahresvergleich.",
       "not found - no grid import bar in the electricity price tab.": "nicht gefunden - kein Netzbezug-Balken im Strompreis-Reiter.",
       "not found - the battery tab is missing.": "nicht gefunden - der Batterie-Reiter fehlt.",
+      "planned charging": "geplantes Laden",
       "shaded red: negative spot price (§ 51 EEG, no feed-in tariff)": "rot hinterlegt: negativer Börsenpreis (§ 51 EEG, keine Einspeisevergütung)",
       "the instance search": "der Instanzsuche",
       "§51 obligation": "§51-Pflicht",

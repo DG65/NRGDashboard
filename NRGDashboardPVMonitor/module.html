@@ -2451,7 +2451,8 @@
         pvForecast: (dp.pvForecast || []).filter(inRange),
         loadForecast: (dp.loadForecast || []).filter(inRange),
         windows: (dp.windows || []).filter(function (w) { return w.start < endMs && w.end > startMs; }),
-        decision: dp.decision || null
+        decision: dp.decision || null,
+        wallboxes: planLanesForDay(dp.wallboxes, startMs, endMs)
       };
     }
 
@@ -2552,7 +2553,7 @@
       }
       var kand = [];
       (list || []).forEach(function (s) {
-        if (!s || s.bar || !Array.isArray(s.data) || s.data.length < 3) { return; }
+        if (!s || s.bar || s.lane || !Array.isArray(s.data) || s.data.length < 3) { return; }
         var pts = lies(s.data);
         if (!pts) { return; }
         var st = mediane(pts);
@@ -2615,6 +2616,50 @@
       return list;
     }
 
+    // Ladefenster je Wallbox (Tagesplan, 23.11.2026): geplante Fenster (planWindows, charger 1.15) und tatsaechliches Laden aus dem Archiv,
+    // auf den angezeigten Tag zugeschnitten. Wallboxen ohne Fenster an diesem Tag entfallen. Zeiten in Millisekunden.
+    function planLanesForDay(lanes, startMs, endMs) {
+      function clip(list) {
+        return (list || []).filter(function (w) { return w[0] < endMs && w[1] > startMs; })
+          .map(function (w) { return [Math.max(w[0], startMs), Math.min(w[1], endMs), w[2] === undefined ? null : w[2]]; });
+      }
+      return (lanes || []).map(function (l) {
+        return { label: l.label, calibrating: l.calibrating, maxPowerW: l.maxPowerW, plan: clip(l.plan), actual: clip(l.actual) };
+      }).filter(function (l) { return l.plan.length || l.actual.length; });
+    }
+
+    // Streifenserien fuer die Wallboxen: je Wallbox bis zu zwei Linien (geplant, geladen) als dicke Striche auf einer eigenen, versteckten
+    // Achse (0..100) am oberen Rand des Diagramms; Luecken ueber null-Punkte. Gleiche Form fuer ECharts und Highcharts.
+    var LANE_TOP = 95, LANE_STEP = 6;
+    function wallboxLaneSeries(lanes) {
+      var out = [];
+      (lanes || []).forEach(function (l, k) {
+        var y = LANE_TOP - k * LANE_STEP;
+        function bar(wins) {
+          var d = [];
+          wins.forEach(function (w) { d.push([w[0], y], [w[1], y], [w[1], null]); });
+          return d;
+        }
+        if (l.plan && l.plan.length) { out.push({ name: sf(tr('%s (planned)'), l.label), data: bar(l.plan), axis: 3, color: '#26a69a', lane: true }); }
+        if (l.actual && l.actual.length) { out.push({ name: sf(tr('%s (charged)'), l.label), data: bar(l.actual), axis: 3, color: '#66bb6a', lane: true }); }
+      });
+      return out;
+    }
+
+    // Zeilen fuer die Tooltips: das Fenster je Wallbox, in dem die Mausposition liegt.
+    function planLaneLines(dp, ts) {
+      var out = [];
+      (dp.wallboxes || []).forEach(function (l) {
+        function at(list) { return (list || []).filter(function (w) { return w[0] <= ts && ts < w[1]; })[0] || null; }
+        var pl = at(l.plan), ac = at(l.actual);
+        function hm(ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+        if (pl) { out.push(l.label + ': ' + tr('planned charging') + ' ' + hm(pl[0]) + '–' + hm(pl[1]) + (pl[2] ? ' (' + (pl[2] / 1000).toFixed(1) + ' kW)' : '')); }
+        if (ac) { out.push(l.label + ': ' + tr('charged') + ' ' + hm(ac[0]) + '–' + hm(ac[1])); }
+        if (l.calibrating) { out.push(l.label + ': ' + tr('calibrating')); }
+      });
+      return out;
+    }
+
     function planSeries(dp) {
       var series = [];
       var priceData = dp.slots.filter(function (s) { return s.price !== null && s.price !== undefined; })
@@ -2635,7 +2680,8 @@
       if (dp.loadForecast && dp.loadForecast.length) {
         series.push({ name: tr('Load'), data: dp.loadForecast.map(function (p) { return [p[0], p[1] / 1000]; }), axis: 0, color: '#64b5f6', dashed: true });
       }
-      return unifyResolution(series);
+      var linesOnly = unifyResolution(series);
+      return linesOnly.concat(wallboxLaneSeries(dp.wallboxes));
     }
 
     function renderDayPlanECharts(el, dp) {
@@ -2667,6 +2713,13 @@
           name: s.name, type: 'line', showSymbol: false, step: s.step ? 'end' : false, data: s.data,
           yAxisIndex: s.axis, color: s.color, lineStyle: Object.assign({ width: 1.2 }, s.dashed ? { type: 'dashed' } : {})
         };
+        if (s.lane) {
+          // Wallbox-Streifen: dicke, geschlossene Striche auf der versteckten Achse 3, ohne Tooltip-Eintrag
+          line.id = 'lane:' + s.name;
+          line.lineStyle = { width: 9, color: s.color, cap: 'butt' };
+          line.z = 6;
+          line.silent = true;
+        }
         if (i === 0) {
           if (markAreas.length) { line.markArea = { silent: true, data: markAreas }; }
           if (nowMarkLine) { line.markLine = nowMarkLine; }
@@ -2705,18 +2758,20 @@
             var slot = ts !== null ? dp.slots.reduce(function (best, s) { return (s.time <= ts) ? s : best; }, dp.slots[0]) : null;
             var head = ts !== null ? '<div style="font-weight:600;margin-bottom:2px">' + new Date(ts).toLocaleString(LOC) + '</div>' : '';
             var opLine = slot ? '<div>' + planOpInfo(slot.op).name + (slot.reason ? ' – ' + slot.reason : '') + '</div>' + (planXsetText(slot) ? '<div>' + planXsetText(slot) + '</div>' : '') + (planWindowText(slot) ? '<div>' + planWindowText(slot) + '</div>' : '') + (planRestwertText(slot) ? '<div>' + planRestwertText(slot) + '</div>' : '') : '';
-            var lines = params.filter(function (p) { return p.seriesName; }).map(function (p) {
+            var lines = params.filter(function (p) { return p.seriesName && String(p.seriesId || '').indexOf('lane:') !== 0; }).map(function (p) {
               var v = (p.value && p.value[1] !== undefined) ? p.value[1] : p.value;
               return '<div>' + p.marker + ' ' + p.seriesName + ': <b>' + (v === null || v === undefined ? '–' : Number(v).toFixed(2)) + '</b></div>';
             }).join('');
-            return head + opLine + lines;
+            var laneHtml = ts !== null ? planLaneLines(dp, ts).map(function (t) { return '<div>' + t + '</div>'; }).join('') : '';
+            return head + opLine + lines + laneHtml;
           }
         },
         xAxis: { type: 'time', min: dp.dayStart, max: dp.dayEnd, splitLine: { show: true, lineStyle: { color: GRID_COLOR } }, axisLabel: themeAxisStyle() },
         yAxis: [
           { type: 'value', name: 'kW', position: 'left', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: true, lineStyle: { color: GRID_COLOR } } },
           { type: 'value', name: 'ct/kWh', position: 'right', nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } },
-          { type: 'value', name: 'SOC %', position: 'right', offset: 46, min: 0, max: 100, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } }
+          { type: 'value', name: 'SOC %', position: 'right', offset: 46, min: 0, max: 100, nameTextStyle: themeAxisStyle(), axisLabel: themeAxisStyle(), splitLine: { show: false } },
+          { type: 'value', show: false, min: 0, max: 100, splitLine: { show: false } }
         ],
         dataZoom: DATA_ZOOM_INSIDE,
         series: series.concat((function () {
@@ -2823,7 +2878,8 @@
         yAxis: [
           { title: { text: 'kW', style: themeAxisStyle() }, labels: { style: themeAxisStyle() } },
           { title: { text: 'ct/kWh', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true },
-          { title: { text: 'SOC %', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, min: 0, max: 100 }
+          { title: { text: 'SOC %', style: themeAxisStyle() }, labels: { style: themeAxisStyle() }, opposite: true, min: 0, max: 100 },
+          { visible: false, min: 0, max: 100, title: { text: null }, gridLineWidth: 0, startOnTick: false, endOnTick: false }
         ],
         legend: { enabled: false },
         credits: { enabled: false },
@@ -2858,10 +2914,16 @@
             this.points.forEach(function (p) {
               lines.push('<div><span style="color:' + p.color + '">●</span> ' + p.series.name + ': <b>' + (p.y === null || p.y === undefined ? '–' : Number(p.y).toFixed(2)) + '</b></div>');
             });
+            planLaneLines(dp, ts).forEach(function (t) { lines.push('<div>' + t + '</div>'); });
             return lines.join('');
           }
         },
         series: visSeries.map(function (s) {
+          if (s.lane) {
+            // Wallbox-Streifen: dicke, geschlossene Striche auf der versteckten Achse 3, nicht im Tooltip
+            return { name: s.name, type: 'line', data: s.data, color: s.color, yAxis: 3, lineWidth: 9, linecap: 'butt', marker: { enabled: false },
+              enableMouseTracking: false, zIndex: 6, states: { inactive: { enabled: false } } };
+          }
           return {
             name: s.name, type: 'line', data: s.data, color: s.color, yAxis: s.axis,
             step: s.step ? 'left' : undefined, dashStyle: s.dashed ? 'Dash' : 'Solid', marker: { enabled: false }, lineWidth: 1.4

@@ -17,6 +17,7 @@ declare(strict_types=1);
  * live verifizieren zu können (Verbund-Arbeitsweise dieser Sitzung).
  */
 require_once __DIR__ . '/../libs/ModuleBase.php';
+require_once __DIR__ . '/../libs/ForeignDiscovery.php';
 require_once __DIR__ . '/../libs/FormStatus.php';
 require_once __DIR__ . '/../libs/NRGDASH_Text.php';
 require_once __DIR__ . '/../libs/Push.php';
@@ -25,6 +26,7 @@ require_once __DIR__ . '/../libs/Delta.php';
 class NRGDashboardPVMonitor extends IPSModule
 {
     use NRGDashModuleBase;
+    use NRGDashForeignDiscovery;
     use NRGDashFormStatus;
     use NRGDashPush;
 
@@ -457,6 +459,11 @@ class NRGDashboardPVMonitor extends IPSModule
         'Daily plan',
         'Scenarios',
         'avg kW',
+        '%s (planned)',
+        '%s (charged)',
+        'planned charging',
+        'charged',
+        'calibrating',
     ];
 
     private const FORUM_URL = 'https://community.symcon.de/t/modul-nrg-stack-dashboard-energiefluss-kachel-3d-karte-verlaufs-charts-fuer-den-ganzen-verbund/144394';
@@ -2461,6 +2468,146 @@ class NRGDashboardPVMonitor extends IPSModule
         ]];
     }
 
+    /** Wallbox-Quellen fuer die Ladefenster im Tagesplan: [Modul-GUID, Vertragsfunktion] (ChargerHub, OCPPHub, ChargerEEBUSHub). */
+    private const CHARGER_SOURCES = [
+        ['{9256C34E-5CFD-4F37-8BFE-E65390EBB37C}', 'CHUB_GetFunctions'],
+        ['{81D3E328-9E12-43A9-825A-F7888530868C}', 'OHUB_GetFunctions'],
+        ['{45A53474-81B3-4A59-BDD9-B0C3CCBFE6BF}', 'CHEEB_GetFunctions'],
+    ];
+
+    /**
+     * Ladevorgaenge aus einer Leistungsreihe [[ms, W], ...] (5-Minuten-Mittel): zusammenhaengende Punkte ueber $minW, Luecken (vom Ende des
+     * letzten Punkts bis zum naechsten) bis $gapMs gehoeren dazu. Ein Punkt gilt fuer seine 5 Minuten, das Ende liegt also 300 s nach dem letzten Punkt.
+     * @return array<int,array{0:int,1:int}> [[vonMs, bisMs], ...]
+     */
+    private static function chargeSegments(array $series, float $minW = 100.0, int $gapMs = 900000): array
+    {
+        $segs = [];
+        $cur = null;
+        foreach ($series as [$t, $w]) {
+            if ((float) $w <= $minW) {
+                continue;
+            }
+            $t = (int) $t;
+            if ($cur !== null && $t - $cur[1] <= $gapMs) {
+                $cur[1] = $t + 300000;
+            } else {
+                if ($cur !== null) {
+                    $segs[] = $cur;
+                }
+                $cur = [$t, $t + 300000];
+            }
+        }
+        if ($cur !== null) {
+            $segs[] = $cur;
+        }
+        return $segs;
+    }
+
+    /**
+     * Geplante Ladefenster ('planWindows', charger 1.15: [{from, to [, powerW]}] in Unixzeit, nur nicht beendete) auf den Zeitraum
+     * [$fromS, $toS) zuschneiden. Kaputte Eintraege (to <= from, keine Zahlen) entfallen. @return array<int,array{0:int,1:int,2:?int}> in Millisekunden
+     */
+    private static function clipPlanWindows($windows, int $fromS, int $toS): array
+    {
+        $out = [];
+        if (!is_array($windows)) {
+            return $out;
+        }
+        foreach ($windows as $w) {
+            if (!is_array($w) || !isset($w['from'], $w['to']) || !is_numeric($w['from']) || !is_numeric($w['to'])) {
+                continue;
+            }
+            $a = max((int) $w['from'], $fromS);
+            $b = min((int) $w['to'], $toS);
+            if ($b <= $a) {
+                continue;
+            }
+            $out[] = [$a * 1000, $b * 1000, isset($w['powerW']) && is_numeric($w['powerW']) ? (int) round((float) $w['powerW']) : null];
+        }
+        usort($out, static fn ($x, $y) => $x[0] <=> $y[0]);
+        return $out;
+    }
+
+    /**
+     * Wallbox-Streifen fuer den Tagesplan (Dietmar/EMS 23.11.2026: "je Wallbox ein Balken mit den geplanten Ladefenstern ueber dem
+     * Preisverlauf"): je Wallbox die geplanten Fenster (nur aus dem Vertragsfeld planWindows, sofern der Anbieter es liefert) und
+     * das tatsaechliche Laden aus dem Archiv der Leistungsvariable (Rueckgriff aufs Archiv: planWindows enthaelt nur nicht beendete
+     * Fenster, Vergangenes kommt deshalb aus dem Archiv). Quellen: ChargerHub, OCPPHub, ChargerEEBUSHub und Wallboxen anderer Autoren
+     * ueber die allgemeine Fremdsuche. Doppel (gleiche Leistungsvariable oder deviceSerial) nur einmal. Wallboxen ohne Plan und ohne
+     * Laden im Zeitraum bekommen keinen Streifen. $actualTo = bis wann das Archiv gelesen wird (nie in die Zukunft).
+     * @return array<int,array{label:string,plan:array,actual:array,calibrating:?bool,maxPowerW:?int}>
+     */
+    private function WallboxLanes(int $fromS, int $toS, int $actualTo, bool $withPlan): array
+    {
+        $entries = [];
+        foreach (self::CHARGER_SOURCES as [$guid, $fn]) {
+            if (!function_exists($fn)) {
+                continue;
+            }
+            foreach ((array) @IPS_GetInstanceListByModuleID($guid) as $id) {
+                try {
+                    $data = call_user_func($fn, (int) $id);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+                if (is_string($data)) {
+                    $data = json_decode($data, true);
+                }
+                if (!is_array($data) || $data === []) {
+                    continue;
+                }
+                $list = (array_keys($data) === range(0, count($data) - 1)) ? $data : [$data];
+                foreach ($list as $e) {
+                    if (is_array($e) && (string) ($e['contractType'] ?? ($e['function'] ?? '')) === 'charger') {
+                        $e['_instanceID'] = (int) $id;
+                        $entries[] = $e;
+                    }
+                }
+            }
+        }
+        foreach ($this->discoverForeignByType('charger') as $e) {
+            $entries[] = $e;
+        }
+        $aid = $this->ArchiveID();
+        $lanes = [];
+        $seenPid = [];
+        $seenSn = [];
+        foreach ($entries as $e) {
+            $pid = (int) ($e['powerID'] ?? 0);
+            $sn = trim((string) ($e['deviceSerial'] ?? ''));
+            if (!empty($e['duplicateOf']) || ($pid > 0 && isset($seenPid[$pid])) || ($sn !== '' && isset($seenSn[$sn]))) {
+                continue;
+            }
+            if ($pid > 0) {
+                $seenPid[$pid] = true;
+            }
+            if ($sn !== '') {
+                $seenSn[$sn] = true;
+            }
+            $plan = $withPlan ? self::clipPlanWindows($e['planWindows'] ?? null, $fromS, $toS) : [];
+            $actual = [];
+            if ($aid > 0 && $pid > 0 && $actualTo > $fromS) {
+                $actual = self::chargeSegments($this->DaySeries($aid, $pid, $fromS, min($actualTo, $toS)));
+            }
+            if ($plan === [] && $actual === []) {
+                continue;
+            }
+            $label = trim((string) ($e['label'] ?? ($e['Caption'] ?? '')));
+            if ($label === '' && (int) ($e['_instanceID'] ?? 0) > 0 && IPS_InstanceExists((int) $e['_instanceID'])) {
+                $label = IPS_GetName((int) $e['_instanceID']);
+            }
+            $lanes[] = [
+                'label'       => $label !== '' ? $label : NRGDASH_Text::t('Wallbox'),
+                'plan'        => $plan,
+                'actual'      => $actual,
+                'calibrating' => array_key_exists('calibrating', $e) ? (bool) $e['calibrating'] : null,
+                'maxPowerW'   => isset($e['measuredMaxPowerW']) && is_numeric($e['measuredMaxPowerW']) && (float) $e['measuredMaxPowerW'] > 0 ? (int) round((float) $e['measuredMaxPowerW']) : null,
+            ];
+        }
+        return $lanes;
+    }
+
     private function BuildDayPlan(): array
     {
         $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => []];
@@ -2518,6 +2665,9 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
         $out['decision'] = $this->BuildDecisionFlags($emsId);
+        // Ladefenster je Wallbox: heute und morgen (geplant) plus das bisher tatsaechlich Geladene aus dem Archiv
+        $wbFrom = (int) strtotime('today 00:00:00');
+        $out['wallboxes'] = $this->WallboxLanes($wbFrom, (int) strtotime('+2 day', $wbFrom), time(), true);
 
         $out['pvForecast'] = $this->ForecastSeries($this->PvfInstanceID(), 'PVF_GetForecast');
         $out['loadForecast'] = $this->ForecastSeries($this->LfcInstanceID(), 'LFC_GetForecast');
@@ -2564,7 +2714,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private function BuildPastDayPlan(int $offset): array
     {
         $out = ['hasEms' => false, 'slots' => [], 'pvForecast' => [], 'loadForecast' => [],
-                'windows' => [], 'decision' => null, 'history' => true];
+                'windows' => [], 'decision' => null, 'history' => true, 'wallboxes' => []];
         $emsId = $this->EmsInstanceID();
         $aid = $this->ArchiveID();
         if ($emsId <= 0 || $aid <= 0) {
@@ -2573,6 +2723,8 @@ class NRGDashboardPVMonitor extends IPSModule
         $out['hasEms'] = true;
         $dayStart = (int) strtotime('today ' . $offset . ' days');
         $dayEnd = (int) strtotime('+1 day', $dayStart);
+        // Ladefenster je Wallbox: im Rueckblick nur das tatsaechlich Geladene (aus dem Archiv)
+        $out['wallboxes'] = $this->WallboxLanes($dayStart, $dayEnd, $dayEnd, false);
 
         // Betriebsart-Verlauf (Aenderungen), aufsteigend
         $modeVar = (int) @IPS_GetObjectIDByIdent('EMS_Mode', $emsId);
