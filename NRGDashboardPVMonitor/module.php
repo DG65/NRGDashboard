@@ -3621,6 +3621,24 @@ class NRGDashboardPVMonitor extends IPSModule
 
     private function EnergyFlow(int $start, int $end): ?array
     {
+        // Abgeschlossene Tage (Ende > 2 h her) aendern sich nicht mehr:
+        // 1 Stunde zwischenspeichern (Forum 25.11.2026: ~0,9 s je Tag).
+        $closed = $end <= time() - 7200 && $end >= strtotime('+1 day', $start);
+        if (!$closed) {
+            return $this->EnergyFlowUncached($start, $end);
+        }
+        $key = 'flow_' . $start . '_' . $end;
+        $hit = @json_decode((string) $this->GetBuffer($key), true);
+        if (is_array($hit) && isset($hit['t']) && array_key_exists('d', $hit) && (time() - (int) $hit['t']) < 3600) {
+            return $hit['d'];
+        }
+        $d = $this->EnergyFlowUncached($start, $end);
+        $this->SetBuffer($key, json_encode(['t' => time(), 'd' => $d]));
+        return $d;
+    }
+
+    private function EnergyFlowUncached(int $start, int $end): ?array
+    {
         $c = $this->FlowComponents($start, $end);
         $solar = $c['solar']; $batCh = $c['batCh']; $batDis = $c['batDis'];
         $gridImp = $c['gridImp']; $gridExp = $c['gridExp']; $pvToLoad = $c['pvToLoad'];
@@ -3914,6 +3932,20 @@ class NRGDashboardPVMonitor extends IPSModule
      * Rueckgabe null, wenn (noch) keine Daten im Monat vorliegen.
      */
     private function MonthlyPeakDraw(int $aid, int $vid, int $dayStart, int $sign = 1): ?array
+    {
+        // Je Monat identisch fuer alle Tage - 10 Minuten zwischenspeichern
+        // (Forum 25.11.2026: ~1,5 s je Tag auf dem Raspberry Pi, 8x je Aufbau).
+        $key = 'peak_' . $vid . '_' . $sign . '_' . date('Ym', $dayStart);
+        $hit = @json_decode((string) $this->GetBuffer($key), true);
+        if (is_array($hit) && isset($hit['t']) && array_key_exists('d', $hit) && (time() - (int) $hit['t']) < 600) {
+            return $hit['d'];
+        }
+        $d = $this->MonthlyPeakDrawUncached($aid, $vid, $dayStart, $sign);
+        $this->SetBuffer($key, json_encode(['t' => time(), 'd' => $d]));
+        return $d;
+    }
+
+    private function MonthlyPeakDrawUncached(int $aid, int $vid, int $dayStart, int $sign = 1): ?array
     {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return null;

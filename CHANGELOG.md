@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.4 (2026-11-25)
+
+- **PV-Monitor: schnellerer Aufbau (Forum, Raspberry Pi).** Die Zeitmessung zeigte rund 3 s je Tag, davon 1,5 s für die Monatsspitze des Netzbezugs (je Monat identisch, trotzdem je Tag neu aus dem Archiv gelesen) und 0,9 s für den Energiefluss abgeschlossener Tage. Die Monatsspitze wird jetzt 10 Minuten, der Energiefluss abgeschlossener Tage 1 Stunde zwischengespeichert. Die Einstrahlungs-Variable war nicht die Ursache.
+
 ## 0.17.3 (2026-11-25)
 
 - **PV-Monitor: Zeitmessung je Tag und Teilschritt.** Die Debug-Meldung „Timing“ nennt jetzt je Tag die Zeit für Archivreihen, Erwartungskurve, Preis, Spot, Energiefluss, Netzbezug, Monatsspitze und übrige Felder. Anlass: Der Tageskurven-Aufbau braucht auf einem Raspberry Pi rund 2 s je Tag (Forum). Keine Verhaltensänderung.
