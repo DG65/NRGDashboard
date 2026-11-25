@@ -4551,6 +4551,7 @@ class NRGDashboardPVMonitor extends IPSModule
         // auch morgen sinnvoll ab.
         $isFuture = $start > time();
 
+        $tm = ['t0' => microtime(true)];
         $pv  = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $pvID, $start, $end) : [];
         $irr = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $irrID, $start, $end) : [];
         $temp = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $tempID, $start, $end) : [];
@@ -4563,6 +4564,7 @@ class NRGDashboardPVMonitor extends IPSModule
         foreach ($mppt as $n => $vid) {
             $mpptSeries[$n] = (!$isFuture && $aid > 0) ? $this->DaySeries($aid, $vid, $start, $end) : [];
         }
+        $tm['series'] = microtime(true);
 
         // Temperaturwerte je Zeitstempel zuordnen (gleiches 5-Minuten-
         // Raster wie Einstrahlung, daher per Zeitstempel-Map statt Index
@@ -4602,12 +4604,16 @@ class NRGDashboardPVMonitor extends IPSModule
             }
         }
 
+        $tm['expected'] = microtime(true);
         $price = $this->PriceDaySlots($start);
+        $tm['price'] = microtime(true);
         $spot = $this->SpotDaySlots($start);
+        $tm['spot'] = microtime(true);
         // Sankey-Energiebilanz nur fuer den Zeitraum, der wirklich schon
         // vergangen ist ($end = min(jetzt, Tagesende), s.o.) - fuer den
         // Zukunftstag (morgen) gibt es hier naturgemaess nichts.
         $flow = (!$isFuture) ? $this->EnergyFlow($start, $end) : null;
+        $tm['flow'] = microtime(true);
         // Netzbezug im Strompreis-Reiter (Dietmars Wunsch, 28.07.2026,
         // analog zu InverterHubMonitor) - 15-Minuten-Balken unter der
         // Preiskurve, gleicher $aid/$end wie die anderen Serien.
@@ -4622,7 +4628,9 @@ class NRGDashboardPVMonitor extends IPSModule
         // Monats, bewusst pro Tag mitgeschickt statt separat
         // nachgefordert (ein Archivdurchlauf mehr pro Tageswechsel ist
         // hier vertretbar, gleiche Groessenordnung wie gridDraw selbst).
+        $tm['gridDraw'] = microtime(true);
         $gridMonthPeak = (!$isFuture) ? $this->MonthlyPeakDraw($aid, $gridID, $start, $gridSign) : null;
+        $tm['peak'] = microtime(true);
 
         $hasData = count($pv) > 0 || count($irr) > 0 || count($bat) > 0 || count($soc) > 0 || count($price) > 0 || count($spot) > 0
             || ($flow !== null && ($flow['hasData'] ?? false));
@@ -4631,6 +4639,9 @@ class NRGDashboardPVMonitor extends IPSModule
         }
 
         $sun = $this->SunRange($start);
+        $gridEnergyDay = (!$isFuture) ? $this->GridEnergySummaryFor($start) : null;
+        $tm['end'] = microtime(true);
+        $this->SendDebug('Timing', sprintf('Tag %d: Reihen %.2f, Erwartung %.2f, Preis %.2f, Spot %.2f, Fluss %.2f, Netz %.2f, Spitze %.2f, Rest %.2f s (Einstrahlung %d Punkte)', $k, $tm['series'] - $tm['t0'], $tm['expected'] - $tm['series'], $tm['price'] - $tm['expected'], $tm['spot'] - $tm['price'], $tm['flow'] - $tm['spot'], $tm['gridDraw'] - $tm['flow'], $tm['peak'] - $tm['gridDraw'], $tm['end'] - $tm['peak'], count($irr)), 0);
 
         return [
             'k'        => $k,
@@ -4664,7 +4675,7 @@ class NRGDashboardPVMonitor extends IPSModule
             'gridDraw' => $gridDraw,
             // Bezugsenergie Tag/Monat/Jahr bezogen auf DIESEN Tag (fuer die
             // Legende beim Navigieren, Dietmar 28.08.2026).
-            'gridEnergy' => (!$isFuture) ? $this->GridEnergySummaryFor($start) : null,
+            'gridEnergy' => $gridEnergyDay,
             'gridMonthPeak' => $gridMonthPeak,
         ];
     }

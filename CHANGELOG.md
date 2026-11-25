@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.3 (2026-11-25)
+
+- **PV-Monitor: Zeitmessung je Tag und Teilschritt.** Die Debug-Meldung „Timing“ nennt jetzt je Tag die Zeit für Archivreihen, Erwartungskurve, Preis, Spot, Energiefluss, Netzbezug, Monatsspitze und übrige Felder. Anlass: Der Tageskurven-Aufbau braucht auf einem Raspberry Pi rund 2 s je Tag (Forum). Keine Verhaltensänderung.
+
 ## 0.17.2 (2026-11-25)
 
 - **PV-Monitor: Zeitmessung im Debug.** Der Kachelaufbau meldet in der Debug-Ausgabe der Instanz (Meldung „Timing“), wie lange Tageskurven, Energie-Auswertung der Einstrahlung, PV/Akku und die übrigen Felder brauchen. Damit lässt sich bei langsamem Aufbau (Forum, Raspberry Pi) der teure Schritt finden. Keine Verhaltensänderung.
