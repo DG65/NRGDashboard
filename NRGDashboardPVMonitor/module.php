@@ -3994,6 +3994,21 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function DailyEnergyMap(int $aid, int $vid): array
     {
+        // Zwischenspeicher (10 min): die Jahresabfrage ist auf kleinen Systemen
+        // (Raspberry Pi) der teuerste Teil des Kachelaufbaus und wird je
+        // Render mehrfach (PV, Akku, Einstrahlung, Straenge) gebraucht.
+        $key = 'dem_' . $vid;
+        $hit = @json_decode((string) $this->GetBuffer($key), true);
+        if (is_array($hit) && isset($hit['t'], $hit['d']) && (time() - (int) $hit['t']) < 600) {
+            return $hit['d'];
+        }
+        $data = $this->DailyEnergyMapUncached($aid, $vid);
+        $this->SetBuffer($key, json_encode(['t' => time(), 'd' => $data]));
+        return $data;
+    }
+
+    private function DailyEnergyMapUncached(int $aid, int $vid): array
+    {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return [];
         }

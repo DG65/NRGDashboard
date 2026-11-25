@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.1 (2026-11-25)
+
+- **Schneller Aufbau des PV-Monitors (Forum, Raspberry Pi).** Mit gesetzter Einstrahlungs-Variable dauerte der Kachelaufbau auf kleinen Systemen 10–15 Sekunden, weil die mehrjährige Tagesaggregat-Abfrage je Render mehrfach lief. Das Ergebnis wird jetzt je Variable 10 Minuten zwischengespeichert; spätere Aufbauten laufen ohne erneute Archivabfrage. Der erste Aufbau nach dem Hinzufügen bleibt unverändert.
+
 ## 0.17.0 (2026-11-24)
 
 - **Neu: Ladefenster je Wallbox im Tagesplan (PV-Monitoring).** Über dem Preisverlauf zeigt der Tagesplan je Wallbox einen Balken: **türkis die geplanten Ladefenster** (Vertragsfeld `planWindows`, charger 1.15: Liste `{from, to [, powerW]}` in Unixzeit, nur nicht beendete Fenster; ChargerHub 0.17.0, vom EMS ab 0.114.0 gefüllt) und **grün das bereits tatsächlich Geladene** aus dem Archiv der Leistungsvariable (Rückgriff aufs Archiv, weil `planWindows` beendete Fenster nicht mehr enthält; Laden = zusammenhängend über 100 W, Lücken bis 15 Minuten gehören dazu). Im Rückblick (vergangene Tage) nur das Geladene. Quellen: ChargerHub, OCPPHub, ChargerEEBUSHub und Wallboxen anderer Autoren über die allgemeine Fremdsuche; Doppel (gleiche Leistungsvariable oder `deviceSerial`) erscheinen einmal, Wallboxen ohne Plan und ohne Laden an dem Tag bekommen keinen Streifen. Im Tooltip steht das Fenster unter der Maus (geplant mit Leistung, geladen, „kalibriert gerade“ bei `calibrating`). Beide Diagramm-Engines (ECharts, Highcharts); die Streifen sind eigene Legendeneinträge („WB 1 (geplant)“, „WB 1 (geladen)“) und lassen sich ausblenden. Prüfstand `tests/ladefenster.test.php` (22 Prüfungen, PHP und die Kachel-Hilfen mit node).
