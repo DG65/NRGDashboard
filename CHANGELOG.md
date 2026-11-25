@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.2 (2026-11-25)
+
+- **PV-Monitor: Zeitmessung im Debug.** Der Kachelaufbau meldet in der Debug-Ausgabe der Instanz (Meldung „Timing“), wie lange Tageskurven, Energie-Auswertung der Einstrahlung, PV/Akku und die übrigen Felder brauchen. Damit lässt sich bei langsamem Aufbau (Forum, Raspberry Pi) der teure Schritt finden. Keine Verhaltensänderung.
+
 ## 0.17.1 (2026-11-25)
 
 - **Schneller Aufbau des PV-Monitors (Forum, Raspberry Pi).** Mit gesetzter Einstrahlungs-Variable dauerte der Kachelaufbau auf kleinen Systemen 10–15 Sekunden, weil die mehrjährige Tagesaggregat-Abfrage je Render mehrfach lief. Das Ergebnis wird jetzt je Variable 10 Minuten zwischengespeichert; spätere Aufbauten laufen ohne erneute Archivabfrage. Der erste Aufbau nach dem Hinzufügen bleibt unverändert.

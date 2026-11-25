@@ -4709,6 +4709,7 @@ class NRGDashboardPVMonitor extends IPSModule
             }, $model['generatorKwp']));
         }
 
+        $tBuild = microtime(true);
         $days = [];
         // k=-1 (morgen) zusaetzlich zu k=0..WINDOW_DAYS-2 (heute rueckwaerts) -
         // NUR der Strompreis-Reiter kann einen Folgetag ueberhaupt fuellen
@@ -4730,6 +4731,8 @@ class NRGDashboardPVMonitor extends IPSModule
         for ($k = -1; $k < self::WINDOW_DAYS - 1; $k++) {
             $days[] = $this->BuildDayData($k, $aid, $pvID, $irrID, $tempID, $tc, $batID, $socID, $mppt, $model);
         }
+        $tDays = microtime(true);
+        $this->SendDebug('Timing', sprintf('Tageskurven (%d Tage): %.2f s', count($days), $tDays - $tBuild), 0);
 
         // Woche/Monat/Jahr/Gesamt/Benutzerdefiniert: EIN Archivdurchlauf pro
         // Serie ueber SPAN_YEARS Jahre (Tages-kWh), das Frontend gruppiert
@@ -4743,7 +4746,10 @@ class NRGDashboardPVMonitor extends IPSModule
         // Energie-Ansichten (Dietmar, 28.07.2026: "Woche zeigt nur PV-
         // Erzeugung") - bewusst nachgezogen, damit "PV & Einstrahlung"
         // auch hier alle drei Linien der Tagesansicht spiegelt.
+        $tEn0 = microtime(true);
+        $this->SendDebug('Timing', sprintf('Energie Straenge: %.2f s', $tEn0 - $tDays), 0);
         $energyIrr = $aid > 0 ? $this->DailyEnergyMap($aid, $irrID) : [];
+        $this->SendDebug('Timing', sprintf('Energie Einstrahlung (#%d): %.2f s, %d Tage', $irrID, microtime(true) - $tEn0, count($energyIrr)), 0);
         // Temperaturkorrektur auch hier (Fund der Prognose-Sitzung,
         // 28.07.2026) - bewusst ein GROBER Tagesdurchschnitt statt der
         // exakten 5-Minuten-Kopplung aus dem Tagesverlauf: eine echte
@@ -4767,6 +4773,7 @@ class NRGDashboardPVMonitor extends IPSModule
                 $energyExpected[$day] = round($kwhEquivalent * $model['totalKwp'] * $model['pr'] * $derate, 2);
             }
         }
+        $tEn1 = microtime(true);
         $energy = [
             'pv'       => $aid > 0 ? $this->DailyEnergyMap($aid, $pvID) : [],
             'bat'      => $aid > 0 ? $this->DailyEnergyMap($aid, $batID) : [],
@@ -4774,8 +4781,10 @@ class NRGDashboardPVMonitor extends IPSModule
             'expected' => $energyExpected,
             'mppt'     => $energyMppt,
         ];
+        $this->SendDebug('Timing', sprintf('Energie PV/Akku: %.2f s', microtime(true) - $tEn1), 0);
 
-        return [
+        $tRest = microtime(true);
+        $payload = [
             'ok'       => true,
             // Instanz-ID als Namensraum fuer die Legenden-Sichtbarkeit
             // (localStorage im Frontend) - Muster: InverterHubMonitor.
@@ -4854,6 +4863,8 @@ class NRGDashboardPVMonitor extends IPSModule
             'hookPath' => '/hook/nrgdashpvmonitor' . $this->InstanceID,
             'showTour' => !(bool) $this->ReadAttributeBoolean('TourSeen'),
         ];
+        $this->SendDebug('Timing', sprintf('Uebrige Felder (Preise, Netz, Prognose): %.2f s, gesamt %.2f s', microtime(true) - $tRest, microtime(true) - $tBuild), 0);
+        return $payload;
     }
 
     /**
