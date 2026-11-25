@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.5 (2026-11-25)
+
+- **PV-Monitor: Aufbau nur noch einmal und weniger Archivzugriffe (Forum, Raspberry Pi).** Beim Öffnen der Kachel liefen mehrere Aufbauten gleichzeitig (im Debug stand jeder Tag doppelt). Jetzt baut nur einer, die anderen warten und übernehmen das Ergebnis (20 Sekunden gültig; bei Konfigurationsänderung und Nachforderung wird neu gebaut). Außerdem werden der Netzbezug in 15-Minuten-Balken und die Tages-/Monats-/Jahres-Bezugsenergie abgeschlossener Tage 1 Stunde zwischengespeichert.
+
 ## 0.17.4 (2026-11-25)
 
 - **PV-Monitor: schnellerer Aufbau (Forum, Raspberry Pi).** Die Zeitmessung zeigte rund 3 s je Tag, davon 1,5 s für die Monatsspitze des Netzbezugs (je Monat identisch, trotzdem je Tag neu aus dem Archiv gelesen) und 0,9 s für den Energiefluss abgeschlossener Tage. Die Monatsspitze wird jetzt 10 Minuten, der Energiefluss abgeschlossener Tage 1 Stunde zwischengespeichert. Die Einstrahlungs-Variable war nicht die Ursache.

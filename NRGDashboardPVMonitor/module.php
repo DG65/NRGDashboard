@@ -3083,6 +3083,22 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function GridEnergySummaryFor(int $dayStart): ?array
     {
+        $dayEnd = min(time(), strtotime('+1 day', $dayStart));
+        if ($dayEnd > time() - 7200 || $dayEnd < strtotime('+1 day', $dayStart)) {
+            return $this->GridEnergySummaryForUncached($dayStart);
+        }
+        $key = 'gsum_' . $dayStart;
+        $hit = @json_decode((string) $this->GetBuffer($key), true);
+        if (is_array($hit) && isset($hit['t']) && array_key_exists('d', $hit) && (time() - (int) $hit['t']) < 3600) {
+            return $hit['d'];
+        }
+        $d = $this->GridEnergySummaryForUncached($dayStart);
+        $this->SetBuffer($key, json_encode(['t' => time(), 'd' => $d]));
+        return $d;
+    }
+
+    private function GridEnergySummaryForUncached(int $dayStart): ?array
+    {
         $dayEnd     = min(time(), strtotime('+1 day', $dayStart));
         $monthStart = strtotime(date('Y-m-01 00:00:00', $dayStart));
         $yearStart  = strtotime(date('Y-01-01 00:00:00', $dayStart));
@@ -3879,6 +3895,22 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function SlotEnergyBars(int $aid, int $vid, int $start, int $end, int $sign = 1): array
     {
+        // Abgeschlossene Tage aendern sich nicht mehr - 1 h zwischenspeichern.
+        if ($end > time() - 7200 || $end < strtotime('+1 day', $start)) {
+            return $this->SlotEnergyBarsUncached($aid, $vid, $start, $end, $sign);
+        }
+        $key = 'slots_' . $vid . '_' . $sign . '_' . $start . '_' . $end;
+        $hit = @json_decode((string) $this->GetBuffer($key), true);
+        if (is_array($hit) && isset($hit['t'], $hit['d']) && (time() - (int) $hit['t']) < 3600) {
+            return $hit['d'];
+        }
+        $d = $this->SlotEnergyBarsUncached($aid, $vid, $start, $end, $sign);
+        $this->SetBuffer($key, json_encode(['t' => time(), 'd' => $d]));
+        return $d;
+    }
+
+    private function SlotEnergyBarsUncached(int $aid, int $vid, int $start, int $end, int $sign = 1): array
+    {
         if ($vid <= 0 || !IPS_VariableExists($vid) || !@AC_GetLoggingStatus($aid, $vid)) {
             return [];
         }
@@ -4141,7 +4173,7 @@ class NRGDashboardPVMonitor extends IPSModule
      */
     private function pvPush(bool $force): void
     {
-        $new = json_decode((string) json_encode($this->buildPayload()), true);
+        $new = json_decode((string) json_encode($this->buildPayload($force)), true);
         $base = $this->pvBaseLoad();
         $seq = (int) $this->GetBuffer('PvSeq');
         $diff = null;
@@ -4719,7 +4751,41 @@ class NRGDashboardPVMonitor extends IPSModule
      * Render() mitgeschickt; alles darueber hinaus holt sich das Frontend
      * per requestAction('dayData') nach - siehe BuildDayData().
      */
-    private function buildPayload(): array
+    private function buildPayload(bool $fresh = false): array
+    {
+        // Mehrere gleichzeitige Aufrufe (Kachel oeffnen + Nachforderung + Timer)
+        // bauten das Paket parallel mehrfach (Forum 25.11.2026: jeder Tag zweimal
+        // im Debug). Jetzt: nur einer baut, die anderen warten und nehmen sein
+        // Ergebnis (20 s gueltig). $fresh (Konfigurationsaenderung, Nachforderung)
+        // baut immer neu.
+        $sem = 'NRGDASHPV_build_' . $this->InstanceID;
+        $locked = IPS_SemaphoreEnter($sem, 60000);
+        try {
+            if (!$fresh) {
+                $raw = (string) $this->GetBuffer('PvBuilt');
+                $sep = strpos($raw, '|');
+                if ($sep !== false && (time() - (int) substr($raw, 0, $sep)) < 20) {
+                    $bin = base64_decode(substr($raw, $sep + 1), true);
+                    $d = ($bin === false || !function_exists('gzuncompress')) ? null : json_decode((string) @gzuncompress($bin), true);
+                    if (is_array($d)) {
+                        return $d;
+                    }
+                }
+            }
+            $payload = $this->buildPayloadUncached();
+            if (function_exists('gzcompress')) {
+                $z = @gzcompress((string) json_encode($payload), 6);
+                $this->SetBuffer('PvBuilt', $z === false ? '' : (time() . '|' . base64_encode($z)));
+            }
+            return $payload;
+        } finally {
+            if ($locked) {
+                IPS_SemaphoreLeave($sem);
+            }
+        }
+    }
+
+    private function buildPayloadUncached(): array
     {
         $aid = $this->ArchiveID();
         $pvID = $this->PvPowerID();
