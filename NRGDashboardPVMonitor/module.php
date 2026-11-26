@@ -48,7 +48,7 @@ class NRGDashboardPVMonitor extends IPSModule
     private const AGG_5MIN         = 5;
     private const AGG_DAY          = 1;
     private const AGG_HOUR         = 0;
-    private const WINDOW_DAYS      = 8;
+    private const WINDOW_DAYS      = 3;
     private const SPAN_YEARS       = 5;
     private const SUN_MARGIN_SEC   = 3600;
     // Sanity-Obergrenze fuer archivierte Leistungswerte (01.09.2026, Fund

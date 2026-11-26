@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.6 (2026-11-26)
+
+- **PV-Monitor: schneller Start (Forum, Raspberry Pi).** Beim Öffnen werden nur noch gestern, heute und morgen vorab geladen (bisher acht Tage); jeder weitere Tag wird beim Blättern einzeln nachgeladen, wie es für Tage ab dem neunten ohnehin schon galt. Auf einem Raspberry Pi sinkt der erste Aufbau damit von rund 5 auf rund 1,5 Sekunden, das Blättern zu älteren Tagen braucht dafür bis zu etwa 1 Sekunde je Tag.
+
 ## 0.17.5 (2026-11-25)
 
 - **PV-Monitor: Aufbau nur noch einmal und weniger Archivzugriffe (Forum, Raspberry Pi).** Beim Öffnen der Kachel liefen mehrere Aufbauten gleichzeitig (im Debug stand jeder Tag doppelt). Jetzt baut nur einer, die anderen warten und übernehmen das Ergebnis (20 Sekunden gültig; bei Konfigurationsänderung und Nachforderung wird neu gebaut). Außerdem werden der Netzbezug in 15-Minuten-Balken und die Tages-/Monats-/Jahres-Bezugsenergie abgeschlossener Tage 1 Stunde zwischengespeichert.
