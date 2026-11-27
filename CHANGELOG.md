@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.7 (2026-11-28)
+
+- **Netz invertieren wirkt jetzt auch auf Import/Einspeisung in der Tabelle (Forum, InverterHub-Thread).** Bei manuell eingetragenem Netzzähler drehte „Netz invertieren“ nur die Live-Anzeige; Eigenverbrauch/Autarkie und die Spalte Netz rechneten mit dem ungedrehten Archivwert, Einspeisung und Netzbezug waren vertauscht. Das Vorzeichen gilt nun überall gleich.
+
 ## 0.17.6 (2026-11-26)
 
 - **PV-Monitor: schneller Start (Forum, Raspberry Pi).** Beim Öffnen werden nur noch gestern, heute und morgen vorab geladen (bisher acht Tage); jeder weitere Tag wird beim Blättern einzeln nachgeladen, wie es für Tage ab dem neunten ohnehin schon galt. Auf einem Raspberry Pi sinkt der erste Aufbau damit von rund 5 auf rund 1,5 Sekunden, das Blättern zu älteren Tagen braucht dafür bis zu etwa 1 Sekunde je Tag.

@@ -2481,7 +2481,9 @@ class NRGDashboardTile extends IPSModule
             }
             // Manueller Invert-Schalter (Netz/Batterie) - nur bei manuell
             // konfigurierten Geraeten gesetzt (discoverManualCore()).
-            if (!empty($d['invert']) && $d['value'] !== null) {
+            // Manuelles Netz: Vorzeichen steckt bereits in powerSign (resolvePowerValue).
+            $invertLive = !empty($d['invert']) && !(($d['function'] ?? '') === 'grid' && ($d['source'] ?? '') === 'manual');
+            if ($invertLive && $d['value'] !== null) {
                 $d['value'] = -$d['value'];
             }
             if (!empty($d['socID'])) {
@@ -5551,7 +5553,13 @@ class NRGDashboardTile extends IPSModule
         // Nutzer sah Bezug/Einspeisung vertauscht. Gilt fuer den eigenen
         // powerID dieses Eintrags; eine Ersatzquelle traegt ihr eigenes
         // Vorzeichen (fallbackPowerSign, siehe mergeRedundantSources()).
+        // Manuelles Netz mit "Netz invertieren" (Forum InverterHub 144121, Beitrag 283):
+        // das Vorzeichen muss auch in die Archiv-Auswertungen (Import/Einspeisung,
+        // Autarkie) - dort wirkt nur powerSign, nicht der Live-Invert.
         $entry['powerSign'] = ($source === 'meterhub' && ($entry['function'] ?? '') === 'grid') ? -1 : 1;
+        if ($source === 'manual' && ($entry['function'] ?? '') === 'grid' && !empty($entry['invert'])) {
+            $entry['powerSign'] = -1;
+        }
         return $entry;
     }
 
