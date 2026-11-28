@@ -1808,10 +1808,16 @@ class NRGDashboardTile extends IPSModule
         $this->WriteAttributeString('DiagnosticsCache', json_encode($diagnostics));
         $this->WriteAttributeInteger('LastDiscoveryTs', time());
         $this->SetStatus(102);
-        $this->LogMessage(
-            NRGDASH_Text::t('NRG Dashboard: %d devices, %d diagnostic entries found', count($devices), count($diagnostics)),
-            KL_MESSAGE
-        );
+        // Nur bei Aenderung loggen (Forum hbraun, 28.11.2026: der 5-Minuten-Timer
+        // schrieb 288 gleiche Zeilen am Tag). Erster Lauf nach Start zaehlt als Aenderung.
+        $logKey = count($devices) . '/' . count($diagnostics);
+        if ($this->GetBuffer('DiscoveryLogKey') !== $logKey) {
+            $this->SetBuffer('DiscoveryLogKey', $logKey);
+            $this->LogMessage(
+                NRGDASH_Text::t('NRG Dashboard: %d devices, %d diagnostic entries found', count($devices), count($diagnostics)),
+                KL_MESSAGE
+            );
+        }
         // Sichtbare Rueckmeldung im Konfigurationsformular - vorher lief der
         // "Geraete jetzt suchen"-Button komplett ins Leere (nur Log-Eintrag,
         // keine Rueckmeldung im Formular selbst). UpdateFormField ist ein

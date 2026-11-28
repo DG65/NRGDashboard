@@ -10,6 +10,10 @@ Pixel-Korrekturen an einem einzigen Badge, die als EIN Punkt zusammengefasst
 sind) und wird ab jetzt bei jedem Push gepflegt, `version` in `library.json`
 inklusive.*
 
+## 0.17.8 (2026-11-28)
+
+- **Weniger Log-Rauschen (Forum, hbraun).** Die Meldung „NRG Dashboard: N Geräte, M Diagnose-Einträge gefunden“ stand bisher alle 5 Minuten im Meldungs-Log. Sie erscheint jetzt nur noch beim ersten Lauf und wenn sich die Zahlen ändern.
+
 ## 0.17.7 (2026-11-28)
 
 - **Netz invertieren wirkt jetzt auch auf Import/Einspeisung in der Tabelle (Forum, InverterHub-Thread).** Bei manuell eingetragenem Netzzähler drehte „Netz invertieren“ nur die Live-Anzeige; Eigenverbrauch/Autarkie und die Spalte Netz rechneten mit dem ungedrehten Archivwert, Einspeisung und Netzbezug waren vertauscht. Das Vorzeichen gilt nun überall gleich.
